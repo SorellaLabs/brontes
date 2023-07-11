@@ -35,12 +35,17 @@ alloy-primitives = {git = "https://github.com/alloy-rs/core", package = "alloy-p
 alloy-json-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-json-abi"}
 alloy-dyn-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi"}
 
+# Ethers
+ethers-etherscan = { git = "https://github.com/gakonst/ethers-rs", package = "ethers-etherscan" }
+ethers-core = { git = "https://github.com/gakonst/ethers-rs", package = "ethers-core" }
 # Revm
 revm-primitives = "1.1.2"
-
 
 # Serde 
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 
 # error handling
 eyre = "0.6.8"
+
+# env 
+dotenv = "0.15.0"
