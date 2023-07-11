@@ -11,7 +11,6 @@ pub struct ContractAbiStorage<'a> {
 // TODO: I need you to write the etherscan api call to get the abi for a contract instead of the
 // TODO: hashmap we have here, i added the api key to the .env file
 
-
 impl<'a> ContractAbiStorage<'a> {
     pub fn new() -> Self {
         Self { mapping: HashMap::new() }
@@ -72,6 +71,4 @@ pub fn sleuth<'a>(
     Err(From::from("No matching function found in the ABI"))
 }
 
-
-
-// TODO: Add tests! 
+// TODO: Add tests!
