@@ -14,7 +14,11 @@ use alloy_json_abi::*;
 use std::str::FromStr;
 
 fn main() {
-    let runtime = tokio_runtime().expect("Failed to create runtime");
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_stack_size(8 * 1024 * 1024)
+        .build()
+        .unwrap();
 
     match runtime.block_on(run(runtime.handle().clone())) {
         Ok(()) => println!("Success!"),
