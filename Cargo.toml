@@ -20,3 +20,10 @@ reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = 
 reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus"}
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm"}
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces"}
+
+
+[patch.crates-io]
+# patched for quantity U256 responses <https://github.com/recmo/uint/issues/224>
+ruint = { git = "https://github.com/paradigmxyz/uint" }
+revm-primitives = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
+revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
