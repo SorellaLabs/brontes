@@ -25,7 +25,7 @@ pub type RethTxPool =
 
 pub struct TracingClient {
     pub api: EthApi<Provider, RethTxPool, NoopNetwork>,
-    pub filter: TraceApi<Provider, RethApi>,
+    pub trace: TraceApi<Provider, RethApi>,
 }
 
 impl TracingClient {
@@ -100,6 +100,6 @@ impl TracingClient {
         let reth_filter =
             EthFilter::new(provider, tx_pool, state_cache, 1000, Box::new(task_executor));
 
-        Self { reth_api, reth_trace }
+        Self { api: reth_api, trace: reth_trace }
     }
 }
