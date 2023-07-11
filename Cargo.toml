@@ -3,8 +3,6 @@ members = [
     "crates/poirot-core",
 ]
 
-
-
 [patch.crates-io]
 # patched for quantity U256 responses <https://github.com/recmo/uint/issues/224>
 ruint = { git = "https://github.com/paradigmxyz/uint" }
