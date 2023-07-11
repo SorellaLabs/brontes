@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# Reth
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks"}
 reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc"}
 reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api"}
@@ -21,12 +22,25 @@ reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package =
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm"}
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces"}
 
+# tracing
 tracing = "0.1.0"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 
-
 # Async
 tokio = { version = "1.28.2", features = ["full"] }
+
+# Alloy
+alloy-sol-types = {git = "https://github.com/alloy-rs/core", package = "alloy-sol-types", features = ["json"]}
+alloy-primitives = {git = "https://github.com/alloy-rs/core", package = "alloy-primitives"}
+alloy-json-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-json-abi"}
+alloy-dyn-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi"}
+
+# Revm
+revm-primitives = "1.1.2"
+
+
+# Serde 
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 
 # error handling
 eyre = "0.6.8"
