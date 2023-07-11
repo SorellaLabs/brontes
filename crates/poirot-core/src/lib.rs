@@ -76,8 +76,6 @@ impl TracingClient {
         )
         .unwrap();
 
-        let state_cache = EthStateCache::spawn(provider.clone(), EthStateCacheConfig::default());
-
         let tx_pool = reth_transaction_pool::Pool::eth_pool(
             EthTransactionValidator::new(provider.clone(), chain, task_executor.clone()),
             Default::default(),
@@ -87,7 +85,7 @@ impl TracingClient {
             provider.clone(),
             tx_pool,
             NoopNetwork::default(),
-            state_cache.clone(),
+            EthStateCache::spawn(provider.clone(), EthStateCacheConfig::default()),
             GasPriceOracle::new(
                 provider.clone(),
                 GasPriceOracleConfig::default(),
@@ -95,14 +93,12 @@ impl TracingClient {
             ),
         );
 
-        let tracing_call_guard = TracingCallGuard::new(10);
-
         let trace = TraceApi::new(
             provider,
             api.clone(),
-            state_cache,
+            EthStateCache::spawn(provider.clone(), EthStateCacheConfig::default()),
             Box::new(task_executor),
-            tracing_call_guard,
+            TracingCallGuard::new(10),
         );
 
         Self { api, trace }
