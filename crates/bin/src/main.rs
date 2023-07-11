@@ -30,7 +30,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let db_path = Path::new(&db_path);
 
-    let tracer = TracingClient::new(db_path, handle);
+    let _tracer = TracingClient::new(db_path, handle);
 
     Ok(())
 }
