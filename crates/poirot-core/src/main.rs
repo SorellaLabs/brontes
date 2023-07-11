@@ -1,6 +1,5 @@
 use ethers::prelude::k256::elliptic_curve::rand_core::block;
-use poirot_core::{parser::Parser, TracingClient};
-use poirot_core::action::ActionType;
+use poirot_core::{TracingClient};
 use std::{env, error::Error, path::Path};
 use reth_rpc_types::trace::parity::TraceType;
 use std::collections::HashSet;
@@ -15,6 +14,8 @@ use alloy_json_abi::*;
 use std::str::FromStr;
 
 fn main() {
+    let runtime = tokio_runtime().expect("Failed to create runtime");
+
     match runtime.block_on(run(runtime.handle().clone())) {
         Ok(()) => println!("Success!"),
         Err(e) => {
