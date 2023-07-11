@@ -1,4 +1,4 @@
-use poirot_core::{TracingClient};
+use poirot_core::TracingClient;
 use std::{env, error::Error, path::Path};
 
 fn main() {
@@ -19,7 +19,7 @@ fn main() {
                 source = err.source();
             }
         }
-    }    
+    }
 }
 
 async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
