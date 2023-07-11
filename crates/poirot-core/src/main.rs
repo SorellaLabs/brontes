@@ -1,17 +1,5 @@
-use ethers::prelude::k256::elliptic_curve::rand_core::block;
 use poirot_core::{TracingClient};
 use std::{env, error::Error, path::Path};
-use reth_rpc_types::trace::parity::TraceType;
-use std::collections::HashSet;
-use reth_primitives::{BlockId, BlockNumberOrTag};
-use tracing::Subscriber;
-use tracing_subscriber::{
-    filter::Directive, prelude::*, registry::LookupSpan, EnvFilter, Layer, Registry,
-};
-use reth_primitives::{BlockNumHash, H256};
-use reth_rpc_types::trace::geth::GethDebugTracingOptions;
-use alloy_json_abi::*;
-use std::str::FromStr;
 
 fn main() {
     let runtime = tokio::runtime::Builder::new_multi_thread()
