@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/poirot-core",
+    "crates/bin",
 ]
 
 [patch.crates-io]
