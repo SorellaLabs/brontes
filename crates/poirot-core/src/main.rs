@@ -1,4 +1,4 @@
-use poirot_core::TracingClient;
+use poirot_core::trace::TracingClient;
 use std::{env, error::Error, path::Path};
 
 fn main() {
