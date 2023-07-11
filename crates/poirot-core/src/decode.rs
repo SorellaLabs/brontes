@@ -1,32 +1,24 @@
 use alloy_dyn_abi::DynSolType;
 use alloy_json_abi::JsonAbi;
+use dotenv::dotenv;
+use ethers_core::types::Chain;
+use ethers_etherscan::{contract::Metadata, Client};
 use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTrace};
 use revm_primitives::bits::B160;
-use std::{collections::HashMap, path::PathBuf};
+use std::{env, path::PathBuf, time::Duration};
 
-pub struct ContractAbiStorage<'a> {
-    mapping: HashMap<&'a B160, PathBuf>,
+pub fn create_etherscan_client() -> Client {
+    dotenv::dotenv().ok();
+    let api_key = env::var("ETHERSCAN_API").expect("ETHERSCAN_API must be set");
+    let cache_path = PathBuf::from(env::current_dir().unwrap().join("src/abicache"));
+    Client::new_cached(Chain::Mainnet, api_key, Some(cache_path), Duration::from_secs(60)).unwrap()
 }
 
-// TODO: I need you to write the etherscan api call to get the abi for a contract instead of the
-// TODO: hashmap we have here, i added the api key to the .env file
+// TODO: need to add handling for delegate calls where we fetch the implementation abi
+// TODO: this can easily be done by checking the call action type in the trace & using the api
 
-impl<'a> ContractAbiStorage<'a> {
-    pub fn new() -> Self {
-        Self { mapping: HashMap::new() }
-    }
-
-    pub fn add_abi(&mut self, contract_address: &'a B160, abi_path: PathBuf) {
-        self.mapping.insert(contract_address, abi_path);
-    }
-
-    pub fn get_abi(&self, contract_address: &'a B160) -> Option<&PathBuf> {
-        self.mapping.get(contract_address)
-    }
-}
-
-pub fn sleuth<'a>(
-    storage: &'a ContractAbiStorage,
+pub async fn sleuth(
+    client: &Client,
     trace: LocalizedTransactionTrace,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let action = trace.trace.action;
@@ -36,16 +28,12 @@ pub fn sleuth<'a>(
         _ => return Err(From::from("The action in the transaction trace is not Call(CallAction)")),
     };
 
-    let abi_path = storage.get_abi(&contract_address).ok_or("No ABI found for this contract")?;
-
-    let file = std::fs::File::open(abi_path)?;
-    let reader = std::io::BufReader::new(file);
-
-    let json_abi: JsonAbi = serde_json::from_reader(reader)?;
+    let metadata = client.contract_source_code(contract_address.into()).await?;
+    let abi_str = &metadata.items[0].abi;
+    let json_abi: JsonAbi = serde_json::from_str(abi_str)?;
 
     let function_selector = &input[..4];
 
-    //todo:
     if let Some(functions) = Some(json_abi.functions.values().flatten()) {
         for function in functions {
             if function.selector() == function_selector {
@@ -54,8 +42,6 @@ pub fn sleuth<'a>(
 
                 let mut decoded_inputs = Vec::new();
                 for (index, input_type_str) in input_types.iter().enumerate() {
-                    //TODO: just fix this, where you properly provide the expected decoding from
-                    // the abi
                     let input_data = &input[4 + index..]; // Skip the function selector and previous inputs
                     let dyn_sol_type: DynSolType = input_type_str.parse().unwrap();
                     let dyn_sol_value = dyn_sol_type.decode_params(input_data)?;
@@ -70,5 +56,3 @@ pub fn sleuth<'a>(
 
     Err(From::from("No matching function found in the ABI"))
 }
-
-// TODO: Add tests!
