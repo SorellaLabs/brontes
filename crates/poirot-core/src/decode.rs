@@ -2,15 +2,15 @@ use alloy_dyn_abi::DynSolType;
 use alloy_json_abi::JsonAbi;
 use dotenv::dotenv;
 use ethers_core::types::Chain;
-use ethers_etherscan::{contract::Metadata, Client};
+use ethers_etherscan::Client;
 use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTrace};
-use revm_primitives::bits::B160;
-use std::{env, path::PathBuf, time::Duration};
+
+use std::{env, time::Duration};
 
 pub fn create_etherscan_client() -> Client {
-    dotenv::dotenv().ok();
+    dotenv().ok();
     let api_key = env::var("ETHERSCAN_API").expect("ETHERSCAN_API must be set");
-    let cache_path = PathBuf::from(env::current_dir().unwrap().join("src/abicache"));
+    let cache_path = env::current_dir().unwrap().join("src/abicache");
     Client::new_cached(Chain::Mainnet, api_key, Some(cache_path), Duration::from_secs(60)).unwrap()
 }
 
