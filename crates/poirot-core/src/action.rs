@@ -8,6 +8,8 @@ use reth_rpc_types::trace::parity::LocalizedTransactionTrace;
 /// An [`Action`] is the lowest level parsing type, analogous to a lexeme in compiler design.
 #[derive(Debug, Clone)]
 pub struct Action {
+    /// Name of the function that has been called.
+    function_name: String,
     /// Vector of inputs to the function.
     inputs: Vec<Token>,
     /// If it is a known protocol, the type.
@@ -26,7 +28,7 @@ pub enum ProtocolType {
 
 impl Action {
     /// Public constructor function to instantiate an [`Action`].
-    pub fn new(inputs: Vec<Token>, trace: LocalizedTransactionTrace) -> Self {
-        Self { inputs, protocol: None, trace }
+    pub fn new(function_name: String, inputs: Vec<Token>, trace: LocalizedTransactionTrace) -> Self {
+        Self { function_name, inputs, protocol: None, trace }
     }
 }
