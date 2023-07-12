@@ -23,13 +23,12 @@ impl Parser {
         }
     }
 
-    pub async fn parse(&self) -> Vec<String> {
+    pub async fn parse(&self) -> Vec<Token> {
         let mut result = vec![];
 
         for trace in &self.block_trace {
             match self.parse_trace(trace).await {
                 Ok(res) => {
-                    println!("{res}");
                     result.push(res);
                 }
                 _ => continue,
