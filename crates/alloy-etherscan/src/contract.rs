@@ -3,8 +3,9 @@ use crate::{
     utils::{deserialize_address_opt, deserialize_source_code},
     Client, EtherscanError, Response, Result,
 };
+use alloy_json_abi::JsonAbi;
 use ethers_core::{
-    abi::{Abi, Address, RawAbi},
+    abi::{Address, RawAbi},
     types::{serde_helpers::deserialize_stringified_u64, Bytes},
 };
 use semver::Version;
@@ -197,7 +198,7 @@ impl Metadata {
     }
 
     /// Parses the Abi String as an [Abi] struct.
-    pub fn abi(&self) -> Result<Abi> {
+    pub fn abi(&self) -> Result<JsonAbi> {
         Ok(serde_json::from_str(&self.abi)?)
     }
 
@@ -296,7 +297,7 @@ impl IntoIterator for ContractMetadata {
 
 impl ContractMetadata {
     /// Returns the ABI of all contracts.
-    pub fn abis(&self) -> Result<Vec<Abi>> {
+    pub fn abis(&self) -> Result<Vec<JsonAbi>> {
         self.items.iter().map(|c| c.abi()).collect()
     }
 
@@ -327,7 +328,7 @@ impl Client {
     /// let abi = client.contract_abi(address).await?;
     /// # Ok(()) }
     /// ```
-    pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
+    pub async fn contract_abi(&self, address: Address) -> Result<JsonAbi> {
         // apply caching
         if let Some(ref cache) = self.cache {
             // If this is None, then we have a cache miss
@@ -410,27 +411,20 @@ impl Client {
         Ok(result)
     }
 
-    pub async fn delegate_raw_contract(&self, address: Address) -> Result<String, EtherscanError> {
+    pub async fn delegate_raw_contract(&self, address: Address) -> Result<JsonAbi, EtherscanError> {
         let contract_metadata = self.contract_source_code(address).await?;
 
         // Use the first item in the metadata.
         let first_item = &contract_metadata.items[0];
 
         // If the first item is a proxy, get its implementation address and fetch the ABI.
-        if first_item.proxy == 1 {
-            let implementation_address = match first_item.implementation {
-                Some(impl_addr) => impl_addr,
-                None => return Err(EtherscanError::MissingImplementationAddress),
-            };
+        let implementation_address = match first_item.implementation {
+            Some(impl_addr) => impl_addr,
+            None => return Err(EtherscanError::MissingImplementationAddress),
+        };
 
-            // Get the ABI of the implementation contract.
-            let abi_string = self.raw_contract(implementation_address).await?;
-
-            return Ok(abi_string)
-        }
-
-        // If the first item is not a proxy, return an error.
-        Err(EtherscanError::NotProxy)
+        // Get the ABI of the implementation contract.
+        Ok(self.contract_abi(implementation_address).await?)
     }
 
     /// Fetches a contract's verified source code and its metadata.

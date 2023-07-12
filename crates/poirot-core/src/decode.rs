@@ -79,7 +79,7 @@ impl Parser {
             return Err(TraceParseError::EmptyInput(trace.transaction_hash.unwrap()))
         }
 
-        let abi_json_string = match call_type {
+        let abi = match call_type {
             &CallType::DelegateCall => {
                 // Use a different method to fetch the contract ABI for DelegateCall.
                 self.client
@@ -90,14 +90,11 @@ impl Parser {
             _ => {
                 // For other call types, use the original method.
                 self.client
-                    .raw_contract(H160(action.to.to_fixed_bytes()))
+                    .contract_abi(H160(action.to.to_fixed_bytes()))
                     .await
                     .map_err(TraceParseError::EtherscanError)?
             }
         };
-
-        let abi: JsonAbi =
-            serde_json::from_str(&abi_json_string).map_err(TraceParseError::AbiParseError)?;
 
         for functions in abi.functions.values() {
             for function in functions {

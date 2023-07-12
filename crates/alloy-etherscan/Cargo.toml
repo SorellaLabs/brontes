@@ -23,6 +23,12 @@ all-features = true
 ethers-core = { version = "2.0.7"}
 ethers-solc = { version = "2.0.7", optional = true}
 
+alloy-sol-types = {git = "https://github.com/alloy-rs/core", package = "alloy-sol-types", features = ["json"]}
+alloy-primitives = {git = "https://github.com/alloy-rs/core", package = "alloy-primitives"}
+alloy-json-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-json-abi"}
+alloy-dyn-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi"}
+
+
 
 reqwest = { version = "0.11.18", features = ["json"] }
 serde =  { version = "1.0", features = ["derive"] }
