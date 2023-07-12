@@ -16,7 +16,7 @@ impl Parser {
     pub fn new(block_trace: Vec<LocalizedTransactionTrace>, etherscan_key: String) -> Self {
         Self {
             block_trace,
-            client: Client::new(Chain::Mainnet, etherscan_key),
+            client: Client::new(Chain::Mainnet, etherscan_key).unwrap(),
         }
     }
 
@@ -24,21 +24,29 @@ impl Parser {
         let result = vec![];
 
         for trace in &self.block_trace {
-            result.push(self.parse_trace(trace));
+            match self.parse_trace(trace) {
+                Ok(res) => result.push(res),
+                _ => continue,
+            }
         }
 
         result
     }
 
-    pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<String, ()> {
-        let call = match trace.trace.action {
-            RethAction::Call(call) => call,
-            _ => return Err(()),
-        }
+    pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<String, Box<dyn std::error::Error>> {
+        let action = trace.trace.action;
 
-        let json_abi: JsonAbi = serde_json::from_str(&String::from(client.contract_abi(String::from(call.to).parse().unwrap()).await.unwrap();))?;
-
-        let input_selector = &call.input[..4];
+        let (contract_address, input) = match action {
+            RethAction::Call(call_action) => (call_action.to, call_action.input.to_vec()),
+            _ => return Err(From::from("The action in the transaction trace is not Call(CallAction)")),
+        };
+    
+        let metadata = client.contract_source_code(contract_address.into()).await?;
+    
+        let abi_str = &metadata.items[0].abi;
+        let json_abi: JsonAbi = serde_json::from_str(abi_str)?;
+    
+        let function_selector = &input[..4];
 
         if let Some(functions) = Some(json_abi.functions.values().flatten()) {
             for function in functions {
@@ -61,5 +69,7 @@ impl Parser {
                 }
             }
         }
+
+        Err(From::from("No matching function found in the ABI"))
     }
 }
