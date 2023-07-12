@@ -24,7 +24,7 @@ impl Parser {
         let result = vec![];
 
         for trace in &self.block_trace {
-            match self.parse_trace(trace) {
+            match self.parse_trace(trace).await {
                 Ok(res) => result.push(res),
                 _ => continue,
             }
@@ -41,7 +41,7 @@ impl Parser {
             _ => return Err(From::from("The action in the transaction trace is not Call(CallAction)")),
         };
     
-        let metadata = client.contract_source_code(contract_address.into()).await?;
+        let metadata = self.client.contract_source_code(contract_address.into()).await?;
     
         let abi_str = &metadata.items[0].abi;
         let json_abi: JsonAbi = serde_json::from_str(abi_str)?;
