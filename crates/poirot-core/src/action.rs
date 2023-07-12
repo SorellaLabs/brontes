@@ -13,7 +13,7 @@ pub struct Action {
     /// Vector of inputs to the function.
     inputs: Vec<Token>,
     /// If it is a known protocol, the type.
-    protocol: Option<Protocol>,
+    protocol: Option<ProtocolType>,
     /// The underlying trace the call came from.
     trace: LocalizedTransactionTrace,
 }
