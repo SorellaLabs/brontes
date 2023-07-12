@@ -7,7 +7,7 @@ use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTr
 
 use std::{env, time::Duration};
 
-struct Parser {
+pub struct Parser {
     block_trace: Vec<LocalizedTransactionTrace>,
     client: Client,
 }
