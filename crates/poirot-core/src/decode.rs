@@ -83,8 +83,8 @@ impl Parser {
         for function in abi.functions() {
             if function.short_signature() == &action.input[..4] {
                 return Ok(Action::new(
-                    function.unwrap().name.clone(),
-                    function.unwrap().decode_input(&(&action.input.to_vec())[4..]).unwrap(),
+                    function.name.clone(),
+                    function.decode_input(&(&action.input.to_vec())[4..]).unwrap(),
                     trace.clone(),
                 ));
             } else {
