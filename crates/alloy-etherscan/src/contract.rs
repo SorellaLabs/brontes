@@ -379,7 +379,7 @@ impl Client {
 
     pub async fn raw_contract(&self, address: Address) -> Result<String, EtherscanError> {
     
-        let query = self.create_query("contract", "getabi", HashMap::from([("address", address.to_string())]));
+        let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<Option<String>> = self.get_json(&query).await?;
     
         let result = match resp.result {
@@ -411,6 +411,7 @@ impl Client {
         Ok(result)
     }
 
+    
 
 
     /// Fetches a contract's verified source code and its metadata.
