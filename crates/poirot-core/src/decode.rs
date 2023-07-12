@@ -58,6 +58,8 @@ impl Parser {
         let function = function_selectors
             .get(input_selector);
 
+        println!("{:#?}", &action.input.to_vec());
+
         Ok(function.unwrap().decode_input(&action.input.to_vec()).unwrap())
     }
 }
