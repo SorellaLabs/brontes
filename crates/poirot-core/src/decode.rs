@@ -48,7 +48,7 @@ impl Parser {
         for trace in &self.block_trace {
             match self.parse_trace(trace).await {
                 Ok(res) => {
-                    println!("{res:#?}");
+                    //println!("{res:#?}");
                     result.push(res);
                 }
                 _ => continue,
