@@ -25,7 +25,10 @@ impl Parser {
 
         for trace in &self.block_trace {
             match self.parse_trace(trace).await {
-                Ok(res) => result.push(res),
+                Ok(res) => {
+                    println!("{res}");
+                    result.push(res);
+                }
                 _ => continue,
             }
         }
