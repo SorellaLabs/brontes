@@ -40,7 +40,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let tracer = TracingClient::new(Path::new(&db_path), handle);
 
     let parity_trace =
-        tracer.trace.trace_block(BlockId::Number(BlockNumberOrTag::Latest)).await?;
+        tracer.trace.trace_block(BlockId::Number(BlockNumberOrTag::Latest)).await??;
 
     let parser = Parser::new(parity_trace, key);
 
