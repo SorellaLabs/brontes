@@ -1,15 +1,17 @@
 use alloy_dyn_abi::DynSolType;
 use alloy_json_abi::JsonAbi;
+
 use dotenv::dotenv;
+
 use ethers_core::types::Chain;
 use ethers_etherscan::Client;
 
+use crate::action::Action;
 use ethers::{
     abi::{Abi, Token},
     types::H160,
 };
 use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTrace};
-
 use std::{env, time::Duration};
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
@@ -31,7 +33,7 @@ impl Parser {
     }
 
     /// Attempt to parse each trace in a block.
-    pub async fn parse(&self) -> Vec<Vec<Token>> {
+    pub async fn parse(&self) -> Vec<Action> {
         let mut result = vec![];
 
         for trace in &self.block_trace {
@@ -50,12 +52,11 @@ impl Parser {
     /// Parse an individual block trace.
     /// # Arguments
     /// * `trace` - Individual block trace.
-    pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<Vec<Token>, ()> {
+    pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<Action, ()> {
         let action = match &trace.trace.action {
             RethAction::Call(call) => call,
             _ => return Err(()),
         };
-
 
         let abi = match self.client.contract_abi(H160(action.to.to_fixed_bytes())).await {
             Ok(abi) => abi,
@@ -72,6 +73,12 @@ impl Parser {
 
         let function = function_selectors.get(input_selector);
 
-        Ok(function.unwrap().decode_input(&(&action.input.to_vec())[4..]).unwrap())
+        let action = Action::new(
+            function.unwrap(),
+            function.unwrap().decode_input(&(&action.input.to_vec())[4..]).unwrap(),
+            trace,
+        );
+
+        Ok(action)
     }
 }
