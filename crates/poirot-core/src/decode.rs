@@ -29,6 +29,7 @@ impl Parser {
         for trace in &self.block_trace {
             match self.parse_trace(trace).await {
                 Ok(res) => {
+                    println!("{res:#?}");
                     result.push(res);
                 }
                 _ => continue,
@@ -57,9 +58,6 @@ impl Parser {
 
         let function = function_selectors
             .get(input_selector);
-
-        println!("{:#?}", &action.input.to_vec());
-        println!("{:#?}", function.clone());
 
         Ok(function.unwrap().decode_input(&(&action.input.to_vec())[4..]).unwrap())
     }
