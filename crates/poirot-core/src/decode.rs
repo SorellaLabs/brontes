@@ -69,7 +69,7 @@ impl Parser {
         };
 
         // We cannot decode a call for which calldata is zero.
-        if action.input <= 0 {
+        if action.input.len() <= 0 {
             return Err(());
         }
 
