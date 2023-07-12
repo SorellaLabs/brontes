@@ -11,3 +11,18 @@ poirot-core = { path = "../poirot-core" }
 
 # Async
 tokio = { version = "1.13.0", features = ["full"] }
+
+reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks"}
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc"}
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api"}
+reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder"}
+reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types"}
+reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider"}
+reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool"}
+reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api"}
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives"}
+reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db"}
+reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree"}
+reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus"}
+reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm"}
+reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces"}
