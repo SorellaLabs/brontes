@@ -39,14 +39,14 @@ impl Parser {
         result
     }
 
-    pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<String, ()> {
         let action = match &trace.trace.action {
             RethAction::Call(call) => call,
             _ => return Err(()),
         };
 
  
-        let abi = self.client.contract_abi(action.try_into());
+        let abi = self.client.contract_abi(action.try_into()).await.unwrap();
 
         let mut function_selectors = HashMap::new();
 
