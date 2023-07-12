@@ -45,7 +45,5 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let actions = parser.parse().await;
 
-    
-
     Ok(())
 }

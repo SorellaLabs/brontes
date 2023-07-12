@@ -1,13 +1,17 @@
+use ethers::abi::ParamType;
 use ethers_core::types::Chain;
 use ethers_etherscan::Client;
-use ethers::abi::ParamType;
 
 use crate::action::Action;
 use ethers::types::H160;
 use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTrace};
 use std::path::PathBuf;
 
-use alloy_dyn_abi::{DynSolType, DynSolValue};
+use alloy_dyn_abi::{resolve, DynSolType, DynSolValue};
+use alloy_json_abi::JsonAbi;
+use ethers::abi::Abi;
+
+use alloy_dyn_abi::ResolveSolType;
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
@@ -52,7 +56,12 @@ impl Parser {
 
         result
     }
-    
+
+    pub fn to_alloy_abi(contract: Abi) -> Result<JsonAbi, ()> {
+        let abi_string = serde_json::to_string(&contract).unwrap();
+        Ok(serde_json::from_str(&abi_string).unwrap())
+    }
+
     /// Parse an individual block trace.
     /// # Arguments
     /// * `trace` - Individual block trace.
@@ -75,20 +84,33 @@ impl Parser {
             Err(_) => return Err(()),
         };
 
-        for function in abi.functions() {
-            if function.short_signature() == &action.input[..4] {
-                /*let input_types: Vec<ParamType> = function
-                    .inputs
-                    .iter()
-                    .map(|input| input.kind.clone())
-                    .collect();
-                */
+        let alloy_abi = Self::to_alloy_abi(abi).unwrap();
 
-                // Print input_types
-                println!("Input types for funnction {:?}: {:?}", function.name, function.inputs);
-                
+        for functions in alloy_abi.functions.values() {
+            for function in functions {
+                if function.selector() == &action.input[..4] {
+                    // Resolve all inputs
+                    let mut resolved_params: Vec<DynSolType> = Vec::new();
+                    for param in &function.inputs {
+                        match param.resolve() {
+                            Ok(resolved_param) => resolved_params.push(resolved_param),
+                            Err(e) => eprintln!("Failed to resolve param: {:?}", e),
+                        }
+                    }
+                    let inputs = &action.input[4..]; // Remove the function selector from the input.
+                    let params_type = DynSolType::Tuple(resolved_params); // Construct a tuple type from the resolved parameters.
+
+                    // Decode the inputs based on the resolved parameters.
+                    match params_type.decode_params(inputs) {
+                        Ok(decoded_params) => {
+                            print!("Decoded params: {:?}", decoded_params);
+                        }
+                        Err(e) => eprintln!("Failed to decode params: {:?}", e),
+                    }
+
+                    // You may want to return or use resolved_params for something else here
+                }
             }
-            
         }
         Err(())
     }
