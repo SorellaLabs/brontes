@@ -94,7 +94,7 @@ impl Parser {
         }
 
         let action = Action::new(
-            function.name,
+            function.unwrap().name,
             function.unwrap().decode_input(&(&action.input.to_vec())[4..]).unwrap(),
             trace.clone(),
         );
