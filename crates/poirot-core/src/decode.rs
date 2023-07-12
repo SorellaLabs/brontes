@@ -60,7 +60,7 @@ impl Parser {
         let abi = match self.client.contract_abi(H160(action.to.to_fixed_bytes())).await {
             Ok(abi) => abi,
             Err(_) => return Err(()),
-        }
+        };
 
         let mut function_selectors = std::collections::HashMap::new();
 
