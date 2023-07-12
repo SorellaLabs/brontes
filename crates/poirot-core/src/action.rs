@@ -1,6 +1,5 @@
 use ethers::{
-    abi::{Abi, Function, Token},
-    types::H160,
+    abi::{Token},
 };
 
 use reth_rpc_types::trace::parity::LocalizedTransactionTrace;

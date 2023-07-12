@@ -1,18 +1,17 @@
-use alloy_dyn_abi::DynSolType;
-use alloy_json_abi::JsonAbi;
 
-use dotenv::dotenv;
+
+
+
 
 use ethers_core::types::Chain;
 use ethers_etherscan::Client;
 
 use crate::action::Action;
 use ethers::{
-    abi::{Abi, Token},
     types::H160,
 };
 use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTrace};
-use std::{env, path::PathBuf, time::Duration};
+use std::{path::PathBuf};
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
