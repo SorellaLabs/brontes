@@ -3,6 +3,7 @@ use reth_rpc_types::trace::parity::LocalizedTransactionTrace;
 
 /// An [`Action`] is the lowest level parsing type, analogous to a lexeme in compiler design.
 #[derive(Debug, Clone)]
+
 pub struct Action {
     /// Name of the function that has been called.
     function_name: String,

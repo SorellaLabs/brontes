@@ -126,7 +126,7 @@ impl Parser {
                                 trace.clone(),
                             ))
                         }
-                        Err(e) => eprintln!("Failed to decode params: {:?}", e),
+                        Err(e) => eprintln!("Failed to decode params: {}", e),
                     }
                 }
             }
