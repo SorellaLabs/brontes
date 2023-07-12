@@ -77,14 +77,15 @@ impl Parser {
 
         for function in abi.functions() {
             if function.short_signature() == &action.input[..4] {
-                let input_types: Vec<ParamType> = function
+                /*let input_types: Vec<ParamType> = function
                     .inputs
                     .iter()
                     .map(|input| input.kind.clone())
                     .collect();
+                */
 
                 // Print input_types
-                println!("Input types for funnction {:?}: {:?}", function, input_types);
+                println!("Input types for funnction {:?}: {:?}", function.name, function.inputs);
                 
             }
             
