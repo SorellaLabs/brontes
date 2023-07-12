@@ -53,11 +53,13 @@ impl Parser {
     /// # Arguments
     /// * `trace` - Individual block trace.
     pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<Action, ()> {
+        // We only care about "Call" traces, so we extract them here.
         let action = match &trace.trace.action {
             RethAction::Call(call) => call,
             _ => return Err(()),
         };
 
+        // Attempt to fetch the contract ABI from etherscan.
         let abi = match self.client.contract_abi(H160(action.to.to_fixed_bytes())).await {
             Ok(abi) => abi,
             Err(_) => return Err(()),
