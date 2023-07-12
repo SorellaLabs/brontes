@@ -3,6 +3,9 @@ use alloy_json_abi::JsonAbi;
 use dotenv::dotenv;
 use ethers_core::types::Chain;
 use ethers_etherscan::Client;
+
+use ethers::abi::{Abi, Token};
+use ethers::types::H160;
 use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTrace};
 
 use std::{env, time::Duration};
@@ -37,46 +40,25 @@ impl Parser {
     }
 
     pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<String, Box<dyn std::error::Error>> {
-        let action = &trace.trace.action;
-
-        let (contract_address, input) = match action {
-            RethAction::Call(call_action) => (call_action.to, call_action.input.to_vec()),
-            _ => return Err(From::from("The action in the transaction trace is not Call(CallAction)")),
+        let action = match &trace.trace.action {
+            RethAction::Call(call) => call,
+            _ => return Err(()),
         };
-    
-        let metadata = self.client.contract_source_code(contract_address.into()).await?;
-    
-        let abi_str = &metadata.items[0].abi;
-        let json_abi: JsonAbi = serde_json::from_str(abi_str)?;
-    
-        let function_selector = &input[..4];
+ 
+        let file = std::fs::File::open(self.store.get(&action.to).unwrap()).unwrap();
+        let abi = Abi::load(std::io::BufReader::new(file)).unwrap();
 
-        if let Some(functions) = Some(json_abi.functions.values().flatten()) {
-            for function in functions {
-                if function.selector() == function_selector {
-                    let input_types: Vec<String> =
-                        function.inputs.iter().map(|input| input.to_string()).collect();
-    
-                    let mut decoded_inputs = Vec::new();
-                    for (index, input_type_str) in input_types.iter().enumerate() {
-                        let input_data = &input[4 + index..]; // Skip the function selector and previous inputs
+        let mut function_selectors = HashMap::new();
 
-                        println!("{input_type_str}");
-
-                        let ty = input_type_str.split_whitespace().next().unwrap();
-
-                        let dyn_sol_type: DynSolType = ty.parse().unwrap();
-                        let dyn_sol_value = dyn_sol_type.decode_params(input_data)?;
-
-                        decoded_inputs.push(format!("{:?}", dyn_sol_value));
-                    }
-    
-                    let printout = format!("Function: {}\nInputs: {:?}", function.name, decoded_inputs);
-                    return Ok(printout)
-                }
-            }
+        for function in abi.functions() {
+            function_selectors.insert(function.short_signature(), function);
         }
 
-        Err(From::from("No matching function found in the ABI"))
+        let input_selector = &action.input[..4];
+
+        let function = function_selectors
+            .get(input_selector);
+
+        Ok(String::from(function.unwrap().decode_input(&action.input.to_vec()).unwrap()))
     }
 }
