@@ -59,6 +59,7 @@ impl Parser {
             .get(input_selector);
 
         println!("{:#?}", &action.input.to_vec());
+        println!("{:#?}", function.clone());
 
         Ok(function.unwrap().decode_input(&action.input.to_vec()).unwrap())
     }
