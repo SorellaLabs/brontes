@@ -28,7 +28,11 @@ pub async fn sleuth(
         _ => return Err(From::from("The action in the transaction trace is not Call(CallAction)")),
     };
 
+    //TODO: add checks for contract call types so if delegate call then fetch implementation abi
+    //TODO: Also check this code, because i have mostly been working on organising & research not
+    // so much on the code
     let metadata = client.contract_source_code(contract_address.into()).await?;
+
     let abi_str = &metadata.items[0].abi;
     let json_abi: JsonAbi = serde_json::from_str(abi_str)?;
 
