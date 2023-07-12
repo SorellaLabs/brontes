@@ -10,8 +10,9 @@ use std::path::PathBuf;
 use alloy_dyn_abi::{resolve, DynSolType, DynSolValue};
 use alloy_json_abi::JsonAbi;
 use ethers::abi::Abi;
-
 use alloy_dyn_abi::ResolveSolType;
+use serde_json::from_str;
+use serde_json::to_string;
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
@@ -57,10 +58,6 @@ impl Parser {
         result
     }
 
-    pub fn to_alloy_abi(contract: Abi) -> Result<JsonAbi, ()> {
-        let abi_string = serde_json::to_string(&contract).unwrap();
-        Ok(serde_json::from_str(&abi_string).unwrap())
-    }
 
     /// Parse an individual block trace.
     /// # Arguments
@@ -79,14 +76,14 @@ impl Parser {
         }
 
         // Attempt to fetch the contract ABI from etherscan.
-        let abi = match self.client.contract_abi(H160(action.to.to_fixed_bytes())).await {
+        let abi_json_string = match self.client.contract_abi(H160(action.to.to_fixed_bytes())).await {
             Ok(abi) => abi,
             Err(_) => return Err(()),
         };
 
-        let alloy_abi = Self::to_alloy_abi(abi).unwrap();
+        let abi: JsonAbi = from_str(&to_string(&abi_json_string).unwrap()).unwrap();
 
-        for functions in alloy_abi.functions.values() {
+        for functions in abi.functions.values() {
             for function in functions {
                 if function.selector() == &action.input[..4] {
                     // Resolve all inputs
