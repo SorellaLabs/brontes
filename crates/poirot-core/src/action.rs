@@ -1,7 +1,5 @@
-use ethers::{
-    abi::{Token},
-};
-
+use alloy_dyn_abi::{DynSolType, DynSolValue};
+use ethers::abi::Token;
 use reth_rpc_types::trace::parity::LocalizedTransactionTrace;
 
 /// An [`Action`] is the lowest level parsing type, analogous to a lexeme in compiler design.
@@ -27,7 +25,11 @@ pub enum ProtocolType {
 
 impl Action {
     /// Public constructor function to instantiate an [`Action`].
-    pub fn new(function_name: String, inputs: Vec<Token>, trace: LocalizedTransactionTrace) -> Self {
+    pub fn new(
+        function_name: String,
+        inputs: Vec<Token>,
+        trace: LocalizedTransactionTrace,
+    ) -> Self {
         Self { function_name, inputs, protocol: None, trace }
     }
 }
