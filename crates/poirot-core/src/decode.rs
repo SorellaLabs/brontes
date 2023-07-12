@@ -1,6 +1,6 @@
 use ethers::abi::ParamType;
 use ethers_core::types::Chain;
-use ethers_etherscan::Client;
+use alloy_etherscan::Client;
 
 use crate::action::Action;
 use ethers::types::H160;
@@ -76,12 +76,12 @@ impl Parser {
         }
 
         // Attempt to fetch the contract ABI from etherscan.
-        let abi_json_string = match self.client.contract_abi(H160(action.to.to_fixed_bytes())).await {
+        let abi_json_string = match self.client.raw_contract(H160(action.to.to_fixed_bytes())).await {
             Ok(abi) => abi,
             Err(_) => return Err(()),
         };
 
-        let abi: JsonAbi = from_str(&to_string(&abi_json_string).unwrap()).unwrap();
+        let abi: JsonAbi = from_str(&abi_json_string).unwrap();
 
         for functions in abi.functions.values() {
             for function in functions {
