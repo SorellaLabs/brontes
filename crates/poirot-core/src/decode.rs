@@ -11,6 +11,8 @@ use alloy_dyn_abi::{resolve, DynSolType, DynSolValue, ResolveSolType};
 use alloy_json_abi::JsonAbi;
 use ethers::abi::Abi;
 use serde_json::{from_str, to_string};
+use colored::*;
+
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
@@ -52,17 +54,19 @@ impl Parser {
     /// Attempt to parse each trace in a block.
     pub async fn parse(&self) -> Vec<Action> {
         let mut result = vec![];
-
+    
         for trace in &self.block_trace {
             match self.parse_trace(trace).await {
                 Ok(res) => {
-                    //println!("{res:#?}");
                     result.push(res);
                 }
-                _ => continue,
+                Err(e) => {
+                    eprintln!("{}", format!("Error parsing trace: {:?}", e).red());
+                    continue;
+                }
             }
         }
-
+    
         result
     }
 

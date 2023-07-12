@@ -47,6 +47,7 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 
 # error handling
 eyre = "0.6.8"
+colored = "2.0"
 
 # env 
 dotenv = "0.15.0"
