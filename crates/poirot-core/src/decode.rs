@@ -39,14 +39,14 @@ impl Parser {
         result
     }
 
-    pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<Token, ()> {
+    pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<Vec<Token>, ()> {
         let action = match &trace.trace.action {
             RethAction::Call(call) => call,
             _ => return Err(()),
         };
 
  
-        let abi = self.client.contract_abi(action.to).await.unwrap();
+        let abi = self.client.contract_abi(H160(action.to.to_fixed_bytes())).await.unwrap();
 
         let mut function_selectors = std::collections::HashMap::new();
 
