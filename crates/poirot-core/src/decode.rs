@@ -69,6 +69,7 @@ impl Parser {
         };
 
         // We cannot decode a call for which calldata is zero.
+        // TODO: Parse this as a fallback function.
         if action.input.len() <= 0 {
             return Err(());
         }
@@ -79,25 +80,19 @@ impl Parser {
             Err(_) => return Err(()),
         };
 
-        let mut function_selectors = std::collections::HashMap::new();
+        let action;
 
         for function in abi.functions() {
-            function_selectors.insert(function.short_signature(), function);
+            if function.short_signature() == &action.input[..4] {
+                action = Action::new(
+                    function.unwrap().name.clone(),
+                    function.unwrap().decode_input(&(&action.input.to_vec())[4..]).unwrap(),
+                    trace.clone(),
+                );
+            } else {
+                continue;
+            }
         }
-
-        let input_selector = &action.input[..4];
-
-        let function = function_selectors.get(input_selector);
-
-        if function_selectors.len() == 0 {
-            return Err(());
-        }
-
-        let action = Action::new(
-            function.unwrap().name.clone(),
-            function.unwrap().decode_input(&(&action.input.to_vec())[4..]).unwrap(),
-            trace.clone(),
-        );
 
         Ok(action)
     }
