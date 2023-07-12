@@ -1,4 +1,6 @@
 use poirot_core::trace::TracingClient;
+use poirot_core::decode::Parser;
+
 use std::{env, error::Error, path::Path};
 
 fn main() {
@@ -28,9 +30,19 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
     };
 
-    let db_path = Path::new(&db_path);
+    let key = match env::var("ETHERSCAN_API") {
+        Ok(key) => key,
+        Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
+    };
 
-    let _tracer = TracingClient::new(db_path, handle);
+    let tracer = TracingClient::new(Path::new(&db_path), handle);
+
+    let parity_trace =
+        tracer.reth_trace.trace_block(BlockId::Number(BlockNumberOrTag::Latest)).await?;
+
+    let parser = Parser::new(parity_trace, key);
+
+    println!("{:#?}", parser.parse());
 
     Ok(())
 }
