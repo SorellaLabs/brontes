@@ -1,5 +1,4 @@
-use poirot_core::trace::TracingClient;
-use poirot_core::decode::Parser;
+use poirot_core::{decode::Parser, trace::TracingClient};
 
 use std::{env, error::Error, path::Path};
 
