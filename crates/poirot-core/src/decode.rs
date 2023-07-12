@@ -89,7 +89,12 @@ impl Parser {
 
         let function = function_selectors.get(input_selector);
 
+        if function_selectors.len() == 0 {
+            return Err(());
+        }
+
         let action = Action::new(
+            function.name,
             function.unwrap().decode_input(&(&action.input.to_vec())[4..]).unwrap(),
             trace.clone(),
         );
