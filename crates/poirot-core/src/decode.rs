@@ -84,7 +84,7 @@ impl Parser {
                     .collect();
 
                 // Print input_types
-                println!("Input types: {:?}", input_types);
+                println!("Input types for funnction {:?}: {:?}", function, input_types);
                 
             }
             
