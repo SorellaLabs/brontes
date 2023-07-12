@@ -3,10 +3,11 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 use crate::errors::{is_blocked_by_cloudflare_response, is_cloudflare_security_challenge};
+use alloy_json_abi::JsonAbi;
 use contract::ContractMetadata;
 use errors::EtherscanError;
 use ethers_core::{
-    abi::{Abi, Address},
+    abi::Address,
     types::{Chain, H256},
 };
 use reqwest::{header, IntoUrl, Url};
@@ -361,11 +362,11 @@ impl Cache {
         Self { root, ttl }
     }
 
-    fn get_abi(&self, address: Address) -> Option<Option<ethers_core::abi::Abi>> {
+    fn get_abi(&self, address: Address) -> Option<Option<JsonAbi>> {
         self.get("abi", address)
     }
 
-    fn set_abi(&self, address: Address, abi: Option<&Abi>) {
+    fn set_abi(&self, address: Address, abi: Option<&JsonAbi>) {
         self.set("abi", address, abi)
     }
 
