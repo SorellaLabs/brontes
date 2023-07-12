@@ -21,7 +21,7 @@ impl Parser {
     }
 
     pub async fn parse(&self) -> Vec<String> {
-        let result = vec![];
+        let mut result = vec![];
 
         for trace in &self.block_trace {
             match self.parse_trace(trace).await {
@@ -34,7 +34,7 @@ impl Parser {
     }
 
     pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<String, Box<dyn std::error::Error>> {
-        let action = trace.trace.action;
+        let action = &trace.trace.action;
 
         let (contract_address, input) = match action {
             RethAction::Call(call_action) => (call_action.to, call_action.input.to_vec()),
