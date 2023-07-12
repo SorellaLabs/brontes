@@ -44,9 +44,9 @@ impl Parser {
             RethAction::Call(call) => call,
             _ => return Err(()),
         };
+
  
-        let file = std::fs::File::open(self.store.get(&action.to).unwrap()).unwrap();
-        let abi = Abi::load(std::io::BufReader::new(file)).unwrap();
+        let abi = self.client.contract_abi(action.try_into());
 
         let mut function_selectors = HashMap::new();
 
