@@ -42,7 +42,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let parser = Parser::new(parity_trace, key);
 
-    println!("{:#?}", parser.parse());
+    println!("{:#?}", parser.parse().await);
 
     Ok(())
 }
