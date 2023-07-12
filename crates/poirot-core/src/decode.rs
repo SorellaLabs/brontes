@@ -12,7 +12,7 @@ use ethers::{
     types::H160,
 };
 use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTrace};
-use std::{env, time::Duration};
+use std::{env, path::PathBuf, time::Duration};
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
@@ -29,7 +29,16 @@ impl Parser {
     /// * `block_trace` - Block trace from [`TracingClient`].
     /// * `etherscan_key` - Etherscan API key to instantiate client.
     pub fn new(block_trace: Vec<LocalizedTransactionTrace>, etherscan_key: String) -> Self {
-        Self { block_trace, client: Client::new(Chain::Mainnet, etherscan_key).unwrap() }
+        Self {
+            block_trace,
+            client: Client::new_cached(
+                Chain::Mainnet,
+                etherscan_key,
+                Some(PathBuf::from("./abi_cache")),
+                std::time::Duration::new(5, 0),
+            )
+            .unwrap(),
+        }
     }
 
     /// Attempt to parse each trace in a block.
