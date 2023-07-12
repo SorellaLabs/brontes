@@ -100,7 +100,7 @@ impl Parser {
                     // Decode the inputs based on the resolved parameters.
                     match params_type.decode_params(inputs) {
                         Ok(decoded_params) => {
-                            print!("Decoded params: {:?}", decoded_params);
+                            print!("For function {}: Decoded params: {:?} \n", function.name,  decoded_params);
                         }
                         Err(e) => eprintln!("Failed to decode params: {:?}", e),
                     }
