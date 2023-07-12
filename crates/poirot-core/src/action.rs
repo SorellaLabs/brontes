@@ -1,5 +1,4 @@
 use alloy_dyn_abi::{DynSolType, DynSolValue};
-use ethers::abi::Token;
 use reth_rpc_types::trace::parity::LocalizedTransactionTrace;
 
 /// An [`Action`] is the lowest level parsing type, analogous to a lexeme in compiler design.
@@ -8,7 +7,7 @@ pub struct Action {
     /// Name of the function that has been called.
     function_name: String,
     /// Vector of inputs to the function.
-    inputs: Vec<Token>,
+    inputs: DynSolValue,
     /// If it is a known protocol, the type.
     protocol: Option<ProtocolType>,
     /// The underlying trace the call came from.
@@ -27,7 +26,7 @@ impl Action {
     /// Public constructor function to instantiate an [`Action`].
     pub fn new(
         function_name: String,
-        inputs: Vec<Token>,
+        inputs: DynSolValue,
         trace: LocalizedTransactionTrace,
     ) -> Self {
         Self { function_name, inputs, protocol: None, trace }

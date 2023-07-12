@@ -378,10 +378,9 @@ impl Client {
     }
 
     pub async fn raw_contract(&self, address: Address) -> Result<String, EtherscanError> {
-    
         let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<Option<String>> = self.get_json(&query).await?;
-    
+
         let result = match resp.result {
             Some(result) => result,
             None => {
@@ -394,11 +393,11 @@ impl Client {
                 })
             }
         };
-    
+
         if result.starts_with("Max rate limit reached") {
             return Err(EtherscanError::RateLimitExceeded)
         }
-    
+
         if result.starts_with("Contract source code not verified") ||
             resp.message.starts_with("Contract source code not verified")
         {
@@ -410,9 +409,6 @@ impl Client {
 
         Ok(result)
     }
-
-    
-
 
     /// Fetches a contract's verified source code and its metadata.
     ///

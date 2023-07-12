@@ -1,18 +1,16 @@
+use alloy_etherscan::{Client, errors::EtherscanError};
 use ethers::abi::ParamType;
 use ethers_core::types::Chain;
-use alloy_etherscan::Client;
 
 use crate::action::Action;
 use ethers::types::H160;
 use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTrace};
 use std::path::PathBuf;
 
-use alloy_dyn_abi::{resolve, DynSolType, DynSolValue};
+use alloy_dyn_abi::{resolve, DynSolType, DynSolValue, ResolveSolType};
 use alloy_json_abi::JsonAbi;
 use ethers::abi::Abi;
-use alloy_dyn_abi::ResolveSolType;
-use serde_json::from_str;
-use serde_json::to_string;
+use serde_json::{from_str, to_string};
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
@@ -21,6 +19,16 @@ pub struct Parser {
     pub block_trace: Vec<LocalizedTransactionTrace>,
     /// Etherscan client for fetching ABI for each contract address.
     pub client: Client,
+}
+
+/// Custom error type for trace parsing
+#[derive(Debug)]
+pub enum TraceParseError {
+    NotCallAction,
+    EmptyInput,
+    EtherscanError(EtherscanError),
+    AbiParseError(serde_json::Error),
+    InvalidFunctionSelector,
 }
 
 impl Parser {
@@ -58,30 +66,30 @@ impl Parser {
         result
     }
 
-
-    /// Parse an individual block trace.
-    /// # Arguments
-    /// * `trace` - Individual block trace.
-    pub async fn parse_trace(&self, trace: &LocalizedTransactionTrace) -> Result<Action, ()> {
+    pub async fn parse_trace(
+        &self,
+        trace: &LocalizedTransactionTrace,
+    ) -> Result<Action, TraceParseError> {
         // We only care about "Call" traces, so we extract them here.
         let action = match &trace.trace.action {
             RethAction::Call(call) => call,
-            _ => return Err(()),
+            _ => return Err(TraceParseError::NotCallAction),
         };
 
         // We cannot decode a call for which calldata is zero.
-        // TODO: Parse this as a fallback function.
-        if action.input.len() <= 0 {
-            return Err(())
+        if action.input.is_empty() {
+            return Err(TraceParseError::EmptyInput)
         }
 
         // Attempt to fetch the contract ABI from etherscan.
-        let abi_json_string = match self.client.raw_contract(H160(action.to.to_fixed_bytes())).await {
-            Ok(abi) => abi,
-            Err(_) => return Err(()),
-        };
+        let abi_json_string = self
+            .client
+            .raw_contract(H160(action.to.to_fixed_bytes()))
+            .await
+            .map_err(TraceParseError::EtherscanError)?;
 
-        let abi: JsonAbi = from_str(&abi_json_string).unwrap();
+        let abi: JsonAbi =
+            serde_json::from_str(&abi_json_string).map_err(TraceParseError::AbiParseError)?;
 
         for functions in abi.functions.values() {
             for function in functions {
@@ -89,10 +97,7 @@ impl Parser {
                     // Resolve all inputs
                     let mut resolved_params: Vec<DynSolType> = Vec::new();
                     for param in &function.inputs {
-                        match param.resolve() {
-                            Ok(resolved_param) => resolved_params.push(resolved_param),
-                            Err(e) => eprintln!("Failed to resolve param: {:?}", e),
-                        }
+                        let _ = param.resolve().map(|resolved_param| resolved_params.push(resolved_param));
                     }
                     let inputs = &action.input[4..]; // Remove the function selector from the input.
                     let params_type = DynSolType::Tuple(resolved_params); // Construct a tuple type from the resolved parameters.
@@ -100,15 +105,25 @@ impl Parser {
                     // Decode the inputs based on the resolved parameters.
                     match params_type.decode_params(inputs) {
                         Ok(decoded_params) => {
-                            print!("For function {}: Decoded params: {:?} \n", function.name,  decoded_params);
+                            println!(
+                                "For function {}: Decoded params: {:?} \n",
+                                function.name, decoded_params
+                            );
+                            return Ok(Action::new(function.name.clone(), decoded_params, trace.clone()))
                         }
                         Err(e) => eprintln!("Failed to decode params: {:?}", e),
                     }
 
-                    // You may want to return or use resolved_params for something else here
+
+                    
                 }
             }
         }
-        Err(())
+
+        Err(TraceParseError::InvalidFunctionSelector)
     }
 }
+
+//TODO: Get bettor error handling so that we can return etherscan related errors.
+//TODO: Deal with all action types, so if there is delegate call we need to fetch the
+// implementation abi
