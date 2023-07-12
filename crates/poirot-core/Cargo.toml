@@ -38,6 +38,7 @@ alloy-dyn-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-dyn-
 # Ethers
 ethers-etherscan = { git = "https://github.com/gakonst/ethers-rs", package = "ethers-etherscan" }
 ethers-core = { git = "https://github.com/gakonst/ethers-rs", package = "ethers-core" }
+ethers = "2.0.0"
 # Revm
 revm-primitives = "1.1.2"
 

@@ -46,9 +46,9 @@ impl Parser {
         };
 
  
-        let abi = self.client.contract_abi(action.try_into()).await.unwrap();
+        let abi = self.client.contract_abi(action.try_into().unwrap()).await.unwrap();
 
-        let mut function_selectors = HashMap::new();
+        let mut function_selectors = std::collections::HashMap::new();
 
         for function in abi.functions() {
             function_selectors.insert(function.short_signature(), function);
