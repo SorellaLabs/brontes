@@ -1,17 +1,13 @@
-
-
-
-
-
 use ethers_core::types::Chain;
 use ethers_etherscan::Client;
+use ethers::abi::ParamType;
 
 use crate::action::Action;
-use ethers::{
-    types::H160,
-};
+use ethers::types::H160;
 use reth_rpc_types::trace::parity::{Action as RethAction, LocalizedTransactionTrace};
-use std::{path::PathBuf};
+use std::path::PathBuf;
+
+use alloy_dyn_abi::{DynSolType, DynSolValue};
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
@@ -56,7 +52,7 @@ impl Parser {
 
         result
     }
-
+    
     /// Parse an individual block trace.
     /// # Arguments
     /// * `trace` - Individual block trace.
@@ -70,7 +66,7 @@ impl Parser {
         // We cannot decode a call for which calldata is zero.
         // TODO: Parse this as a fallback function.
         if action.input.len() <= 0 {
-            return Err(());
+            return Err(())
         }
 
         // Attempt to fetch the contract ABI from etherscan.
@@ -81,16 +77,18 @@ impl Parser {
 
         for function in abi.functions() {
             if function.short_signature() == &action.input[..4] {
-                return Ok(Action::new(
-                    function.name.clone(),
-                    function.decode_input(&(&action.input.to_vec())[4..]).unwrap(),
-                    trace.clone(),
-                ));
-            } else {
-                continue;
-            }
-        }
+                let input_types: Vec<ParamType> = function
+                    .inputs
+                    .iter()
+                    .map(|input| input.kind.clone())
+                    .collect();
 
+                // Print input_types
+                println!("Input types: {:?}", input_types);
+                
+            }
+            
+        }
         Err(())
     }
 }
