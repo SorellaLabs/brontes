@@ -1,4 +1,4 @@
-use alloy_dyn_abi::{DynSolType, DynSolValue};
+use alloy_dyn_abi::DynSolValue;
 use reth_rpc_types::trace::parity::LocalizedTransactionTrace;
 
 /// An [`Action`] is the lowest level parsing type, analogous to a lexeme in compiler design.

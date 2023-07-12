@@ -410,6 +410,29 @@ impl Client {
         Ok(result)
     }
 
+    pub async fn delegate_raw_contract(&self, address: Address) -> Result<String, EtherscanError> {
+        let contract_metadata = self.contract_source_code(address).await?;
+
+        // Loop through all metadata items
+        for item in contract_metadata.into_iter() {
+            // If the item is a proxy, get its implementation address and fetch the ABI
+            if item.proxy == 1 {
+                let implementation_address = match item.implementation {
+                    Some(impl_addr) => impl_addr,
+                    None => return Err(EtherscanError::MissingImplementationAddress),
+                };
+
+                // Get the ABI of the implementation contract.
+                let abi_string = self.raw_contract(implementation_address).await?;
+
+                return Ok(abi_string)
+            }
+        }
+
+        // If no proxies were found, return an error.
+        Err(EtherscanError::NotProxy)
+    }
+
     /// Fetches a contract's verified source code and its metadata.
     ///
     /// # Example

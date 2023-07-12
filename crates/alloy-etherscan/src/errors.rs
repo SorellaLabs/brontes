@@ -9,6 +9,10 @@ pub enum EtherscanError {
     ExecutionFailed(String),
     #[error("Balance failed")]
     BalanceFailed,
+    #[error("Not a proxy contract")]
+    NotProxy,
+    #[error("No implementation address found")]
+    MissingImplementationAddress,
     #[error("Block by timestamp failed")]
     BlockNumberByTimestampFailed,
     #[error("Transaction receipt failed")]
