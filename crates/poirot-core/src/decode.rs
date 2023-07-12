@@ -80,20 +80,18 @@ impl Parser {
             Err(_) => return Err(()),
         };
 
-        let action;
-
         for function in abi.functions() {
             if function.short_signature() == &action.input[..4] {
-                action = Action::new(
+                return Ok(Action::new(
                     function.unwrap().name.clone(),
                     function.unwrap().decode_input(&(&action.input.to_vec())[4..]).unwrap(),
                     trace.clone(),
-                );
+                ));
             } else {
                 continue;
             }
         }
 
-        Ok(action)
+        Err(())
     }
 }
