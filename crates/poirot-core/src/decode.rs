@@ -3,6 +3,7 @@ use ethers_core::types::Chain;
 
 use crate::action::Action;
 use ethers::types::H160;
+use reth_primitives::H256;
 use reth_rpc_types::trace::parity::{Action as RethAction, CallType, LocalizedTransactionTrace};
 use std::path::PathBuf;
 
@@ -22,13 +23,12 @@ pub struct Parser {
 /// Custom error type for trace parsing
 #[derive(Debug)]
 pub enum TraceParseError {
-    NotCallAction,
-    EmptyInput,
+    NotCallAction(H256), // Added field for transaction hash
+    EmptyInput(H256),    // Added field for transaction hash
     EtherscanError(EtherscanError),
     AbiParseError(serde_json::Error),
-    InvalidFunctionSelector,
+    InvalidFunctionSelector(H256), // Added field for transaction hash
 }
-
 impl Parser {
     /// Public constructor function to instantiate a new [`Parser`].
     /// # Arguments
@@ -72,11 +72,11 @@ impl Parser {
     ) -> Result<Action, TraceParseError> {
         let (action, call_type) = match &trace.trace.action {
             RethAction::Call(call) => (call, &call.call_type),
-            _ => return Err(TraceParseError::NotCallAction),
+            _ => return Err(TraceParseError::NotCallAction(trace.transaction_hash.unwrap())),
         };
 
         if action.input.is_empty() {
-            return Err(TraceParseError::EmptyInput)
+            return Err(TraceParseError::EmptyInput(trace.transaction_hash.unwrap()))
         }
 
         let abi_json_string = match call_type {
@@ -117,8 +117,8 @@ impl Parser {
                     match params_type.decode_params(inputs) {
                         Ok(decoded_params) => {
                             println!(
-                                "For function {}: Decoded params: {:?} \n",
-                                function.name, decoded_params
+                                "For function {}: Decoded params: {:?} \n, with tx hash: {:#?}",
+                                function.name, decoded_params, trace.transaction_hash
                             );
                             return Ok(Action::new(
                                 function.name.clone(),
@@ -132,7 +132,7 @@ impl Parser {
             }
         }
 
-        Err(TraceParseError::InvalidFunctionSelector)
+        Err(TraceParseError::InvalidFunctionSelector(trace.transaction_hash.unwrap()))
     }
 }
 
