@@ -58,7 +58,9 @@ impl Parser {
                     for (index, input_type_str) in input_types.iter().enumerate() {
                         let input_data = &input[4 + index..]; // Skip the function selector and previous inputs
 
-                        let dyn_sol_type: DynSolType = input_type_str.parse().unwrap();
+                        let ty = input_type_str.split_whitespace().next().unwrap();
+
+                        let dyn_sol_type: DynSolType = ty.parse().unwrap();
                         let dyn_sol_value = dyn_sol_type.decode_params(input_data)?;
 
                         decoded_inputs.push(format!("{:?}", dyn_sol_value));
