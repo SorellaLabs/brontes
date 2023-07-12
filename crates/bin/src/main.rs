@@ -2,7 +2,7 @@ use poirot_core::{decode::Parser, trace::TracingClient};
 
 use std::{env, error::Error, path::Path};
 
-use reth_primitives::{BlockId, BlockNumberOrTag};
+use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 
 fn main() {
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -39,7 +39,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let tracer = TracingClient::new(Path::new(&db_path), handle);
 
     let parity_trace =
-        tracer.trace.trace_block(BlockId::Number(BlockNumberOrTag::Latest)).await.unwrap().unwrap();
+        tracer.trace.trace_block(BlockId::Number(Number(17679854))).await.unwrap().unwrap();
 
     let parser = Parser::new(parity_trace, key);
 
