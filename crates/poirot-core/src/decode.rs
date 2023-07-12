@@ -68,6 +68,11 @@ impl Parser {
             _ => return Err(()),
         };
 
+        // We cannot decode a call for which calldata is zero.
+        if action.input <= 0 {
+            return Err(());
+        }
+
         // Attempt to fetch the contract ABI from etherscan.
         let abi = match self.client.contract_abi(H160(action.to.to_fixed_bytes())).await {
             Ok(abi) => abi,
