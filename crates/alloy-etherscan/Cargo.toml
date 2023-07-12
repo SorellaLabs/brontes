@@ -8,7 +8,7 @@ readme = "README.md"
 description = "Bindings for the etherscan.io web API"
 keywords = ["crypto", "ethers", "ethereum", "web3", "etherscan"]
 version = "0.1.0"
-
+edition = "2021"
 
 
 
