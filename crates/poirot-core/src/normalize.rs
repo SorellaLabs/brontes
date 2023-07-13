@@ -45,7 +45,7 @@ impl Normalizer {
 
     pub fn normalize(&self) /*-> Vec<Structure>*/ {
         for (k, v) in self.actions.iter() {
-            self.normalize_actions(*v);
+            self.normalize_actions(v.clone());
         }
     }
 
