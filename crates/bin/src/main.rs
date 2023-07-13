@@ -1,6 +1,6 @@
 use poirot_core::{decode::Parser, trace::TracingClient, action::Action};
 
-use std::{env, error::Error, path::Path};
+use std::{env, error::Error, path::Path, collections::HashMap};
 
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 
@@ -46,22 +46,6 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::new(parity_trace, key);
 
     let actions = parser.parse().await;
-
-    let mut tx_map: std::collections::HashMap<reth_primitives::H256, Vec<Action>> = std::collections::HashMap::new();
-
-    for i in actions {
-        if let Some(x) = tx_map.get_mut(&i.trace.transaction_hash.unwrap()) {
-            (*x).push(i);
-        } else {
-            tx_map.insert(i.trace.transaction_hash.unwrap(), vec![i]);
-        }
-    }
-
-    tx_map.retain(|key, value| {
-        println!("{:?}", key);
-
-        true
-    });
 
     parser.stats.display();
 
