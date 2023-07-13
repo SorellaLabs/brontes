@@ -1,4 +1,4 @@
-use poirot_core::{decode::Parser, trace::TracingClient, action::Action};
+use poirot_core::{decode::Parser, trace::TracingClient, action::Action, normalize::Normalizer};
 
 use std::{env, error::Error, path::Path, collections::HashMap};
 
@@ -46,6 +46,8 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::new(parity_trace, key);
 
     let actions = parser.parse().await;
+
+    let normalizer = Normalizer::new(actions).normalize();
 
     parser.stats.display();
 
