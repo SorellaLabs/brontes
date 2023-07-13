@@ -51,7 +51,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     for i in actions {
         if let Some(x) = tx_map.get_mut(&i.trace.transaction_hash.unwrap()) {
-            *x.push(i);
+            (*x).push(i);
         } else {
             tx_map.insert(i.trace.transaction_hash.unwrap(), vec![i]);
         }
