@@ -9,6 +9,8 @@ use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{Action as RethAction, CallType, LocalizedTransactionTrace};
 use std::{collections::HashMap, path::PathBuf};
 
+use log::debug;
+
 pub struct ParserStats {
     pub total_traces: usize,
     pub successful_parses: usize,
@@ -136,7 +138,7 @@ impl Parser {
                     result.push(res);
                 }
                 Err(e) => {
-                    eprintln!("{}", format!("Error parsing trace: {:?}", e).red());
+                    debug!("{}", format!("Error parsing trace: {:?}", e));
                     self.stats.increment_error(e);
                 }
             }
