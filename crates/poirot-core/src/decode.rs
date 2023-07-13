@@ -104,6 +104,7 @@ pub enum TraceParseError {
     AbiParseError(serde_json::Error),
     InvalidFunctionSelector(H256), // Added field for transaction hash
 }
+
 impl Parser {
     /// Public constructor function to instantiate a new [`Parser`].
     /// # Arguments
@@ -232,6 +233,3 @@ impl Parser {
         Err(TraceParseError::InvalidFunctionSelector(trace.transaction_hash.unwrap()))
     }
 }
-
-//TODO: Deal with all action types, so if there is delegate call we need to fetch the
-// implementation abi
