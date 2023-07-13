@@ -57,7 +57,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         }
     }
 
-    map.retain(|key, value| {
+    tx_map.retain(|key, value| {
         println!("{:?}", key);
     });
 
