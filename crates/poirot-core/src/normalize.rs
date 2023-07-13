@@ -50,6 +50,9 @@ impl Normalizer {
     }
 
     pub fn normalize_actions(&self, actions: Vec<Action>) /*-> Structure*/ {
-        println!("{}", STRUCTURES.get(&actions[0].function_name).cloned());
+        match STRUCTURES.get(&actions[0].function_name).cloned() {
+            Some(val) => println!("{val:#?}"),
+            None => (),
+        }
     }
 }
