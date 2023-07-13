@@ -1,4 +1,4 @@
-use poirot_core::{decode::Parser, trace::TracingClient};
+use poirot_core::{decode::Parser, trace::TracingClient, action::Action};
 
 use std::{env, error::Error, path::Path};
 
@@ -47,7 +47,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let actions = parser.parse().await;
 
-    let mut tx_map: HashMap<B256, Vec<Action>> = std::collections::HashMap::new();
+    let mut tx_map: HashMap<reth_primitives::H256, Vec<Action>> = std::collections::HashMap::new();
 
     for i in actions {
         match tx_map.get_mut(&i.trace.transaction_hash.unwrap()) {
