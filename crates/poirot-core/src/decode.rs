@@ -7,8 +7,7 @@ use ethers::types::H160;
 use ethers_core::types::Chain;
 use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{Action as RethAction, CallType, LocalizedTransactionTrace};
-use std::path::PathBuf;
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 pub struct ParserStats {
     pub total_traces: usize,
@@ -39,7 +38,9 @@ impl ParserStats {
             TraceParseError::EmptyInput(_) => self.empty_input_errors += 1,
             TraceParseError::EtherscanError(_) => self.etherscan_errors += 1,
             TraceParseError::AbiParseError(_) => self.abi_parse_errors += 1,
-            TraceParseError::InvalidFunctionSelector(_) => self.invalid_function_selector_errors += 1,
+            TraceParseError::InvalidFunctionSelector(_) => {
+                self.invalid_function_selector_errors += 1
+            }
         };
     }
 
@@ -49,11 +50,7 @@ impl ParserStats {
 
     pub fn display(&self) {
         println!("{}", "Parser Statistics".bold().underline());
-        println!(
-            "{}: {}",
-            "Total Traces".green().bold(),
-            self.total_traces.to_string().cyan()
-        );
+        println!("{}: {}", "Total Traces".green().bold(), self.total_traces.to_string().cyan());
         println!(
             "{}: {}",
             "Successful Parses".green().bold(),
@@ -85,9 +82,7 @@ impl ParserStats {
             self.invalid_function_selector_errors.to_string().cyan()
         );
     }
-
 }
-
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
@@ -126,7 +121,6 @@ impl Parser {
             .unwrap(),
             stats: ParserStats::new(),
         }
-        
     }
 
     /// Attempt to parse each trace in a block.
@@ -167,6 +161,7 @@ impl Parser {
                     .await
                     .map_err(TraceParseError::EtherscanError)?
             }
+
             _ => {
                 // For other call types, use the original method.
                 self.client
