@@ -41,7 +41,7 @@ impl Parser {
                 Chain::Mainnet,
                 etherscan_key,
                 Some(PathBuf::from("./abi_cache")),
-                std::time::Duration::new(5, 0),
+                std::time::Duration::new(1000000, 0),
             )
             .unwrap(),
         }
