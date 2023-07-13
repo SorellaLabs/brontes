@@ -5,6 +5,8 @@ use std::{env, error::Error, path::Path};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 
 fn main() {
+    env_logger::init();
+
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_stack_size(8 * 1024 * 1024)
