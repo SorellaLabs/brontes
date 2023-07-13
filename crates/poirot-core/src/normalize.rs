@@ -1,4 +1,4 @@
-use poirot_core::{decode::Parser, trace::TracingClient, action::Action};
+use crate::{decode::Parser, trace::TracingClient, action::Action};
 
 use std::{env, error::Error, path::Path, collections::HashMap};
 

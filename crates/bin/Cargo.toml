@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 poirot-core = { path = "../poirot-core" }
 
-
 # Async
 tokio = { version = "1.13.0", features = ["full"] }
 
