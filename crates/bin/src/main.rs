@@ -50,9 +50,10 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let mut tx_map: std::collections::HashMap<reth_primitives::H256, Vec<Action>> = std::collections::HashMap::new();
 
     for i in actions {
-        match tx_map.get_mut(&i.trace.transaction_hash.unwrap()) {
-            Some(vec) => vec.push(i), 
-            None => tx_map.insert(i.trace.transaction_hash.unwrap(), vec![i]),
+        if let Some(x) = tx_map.get_mut(&i.trace.transaction_hash) {
+            *x.push(i);
+        } else {
+            tx_map.insert(i.trace.transaction_hash, vec![i]);
         }
     }
 
