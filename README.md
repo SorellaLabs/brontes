@@ -1,4 +1,4 @@
-![](assets/mev_poirot.png)
+![](assets/mev-poirot.png)
 
 # mev-poirot
 
