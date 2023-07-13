@@ -15,12 +15,8 @@ pub enum StructureType {
     Swap,
 }
 
-// pub enum Structure {
-//     Swap(Swap),
-// }
-
-pub struct Swap {
-    protocol: H160,
+pub enum Structure {
+    Swap(Action),
 }
 
 pub struct Normalizer {
@@ -43,16 +39,30 @@ impl Normalizer {
         Self { actions: tx_map }
     }
 
-    pub fn normalize(&self) /*-> Vec<Structure>*/ {
-        for (k, v) in self.actions.iter() {
-            self.normalize_actions(v.clone());
+    pub fn normalize(&self) -> Vec<Vec<Structure>> {
+        let mut normalized = vec![];
+
+        for (_, v) in self.actions.iter() {
+            normalized.push(self.normalize_actions(v.clone()));
         }
+
+        normalized
     }
 
-    pub fn normalize_actions(&self, actions: Vec<Action>) /*-> Structure*/ {
-        match STRUCTURES.get(&actions[0].function_name).cloned() {
-            Some(val) => println!("{val:#?}"),
-            None => (),
+    pub fn normalize_actions(&self, actions: Vec<Action>) -> Vec<Structure> {
+        let mut structures = vec![];
+
+        for i in actions {
+            match STRUCTURES.get(&i.function_name).cloned() {
+                Some(val) => {
+                    match val {
+                        StructureType::Swap => structures.push(Structure::Swap(i)),
+                    }
+                },
+                None => (),
+            }
         }
+
+        structures
     }
 }
