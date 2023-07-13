@@ -30,7 +30,7 @@ pub struct Normalizer {
 
 impl Normalizer {
     pub fn new(actions: Vec<Action>) -> Self {
-        let mut actions: HashMap<reth_primitives::H256, Vec<Action>> = HashMap::new();
+        let mut tx_map: HashMap<reth_primitives::H256, Vec<Action>> = HashMap::new();
 
         for i in actions {
             if let Some(x) = tx_map.get_mut(&i.trace.transaction_hash.unwrap()) {
