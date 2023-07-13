@@ -6,13 +6,13 @@ use reth_rpc_types::trace::parity::LocalizedTransactionTrace;
 
 pub struct Action {
     /// Name of the function that has been called.
-    function_name: String,
+    pub function_name: String,
     /// Vector of inputs to the function.
-    inputs: Option<DynSolValue>,
+    pub inputs: Option<DynSolValue>,
     /// If it is a known protocol, the type.
-    protocol: Option<ProtocolType>,
+    pub protocol: Option<ProtocolType>,
     /// The underlying trace the call came from.
-    trace: LocalizedTransactionTrace,
+    pub trace: LocalizedTransactionTrace,
 }
 
 /// A type of protocol.
