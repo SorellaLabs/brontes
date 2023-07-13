@@ -1,20 +1,22 @@
+use std::{env, error::Error, path::Path};
+use tokio::runtime;
+use env_logger::{Builder as EnvLoggerBuilder, Env, fmt::TimestampPrecision};
+use log::LevelFilter;
 use poirot_core::{decode::Parser, trace::TracingClient, action::Action, normalize::Normalizer};
-
-use std::{env, error::Error, path::Path, collections::HashMap};
-
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 
-fn main() {
-    env_logger::init();
 
+fn main() {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_stack_size(8 * 1024 * 1024)
         .build()
         .unwrap();
 
-    env_logger::Builder::from_default_env()
-        .format_timestamp(None)
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format_module_path(false)
+        .format_timestamp(Some(env_logger::fmt::TimestampPrecision::Millis))
+        .filter_module(module_path!(), log::LevelFilter::Debug)
         .init();
 
     match runtime.block_on(run(runtime.handle().clone())) {
