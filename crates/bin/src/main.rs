@@ -57,6 +57,8 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         }
     }
 
+    println!("{tx_map:#?}");
+
     parser.stats.display();
 
 
