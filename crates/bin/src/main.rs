@@ -41,9 +41,10 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let parity_trace =
         tracer.trace.trace_block(BlockId::Number(Number(17679854))).await.unwrap().unwrap();
 
-    let parser = Parser::new(parity_trace, key);
+    let mut parser = Parser::new(parity_trace, key);
 
     let actions = parser.parse().await;
+    parser.stats.display();
 
     //println! {"{:#?}", actions};
 
