@@ -9,7 +9,7 @@ use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{Action as RethAction, CallType, LocalizedTransactionTrace};
 use std::{collections::HashMap, path::PathBuf};
 
-use log::debug;
+use log::{debug, warn};
 
 pub struct ParserStats {
     pub total_traces: usize,
@@ -138,7 +138,7 @@ impl Parser {
                     result.push(res);
                 }
                 Err(e) => {
-                    debug!("{}", format!("Error parsing trace: {:?}", e));
+                    warn!("{}", format!("Error parsing trace: {:?}", e));
                     self.stats.increment_error(e);
                 }
             }
@@ -216,7 +216,7 @@ impl Parser {
                     // Decode the inputs based on the resolved parameters.
                     match params_type.decode_params(inputs) {
                         Ok(decoded_params) => {
-                            println!(
+                            debug!(
                                 "For function {}: Decoded params: {:?} \n, with tx hash: {:#?}",
                                 function.name, decoded_params, trace.transaction_hash
                             );
@@ -226,7 +226,7 @@ impl Parser {
                                 trace.clone(),
                             ))
                         }
-                        Err(e) => eprintln!("Failed to decode params: {}", e),
+                        Err(e) => warn!("Failed to decode params: {}", e),
                     }
                 }
             }
