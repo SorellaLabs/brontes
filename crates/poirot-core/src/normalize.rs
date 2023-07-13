@@ -8,6 +8,7 @@ use phf::phf_map;
 
 static STRUCTURES: phf::Map<&'static str, StructureType> = phf_map! {
     "swap" => StructureType::Swap,
+    // Add a bunch more function_name -> StructureType mappings here - could even auto generate.
 };
 
 #[derive(Clone, Debug)]
