@@ -16,6 +16,8 @@ pub enum StructureType {
     Swap,
 }
 
+
+#[derive(Clone, Debug)]
 pub enum Structure {
     Swap(Action),
 }

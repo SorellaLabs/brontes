@@ -46,11 +46,15 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::new(parity_trace, key);
 
     let actions = parser.parse().await;
+    parser.stats.display();
 
     let normalizer = Normalizer::new(actions).normalize();
 
-    parser.stats.display();
-
+    for structure in normalizer {
+        for val in structure {
+            println!("{:?}", val);
+        }
+    }
 
     Ok(())
 }
