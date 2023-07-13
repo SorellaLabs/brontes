@@ -47,7 +47,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let actions = parser.parse().await;
 
-    let mut tx_map = std::collections::HashMap::new();
+    let mut tx_map: HashMap<B256, Vec<Action>> = std::collections::HashMap::new();
 
     for i in actions {
         match tx_map.get_mut(&i.trace.transaction_hash.unwrap()) {
