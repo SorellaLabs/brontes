@@ -8,7 +8,7 @@ pub struct Action {
     /// Name of the function that has been called.
     function_name: String,
     /// Vector of inputs to the function.
-    inputs: DynSolValue,
+    inputs: Option<DynSolValue>,
     /// If it is a known protocol, the type.
     protocol: Option<ProtocolType>,
     /// The underlying trace the call came from.
@@ -27,7 +27,7 @@ impl Action {
     /// Public constructor function to instantiate an [`Action`].
     pub fn new(
         function_name: String,
-        inputs: DynSolValue,
+        inputs: Option<DynSolValue>,
         trace: LocalizedTransactionTrace,
     ) -> Self {
         Self { function_name, inputs, protocol: None, trace }

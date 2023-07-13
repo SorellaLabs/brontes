@@ -1,15 +1,13 @@
-use alloy_etherscan::{errors::EtherscanError, Client};
-use ethers_core::types::Chain;
-
 use crate::action::Action;
+use alloy_dyn_abi::{DynSolType, ResolveSolType};
+use alloy_etherscan::{errors::EtherscanError, Client};
+use alloy_json_abi::StateMutability;
+use colored::*;
 use ethers::types::H160;
-use reth_primitives::H256;
+use ethers_core::types::Chain;
+use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{Action as RethAction, CallType, LocalizedTransactionTrace};
 use std::path::PathBuf;
-
-use alloy_dyn_abi::{DynSolType, ResolveSolType};
-use alloy_json_abi::JsonAbi;
-use colored::*;
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
@@ -75,13 +73,9 @@ impl Parser {
             _ => return Err(TraceParseError::NotCallAction(trace.transaction_hash.unwrap())),
         };
 
-        if action.input.is_empty() {
-            return Err(TraceParseError::EmptyInput(trace.transaction_hash.unwrap()))
-        }
-
         let abi = match call_type {
             &CallType::DelegateCall => {
-                // Use a different method to fetch the contract ABI for DelegateCall.
+                // Fetch proxy implementation
                 self.client
                     .delegate_raw_contract(H160(action.to.to_fixed_bytes()))
                     .await
@@ -95,6 +89,31 @@ impl Parser {
                     .map_err(TraceParseError::EtherscanError)?
             }
         };
+
+        // Check if the input is empty, indicating a potential `receive` or `fallback` function
+        // call.
+        if action.input.is_empty() {
+            // If a non-zero value was transferred, this is a call to the `receive` or `fallback`
+            // function.
+            if action.value != U256::from(0) {
+                // Check if the contract has a `receive` function.
+                if let Some(receive) = abi.receive {
+                    // Ensure the `receive` function is payable.
+                    if receive.state_mutability == StateMutability::Payable {
+                        return Ok(Action::new("receive".to_string(), None, trace.clone()))
+                    }
+                }
+                // If no `receive` function or it's not payable, check if there's a payable
+                // `fallback` function.
+                else if let Some(fallback) = abi.fallback {
+                    if fallback.state_mutability == StateMutability::Payable {
+                        return Ok(Action::new("fallback".to_string(), None, trace.clone()))
+                    }
+                }
+            }
+
+            return Err(TraceParseError::EmptyInput(trace.transaction_hash.unwrap()))
+        }
 
         for functions in abi.functions.values() {
             for function in functions {
@@ -119,7 +138,7 @@ impl Parser {
                             );
                             return Ok(Action::new(
                                 function.name.clone(),
-                                decoded_params,
+                                Some(decoded_params),
                                 trace.clone(),
                             ))
                         }
