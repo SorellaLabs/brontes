@@ -1,6 +1,6 @@
 use crate::*;
+use alloy_etherscan::verify::VerifyContract;
 use ethers_core::types::Chain;
-use ethers_etherscan::verify::VerifyContract;
 use ethers_solc::{Project, ProjectPathsConfig};
 use serial_test::serial;
 use std::path::Path;

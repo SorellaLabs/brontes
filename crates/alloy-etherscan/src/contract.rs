@@ -457,7 +457,6 @@ impl Client {
         if let Some(ref cache) = self.cache {
             // If this is None, then we have a cache miss
             if let Some(src) = cache.get_source(address) {
-
                 println!("got from cache");
                 // If this is None, then the contract is not verified
                 return match src {

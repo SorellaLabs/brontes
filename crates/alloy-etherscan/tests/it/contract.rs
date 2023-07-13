@@ -1,10 +1,13 @@
 use crate::*;
+use alloy_etherscan::contract::SourceCodeMetadata;
 use ethers_core::types::Chain;
-use ethers_etherscan::contract::SourceCodeMetadata;
 use serial_test::serial;
 
 /// Abi of [0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413](https://api.etherscan.io/api?module=contract&action=getsourcecode&address=0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413).
-const DAO_ABI: &str = include!("../../../testdata/the_dao_abi.expr");
+const DAO_ABI: &str = include!("../../testdata/the_dao_abi.expr");
+const UNIV2_ABI: &str = include!("../../testdata/univ2_router.expr");
+
+
 
 #[tokio::test]
 #[serial]
@@ -23,10 +26,10 @@ async fn can_fetch_ftm_contract_abi() {
 async fn can_fetch_contract_abi() {
     run_with_client(Chain::Mainnet, |client| async move {
         let abi = client
-            .contract_abi("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
+            .contract_abi("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D".parse().unwrap())
             .await
             .unwrap();
-        assert_eq!(abi, serde_json::from_str(DAO_ABI).unwrap());
+        assert_eq!(abi, serde_json::from_str(UNIV2_ABI).unwrap());
     })
     .await;
 }
@@ -36,7 +39,7 @@ async fn can_fetch_contract_abi() {
 async fn can_fetch_contract_source_code() {
     run_with_client(Chain::Mainnet, |client| async move {
         let meta = client
-            .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
+            .contract_source_code("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D".parse().unwrap())
             .await
             .unwrap();
 
@@ -44,7 +47,7 @@ async fn can_fetch_contract_source_code() {
         let item = &meta.items[0];
         assert!(matches!(item.source_code, SourceCodeMetadata::SourceCode(_)));
         assert_eq!(item.source_code.sources().len(), 1);
-        assert_eq!(item.abi().unwrap(), serde_json::from_str(DAO_ABI).unwrap());
+        assert_eq!(item.abi().unwrap(), serde_json::from_str(UNIV2_ABI).unwrap());
     })
     .await
 }

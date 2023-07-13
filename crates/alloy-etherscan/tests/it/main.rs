@@ -2,8 +2,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+use alloy_etherscan::{errors::EtherscanError, Client};
 use ethers_core::types::Chain;
-use ethers_etherscan::{errors::EtherscanError, Client};
 use std::{
     future::Future,
     time::{Duration, Instant},

@@ -1,5 +1,5 @@
 use crate::*;
-use ethers_etherscan::utils::lookup_compiler_version;
+use alloy_etherscan::utils::lookup_compiler_version;
 use semver::{BuildMetadata, Prerelease, Version};
 
 #[tokio::test]

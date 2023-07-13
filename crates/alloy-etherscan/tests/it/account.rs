@@ -1,5 +1,5 @@
 use crate::*;
-use ethers_etherscan::account::{InternalTxQueryOption, TokenQueryOption};
+use alloy_etherscan::account::{InternalTxQueryOption, TokenQueryOption};
 use serial_test::serial;
 
 #[tokio::test]
