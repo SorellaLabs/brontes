@@ -27,5 +27,6 @@ reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package =
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "31af4d5"}
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", rev = "31af4d5"}
 
-log = "0.4.19"
+
 env_logger = "0.10.0"
+log = "0.4.18"
