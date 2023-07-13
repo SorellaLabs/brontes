@@ -333,6 +333,7 @@ impl Client {
         if let Some(ref cache) = self.cache {
             // If this is None, then we have a cache miss
             if let Some(src) = cache.get_abi(address) {
+                println!("got from cache");
                 // If this is None, then the contract is not verified
                 return match src {
                     Some(src) => Ok(src),
@@ -420,6 +421,7 @@ impl Client {
                     Some(impl_addr) => impl_addr,
                     None => return Err(EtherscanError::MissingImplementationAddress),
                 };
+                println!("got from cache");
                 return self.contract_abi(implementation_address).await
             }
         }
@@ -455,6 +457,8 @@ impl Client {
         if let Some(ref cache) = self.cache {
             // If this is None, then we have a cache miss
             if let Some(src) = cache.get_source(address) {
+
+                println!("got from cache");
                 // If this is None, then the contract is not verified
                 return match src {
                     Some(src) => Ok(src),
