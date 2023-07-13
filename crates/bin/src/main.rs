@@ -13,6 +13,10 @@ fn main() {
         .build()
         .unwrap();
 
+    env_logger::Builder::from_default_env()
+        .format_timestamp(None)
+        .init();
+
     match runtime.block_on(run(runtime.handle().clone())) {
         Ok(()) => println!("Success!"),
         Err(e) => {
