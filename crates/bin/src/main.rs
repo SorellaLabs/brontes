@@ -58,7 +58,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     for structure in normalizer {
         for val in structure {
-            println!("{:?}", val);
+            println!("{:#?}", val);
         }
     }
 

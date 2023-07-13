@@ -7,8 +7,8 @@ use ethers::types::H160;
 use ethers_core::types::Chain;
 use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{Action as RethAction, CallType, LocalizedTransactionTrace};
-use std::{collections::HashMap, path::PathBuf};
-
+use std::{collections::HashMap, path::PathBuf, fs};
+use std::path::Path;
 use log::{debug, warn};
 
 pub struct ParserStats {
@@ -111,14 +111,22 @@ impl Parser {
     /// Public constructor function to instantiate a new [`Parser`].
     /// # Arguments
     /// * `block_trace` - Block trace from [`TracingClient`].
-    /// * `etherscan_key` - Etherscan API key to instantiate client.
+    /// * `etherscan_key` - Etherscan API key to instantiate client
+    /// 
     pub fn new(block_trace: Vec<LocalizedTransactionTrace>, etherscan_key: String) -> Self {
+        let cache_directory = "./abi_cache";
+        
+        // Check if the cache directory exists, and create it if it doesn't.
+        if !Path::new(cache_directory).exists() {
+            fs::create_dir_all(cache_directory).expect("Failed to create cache directory");
+        }
+
         Self {
             block_trace,
             client: Client::new_cached(
                 Chain::Mainnet,
                 etherscan_key,
-                Some(PathBuf::from("./abi_cache")),
+                Some(PathBuf::from(cache_directory)),
                 std::time::Duration::new(1000000, 0),
             )
             .unwrap(),
