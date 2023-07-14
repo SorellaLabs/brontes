@@ -112,7 +112,6 @@ impl Parser {
     /// # Arguments
     /// * `block_trace` - Block trace from [`TracingClient`].
     /// * `etherscan_key` - Etherscan API key to instantiate client
-    /// 
     pub fn new(block_trace: Vec<LocalizedTransactionTrace>, etherscan_key: String) -> Self {
         let cache_directory = "./abi_cache";
         
