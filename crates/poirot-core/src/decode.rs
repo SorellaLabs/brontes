@@ -131,7 +131,7 @@ impl Parser {
                 Chain::Mainnet,
                 etherscan_key,
                 Some(PathBuf::from(cache_directory)),
-                std::time::Duration::new(10, 0),
+                std::time::Duration::new(10000, 0),
             )
             .unwrap(),
             stats: ParserStats::new(),
