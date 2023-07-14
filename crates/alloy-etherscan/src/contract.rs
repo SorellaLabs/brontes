@@ -332,6 +332,8 @@ impl Client {
         // apply caching
         if let Some(ref cache) = self.cache {
             println!("cache got here?");
+
+            println!("{cache:#?}");
             // If this is None, then we have a cache miss
             if let Some(src) = cache.get_abi(address) {
                 println!("got from cache");
