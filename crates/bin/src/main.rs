@@ -39,10 +39,13 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
     };
 
+    println!("found db path");
+
     let key = match env::var("ETHERSCAN_API_KEY") {
         Ok(key) => key,
         Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
     };
+    println!("found etherscan api key");
 
     let tracer = TracingClient::new(Path::new(&db_path), handle);
 
