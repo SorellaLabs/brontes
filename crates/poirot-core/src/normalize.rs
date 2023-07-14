@@ -8,18 +8,21 @@ use phf::phf_map;
 
 static STRUCTURES: phf::Map<&'static str, StructureType> = phf_map! {
     "swap" => StructureType::Swap,
+    "createPool" => StructureType::PoolCreation,
     // Add a bunch more function_name -> StructureType mappings here - could even auto generate.
 };
 
 #[derive(Clone, Debug)]
 pub enum StructureType {
     Swap,
+    PoolCreation,
 }
 
 
 #[derive(Clone, Debug)]
 pub enum Structure {
     Swap(Action),
+    PoolCreation(Action),
 }
 
 pub struct Normalizer {
@@ -60,6 +63,7 @@ impl Normalizer {
                 Some(val) => {
                     match val {
                         StructureType::Swap => structures.push(Structure::Swap(i)),
+                        StructureType::PoolCreation => structures.push(Structure::PoolCreation(i)),
                     }
                 },
                 None => (),
