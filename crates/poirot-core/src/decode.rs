@@ -118,7 +118,7 @@ impl Parser {
         for path in paths {
             println!("Name: {}", path.unwrap().path().display())
         }
-        let cache_directory = "abi_cache";
+        let cache_directory = "./abi_cache";
         
         // Check if the cache directory exists, and create it if it doesn't.
         if !Path::new(cache_directory).exists() {
