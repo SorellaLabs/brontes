@@ -331,6 +331,7 @@ impl Client {
     pub async fn contract_abi(&self, address: Address) -> Result<JsonAbi> {
         // apply caching
         if let Some(ref cache) = self.cache {
+            println!("cache got here?");
             // If this is None, then we have a cache miss
             if let Some(src) = cache.get_abi(address) {
                 println!("got from cache");
