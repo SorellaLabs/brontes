@@ -397,7 +397,8 @@ impl Cache {
         item: T,
     ) -> Result<(), EtherscanError> {
         let dir_path = self.root.join(prefix);
-        std::fs::create_dir(&dir_path)?;
+        std::fs::create_dir_all(&dir_path)?;
+        
         let file_path = dir_path.join(format!("{:?}.json", address));
         let file = std::fs::File::create(file_path)?;
         let mut writer = std::io::BufWriter::new(file);
