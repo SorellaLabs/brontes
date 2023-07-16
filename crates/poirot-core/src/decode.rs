@@ -1,13 +1,15 @@
 use crate::action::Action;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_etherscan::{errors::EtherscanError, Client};
-use alloy_json_abi::StateMutability;
+use alloy_json_abi::{JsonAbi, StateMutability};
 use colored::*;
 
 use ethers_core::types::Chain;
 use log::{debug, warn};
 use reth_primitives::{H256, U256};
-use reth_rpc_types::trace::parity::{Action as RethAction, CallType, LocalizedTransactionTrace};
+use reth_rpc_types::trace::parity::{
+    Action as RethAction, CallAction, CallType, LocalizedTransactionTrace,
+};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -159,82 +161,95 @@ impl Parser {
             _ => return Err(TraceParseError::NotCallAction(trace.transaction_hash.unwrap())),
         };
 
-        let abi = match call_type {
-            &CallType::DelegateCall => {
-                // Fetch proxy implementation
-                self.client
-                    .delegate_raw_contract(action.to.into())
-                    .await
-                    .map_err(TraceParseError::EtherscanError)?
-            }
-
-            _ => {
-                // For other call types, use the original method.
-                self.client
-                    .contract_abi(action.to.into())
-                    .await
-                    .map_err(TraceParseError::EtherscanError)?
-            }
-        };
+        let abi = self
+            .client
+            .contract_abi(action.to.into())
+            .await
+            .map_err(TraceParseError::EtherscanError)?;
 
         // Check if the input is empty, indicating a potential `receive` or `fallback` function
         // call.
         if action.input.is_empty() {
-            // If a non-zero value was transferred, this is a call to the `receive` or `fallback`
-            // function.
-            if action.value != U256::from(0) {
-                // Check if the contract has a `receive` function.
-                if let Some(receive) = abi.receive {
-                    // Ensure the `receive` function is payable.
-                    if receive.state_mutability == StateMutability::Payable {
-                        return Ok(Action::new("receive".to_string(), None, trace.clone()))
-                    }
-                }
-                // If no `receive` function or it's not payable, check if there's a payable
-                // `fallback` function.
-                else if let Some(fallback) = abi.fallback {
-                    if fallback.state_mutability == StateMutability::Payable {
-                        return Ok(Action::new("fallback".to_string(), None, trace.clone()))
-                    }
-                }
-            }
-
-            return Err(TraceParseError::EmptyInput(trace.transaction_hash.unwrap()))
+            return handle_empty_input(&abi, action, trace)
         }
 
-        for functions in abi.functions.values() {
-            for function in functions {
-                if function.selector() == action.input[..4] {
-                    // Resolve all inputs
-                    let mut resolved_params: Vec<DynSolType> = Vec::new();
-                    for param in &function.inputs {
-                        let _ = param
-                            .resolve()
-                            .map(|resolved_param| resolved_params.push(resolved_param));
-                    }
-
-                    let inputs = &action.input[4..]; // Remove the function selector from the input.
-                    let params_type = DynSolType::Tuple(resolved_params); // Construct a tuple type from the resolved parameters.
-
-                    // Decode the inputs based on the resolved parameters.
-                    match params_type.decode_params(inputs) {
-                        Ok(decoded_params) => {
-                            debug!(
-                                "For function {}: Decoded params: {:?} \n, with tx hash: {:#?}",
-                                function.name, decoded_params, trace.transaction_hash
-                            );
-                            return Ok(Action::new(
-                                function.name.clone(),
-                                Some(decoded_params),
-                                trace.clone(),
-                            ))
-                        }
-                        Err(e) => warn!("Failed to decode params: {}", e),
-                    }
-                }
+        // Decode the input based on the ABI.
+        // Try to decode the input with the original ABI
+        match decode_input_with_abi(&abi, action, trace) {
+            Ok(Some(decoded_input)) => Ok(decoded_input),
+            Ok(None) | Err(_) => {
+                // If decoding with the original ABI failed, fetch the implementation ABI and try
+                // again
+                let impl_abi = self
+                    .client
+                    .delegate_raw_contract(action.to.into())
+                    .await
+                    .map_err(TraceParseError::EtherscanError)?;
+                decode_input_with_abi(&impl_abi, action, trace)?.ok_or(
+                    TraceParseError::InvalidFunctionSelector(trace.transaction_hash.unwrap()),
+                )
             }
         }
-
-        Err(TraceParseError::InvalidFunctionSelector(trace.transaction_hash.unwrap()))
     }
+}
+
+fn decode_input_with_abi(
+    abi: &JsonAbi,
+    action: &CallAction,
+    trace: &LocalizedTransactionTrace,
+) -> Result<Option<Action>, TraceParseError> {
+    for functions in abi.functions.values() {
+        for function in functions {
+            if function.selector() == action.input[..4] {
+                // Resolve all inputs
+                let mut resolved_params: Vec<DynSolType> = Vec::new();
+                for param in &function.inputs {
+                    let _ =
+                        param.resolve().map(|resolved_param| resolved_params.push(resolved_param));
+                }
+
+                let inputs = &action.input[4..]; // Remove the function selector from the input.
+                let params_type = DynSolType::Tuple(resolved_params); // Construct a tuple type from the resolved parameters.
+
+                // Decode the inputs based on the resolved parameters.
+                match params_type.decode_params(inputs) {
+                    Ok(decoded_params) => {
+                        debug!(
+                            "For function {}: Decoded params: {:?} \n, with tx hash: {:#?}",
+                            function.name, decoded_params, trace.transaction_hash
+                        );
+                        return Ok(Some(Action::new(
+                            function.name.clone(),
+                            Some(decoded_params),
+                            trace.clone(),
+                        )))
+                    }
+                    Err(e) => warn!("Failed to decode params: {}", e),
+                }
+            }
+        }
+    }
+    // No matching function selector was found in this ABI
+    Err(TraceParseError::InvalidFunctionSelector(trace.transaction_hash.unwrap()))
+}
+
+fn handle_empty_input(
+    abi: &JsonAbi,
+    action: &CallAction,
+    trace: &LocalizedTransactionTrace,
+) -> Result<Action, TraceParseError> {
+    if action.value != U256::from(0) {
+        if let Some(receive) = &abi.receive {
+            if receive.state_mutability == StateMutability::Payable {
+                return Ok(Action::new("receive".to_string(), None, trace.clone()))
+            }
+        }
+
+        if let Some(fallback) = &abi.fallback {
+            if fallback.state_mutability == StateMutability::Payable {
+                return Ok(Action::new("fallback".to_string(), None, trace.clone()))
+            }
+        }
+    }
+    Err(TraceParseError::EmptyInput(trace.transaction_hash.unwrap()))
 }
