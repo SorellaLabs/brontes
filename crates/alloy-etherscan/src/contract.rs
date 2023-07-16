@@ -415,7 +415,7 @@ impl Client {
         Ok(result)
     }
 
-    pub async fn delegate_raw_contract(&self, address: Address) -> Result<JsonAbi, EtherscanError> {
+    pub async fn proxy_contract_abi(&self, address: Address) -> Result<JsonAbi, EtherscanError> {
         let contract_metadata = self.contract_source_code(address).await?;
 
         // Use the first item in the metadata.
