@@ -389,7 +389,6 @@ impl Cache {
         Ok(())
     }
 
-
     fn set<T: Serialize>(
         &self,
         prefix: &str,
@@ -398,7 +397,7 @@ impl Cache {
     ) -> Result<(), EtherscanError> {
         let dir_path = self.root.join(prefix);
         std::fs::create_dir_all(&dir_path)?;
-        
+
         let file_path = dir_path.join(format!("{:?}.json", address));
         let file = std::fs::File::create(file_path)?;
         let mut writer = std::io::BufWriter::new(file);
@@ -417,10 +416,9 @@ impl Cache {
         writer.flush()?;
         Ok(())
     }
-    
 
     fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
-        let path = self.root.join(prefix).join(format!("{address:?}.json"));
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
         println!("reading from {:?}", path);
 
         let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
