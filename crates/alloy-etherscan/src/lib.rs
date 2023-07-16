@@ -14,7 +14,6 @@ use reqwest::{header, IntoUrl, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    error::Error,
     io::Write,
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -395,11 +394,11 @@ impl Cache {
         prefix: &str,
         address: Address,
         item: T,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), EtherscanError> {
         let path = self.root.join(prefix).join(format!("{:?}.json", address));
-        let file = std::fs::File::create(&path)?;
+        let file = std::fs::File::create(path)?;
         let mut writer = std::io::BufWriter::new(file);
-        let _ = serde_json::to_writer(
+        serde_json::to_writer(
             &mut writer,
             &CacheEnvelope {
                 expiry: SystemTime::now()
@@ -411,7 +410,7 @@ impl Cache {
                 data: item,
             },
         )?;
-        let _ = writer.flush()?;
+        writer.flush()?;
         Ok(())
     }
 
