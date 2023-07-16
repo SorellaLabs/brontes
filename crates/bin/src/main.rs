@@ -1,8 +1,8 @@
 use std::{env, error::Error, path::Path};
-use tokio::runtime;
-use env_logger::{Builder as EnvLoggerBuilder, Env, fmt::TimestampPrecision};
-use log::LevelFilter;
-use poirot_core::{decode::Parser, trace::TracingClient, action::Action, normalize::Normalizer};
+
+
+
+use poirot_core::{decode::Parser, trace::TracingClient, normalize::Normalizer};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 
 
