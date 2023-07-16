@@ -335,14 +335,13 @@ impl Client {
         if let Some(ref cache) = self.cache {
             // If this is None, then we have a cache miss
             if let Some(src) = cache.get_abi(address) {
-                // If this is None, then the contract is not verified
+                println!("Cache hit for contract_abi with address {:?}", address);
                 return match src {
-                    Some(src) => {
-                        println!("got from cache");
-                        Ok(src)
-                    }
+                    Some(src) => Ok(src),
                     None => Err(EtherscanError::ContractCodeNotVerified(address)),
                 }
+            } else {
+                println!("Cache miss for contract_abi with address {:?}", address);
             }
         }
 
@@ -420,17 +419,16 @@ impl Client {
         // Apply caching for contract source code
         if let Some(ref cache) = self.cache {
             if let Some(Some(metadata)) = cache.get_source(address) {
-                // Note the Some(Some(metadata))
+                println!("Cache hit for delegate_raw_contract with address {:?}", address);
                 let first_item = &metadata.items[0];
                 let implementation_address = match first_item.implementation {
                     Some(impl_addr) => impl_addr,
                     None => return Err(EtherscanError::MissingImplementationAddress),
                 };
-                println!("got from cache");
                 return self.contract_abi(implementation_address).await
             } else if let Some(None) = cache.get_source(address) {
-                return Err(EtherscanError::ContractCodeNotVerified(address)) // or some other
-                                                                             // appropriate error
+                println!("Cache miss for delegate_raw_contract with address {:?}", address);
+                return Err(EtherscanError::ContractCodeNotVerified(address)) // or some other appropriate error
             }
         }
 
@@ -465,12 +463,13 @@ impl Client {
         if let Some(ref cache) = self.cache {
             // If this is None, then we have a cache miss
             if let Some(src) = cache.get_source(address) {
-                println!("got from cache");
-                // If this is None, then the contract is not verified
+                println!("Cache hit for contract_source_code with address {:?}", address);
                 return match src {
                     Some(src) => Ok(src),
                     None => Err(EtherscanError::ContractCodeNotVerified(address)),
                 }
+            } else {
+                println!("Cache miss for contract_source_code with address {:?}", address);
             }
         }
 
