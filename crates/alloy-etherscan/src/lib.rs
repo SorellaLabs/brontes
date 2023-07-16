@@ -389,14 +389,17 @@ impl Cache {
         Ok(())
     }
 
+
     fn set<T: Serialize>(
         &self,
         prefix: &str,
         address: Address,
         item: T,
     ) -> Result<(), EtherscanError> {
-        let path = self.root.join(prefix).join(format!("{:?}.json", address));
-        let file = std::fs::File::create(path)?;
+        let dir_path = self.root.join(prefix);
+        std::fs::create_dir_all(&dir_path)?;
+        let file_path = dir_path.join(format!("{:?}.json", address));
+        let file = std::fs::File::create(file_path)?;
         let mut writer = std::io::BufWriter::new(file);
         serde_json::to_writer(
             &mut writer,
@@ -413,6 +416,7 @@ impl Cache {
         writer.flush()?;
         Ok(())
     }
+    
 
     fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
         let path = self.root.join(prefix).join(format!("{address:?}.json"));
