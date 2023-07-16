@@ -24,6 +24,7 @@ pub struct ParserStats {
     pub etherscan_errors: usize,
     pub abi_parse_errors: usize,
     pub invalid_function_selector_errors: usize,
+    pub abi_decoding_failed_errors: usize,
 }
 
 impl ParserStats {
@@ -36,6 +37,7 @@ impl ParserStats {
             TraceParseError::InvalidFunctionSelector(_) => {
                 self.invalid_function_selector_errors += 1
             }
+            TraceParseError::AbiDecodingFailed(_) => self.abi_parse_errors += 1,
         };
     }
 
@@ -97,7 +99,8 @@ pub enum TraceParseError {
     EmptyInput(H256),    // Added field for transaction hash
     EtherscanError(EtherscanError),
     AbiParseError(serde_json::Error),
-    InvalidFunctionSelector(H256), // Added field for transaction hash
+    InvalidFunctionSelector(H256),
+    AbiDecodingFailed(H256)
 }
 
 impl Parser {
@@ -230,7 +233,7 @@ fn decode_input_with_abi(
         }
     }
     // No matching function selector was found in this ABI
-    Err(TraceParseError::InvalidFunctionSelector(trace.transaction_hash.unwrap()))
+    Err(TraceParseError::AB(trace.transaction_hash.unwrap()))
 }
 
 fn handle_empty_input(

@@ -416,23 +416,6 @@ impl Client {
     }
 
     pub async fn delegate_raw_contract(&self, address: Address) -> Result<JsonAbi, EtherscanError> {
-        // Apply caching for contract source code
-        if let Some(ref cache) = self.cache {
-            if let Some(Some(metadata)) = cache.get_source(address) {
-                println!("Cache hit for delegate_raw_contract with address {:?}", address);
-                let first_item = &metadata.items[0];
-                let implementation_address = match first_item.implementation {
-                    Some(impl_addr) => impl_addr,
-                    None => return Err(EtherscanError::MissingImplementationAddress),
-                };
-                return self.contract_abi(implementation_address).await
-            } else if let Some(None) = cache.get_source(address) {
-                println!("Cache miss for delegate_raw_contract with address {:?}", address);
-                return Err(EtherscanError::ContractCodeNotVerified(address)) // or some other
-                                                                             // appropriate error
-            }
-        }
-
         let contract_metadata = self.contract_source_code(address).await?;
 
         // Use the first item in the metadata.
