@@ -6,7 +6,7 @@ use crate::{
 use alloy_json_abi::JsonAbi;
 use ethers_core::{
     abi::{Address, RawAbi},
-    types::{serde_helpers::deserialize_stringified_u64, Bytes},
+    types::{serde_helpers::deserialize_stringified_u64, Bytes}, k256::elliptic_curve::bigint::AddMod,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -419,14 +419,16 @@ impl Client {
     pub async fn delegate_raw_contract(&self, address: Address) -> Result<JsonAbi, EtherscanError> {
         // Apply caching for contract source code
         if let Some(ref cache) = self.cache {
-            if let Some(metadata) = cache.get_source(address) {
-                let first_item = &metadata.unwrap().items[0];
+            if let Some(Some(metadata)) = cache.get_source(address) {  // Note the Some(Some(metadata))
+                let first_item = &metadata.items[0]; 
                 let implementation_address = match first_item.implementation {
                     Some(impl_addr) => impl_addr,
                     None => return Err(EtherscanError::MissingImplementationAddress),
                 };
                 println!("got from cache");
                 return self.contract_abi(implementation_address).await
+            } else if let Some(None) = cache.get_source(address) {
+                return Err(EtherscanError::ContractCodeNotVerified(address));  // or some other appropriate error
             }
         }
 
