@@ -1,8 +1,8 @@
-use crate::{action::Action};
+use crate::action::Action;
 
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
-use reth_primitives::{H256};
+use reth_primitives::H256;
 
 use phf::phf_map;
 
@@ -17,7 +17,6 @@ pub enum StructureType {
     Swap,
     PoolCreation,
 }
-
 
 #[derive(Clone, Debug)]
 pub enum Structure {
@@ -60,11 +59,9 @@ impl Normalizer {
 
         for i in actions {
             match STRUCTURES.get(&i.function_name).cloned() {
-                Some(val) => {
-                    match val {
-                        StructureType::Swap => structures.push(Structure::Swap(i)),
-                        StructureType::PoolCreation => structures.push(Structure::PoolCreation(i)),
-                    }
+                Some(val) => match val {
+                    StructureType::Swap => structures.push(Structure::Swap(i)),
+                    StructureType::PoolCreation => structures.push(Structure::PoolCreation(i)),
                 },
                 None => (),
             }

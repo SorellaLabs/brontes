@@ -5,11 +5,13 @@ use alloy_json_abi::StateMutability;
 use colored::*;
 
 use ethers_core::types::Chain;
+use log::{debug, warn};
 use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{Action as RethAction, CallType, LocalizedTransactionTrace};
-use std::{path::PathBuf, fs};
-use std::path::Path;
-use log::{debug, warn};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Default)]
 pub struct ParserStats {
@@ -21,7 +23,6 @@ pub struct ParserStats {
     pub abi_parse_errors: usize,
     pub invalid_function_selector_errors: usize,
 }
-
 
 impl ParserStats {
     pub fn increment_error(&mut self, error: TraceParseError) {
@@ -109,7 +110,7 @@ impl Parser {
             println!("Name: {}", path.unwrap().path().display())
         }
         let cache_directory = "./abi_cache";
-        
+
         // Check if the cache directory exists, and create it if it doesn't.
         if !Path::new(cache_directory).exists() {
             fs::create_dir_all(cache_directory).expect("Failed to create cache directory");

@@ -1,10 +1,7 @@
 use std::{env, error::Error, path::Path};
 
-
-
-use poirot_core::{decode::Parser, trace::TracingClient, normalize::Normalizer};
+use poirot_core::{decode::Parser, normalize::Normalizer, trace::TracingClient};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
-
 
 fn main() {
     let runtime = tokio::runtime::Builder::new_multi_thread()
