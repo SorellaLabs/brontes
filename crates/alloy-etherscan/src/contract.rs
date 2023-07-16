@@ -428,7 +428,8 @@ impl Client {
                 return self.contract_abi(implementation_address).await
             } else if let Some(None) = cache.get_source(address) {
                 println!("Cache miss for delegate_raw_contract with address {:?}", address);
-                return Err(EtherscanError::ContractCodeNotVerified(address)) // or some other appropriate error
+                return Err(EtherscanError::ContractCodeNotVerified(address)) // or some other
+                                                                             // appropriate error
             }
         }
 
