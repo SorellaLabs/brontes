@@ -401,6 +401,8 @@ impl Cache {
 
     fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
         let path = self.root.join(prefix).join(format!("{address:?}.json"));
+        println!("reading from {:?}", path);
+
         let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
         if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
             // If this does not return None then we have passed the expiry
