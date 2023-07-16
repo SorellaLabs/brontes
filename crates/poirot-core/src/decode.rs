@@ -3,14 +3,15 @@ use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_etherscan::{errors::EtherscanError, Client};
 use alloy_json_abi::StateMutability;
 use colored::*;
-use ethers::types::H160;
+
 use ethers_core::types::Chain;
 use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{Action as RethAction, CallType, LocalizedTransactionTrace};
-use std::{collections::HashMap, path::PathBuf, fs};
+use std::{path::PathBuf, fs};
 use std::path::Path;
 use log::{debug, warn};
 
+#[derive(Default)]
 pub struct ParserStats {
     pub total_traces: usize,
     pub successful_parses: usize,
@@ -21,19 +22,8 @@ pub struct ParserStats {
     pub invalid_function_selector_errors: usize,
 }
 
-impl ParserStats {
-    pub fn new() -> Self {
-        Self {
-            total_traces: 0,
-            successful_parses: 0,
-            not_call_action_errors: 0,
-            empty_input_errors: 0,
-            etherscan_errors: 0,
-            abi_parse_errors: 0,
-            invalid_function_selector_errors: 0,
-        }
-    }
 
+impl ParserStats {
     pub fn increment_error(&mut self, error: TraceParseError) {
         match error {
             TraceParseError::NotCallAction(_) => self.not_call_action_errors += 1,
@@ -134,7 +124,7 @@ impl Parser {
                 std::time::Duration::new(10000, 0),
             )
             .unwrap(),
-            stats: ParserStats::new(),
+            stats: ParserStats::default(),
         }
     }
 
@@ -172,7 +162,7 @@ impl Parser {
             &CallType::DelegateCall => {
                 // Fetch proxy implementation
                 self.client
-                    .delegate_raw_contract(H160(action.to.to_fixed_bytes()))
+                    .delegate_raw_contract(action.to.into())
                     .await
                     .map_err(TraceParseError::EtherscanError)?
             }
@@ -180,7 +170,7 @@ impl Parser {
             _ => {
                 // For other call types, use the original method.
                 self.client
-                    .contract_abi(H160(action.to.to_fixed_bytes()))
+                    .contract_abi(action.to.into())
                     .await
                     .map_err(TraceParseError::EtherscanError)?
             }
