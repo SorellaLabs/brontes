@@ -1,8 +1,8 @@
-use crate::{decode::Parser, trace::TracingClient, action::Action};
+use crate::{action::Action};
 
-use std::{env, error::Error, path::Path, collections::HashMap};
+use std::{collections::HashMap};
 
-use reth_primitives::{H256, H160};
+use reth_primitives::{H256};
 
 use phf::phf_map;
 
