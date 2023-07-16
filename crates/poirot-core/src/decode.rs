@@ -190,7 +190,7 @@ impl Parser {
                 // again
                 let impl_abi = self
                     .client
-                    .delegate_raw_contract(action.to.into())
+                    .proxy_contract_abi(action.to.into())
                     .await
                     .map_err(TraceParseError::EtherscanError)?;
                 decode_input_with_abi(&impl_abi, action, trace)?.ok_or(
