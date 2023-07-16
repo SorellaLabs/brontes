@@ -159,7 +159,7 @@ impl Parser {
         &self,
         trace: &LocalizedTransactionTrace,
     ) -> Result<Action, TraceParseError> {
-        let (action, call_type) = match &trace.trace.action {
+        let (action, _call_type) = match &trace.trace.action {
             RethAction::Call(call) => (call, &call.call_type),
             _ => return Err(TraceParseError::NotCallAction(trace.transaction_hash.unwrap())),
         };
@@ -233,7 +233,7 @@ fn decode_input_with_abi(
         }
     }
     // No matching function selector was found in this ABI
-    Err(TraceParseError::AB(trace.transaction_hash.unwrap()))
+    Err(TraceParseError::AbiDecodingFailed(trace.transaction_hash.unwrap()))
 }
 
 fn handle_empty_input(
