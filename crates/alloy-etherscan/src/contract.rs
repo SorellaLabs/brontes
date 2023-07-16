@@ -328,6 +328,7 @@ impl Client {
     /// let abi = client.contract_abi(address).await?;
     /// # Ok(()) }
     /// ```
+
     pub async fn contract_abi(&self, address: Address) -> Result<JsonAbi> {
         // apply caching
         if let Some(ref cache) = self.cache {
@@ -369,14 +370,14 @@ impl Client {
             resp.message.starts_with("Contract source code not verified")
         {
             if let Some(ref cache) = self.cache {
-                cache.set_abi(address, None);
+                cache.set_abi(address, None)?;
             }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
         let abi = serde_json::from_str(&result)?;
 
         if let Some(ref cache) = self.cache {
-            cache.set_abi(address, Some(&abi));
+            cache.set_abi(address, Some(&abi))?;
         }
 
         Ok(abi)
@@ -407,7 +408,7 @@ impl Client {
             resp.message.starts_with("Contract source code not verified")
         {
             if let Some(ref cache) = self.cache {
-                cache.set_abi(address, None);
+                cache.set_abi(address, None)?;
             }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
@@ -441,7 +442,7 @@ impl Client {
         };
 
         // Get the ABI of the implementation contract.
-        Ok(self.contract_abi(implementation_address).await?)
+        self.contract_abi(implementation_address).await
     }
 
     /// Fetches a contract's verified source code and its metadata.
@@ -476,7 +477,7 @@ impl Client {
         // Source code is not verified
         if response.contains("Contract source code not verified") {
             if let Some(ref cache) = self.cache {
-                cache.set_source(address, None);
+                cache.set_source(address, None)?;
             }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
@@ -485,7 +486,7 @@ impl Client {
         let result = response.result;
 
         if let Some(ref cache) = self.cache {
-            cache.set_source(address, Some(&result));
+            cache.set_source(address, Some(&result))?;
         }
 
         Ok(result)
