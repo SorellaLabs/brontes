@@ -56,11 +56,11 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let normalizer = Normalizer::new(actions).normalize();
 
-    for structure in normalizer {
+    /*for structure in normalizer {
         for val in structure {
             println!("{:#?}", val);
         }
-    }
+    }*/
 
     Ok(())
 }
