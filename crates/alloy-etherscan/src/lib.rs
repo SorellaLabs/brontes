@@ -14,10 +14,12 @@ use reqwest::{header, IntoUrl, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
+    error::Error,
     io::Write,
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+
 use tracing::{error, trace};
 
 pub mod account;
@@ -366,37 +368,51 @@ impl Cache {
         self.get("abi", address)
     }
 
-    fn set_abi(&self, address: Address, abi: Option<&JsonAbi>) {
-        self.set("abi", address, abi)
+    fn set_abi(
+        &self,
+        address: Address,
+        abi: Option<&JsonAbi>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.set("abi", address, abi)?;
+        Ok(())
     }
 
     fn get_source(&self, address: Address) -> Option<Option<ContractMetadata>> {
         self.get("sources", address)
     }
 
-    fn set_source(&self, address: Address, source: Option<&ContractMetadata>) {
-        self.set("sources", address, source)
+    fn set_source(
+        &self,
+        address: Address,
+        source: Option<&ContractMetadata>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.set("sources", address, source)?;
+        Ok(())
     }
 
-    fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) {
-        let path = self.root.join(prefix).join(format!("{address:?}.json"));
-        println!("writing to {:?}", path);
-        let writer = std::fs::File::create(path).ok().map(std::io::BufWriter::new);
-        if let Some(mut writer) = writer {
-            let _ = serde_json::to_writer(
-                &mut writer,
-                &CacheEnvelope {
-                    expiry: SystemTime::now()
-                        .checked_add(self.ttl)
-                        .expect("cache ttl overflowed")
-                        .duration_since(UNIX_EPOCH)
-                        .expect("system time is before unix epoch")
-                        .as_secs(),
-                    data: item,
-                },
-            );
-            let _ = writer.flush();
-        }
+    fn set<T: Serialize>(
+        &self,
+        prefix: &str,
+        address: Address,
+        item: T,
+    ) -> Result<(), Box<dyn Error>> {
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
+        let file = std::fs::File::create(&path)?;
+        let mut writer = std::io::BufWriter::new(file);
+        let _ = serde_json::to_writer(
+            &mut writer,
+            &CacheEnvelope {
+                expiry: SystemTime::now()
+                    .checked_add(self.ttl)
+                    .expect("cache ttl overflowed")
+                    .duration_since(UNIX_EPOCH)
+                    .expect("system time is before unix epoch")
+                    .as_secs(),
+                data: item,
+            },
+        )?;
+        let _ = writer.flush()?;
+        Ok(())
     }
 
     fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
