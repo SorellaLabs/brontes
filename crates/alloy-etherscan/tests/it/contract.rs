@@ -7,8 +7,6 @@ use serial_test::serial;
 const DAO_ABI: &str = include!("../../testdata/the_dao_abi.expr");
 const UNIV2_ABI: &str = include!("../../testdata/univ2_router.expr");
 
-
-
 #[tokio::test]
 #[serial]
 async fn can_fetch_ftm_contract_abi() {
