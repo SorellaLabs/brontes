@@ -78,6 +78,11 @@ impl ParserStats {
             "Invalid Function Selector Errors".red().bold(),
             self.invalid_function_selector_errors.to_string().cyan()
         );
+        println!(
+            "{}: {}",
+            "ABI Decoding Failed Errors".red().bold(),
+            self.abi_decoding_failed_errors.to_string().cyan()
+        );
     }
 }
 
