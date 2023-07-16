@@ -52,17 +52,18 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::new(parity_trace, key.clone());
 
 
-    //let actions = parser.parse().await;
+    let actions = parser.parse().await;
     parser.stats.display();
 
     let parity_trace =
         tracer.trace.trace_block(BlockId::Number(Number(17679853))).await.unwrap().unwrap();
 
     let mut parser = Parser::new(parity_trace, key);
-    parser.stats.display();
-
     
 
+    let actions1 = parser.parse().await;
+
+    parser.stats.display();
 
     //let normalizer = Normalizer::new(actions).normalize();
 
