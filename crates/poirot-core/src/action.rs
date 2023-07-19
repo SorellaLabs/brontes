@@ -1,10 +1,20 @@
 use alloy_dyn_abi::DynSolValue;
-use reth_rpc_types::trace::parity::LocalizedTransactionTrace;
+use reth_rpc_types::trace::parity::{LocalizedTransactionTrace, CreateAction};
+
+use reth_primitives::{Address, Bytes, U256, U64};
 
 /// An [`Action`] is the lowest level parsing type, analogous to a lexeme in compiler design.
 #[derive(Debug, Clone)]
 
-pub struct Action {
+pub enum StructuredTrace {
+    CALL(CallAction),
+    CREATE(CreateAction),
+}
+
+
+
+#[derive(Debug, Clone)]
+pub struct CallAction {
     /// Name of the function that has been called.
     pub function_name: String,
     /// Vector of inputs to the function.
@@ -23,7 +33,7 @@ pub enum ProtocolType {
     Curve,
 }
 
-impl Action {
+impl CallAction {
     /// Public constructor function to instantiate an [`Action`].
     pub fn new(
         function_name: String,
