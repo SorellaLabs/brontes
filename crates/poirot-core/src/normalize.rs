@@ -1,4 +1,4 @@
-use crate::action::Action;
+use crate::action::StructuredTrace::{self, CALL, CREATE};
 
 use std::collections::HashMap;
 
@@ -20,24 +20,29 @@ pub enum StructureType {
 
 #[derive(Clone, Debug)]
 pub enum Structure {
-    Swap(Action),
-    PoolCreation(Action),
+    Swap(StructuredTrace),
+    PoolCreation(StructuredTrace),
 }
 
 pub struct Normalizer {
     /// Mapping of a transaction hash to a vector of actions.
-    pub actions: HashMap<H256, Vec<Action>>,
+    pub actions: HashMap<H256, Vec<StructuredTrace>>,
 }
 
 impl Normalizer {
-    pub fn new(actions: Vec<Action>) -> Self {
-        let mut tx_map: HashMap<reth_primitives::H256, Vec<Action>> = HashMap::new();
+    pub fn new(actions: Vec<StructuredTrace>) -> Self {
+        let mut tx_map: HashMap<reth_primitives::H256, Vec<StructuredTrace>> = HashMap::new();
 
-        for i in actions {
-            if let Some(x) = tx_map.get_mut(&i.trace.transaction_hash.unwrap()) {
-                (*x).push(i);
+        for action in actions {
+            let trace = match &action {
+                StructuredTrace::CALL(call_action) => call_action.trace.clone(),
+                StructuredTrace::CREATE(create_action) => create_action.trace.clone(),
+            };
+
+            if let Some(x) = tx_map.get_mut(&trace.transaction_hash.unwrap()) {
+                (*x).push(action);
             } else {
-                tx_map.insert(i.trace.transaction_hash.unwrap(), vec![i]);
+                tx_map.insert(trace.transaction_hash.unwrap(), vec![action]);
             }
         }
 
@@ -54,16 +59,26 @@ impl Normalizer {
         normalized
     }
 
-    pub fn normalize_actions(&self, actions: Vec<Action>) -> Vec<Structure> {
+    pub fn normalize_actions(&self, actions: Vec<StructuredTrace>) -> Vec<Structure> {
         let mut structures = vec![];
 
-        for i in actions {
-            match STRUCTURES.get(&i.function_name).cloned() {
-                Some(val) => match val {
-                    StructureType::Swap => structures.push(Structure::Swap(i)),
-                    StructureType::PoolCreation => structures.push(Structure::PoolCreation(i)),
-                },
-                None => (),
+        for action in actions {
+            match action {
+                StructuredTrace::CALL(call_action) => {
+                    if let Some(val) = STRUCTURES.get(&call_action.function_name).cloned() {
+                        match val {
+                            StructureType::Swap => {
+                                structures.push(Structure::Swap(StructuredTrace::CALL(call_action)))
+                            }
+                            StructureType::PoolCreation => structures
+                                .push(Structure::PoolCreation(StructuredTrace::CALL(call_action))),
+                        }
+                    }
+                }
+                StructuredTrace::CREATE(create_action) => {
+                    // handle CREATE actions if necessary
+                    // for now, we are skipping them as per your original code
+                }
             }
         }
 
