@@ -28,15 +28,16 @@ alloy-primitives = {git = "https://github.com/alloy-rs/core", package = "alloy-p
 alloy-json-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-json-abi"}
 alloy-dyn-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi"}
 
-
-
 reqwest = { version = "0.11.18", features = ["json"] }
 serde =  { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 thiserror = "1.0"
-tracing = "0.1.37"
 semver = "1.0"
+
+#tracing
+
+
 
 [dev-dependencies]
 ethers-solc = "2.0.7"

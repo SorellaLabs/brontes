@@ -23,8 +23,8 @@ reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm"
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", rev = "31af4d5"}
 
 # tracing
-tracing = "0.1.0"
-tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
 
 # Async
 tokio = { version = "1.28.2", features = ["full"] }
