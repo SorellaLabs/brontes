@@ -1,4 +1,4 @@
-use crate::action::StructuredTrace::{self, CALL, CREATE};
+/*use crate::structured_trace::StructuredTrace::{self, CALL, CREATE};
 
 use std::collections::HashMap;
 
@@ -9,7 +9,7 @@ use phf::phf_map;
 static STRUCTURES: phf::Map<&'static str, StructureType> = phf_map! {
     "swap" => StructureType::Swap,
     "createPool" => StructureType::PoolCreation,
-    // Add a bunch more function_name -> StructureType mappings here - could even auto generate.
+    // Add a bunch more function_name -> StwructureType mappings here - could even auto generate.
 };
 
 #[derive(Clone, Debug)]
@@ -22,6 +22,15 @@ pub enum StructureType {
 pub enum Structure {
     Swap(StructuredTrace),
     PoolCreation(StructuredTrace),
+}
+
+/// A type of protocol.
+/// TODO: Add more, and in addition add detection.
+#[derive(Debug, Clone)]
+pub enum ProtocolType {
+    UniswapV2,
+    UniswapV3,
+    Curve,
 }
 
 pub struct Normalizer {
@@ -85,3 +94,4 @@ impl Normalizer {
         structures
     }
 }
+*/
