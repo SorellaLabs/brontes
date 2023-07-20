@@ -1,7 +1,11 @@
-use std::{env, error::Error, path::Path};
-
-use poirot_core::{decode::Parser, normalize::Normalizer, trace::TracingClient};
+use poirot_core::{decode::Parser, trace::TracingClient};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
+use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
+
+
+
+//Std
+use std::{collections::HashSet, env, error::Error, path::Path};
 
 fn main() {
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -10,11 +14,7 @@ fn main() {
         .build()
         .unwrap();
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-        .format_module_path(false)
-        .format_timestamp(Some(env_logger::fmt::TimestampPrecision::Millis))
-        .filter_module(module_path!(), log::LevelFilter::Debug)
-        .init();
+    tracing_subscriber::fmt::init();
 
     match runtime.block_on(run(runtime.handle().clone())) {
         Ok(()) => println!("Success!"),
@@ -48,23 +48,24 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let mut parser = Parser::new(key.clone());
 
-    let parity_trace =
-        tracer.trace.trace_block(BlockId::Number(Number(17679852))).await.unwrap().unwrap();
-    let actions = parser.parse(parity_trace).await;
-    parser.stats_history.last().unwrap().display();
-
-    let parity_trace =
-        tracer.trace.trace_block(BlockId::Number(Number(17679853))).await.unwrap().unwrap();
-    let actions1 = parser.parse(parity_trace).await;
-    parser.stats_history.last().unwrap().display();
-
-    //let normalizer = Normalizer::new(actions).normalize();
-
-    /*for structure in normalizer {
-        for val in structure {
-            println!("{:#?}", val);
-        }
-    }*/
+    let block_trace = trace_block(&tracer, 17679852).await.unwrap();
 
     Ok(())
+}
+
+async fn trace_block(
+    tracer: &TracingClient,
+    block_number: u64,
+) -> Result<Vec<TraceResultsWithTransactionHash>, Box<dyn Error>> {
+    let mut trace_type = HashSet::new();
+    trace_type.insert(TraceType::Trace);
+
+    let parity_trace = tracer
+        .trace
+        .replay_block_transactions(BlockId::Number(Number(block_number)), trace_type)
+        .await
+        .map_err(|e| Box::new(e) as Box<dyn Error>)?
+        .unwrap();
+
+    Ok(parity_trace)
 }
