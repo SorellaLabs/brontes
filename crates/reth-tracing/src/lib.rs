@@ -46,7 +46,7 @@ pub struct TracingClient {
 impl TracingClient {
     pub fn new(db_path: &Path, handle: Handle) -> Self {
         let task_manager = TaskManager::new(handle);
-        let task_executor = task_manager.executor();
+        let task_executor: reth_tasks::TaskExecutor = task_manager.executor();
 
         tokio::task::spawn(task_manager);
 
