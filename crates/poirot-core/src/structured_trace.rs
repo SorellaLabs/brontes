@@ -27,7 +27,7 @@ pub struct CallAction {
     pub from: Address,
     pub to: Address,
     /// Name of the function that has been called.
-    pub function_name: &str,
+    pub function_name: String,
     /// Vector of inputs to the function.
     pub inputs: Option<DynSolValue>,
     //

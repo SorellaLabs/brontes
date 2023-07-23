@@ -23,7 +23,9 @@ use std::{
     path::{Path, PathBuf},
 };
 // tracing
-use tracing::{debug, warn, instrument, error, span, Level};
+use tracing::{info, warn, instrument, error, span, Level, field};
+use tracing::field::debug;
+
 
 
 const UNKNOWN: &str = "unknown";
@@ -70,7 +72,7 @@ impl Parser {
     }
 
 
-    #[tracing::instrument]
+    #[instrument]
     pub async fn parse_block(
         &mut self,
         block_trace: Vec<TraceResultsWithTransactionHash>,
@@ -80,31 +82,24 @@ impl Parser {
 
         for (idx, trace) in block_trace.iter().enumerate() {
             let span = span!(
-                Level::INFO, 
-                "parse_block", 
+                Level::INFO,
+                "parse_block",
                 total_tx = idx + 1
             );
             let _enter = span.enter();
-
+    
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
                     result.push(res);
                 }
                 Err(e) => {
-                    warn!("{}", format!("Error parsing trace: {:?}", e));
+                    warn!(error = %e, "Error parsing trace");
                     stats.increment_error(e);
-                }
-
-                Err(e) => {
-                    warn!("{}", format!("Error parsing trace: {:?}", e));
                 }
             }
         }
-
-        self.stats_history.push(stats);
         result
     }
-
 
     #[instrument]
     pub async fn parse_tx(
@@ -147,9 +142,11 @@ impl Parser {
                     continue
                 }
                 Err(e) => {
-                    error!("Failed to fetch contract ABI: {}", e);
-                    return Err(TraceParseError::EtherscanError(e));
+                    let trace_error = TraceParseError::EtherscanError(e);
+                    error!(error = %trace_error, "Failed to fetch contract ABI");
+                    return Err(trace_error);
                 }
+                
             };
 
             // Check if the input is empty, indicating a potential `receive` or `fallback` function
