@@ -3,6 +3,7 @@ members = [
     "crates/poirot-core",
     "crates/bin",
     "crates/alloy-etherscan",
+    "crates/reth-tracing",
 ]
 
 [patch.crates-io]
