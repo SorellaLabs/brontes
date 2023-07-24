@@ -23,11 +23,11 @@ reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm"
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", rev = "31af4d5"}
 
 # tracing
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 
 # Async
-tokio = { version = "1.28.2", features = ["full"] }
+tokio = { version = "1.28.2", features = ["full", "tracing"] }
 
 # Alloy
 alloy-sol-types = {git = "https://github.com/alloy-rs/core", package = "alloy-sol-types", features = ["json"]}
