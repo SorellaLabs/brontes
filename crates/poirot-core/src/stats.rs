@@ -2,6 +2,7 @@ use tracing::{span::Attributes, Subscriber, field::{Visit, Field}, Id};
 use tracing_subscriber::{registry::LookupSpan, Layer, layer::Context};
 use crate::errors::TraceParseError;
 
+pub struct ParserStatsLayer;
 
 #[derive(Default, Debug)]
 pub struct ParserStats {
@@ -18,7 +19,7 @@ pub struct ParserStats {
 }
 
 
-impl<S> Layer<S> for ParserStats
+impl<S> Layer<S> for ParserStatsLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
@@ -40,6 +41,8 @@ where
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
         let span = ctx.span(&id).unwrap();
         let binding = span.extensions();
+        let stats = binding.get::<ParserStats>().unwrap();
+
 
         println!(
             "Total Transactions: {}\n 
@@ -52,16 +55,16 @@ where
             Invalid Function Selector Errors: {}\n
             ABI Decoding Failed Errors: {}\n
             Trace Missing Errors: {}\n",
-            self.total_tx,
-            self.total_traces,
-            self.successful_parses,
-            self.not_recognized_action_errors,
-            self.empty_input_errors,
-            self.etherscan_errors,
-            self.abi_parse_errors,
-            self.invalid_function_selector_errors,
-            self.abi_decoding_failed_errors,
-            self.trace_missing_errors
+            stats.total_tx,
+            stats.total_traces,
+            stats.successful_parses,
+            stats.not_recognized_action_errors,
+            stats.empty_input_errors,
+            stats.etherscan_errors,
+            stats.abi_parse_errors,
+            stats.invalid_function_selector_errors,
+            stats.abi_decoding_failed_errors,
+            stats.trace_missing_errors
         );
     }
 }
