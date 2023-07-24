@@ -39,7 +39,7 @@ impl CallAction {
     pub fn new(
         from: Address,
         to: Address,
-        function_name: &str,
+        function_name: String,
         inputs: Option<DynSolValue>,
         trace_address: Vec<usize>,
     ) -> Self {

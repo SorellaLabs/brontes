@@ -4,6 +4,7 @@ members = [
     "crates/bin",
     "crates/alloy-etherscan",
     "crates/reth-tracing",
+    "crates/tracing",
 ]
 
 [patch.crates-io]
@@ -11,3 +12,9 @@ members = [
 ruint = { git = "https://github.com/paradigmxyz/uint" }
 revm-primitives = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
 revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
+
+[workspace.dependencies]
+#Tracing
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
+console-subscriber = "0.1.5"
