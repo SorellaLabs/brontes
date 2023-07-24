@@ -75,7 +75,7 @@ impl Visit for ParserStats {
         todo!()
     }
 
-    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+    fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(error) = value.downcast_ref::<TraceParseError>() {
             match error {
                 TraceParseError::TraceMissing => self.trace_missing_errors += 1,
