@@ -9,7 +9,7 @@ edition = "2021"
 poirot-core = { path = "../poirot-core" }
 
 # Async
-tokio = { version = "1.13.0", features = ["full"] }
+tokio = { version = "1.13.0", features = ["full", "tracing"] }
 
 # Reth
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "31af4d5" }
@@ -31,6 +31,8 @@ reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth
 env_logger = "0.10.0"
 log = "0.4.18"
 
-#Tracing
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
+# tracing
+tracing = { workspace = true }
+console-subscriber = "0.1.5"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+reth-tracing = { path="../reth-tracing" }

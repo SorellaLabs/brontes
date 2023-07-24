@@ -1,14 +1,8 @@
-use crate::{
-    parser_stats::{
-        ParserStats,
-        TraceParseError::{self, *},
-    },
-    structured_trace::{
+use crate::{structured_trace::{
         CallAction,
         StructuredTrace::{self, CALL, CREATE},
         TxTrace,
-    },
-};
+    }, stats::ParserStats, errors::TraceParseError};
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_etherscan::{errors::EtherscanError, Client};
 use alloy_json_abi::{JsonAbi, StateMutability};
@@ -18,13 +12,13 @@ use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, CallType, TraceResultsWithTransactionHash,
 };
+use tracing::{error, instrument, span, warn, info};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
 // tracing
-use tracing::{info, warn, instrument, error, span, Level, field};
-use tracing::field::debug;
+
 
 
 
@@ -48,7 +42,7 @@ impl Parser {
         let paths = fs::read_dir("./").unwrap();
 
         let paths = fs::read_dir("./").unwrap_or_else(|err| {
-            tracing::error!("Failed to read directory: {}", err);
+            error!("Failed to read directory: {}", err);
             std::process::exit(1);
         });
 
@@ -67,41 +61,33 @@ impl Parser {
                 CACHE_TIMEOUT,
             )
             .unwrap(),
-            stats_history: vec![],
         }
     }
 
 
-    #[instrument]
+    #[instrument(skip(self, block_trace))]
     pub async fn parse_block(
         &mut self,
+        block_num: u64,
         block_trace: Vec<TraceResultsWithTransactionHash>,
     ) -> Vec<TxTrace> {
         let mut result: Vec<TxTrace> = vec![];
-        let mut stats = ParserStats::default();
 
         for (idx, trace) in block_trace.iter().enumerate() {
-            let span = span!(
-                Level::INFO,
-                "parse_block",
-                total_tx = idx + 1
-            );
-            let _enter = span.enter();
     
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
                     result.push(res);
                 }
-                Err(e) => {
-                    warn!(error = %e, "Error parsing trace");
-                    stats.increment_error(e);
+                Err(error) => {
+                    warn!(?error, "Error parsing trace");
                 }
             }
         }
         result
     }
 
-    #[instrument]
+    #[instrument(skip(self, trace))]
     pub async fn parse_tx(
         &self,
         trace: &TraceResultsWithTransactionHash,
@@ -120,33 +106,18 @@ impl Parser {
                     structured_traces.push(StructuredTrace::CREATE(create_action.clone()));
                     continue
                 }
-                _ => return Err(TraceParseError::NotRecognizedAction(trace.transaction_hash)),
+                _ => return Err(TraceParseError::NotRecognizedAction(trace.transaction_hash.into())),
             };
 
             let fetch_abi_result = self.client.contract_abi(action.to.into()).await;
 
             let abi = match fetch_abi_result {
                 Ok(a) => a,
-                Err(EtherscanError::ContractCodeNotVerified(_)) => {
-                    // If the contract is unverified, register it as unknown and proceed.
-                    stats.increment_error(TraceParseError::EtherscanError(
-                        EtherscanError::ContractCodeNotVerified(action.to.into()),
-                    ));
-                    structured_traces.push(StructuredTrace::CALL(CallAction::new(
-                        action.from,
-                        action.to,
-                        UNKNOWN, // mark function name as unknown
-                        None,                  // no inputs
-                        trace_address.clone(),
-                    )));
-                    continue
-                }
                 Err(e) => {
-                    let trace_error = TraceParseError::EtherscanError(e);
-                    error!(error = %trace_error, "Failed to fetch contract ABI");
-                    return Err(trace_error);
+                    let error = TraceParseError::EtherscanError(e);
+                    warn!(?error, "Failed to fetch contract ABI");
+                    return Err(error);
                 }
-                
             };
 
             // Check if the input is empty, indicating a potential `receive` or `fallback` function
@@ -172,11 +143,14 @@ impl Parser {
                         .await
                         .map_err(TraceParseError::EtherscanError)?;
 
-                    let decoded_input =
-                        decode_input_with_abi(&impl_abi, action, &trace_address, tx_hash)?.ok_or(
-                            TraceParseError::InvalidFunctionSelector(trace.transaction_hash),
-                        )?;
-                    structured_traces.push(decoded_input);
+                    let decoded_input = if let Some(input) = decode_input_with_abi(&impl_abi, action, &trace_address, tx_hash)? {
+                        Ok(input)
+                    } else{
+                        let error = TraceParseError::InvalidFunctionSelector(trace.transaction_hash.into());
+                        warn!(%error, "Invalid Function Selector");
+                        Err(error)
+                    };
+                    structured_traces.push(decoded_input?);
                 }
             }
         }
@@ -207,19 +181,21 @@ fn decode_input_with_abi(
                 // Decode the inputs based on the resolved parameters.
                 match params_type.decode_params(inputs) {
                     Ok(decoded_params) => {
-                        log!(
+                        info!(
                             "For function {}: Decoded params: {:?} \n, with tx hash: {:#?}",
                             function.name, decoded_params, tx_hash
                         );
                         return Ok(Some(StructuredTrace::CALL(CallAction::new(
                             action.from,
                             action.to,
-                            &function.name,
+                            function.name.clone(),
                             Some(decoded_params),
                             trace_address.clone(),
                         ))))
                     }
-                    Err(e) => warn!("Failed to decode params: {}", e),
+                    Err(e) => {
+                        warn!(error=?e, "Failed to decode params");
+                    },
                 }
             }
         } 
@@ -240,7 +216,7 @@ fn handle_empty_input(
                 return Ok(StructuredTrace::CALL(CallAction::new(
                     action.to,
                     action.from,
-                    RECEIVE,
+                    RECEIVE.to_string(),
                     None,
                     trace_address.clone(),
                 )))
@@ -252,12 +228,12 @@ fn handle_empty_input(
                 return Ok(StructuredTrace::CALL(CallAction::new(
                     action.from,
                     action.to,
-                    FALLBACK,
+                    FALLBACK.to_string(),
                     None,
                     trace_address.clone(),
                 )))
             }
         }
     }
-    Err(TraceParseError::EmptyInput(tx_hash.clone()))
+    Err(TraceParseError::EmptyInput(tx_hash.clone().into()))
 }
