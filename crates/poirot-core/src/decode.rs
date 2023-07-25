@@ -131,7 +131,7 @@ impl Parser {
                 Ok(a) => a,
                 Err(e) => {
                     let error: &(dyn std::error::Error + 'static) = &e;
-                    error!(error = %error, "Failed to fetch contract ABI");
+                    error!(%error, "Failed to fetch contract ABI");
                     continue
                 }
             };
