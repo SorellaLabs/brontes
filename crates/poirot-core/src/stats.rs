@@ -68,6 +68,7 @@ where
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
             if let Some(ext) = span.extensions_mut().get_mut::<ParserStats>() {
+                println!("{:?}", event.metadata().target());
                 if event.metadata().target().contains("Finished Parsing Block") {
                     ext.print_stats();
                 } else {
