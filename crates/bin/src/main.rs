@@ -1,9 +1,10 @@
 use poirot_core::{decode::Parser, stats::ParserStatsLayer};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
-use tracing_subscriber::{Registry, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 use reth_tracing::TracingClient;
-
+use tracing_subscriber::{
+    prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Registry,
+};
 
 //Std
 use std::{collections::HashSet, env, error::Error, path::Path};
@@ -15,13 +16,11 @@ fn main() {
         .build()
         .unwrap();
 
-    let subscriber = Registry::default()
-        .with(ParserStatsLayer)
-        .with(tracing_subscriber::fmt::layer());
-    
+    let subscriber =
+        Registry::default().with(ParserStatsLayer).with(tracing_subscriber::fmt::layer());
+
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");
-    
 
     match runtime.block_on(run(runtime.handle().clone())) {
         Ok(()) => println!("Success!"),

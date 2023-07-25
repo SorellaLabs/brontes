@@ -1,15 +1,12 @@
+use alloy_etherscan::errors::EtherscanError;
 use ethers_core::types::H256;
 use thiserror::Error;
-use alloy_etherscan::errors::EtherscanError;
-
 
 /// Custom error type for trace parsing
 #[derive(Debug, Error)]
 pub enum TraceParseError {
     #[error("trace missing")]
-    TraceMissing,
-    #[error("not recognized action: {0}")]
-    NotRecognizedAction(H256),
+    TraceMissing, // must be returned
     #[error("empty input: {0}")]
     EmptyInput(H256),
     #[error("etherscan error: {0}")]
