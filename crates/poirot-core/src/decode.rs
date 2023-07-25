@@ -138,6 +138,7 @@ impl Parser {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
                         structured_traces.push(structured_trace);
+                        continue;
                     }
                     Err(error) => {
                         warn!(?error, "Empty Input without fallback or receive");
