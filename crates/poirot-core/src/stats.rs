@@ -2,7 +2,7 @@ use crate::{errors::TraceParseError, format_color};
 use tracing::{
     field::{Field, Visit},
     span::Attributes,
-    Id, Subscriber, info,
+    Id, Subscriber, event, Level,
 };
 use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
 
@@ -29,7 +29,7 @@ impl Default for ParserStats {
 
 impl ParserStats {
     pub fn print_stats(&self) {
-        info!("{}", format_color("Total Transactions", self.total_tx));
+        event!(Level::INFO, "{}", format_color("Total Transactions", self.total_tx));
         println!(
             "
 Total Traces: {}

@@ -23,7 +23,7 @@ reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm"
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", rev = "31af4d5"}
 
 # tracing
-tracing = { workspace = true }
+tracing = "0.1.37"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 tracing-futures = { version = "0.2.5"}
 
