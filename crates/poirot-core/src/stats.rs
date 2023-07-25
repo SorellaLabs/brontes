@@ -78,18 +78,23 @@ where
 impl Visit for ParserStats {
     /// will implement incrementing counters for tx/block traces
     /// tbd
+    /// find a better way to do this
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        if field.name() == "error" {
-            println!("error here: {:?}", value);
-            match format!("{:?}", value).as_str() {
-                "TraceMissing" => self.trace_missing_errors += 1,
-                "EmptyInput" => self.empty_input_errors += 1,
-                "EtherscanError" => self.etherscan_errors += 1,
-                "AbiParseError" => self.abi_parse_errors += 1,
-                "InvalidFunctionSelector" => self.abi_parse_errors += 1,
-                "AbiDecodingFailed" => self.abi_decoding_failed_errors += 1,
-                _ => println!("{}", format!("{:?}", value).as_str()),
-            }
+        let value_str = format!("{:?}", value);
+        if value_str.contains("TraceMissing") {
+            self.trace_missing_errors += 1;
+        } else if value_str.contains("EmptyInput") {
+            self.empty_input_errors += 1;
+        } else if value_str.contains("EtherscanError") {
+            self.etherscan_errors += 1;
+        } else if value_str.contains("AbiParseError") {
+            self.abi_parse_errors += 1;
+        } else if value_str.contains("InvalidFunctionSelector") {
+            self.abi_parse_errors += 1;
+        } else if value_str.contains("AbiDecodingFailed") {
+            self.abi_decoding_failed_errors += 1;
+        } else {
+            println!("{}", value_str);
         }
     }
 
