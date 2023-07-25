@@ -98,6 +98,7 @@ where
         // Get the span whose data is being recorded
         let span = ctx.span(id).unwrap();
         if let Some(ext) = span.extensions_mut().get_mut::<ParserStatsVisitor>() {
+            println!("VALUES {:?}", values);
             values.record(&mut *ext);
         };
     }
