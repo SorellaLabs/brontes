@@ -66,7 +66,7 @@ impl Parser {
     // Should parse all transactions, if a tx fails to parse it should still be stored with None
     // fields on the decoded subfield
 
-    #[instrument(skip(self, block_trace))]
+    #[instrument(skip(self, block_trace), target = "error")]
     pub async fn parse_block(
         &mut self,
         block_num: u64,
@@ -123,7 +123,7 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    error!(error=?TraceParseError::from(e), "Failed to fetch contract ABI");
+                    warn!(error=?TraceParseError::from(e), "Failed to fetch contract ABI");
                     continue
                 }
             };
@@ -216,7 +216,7 @@ fn decode_input_with_abi(
                 match params_type.decode_params(inputs) {
                     Ok(decoded_params) => {
                         info!(
-                            "Function: {}\nDecoded params: {:?}\nTx hash: {:#?}",
+                            "Function: {}\nDecoded Params: {:?}\nTx hash: {:#?}",
                             function.name, decoded_params, tx_hash
                         );
                         return Ok(StructuredTrace::CALL(CallAction::new(
