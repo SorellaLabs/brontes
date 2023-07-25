@@ -36,7 +36,7 @@ impl ParserStats {
                 .with_env_filter(EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy())
                 .finish(), 
             || {
-                println!(); // for separation between stats
+                //println!(); // for separation between stats
                 info!("{}", format_color("Total Transactions", self.total_tx, false));
                 info!("{}", format_color("Total Traces", self.total_traces, false));
                 info!("{}", format_color("Successful Parses", self.successful_parses, false));
