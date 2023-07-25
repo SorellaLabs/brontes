@@ -1,6 +1,10 @@
-use tracing::{span::Attributes, Subscriber, field::{Visit, Field}, Id};
-use tracing_subscriber::{registry::LookupSpan, Layer, layer::Context};
 use crate::errors::TraceParseError;
+use tracing::{
+    field::{Field, Visit},
+    span::Attributes,
+    Id, Subscriber,
+};
+use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
 
 pub struct ParserStatsLayer;
 
@@ -17,7 +21,6 @@ pub struct ParserStats {
     pub abi_decoding_failed_errors: usize,
     pub trace_missing_errors: usize,
 }
-
 
 impl<S> Layer<S> for ParserStatsLayer
 where
@@ -43,7 +46,6 @@ where
         let binding = span.extensions();
         let stats = binding.get::<ParserStats>().unwrap();
 
-
         println!(
             "Total Transactions: {}\n 
             Total Traces: {}\n
@@ -68,8 +70,6 @@ where
         );
     }
 }
-
-
 
 impl Visit for ParserStats {
     /// will implement incrementing counters for tx/block traces
