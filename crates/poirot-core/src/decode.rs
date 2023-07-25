@@ -88,7 +88,7 @@ impl Parser {
                 }
             }
         }
-        info!(target: "Finished Parsing Block", ?block_num);
+        info!("Finished Parsing Block");
         result
     }
 
@@ -106,7 +106,8 @@ impl Parser {
         let mut structured_traces = Vec::new();
         let tx_hash = &trace.transaction_hash;
 
-        for transaction_trace in transaction_traces {
+        for (i, transaction_trace) in transaction_traces.iter().enumerate() {
+            info!(message = format!("Starting Trace {}/{}", i, transaction_traces.len()), tx_hash = format!("{:#x}", trace.transaction_hash), trace_action = "Create");
             let (action, trace_address) = match &transaction_trace.action {
                 RethAction::Call(call) => (call, transaction_trace.trace_address.clone()),
                 RethAction::Create(create_action) => {
