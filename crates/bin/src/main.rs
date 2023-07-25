@@ -58,8 +58,11 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let mut parser = Parser::new(key.clone());
 
-    let block_trace = trace_block(&tracer, 17679852).await.unwrap();
-    let action = parser.parse_block(17679852, block_trace).await;
+    for i in 17679852..17679854 {
+        let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
+        let action = parser.parse_block(i, block_trace).await;
+    }
+
 
     Ok(())
 }
