@@ -66,16 +66,18 @@ impl Parser {
     // Should parse all transactions, if a tx fails to parse it should still be stored with None
     // fields on the decoded subfield
 
-    #[instrument(skip(self, block_trace), target = "error")]
+    //#[instrument(skip(self, block_trace), target = "error")]
     pub async fn parse_block(
         &mut self,
         block_num: u64,
         block_trace: Vec<TraceResultsWithTransactionHash>,
     ) -> Vec<TxTrace> {
+        let span = tracing::info_span!("parse_block", block_num);
+        let _guard = span.enter();
         let mut result: Vec<TxTrace> = vec![];
 
         for (idx, trace) in block_trace.iter().enumerate() {
-            //We don't need to through an error for this given transaction so long as the error is
+            // We don't need to through an error for this given transaction so long as the error is
             // logged & emmitted and the transaction is stored.
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
@@ -86,6 +88,7 @@ impl Parser {
                 }
             }
         }
+        drop(_guard);
         result
     }
 
@@ -215,9 +218,8 @@ fn decode_input_with_abi(
                 // Decode the inputs based on the resolved parameters.
                 match params_type.decode_params(inputs) {
                     Ok(decoded_params) => {
-                        info!(
-                            "Function: {}\nDecoded Params: {:?}\nTx hash: {:#?}",
-                            function.name, decoded_params, tx_hash
+                        info!("Tx Hash: {:#?} -- Function: {}\n",
+                        tx_hash, function.name
                         );
                         return Ok(StructuredTrace::CALL(CallAction::new(
                             action.from,
