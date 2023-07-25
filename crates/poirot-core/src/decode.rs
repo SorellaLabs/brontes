@@ -217,7 +217,7 @@ fn decode_input_with_abi(
                 // Decode the inputs based on the resolved parameters.
                 match params_type.decode_params(inputs) {
                     Ok(decoded_params) => {
-                        info!("Tx Hash: {:#?} -- Function: {}\n",
+                        info!("Tx Hash: {:#?} -- Function: {}",
                         tx_hash, function.name
                         );
                         return Ok(StructuredTrace::CALL(CallAction::new(
