@@ -89,7 +89,6 @@ impl Parser {
         result
     }
 
-    // TODO: First figure out what output, & result are in traces
     // TODO: Then figure out how to deal with error
     // TODO: need to add decoding for diamond proxy
 
@@ -127,8 +126,7 @@ impl Parser {
             let abi = match fetch_abi_result {
                 Ok(a) => a,
                 Err(e) => {
-                    let error = TraceParseError::EtherscanError(e);
-                    warn!(?error, "Failed to fetch contract ABI");
+                    warn!(error=?TraceParseError::EtherscanError(e), "Failed to fetch contract ABI");
                     continue
                 }
             };
@@ -149,47 +147,47 @@ impl Parser {
 
             // Decode the input based on the ABI.
             // If the decoding fails, you have to make a call to:
-            // facetAddress(function selector) which is a function on any diamond proxy contract, if it returns
-            // it will give you the address of the facet which can be used to fetch the ABI
-            // Use the sol macro to previously generate the facetAddress function binding & call it on the to address that is being called in the first place
-            // https://docs.rs/alloy-sol-macro/latest/alloy_sol_macro/macro.sol.html
-            // you will have to do a call on the reth_api which you have to add to the reth_tracing crate lib.rs. Just copy how it is done in the 
-            // ethers-reth repo 
+            // facetAddress(function selector) which is a function on any diamond proxy contract, if
+            // it returns it will give you the address of the facet which can be used to
+            // fetch the ABI Use the sol macro to previously generate the facetAddress
+            // function binding & call it on the to address that is being called in the first place https://docs.rs/alloy-sol-macro/latest/alloy_sol_macro/macro.sol.html
+            // you will have to do a call on the reth_api which you have to add to the reth_tracing
+            // crate lib.rs. Just copy how it is done in the ethers-reth repo
 
-            match decode_input_with_abi(&abi, action, &trace_address, tx_hash) {
-                Ok(decoded_input) => {
-                    structured_traces.push(decoded_input);
-                    continue
-                }
+            let structure_input = match decode_input_with_abi(&abi, action, &trace_address, tx_hash)
+            {
+                Ok(d) => d,
                 Err(e) => {
                     // If decoding with the original ABI failed, fetch the implementation ABI and
                     // try again
-                    let impl_abi = self
+                    let impl_abi = match self
                         .client
                         .proxy_contract_abi(action.to.into())
-                        .await
-                        .map_err(TraceParseError::EtherscanError)?;
+                        .await {
+                            Ok(abi) => abi,
+                            Err(e) => {
+                                warn!(error=?TraceParseError::EtherscanError(e), "unable to get proxy contract abi");
+                                continue;
+                            }
+                        };
 
-                    if let Ok(structured_trace) =
-                        decode_input_with_abi(&impl_abi, action, &trace_address, tx_hash)
-                    {
-                        structured_traces.push(structured_trace);
-                    } else {
-                        let structured_trace = StructuredTrace::CALL(CallAction::new(
-                            action.from,
-                            action.to,
-                            action.value,
-                            UNKNOWN.to_string(),
-                            None,
-                            trace_address.clone(),
-                        ));
-                        structured_traces.push(structured_trace);
-                        let error =
-                            TraceParseError::InvalidFunctionSelector(trace.transaction_hash.into());
-                        warn!(?error, "Invalid Function Selector");
-                    };
+                    match decode_input_with_abi(&impl_abi, action, &trace_address, tx_hash) {
+                        Ok(s) => s,
+                        Err(error) => {
+                            warn!(?error, "Invalid Function Selector");
+                            StructuredTrace::CALL(CallAction::new(
+                                action.from,
+                                action.to,
+                                action.value,
+                                UNKNOWN.to_string(),
+                                None,
+                                trace_address.clone(),
+                            ))
+                        }
+                    }
                 }
-            }
+            };
+            structured_traces.push(structure_input);
         }
 
         Ok(TxTrace { trace: structured_traces, tx_hash: trace.transaction_hash, tx_index })
@@ -233,7 +231,6 @@ fn decode_input_with_abi(
                         )))
                     }
                     Err(e) => {
-                        warn!(error=?e, "Failed to decode params");
                         return Err(TraceParseError::AbiDecodingFailed(tx_hash.clone().into()))
                     }
                 }
