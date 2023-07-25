@@ -88,6 +88,19 @@ where
             };
         }
     }
+
+    fn on_record(
+        &self,
+        id: &tracing::span::Id,
+        values: &tracing::span::Record<'_>,
+        ctx: tracing_subscriber::layer::Context<'_, S>,
+    ) {
+        // Get the span whose data is being recorded
+        let span = ctx.span(id).unwrap();
+        if let Some(ext) = span.extensions_mut().get_mut::<ParserStatsVisitor>() {
+            values.record(&mut *ext);
+        };
+    }
 }
 
 impl Visit for ParserStatsVisitor {
