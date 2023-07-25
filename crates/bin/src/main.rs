@@ -2,11 +2,10 @@ use poirot_core::{decode::Parser, stats::ParserStatsLayer};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
-use tracing::{Level, span};
+use tracing::Level;
 use tracing_subscriber::{
     prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Registry, EnvFilter, Layer,
 };
-use tracing_futures::Instrument;
 
 //Std
 use std::{collections::HashSet, env, error::Error, path::Path};
@@ -59,8 +58,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::new(key.clone());
 
     let block_trace = trace_block(&tracer, 17679852).await.unwrap();
-    let block_num = 17679852;
-    let action = parser.parse_block(17679852, block_trace).instrument(span!(Level::INFO, "parse_block", ?block_num)).await;
+    let action = parser.parse_block(17679852, block_trace).await;
 
     Ok(())
 }
