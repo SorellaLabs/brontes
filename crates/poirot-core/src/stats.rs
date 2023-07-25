@@ -33,9 +33,8 @@ where
 {
     fn on_new_span(&self, _attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).unwrap();
-        if span.extensions_mut().get_mut::<ParserStats>().is_none() {
-            span.extensions_mut().insert(ParserStats::default());
-        }
+
+        span.extensions_mut().insert(ParserStats::default());
     }
 
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
