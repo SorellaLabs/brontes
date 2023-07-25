@@ -29,6 +29,7 @@ impl Default for ParserStats {
 
 impl ParserStats {
     pub fn print_stats(&self) {
+        println!("TESTETSTE");
         info!("{}", format_color("Total Transactions", self.total_tx));
         println!(
             "
@@ -69,6 +70,7 @@ where
             let span = ctx.span(id).unwrap();
             if let Some(ext) = span.extensions_mut().get_mut::<ParserStats>() {
                 println!("{:?}", event.metadata().target());
+                println!("{:?}", event.metadata().target().contains("Finished Parsing Block"));
                 if event.metadata().target().contains("Finished Parsing Block") {
                     ext.print_stats();
                 } else {
@@ -102,7 +104,7 @@ impl Visit for ParserStats {
         } else if value_str.contains("Successfully Parsed Trace") {
             self.total_traces += 1;
         } else if value_str.contains("Finished Parsing Block") {
-            self.print_stats();
+            //self.print_stats();
         } else {
             //println!("{}", value_str);
         }
