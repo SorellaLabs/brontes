@@ -121,12 +121,11 @@ impl Parser {
                 }
             };
 
-            let fetch_abi_result = self.client.contract_abi(action.to.into()).await;
 
-            let abi = match fetch_abi_result {
+            let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    info!(error=?TraceParseError::EtherscanError(e), "Failed to fetch contract ABI");
+                    warn!(error=?TraceParseError::EtherscanError(e), "Failed to fetch contract ABI");
                     continue
                 }
             };
