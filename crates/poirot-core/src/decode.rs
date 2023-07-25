@@ -121,6 +121,7 @@ impl Parser {
             };
 
             println!("action ----------------------------------------- {:?}", action);
+            println!("gas: {:?}", action.input.is_empty());
 
 
             let abi = match self.client.contract_abi(action.to.into()).await {
@@ -133,7 +134,6 @@ impl Parser {
 
             // Check if the input is empty, indicating a potential `receive` or `fallback` function
             // call.
-            println!("gas: {:?}", action.input.is_empty());
             if action.input.is_empty() {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
@@ -231,7 +231,7 @@ fn decode_input_with_abi(
                             trace_address.clone(),
                         )))
                     }
-                    Err(e) => {
+                    Err(_) => {
                         return Err(TraceParseError::AbiDecodingFailed(tx_hash.clone().into()))
                     }
                 }
