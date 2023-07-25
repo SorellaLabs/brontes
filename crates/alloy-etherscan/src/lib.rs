@@ -470,10 +470,10 @@ fn ensure_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
     let url_str = url.as_str();
 
     // ensure URL ends with `/`
-    if url_str.ends_with('/') {
+    if url_str.ends_with("/?") {
         url.into_url()
     } else {
-        into_url(format!("{url_str}/"))
+        into_url(format!("{url_str}/?"))
     }
 }
 
