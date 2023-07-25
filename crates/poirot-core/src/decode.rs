@@ -1,28 +1,26 @@
 use crate::{
     errors::TraceParseError,
-    stats::ParserStats,
     structured_trace::{
         CallAction,
-        StructuredTrace::{self, CALL, CREATE},
+        StructuredTrace::{self},
         TxTrace,
     }, str_trace_action,
 };
-
+use colored::Colorize;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
-use alloy_etherscan::{errors::EtherscanError, Client};
+use alloy_etherscan::Client;
 use alloy_json_abi::{JsonAbi, StateMutability};
 
-use ethers_core::types::{Chain, Trace};
+use ethers_core::types::Chain;
 use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{
-    Action as RethAction, CallAction as RethCallAction, CallType, TraceResultsWithTransactionHash,
+    Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
 };
-use tracing_subscriber::layer::Context;
 use std::{
     fs,
     path::{Path, PathBuf},
 };
-use tracing::{error, info, instrument, span, warn, Span, field, debug};
+use tracing::{error, info, instrument, warn, debug};
 // tracing
 
 const UNKNOWN: &str = "unknown";
@@ -39,9 +37,9 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(etherscan_key: String) -> Self {
-        let paths = fs::read_dir("./").unwrap();
+        let _paths = fs::read_dir("./").unwrap();
 
-        let paths = fs::read_dir("./").unwrap_or_else(|err| {
+        let _paths = fs::read_dir("./").unwrap_or_else(|err| {
             error!("Failed to read directory: {}", err);
             std::process::exit(1);
         });
@@ -88,7 +86,7 @@ impl Parser {
                 }
             }
         }
-        info!("Finished Parsing Block");
+        info!("Finished Parsing Block {}", format!("{}", block_num).bright_blue().bold());
         result
     }
 
@@ -163,7 +161,7 @@ impl Parser {
             let structured_trace = match decode_input_with_abi(&abi, action, &trace_address, tx_hash)
             {
                 Ok(d) => d,
-                Err(e) => {
+                Err(_) => {
                     // If decoding with the original ABI failed, fetch the implementation ABI and
                     // try again
                     let impl_abi = match self
