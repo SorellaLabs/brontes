@@ -1,7 +1,7 @@
 use crate::errors::TraceParseError;
 use tracing::{
     field::{Field, Visit},
-    span::{Attributes, self},
+    span::Attributes,
     Id, Subscriber,
 };
 use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
@@ -31,9 +31,9 @@ impl<S> Layer<S> for ParserStatsLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, _attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).unwrap();
+
         span.extensions_mut().insert(ParserStats::default());
     }
 
