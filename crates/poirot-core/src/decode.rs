@@ -80,7 +80,7 @@ impl Parser {
             // logged & emmitted and the transaction is stored.
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
-                    info!(target: "Successfully Parsed Transaction", tx_hash = format!("{:#x}", res.tx_hash));
+                    info!("Successfully Parsed Transaction", tx_hash = format!("{:#x}", res.tx_hash));
                     result.push(res);
                 }
                 Err(error) => {
@@ -88,7 +88,7 @@ impl Parser {
                 }
             }
         }
-        info!("Finished Parsing Block");
+        info!(target: "Finished Parsing Block");
         result
     }
 
