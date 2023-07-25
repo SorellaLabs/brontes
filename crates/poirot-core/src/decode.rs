@@ -89,7 +89,6 @@ impl Parser {
                 }
             }
         }
-        drop(_guard);
         result
     }
 

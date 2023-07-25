@@ -58,7 +58,11 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::new(key.clone());
 
     let block_trace = trace_block(&tracer, 17679852).await.unwrap();
-    let action = parser.parse_block(17679852, block_trace).await;
+    let block_num = 17679852;
+    let span = tracing::info_span!("parse_block", block_num);
+    let _guard = span.enter();
+    let action = parser.parse_block(block_num, block_trace).await;
+    drop(_guard);
 
     Ok(())
 }
