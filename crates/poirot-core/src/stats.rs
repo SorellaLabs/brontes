@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::{format_color, errors::TraceParseError};
 use tracing::{
     field::{Field, Visit},
@@ -20,6 +22,23 @@ pub struct ParserStats {
     pub abi_decoding_failed_errors: usize,
     pub trace_missing_errors: usize,
 }
+
+
+struct ParserStatsVisitor(BTreeMap<&'static str, u64>);
+
+impl ParserStatsVisitor {
+    pub fn new() -> Self {
+        let mut map = BTreeMap::new();
+        map.insert("TraceMissing", 0);
+        map.insert("EmptyInput", 0);
+        map.insert("EtherscanError", 0);
+        map.insert("AbiParseError", 0);
+        map.insert("InvalidFunctionSelector", 0);
+        map.insert("AbiDecodingFailed", 0);
+        ParserStatsVisitor(map)
+    }
+}
+
 
 impl Default for ParserStats {
     fn default() -> Self {
@@ -58,24 +77,25 @@ where
     fn on_new_span(&self, _attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).unwrap();
 
-        span.extensions_mut().insert(ParserStats::default());
+        span.extensions_mut().insert(ParserStatsVisitor::new());
     }
 
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
-            if let Some(ext) = span.extensions_mut().get_mut::<ParserStats>() {
+            if let Some(ext) = span.extensions_mut().get_mut::<ParserStatsVisitor>() {
                 event.record(&mut *ext);
             };
         }
     }
 }
 
-impl Visit for ParserStats {
+impl Visit for ParserStatsVisitor {
     /// will implement incrementing counters for tx/block traces
     /// find a better way to do this
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
         println!("RECORD DEBUG {:?}", field.name());
+      /* 
         let value_str = format!("{:?}", value);
         if value_str.contains("TraceMissing") {
             self.trace_missing_errors += 1;
@@ -98,6 +118,7 @@ impl Visit for ParserStats {
         } else if value_str.contains("Finished Parsing Block") {
             self.print_stats();
         }
+        */
     }
 
     // tbd
@@ -106,14 +127,16 @@ impl Visit for ParserStats {
         println!("RECORD ERROR");
         if let Some(error) = value.downcast_ref::<TraceParseError>() {
             match error {
-                TraceParseError::TraceMissing => self.trace_missing_errors += 1,
-                TraceParseError::EmptyInput(_) => self.empty_input_errors += 1,
-                TraceParseError::EtherscanError(_) => self.etherscan_errors += 1,
-                TraceParseError::AbiParseError(_) => self.abi_parse_errors += 1,
-                TraceParseError::InvalidFunctionSelector(_) => self.abi_parse_errors += 1,
-                TraceParseError::AbiDecodingFailed(_) => self.abi_decoding_failed_errors += 1,
+                TraceParseError::TraceMissing => *self.0.get_mut("TraceMissing").unwrap() += 1,
+                TraceParseError::EmptyInput(_) => *self.0.get_mut("EmptyInput").unwrap() += 1,
+                TraceParseError::EtherscanError(_) => *self.0.get_mut("EtherscanError").unwrap() += 1,
+                TraceParseError::AbiParseError(_) => *self.0.get_mut("AbiParseError").unwrap() += 1,
+                TraceParseError::InvalidFunctionSelector(_) => *self.0.get_mut("InvalidFunctionSelector").unwrap() += 1,
+                TraceParseError::AbiDecodingFailed(_) => *self.0.get_mut("AbiDecodingFailed").unwrap() += 1,
             }
         }
     }
     
 }
+
+
