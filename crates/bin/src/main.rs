@@ -18,7 +18,7 @@ fn main() {
         .build()
         .unwrap();
     let filter =
-    EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
+    EnvFilter::builder().with_default_directive(Level::ERROR.into()).from_env_lossy();
 
     let subscriber =
         Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter)).with(ParserStatsLayer);
