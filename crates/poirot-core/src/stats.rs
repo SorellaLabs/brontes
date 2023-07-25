@@ -2,7 +2,7 @@ use crate::{errors::TraceParseError, format_color};
 use tracing::{
     field::{Field, Visit},
     span::Attributes,
-    Id, Subscriber, event, Level,
+    Id, Subscriber, info,
 };
 use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
 
@@ -29,9 +29,10 @@ impl Default for ParserStats {
 
 impl ParserStats {
     pub fn print_stats(&self) {
-        //event!(Level::INFO, "{}", format_color("Total Transactions", self.total_tx));
+        info!("{}", format_color("Total Transactions", self.total_tx));
         println!(
             "
+Total Transactions: {} 
 Total Traces: {}
 Successful Parses: {}
 Empty Input Errors: {}
@@ -40,6 +41,7 @@ ABI Parse Errors: {}
 Invalid Function Selector Errors: {}
 ABI Decoding Failed Errors: {}
 Trace Missing Errors: {}\n",
+            self.total_tx,
             self.total_traces,
             self.successful_parses,
             self.empty_input_errors,
@@ -63,11 +65,14 @@ where
     }
 
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
-        println!("{:?}", event.metadata().name());
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
             if let Some(ext) = span.extensions_mut().get_mut::<ParserStats>() {
-                event.record(&mut *ext);
+                if event.metadata().target().contains("Finished Parsing Block") {
+                    ext.print_stats();
+                } else {
+                    event.record(&mut *ext);
+                }
             };
         }
     }
