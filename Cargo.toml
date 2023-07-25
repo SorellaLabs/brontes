@@ -5,6 +5,7 @@ members = [
     "crates/alloy-etherscan",
     "crates/reth-tracing",
     "crates/tracing",
+    "crates/poirot-inspect",
 ]
 
 [patch.crates-io]

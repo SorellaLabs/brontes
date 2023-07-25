@@ -157,8 +157,7 @@ impl Parser {
             // it returns it will give you the address of the facet which can be used to
             // fetch the ABI Use the sol macro to previously generate the facetAddress
             // function binding & call it on the to address that is being called in the first place https://docs.rs/alloy-sol-macro/latest/alloy_sol_macro/macro.sol.html
-            // you will have to do a call on the reth_api which you have to add to the reth_tracing
-            // crate lib.rs. Just copy how it is done in the ethers-reth repo
+
 
             let structured_trace = match decode_input_with_abi(&abi, action, &trace_address, tx_hash)
             {
