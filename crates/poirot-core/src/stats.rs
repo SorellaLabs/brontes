@@ -41,7 +41,7 @@ where
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
             if let Some(ext) = span.extensions_mut().get_mut::<ParserStats>() {
-                event.record(ext);
+                event.record(&mut *ext);
             };
         }
     }
@@ -79,7 +79,17 @@ impl Visit for ParserStats {
     /// will implement incrementing counters for tx/block traces
     /// tbd
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        println!("{:?}", value);
+        if field.name() == "error" {
+            match format!("{:?}", value).as_str() {
+                "TraceMissing" => self.trace_missing_errors += 1,
+                "EmptyInput" => self.empty_input_errors += 1,
+                "EtherscanError" => self.etherscan_errors += 1,
+                "AbiParseError" => self.abi_parse_errors += 1,
+                "InvalidFunctionSelector" => self.abi_parse_errors += 1,
+                "AbiDecodingFailed" => self.abi_decoding_failed_errors += 1,
+                _ => println!("{}", format!("{:?}", value).as_str()),
+            }
+        }
     }
 
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
