@@ -96,6 +96,10 @@ impl Visit for ParserStats {
             self.abi_parse_errors += 1;
         } else if value_str.contains("AbiDecodingFailed") {
             self.abi_decoding_failed_errors += 1;
+        } else if value_str.contains("Successfully Parsed Transaction") {
+            self.total_tx += 1;
+        } else if value_str.contains("Successfully Parsed Trace") {
+            self.total_traces += 1;
         } else if value_str.contains("Finished Parsing Block") {
             self.print_stats();
         } else {
