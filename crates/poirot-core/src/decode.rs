@@ -88,7 +88,7 @@ impl Parser {
                 }
             }
         }
-        info!("Finished Parsing Block {}\n", format!("{}", block_num).bright_blue().bold());
+        info!("Finished Parsing Block {}", format!("{}", block_num).bright_blue().bold());
         result
     }
 
