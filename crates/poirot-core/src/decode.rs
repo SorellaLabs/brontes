@@ -133,7 +133,7 @@ impl Parser {
 
             // Check if the input is empty, indicating a potential `receive` or `fallback` function
             // call.
-            println!("{:?}" action.input.is_empty());
+            println!("gas: {:?}", action.input.is_empty());
             if action.input.is_empty() {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
