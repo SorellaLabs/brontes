@@ -123,7 +123,7 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    warn!(error=?TraceParseError::EtherscanError(e), "Failed to fetch contract ABI");
+                    warn!(error=?TraceParseError::from(e), "Failed to fetch contract ABI");
                     continue
                 }
             };
@@ -164,7 +164,7 @@ impl Parser {
                         .await {
                             Ok(abi) => abi,
                             Err(e) => {
-                                warn!(error=?TraceParseError::EtherscanError(e), "unable to get proxy contract abi");
+                                warn!(error=?TraceParseError::from(e), "unable to get proxy contract abi");
                                 continue;
                             }
                         };
