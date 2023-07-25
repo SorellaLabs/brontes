@@ -25,3 +25,4 @@ impl From<EtherscanError> for TraceParseError {
         TraceParseError::EtherscanError(err)
     }
 }
+

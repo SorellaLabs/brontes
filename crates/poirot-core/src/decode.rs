@@ -84,7 +84,7 @@ impl Parser {
                     result.push(res);
                 }
                 Err(error) => {
-                    warn!(?error, "Error Parsing Transaction {:#x}", trace.transaction_hash);
+                    error!(error = %error, "Error Parsing Transaction {:#x}", trace.transaction_hash);
                 }
             }
         }
@@ -130,7 +130,7 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    warn!(error=?TraceParseError::from(e), "Failed to fetch contract ABI");
+                    error!(error = %TraceParseError::from(e), "Failed to fetch contract ABI");
                     continue
                 }
             };
@@ -145,7 +145,7 @@ impl Parser {
                         continue;
                     }
                     Err(error) => {
-                        warn!(?error, "Empty Input without fallback or receive");
+                        error!(error = %error, "Empty Input without fallback or receive");
                         continue
                     }
                 }
@@ -171,7 +171,7 @@ impl Parser {
                         .await {
                             Ok(abi) => abi,
                             Err(e) => {
-                                warn!(error=?TraceParseError::from(e), "unable to get proxy contract abi");
+                                error!(error = %TraceParseError::from(e), "unable to get proxy contract abi");
                                 continue;
                             }
                         };
@@ -179,7 +179,7 @@ impl Parser {
                     match decode_input_with_abi(&impl_abi, action, &trace_address, tx_hash) {
                         Ok(s) => s,
                         Err(error) => {
-                            warn!(?error, "Invalid Function Selector");
+                            error!(error = %error, "Invalid Function Selector");
                             StructuredTrace::CALL(CallAction::new(
                                 action.from,
                                 action.to,
