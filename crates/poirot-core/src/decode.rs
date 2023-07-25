@@ -66,7 +66,7 @@ impl Parser {
     // Should parse all transactions, if a tx fails to parse it should still be stored with None
     // fields on the decoded subfield
 
-    #[instrument(skip(self, block_trace))]
+    #[instrument()]
     pub async fn parse_block(
         &mut self,
         block_num: u64,
@@ -92,7 +92,7 @@ impl Parser {
     // TODO: Then figure out how to deal with error
     // TODO: need to add decoding for diamond proxy
 
-    #[instrument(skip(self, trace))]
+    #[instrument]
     pub async fn parse_tx(
         &self,
         trace: &TraceResultsWithTransactionHash,
