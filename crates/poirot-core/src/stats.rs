@@ -28,13 +28,16 @@ impl Default for ParserStats {
 }
 
 impl ParserStats {
+    /// Since we are calling this from another layer that doesn't implement outputing to stdout
+    /// We can initiate a fmt layer to output the stats as such
     pub fn print_stats(&self) {
         tracing::subscriber::with_default(
             FmtSubscriber::builder()
                 .with_env_filter(EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy())
                 .finish(), 
             || {
-                info!("\n{}", format_color("Total Transactions", self.total_tx, false));
+                println!(); // for separation between stats
+                info!("{}", format_color("Total Transactions", self.total_tx, false));
                 info!("{}", format_color("Total Traces", self.total_traces, false));
                 info!("{}", format_color("Successful Parses", self.successful_parses, false));
                 info!("{}", format_color("Empty Input Errors", self.empty_input_errors, true));
