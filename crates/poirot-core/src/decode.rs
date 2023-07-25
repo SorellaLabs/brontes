@@ -92,7 +92,6 @@ impl Parser {
     // TODO: Then figure out how to deal with error
     // TODO: need to add decoding for diamond proxy
 
-    #[instrument(skip(self, trace))]
     pub async fn parse_tx(
         &self,
         trace: &TraceResultsWithTransactionHash,
