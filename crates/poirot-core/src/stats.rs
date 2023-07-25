@@ -2,9 +2,9 @@ use crate::{errors::TraceParseError, format_color};
 use tracing::{
     field::{Field, Visit},
     span::Attributes,
-    Id, Subscriber, info,
+    Id, Subscriber, info, Level,
 };
-use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
+use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer, EnvFilter, FmtSubscriber};
 
 pub struct ParserStatsLayer;
 
@@ -29,28 +29,35 @@ impl Default for ParserStats {
 
 impl ParserStats {
     pub fn print_stats(&self) {
-        println!("TESTETSTE");
-        info!("{}", format_color("Total Transactions", self.total_tx));
-        println!(
-            "
-Total Transactions: {} 
-Total Traces: {}
-Successful Parses: {}
-Empty Input Errors: {}
-Etherscan Errors: {}
-ABI Parse Errors: {}
-Invalid Function Selector Errors: {}
-ABI Decoding Failed Errors: {}
-Trace Missing Errors: {}\n",
-            self.total_tx,
-            self.total_traces,
-            self.successful_parses,
-            self.empty_input_errors,
-            self.etherscan_errors,
-            self.abi_parse_errors,
-            self.invalid_function_selector_errors,
-            self.abi_decoding_failed_errors,
-            self.trace_missing_errors
+        tracing::subscriber::with_default(
+            FmtSubscriber::builder()
+                .with_env_filter(EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy())
+                .finish(), 
+            || {
+                println!("TESTETSTE");
+                tracing::info!("{}", format_color("Total Transactions", self.total_tx));
+                println!(
+                    "
+        Total Transactions: {} 
+        Total Traces: {}
+        Successful Parses: {}
+        Empty Input Errors: {}
+        Etherscan Errors: {}
+        ABI Parse Errors: {}
+        Invalid Function Selector Errors: {}
+        ABI Decoding Failed Errors: {}
+        Trace Missing Errors: {}\n",
+                    self.total_tx,
+                    self.total_traces,
+                    self.successful_parses,
+                    self.empty_input_errors,
+                    self.etherscan_errors,
+                    self.abi_parse_errors,
+                    self.invalid_function_selector_errors,
+                    self.abi_decoding_failed_errors,
+                    self.trace_missing_errors
+                );
+            }
         );
     }
 }
