@@ -17,6 +17,7 @@ use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, CallType, TraceResultsWithTransactionHash,
 };
+use tracing_subscriber::layer::Context;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -66,14 +67,12 @@ impl Parser {
     // Should parse all transactions, if a tx fails to parse it should still be stored with None
     // fields on the decoded subfield
 
-    //#[instrument(skip(self, block_trace), target = "error")]
+    #[instrument(skip(self, block_trace), target = "error")]
     pub async fn parse_block(
         &mut self,
         block_num: u64,
         block_trace: Vec<TraceResultsWithTransactionHash>,
     ) -> Vec<TxTrace> {
-        let span = tracing::info_span!("parse_block", block_num);
-        let _guard = span.enter();
         let mut result: Vec<TxTrace> = vec![];
 
         for (idx, trace) in block_trace.iter().enumerate() {
@@ -88,7 +87,6 @@ impl Parser {
                 }
             }
         }
-        drop(_guard);
         result
     }
 
