@@ -78,7 +78,9 @@ where
 impl Visit for ParserStats {
     /// will implement incrementing counters for tx/block traces
     /// tbd
-    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug){}
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        println!("{:?}", value);
+    }
 
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(error) = value.downcast_ref::<TraceParseError>() {

@@ -120,10 +120,6 @@ impl Parser {
                 }
             };
 
-            println!("action ----------------------------------------- {:?}", action);
-            println!("gas: {:?}", action.input.is_empty());
-
-
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
@@ -204,7 +200,6 @@ fn decode_input_with_abi(
 ) -> Result<StructuredTrace, TraceParseError> {
     for functions in abi.functions.values() {
         for function in functions {
-            println!("action xxxxxxxxxxxxxxxxxxxxxxxxxxxx {:?}", action);
             if function.selector() == action.input[..4] {
                 // Resolve all inputs
                 let mut resolved_params: Vec<DynSolType> = Vec::new();
