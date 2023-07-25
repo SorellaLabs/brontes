@@ -3,6 +3,7 @@ use thiserror::Error;
 use alloy_etherscan::errors::EtherscanError;
 
 
+
 /// Custom error type for trace parsing
 #[derive(Debug, Error)]
 pub enum TraceParseError {
