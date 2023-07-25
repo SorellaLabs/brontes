@@ -47,31 +47,39 @@ where
     }
 
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-        let span = ctx.span(&id).unwrap();
-        let binding = span.extensions();
-        let stats = binding.get::<ParserStats>().unwrap();
+        if let Some(span) = ctx.span(&id) {
+            if let Some(s) = ctx.span_scope(&id).into_iter().next() {
+                if let Some(root) = s.from_root().next() {
+                    if root.id() == ctx.span(&id).unwrap().id() {
+                        let binding = span.extensions();
+                        let stats = binding.get::<ParserStats>().unwrap();
+                
+                        println!(
+                            "
+                            Total Transactions: {} 
+                            Total Traces: {}
+                            Successful Parses: {}
+                            Empty Input Errors: {}
+                            Etherscan Errors: {}
+                            ABI Parse Errors: {}
+                            Invalid Function Selector Errors: {}
+                            ABI Decoding Failed Errors: {}
+                            Trace Missing Errors: {}\n",
+                            stats.total_tx,
+                            stats.total_traces,
+                            stats.successful_parses,
+                            stats.empty_input_errors,
+                            stats.etherscan_errors,
+                            stats.abi_parse_errors,
+                            stats.invalid_function_selector_errors,
+                            stats.abi_decoding_failed_errors,
+                            stats.trace_missing_errors
+                        );
+                    }
+                }
+            }
 
-        println!(
-            "
-            Total Transactions: {} 
-            Total Traces: {}
-            Successful Parses: {}
-            Empty Input Errors: {}
-            Etherscan Errors: {}
-            ABI Parse Errors: {}
-            Invalid Function Selector Errors: {}
-            ABI Decoding Failed Errors: {}
-            Trace Missing Errors: {}\n",
-            stats.total_tx,
-            stats.total_traces,
-            stats.successful_parses,
-            stats.empty_input_errors,
-            stats.etherscan_errors,
-            stats.abi_parse_errors,
-            stats.invalid_function_selector_errors,
-            stats.abi_decoding_failed_errors,
-            stats.trace_missing_errors
-        );
+        }
     }
 }
 
