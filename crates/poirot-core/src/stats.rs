@@ -74,8 +74,8 @@ where
 impl Visit for ParserStats {
     /// will implement incrementing counters for tx/block traces
     /// find a better way to do this
-    fn record_debug(&mut self, _field: &Field, value: &dyn std::fmt::Debug) {
-        println!("RECORD DEBUG");
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        println!("RECORD DEBUG {:?}", field.name());
         let value_str = format!("{:?}", value);
         if value_str.contains("TraceMissing") {
             self.trace_missing_errors += 1;
