@@ -81,6 +81,7 @@ impl Visit for ParserStats {
     /// find a better way to do this
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
         let value_str = format!("{:?}", value);
+        println!("{:?}", value_str);
         if value_str.contains("TraceMissing") {
             self.trace_missing_errors += 1;
         } else if value_str.contains("EmptyInput") {
