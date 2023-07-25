@@ -62,7 +62,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let block_num = 17679852;
     let span = tracing::info_span!("parse_block", block_num);
     //let _guard = span.enter();
-    let action = async move {parser.parse_block(block_num, block_trace).await}.instrument(span).await;
+    let action = parser.parse_block(block_num, block_trace).instrument(span).await;
     //drop(_guard);
 
     Ok(())
