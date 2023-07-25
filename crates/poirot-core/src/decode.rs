@@ -133,6 +133,7 @@ impl Parser {
 
             // Check if the input is empty, indicating a potential `receive` or `fallback` function
             // call.
+            println!("{:?}" action.input.is_empty());
             if action.input.is_empty() {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
@@ -218,7 +219,7 @@ fn decode_input_with_abi(
                 match params_type.decode_params(inputs) {
                     Ok(decoded_params) => {
                         info!(
-                            "For function {}: Decoded params: {:?} \n, with tx hash: {:#?}",
+                            "Function: {}\nDecoded params: {:?}\nTx hash: {:#?}",
                             function.name, decoded_params, tx_hash
                         );
                         return Ok(StructuredTrace::CALL(CallAction::new(
