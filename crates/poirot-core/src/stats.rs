@@ -52,14 +52,15 @@ where
         let stats = binding.get::<ParserStats>().unwrap();
 
         println!(
-            "Total Transactions: {}\n 
-            Total Traces: {}\n
-            Successful Parses: {}\n
-            Empty Input Errors: {}\n
-            Etherscan Errors: {}\n
-            ABI Parse Errors: {}\n
-            Invalid Function Selector Errors: {}\n
-            ABI Decoding Failed Errors: {}\n
+            "
+            Total Transactions: {} 
+            Total Traces: {}
+            Successful Parses: {}
+            Empty Input Errors: {}
+            Etherscan Errors: {}
+            ABI Parse Errors: {}
+            Invalid Function Selector Errors: {}
+            ABI Decoding Failed Errors: {}
             Trace Missing Errors: {}\n",
             stats.total_tx,
             stats.total_traces,
