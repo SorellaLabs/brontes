@@ -123,7 +123,7 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    warn!(error=?TraceParseError::from(e), "Failed to fetch contract ABI");
+                    error!(error=?TraceParseError::from(e), "Failed to fetch contract ABI");
                     continue
                 }
             };
