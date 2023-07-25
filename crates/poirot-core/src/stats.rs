@@ -8,7 +8,7 @@ use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
 
 pub struct ParserStatsLayer;
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct ParserStats {
     pub total_tx: usize,
     pub total_traces: usize,
@@ -21,6 +21,12 @@ pub struct ParserStats {
     pub trace_missing_errors: usize,
 }
 
+impl Default for ParserStats {
+    fn default() -> Self {
+        Self { total_tx: Default::default(), total_traces: Default::default(), successful_parses: Default::default(), empty_input_errors: Default::default(), etherscan_errors: Default::default(), abi_parse_errors: Default::default(), invalid_function_selector_errors: Default::default(), abi_decoding_failed_errors: Default::default(), trace_missing_errors: Default::default() }
+    }
+}
+
 impl<S> Layer<S> for ParserStatsLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -28,7 +34,7 @@ where
     fn on_new_span(&self, _attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).unwrap();
 
-        span.extensions_mut().insert(ParserStats::default);
+        span.extensions_mut().insert(ParserStats::default());
     }
 
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
