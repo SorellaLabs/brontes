@@ -73,8 +73,6 @@ impl Parser {
         block_num: u64,
         block_trace: Vec<TraceResultsWithTransactionHash>,
     ) -> Vec<TxTrace> {
-        let span = tracing::info_span!("parse_block", block_num);
-        let _guard = span.enter();
         let mut result: Vec<TxTrace> = vec![];
 
         for (idx, trace) in block_trace.iter().enumerate() {
