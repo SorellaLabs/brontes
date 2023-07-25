@@ -121,7 +121,7 @@ impl Visit for ParserStats {
             self.abi_parse_errors += 1;
         } else if value_str.contains("AbiDecodingFailed") {
             self.abi_decoding_failed_errors += 1;
-        } else if value_str.to_lowercase().contains("end") {
+        } else if value_str.contains("Finished Parsing Block") {
             self.print_stats();
         } else {
             //println!("{}", value_str);
