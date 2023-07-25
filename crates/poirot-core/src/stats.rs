@@ -1,4 +1,4 @@
-use crate::format_color;
+use crate::{format_color, errors::TraceParseError};
 use tracing::{
     field::{Field, Visit},
     span::Attributes,
@@ -73,9 +73,9 @@ where
 
 impl Visit for ParserStats {
     /// will implement incrementing counters for tx/block traces
-    /// tbd
     /// find a better way to do this
     fn record_debug(&mut self, _field: &Field, value: &dyn std::fmt::Debug) {
+        println!("RECORD DEBUG");
         let value_str = format!("{:?}", value);
         if value_str.contains("TraceMissing") {
             self.trace_missing_errors += 1;
@@ -101,9 +101,9 @@ impl Visit for ParserStats {
     }
 
     // tbd
-    /* 
+    
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
-        println!("hERE ERROR DASDSAD ");
+        println!("RECORD ERROR");
         if let Some(error) = value.downcast_ref::<TraceParseError>() {
             match error {
                 TraceParseError::TraceMissing => self.trace_missing_errors += 1,
@@ -115,5 +115,5 @@ impl Visit for ParserStats {
             }
         }
     }
-    */
+    
 }
