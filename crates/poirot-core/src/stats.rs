@@ -95,7 +95,7 @@ impl Visit for ParserStats {
             self.successful_parses += 1;
         } else if value_str.contains("Starting Trace") {
             self.total_traces += 1;
-        } else if value_str == "Finished Parsing Block" {
+        } else if value_str.contains("Finished Parsing Block") {
             self.print_stats();
         }
     }

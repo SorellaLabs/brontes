@@ -76,17 +76,18 @@ impl Parser {
         for (idx, trace) in block_trace.iter().enumerate() {
             // We don't need to through an error for this given transaction so long as the error is
             // logged & emmitted and the transaction is stored.
+            info!(message = format!("Starting Transaction Trace {}", format!("{}/{}", idx, block_trace.len()).bright_cyan()), tx_hash = format!("{:#x}", trace.transaction_hash));
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
-                    info!(message = "Successfully Parsed Transaction", tx_hash = format!("{:#x}", res.tx_hash));
+                    info!(message = "Successfully Parsed Transaction", tx_hash = format!("{:#x}\n", trace.transaction_hash));
                     result.push(res);
                 }
                 Err(error) => {
-                    warn!(?error, "Error parsing trace");
+                    warn!(?error, "Error Parsing Transaction {:#x}", trace.transaction_hash);
                 }
             }
         }
-        info!("Finished Parsing Block {}", format!("{}", block_num).bright_blue().bold());
+        info!("Finished Parsing Block {}\n", format!("{}", block_num).bright_blue().bold());
         result
     }
 
