@@ -2,8 +2,9 @@ use poirot_core::{decode::Parser, stats::ParserStatsLayer};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
+use tracing::Level;
 use tracing_subscriber::{
-    prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Registry,
+    prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Registry, EnvFilter, Layer,
 };
 
 //Std
@@ -15,9 +16,11 @@ fn main() {
         .thread_stack_size(8 * 1024 * 1024)
         .build()
         .unwrap();
+    let filter =
+    EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
 
     let subscriber =
-        Registry::default().with(ParserStatsLayer).with(tracing_subscriber::fmt::layer());
+        Registry::default().with(ParserStatsLayer).with(tracing_subscriber::fmt::layer().with_filter(filter));
 
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");
