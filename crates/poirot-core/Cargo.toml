@@ -25,6 +25,7 @@ reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth
 # tracing
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+tracing-futures = { version = "0.2.5"}
 
 # Async
 tokio = { version = "1.28.2", features = ["full", "tracing"] }
