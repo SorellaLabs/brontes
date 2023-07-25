@@ -419,7 +419,7 @@ impl Cache {
 
     fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
         let path = self.root.join(prefix).join(format!("{:?}.json", address));
-        println!("reading from {:?}", path);
+        debug!(?path, "reading from");
 
         let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
         if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
