@@ -22,7 +22,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use tracing::{error, info, instrument, span, warn, Span, field};
+use tracing::{error, info, instrument, span, warn, Span, field, debug};
 // tracing
 
 const UNKNOWN: &str = "unknown";
@@ -80,7 +80,7 @@ impl Parser {
             // logged & emmitted and the transaction is stored.
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
-                    info!(message = "Successfully Parsed Transaction", tx_hash = format!("{:#x}", res.tx_hash));
+                    info!(target: "Successfully Parsed Transaction", tx_hash = format!("{:#x}", res.tx_hash));
                     result.push(res);
                 }
                 Err(error) => {
@@ -223,7 +223,7 @@ fn decode_input_with_abi(
                 // Decode the inputs based on the resolved parameters.
                 match params_type.decode_params(inputs) {
                     Ok(decoded_params) => {
-                        info!("Tx Hash: {:#?} -- Function: {}",
+                        debug!("Tx Hash: {:#?} -- Function: {}",
                         tx_hash, function.name
                         );
                         return Ok(StructuredTrace::CALL(CallAction::new(
