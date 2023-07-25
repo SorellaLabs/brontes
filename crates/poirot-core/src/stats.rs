@@ -13,7 +13,6 @@ pub struct ParserStats {
     pub total_tx: usize,
     pub total_traces: usize,
     pub successful_parses: usize,
-    pub not_recognized_action_errors: usize,
     pub empty_input_errors: usize,
     pub etherscan_errors: usize,
     pub abi_parse_errors: usize,
@@ -50,7 +49,6 @@ where
             "Total Transactions: {}\n 
             Total Traces: {}\n
             Successful Parses: {}\n
-            Not Recognized Action Errors: {}\n
             Empty Input Errors: {}\n
             Etherscan Errors: {}\n
             ABI Parse Errors: {}\n
@@ -60,7 +58,6 @@ where
             stats.total_tx,
             stats.total_traces,
             stats.successful_parses,
-            stats.not_recognized_action_errors,
             stats.empty_input_errors,
             stats.etherscan_errors,
             stats.abi_parse_errors,
@@ -82,7 +79,6 @@ impl Visit for ParserStats {
         if let Some(error) = value.downcast_ref::<TraceParseError>() {
             match error {
                 TraceParseError::TraceMissing => self.trace_missing_errors += 1,
-                TraceParseError::NotRecognizedAction(_) => self.not_recognized_action_errors += 1,
                 TraceParseError::EmptyInput(_) => self.empty_input_errors += 1,
                 TraceParseError::EtherscanError(_) => self.etherscan_errors += 1,
                 TraceParseError::AbiParseError(_) => self.abi_parse_errors += 1,
