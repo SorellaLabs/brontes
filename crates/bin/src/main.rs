@@ -21,7 +21,7 @@ fn main() {
     EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
 
     let subscriber =
-        Registry::default().with(tracing_subscriber::fmt::layer().with(ParserStatsLayer).with_filter(filter));
+        Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter)).with(ParserStatsLayer);
 
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");
