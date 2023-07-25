@@ -78,7 +78,7 @@ impl Visit for ParserStats {
     /// will implement incrementing counters for tx/block traces
     /// tbd
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        println!("none");
+        println!("{:?}", value);
     }
 
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
