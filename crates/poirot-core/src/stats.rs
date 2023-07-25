@@ -29,7 +29,7 @@ impl Default for ParserStats {
 
 impl ParserStats {
     pub fn print_stats(&self) {
-        event!(Level::INFO, "{}", format_color("Total Transactions", self.total_tx));
+        //event!(Level::INFO, "{}", format_color("Total Transactions", self.total_tx));
         println!(
             "
 Total Traces: {}
