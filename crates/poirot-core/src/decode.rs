@@ -66,7 +66,7 @@ impl Parser {
     // Should parse all transactions, if a tx fails to parse it should still be stored with None
     // fields on the decoded subfield
 
-    #[instrument()]
+    #[instrument(skip(self, block_trace))]
     pub async fn parse_block(
         &mut self,
         block_num: u64,
@@ -92,7 +92,7 @@ impl Parser {
     // TODO: Then figure out how to deal with error
     // TODO: need to add decoding for diamond proxy
 
-    #[instrument]
+    #[instrument(skip(self, trace))]
     pub async fn parse_tx(
         &self,
         trace: &TraceResultsWithTransactionHash,
@@ -126,7 +126,7 @@ impl Parser {
             let abi = match fetch_abi_result {
                 Ok(a) => a,
                 Err(e) => {
-                    warn!(error=?TraceParseError::EtherscanError(e), "Failed to fetch contract ABI");
+                    warn!(error=?TraceParseError::EtherscanError(e), "lol Failed to fetch contract ABI");
                     continue
                 }
             };
