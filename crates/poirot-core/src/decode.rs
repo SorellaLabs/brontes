@@ -164,7 +164,7 @@ impl Parser {
                         .await {
                             Ok(abi) => abi,
                             Err(e) => {
-                                warn!(error=?TraceParseError::from(e), "unable to get proxy contract abi");
+                                warn!(error=%TraceParseError::from(e), "unable to get proxy contract abi");
                                 continue;
                             }
                         };
