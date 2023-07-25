@@ -27,6 +27,32 @@ impl Default for ParserStats {
     }
 }
 
+impl ParserStats {
+    pub fn print_stats(&self) {
+        println!(
+            "
+            Total Transactions: {} 
+            Total Traces: {}
+            Successful Parses: {}
+            Empty Input Errors: {}
+            Etherscan Errors: {}
+            ABI Parse Errors: {}
+            Invalid Function Selector Errors: {}
+            ABI Decoding Failed Errors: {}
+            Trace Missing Errors: {}\n",
+            self.total_tx,
+            self.total_traces,
+            self.successful_parses,
+            self.empty_input_errors,
+            self.etherscan_errors,
+            self.abi_parse_errors,
+            self.invalid_function_selector_errors,
+            self.abi_decoding_failed_errors,
+            self.trace_missing_errors
+        );
+    }
+}
+
 impl<S> Layer<S> for ParserStatsLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -46,6 +72,7 @@ where
         }
     }
 
+    /* 
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
         let span = ctx.span(&id).unwrap();
         let binding = span.extensions();
@@ -73,6 +100,7 @@ where
             stats.trace_missing_errors
         );
     }
+    */
 }
 
 impl Visit for ParserStats {
@@ -93,6 +121,8 @@ impl Visit for ParserStats {
             self.abi_parse_errors += 1;
         } else if value_str.contains("AbiDecodingFailed") {
             self.abi_decoding_failed_errors += 1;
+        } else if value_str.to_lowercase().contains("end") {
+            self.print_stats();
         } else {
             //println!("{}", value_str);
         }
