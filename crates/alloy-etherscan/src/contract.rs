@@ -454,7 +454,7 @@ impl Client {
                     None => Err(EtherscanError::ContractCodeNotVerified(address)),
                 }
             } else {
-                println!("Cache miss for contract_source_code with address {:?}", address);
+                debug!(?address, "Cache miss for contract_source_code with address");
             }
         }
 
