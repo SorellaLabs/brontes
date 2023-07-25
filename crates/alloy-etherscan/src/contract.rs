@@ -448,7 +448,7 @@ impl Client {
         if let Some(ref cache) = self.cache {
             // If this is None, then we have a cache miss
             if let Some(src) = cache.get_source(address) {
-                println!("Cache hit for contract_source_code with address {:?}", address);
+                debug!(?address, "Cache hit for contract_source_code with address");
                 return match src {
                     Some(src) => Ok(src),
                     None => Err(EtherscanError::ContractCodeNotVerified(address)),
