@@ -111,17 +111,17 @@ impl Parser {
             let (action, trace_address) = match &transaction_trace.action {
                 RethAction::Call(call) => (call, transaction_trace.trace_address.clone()),
                 RethAction::Create(create_action) => {
-                    info!(message = "Successfully Parsed Trace", trace_action = format!("{}", "CREATE".bold()), creator_addr = format!("{:#x}", create_action.from));
+                    info!(message = "Successfully Parsed Trace", trace_action = "CREATE", creator_addr = format!("{:#x}", create_action.from));
                     structured_traces.push(StructuredTrace::CREATE(create_action.clone()));
                     continue
                 }
                 RethAction::Selfdestruct(self_destruct) => {
-                    info!(message = "Successfully Parsed Trace", trace_action = format!("{}", "SELFDESTRUCT".bold()), contract_addr = format!("{:#x}", self_destruct.address));
+                    info!(message = "Successfully Parsed Trace", trace_action = "SELFDESTRUCT", contract_addr = format!("{:#x}", self_destruct.address));
                     structured_traces.push(StructuredTrace::SELFDESTRUCT(self_destruct.clone()));
                     continue
                 }
                 RethAction::Reward(reward) => {
-                    info!(message = "Successfully Parsed Trace", trace_action = format!("{}", "REWARD".bold()), reward_type = format!("{:?}", reward.reward_type), reward_author = format!("{:#x}", reward.author));
+                    info!(message = "Successfully Parsed Trace", trace_action = "REWARD", reward_type = format!("{:?}", reward.reward_type), reward_author = format!("{:#x}", reward.author));
                     structured_traces.push(StructuredTrace::REWARD(reward.clone()));
                     continue
                 }
@@ -140,7 +140,7 @@ impl Parser {
             if action.input.is_empty() {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
-                        info!(message = "Successfully Parsed Trace", trace_action = format!("{}", "CALL".bold()), call_type = format!("{:?}", action.call_type));
+                        info!(message = "Successfully Parsed Trace", trace_action = "CALL", call_type = format!("{:?}", action.call_type));
                         structured_traces.push(structured_trace);
                         continue;
                     }
@@ -193,7 +193,7 @@ impl Parser {
                     }
                 }
             };
-            info!(message = "Successfully Parsed Trace", trace_action = format!("{}", "CALL".bold()), call_type = format!("{:?}", action.call_type));
+            info!(message = "Successfully Parsed Trace", trace_action = "CALL", call_type = format!("{:?}", action.call_type));
             structured_traces.push(structured_trace);
         }
 
