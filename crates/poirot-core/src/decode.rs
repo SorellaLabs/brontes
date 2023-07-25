@@ -126,7 +126,7 @@ impl Parser {
             let abi = match fetch_abi_result {
                 Ok(a) => a,
                 Err(e) => {
-                    warn!(error=?TraceParseError::EtherscanError(e), "lol Failed to fetch contract ABI");
+                    info!(error=?TraceParseError::EtherscanError(e), "Failed to fetch contract ABI");
                     continue
                 }
             };
