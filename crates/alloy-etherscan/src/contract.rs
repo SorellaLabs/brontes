@@ -11,6 +11,7 @@ use ethers_core::{
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 use std::{collections::HashMap, path::Path};
 
 #[cfg(feature = "ethers-solc")]
@@ -335,13 +336,13 @@ impl Client {
         if let Some(ref cache) = self.cache {
             // If this is None, then we have a cache miss
             if let Some(src) = cache.get_abi(address) {
-                println!("Cache hit for contract_abi with address {:?}", address);
+                debug!(?address, "Cache hit for contract_abi");
                 return match src {
                     Some(src) => Ok(src),
                     None => Err(EtherscanError::ContractCodeNotVerified(address)),
                 }
             } else {
-                println!("Cache miss for contract_abi with address {:?}", address);
+                debug!(?address, "Cache miss for contract_abi");
             }
         }
 
