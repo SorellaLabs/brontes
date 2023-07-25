@@ -130,7 +130,7 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    error!(error = %TraceParseError::from(e), "Failed to fetch contract ABI");
+                    error!(error = %&TraceParseError::from(e), "Failed to fetch contract ABI");
                     continue
                 }
             };
@@ -145,7 +145,7 @@ impl Parser {
                         continue;
                     }
                     Err(error) => {
-                        error!(error = %error, "Empty Input without fallback or receive");
+                        error!(error = %&error, "Empty Input without fallback or receive");
                         continue
                     }
                 }
