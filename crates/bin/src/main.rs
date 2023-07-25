@@ -3,6 +3,7 @@ use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
 use tracing::Level;
+use tracing_futures::Instrument;
 use tracing_subscriber::{
     prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Registry, EnvFilter, Layer,
 };
@@ -60,9 +61,9 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let block_trace = trace_block(&tracer, 17679852).await.unwrap();
     let block_num = 17679852;
     let span = tracing::info_span!("parse_block", block_num);
-    let _guard = span.enter();
-    let action = parser.parse_block(block_num, block_trace).await;
-    drop(_guard);
+    //let _guard = span.enter();
+    let action = async move {parser.parse_block(block_num, block_trace).await}.instrument(span).await;
+    //drop(_guard);
 
     Ok(())
 }
