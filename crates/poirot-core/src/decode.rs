@@ -120,7 +120,7 @@ impl Parser {
                 }
             };
 
-            println!("{:?}", action);
+            println!("action ----------------------------------------- {:?}", action);
 
 
             let abi = match self.client.contract_abi(action.to.into()).await {
