@@ -7,12 +7,20 @@ pub mod normalize;
 pub mod stats;
 pub mod structured_trace;
 
-/// formats a stat with a color based on its value
-pub fn format_color(stat: &str, val: usize) -> ColoredString {
-    if val == 0 {
-        format!("{}", stat).bright_green()
+/// formats a stat with a color based on its value + kind
+pub fn format_color(stat: &str, val: usize, error: bool) -> ColoredString {
+    if val != 0 {
+        if error {
+            format!("{}: {}", stat, val).bright_red().bold()
+        } else {
+            format!("{}: {}", stat, val).bright_green().bold()
+        }
     } else {
-        format!("{}", stat).bright_red()
+        if error {
+            format!("{}: {}", stat, val).bright_green().bold()
+        } else {
+            format!("{}: {}", stat, val).bright_yellow().bold()
+        }
     }
 }
 

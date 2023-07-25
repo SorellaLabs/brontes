@@ -1,4 +1,4 @@
-use crate::{errors::TraceParseError, format_color};
+use crate::format_color;
 use tracing::{
     field::{Field, Visit},
     span::Attributes,
@@ -34,29 +34,15 @@ impl ParserStats {
                 .with_env_filter(EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy())
                 .finish(), 
             || {
-                println!("TESTETSTE");
-                tracing::info!("{}", format_color("Total Transactions", self.total_tx));
-                println!(
-                    "
-        Total Transactions: {} 
-        Total Traces: {}
-        Successful Parses: {}
-        Empty Input Errors: {}
-        Etherscan Errors: {}
-        ABI Parse Errors: {}
-        Invalid Function Selector Errors: {}
-        ABI Decoding Failed Errors: {}
-        Trace Missing Errors: {}\n",
-                    self.total_tx,
-                    self.total_traces,
-                    self.successful_parses,
-                    self.empty_input_errors,
-                    self.etherscan_errors,
-                    self.abi_parse_errors,
-                    self.invalid_function_selector_errors,
-                    self.abi_decoding_failed_errors,
-                    self.trace_missing_errors
-                );
+                info!("\n{}", format_color("Total Transactions", self.total_tx, false));
+                info!("{}", format_color("Total Traces", self.total_traces, false));
+                info!("{}", format_color("Successful Parses", self.successful_parses, false));
+                info!("{}", format_color("Empty Input Errors", self.empty_input_errors, true));
+                info!("{}", format_color("Etherscan Errors", self.etherscan_errors, true));
+                info!("{}", format_color("ABI Parse Errors", self.abi_parse_errors, true));
+                info!("{}", format_color("Invalid Function Selector Errors", self.invalid_function_selector_errors, true));
+                info!("{}", format_color("ABI Decoding Failed Errors", self.abi_decoding_failed_errors, true));
+                info!("{}\n", format_color("Trace Missing Errors", self.trace_missing_errors, true));
             }
         );
     }
@@ -76,13 +62,7 @@ where
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
             if let Some(ext) = span.extensions_mut().get_mut::<ParserStats>() {
-                println!("{:?}", event.metadata().target());
-                println!("{:?}", event.metadata().target().contains("Finished Parsing Block"));
-                if event.metadata().target().contains("Finished Parsing Block") {
-                    ext.print_stats();
-                } else {
-                    event.record(&mut *ext);
-                }
+                event.record(&mut *ext);
             };
         }
     }
@@ -92,7 +72,7 @@ impl Visit for ParserStats {
     /// will implement incrementing counters for tx/block traces
     /// tbd
     /// find a better way to do this
-    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+    fn record_debug(&mut self, _field: &Field, value: &dyn std::fmt::Debug) {
         let value_str = format!("{:?}", value);
         if value_str.contains("TraceMissing") {
             self.trace_missing_errors += 1;
@@ -109,14 +89,16 @@ impl Visit for ParserStats {
         } else if value_str.contains("Successfully Parsed Transaction") {
             self.total_tx += 1;
         } else if value_str.contains("Successfully Parsed Trace") {
+            self.successful_parses += 1;
+        } else if value_str.contains("Starting Trace") {
             self.total_traces += 1;
-        } else if value_str.contains("Finished Parsing Block") {
-            //self.print_stats();
-        } else {
-            //println!("{}", value_str);
+        } else if value_str == "Finished Parsing Block" {
+            self.print_stats();
         }
     }
 
+    // tbd
+    /* 
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
         println!("hERE ERROR DASDSAD ");
         if let Some(error) = value.downcast_ref::<TraceParseError>() {
@@ -130,4 +112,5 @@ impl Visit for ParserStats {
             }
         }
     }
+    */
 }
