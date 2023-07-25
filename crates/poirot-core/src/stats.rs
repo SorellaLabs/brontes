@@ -80,6 +80,7 @@ impl Visit for ParserStats {
     /// tbd
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
         if field.name() == "error" {
+            println!("error here: {:?}", value);
             match format!("{:?}", value).as_str() {
                 "TraceMissing" => self.trace_missing_errors += 1,
                 "EmptyInput" => self.empty_input_errors += 1,
