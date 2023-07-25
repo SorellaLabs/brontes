@@ -5,7 +5,7 @@ use crate::{
         CallAction,
         StructuredTrace::{self, CALL, CREATE},
         TxTrace,
-    },
+    }, str_trace_action,
 };
 
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
@@ -22,7 +22,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use tracing::{error, info, instrument, span, warn, Span};
+use tracing::{error, info, instrument, span, warn, Span, field};
 // tracing
 
 const UNKNOWN: &str = "unknown";
@@ -80,6 +80,7 @@ impl Parser {
             // logged & emmitted and the transaction is stored.
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
+                    info!(message = "Successfully Parsed Transaction", tx_hash = format!("{:#x}", res.tx_hash));
                     result.push(res);
                 }
                 Err(error) => {
@@ -109,14 +110,17 @@ impl Parser {
             let (action, trace_address) = match &transaction_trace.action {
                 RethAction::Call(call) => (call, transaction_trace.trace_address.clone()),
                 RethAction::Create(create_action) => {
+                    info!(message = "Successfully Parsed Trace", tx_hash = format!("{:#x}", trace.transaction_hash), trace_action = "Create");
                     structured_traces.push(StructuredTrace::CREATE(create_action.clone()));
                     continue
                 }
                 RethAction::Selfdestruct(self_destruct) => {
+                    info!(message = "Successfully Parsed Trace", tx_hash = format!("{:#x}", trace.transaction_hash), trace_action = "Self Destruct");
                     structured_traces.push(StructuredTrace::SELFDESTRUCT(self_destruct.clone()));
                     continue
                 }
                 RethAction::Reward(reward) => {
+                    info!(message = "Successfully Parsed Trace", tx_hash = format!("{:#x}", trace.transaction_hash), trace_action = "Reward");
                     structured_traces.push(StructuredTrace::REWARD(reward.clone()));
                     continue
                 }
@@ -135,6 +139,7 @@ impl Parser {
             if action.input.is_empty() {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
+                        info!(message = "Successfully Parsed Trace", tx_hash = format!("{:#x}", trace.transaction_hash), trace_action = str_trace_action(&structured_trace));
                         structured_traces.push(structured_trace);
                         continue;
                     }
@@ -154,7 +159,7 @@ impl Parser {
             // you will have to do a call on the reth_api which you have to add to the reth_tracing
             // crate lib.rs. Just copy how it is done in the ethers-reth repo
 
-            let structure_input = match decode_input_with_abi(&abi, action, &trace_address, tx_hash)
+            let structured_trace = match decode_input_with_abi(&abi, action, &trace_address, tx_hash)
             {
                 Ok(d) => d,
                 Err(e) => {
@@ -187,7 +192,8 @@ impl Parser {
                     }
                 }
             };
-            structured_traces.push(structure_input);
+            info!(message = "Successfully Parsed Trace", tx_hash = format!("{:#x}", trace.transaction_hash), trace_action = str_trace_action(&structured_trace));
+            structured_traces.push(structured_trace);
         }
 
         Ok(TxTrace { trace: structured_traces, tx_hash: trace.transaction_hash, tx_index })
