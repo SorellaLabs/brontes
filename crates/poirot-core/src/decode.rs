@@ -21,7 +21,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use tracing::{error, info, instrument, span, warn};
+use tracing::{error, info, instrument, span, warn, Span};
 // tracing
 
 const UNKNOWN: &str = "unknown";
