@@ -67,7 +67,7 @@ impl Parser {
     // Should parse all transactions, if a tx fails to parse it should still be stored with None
     // fields on the decoded subfield
 
-    #[instrument(skip(self, block_trace))]
+    #[instrument(name = "Parser::parse_block", skip(self, block_trace))]
     pub async fn parse_block(
         &mut self,
         block_num: u64,
