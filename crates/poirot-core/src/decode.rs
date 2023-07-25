@@ -18,9 +18,9 @@ use reth_rpc_types::trace::parity::{
 };
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, error::Error,
 };
-use tracing::{error, info, instrument, warn, debug};
+use tracing::{error, info, instrument, warn, debug, Span};
 // tracing
 
 const UNKNOWN: &str = "unknown";
@@ -130,6 +130,7 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
+                    let error: &(dyn std::error::Error + 'static) = &e;
                     error!(error = %&TraceParseError::from(e), "Failed to fetch contract ABI");
                     continue
                 }
