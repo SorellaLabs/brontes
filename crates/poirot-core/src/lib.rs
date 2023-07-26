@@ -10,6 +10,8 @@ pub mod structured_trace;
 
 pub static SUCCESSFUL_TRACE_PARSE: &'static str = "Successfully Parsed Trace";
 pub static SUCCESSFUL_TX_PARSE: &'static str = "Successfully Parsed Transaction";
+pub static FINISHED_BLOCK_PARSE: &'static str = "Finished Parsing Block";
+pub static STARTING_TRACE: &'static str = "Starting Trace";
 
 
 /// formats a stat with a color based on its value + kind
