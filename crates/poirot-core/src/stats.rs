@@ -45,9 +45,11 @@ pub struct EtherscanErrorStats {
 
 impl EtherscanErrorStats {
     pub fn into_info(&self) {
+        /* 
         if self.total > 0 {
             info!(" {}", format_color("Etherscan Errors", self.total, true));
         }
+        */
         if self.chain_not_supported > 0 {
             info!(" {}", format_color("Etherscan Error -- Chain Not Supported", self.chain_not_supported, true));
         }
@@ -152,7 +154,6 @@ impl ParserStats {
                 .with_env_filter(EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy())
                 .finish(), 
             || {
-                //println!(); // for separation between stats
                 info!("{}", format_color("Total Transactions", self.total_tx, false));
                 info!("{}", format_color("Total Traces", self.total_traces, false));
                 info!("{}", format_color("Successful Parses", self.successful_parses, false));
@@ -160,8 +161,9 @@ impl ParserStats {
                 info!("{}", format_color("ABI Parse Errors", self.abi_parse_errors, true));
                 info!("{}", format_color("Invalid Function Selector Errors", self.invalid_function_selector_errors, true));
                 info!("{}", format_color("ABI Decoding Failed Errors", self.abi_decoding_failed_errors, true));
-                info!("{}\n", format_color("Trace Missing Errors", self.trace_missing_errors, true));
+                info!("{}", format_color("Trace Missing Errors", self.trace_missing_errors, true));
                 self.etherscan_errors.into_info();
+                println!();
             }
         );
     }
@@ -227,11 +229,11 @@ impl Visit for ParserStats {
                         EtherscanError::Reqwest(_) => self.etherscan_errors.reqwest += 1,
                         EtherscanError::Serde(_) => self.etherscan_errors.serde += 1,
                         EtherscanError::ContractCodeNotVerified(_) => self.etherscan_errors.contract_code_not_verified += 1,
-                        EtherscanError::EmptyResult { status, message } => self.etherscan_errors.empty_result += 1,
+                        EtherscanError::EmptyResult { status: _, message: _ } => self.etherscan_errors.empty_result += 1,
                         EtherscanError::RateLimitExceeded => self.etherscan_errors.rate_limit_exceeded += 1,
                         EtherscanError::IO(_) => self.etherscan_errors.io += 1,
                         EtherscanError::LocalNetworksNotSupported => self.etherscan_errors.local_networks_not_supported += 1,
-                        EtherscanError::ErrorResponse { status, message, result } => self.etherscan_errors.error_response += 1,
+                        EtherscanError::ErrorResponse { status: _, message: _, result: _ } => self.etherscan_errors.error_response += 1,
                         EtherscanError::Unknown(_) => self.etherscan_errors.unknown += 1,
                         EtherscanError::Builder(_) => self.etherscan_errors.builder += 1,
                         EtherscanError::MissingSolcVersion(_) => self.etherscan_errors.missing_solc_version += 1,
