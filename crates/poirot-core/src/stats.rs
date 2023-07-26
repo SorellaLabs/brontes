@@ -157,12 +157,11 @@ impl ParserStats {
                 info!("{}", format_color("Total Traces", self.total_traces, false));
                 info!("{}", format_color("Successful Parses", self.successful_parses, false));
                 info!("{}", format_color("Empty Input Errors", self.empty_input_errors, true));
-                //info!("{}", format_color("Etherscan Errors", self.etherscan_errors, true));
-
                 info!("{}", format_color("ABI Parse Errors", self.abi_parse_errors, true));
                 info!("{}", format_color("Invalid Function Selector Errors", self.invalid_function_selector_errors, true));
                 info!("{}", format_color("ABI Decoding Failed Errors", self.abi_decoding_failed_errors, true));
                 info!("{}\n", format_color("Trace Missing Errors", self.trace_missing_errors, true));
+                self.etherscan_errors.into_info();
             }
         );
     }
