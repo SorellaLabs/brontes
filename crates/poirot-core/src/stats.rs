@@ -76,34 +76,18 @@ where
 }
 
 impl Visit for ParserStats {
-    /// will implement incrementing counters for tx/block traces
-    /// find a better way to do this
-    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        //println!("RECORD DEBUG {:?}", field.name());
-      /* 
-        let value_str = format!("{:?}", value);
-        if value_str.contains("TraceMissing") {
-            self.trace_missing_errors += 1;
-        } else if value_str.contains("EmptyInput") {
-            self.empty_input_errors += 1;
-        } else if value_str.contains("EtherscanError") {
-            self.etherscan_errors += 1;
-        } else if value_str.contains("AbiParseError") {
-            self.abi_parse_errors += 1;
-        } else if value_str.contains("InvalidFunctionSelector") {
-            self.abi_parse_errors += 1;
-        } else if value_str.contains("AbiDecodingFailed") {
-            self.abi_decoding_failed_errors += 1;
-        } else if value_str.contains("Successfully Parsed Transaction") {
+    /// increases the counts of the numerical fields based off the event name
+    fn record_debug(&mut self, _field: &Field, value: &dyn std::fmt::Debug) {
+        let value = format!("{:?}", value);
+        if value.contains("Successfully Parsed Transaction") {
             self.total_tx += 1;
-        } else if value_str.contains("Successfully Parsed Trace") {
+        } else if value.contains("Successfully Parsed Trace") {
             self.successful_parses += 1;
-        } else if value_str.contains("Starting Trace") {
+        } else if value.contains("Starting Trace") {
             self.total_traces += 1;
-        } else if value_str.contains("Finished Parsing Block") {
+        } else if value.contains("Finished Parsing Block") {
             self.print_stats();
         }
-        */
     }
     
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
@@ -119,16 +103,6 @@ impl Visit for ParserStats {
         }
     }
 
-    fn record_str(&mut self, _field: &Field, value: &str) {
-        if value.contains("Successfully Parsed Transaction") {
-            self.total_tx += 1;
-        } else if value.contains("Successfully Parsed Trace") {
-            self.successful_parses += 1;
-        } else if value.contains("Starting Trace") {
-            self.total_traces += 1;
-        } else if value.contains("Finished Parsing Block") {
-            self.print_stats();
-        }
-    }
+
     
 }
