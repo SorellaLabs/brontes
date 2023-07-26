@@ -4,7 +4,7 @@ use crate::{
         CallAction,
         StructuredTrace::{self},
         TxTrace,
-    }, str_trace_action, SUCCESSFUL_TRACE_PARSE, SUCCESSFUL_TX_PARSE,
+    }, SUCCESSFUL_TRACE_PARSE, SUCCESSFUL_TX_PARSE,
 };
 use colored::Colorize;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
@@ -18,9 +18,9 @@ use reth_rpc_types::trace::parity::{
 };
 use std::{
     fs,
-    path::{Path, PathBuf}, error::Error,
+    path::{Path, PathBuf},
 };
-use tracing::{error, info, instrument, warn, debug, Span};
+use tracing::{error, info, instrument, debug};
 // tracing
 
 const UNKNOWN: &str = "unknown";
