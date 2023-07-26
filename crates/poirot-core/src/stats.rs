@@ -79,7 +79,7 @@ impl Visit for ParserStats {
     /// will implement incrementing counters for tx/block traces
     /// find a better way to do this
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        println!("RECORD DEBUG {:?}", field.name());
+        //println!("RECORD DEBUG {:?}", field.name());
       /* 
         let value_str = format!("{:?}", value);
         if value_str.contains("TraceMissing") {
@@ -126,6 +126,8 @@ impl Visit for ParserStats {
             self.successful_parses += 1;
         } else if value.contains("Starting Trace") {
             self.total_traces += 1;
+        } else if value.contains("Finished Parsing Block") {
+            self.print_stats();
         }
     }
     
