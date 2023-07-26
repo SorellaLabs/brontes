@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::{format_color, errors::TraceParseError};
 use alloy_etherscan::errors::EtherscanError;
 use tracing::{
@@ -51,82 +49,82 @@ impl EtherscanErrorStats {
         }
         */
         if self.chain_not_supported > 0 {
-            info!(" {}", format_color("Etherscan Error -- Chain Not Supported", self.chain_not_supported, true));
+            info!("{}", format_color("Etherscan Error -- Chain Not Supported", self.chain_not_supported, true));
         }
         if self.execution_failed > 0 {
-            info!(" {}", format_color("Etherscan Error -- Execution Failed", self.execution_failed, true));
+            info!("{}", format_color("Etherscan Error -- Execution Failed", self.execution_failed, true));
         }
         if self.balance_failed > 0 {
-            info!(" {}", format_color("Etherscan Error -- Balance Failed", self.balance_failed, true));
+            info!("{}", format_color("Etherscan Error -- Balance Failed", self.balance_failed, true));
         }
         if self.not_proxy > 0 {
-            info!(" {}", format_color("Etherscan Error -- Not a Proxy Contract", self.not_proxy, true));
+            info!("{}", format_color("Etherscan Error -- Not a Proxy Contract", self.not_proxy, true));
         }
         if self.missing_implementation_address > 0 {
-            info!(" {}", format_color("Etherscan Error -- Missing Implementation Address", self.missing_implementation_address, true));
+            info!("{}", format_color("Etherscan Error -- Missing Implementation Address", self.missing_implementation_address, true));
         }
         if self.block_number_by_timestamp_failed > 0 {
-            info!(" {}", format_color("Etherscan Error -- Block by Timestamp Failed", self.block_number_by_timestamp_failed, true));
+            info!("{}", format_color("Etherscan Error -- Block by Timestamp Failed", self.block_number_by_timestamp_failed, true));
         }
         if self.transaction_receipt_failed > 0 {
-            info!(" {}", format_color("Etherscan Error -- Transaction Receipt Failed", self.transaction_receipt_failed, true));
+            info!("{}", format_color("Etherscan Error -- Transaction Receipt Failed", self.transaction_receipt_failed, true));
         }
         if self.gas_estimation_failed > 0 {
-            info!(" {}", format_color("Etherscan Error -- Gas Estimation Failed", self.gas_estimation_failed, true));
+            info!("{}", format_color("Etherscan Error -- Gas Estimation Failed", self.gas_estimation_failed, true));
         }
         if self.bad_status_code > 0 {
-            info!(" {}", format_color("Etherscan Error -- Bad Status Code", self.bad_status_code, true));
+            info!("{}", format_color("Etherscan Error -- Bad Status Code", self.bad_status_code, true));
         }
         if self.env_var_not_found > 0 {
-            info!(" {}", format_color("Etherscan Error -- Environment Variable Not Found", self.env_var_not_found, true));
+            info!("{}", format_color("Etherscan Error -- Environment Variable Not Found", self.env_var_not_found, true));
         }
         if self.reqwest > 0 {
-            info!(" {}", format_color("Etherscan Error -- Reqwest Error", self.reqwest, true));
+            info!("{}", format_color("Etherscan Error -- Reqwest Error", self.reqwest, true));
         }
         if self.serde > 0 {
-            info!(" {}", format_color("Etherscan Error -- Serde Error", self.serde, true));
+            info!("{}", format_color("Etherscan Error -- Serde Error", self.serde, true));
         }
         if self.contract_code_not_verified > 0 {
-            info!(" {}", format_color("Etherscan Error -- Contract Code Not Verified", self.contract_code_not_verified, true));
+            info!("{}", format_color("Etherscan Error -- Contract Code Not Verified", self.contract_code_not_verified, true));
         }
         if self.empty_result > 0 {
-            info!(" {}", format_color("Etherscan Error -- Empty Result", self.empty_result, true));
+            info!("{}", format_color("Etherscan Error -- Empty Result", self.empty_result, true));
         }
         if self.rate_limit_exceeded > 0 {
-            info!(" {}", format_color("Etherscan Error -- Rate Limit Exceeded", self.rate_limit_exceeded, true));
+            info!("{}", format_color("Etherscan Error -- Rate Limit Exceeded", self.rate_limit_exceeded, true));
         }
         if self.io > 0 {
-            info!(" {}", format_color("Etherscan Error -- IO Error", self.io, true));
+            info!("{}", format_color("Etherscan Error -- IO Error", self.io, true));
         }
         if self.local_networks_not_supported > 0 {
-            info!(" {}", format_color("Etherscan Error -- Local Networks Not Supported", self.local_networks_not_supported, true));
+            info!("{}", format_color("Etherscan Error -- Local Networks Not Supported", self.local_networks_not_supported, true));
         }
         if self.error_response > 0 {
-            info!(" {}", format_color("Etherscan Error -- Error Response", self.error_response, true));
+            info!("{}", format_color("Etherscan Error -- Error Response", self.error_response, true));
         }
         if self.unknown > 0 {
-            info!(" {}", format_color("Etherscan Error -- Unknown Error", self.unknown, true));
+            info!("{}", format_color("Etherscan Error -- Unknown Error", self.unknown, true));
         }
         if self.builder > 0 {
-            info!(" {}", format_color("Etherscan Error -- Builder Error", self.builder, true));
+            info!("{}", format_color("Etherscan Error -- Builder Error", self.builder, true));
         }
         if self.missing_solc_version > 0 {
-            info!(" {}", format_color("Etherscan Error -- Missing Solc Version", self.missing_solc_version, true));
+            info!("{}", format_color("Etherscan Error -- Missing Solc Version", self.missing_solc_version, true));
         }
         if self.invalid_api_key > 0 {
-            info!(" {}", format_color("Etherscan Error -- Invalid API Key", self.invalid_api_key, true));
+            info!("{}", format_color("Etherscan Error -- Invalid API Key", self.invalid_api_key, true));
         }
         if self.blocked_by_cloudflare > 0 {
-            info!(" {}", format_color("Etherscan Error -- Blocked By Cloudflare", self.blocked_by_cloudflare, true));
+            info!("{}", format_color("Etherscan Error -- Blocked By Cloudflare", self.blocked_by_cloudflare, true));
         }
         if self.cloudflare_security_challenge > 0 {
-            info!(" {}", format_color("Etherscan Error -- Cloudflare Security Challenge", self.cloudflare_security_challenge, true));
+            info!("{}", format_color("Etherscan Error -- Cloudflare Security Challenge", self.cloudflare_security_challenge, true));
         }
         if self.page_not_found > 0 {
-            info!(" {}", format_color("Etherscan Error -- Page Not Found", self.page_not_found, true));
+            info!("{}", format_color("Etherscan Error -- Page Not Found", self.page_not_found, true));
         }
         if self.cache_error > 0 {
-            info!(" {}", format_color("Etherscan Error -- Cache Error", self.cache_error, true));
+            info!("{}", format_color("Etherscan Error -- Cache Error", self.cache_error, true));
         }
     }
 }
