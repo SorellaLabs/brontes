@@ -131,7 +131,7 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    let error: &(dyn std::error::Error + 'static) = &e;
+                    let error: &(dyn std::error::Error + 'static) = &TraceParseError::from(e);
                     error!(error, "Failed to fetch contract ABI");
                     continue
                 }
