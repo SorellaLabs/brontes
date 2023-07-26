@@ -7,6 +7,11 @@ pub mod normalize;
 pub mod stats;
 pub mod structured_trace;
 
+
+pub static SUCCESSFUL_TRACE_PARSE: &'static str = "Successfully Parsed Trace";
+pub static SUCCESSFUL_TX_PARSE: &'static str = "Successfully Parsed Transaction";
+
+
 /// formats a stat with a color based on its value + kind
 pub fn format_color(stat: &str, val: usize, error: bool) -> ColoredString {
     if val != 0 {
