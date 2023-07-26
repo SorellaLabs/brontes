@@ -83,8 +83,9 @@ impl Parser {
                     println!(); // new line for new tx, find better way to do this 
                     result.push(res);
                 }
-                Err(error) => {
-                    error!(error = %error, "Error Parsing Transaction {:#x}", trace.transaction_hash);
+                Err(e) => {
+                    let error: &(dyn std::error::Error + 'static) = &e;
+                    error!(error, "Error Parsing Transaction {:#x}", trace.transaction_hash);
                 }
             }
         }
@@ -145,8 +146,9 @@ impl Parser {
                         structured_traces.push(structured_trace);
                         continue;
                     }
-                    Err(error) => {
-                        error!(error = %&error, "Empty Input without fallback or receive");
+                    Err(e) => {
+                        let error: &(dyn std::error::Error + 'static) = &e;
+                        error!(error, "Empty Input without fallback or receive");
                         continue
                     }
                 }
@@ -172,15 +174,17 @@ impl Parser {
                         .await {
                             Ok(abi) => abi,
                             Err(e) => {
-                                error!(error = %TraceParseError::from(e), "unable to get proxy contract abi");
+                                let error: &(dyn std::error::Error + 'static) = &e;
+                                error!(error, "unable to get proxy contract abi");
                                 continue;
                             }
                         };
 
                     match decode_input_with_abi(&impl_abi, action, &trace_address, tx_hash) {
                         Ok(s) => s,
-                        Err(error) => {
-                            error!(error = %error, "Invalid Function Selector");
+                        Err(e) => {
+                            let error: &(dyn std::error::Error + 'static) = &e;
+                            error!(error, "Invalid Function Selector");
                             StructuredTrace::CALL(CallAction::new(
                                 action.from,
                                 action.to,
