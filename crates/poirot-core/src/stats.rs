@@ -105,11 +105,8 @@ impl Visit for ParserStats {
         }
         */
     }
-
-    // tbd
     
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
-        println!("RECORD ERROR");
         if let Some(error) = value.downcast_ref::<TraceParseError>() {
             match error {
                 TraceParseError::TraceMissing => self.trace_missing_errors += 1,
@@ -119,6 +116,16 @@ impl Visit for ParserStats {
                 TraceParseError::InvalidFunctionSelector(_) => self.abi_parse_errors += 1,
                 TraceParseError::AbiDecodingFailed(_) => self.abi_decoding_failed_errors += 1,
             }
+        }
+    }
+
+    fn record_str(&mut self, _field: &Field, value: &str) {
+        if value.contains("Successfully Parsed Transaction") {
+            self.total_tx += 1;
+        } else if value.contains("Successfully Parsed Trace") {
+            self.successful_parses += 1;
+        } else if value.contains("Starting Trace") {
+            self.total_traces += 1;
         }
     }
     
