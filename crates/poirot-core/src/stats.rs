@@ -201,12 +201,13 @@ where
 
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
         let span = ctx.span(&id).unwrap();
-        span.extensions()
+        //span.extensions();
         if span.name() == "poirot" {
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
                 //println!("bane2");
                 ext.print_stats();
             }
+        }
         //}
     }
 
