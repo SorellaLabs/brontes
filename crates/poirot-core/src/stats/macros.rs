@@ -103,8 +103,8 @@ macro_rules! init_block {
             });
 
             let message = format!("Starting Parsing Block {}", format!("{}", $blk).bright_blue().bold());
-            let progess = format!("Progress: {}", format!("{} / {}", $end_blk-$blk+1, $end_blk-$start_blk).bright_blue().bold());
-            info!(message = message, progess = progess);
+            let progess = format!("{}", format!("{} / {}", $end_blk-$blk+1, $end_blk-$start_blk).bright_blue().bold());
+            info!(message = message, progess = format!("{}", progess));
         }
     };
 }
