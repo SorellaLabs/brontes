@@ -61,12 +61,13 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     register_counter!("transactions");
     increment_counter!("transactions");
-    println!("{:?}", describe_counter!("some_metric_name", Unit::Count, "my favorite counter"));
+    describe_counter!("transactions", Unit::Count, "my favorite counter");
+    println!("{:?}", describe_counter!("transactions", Unit::Count, "my favorite counter"));
     for i in 17679852..17679853 {
         let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
         let action = parser.parse_block(i, block_trace).await;
     }
-    println!("{:?}", describe_counter!("some_metric_name", Unit::Count, "my favorite counter"));
+    println!("{:?}", describe_counter!("transactions", Unit::Count, "my favorite counter"));
 
 
     Ok(())
