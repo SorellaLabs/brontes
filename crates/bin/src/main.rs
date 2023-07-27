@@ -67,7 +67,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
         let action = parser.parse_block(i, block_trace).await;
     }
-    info!(target: "poirot::parser::stats", "Finished Parsing Blocks: {}", format!("{} to {}", start_block, end_block).bright_blue().bold());
+    info!("Finished Parsing Blocks: {}", format!("{} to {}", start_block, end_block).bright_blue().bold());
 
     Ok(())
 }
