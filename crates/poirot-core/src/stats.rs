@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering;
 
-use crate::{format_color, errors::TraceParseError, TRANSACTION_COUNTER};
+use crate::{format_color, errors::TraceParseError, *};
 use alloy_etherscan::errors::EtherscanError;
 use tracing::{
     field::{Field, Visit},
@@ -134,7 +134,6 @@ impl EtherscanErrorStats {
 
 #[derive(Debug, Default)]
 pub struct ParserErrorStats {
-    pub total_traces: usize,
     pub successful_parses: usize,
     pub empty_input_errors: usize,
     pub etherscan_errors: EtherscanErrorStats,
@@ -154,8 +153,8 @@ impl ParserErrorStats {
                 .finish(), 
             || {
                 info!("{}", format_color("Total Transactions", TRANSACTION_COUNTER.load(Ordering::Relaxed), false));
-                info!("{}", format_color("Total Traces", self.total_traces, false));
-                info!("{}", format_color("Successful Parses", self.successful_parses, false));
+                info!("{}", format_color("Total Traces", TRACE_COUNTER.load(Ordering::Relaxed), false));
+                info!("{}", format_color("Successful Parses", SUCCESSFUL_PARSE_COUNTER.load(Ordering::Relaxed), false));
                 info!("{}", format_color("Empty Input Errors", self.empty_input_errors, true));
                 info!("{}", format_color("ABI Parse Errors", self.abi_parse_errors, true));
                 info!("{}", format_color("Invalid Function Selector Errors", self.invalid_function_selector_errors, true));
