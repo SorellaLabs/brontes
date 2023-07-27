@@ -3,7 +3,7 @@ use poirot_core::{decode::Parser, stats::ParserStatsLayer};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
-use tracing::{Level, info};
+use tracing::{Level, info, Span, span};
 use tracing_futures::Instrument;
 use tracing_subscriber::{
     prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Registry, EnvFilter, Layer,
@@ -28,6 +28,8 @@ fn main() {
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");
 
+    let span = span!(Level::TRACE, "poirot");
+    let _ = span.enter();
     match runtime.block_on(run(runtime.handle().clone())) {
         Ok(()) => println!("Success!"),
         Err(e) => {
