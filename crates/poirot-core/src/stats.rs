@@ -134,7 +134,9 @@ impl EtherscanErrorStats {
 
 #[derive(Debug, Default)]
 pub struct ParserErrorStats {
-    pub successful_parses: usize,
+    //pub total_txs: usize,
+    //pub total_traces: usize,
+    //pub successful_parses: usize,
     pub empty_input_errors: usize,
     pub etherscan_errors: EtherscanErrorStats,
     pub abi_parse_errors: usize,
@@ -181,7 +183,7 @@ where
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
-                if event.metadata().target() == "parser::block" {
+                if event.metadata().target() == "poirot::parser::stats" {
                     ext.print_stats();
                 } else {
                     event.record(&mut *ext);

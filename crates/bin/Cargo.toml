@@ -38,3 +38,4 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["e
 reth-tracing = { path="../reth-tracing" }
 tracing-futures = { version = "0.2.5"}
 metrics = "0.21.1"
+colored = "2.0"
