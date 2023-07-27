@@ -194,7 +194,7 @@ where
 impl Visit for ParserErrorStats {
     /// increases the counts of the numerical fields based off the event name
     fn record_debug(&mut self, _field: &Field, _value: &dyn std::fmt::Debug) {
-        self.print_stats();
+        //self.print_stats();
     }
     
     /// incremenets the error count fields of the stats
