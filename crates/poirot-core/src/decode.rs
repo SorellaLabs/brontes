@@ -81,7 +81,7 @@ impl Parser {
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
                     TRANSACTION_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    info!(SUCCESSFUL_TX_PARSE, tx_hash = &format!("{:#x}", trace.transaction_hash));
+                    info!(result = "Successfully Parsed Trace", tx_hash = &format!("{:#x}", trace.transaction_hash));
                     println!(); // new line for new tx, find better way to do this 
                     result.push(res);
                 }
@@ -117,19 +117,19 @@ impl Parser {
                 RethAction::Call(call) => (call, transaction_trace.trace_address.clone()),
                 RethAction::Create(create_action) => {
                     SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    info!(SUCCESSFUL_TRACE_PARSE, trace_action = "CREATE", creator_addr = format!("{:#x}", create_action.from));
+                    info!(result = "Successfully Parsed Trace", trace_action = "CREATE", creator_addr = format!("{:#x}", create_action.from));
                     structured_traces.push(StructuredTrace::CREATE(create_action.clone()));
                     continue
                 }
                 RethAction::Selfdestruct(self_destruct) => {
                     SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    info!(SUCCESSFUL_TRACE_PARSE, trace_action = "SELFDESTRUCT", contract_addr = format!("{:#x}", self_destruct.address));
+                    info!(result = "Successfully Parsed Trace", trace_action = "SELFDESTRUCT", contract_addr = format!("{:#x}", self_destruct.address));
                     structured_traces.push(StructuredTrace::SELFDESTRUCT(self_destruct.clone()));
                     continue
                 }
                 RethAction::Reward(reward) => {
                     SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    info!(SUCCESSFUL_TRACE_PARSE, trace_action = "REWARD", reward_type = format!("{:?}", reward.reward_type), reward_author = format!("{:#x}", reward.author));
+                    info!(result = "Successfully Parsed Trace", trace_action = "REWARD", reward_type = format!("{:?}", reward.reward_type), reward_author = format!("{:#x}", reward.author));
                     structured_traces.push(StructuredTrace::REWARD(reward.clone()));
                     continue
                 }
@@ -150,7 +150,7 @@ impl Parser {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
                         SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                        info!(SUCCESSFUL_TRACE_PARSE, trace_action = "CALL", call_type = format!("{:?}", action.call_type));
+                        info!(result = "Successfully Parsed Trace", trace_action = "CALL", call_type = format!("{:?}", action.call_type));
                         structured_traces.push(structured_trace);
                         continue;
                     }
@@ -206,7 +206,7 @@ impl Parser {
                 }
             };
             SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-            info!(SUCCESSFUL_TRACE_PARSE, trace_action = "CALL", call_type = format!("{:?}", action.call_type));
+            info!(result = "Successfully Parsed Trace", trace_action = "CALL", call_type = format!("{:?}", action.call_type));
             structured_traces.push(structured_trace);
         }
 
