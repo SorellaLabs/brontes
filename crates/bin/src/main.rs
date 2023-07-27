@@ -3,11 +3,12 @@ use poirot_core::{decode::Parser, stats::ParserStatsLayer};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
-use tracing::Level;
+use tracing::{Level, info};
 use tracing_futures::Instrument;
 use tracing_subscriber::{
     prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Registry, EnvFilter, Layer,
 };
+use colored::Colorize;
 
 //Std
 use std::{collections::HashSet, env, error::Error, path::Path};
@@ -59,11 +60,12 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let mut parser = Parser::new(key.clone());
 
+    let (start_block, end_block) = (17679852, 17679854);
     for i in 17679852..17679854 {
         let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
         let action = parser.parse_block(i, block_trace).await;
     }
-
+    info!(target: "poirot::parser::stats", "Finished Parsing Blocks: {}", format!("{} To {}", start_block, end_block).bright_blue().bold());
 
     Ok(())
 }
