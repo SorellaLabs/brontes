@@ -12,6 +12,7 @@ use alloy_etherscan::Client;
 use alloy_json_abi::{JsonAbi, StateMutability};
 
 use ethers_core::types::Chain;
+use metrics::increment_counter;
 use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
@@ -79,6 +80,7 @@ impl Parser {
             info!(message = format!("Starting Transaction Trace {}", format!("{} / {}", idx+1, block_trace.len()).bright_blue().bold()), tx_hash = format!("{:#x}", trace.transaction_hash));
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
+                    increment_counter!("transactions");
                     info!(SUCCESSFUL_TX_PARSE, tx_hash = &format!("{:#x}", trace.transaction_hash));
                     println!(); // new line for new tx, find better way to do this 
                     result.push(res);
@@ -90,6 +92,7 @@ impl Parser {
             }
         }
         info!("Finished Parsing Block {}", format!("{}", block_num).bright_blue().bold());
+
         result
     }
 
