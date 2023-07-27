@@ -28,8 +28,8 @@ fn main() {
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");
 
-    //let span = span!(Level::TRACE, "poirot");
-    //let _ = span.enter();
+    let span = span!(Level::TRACE, "poirot");
+    let _ = span.enter();
     match runtime.block_on(run(runtime.handle().clone())) {
         Ok(()) => println!("Success!"),
         Err(e) => {
