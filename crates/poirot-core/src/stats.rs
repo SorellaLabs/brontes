@@ -183,6 +183,7 @@ where
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
+                println!("bane :{:?}", event.metadata().target());
                 if event.metadata().target() == "poirot::parser::stats" {
                     ext.print_stats();
                 } else {
