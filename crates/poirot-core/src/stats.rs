@@ -193,8 +193,8 @@ where
         }
     }
 
-    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).unwrap();
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        let span = ctx.span(&id).unwrap();
         if span.name() == "poirot" {
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
                 //println!("bane2");
@@ -202,6 +202,7 @@ where
             }
         }
     }
+
 }
 
 impl Visit for ParserErrorStats {
