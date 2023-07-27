@@ -37,3 +37,4 @@ console-subscriber = "0.1.5"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 reth-tracing = { path="../reth-tracing" }
 tracing-futures = { version = "0.2.5"}
+metrics = "0.21.1"

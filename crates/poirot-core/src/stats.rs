@@ -203,6 +203,7 @@ impl Visit for ParserStats {
         }
     }
     
+    
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(error) = value.downcast_ref::<TraceParseError>() {
             match error {
