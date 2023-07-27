@@ -1,4 +1,6 @@
-use crate::{format_color, errors::TraceParseError};
+use std::sync::atomic::Ordering;
+
+use crate::{format_color, errors::TraceParseError, TRANSACTION_COUNTER};
 use alloy_etherscan::errors::EtherscanError;
 use tracing::{
     field::{Field, Visit},
@@ -131,7 +133,7 @@ impl EtherscanErrorStats {
 
 
 #[derive(Debug, Default)]
-pub struct ParserStats {
+pub struct ParserErrorStats {
     pub total_tx: usize,
     pub total_traces: usize,
     pub successful_parses: usize,
@@ -143,7 +145,7 @@ pub struct ParserStats {
     pub trace_missing_errors: usize,
 }
 
-impl ParserStats {
+impl ParserErrorStats {
     /// Since we are calling this from another layer that doesn't implement outputing to stdout
     /// We can initiate a fmt layer to output the stats as such
     pub fn print_stats(&self) {
@@ -152,7 +154,7 @@ impl ParserStats {
                 .with_env_filter(EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy())
                 .finish(), 
             || {
-                info!("{}", format_color("Total Transactions", self.total_tx, false));
+                info!("{}", format_color("Total Transactions", TRANSACTION_COUNTER.load(Ordering::Relaxed), false));
                 info!("{}", format_color("Total Traces", self.total_traces, false));
                 info!("{}", format_color("Successful Parses", self.successful_parses, false));
                 info!("{}", format_color("Empty Input Errors", self.empty_input_errors, true));
@@ -174,13 +176,13 @@ where
     fn on_new_span(&self, _attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).unwrap();
 
-        span.extensions_mut().insert(ParserStats::default());
+        span.extensions_mut().insert(ParserErrorStats::default());
     }
 
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
-            if let Some(ext) = span.extensions_mut().get_mut::<ParserStats>() {
+            if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
                 event.record(&mut *ext);
             };
         }
@@ -188,7 +190,7 @@ where
     
 }
 
-impl Visit for ParserStats {
+impl Visit for ParserErrorStats {
     /// increases the counts of the numerical fields based off the event name
     fn record_debug(&mut self, _field: &Field, value: &dyn std::fmt::Debug) {
         let value = format!("{:?}", value);
