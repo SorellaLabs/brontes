@@ -3,7 +3,7 @@ use poirot_core::{decode::Parser, stats::ParserStatsLayer};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
-use tracing::{Level, info, Span, span};
+use tracing::{Level, info, Span, span, instrument};
 use tracing_futures::Instrument;
 use tracing_subscriber::{
     prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Registry, EnvFilter, Layer,
@@ -28,8 +28,6 @@ fn main() {
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");
 
-    let span = span!(Level::TRACE, "poirot");
-    let _ = span.enter();
     match runtime.block_on(run(runtime.handle().clone())) {
         Ok(()) => println!("Success!"),
         Err(e) => {
@@ -44,6 +42,7 @@ fn main() {
     }
 }
 
+#[instrument(skip_all)]
 async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let db_path = match env::var("DB_PATH") {
         Ok(path) => path,
@@ -67,7 +66,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
         let action = parser.parse_block(i, block_trace).await;
     }
-    info!("Finished Parsing Blocks: {}", format!("{} to {}", start_block, end_block).bright_blue().bold());
+    info!(target: "poirot::stats", "Finished Parsing Blocks: {}", format!("{} to {}", start_block, end_block).bright_blue().bold());
 
     Ok(())
 }

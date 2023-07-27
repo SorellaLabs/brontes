@@ -91,7 +91,7 @@ impl Parser {
                 }
             }
         }
-        info!("Finished Parsing Block {}", format!("{}", block_num).bright_blue().bold());
+        info!(target: "poirot::stats", "Finished Parsing Block {}", format!("{}", block_num).bright_blue().bold());
 
         result
     }
