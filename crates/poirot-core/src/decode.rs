@@ -91,7 +91,7 @@ impl Parser {
                 }
             }
         }
-        info!("Finished Parsing Block {}", format!("{}", block_num).bright_blue().bold());
+        info!(target: "parser::block", "Finished Parsing Block {}", format!("{}", block_num).bright_blue().bold());
 
         result
     }
