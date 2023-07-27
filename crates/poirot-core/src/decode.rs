@@ -4,7 +4,7 @@ use crate::{
         CallAction,
         StructuredTrace::{self},
         TxTrace,
-    }, SUCCESSFUL_TRACE_PARSE, SUCCESSFUL_TX_PARSE, TRANSACTION_COUNTER,
+    }, *,
 };
 use colored::Colorize;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
@@ -115,16 +115,19 @@ impl Parser {
             let (action, trace_address) = match &transaction_trace.action {
                 RethAction::Call(call) => (call, transaction_trace.trace_address.clone()),
                 RethAction::Create(create_action) => {
+                    TRACE_COUNTER.fetch_add(1, Ordering::Relaxed);
                     info!(SUCCESSFUL_TRACE_PARSE, trace_action = "CREATE", creator_addr = format!("{:#x}", create_action.from));
                     structured_traces.push(StructuredTrace::CREATE(create_action.clone()));
                     continue
                 }
                 RethAction::Selfdestruct(self_destruct) => {
+                    TRACE_COUNTER.fetch_add(1, Ordering::Relaxed);
                     info!(SUCCESSFUL_TRACE_PARSE, trace_action = "SELFDESTRUCT", contract_addr = format!("{:#x}", self_destruct.address));
                     structured_traces.push(StructuredTrace::SELFDESTRUCT(self_destruct.clone()));
                     continue
                 }
                 RethAction::Reward(reward) => {
+                    TRACE_COUNTER.fetch_add(1, Ordering::Relaxed);
                     info!(SUCCESSFUL_TRACE_PARSE, trace_action = "REWARD", reward_type = format!("{:?}", reward.reward_type), reward_author = format!("{:#x}", reward.author));
                     structured_traces.push(StructuredTrace::REWARD(reward.clone()));
                     continue
@@ -145,6 +148,7 @@ impl Parser {
             if action.input.is_empty() {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
+                        TRACE_COUNTER.fetch_add(1, Ordering::Relaxed);
                         info!(SUCCESSFUL_TRACE_PARSE, trace_action = "CALL", call_type = format!("{:?}", action.call_type));
                         structured_traces.push(structured_trace);
                         continue;
@@ -200,6 +204,7 @@ impl Parser {
                     }
                 }
             };
+            TRACE_COUNTER.fetch_add(1, Ordering::Relaxed);
             info!(SUCCESSFUL_TRACE_PARSE, trace_action = "CALL", call_type = format!("{:?}", action.call_type));
             structured_traces.push(structured_trace);
         }

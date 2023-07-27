@@ -134,7 +134,6 @@ impl EtherscanErrorStats {
 
 #[derive(Debug, Default)]
 pub struct ParserErrorStats {
-    pub total_tx: usize,
     pub total_traces: usize,
     pub successful_parses: usize,
     pub empty_input_errors: usize,
@@ -192,20 +191,9 @@ where
 
 impl Visit for ParserErrorStats {
     /// increases the counts of the numerical fields based off the event name
-    fn record_debug(&mut self, _field: &Field, value: &dyn std::fmt::Debug) {
-        let value = format!("{:?}", value);
-        if value.contains("Successfully Parsed Transaction") {
-            self.total_tx += 1;
-        } else if value.contains("Successfully Parsed Trace") {
-            self.successful_parses += 1;
-        } else if value.contains("Starting Trace") {
-            self.total_traces += 1;
-        } else if value.contains("Finished Parsing Block") {
-            self.print_stats();
-        }
-    }
+    fn record_debug(&mut self, _field: &Field, _value: &dyn std::fmt::Debug) {}
     
-    
+    /// incremenets the error count fields of the stats
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(error) = value.downcast_ref::<TraceParseError>() {
             match error {

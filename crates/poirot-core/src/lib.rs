@@ -13,6 +13,7 @@ pub mod structured_trace;
 pub static SUCCESSFUL_TRACE_PARSE: &'static str = "Successfully Parsed Trace";
 pub static SUCCESSFUL_TX_PARSE: &'static str = "Successfully Parsed Transaction";
 pub static TRANSACTION_COUNTER: AtomicUsize = AtomicUsize::new(0);
+pub static TRACE_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 
 /// formats a stat with a color based on its value + kind
