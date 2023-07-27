@@ -63,7 +63,6 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
         let action = parser.parse_block(i, block_trace).await;
     }
-    println!("{:?}", describe_counter!("transactions", Unit::Count, "my favorite counter"));
 
 
     Ok(())
