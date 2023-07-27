@@ -64,7 +64,7 @@ macro_rules! init_tx {
         }
 
         let tx_hash = format!("{:#x}", $tx);
-        let message = format!("{:?}", format!("Starting Transaction Trace {} / {}", $idx+1, $total_len).bright_blue().bold());
+        let message = format!("{}", format!("Starting Transaction Trace {} / {}", $idx+1, $total_len).bright_blue().bold());
         info!(message = message, tx_hash = tx_hash);
     };
 }
