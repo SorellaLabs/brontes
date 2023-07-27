@@ -102,8 +102,8 @@ macro_rules! init_block {
                 tx_stats: Vec::new(),
             });
 
-            let message = format!("Starting Parsing Block {:?}", format!("{}", $blk).bright_blue().bold());
-            let progess = format!("Progress: {:?}", format!("{} / {}", $end_blk-$blk+1, $end_blk-$start_blk).bright_blue().bold());
+            let message = format!("Starting Parsing Block {}", format!("{}", $blk).bright_blue().bold());
+            let progess = format!("Progress: {}", format!("{} / {}", $end_blk-$blk+1, $end_blk-$start_blk).bright_blue().bold());
             info!(message = message, progess = progess);
         }
     };
@@ -114,7 +114,7 @@ macro_rules! init_block {
 macro_rules! success_block {
     ($blk:expr) => {
         {
-            let message = format!("Successfuly Parsed Block {:?}", format!("{}", $blk).bright_blue().bold());
+            let message = format!("Successfuly Parsed Block {}", format!("{}", $blk).bright_blue().bold());
             info!(message = message);
         }
     };
@@ -126,8 +126,9 @@ macro_rules! success_block {
 macro_rules! success_all {
     ($start_blk:expr, $end_blk:expr) => {
         {
-            let message = format!("Successfuly Parsed Block {:?}", format!("{} to {}", $start_blk, $end_blk).bright_blue().bold());
+            let message = format!("Successfuly Parsed Block {}", format!("{} to {}", $start_blk, $end_blk).bright_blue().bold());
             info!(message = message);
+            poirot_core::stats::stats::display_all_stats();
         }
     };
 }
