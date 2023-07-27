@@ -1,5 +1,5 @@
 use metrics::{register_counter, describe_counter, increment_counter, Unit, Recorder};
-use poirot_core::{decode::Parser, stats2::ParserStatsLayer, init_block, success_block, success_all};
+use poirot_core::{decode::Parser, init_block, success_block, success_all};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
@@ -23,7 +23,7 @@ fn main() {
     EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
 
     let subscriber =
-        Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter)).with(ParserStatsLayer);
+        Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
 
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");

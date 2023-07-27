@@ -93,10 +93,11 @@ macro_rules! success_tx {
 #[macro_export]
 macro_rules! init_block {
     ($blk:expr, $start_blk:expr, $end_blk:expr) => {
-        use crate::stats::stats::*;
+        //use crate::poirot_core::stats::stats::BlockStats;
+        //use crate::poirot_core::stats::stats::BLOCK_STATS;
         {
-            let mut block_stats = BLOCK_STATS.lock().unwrap();
-            let block_stat = block_stats.entry($blk).or_insert_with(|| BlockStats {
+            let mut block_stats = poirot_core::stats::stats::BLOCK_STATS.lock().unwrap();
+            let block_stat = block_stats.entry($blk).or_insert_with(|| poirot_core::stats::stats::BlockStats {
                 block_num: $blk,
                 tx_stats: Vec::new(),
             });
@@ -124,8 +125,6 @@ macro_rules! success_block {
 #[macro_export]
 macro_rules! success_all {
     ($start_blk:expr, $end_blk:expr) => {
-        use crate::stats::stats::BLOCK_STATS;
-        use crate::stats::stats::TX_STATS;
         {
             let message = format!("Successfuly Parsed Block {:?}", format!("{} to {}", $start_blk, $end_blk).bright_blue().bold());
             info!(message = message);
