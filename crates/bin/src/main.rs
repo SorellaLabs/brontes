@@ -59,10 +59,6 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let mut parser = Parser::new(key.clone());
 
-    register_counter!("transactions");
-    increment_counter!("transactions");
-    describe_counter!("transactions", Unit::Count, "my favorite counter");
-    println!("{:?}", describe_counter!("transactions", Unit::Count, "my favorite counter"));
     for i in 17679852..17679853 {
         let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
         let action = parser.parse_block(i, block_trace).await;

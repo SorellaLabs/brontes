@@ -4,7 +4,7 @@ use crate::{
         CallAction,
         StructuredTrace::{self},
         TxTrace,
-    }, SUCCESSFUL_TRACE_PARSE, SUCCESSFUL_TX_PARSE,
+    }, SUCCESSFUL_TRACE_PARSE, SUCCESSFUL_TX_PARSE, TRANSACTION_COUNTER,
 };
 use colored::Colorize;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
@@ -19,7 +19,7 @@ use reth_rpc_types::trace::parity::{
 };
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, sync::atomic::Ordering,
 };
 use tracing::{error, info, instrument, debug};
 // tracing
@@ -80,7 +80,7 @@ impl Parser {
             info!(message = format!("Starting Transaction Trace {}", format!("{} / {}", idx+1, block_trace.len()).bright_blue().bold()), tx_hash = format!("{:#x}", trace.transaction_hash));
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
-                    increment_counter!("transactions");
+                    TRANSACTION_COUNTER.fetch_add(1, Ordering::Relaxed);
                     info!(SUCCESSFUL_TX_PARSE, tx_hash = &format!("{:#x}", trace.transaction_hash));
                     println!(); // new line for new tx, find better way to do this 
                     result.push(res);
