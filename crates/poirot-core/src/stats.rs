@@ -186,7 +186,7 @@ where
         }
     }
 
-    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(&id).unwrap();
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
                 ext.print_stats();
