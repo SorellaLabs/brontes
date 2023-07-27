@@ -185,12 +185,20 @@ where
             };
         }
     }
-    
+
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        let span = ctx.span(&id).unwrap();
+            if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
+                ext.print_stats();
+            };
+    }
 }
 
 impl Visit for ParserErrorStats {
     /// increases the counts of the numerical fields based off the event name
-    fn record_debug(&mut self, _field: &Field, _value: &dyn std::fmt::Debug) {}
+    fn record_debug(&mut self, _field: &Field, _value: &dyn std::fmt::Debug) {
+        self.print_stats();
+    }
     
     /// incremenets the error count fields of the stats
     fn record_error(&mut self, _field: &Field, value: &(dyn std::error::Error + 'static)) {
@@ -235,7 +243,4 @@ impl Visit for ParserErrorStats {
             }
         }
     }
-
-
-    
 }
