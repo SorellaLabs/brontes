@@ -197,7 +197,7 @@ where
         let span = ctx.span(id).unwrap();
         if span.parent().is_none() {
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
-                println!("bane :{:?}", event.metadata().target());
+                println!("bane");
                 ext.print_stats();
             }
         }
