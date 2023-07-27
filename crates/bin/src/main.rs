@@ -1,4 +1,4 @@
-use metrics::{register_counter, describe_counter};
+use metrics::{register_counter, describe_counter, increment_counter, Unit};
 use poirot_core::{decode::Parser, stats::ParserStatsLayer};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
@@ -60,12 +60,13 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::new(key.clone());
 
     register_counter!("transactions");
-    println!("{:?}", describe_counter!("transactions", "my favorite counter"));
+    increment_counter!("transactions");
+    println!("{:?}", describe_counter!("some_metric_name", Unit::Count, "my favorite counter"));
     for i in 17679852..17679853 {
         let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
         let action = parser.parse_block(i, block_trace).await;
     }
-    println!("{:?}", describe_counter!("transactions", "my favorite counter"));
+    println!("{:?}", describe_counter!("some_metric_name", Unit::Count, "my favorite counter"));
 
 
     Ok(())
