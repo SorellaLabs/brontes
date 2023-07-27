@@ -196,8 +196,10 @@ where
     fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).unwrap();
         if span.parent().is_none() {
+            //println!("bane");
+            println!("span scope: {:?}", ctx.span_scope(id).map(|ss| ss.into_iter().map(|s| s.name()).collect::<Vec<&str>>()));
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
-                println!("bane");
+                println!("bane2");
                 ext.print_stats();
             }
         }
