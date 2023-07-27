@@ -13,11 +13,18 @@ pub struct ParserStatsLayer;
 
 
 lazy_static! {
-    pub static ref GLOBAL_MAP: Mutex<HashMap<u32, String>> = {
-        let mut m = HashMap::new();
-        m.insert(0, "zero".to_string());
-        Mutex::new(m)
-    };
+    pub static ref STATS: Vec<BlockStats> = Vec::new();
+}
+
+
+pub struct BlockStats {
+    pub block_num: u64,
+    pub tx_stats: Vec<TransactionStats>,
+}
+
+pub struct TransactionStats {
+    pub tx_hash: String,
+    pub tx_stats: Vec<ErrorStats>,
 }
 
 
@@ -25,34 +32,34 @@ lazy_static! {
 #[derive(Debug, Default)]
 pub struct EtherscanErrorStats {
     pub total: usize,
-    pub chain_not_supported: usize,
-    pub execution_failed: usize,
-    pub balance_failed: usize,
-    pub not_proxy: usize,
-    pub missing_implementation_address: usize,
-    pub block_number_by_timestamp_failed: usize,
-    pub transaction_receipt_failed: usize,
-    pub gas_estimation_failed: usize,
-    pub bad_status_code: usize,
-    pub env_var_not_found: usize,
-    pub reqwest: usize,
-    pub serde: usize,
-    pub contract_code_not_verified: usize,
-    pub empty_result: usize,
-    pub rate_limit_exceeded: usize,
-    pub io: usize,
-    pub local_networks_not_supported: usize,
-    pub error_response: usize,
-    pub unknown: usize,
-    pub builder: usize,
-    pub missing_solc_version: usize,
-    pub invalid_api_key: usize,
-    pub blocked_by_cloudflare: usize,
-    pub cloudflare_security_challenge: usize,
-    pub page_not_found: usize,
-    pub cache_error: usize,
+    pub etherscan_chain_not_supported: usize,
+    pub etherscan_execution_failed: usize,
+    pub etherscan_balance_failed: usize,
+    pub etherscan_not_proxy: usize,
+    pub etherscan_missing_implementation_address: usize,
+    pub etherscan_block_number_by_timestamp_failed: usize,
+    pub etherscan_transaction_receipt_failed: usize,
+    pub etherscan_gas_estimation_failed: usize,
+    pub etherscan_bad_status_code: usize,
+    pub etherscan_env_var_not_found: usize,
+    pub etherscan_reqwest: usize,
+    pub etherscan_serde: usize,
+    pub etherscan_contract_code_not_verified: usize,
+    pub etherscan_empty_result: usize,
+    pub etherscan_rate_limit_exceeded: usize,
+    pub etherscan_io: usize,
+    pub etherscan_local_networks_not_supported: usize,
+    pub etherscan_error_response: usize,
+    pub etherscan_unknown: usize,
+    pub etherscan_builder: usize,
+    pub etherscan_missing_solc_version: usize,
+    pub etherscan_invalid_api_key: usize,
+    pub etherscan_blocked_by_cloudflare: usize,
+    pub etherscan_cloudflare_security_challenge: usize,
+    pub etherscan_page_not_found: usize,
+    pub etherscan_cache_error: usize,
 }
-
+/*
 impl EtherscanErrorStats {
     pub fn into_info(&self) {
         /* 
@@ -140,13 +147,14 @@ impl EtherscanErrorStats {
         }
     }
 }
+*/
 
 
 pub struct ParserErrorStatsLevel(HashMap<&'static str, ParserErrorStats>);
 
 
 #[derive(Debug, Default)]
-pub struct ParserErrorStats {
+pub struct ErrorStats {
     //pub total_txs: usize,
     //pub total_traces: usize,
     //pub successful_parses: usize,
@@ -156,6 +164,32 @@ pub struct ParserErrorStats {
     pub invalid_function_selector_errors: usize,
     pub abi_decoding_failed_errors: usize,
     pub trace_missing_errors: usize,
+    pub etherscan_chain_not_supported: usize,
+    pub etherscan_execution_failed: usize,
+    pub etherscan_balance_failed: usize,
+    pub etherscan_not_proxy: usize,
+    pub etherscan_missing_implementation_address: usize,
+    pub etherscan_block_number_by_timestamp_failed: usize,
+    pub etherscan_transaction_receipt_failed: usize,
+    pub etherscan_gas_estimation_failed: usize,
+    pub etherscan_bad_status_code: usize,
+    pub etherscan_env_var_not_found: usize,
+    pub etherscan_reqwest: usize,
+    pub etherscan_serde: usize,
+    pub etherscan_contract_code_not_verified: usize,
+    pub etherscan_empty_result: usize,
+    pub etherscan_rate_limit_exceeded: usize,
+    pub etherscan_io: usize,
+    pub etherscan_local_networks_not_supported: usize,
+    pub etherscan_error_response: usize,
+    pub etherscan_unknown: usize,
+    pub etherscan_builder: usize,
+    pub etherscan_missing_solc_version: usize,
+    pub etherscan_invalid_api_key: usize,
+    pub etherscan_blocked_by_cloudflare: usize,
+    pub etherscan_cloudflare_security_challenge: usize,
+    pub etherscan_page_not_found: usize,
+    pub etherscan_cache_error: usize,
 }
 
 impl ParserErrorStats {
@@ -175,7 +209,7 @@ impl ParserErrorStats {
                 info!("{}", format_color("Invalid Function Selector Errors", self.invalid_function_selector_errors, true));
                 info!("{}", format_color("ABI Decoding Failed Errors", self.abi_decoding_failed_errors, true));
                 info!("{}", format_color("Trace Missing Errors", self.trace_missing_errors, true));
-                self.etherscan_errors.into_info();
+                //self.etherscan_errors.into_info();
                 println!();
             }
         );
@@ -197,7 +231,6 @@ where
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
-            //println!("fields: {}", span.fields().)
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
                 if event.metadata().target() == "poirot::stats" {
                     ext.print_stats();
