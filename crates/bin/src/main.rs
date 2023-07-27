@@ -1,5 +1,5 @@
-use metrics::{register_counter, describe_counter, increment_counter, Unit};
-use poirot_core::{decode::Parser, stats::ParserStatsLayer};
+use metrics::{register_counter, describe_counter, increment_counter, Unit, Recorder};
+use poirot_core::{decode::Parser, stats2::ParserStatsLayer, init_block, success_block, success_all};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
@@ -63,10 +63,12 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let (start_block, end_block) = (17679852, 17679853);
     for i in start_block..end_block {
+        init_block!(i, start_block, end_block);
         let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
         let action = parser.parse_block(i, block_trace).await;
+        success_block!(i);
     }
-    info!(target: "poirot::stats", "Finished Parsing Blocks: {}", format!("{} to {}", start_block, end_block).bright_blue().bold());
+    success_all!(start_block, end_block);
 
     Ok(())
 }

@@ -24,3 +24,6 @@ impl From<EtherscanError> for TraceParseError {
         TraceParseError::EtherscanError(err)
     }
 }
+
+unsafe impl Send for TraceParseError {}
+unsafe impl Sync for TraceParseError {}
