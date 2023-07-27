@@ -181,16 +181,13 @@ where
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
-                event.record(&mut *ext);
+                if event.metadata().target() == "parser::block" {
+                    ext.print_stats();
+                } else {
+                    event.record(&mut *ext);
+                }
             };
         }
-    }
-
-    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
-        let span = ctx.span(&id).unwrap();
-            if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
-                ext.print_stats();
-            };
     }
 }
 
