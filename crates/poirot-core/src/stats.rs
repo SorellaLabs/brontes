@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::{sync::atomic::Ordering, collections::HashMap};
 
 use crate::{format_color, errors::TraceParseError, *};
 use alloy_etherscan::errors::EtherscanError;
@@ -130,6 +130,9 @@ impl EtherscanErrorStats {
         }
     }
 }
+
+
+pub struct ParserErrorStatsLevel(HashMap<&'static str, ParserErrorStats>);
 
 
 #[derive(Debug, Default)]
