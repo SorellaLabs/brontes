@@ -46,6 +46,7 @@ revm-primitives = "1.1.2"
 
 # Serde 
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde = "1.0.177"
 
 # error handling
 eyre = "0.6.8"

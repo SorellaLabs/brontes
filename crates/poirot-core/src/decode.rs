@@ -77,11 +77,10 @@ impl Parser {
         for (idx, trace) in block_trace.iter().enumerate() {
             // We don't need to through an error for this given transaction so long as the error is
             // logged & emmitted and the transaction is stored.
-            info!(message = format!("Starting Transaction Trace {}", format!("{} / {}", idx+1, block_trace.len()).bright_blue().bold()), tx_hash = format!("{:#x}", trace.transaction_hash));
+            init_tx!(trace.transaction_hash, idx, block_trace.len());
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
-                    TRANSACTION_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    info!(result = "Successfully Parsed Trace", tx_hash = &format!("{:#x}", trace.transaction_hash));
+                    success_tx!(block_num, trace.transaction_hash);
                     println!(); // new line for new tx, find better way to do this 
                     result.push(res);
                 }
@@ -91,7 +90,7 @@ impl Parser {
                 }
             }
         }
-        info!(target: "poirot::stats", "Finished Parsing Block {}", format!("{}", block_num).bright_blue().bold());
+        success_block!(block_num);
 
         result
     }
@@ -112,24 +111,24 @@ impl Parser {
 
         for (idx, transaction_trace) in transaction_traces.iter().enumerate() {
             TRACE_COUNTER.fetch_add(1, Ordering::Relaxed);
-            info!(message = format!("Starting Trace {}", format!("{}/{}", idx+1, transaction_traces.len()).bright_cyan()));
+            init_trace!(tx_hash, idx, transaction_traces.len());
             let (action, trace_address) = match &transaction_trace.action {
                 RethAction::Call(call) => (call, transaction_trace.trace_address.clone()),
                 RethAction::Create(create_action) => {
                     SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    info!(result = "Successfully Parsed Trace", trace_action = "CREATE", creator_addr = format!("{:#x}", create_action.from));
+                    success_trace!(tx_hash, trace_action = "CREATE", creator_addr = format!("{:#x}", create_action.from));
                     structured_traces.push(StructuredTrace::CREATE(create_action.clone()));
                     continue
                 }
                 RethAction::Selfdestruct(self_destruct) => {
                     SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    info!(result = "Successfully Parsed Trace", trace_action = "SELFDESTRUCT", contract_addr = format!("{:#x}", self_destruct.address));
+                    success_trace!(tx_hash, trace_action = "SELFDESTRUCT", contract_addr = format!("{:#x}", self_destruct.address));
                     structured_traces.push(StructuredTrace::SELFDESTRUCT(self_destruct.clone()));
                     continue
                 }
                 RethAction::Reward(reward) => {
                     SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    info!(result = "Successfully Parsed Trace", trace_action = "REWARD", reward_type = format!("{:?}", reward.reward_type), reward_author = format!("{:#x}", reward.author));
+                    success_trace!(tx_hash, trace_action = "REWARD", reward_type = format!("{:?}", reward.reward_type), reward_author = format!("{:#x}", reward.author));
                     structured_traces.push(StructuredTrace::REWARD(reward.clone()));
                     continue
                 }
@@ -138,8 +137,8 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    let error: &(dyn std::error::Error + 'static) = &TraceParseError::from(e);
-                    error!(error, "Failed to fetch contract ABI");
+                    //let error = TraceParseError::from(e);
+                    error_trace!(tx_hash, idx, TraceParseError::from(e));
                     continue
                 }
             };
@@ -150,13 +149,13 @@ impl Parser {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
                         SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                        info!(result = "Successfully Parsed Trace", trace_action = "CALL", call_type = format!("{:?}", action.call_type));
+                        success_trace!(tx_hash, trace_action = "CALL", call_type = format!("{:?}", action.call_type));
                         structured_traces.push(structured_trace);
                         continue;
                     }
                     Err(e) => {
-                        let error: &(dyn std::error::Error + 'static) = &e;
-                        error!(error, "Empty Input without fallback or receive");
+                        //let error: &(dyn std::error::Error + 'static) = &e;
+                        error_trace!(tx_hash, idx, e);
                         continue
                     }
                 }
@@ -182,8 +181,7 @@ impl Parser {
                         .await {
                             Ok(abi) => abi,
                             Err(e) => {
-                                let error: &(dyn std::error::Error + 'static) = &e;
-                                error!(error, "unable to get proxy contract abi");
+                                error_trace!(tx_hash, idx, TraceParseError::from(e));
                                 continue;
                             }
                         };
@@ -191,8 +189,7 @@ impl Parser {
                     match decode_input_with_abi(&impl_abi, action, &trace_address, tx_hash) {
                         Ok(s) => s,
                         Err(e) => {
-                            let error: &(dyn std::error::Error + 'static) = &e;
-                            error!(error, "Invalid Function Selector");
+                            error_trace!(tx_hash, idx, e);
                             StructuredTrace::CALL(CallAction::new(
                                 action.from,
                                 action.to,
@@ -206,7 +203,7 @@ impl Parser {
                 }
             };
             SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-            info!(result = "Successfully Parsed Trace", trace_action = "CALL", call_type = format!("{:?}", action.call_type));
+            success_trace!(tx_hash, trace_action = "CALL", call_type = format!("{:?}", action.call_type));
             structured_traces.push(structured_trace);
         }
 
