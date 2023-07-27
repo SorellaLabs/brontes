@@ -187,7 +187,7 @@ where
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
         if let Some(id) = ctx.current_span().id() {
             let span = ctx.span(id).unwrap();
-            println!("span target - {}", span.metadata().target());
+            println!("span target - {}", event.metadata().target());
             if let Some(ext) = span.extensions_mut().get_mut::<ParserErrorStats>() {
                 //println!("bane :{:?}", event.metadata().target());
                 if event.metadata().target() == "poirot::parser::stats" {
