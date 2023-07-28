@@ -1,12 +1,10 @@
-use metrics::{register_counter, describe_counter, increment_counter, Unit, Recorder};
 use poirot_core::{decode::Parser, init_block, success_block, success_all};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
-use tracing::{Level, info, Span, span, instrument};
-use tracing_futures::Instrument;
+use tracing::{Level, info};
 use tracing_subscriber::{
-    prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Registry, EnvFilter, Layer,
+    prelude::__tracing_subscriber_SubscriberExt, Registry, EnvFilter, Layer,
 };
 use colored::Colorize;
 
@@ -29,7 +27,7 @@ fn main() {
         .expect("Could not set global default subscriber");
 
     match runtime.block_on(run(runtime.handle().clone())) {
-        Ok(()) => println!("Success!"),
+        Ok(()) => info!("SUCCESS!"),
         Err(e) => {
             eprintln!("Error: {:?}", e);
 
@@ -42,20 +40,19 @@ fn main() {
     }
 }
 
-#[instrument(skip_all)]
 async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let db_path = match env::var("DB_PATH") {
         Ok(path) => path,
         Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
     };
 
-    println!("found db path");
+    info!("Found DB Path");
 
     let key = match env::var("ETHERSCAN_API_KEY") {
         Ok(key) => key,
         Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
     };
-    println!("found etherscan api key");
+    info!("Found Etherscan API Key");
 
     let tracer = TracingClient::new(Path::new(&db_path), handle);
 
@@ -65,7 +62,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     for i in start_block..end_block {
         init_block!(i, start_block, end_block);
         let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
-        let action = parser.parse_block(i, block_trace).await;
+        let _action = parser.parse_block(i, block_trace).await;
         success_block!(i);
     }
     success_all!(start_block, end_block, 2);
