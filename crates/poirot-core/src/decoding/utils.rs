@@ -83,6 +83,8 @@ pub(crate) fn decode_input_with_abi(
     for functions in abi.functions.values() {
         for function in functions {
             if function.selector() == action.input[..4] {
+                println!("deeeeeg FS {:?}", function.selector());
+                println!("deeeeeg FI {:?}", &function.inputs);
                 // Resolve all inputs
                 let mut resolved_params: Vec<DynSolType> = Vec::new();
                 // TODO: Figure out how we could get an error & how to handle
@@ -90,10 +92,12 @@ pub(crate) fn decode_input_with_abi(
                     let _ =
                         param.resolve().map(|resolved_param| resolved_params.push(resolved_param));
                 }
+                println!("deeeeeg PARAM {:?}", &resolved_params);
                 let params_type = DynSolType::Tuple(resolved_params);
 
                 // Remove the function selector from the input.
                 let inputs = &action.input[4..];
+                println!("deeeeeg INPUTS {:?}", &inputs);
                 // Decode the inputs based on the resolved parameters.
                 match params_type.decode_params(inputs) {
                     Ok(decoded_params) => {
