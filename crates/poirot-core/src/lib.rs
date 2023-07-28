@@ -1,6 +1,9 @@
-use std::sync::atomic::AtomicUsize;
 use colored::Colorize;
-use std::fmt::Debug;
+use revm_primitives::B256;
+use std::{fmt::Debug, collections::HashMap, sync::Mutex};
+use lazy_static::*;
+
+use crate::stats::stats::*;
 
 pub mod decode;
 pub mod errors;
@@ -9,8 +12,9 @@ pub mod stats;
 pub mod structured_trace;
 
 
-pub static SUCCESSFUL_TRACE_PARSE: &'static str = "Successfully Parsed Trace";
-pub static SUCCESSFUL_TX_PARSE: &'static str = "Successfully Parsed Transaction";
-pub static TRANSACTION_COUNTER: AtomicUsize = AtomicUsize::new(0);
-pub static TRACE_COUNTER: AtomicUsize = AtomicUsize::new(0);
-pub static SUCCESSFUL_PARSE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+// block and transaction stats
+lazy_static! {
+    pub static ref BLOCK_STATS: Mutex<HashMap<u64, BlockStats>> = Mutex::new(HashMap::new());
+    pub static ref TX_STATS: Mutex<HashMap<B256, TransactionStats>> =
+        Mutex::new(HashMap::new());
+}

@@ -1,6 +1,6 @@
+use alloy_etherscan::errors::EtherscanError;
 use ethers_core::types::H256;
 use thiserror::Error;
-use alloy_etherscan::errors::EtherscanError;
 
 /// Custom error type
 #[derive(Debug, Error)]
