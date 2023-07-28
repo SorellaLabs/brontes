@@ -1,7 +1,8 @@
 use std::sync::atomic::AtomicUsize;
 
-use colored::{Colorize, ColoredString};
+use colored::{Colorize, ColoredString, Color};
 use structured_trace::StructuredTrace;
+use std::fmt::Debug;
 
 pub mod decode;
 pub mod errors;
@@ -18,20 +19,8 @@ pub static SUCCESSFUL_PARSE_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 
 /// formats a stat with a color based on its value + kind
-pub fn format_color(stat: &str, val: usize, error: bool) -> ColoredString {
-    if val != 0 {
-        if error {
-            format!("{}: {}", stat, val).bright_red().bold()
-        } else {
-            format!("{}: {}", stat, val).bright_green().bold()
-        }
-    } else {
-        if error {
-            format!("{}: {}", stat, val).bright_green().bold()
-        } else {
-            format!("{}: {}", stat, val).bright_yellow().bold()
-        }
-    }
+pub fn format_color(stat: &str, val: impl Debug, color: Color) -> ColoredString {
+    format!("{}: {:?}", stat, val).color(color)
 }
 
 

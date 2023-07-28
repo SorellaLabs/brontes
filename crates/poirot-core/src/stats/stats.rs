@@ -2,6 +2,7 @@ use std::{sync::{atomic::Ordering, Mutex}, collections::HashMap};
 
 use crate::{format_color, errors::TraceParseError, *};
 use alloy_etherscan::errors::EtherscanError;
+use colored::Color;
 use revm_primitives::B256;
 use serde_json::{Value, json};
 use serde::Serialize;
@@ -33,26 +34,49 @@ pub struct BlockStats {
 impl BlockStats {
     pub fn display_stats(&self) {
 
-        info!("{}", format_color("Total Transactions", self.tx_stats.len(), false));
-        info!("{}", format_color("Total Traces", self.tx_stats.iter().map(|tx| tx.trace_stats.len()).sum(), false));
-        info!("{}", format_color("Successful Parses", self.tx_stats.iter().map(|tx| tx.successful_parses).sum(), false));
+        println!("{}", format_color("STATS FOR BLOCK", self.block_num as usize, Color::BrightBlue).bold());
+        println!("----------------------------------------------------------------------------------------");
+        println!("{}", format_color("Total Transactions", self.tx_stats.len(), Color::Blue));
+        println!("{}", format_color("Total Traces", self.tx_stats.iter().map(|tx| tx.error_parses.len() + tx.successful_parses).sum::<usize>(), Color::Blue));
+        println!("{}", format_color("Successful Parses", self.tx_stats.iter().map(|tx| tx.successful_parses).sum::<usize>(), Color::Blue));
+        println!("{}", format_color("Total Errors", self.tx_stats.iter().map(|tx| tx.error_parses.len()).sum::<usize>(), Color::Blue));
 
         let mut errors = ErrorStats::default();
-        for err in self.tx_stats.iter().map(|tx| &tx.trace_stats).flatten() {
+        for err in self.tx_stats.iter().map(|tx| &tx.error_parses).flatten() {
             errors.count_error(err.error.as_ref())
         }
-        errors.display_stats();
+        errors.display_stats(Color::Blue, "");
+        println!();
     }
 }
 
 pub struct TransactionStats {
     pub tx_hash: B256,
     pub successful_parses: usize,
-    pub trace_stats: Vec<TraceStat>,
+    pub error_parses: Vec<TraceStat>,
 }
 
 impl TransactionStats {
-    pub fn display_stats(&self) {}
+    pub fn display_stats(&self) {
+        let spacing = " ".repeat(8);
+
+        println!("{}{}", spacing, format_color("STATS FOR TRANSACTION", format!("{:#x}", self.tx_hash), Color::BrightCyan).bold());
+        println!("----------------------------------------------------------------------------------------");
+        println!("{}{}", spacing, format_color("Total Traces", self.successful_parses + self.error_parses.len(), Color::Cyan));
+        println!("{}{}", spacing, format_color("Successful Parses", self.successful_parses, Color::Cyan));
+        println!("{}{}", spacing, format_color("Total Errors", self.error_parses.len(), Color::Cyan));
+
+        let mut errors = ErrorStats::default();
+        for err in &self.error_parses {
+            errors.count_error(err.error.as_ref())
+        }
+        errors.display_stats(Color::Cyan, &spacing);
+
+        for trace in &self.error_parses {
+            println!("{}{}", spacing.repeat(1), format!("{} - {}", format_color("Trace Error", trace.idx, Color::Cyan), trace.error));
+        }
+        println!();
+    }
 }
 
 pub struct TraceStat {
@@ -140,13 +164,13 @@ impl ErrorStats {
     }
 
 
-    fn display_stats(&self) {
+    fn display_stats(&self, color: Color, spacing: &str) {
         let json_value: Value = json!(self);
         if let Value::Object(map) = json_value {
             for (key, value) in map {
                 if let Value::Number(num) = value {
                     if num.as_u64().unwrap_or(0) > 0 {
-                        info!("{}", format_color(&key, num.as_u64().unwrap() as usize, true));
+                        println!("{}{}", spacing, format_color(&key, num.as_u64().unwrap() as usize, color));
                     }
                 }
             }
@@ -155,14 +179,36 @@ impl ErrorStats {
 }
 
 
+
 pub fn display_all_stats() {
     let stats = BLOCK_STATS.lock().unwrap();
-    
-    for (block_num, block_stat) in stats.iter() {
+
+    display_total_stats(stats.iter().map(|s| s.1).collect());
+
+    for (_, block_stat) in stats.iter() {
         block_stat.display_stats();
         
         for tx_stat in &block_stat.tx_stats {
             tx_stat.display_stats();
         }
     }
+}
+
+
+pub fn display_total_stats(blocks: Vec<&BlockStats>) {
+    println!("{}", format!("ALL STATS").bright_yellow().bold());
+    println!("----------------------------------------------------------------------------------------");
+    println!("----------------------------------------------------------------------------------------");
+    println!("{}", format_color("Total Blocks", blocks.len(), Color::Yellow));
+    println!("{}", format_color("Total Transactions", blocks.iter().map(|b| b.tx_stats.len()).sum::<usize>(), Color::Yellow));
+    println!("{}", format_color("Total Traces", blocks.iter().map(|b| b.tx_stats.iter().map(|tx| tx.error_parses.len() + tx.successful_parses).sum::<usize>()).sum::<usize>(), Color::Yellow));
+    println!("{}", format_color("Successful Parses", blocks.iter().map(|b| b.tx_stats.iter().map(|tx| tx.successful_parses).sum::<usize>()).sum::<usize>(), Color::Yellow));
+    println!("{}", format_color("Total Errors", blocks.iter().map(|b| b.tx_stats.iter().map(|tx| tx.error_parses.len()).sum::<usize>()).sum::<usize>(), Color::Yellow));
+
+    let mut errors = ErrorStats::default();
+    for err in blocks.iter().map(|b| b.tx_stats.iter().map(|tx| &tx.error_parses).flatten()).flatten() {
+        errors.count_error(err.error.as_ref())
+    }
+    errors.display_stats(Color::Yellow, "");
+    println!();
 }
