@@ -53,7 +53,7 @@ pub(crate) async fn abi_decoding_pipeline(
     // if unsuccessful, returns an error
     match decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash) {
         Ok(structured_trace) => Ok(structured_trace),
-        Err(e) => Err(e)
+        Err(e) => {println!("hi"); return Err(e)}
     }
 }
 
