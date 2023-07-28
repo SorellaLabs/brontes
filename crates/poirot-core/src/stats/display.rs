@@ -104,6 +104,7 @@ impl ErrorStats {
         }
     }
 
+    /// displays the error stats (verbosity - 1, 2, 3)
     pub(crate) fn display_stats(&self, color: Color, spacing: &str) {
         let json_value: Value = json!(self);
         if let Value::Object(map) = json_value {
@@ -122,6 +123,7 @@ impl ErrorStats {
     }
 }
 
+/// displays the TOTAL STATS (verbosity - 1)
 pub fn display_total_stats(blocks: Vec<&BlockStats>) {
     println!("{}", "ALL STATS".to_string().bright_yellow().bold());
     println!(
