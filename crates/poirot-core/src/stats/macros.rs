@@ -101,9 +101,9 @@ macro_rules! init_block {
                 tx_stats: Vec::new(),
             });
 
-            let message = format!("Starting Parsing Block {}", format!("{}", $blk).bright_blue().bold());
-            let progess = format!("{}", format!("Progress: {} / {}", ($blk-$start_blk+1) as usize, ($end_blk-$start_blk) as usize).bright_blue().bold());
-            info!(message = message, progess = progess);
+            let progress = format!("Progress: {} / {}", ($blk-$start_blk+1) as usize, ($end_blk-$start_blk) as usize).bright_blue().bold();
+            let message = format!("Starting Parsing Block {} --- Progress: {}", format!("{}", $blk).bright_blue().bold(), progress);
+            info!(message = message);
         }
     };
 }
