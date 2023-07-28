@@ -1,17 +1,8 @@
-use std::{sync::{atomic::Ordering, Mutex}, collections::HashMap};
+use std::{sync::Mutex, collections::HashMap};
 
-use crate::{errors::TraceParseError, *, stats::{display::ErrorStats, format_color}};
-use alloy_etherscan::errors::EtherscanError;
+use crate::{*, stats::{display::ErrorStats, format_color}};
 use colored::Color;
 use revm_primitives::B256;
-use serde_json::{Value, json};
-use serde::Serialize;
-use tracing::{
-    field::{Field, Visit},
-    span::Attributes,
-    Id, Subscriber, info, Level,
-};
-use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer, EnvFilter, FmtSubscriber};
 use lazy_static::*;
 pub struct ParserStatsLayer;
 

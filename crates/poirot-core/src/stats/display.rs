@@ -122,6 +122,10 @@ pub fn display_total_stats(blocks: Vec<&BlockStats>) {
 }
 
 
+/// displays all the stats given a verbosity level:
+/// 1 - Total Stats Only
+/// 2 - Total + Block Level Stats
+/// 3 - Total + Block Level + Tx Level Stats
 pub fn display_all_stats(verbosity: usize) {
     let stats = BLOCK_STATS.lock().unwrap();
 

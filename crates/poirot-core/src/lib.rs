@@ -1,7 +1,5 @@
 use std::sync::atomic::AtomicUsize;
-
-use colored::{Colorize, ColoredString, Color};
-use structured_trace::StructuredTrace;
+use colored::Colorize;
 use std::fmt::Debug;
 
 pub mod decode;
