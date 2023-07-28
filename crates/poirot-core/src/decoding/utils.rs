@@ -47,7 +47,7 @@ pub(crate) async fn abi_decoding_pipeline(
     let proxy_abi = match client.proxy_contract_abi(action.to.into()).await {
         Ok(abi) => abi,
         Err(e) => {
-            println!("source: {:?}", client.contract_source_code(action.to.into()).await?);
+            println!("deeeeeg: {:?}", client.contract_source_code(action.to.into()).await?);
             diamond_proxy_contract_abi(&client, action.to.into()).await?
         }
     };
