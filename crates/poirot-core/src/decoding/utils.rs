@@ -61,7 +61,7 @@ pub(crate) async fn abi_decoding_pipeline(
 pub(crate) async fn diamond_proxy_contract_abi(client: &Client, address: Address) -> Result<JsonAbi, EtherscanError> {
     let contract_metadata = client.contract_source_code(address).await?;
 
-    println!("{:?}", contract_metadata);
+    //println!("{:?}", contract_metadata);
     // Use the first item in the metadata.
     let first_item = &contract_metadata.items[0];
 
