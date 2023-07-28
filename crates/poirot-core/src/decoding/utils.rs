@@ -83,7 +83,7 @@ pub(crate) fn decode_input_with_abi(
     for functions in abi.functions.values() {
         for function in functions {
             if function.selector() == action.input[..4] {
-                println!("deeeeeg FS {:?}", function.selector());
+                println!("\ndeeeeeg FS {:?}", function.selector());
                 println!("deeeeeg FI {:?}", &function.inputs);
                 // Resolve all inputs
                 let mut resolved_params: Vec<DynSolType> = Vec::new();
@@ -118,7 +118,7 @@ pub(crate) fn decode_input_with_abi(
 
     println!("deeeeeg ABI {:?}", abi);
     println!("deeeeeg ABI FUNC VALS {:?}", abi.functions.values());
-    println!("deeeeeg ACTION {:?}", action);
+    println!("deeeeeg ACTION {:?}\n", action);
 
     
 
