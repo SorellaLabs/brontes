@@ -25,5 +25,7 @@ impl From<EtherscanError> for TraceParseError {
     }
 }
 
+/// these are needed so we can implement the async tracing
+/// they are also Send + Sync safe as they are just nested Enums with Send + Sync safe types
 unsafe impl Send for TraceParseError {}
 unsafe impl Sync for TraceParseError {}

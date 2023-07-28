@@ -10,6 +10,7 @@ macro_rules! init_trace {
 #[macro_export]
 macro_rules! error_trace {
     ($tx:expr, $idx:expr, $err:expr) => {
+        use $crate::stats::{*, stats::*};
         {
             let error: Box<dyn std::error::Error + Sync + Send + 'static> = Box::new($err);
 
@@ -26,6 +27,7 @@ macro_rules! error_trace {
 #[macro_export]
 macro_rules! success_trace {
     ($tx:expr, $( $key:ident = $val:expr ),* $(,)? ) => {
+        use $crate::stats::*;
         {
             let mut tx_stats = TX_STATS.lock().unwrap(); // locks the Mutex
             let tx_stat = tx_stats.get_mut($tx).unwrap();
@@ -42,6 +44,7 @@ macro_rules! success_trace {
 #[macro_export]
 macro_rules! init_tx {
     ($tx:expr, $idx:expr, $total_len:expr) => {
+        use $crate::stats::{*, stats::*};
         {
             let mut tx_stats = TX_STATS.lock().unwrap();
             tx_stats.entry($tx).or_insert_with(|| TransactionStats {
@@ -65,7 +68,7 @@ macro_rules! init_tx {
 #[macro_export]
 macro_rules! success_tx {
     ($blk:expr, $tx:expr) => {
-        
+        use $crate::stats::*;
         {
             let mut block_stats = BLOCK_STATS.lock().unwrap();
             let mut tx_stats = TX_STATS.lock().unwrap();
@@ -83,26 +86,29 @@ macro_rules! success_tx {
 
 #[macro_export]
 macro_rules! init_block {
-    ($blk:expr, $start_blk:expr, $end_blk:expr) => {{
-        let mut block_stats = poirot_core::BLOCK_STATS.lock().unwrap();
-        let block_stat = block_stats.entry($blk).or_insert_with(|| {
-            poirot_core::stats::stats::BlockStats { block_num: $blk, tx_stats: Vec::new() }
-        });
+    ($blk:expr, $start_blk:expr, $end_blk:expr) => {
+        use $crate::stats::{*, stats::*};
+        {
+            let mut block_stats = BLOCK_STATS.lock().unwrap();
+            let block_stat = block_stats.entry($blk).or_insert_with(|| {
+                BlockStats { block_num: $blk, tx_stats: Vec::new() }
+            });
 
-        let progress = format!(
-            "Progress: {} / {}",
-            ($blk - $start_blk + 1) as usize,
-            ($end_blk - $start_blk) as usize
-        )
-        .bright_blue()
-        .bold();
-        let message = format!(
-            "Starting Parsing Block {} --- Progress: {}",
-            format!("{}", $blk).bright_blue().bold(),
-            progress
-        );
-        info!(message = message);
-    }};
+            let progress = format!(
+                "Progress: {} / {}",
+                ($blk - $start_blk + 1) as usize,
+                ($end_blk - $start_blk) as usize
+            )
+            .bright_blue()
+            .bold();
+            let message = format!(
+                "Starting Parsing Block {} --- Progress: {}",
+                format!("{}", $blk).bright_blue().bold(),
+                progress
+            );
+            info!(message = message);
+        }
+    };
 }
 
 #[macro_export]
