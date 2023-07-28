@@ -113,6 +113,7 @@ pub(crate) fn decode_input_with_abi(
     }
 
     println!("deeeeeg {:?}", abi);
+    println!("deeeeeg {:?}", action);
 
     Err(TraceParseError::InvalidFunctionSelector((*tx_hash).into()))
 }
