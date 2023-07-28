@@ -1,12 +1,10 @@
-use poirot_core::{decode::Parser, init_block, success_block, success_all};
+use colored::Colorize;
+use poirot_core::{decode::Parser, init_block, success_all, success_block};
 use reth_primitives::{BlockId, BlockNumberOrTag::Number};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
-use tracing::{Level, info};
-use tracing_subscriber::{
-    prelude::__tracing_subscriber_SubscriberExt, Registry, EnvFilter, Layer,
-};
-use colored::Colorize;
+use tracing::{info, Level};
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
 
 //Std
 use std::{collections::HashSet, env, error::Error, path::Path};
@@ -17,11 +15,9 @@ fn main() {
         .thread_stack_size(8 * 1024 * 1024)
         .build()
         .unwrap();
-    let filter =
-    EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
+    let filter = EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
 
-    let subscriber =
-        Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
+    let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
 
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");
@@ -61,7 +57,8 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let (start_block, end_block) = (17679852, 17679855);
     for i in start_block..end_block {
         init_block!(i, start_block, end_block);
-        let block_trace: Vec<TraceResultsWithTransactionHash> = trace_block(&tracer, i).await.unwrap();
+        let block_trace: Vec<TraceResultsWithTransactionHash> =
+            trace_block(&tracer, i).await.unwrap();
         let _action = parser.parse_block(i, block_trace).await;
         success_block!(i);
     }

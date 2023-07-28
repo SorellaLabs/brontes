@@ -19,7 +19,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use tracing::{error, trace, debug};
+use tracing::{debug, error, trace};
 
 pub mod account;
 pub mod blocks;

@@ -6,13 +6,12 @@ use crate::{
 use alloy_json_abi::JsonAbi;
 use ethers_core::{
     abi::{Address, RawAbi},
-    k256::elliptic_curve::bigint::AddMod,
     types::{serde_helpers::deserialize_stringified_u64, Bytes},
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use tracing::debug;
 use std::{collections::HashMap, path::Path};
+use tracing::debug;
 
 #[cfg(feature = "ethers-solc")]
 use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
