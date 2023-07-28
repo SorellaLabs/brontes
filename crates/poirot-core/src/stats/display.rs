@@ -103,22 +103,6 @@ impl ErrorStats {
 }
 
 
-
-pub fn display_all_stats() {
-    let stats = BLOCK_STATS.lock().unwrap();
-
-    display_total_stats(stats.iter().map(|s| s.1).collect());
-
-    for (_, block_stat) in stats.iter() {
-        block_stat.display_stats();
-        
-        for tx_stat in &block_stat.tx_stats {
-            tx_stat.display_stats();
-        }
-    }
-}
-
-
 pub fn display_total_stats(blocks: Vec<&BlockStats>) {
     println!("{}", format!("ALL STATS").bright_yellow().bold());
     println!("----------------------------------------------------------------------------------------");
@@ -135,4 +119,23 @@ pub fn display_total_stats(blocks: Vec<&BlockStats>) {
     }
     errors.display_stats(Color::Yellow, "");
     println!();
+}
+
+
+pub fn display_all_stats(verbosity: usize) {
+    let stats = BLOCK_STATS.lock().unwrap();
+
+    display_total_stats(stats.iter().map(|s| s.1).collect()); // total stats
+
+    if verbosity > 1 {
+        for (_, block_stat) in stats.iter() {
+            block_stat.display_stats(); // block level stats
+            
+            if verbosity > 2 {
+                for tx_stat in &block_stat.tx_stats {
+                    tx_stat.display_stats(); // tx level stats
+                }
+            }
+        }
+    }
 }

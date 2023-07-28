@@ -123,11 +123,11 @@ macro_rules! success_block {
 // displays all the stuff
 #[macro_export]
 macro_rules! success_all {
-    ($start_blk:expr, $end_blk:expr) => {
+    ($start_blk:expr, $end_blk:expr, $verbosity:expr) => {
         {
             let message = format!("Successfuly Parsed Blocks {}", format!("{} to {}", $start_blk, $end_blk).bright_blue().bold());
             info!(message = message);
-            poirot_core::stats::display::display_all_stats();
+            poirot_core::stats::display::display_all_stats($verbosity);
         }
     };
 }
