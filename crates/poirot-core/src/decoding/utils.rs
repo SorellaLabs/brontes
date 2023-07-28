@@ -46,10 +46,7 @@ pub(crate) async fn abi_decoding_pipeline(
     // if unsuccessful, tries to get the diamond proxy abi
     let proxy_abi = match client.proxy_contract_abi(action.to.into()).await {
         Ok(abi) => abi,
-        Err(e) => {
-            println!("deeeeeg: {:?}", client.contract_source_code(action.to.into()).await?);
-            diamond_proxy_contract_abi(&client, action.to.into()).await?
-        }
+        Err(e) => diamond_proxy_contract_abi(&client, action.to.into()).await?
     };
 
     // tries to decode with the new abi
@@ -114,6 +111,9 @@ pub(crate) fn decode_input_with_abi(
             }
         }
     }
+
+    println!("deeeeeg {:?}", abi);
+
     Err(TraceParseError::InvalidFunctionSelector((*tx_hash).into()))
 }
 
