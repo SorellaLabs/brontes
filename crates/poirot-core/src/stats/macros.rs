@@ -23,7 +23,7 @@ macro_rules! error_trace {
             let mut tx_stats = TX_STATS.lock().unwrap();
             let tx_stat = tx_stats.get_mut($tx).unwrap();
 
-            tx_stat.trace_stats.push(TraceStat {
+            tx_stat.error_parses.push(TraceStat {
                 idx: $idx,
                 error,
             });
@@ -59,7 +59,7 @@ macro_rules! init_tx {
             tx_stats.entry($tx).or_insert_with(|| TransactionStats {
                 tx_hash: $tx,
                 successful_parses: 0,
-                trace_stats: Vec::new(),
+                error_parses: Vec::new(),
             });
         }
 
@@ -126,7 +126,7 @@ macro_rules! success_block {
 macro_rules! success_all {
     ($start_blk:expr, $end_blk:expr) => {
         {
-            let message = format!("Successfuly Parsed Block {}", format!("{} to {}", $start_blk, $end_blk).bright_blue().bold());
+            let message = format!("Successfuly Parsed Blocks {}", format!("{} to {}", $start_blk, $end_blk).bright_blue().bold());
             info!(message = message);
             poirot_core::stats::stats::display_all_stats();
         }
