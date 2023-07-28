@@ -7,11 +7,11 @@ use crate::{
     *,
 };
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
-use alloy_etherscan::Client;
+use alloy_etherscan::{Client, errors::EtherscanError};
 use alloy_json_abi::{JsonAbi, StateMutability};
 use colored::Colorize;
 
-use ethers_core::types::Chain;
+use ethers_core::{types::Chain, abi::Address};
 use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash, ActionType, TransactionTrace,
@@ -46,20 +46,30 @@ pub(crate) async fn abi_decoding_pipeline(
     // if unsuccessful, tries to get the diamond proxy abi
     let proxy_abi = match client.proxy_contract_abi(action.to.into()).await {
         Ok(abi) => abi,
-        Err(e) => return Err(TraceParseError::EtherscanError(e))
+        Err(e) => diamond_proxy_contract_abi(&client, action.to.into()).await?
     };
 
     // tries to decode with the new abi
     // if unsuccessful, returns an error
-    match decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash) {
-        Ok(structured_trace) => Ok(structured_trace),
-        Err(e) => {println!("hi"); return Err(e)}
-    }
+    decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash)
 }
 
 
-pub(crate) async fn diamond_proxy_contract_abi() {
+pub(crate) async fn diamond_proxy_contract_abi(client: &Client, address: Address) -> Result<JsonAbi, EtherscanError> {
+    let contract_metadata = client.contract_source_code(address).await?;
 
+    println!("{:?}", contract_metadata);
+    // Use the first item in the metadata.
+    let first_item = &contract_metadata.items[0];
+
+    // If the first item is a proxy, get its implementation address and fetch the ABI.
+    let implementation_address = match first_item.implementation {
+        Some(impl_addr) => impl_addr,
+        None => return Err(EtherscanError::MissingImplementationAddress),
+    };
+
+    // Get the ABI of the implementation contract.
+    client.contract_abi(implementation_address).await
 }
 
 
