@@ -44,10 +44,9 @@ pub(crate) async fn abi_decoding_pipeline(
 
     // tries to get the proxy abi, 
     // if unsuccessful, tries to get the diamond proxy abi
-    let proxy_abi = match client.proxy_contract_abi(action.to.into()).await {
-        Ok(abi) => abi,
-        Err(e) => diamond_proxy_contract_abi(&client, action.to.into()).await?
-    };
+    let proxy_abi = client.proxy_contract_abi(action.to.into()).await?;
+    
+    let _ = diamond_proxy_contract_abi(&client, action.to.into()).await?;
 
     // tries to decode with the new abi
     // if unsuccessful, returns an error
@@ -56,20 +55,13 @@ pub(crate) async fn abi_decoding_pipeline(
 
 
 pub(crate) async fn diamond_proxy_contract_abi(client: &Client, address: Address) -> Result<JsonAbi, EtherscanError> {
-    let contract_metadata = client.contract_source_code(address).await?;
+    let contract_metadata = client.contract_abi(address).await?;
 
-    //println!("{:?}", contract_metadata);
-    // Use the first item in the metadata.
-    let first_item = &contract_metadata.items[0];
+    println!("\n\n contract abi {:?}\n\n", contract_metadata);
 
-    // If the first item is a proxy, get its implementation address and fetch the ABI.
-    let implementation_address = match first_item.implementation {
-        Some(impl_addr) => impl_addr,
-        None => return Err(EtherscanError::MissingImplementationAddress),
-    };
 
     // Get the ABI of the implementation contract.
-    client.contract_abi(implementation_address).await
+    client.contract_abi(address).await
 }
 
 
