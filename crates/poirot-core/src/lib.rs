@@ -1,4 +1,4 @@
-pub mod decode;
+pub mod decoding;
 pub mod errors;
 pub mod normalize;
 pub mod stats;
