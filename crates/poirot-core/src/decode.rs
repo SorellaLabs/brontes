@@ -12,7 +12,6 @@ use alloy_etherscan::Client;
 use alloy_json_abi::{JsonAbi, StateMutability};
 
 use ethers_core::types::Chain;
-use metrics::increment_counter;
 use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
