@@ -12,7 +12,7 @@ use alloy_json_abi::{JsonAbi, StateMutability};
 use colored::Colorize;
 
 use ethers_core::{types::Chain, abi::Address};
-use reth_primitives::{H256, U256};
+use reth_primitives::{H256, U256, Bytes};
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash, ActionType, TransactionTrace,
 };
@@ -82,7 +82,7 @@ pub(crate) fn decode_input_with_abi(
 ) -> Result<StructuredTrace, TraceParseError> {
     for functions in abi.functions.values() {
         for function in functions {
-            println!("\ndeeeeeg FS {:?}", function.selector());
+            println!("\ndeeeeeg FS {:?}", Bytes::from(function.selector()));
             println!("deeeeeg FI {:?}", &function.inputs);
             if function.selector() == action.input[..4] {
                 // Resolve all inputs
