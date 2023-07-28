@@ -1,9 +1,5 @@
-use crate::{
-    stats::{display::ErrorStats, format_color},
-    *,
-};
-use colored::Color;
-
+use crate::stats::{display::ErrorStats, format_color};
+use colored::{Color, Colorize};
 use revm_primitives::B256;
 pub struct ParserStatsLayer;
 

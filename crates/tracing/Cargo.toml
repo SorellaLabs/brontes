@@ -7,6 +7,4 @@ edition = "2021"
 
 [dependencies]
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
-console-subscriber = "0.1.5"
-metrics-tracing-context = "0.14.0"
+tracing-subscriber = { workspace = true }

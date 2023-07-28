@@ -1,10 +1,10 @@
-use crate::{errors::TraceParseError, stats::format_color, BLOCK_STATS};
+use crate::{errors::TraceParseError, stats::format_color};
 use alloy_etherscan::errors::EtherscanError;
 use colored::{Color, Colorize};
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use super::stats::BlockStats;
+use super::{stats::BlockStats, BLOCK_STATS};
 
 #[derive(Debug, Default, Serialize)]
 pub struct ErrorStats {
@@ -123,6 +123,7 @@ impl ErrorStats {
     }
 }
 
+
 /// displays the TOTAL STATS (verbosity - 1)
 pub fn display_total_stats(blocks: Vec<&BlockStats>) {
     println!("{}", "ALL STATS".to_string().bright_yellow().bold());
@@ -186,6 +187,7 @@ pub fn display_total_stats(blocks: Vec<&BlockStats>) {
     errors.display_stats(Color::Yellow, "");
     println!();
 }
+
 
 /// displays all the stats given a verbosity level:
 /// 1 - Total Stats Only
