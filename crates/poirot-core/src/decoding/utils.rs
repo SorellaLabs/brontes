@@ -82,9 +82,9 @@ pub(crate) fn decode_input_with_abi(
 ) -> Result<StructuredTrace, TraceParseError> {
     for functions in abi.functions.values() {
         for function in functions {
+            println!("\ndeeeeeg FS {:?}", function.selector());
+            println!("deeeeeg FI {:?}", &function.inputs);
             if function.selector() == action.input[..4] {
-                println!("\ndeeeeeg FS {:?}", function.selector());
-                println!("deeeeeg FI {:?}", &function.inputs);
                 // Resolve all inputs
                 let mut resolved_params: Vec<DynSolType> = Vec::new();
                 // TODO: Figure out how we could get an error & how to handle
