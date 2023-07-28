@@ -1,8 +1,6 @@
 use alloy_dyn_abi::DynSolValue;
-use reth_primitives::{Address, Bytes, H256, U256, U64};
-use reth_rpc_types::trace::parity::{
-    CreateAction, LocalizedTransactionTrace, RewardAction, SelfdestructAction,
-};
+use reth_primitives::{Address, H256, U256};
+use reth_rpc_types::trace::parity::{CreateAction, RewardAction, SelfdestructAction};
 
 // A structured trace is a tx trace that has been decoded & parsed with its subsequent traces
 #[derive(Debug, Clone)]

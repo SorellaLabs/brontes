@@ -4,12 +4,13 @@ use crate::{
         CallAction,
         StructuredTrace::{self},
         TxTrace,
-    }, *,
+    },
+    *,
 };
-use colored::Colorize;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_etherscan::Client;
 use alloy_json_abi::{JsonAbi, StateMutability};
+use colored::Colorize;
 
 use ethers_core::types::Chain;
 use reth_primitives::{H256, U256};
@@ -18,9 +19,9 @@ use reth_rpc_types::trace::parity::{
 };
 use std::{
     fs,
-    path::{Path, PathBuf}, sync::atomic::Ordering,
+    path::{Path, PathBuf},
 };
-use tracing::{error, info, instrument, debug};
+use tracing::{debug, error, info, instrument};
 // tracing
 
 const UNKNOWN: &str = "unknown";
@@ -80,7 +81,7 @@ impl Parser {
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
                     success_tx!(block_num, trace.transaction_hash);
-                    println!(); // new line for new tx, find better way to do this 
+                    println!(); // new line for new tx, find better way to do this
                     result.push(res);
                 }
                 Err(e) => {
@@ -109,25 +110,34 @@ impl Parser {
         let tx_hash = &trace.transaction_hash;
 
         for (idx, transaction_trace) in transaction_traces.iter().enumerate() {
-            TRACE_COUNTER.fetch_add(1, Ordering::Relaxed);
             init_trace!(tx_hash, idx, transaction_traces.len());
             let (action, trace_address) = match &transaction_trace.action {
                 RethAction::Call(call) => (call, transaction_trace.trace_address.clone()),
                 RethAction::Create(create_action) => {
-                    SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    success_trace!(tx_hash, trace_action = "CREATE", creator_addr = format!("{:#x}", create_action.from));
+                    success_trace!(
+                        tx_hash,
+                        trace_action = "CREATE",
+                        creator_addr = format!("{:#x}", create_action.from)
+                    );
                     structured_traces.push(StructuredTrace::CREATE(create_action.clone()));
                     continue
                 }
                 RethAction::Selfdestruct(self_destruct) => {
-                    SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    success_trace!(tx_hash, trace_action = "SELFDESTRUCT", contract_addr = format!("{:#x}", self_destruct.address));
+                    success_trace!(
+                        tx_hash,
+                        trace_action = "SELFDESTRUCT",
+                        contract_addr = format!("{:#x}", self_destruct.address)
+                    );
                     structured_traces.push(StructuredTrace::SELFDESTRUCT(self_destruct.clone()));
                     continue
                 }
                 RethAction::Reward(reward) => {
-                    SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    success_trace!(tx_hash, trace_action = "REWARD", reward_type = format!("{:?}", reward.reward_type), reward_author = format!("{:#x}", reward.author));
+                    success_trace!(
+                        tx_hash,
+                        trace_action = "REWARD",
+                        reward_type = format!("{:?}", reward.reward_type),
+                        reward_author = format!("{:#x}", reward.author)
+                    );
                     structured_traces.push(StructuredTrace::REWARD(reward.clone()));
                     continue
                 }
@@ -147,10 +157,13 @@ impl Parser {
             if action.input.is_empty() {
                 match handle_empty_input(&abi, action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
-                        SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-                        success_trace!(tx_hash, trace_action = "CALL", call_type = format!("{:?}", action.call_type));
+                        success_trace!(
+                            tx_hash,
+                            trace_action = "CALL",
+                            call_type = format!("{:?}", action.call_type)
+                        );
                         structured_traces.push(structured_trace);
-                        continue;
+                        continue
                     }
                     Err(e) => {
                         //let error: &(dyn std::error::Error + 'static) = &e;
@@ -167,42 +180,42 @@ impl Parser {
             // fetch the ABI Use the sol macro to previously generate the facetAddress
             // function binding & call it on the to address that is being called in the first place https://docs.rs/alloy-sol-macro/latest/alloy_sol_macro/macro.sol.html
 
-
-            let structured_trace = match decode_input_with_abi(&abi, action, &trace_address, tx_hash)
-            {
-                Ok(d) => d,
-                Err(_) => {
-                    // If decoding with the original ABI failed, fetch the implementation ABI and
-                    // try again
-                    let impl_abi = match self
-                        .client
-                        .proxy_contract_abi(action.to.into())
-                        .await {
+            let structured_trace =
+                match decode_input_with_abi(&abi, action, &trace_address, tx_hash) {
+                    Ok(d) => d,
+                    Err(_) => {
+                        // If decoding with the original ABI failed, fetch the implementation ABI
+                        // and try again
+                        let impl_abi = match self.client.proxy_contract_abi(action.to.into()).await
+                        {
                             Ok(abi) => abi,
                             Err(e) => {
                                 error_trace!(tx_hash, idx, TraceParseError::from(e));
-                                continue;
+                                continue
                             }
                         };
 
-                    match decode_input_with_abi(&impl_abi, action, &trace_address, tx_hash) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            error_trace!(tx_hash, idx, e);
-                            StructuredTrace::CALL(CallAction::new(
-                                action.from,
-                                action.to,
-                                action.value,
-                                UNKNOWN.to_string(),
-                                None,
-                                trace_address.clone(),
-                            ))
+                        match decode_input_with_abi(&impl_abi, action, &trace_address, tx_hash) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                error_trace!(tx_hash, idx, e);
+                                StructuredTrace::CALL(CallAction::new(
+                                    action.from,
+                                    action.to,
+                                    action.value,
+                                    UNKNOWN.to_string(),
+                                    None,
+                                    trace_address.clone(),
+                                ))
+                            }
                         }
                     }
-                }
-            };
-            SUCCESSFUL_PARSE_COUNTER.fetch_add(1, Ordering::Relaxed);
-            success_trace!(tx_hash, trace_action = "CALL", call_type = format!("{:?}", action.call_type));
+                };
+            success_trace!(
+                tx_hash,
+                trace_action = "CALL",
+                call_type = format!("{:?}", action.call_type)
+            );
             structured_traces.push(structured_trace);
         }
 
@@ -213,7 +226,7 @@ impl Parser {
 fn decode_input_with_abi(
     abi: &JsonAbi,
     action: &RethCallAction,
-    trace_address: &Vec<usize>,
+    trace_address: &[usize],
     tx_hash: &H256,
 ) -> Result<StructuredTrace, TraceParseError> {
     for functions in abi.functions.values() {
@@ -233,32 +246,28 @@ fn decode_input_with_abi(
                 // Decode the inputs based on the resolved parameters.
                 match params_type.decode_params(inputs) {
                     Ok(decoded_params) => {
-                        debug!("Tx Hash: {:#?} -- Function: {}",
-                        tx_hash, function.name
-                        );
+                        debug!("Tx Hash: {:#?} -- Function: {}", tx_hash, function.name);
                         return Ok(StructuredTrace::CALL(CallAction::new(
                             action.from,
                             action.to,
                             action.value,
                             function.name.clone(),
                             Some(decoded_params),
-                            trace_address.clone(),
+                            trace_address.to_owned(),
                         )))
                     }
-                    Err(_) => {
-                        return Err(TraceParseError::AbiDecodingFailed(tx_hash.clone().into()))
-                    }
+                    Err(_) => return Err(TraceParseError::AbiDecodingFailed((*tx_hash).into())),
                 }
             }
         }
     }
-    return Err(TraceParseError::InvalidFunctionSelector(tx_hash.clone().into()))
+    Err(TraceParseError::InvalidFunctionSelector((*tx_hash).into()))
 }
 
 fn handle_empty_input(
     abi: &JsonAbi,
     action: &RethCallAction,
-    trace_address: &Vec<usize>,
+    trace_address: &[usize],
     tx_hash: &H256,
 ) -> Result<StructuredTrace, TraceParseError> {
     if action.value != U256::from(0) {
@@ -270,7 +279,7 @@ fn handle_empty_input(
                     action.value,
                     RECEIVE.to_string(),
                     None,
-                    trace_address.clone(),
+                    trace_address.to_owned(),
                 )))
             }
         }
@@ -283,10 +292,10 @@ fn handle_empty_input(
                     action.value,
                     FALLBACK.to_string(),
                     None,
-                    trace_address.clone(),
+                    trace_address.to_owned(),
                 )))
             }
         }
     }
-    Err(TraceParseError::EmptyInput(tx_hash.clone().into()))
+    Err(TraceParseError::EmptyInput((*tx_hash).into()))
 }
