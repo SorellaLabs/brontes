@@ -61,7 +61,7 @@ impl TransactionStats {
         let spacing = " ".repeat(8);
 
         println!("{}{}", spacing, format_color("STATS FOR TRANSACTION", format!("{:#x}", self.tx_hash), Color::BrightCyan).bold());
-        println!("----------------------------------------------------------------------------------------");
+        println!("{}----------------------------------------------------------------------------------------", spacing);
         println!("{}{}", spacing, format_color("Total Traces", self.successful_parses + self.error_parses.len(), Color::Cyan));
         println!("{}{}", spacing, format_color("Successful Parses", self.successful_parses, Color::Cyan));
         println!("{}{}", spacing, format_color("Total Errors", self.error_parses.len(), Color::Cyan));
@@ -73,7 +73,7 @@ impl TransactionStats {
         errors.display_stats(Color::Cyan, &spacing);
 
         for trace in &self.error_parses {
-            println!("{}{}", spacing.repeat(1), format!("{} - {}", format_color("Trace Error", trace.idx, Color::Cyan), trace.error));
+            println!("{}{}", spacing.repeat(1), format!("{} - {:?}", format_color("Error - Trace", trace.idx, Color::Cyan), trace.error));
         }
         println!();
     }

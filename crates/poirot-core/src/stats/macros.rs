@@ -69,6 +69,7 @@ macro_rules! init_tx {
     };
 }
 
+
 #[macro_export]
 macro_rules! success_tx {
     ($blk:expr, $tx:expr) => {
@@ -93,8 +94,6 @@ macro_rules! success_tx {
 #[macro_export]
 macro_rules! init_block {
     ($blk:expr, $start_blk:expr, $end_blk:expr) => {
-        //use crate::poirot_core::stats::stats::BlockStats;
-        //use crate::poirot_core::stats::stats::BLOCK_STATS;
         {
             let mut block_stats = poirot_core::stats::stats::BLOCK_STATS.lock().unwrap();
             let block_stat = block_stats.entry($blk).or_insert_with(|| poirot_core::stats::stats::BlockStats {
@@ -103,8 +102,8 @@ macro_rules! init_block {
             });
 
             let message = format!("Starting Parsing Block {}", format!("{}", $blk).bright_blue().bold());
-            let progess = format!("{}", format!("{} / {}", $end_blk-$blk+1, $end_blk-$start_blk).bright_blue().bold());
-            info!(message = message, progess = format!("{}", progess));
+            let progess = format!("{}", format!("Progress {} / {}", $end_blk-$blk+1 as usize, $end_blk-$start_blk as usize).bright_blue().bold());
+            info!(message = message, progess = progess);
         }
     };
 }
