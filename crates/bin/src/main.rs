@@ -68,7 +68,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         let action = parser.parse_block(i, block_trace).await;
         success_block!(i);
     }
-    success_all!(start_block, end_block);
+    success_all!(start_block, end_block, 2);
 
     Ok(())
 }
