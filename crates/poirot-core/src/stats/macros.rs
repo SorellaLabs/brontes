@@ -127,7 +127,7 @@ macro_rules! success_all {
         {
             let message = format!("Successfuly Parsed Blocks {}", format!("{} to {}", $start_blk, $end_blk).bright_blue().bold());
             info!(message = message);
-            poirot_core::stats::stats::display_all_stats();
+            poirot_core::stats::display::display_all_stats();
         }
     };
 }
