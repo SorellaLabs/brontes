@@ -54,7 +54,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let mut parser = Parser::new(key.clone());
 
-    let (start_block, end_block) = ();  //(17795047,	17795048); //(17788433, 17788434);
+    let (start_block, end_block) = (	16638398, 	16638399);  //(17795047,	17795048); //(17788433, 17788434);
     for i in start_block..end_block {
         init_block!(i, start_block, end_block);
         let block_trace: Vec<TraceResultsWithTransactionHash> =
