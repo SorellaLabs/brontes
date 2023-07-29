@@ -87,8 +87,8 @@ pub(crate) fn decode_input_with_abi(
 ) -> Result<StructuredTrace, TraceParseError> {
     for functions in abi.functions.values() {
         for function in functions {
-            println!("\ndeeeeeg FS {:?}", Bytes::from(function.selector()));
-            println!("deeeeeg FI {:?}", &function.inputs);
+            //println!("\ndeeeeeg FS {:?}", Bytes::from(function.selector()));
+            //println!("deeeeeg FI {:?}", &function.inputs);
             if function.selector() == action.input[..4] {
                 // Resolve all inputs
                 let mut resolved_params: Vec<DynSolType> = Vec::new();
@@ -97,12 +97,12 @@ pub(crate) fn decode_input_with_abi(
                     let _ =
                         param.resolve().map(|resolved_param| resolved_params.push(resolved_param));
                 }
-                println!("deeeeeg PARAM {:?}", &resolved_params);
+                //println!("deeeeeg PARAM {:?}", &resolved_params);
                 let params_type = DynSolType::Tuple(resolved_params);
 
                 // Remove the function selector from the input.
                 let inputs = &action.input[4..];
-                println!("deeeeeg INPUTS {:?}", &inputs);
+                //println!("deeeeeg INPUTS {:?}", &inputs);
                 // Decode the inputs based on the resolved parameters.
                 match params_type.decode_params(inputs) {
                     Ok(decoded_params) => {
@@ -121,9 +121,9 @@ pub(crate) fn decode_input_with_abi(
         }
     }
 
-    println!("deeeeeg ABI {:?}", abi);
-    println!("deeeeeg ABI FUNC VALS {:?}", abi.functions.values());
-    println!("deeeeeg ACTION {:?}\n", action);
+    //println!("deeeeeg ABI {:?}", abi);
+    //println!("deeeeeg ABI FUNC VALS {:?}", abi.functions.values());
+    //println!("deeeeeg ACTION {:?}\n", action);
 
     
 

@@ -170,7 +170,7 @@ impl Parser {
                 }
             };
 
-            debug!(?tx_hash, trace = ?structured_traces.last());
+            info!(?tx_hash, trace = ?structured_traces.last());
         }
 
 
