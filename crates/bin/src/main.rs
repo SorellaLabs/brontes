@@ -15,7 +15,7 @@ fn main() {
         .thread_stack_size(8 * 1024 * 1024)
         .build()
         .unwrap();
-    let filter = EnvFilter::builder().with_default_directive(Level::DEBUG.into()).from_env_lossy();
+    let filter = EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
 
     let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
 
@@ -54,7 +54,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let mut parser = Parser::new(key.clone());
 
-    let (start_block, end_block) = (17795047,	17795048); //(17788433, 17788434);
+    let (start_block, end_block) = ();  //(17795047,	17795048); //(17788433, 17788434);
     for i in start_block..end_block {
         init_block!(i, start_block, end_block);
         let block_trace: Vec<TraceResultsWithTransactionHash> =
