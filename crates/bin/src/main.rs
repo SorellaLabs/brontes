@@ -15,7 +15,7 @@ fn main() {
         .thread_stack_size(8 * 1024 * 1024)
         .build()
         .unwrap();
-    let filter = EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
+    let filter = EnvFilter::builder().with_default_directive(Level::DEBUG.into()).from_env_lossy();
 
     let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
 
