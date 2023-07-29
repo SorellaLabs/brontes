@@ -65,6 +65,12 @@ pub(crate) async fn diamond_proxy_contract_abi(client: &Client, address: Address
     println!("\n\n contract abi {:?}\n\n", contract_metadata);
      */
 
+    for (i, a) in contract_metadata.items.iter().enumerate() {
+        if let Some(aa) = a.implementation {
+            println!("\nABI {} -- {:?}\n", i, client.contract_abi(aa).await);
+        };
+    }
+
     //println!("{:?}", contract_metadata);
     // Use the first item in the metadata.
     let first_item = &contract_metadata.items[0];
