@@ -67,6 +67,7 @@ pub(crate) async fn diamond_proxy_contract_abi(client: &Client, address: Address
 
     for (i, a) in contract_metadata.items.iter().enumerate() {
         if let Some(aa) = a.implementation {
+            println!("\nABI {} ADDRESS -- {:#x}\n", i, &aa);
             println!("\nABI {} -- {:?}\n", i, client.contract_abi(aa).await);
         };
     }
