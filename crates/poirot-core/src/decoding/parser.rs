@@ -21,7 +21,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use tracing::{error, info, instrument};
+use tracing::{error, info, instrument, debug};
 
 use super::*;
 
@@ -169,8 +169,10 @@ impl Parser {
                     )));
                 }
             };
-            
+
+            debug!(?tx_hash, trace = ?structured_traces.last());
         }
+
 
         Ok(TxTrace { trace: structured_traces, tx_hash: trace.transaction_hash, tx_index })
     }
