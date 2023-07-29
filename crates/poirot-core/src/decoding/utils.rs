@@ -45,6 +45,8 @@ pub(crate) async fn abi_decoding_pipeline(
     // tries to get the proxy abi, 
     // if unsuccessful, tries to get the diamond proxy abi
     let proxy_abi = client.proxy_contract_abi(action.to.into()).await?;
+
+    println!("ABI: {:?}", proxy_abi);
     
     let _ = diamond_proxy_contract_abi(&client, action.to.into()).await?;
 
