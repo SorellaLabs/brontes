@@ -57,8 +57,11 @@ pub(crate) async fn abi_decoding_pipeline(
 
 
 pub(crate) async fn diamond_proxy_contract_abi(client: &Client, address: Address) -> Result<JsonAbi, EtherscanError> {
+    
+    println!("\nPRE - ABI ADDRESS -- {:#x}\n", &address);
+    
     let contract_metadata = client.contract_source_code(address).await?;
-
+    println!("\nMETADATA -- {:?}\n", &contract_metadata);
 /*
     let contract_metadata = client.contract_abi(address).await?;
 
