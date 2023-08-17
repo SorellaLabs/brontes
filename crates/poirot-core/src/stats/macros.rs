@@ -79,7 +79,8 @@ macro_rules! success_tx {
             block_stat.tx_stats.push(tx_stat);
 
             let tx_hash = format!("{:#x}", $tx);
-            info!(result = "Successfully Parsed Transaction", tx_hash = tx_hash);
+            info!("result = \"Successfully Parsed Transaction\", tx_hash = {}\n", tx_hash);
+
         }
     };
 }
