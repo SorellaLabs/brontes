@@ -79,7 +79,6 @@ impl Parser {
             match self.parse_tx(trace, idx).await {
                 Ok(res) => {
                     success_tx!(block_num, trace.transaction_hash);
-                    println!(); // new line for new tx, find better way to do this
                     result.push(res);
                 }
                 Err(e) => {
