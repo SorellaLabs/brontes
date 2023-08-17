@@ -1,3 +1,5 @@
+
+
 use crate::{
     errors::TraceParseError,
     structured_trace::{
@@ -30,6 +32,31 @@ use super::*;
 
 sol! {
     interface IDiamondLoupe {
+        /// These functions are expected to be called frequently
+        /// by tools.
+    
+        struct Facet {
+            address facetAddress;
+            bytes4[] functionSelectors;
+        }
+    
+        /// @notice Gets all facet addresses and their four byte function selectors.
+        /// @return facets_ Facet
+        function facets() external view returns (Facet[] memory facets_);
+    
+        /// @notice Gets all the function selectors supported by a specific facet.
+        /// @param _facet The facet address.
+        /// @return facetFunctionSelectors_
+        function facetFunctionSelectors(address _facet) external view returns (bytes4[] memory facetFunctionSelectors_);
+    
+        /// @notice Get all the facet addresses used by a diamond.
+        /// @return facetAddresses_
+        function facetAddresses() external view returns (address[] memory facetAddresses_);
+    
+        /// @notice Gets the facet that supports the given selector.
+        /// @dev If facet is not found return address(0).
+        /// @param _functionSelector The function selector.
+        /// @return facetAddress_ The facet address.
         function facetAddress(bytes4 _functionSelector) external view returns (address facetAddress_);
     }
 }
@@ -57,10 +84,14 @@ pub(crate) async fn abi_decoding_pipeline(
         return Ok(structured_trace)
     };
 
-    
     // tries to decode with the new abi
     // if unsuccessful, returns an error
-    decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash)
+    let diamond_proxy_abi = diamond_proxy_contract_abi(&client, &abi, &action, &trace_address, &tx_hash).await?;
+    if let Ok(structured_trace) = decode_input_with_abi(&diamond_proxy_abi, &action, &trace_address, &tx_hash) {
+        return Ok(structured_trace)
+    };
+
+    Err(TraceParseError::AbiDecodingFailed(tx_hash.clone().into()))
 }
 
 
@@ -72,15 +103,20 @@ pub(crate) async fn diamond_proxy_contract_abi(
     tx_hash: &H256
 ) -> Result<JsonAbi, TraceParseError> {
     
-    let function_call: facetAddressCall = match action.input[..4].try_into() {
-        Ok(arr) => facetAddressCall { _functionSelector: arr },
-        Err(e) => return Err(TraceParseError::InvalidFunctionSelector((*tx_hash).into()))
-    };
-
-    let address = function_call.
+    let diamond_call:Vec<u8> = facetAddressCall { _functionSelector : action.input[..4].try_into().unwrap() }.encode();
     
 
-    match client.contract_abi(action.to.into()).await {
+
+
+
+    // make a call to 'action.to' with the call data of 'function_selector' variable defined above
+    // the result of the call is the facet address
+    // pass that address into the match statement below
+
+    
+    let facet_address: = 
+
+    match client.contract_abi(facet_address).await {
         Ok(a) => Ok(abi.clone()),
         Err(e) => Err(TraceParseError::from(e))
     }
