@@ -103,7 +103,7 @@ pub(crate) async fn diamond_proxy_contract_abi(
     };
 
     let address = function_call.
-
+    
 
     match client.contract_abi(action.to.into()).await {
         Ok(a) => Ok(abi.clone()),
