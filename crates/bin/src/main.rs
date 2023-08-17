@@ -54,6 +54,11 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let mut parser = Parser::new(key.clone());
 
+    // you have a intermediate parse function for the range of blocks you want to parse
+    // it collects the aggregate stats of each block stats
+    // the block stats collect the aggregate stats of each tx
+    // the tx stats collect the aggregate stats of each trace
+
     let (start_block, end_block) = (	17794930, 	17794931);  //(17795047,	17795048); //(17788433, 17788434);
     for i in start_block..end_block {
         init_block!(i, start_block, end_block);
