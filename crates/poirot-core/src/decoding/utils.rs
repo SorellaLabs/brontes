@@ -9,6 +9,7 @@ use crate::{
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_etherscan::{Client, errors::EtherscanError};
 use alloy_json_abi::{JsonAbi, StateMutability};
+use alloy_sol_types::sol;
 use colored::Colorize;
 
 use ethers_core::{types::Chain, abi::Address};
@@ -22,8 +23,41 @@ use std::{
 };
 use tracing::{error, info, instrument};
 
+use self::IDiamondLoupe::facetAddressCall;
+
 use super::*;
 
+
+sol! {
+    interface IDiamondLoupe {
+        /// These functions are expected to be called frequently
+        /// by tools.
+    
+        struct Facet {
+            address facetAddress;
+            bytes4[] functionSelectors;
+        }
+    
+        /// @notice Gets all facet addresses and their four byte function selectors.
+        /// @return facets_ Facet
+        function facets() external view returns (Facet[] memory facets_);
+    
+        /// @notice Gets all the function selectors supported by a specific facet.
+        /// @param _facet The facet address.
+        /// @return facetFunctionSelectors_
+        function facetFunctionSelectors(address _facet) external view returns (bytes4[] memory facetFunctionSelectors_);
+    
+        /// @notice Get all the facet addresses used by a diamond.
+        /// @return facetAddresses_
+        function facetAddresses() external view returns (address[] memory facetAddresses_);
+    
+        /// @notice Gets the facet that supports the given selector.
+        /// @dev If facet is not found return address(0).
+        /// @param _functionSelector The function selector.
+        /// @return facetAddress_ The facet address.
+        function facetAddress(bytes4 _functionSelector) external view returns (address facetAddress_);
+    }
+}
 
 /// cycles through all possible abi decodings
 /// 1) regular
@@ -42,51 +76,39 @@ pub(crate) async fn abi_decoding_pipeline(
         return Ok(structured_trace)
     };
 
-    // tries to get the proxy abi, 
-    // if unsuccessful, tries to get the diamond proxy abi
+    // tries to get the proxy abi -> decode
     let proxy_abi = client.proxy_contract_abi(action.to.into()).await?;
+    if let Ok(structured_trace) = decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash) {
+        return Ok(structured_trace)
+    };
 
-    println!("ABI: {:?}", proxy_abi);
     
-    let _ = diamond_proxy_contract_abi(&client, action.to.into()).await?;
-
     // tries to decode with the new abi
     // if unsuccessful, returns an error
     decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash)
 }
 
 
-pub(crate) async fn diamond_proxy_contract_abi(client: &Client, address: Address) -> Result<JsonAbi, EtherscanError> {
+pub(crate) async fn diamond_proxy_contract_abi(    
+    client: &Client,
+    abi: &JsonAbi,
+    action: &RethCallAction,
+    trace_address: &[usize],
+    tx_hash: &H256
+) -> Result<JsonAbi, TraceParseError> {
     
-    println!("\nPRE - ABI ADDRESS -- {:#x}\n", &address);
-    
-    let contract_metadata = client.contract_source_code(address).await?;
-    println!("\nMETADATA -- {:?}\n", &contract_metadata);
-/*
-    let contract_metadata = client.contract_abi(address).await?;
-
-    println!("\n\n contract abi {:?}\n\n", contract_metadata);
-     */
-
-    for (i, a) in contract_metadata.items.iter().enumerate() {
-        if let Some(aa) = a.implementation {
-            println!("\nABI {} ADDRESS -- {:#x}\n", i, &aa);
-            println!("\nABI {} -- {:?}\n", i, client.contract_abi(aa).await);
-        };
-    }
-
-    //println!("{:?}", contract_metadata);
-    // Use the first item in the metadata.
-    let first_item = &contract_metadata.items[0];
-
-    // If the first item is a proxy, get its implementation address and fetch the ABI.
-    let implementation_address = match first_item.implementation {
-        Some(impl_addr) => impl_addr,
-        None => return Err(EtherscanError::MissingImplementationAddress),
+    let function_call: facetAddressCall = match action.input[..4].try_into() {
+        Ok(arr) => facetAddressCall { _functionSelector: arr },
+        Err(e) => return Err(TraceParseError::InvalidFunctionSelector((*tx_hash).into()))
     };
 
-    // Get the ABI of the implementation contract.
-    client.contract_abi(implementation_address).await
+    let address = function_call.
+
+
+    match client.contract_abi(action.to.into()).await {
+        Ok(a) => Ok(abi.clone()),
+        Err(e) => Err(TraceParseError::from(e))
+    }
 }
 
 
