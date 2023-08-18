@@ -38,6 +38,7 @@ pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork>;
 pub type RethTxPool =
     Pool<EthTransactionValidator<Provider, PooledTransaction>, GasCostOrdering<PooledTransaction>>;
 
+#[derive(Debug)]
 pub struct TracingClient {
     pub api: EthApi<Provider, RethTxPool, NoopNetwork>,
     pub trace: TraceApi<Provider, RethApi>,

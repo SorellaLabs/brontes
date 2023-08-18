@@ -10,7 +10,7 @@ macro_rules! init_trace {
 #[macro_export]
 macro_rules! error_trace {
     ($tx:expr, $idx:expr, $err:expr) => {
-        use $crate::stats::{*, stats::*};
+        use $crate::stats::{stats::*, *};
         {
             let error: Box<dyn std::error::Error + Sync + Send + 'static> = Box::new($err);
 
@@ -44,7 +44,7 @@ macro_rules! success_trace {
 #[macro_export]
 macro_rules! init_tx {
     ($tx:expr, $idx:expr, $total_len:expr) => {
-        use $crate::stats::{*, stats::*};
+        use $crate::stats::{stats::*, *};
         {
             let mut tx_stats = TX_STATS.lock().unwrap();
             tx_stats.entry($tx).or_insert_with(|| TransactionStats {
@@ -80,7 +80,6 @@ macro_rules! success_tx {
 
             let tx_hash = format!("{:#x}", $tx);
             info!("result = \"Successfully Parsed Transaction\", tx_hash = {}\n", tx_hash);
-
         }
     };
 }
@@ -88,12 +87,12 @@ macro_rules! success_tx {
 #[macro_export]
 macro_rules! init_block {
     ($blk:expr, $start_blk:expr, $end_blk:expr) => {
-        use $crate::stats::{*, stats::*};
+        use $crate::stats::{stats::*, *};
         {
             let mut block_stats = BLOCK_STATS.lock().unwrap();
-            let block_stat = block_stats.entry($blk).or_insert_with(|| {
-                BlockStats { block_num: $blk, tx_stats: Vec::new() }
-            });
+            let block_stat = block_stats
+                .entry($blk)
+                .or_insert_with(|| BlockStats { block_num: $blk, tx_stats: Vec::new() });
 
             let progress = format!(
                 "Progress: {} / {}",

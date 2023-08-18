@@ -1,24 +1,34 @@
-
-
 use crate::{
     errors::TraceParseError,
     structured_trace::{
+        CallAction,
         StructuredTrace::{self},
-        TxTrace, CallAction,
+        TxTrace,
     },
     *,
 };
-use alloy_dyn_abi::{DynSolType, ResolveSolType};
-use alloy_etherscan::{Client, errors::EtherscanError};
-use alloy_json_abi::{JsonAbi, StateMutability};
-use alloy_sol_types::sol;
-use colored::Colorize;
+extern crate reth_tracing;
+use lazy_static::__Deref;
+use reth_tracing::TracingClient;
 
-use ethers_core::{types::Chain, abi::Address};
-use reth_primitives::{H256, U256, Bytes};
-use reth_rpc_types::trace::parity::{
-    Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash, ActionType, TransactionTrace,
+use crate::decoding::parser::Parser;
+use alloy_dyn_abi::{DynSolType, ResolveSolType};
+use alloy_etherscan::{errors::EtherscanError, Client};
+use alloy_json_abi::{JsonAbi, StateMutability};
+use alloy_primitives::{B160, B256};
+use alloy_sol_types::{sol, SolCall};
+use colored::Colorize;
+use ethers_core::{abi::Address, types::Chain};
+use reth_primitives::{Bytes, H160, H256, U256};
+use reth_rpc_types::{
+    trace::parity::{
+        Action as RethAction, ActionType, CallAction as RethCallAction,
+        TraceResultsWithTransactionHash, TransactionTrace,
+    },
+    CallRequest,
 };
+
+use reth_rpc::eth::revm_utils::EvmOverrides;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -29,34 +39,8 @@ use self::IDiamondLoupe::facetAddressCall;
 
 use super::*;
 
-
 sol! {
     interface IDiamondLoupe {
-        /// These functions are expected to be called frequently
-        /// by tools.
-    
-        struct Facet {
-            address facetAddress;
-            bytes4[] functionSelectors;
-        }
-    
-        /// @notice Gets all facet addresses and their four byte function selectors.
-        /// @return facets_ Facet
-        function facets() external view returns (Facet[] memory facets_);
-    
-        /// @notice Gets all the function selectors supported by a specific facet.
-        /// @param _facet The facet address.
-        /// @return facetFunctionSelectors_
-        function facetFunctionSelectors(address _facet) external view returns (bytes4[] memory facetFunctionSelectors_);
-    
-        /// @notice Get all the facet addresses used by a diamond.
-        /// @return facetAddresses_
-        function facetAddresses() external view returns (address[] memory facetAddresses_);
-    
-        /// @notice Gets the facet that supports the given selector.
-        /// @dev If facet is not found return address(0).
-        /// @param _functionSelector The function selector.
-        /// @return facetAddress_ The facet address.
         function facetAddress(bytes4 _functionSelector) external view returns (address facetAddress_);
     }
 }
@@ -65,64 +49,68 @@ sol! {
 /// 1) regular
 /// 2) proxy
 /// 3) diamond proxy
-pub(crate) async fn abi_decoding_pipeline(    
-    client: &Client,
+pub(crate) async fn abi_decoding_pipeline(
+    parser: &Parser,
     abi: &JsonAbi,
     action: &RethCallAction,
     trace_address: &[usize],
-    tx_hash: &H256
+    tx_hash: &H256,
+    block_num: u64,
 ) -> Result<StructuredTrace, TraceParseError> {
-
     // check decoding with the regular abi
     if let Ok(structured_trace) = decode_input_with_abi(&abi, &action, &trace_address, &tx_hash) {
         return Ok(structured_trace)
     };
 
     // tries to get the proxy abi -> decode
-    let proxy_abi = client.proxy_contract_abi(action.to.into()).await?;
-    if let Ok(structured_trace) = decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash) {
+    let proxy_abi = parser.client.proxy_contract_abi(action.to.into()).await?;
+    if let Ok(structured_trace) =
+        decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash)
+    {
         return Ok(structured_trace)
     };
 
     // tries to decode with the new abi
     // if unsuccessful, returns an error
-    let diamond_proxy_abi = diamond_proxy_contract_abi(&client, &abi, &action, &trace_address, &tx_hash).await?;
-    if let Ok(structured_trace) = decode_input_with_abi(&diamond_proxy_abi, &action, &trace_address, &tx_hash) {
+    let diamond_proxy_abi =
+        diamond_proxy_contract_abi(&parser, &abi, &action, &trace_address, &tx_hash, block_num)
+            .await?;
+    if let Ok(structured_trace) =
+        decode_input_with_abi(&diamond_proxy_abi, &action, &trace_address, &tx_hash)
+    {
         return Ok(structured_trace)
     };
 
     Err(TraceParseError::AbiDecodingFailed(tx_hash.clone().into()))
 }
 
-
-pub(crate) async fn diamond_proxy_contract_abi(    
-    client: &Client,
+pub(crate) async fn diamond_proxy_contract_abi(
+    parser: &Parser,
     abi: &JsonAbi,
     action: &RethCallAction,
     trace_address: &[usize],
-    tx_hash: &H256
+    tx_hash: &H256,
+    block_num: u64,
 ) -> Result<JsonAbi, TraceParseError> {
-    
-    let diamond_call:Vec<u8> = facetAddressCall { _functionSelector : action.input[..4].try_into().unwrap() }.encode();
-    
+    let diamond_call =
+        facetAddressCall { _functionSelector: action.input[..4].try_into().unwrap() };
 
+    let call_data = diamond_call.encode();
 
+    let call_request =
+        CallRequest { to: Some(action.to), data: Some(call_data.into()), ..Default::default() };
 
+    let data: Result<Bytes, reth_rpc::eth::error::EthApiError> =
+        parser.tracer.api.call(call_request, Some(block_num.into()), EvmOverrides::default()).await;
 
-    // make a call to 'action.to' with the call data of 'function_selector' variable defined above
-    // the result of the call is the facet address
-    // pass that address into the match statement below
+    let facet_address =
+        facetAddressCall::decode_returns(data.unwrap().deref(), true).unwrap().facetAddress_;
 
-    
-    let facet_address: = 
-
-    match client.contract_abi(facet_address).await {
+    match parser.client.contract_abi(facet_address.into()).await {
         Ok(a) => Ok(abi.clone()),
-        Err(e) => Err(TraceParseError::from(e))
+        Err(e) => Err(TraceParseError::from(e)),
     }
 }
-
-
 
 pub(crate) fn decode_input_with_abi(
     abi: &JsonAbi,
@@ -132,8 +120,6 @@ pub(crate) fn decode_input_with_abi(
 ) -> Result<StructuredTrace, TraceParseError> {
     for functions in abi.functions.values() {
         for function in functions {
-            //println!("\ndeeeeeg FS {:?}", Bytes::from(function.selector()));
-            //println!("deeeeeg FI {:?}", &function.inputs);
             if function.selector() == action.input[..4] {
                 // Resolve all inputs
                 let mut resolved_params: Vec<DynSolType> = Vec::new();
@@ -166,15 +152,8 @@ pub(crate) fn decode_input_with_abi(
         }
     }
 
-    //println!("deeeeeg ABI {:?}", abi);
-    //println!("deeeeeg ABI FUNC VALS {:?}", abi.functions.values());
-    //println!("deeeeeg ACTION {:?}\n", action);
-
-    
-
     Err(TraceParseError::InvalidFunctionSelector((*tx_hash).into()))
 }
-
 
 pub(crate) fn handle_empty_input(
     abi: &JsonAbi,
@@ -222,9 +201,12 @@ pub(crate) fn handle_empty_input(
     Err(TraceParseError::EmptyInput((*tx_hash).into()))
 }
 
-
 /// decodes the trace action
-pub(crate) fn decode_trace_action(structured_traces: &mut Vec<StructuredTrace>, transaction_trace: &TransactionTrace, tx_hash: &H256) -> Option<(RethCallAction, Vec<usize>)> {
+pub(crate) fn decode_trace_action(
+    structured_traces: &mut Vec<StructuredTrace>,
+    transaction_trace: &TransactionTrace,
+    tx_hash: &H256,
+) -> Option<(RethCallAction, Vec<usize>)> {
     match &transaction_trace.action {
         RethAction::Call(call) => Some((call.clone(), transaction_trace.trace_address.clone())),
         RethAction::Create(create_action) => {
@@ -256,5 +238,4 @@ pub(crate) fn decode_trace_action(structured_traces: &mut Vec<StructuredTrace>, 
             None
         }
     }
-
 }
