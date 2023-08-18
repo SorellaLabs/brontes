@@ -21,7 +21,7 @@ reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = 
 reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "31af4d5"}
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "31af4d5"}
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", rev = "31af4d5"}
-
+reth-tracing = {path = "../reth-tracing"}
 # tracing
 tracing = "0.1.37"
 metrics = "0.21.1"

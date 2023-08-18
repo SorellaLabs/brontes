@@ -479,11 +479,8 @@ impl Client {
         Ok(result)
     }
 
-
     pub async fn diamond_proxy_contract_abi(&self, address: Address) -> Result<ContractMetadata> {
-
-        let query =
-            self.create_query("proxy", "eth_call", HashMap::from([("to", address)]));
+        let query = self.create_query("proxy", "eth_call", HashMap::from([("to", address)]));
         let response = self.get(&query).await?;
 
         // Source code is not verified
@@ -496,7 +493,6 @@ impl Client {
 
         let response: Response<ContractMetadata> = self.sanitize_response(response)?;
         let result = response.result;
-
 
         Ok(result)
     }

@@ -123,7 +123,6 @@ impl ErrorStats {
     }
 }
 
-
 /// displays the TOTAL STATS (verbosity - 1)
 pub fn display_total_stats(blocks: Vec<&BlockStats>) {
     println!("{}", "ALL STATS".to_string().bright_yellow().bold());
@@ -187,7 +186,6 @@ pub fn display_total_stats(blocks: Vec<&BlockStats>) {
     errors.display_stats(Color::Yellow, "");
     println!();
 }
-
 
 /// displays all the stats given a verbosity level:
 /// 1 - Total Stats Only

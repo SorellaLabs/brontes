@@ -3,8 +3,6 @@ use colored::{Color, Colorize};
 use revm_primitives::B256;
 pub struct ParserStatsLayer;
 
-
-
 pub struct BlockStats {
     pub block_num: u64,
     pub tx_stats: Vec<TransactionStats>,
@@ -55,7 +53,6 @@ impl BlockStats {
         println!();
     }
 }
-
 
 /// tx level stats
 pub struct TransactionStats {
@@ -117,8 +114,7 @@ impl TransactionStats {
     }
 }
 
-
-/// tx level stats 
+/// tx level stats
 /// gives the trace idx in the tx + the error
 pub struct TraceStat {
     pub idx: usize,
