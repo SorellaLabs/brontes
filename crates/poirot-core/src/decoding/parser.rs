@@ -1,18 +1,21 @@
 use crate::{
+    decoding::utils::*,
     errors::TraceParseError,
     structured_trace::{
         CallAction,
         StructuredTrace::{self},
         TxTrace,
     },
-    *, decoding::utils::*,
+    *,
 };
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_etherscan::Client;
 use alloy_json_abi::{JsonAbi, StateMutability};
 use colored::Colorize;
+use reth_tracing::TracingClient;
 
-use ethers_core::types::Chain;
+use super::*;
+use ethers_core::{k256::elliptic_curve::rand_core::block, types::Chain};
 use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
@@ -21,21 +24,18 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use tracing::{error, info, instrument, debug};
-
-use super::*;
-
-
+use tracing::{debug, error, info, instrument};
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
 #[derive(Debug)]
 pub struct Parser {
     pub client: Client,
+    pub tracer: TracingClient,
 }
 
 impl Parser {
-    pub fn new(etherscan_key: String) -> Self {
+    pub fn new(etherscan_key: String, tracer: TracingClient) -> Self {
         let _paths = fs::read_dir("./").unwrap();
 
         let _paths = fs::read_dir("./").unwrap_or_else(|err| {
@@ -58,6 +58,8 @@ impl Parser {
                 CACHE_TIMEOUT,
             )
             .unwrap(),
+
+            tracer,
         }
     }
 
@@ -76,7 +78,7 @@ impl Parser {
             // We don't need to through an error for this given transaction so long as the error is
             // logged & emmitted and the transaction is stored.
             init_tx!(trace.transaction_hash, idx, block_trace.len());
-            match self.parse_tx(trace, idx).await {
+            match self.parse_tx(trace, idx, block_num).await {
                 Ok(res) => {
                     success_tx!(block_num, trace.transaction_hash);
                     result.push(res);
@@ -92,13 +94,11 @@ impl Parser {
         result
     }
 
-    // TODO: Then figure out how to deal with error
-    // TODO: need to add decoding for diamond proxy
-
     pub async fn parse_tx(
         &self,
         trace: &TraceResultsWithTransactionHash,
         tx_index: usize,
+        block_num: u64,
     ) -> Result<TxTrace, TraceParseError> {
         let transaction_traces =
             trace.full_trace.trace.as_ref().ok_or(TraceParseError::TraceMissing)?;
@@ -108,13 +108,14 @@ impl Parser {
 
         for (idx, transaction_trace) in transaction_traces.iter().enumerate() {
             init_trace!(tx_hash, idx, transaction_traces.len());
-            
-            let (action, trace_address) = if let Some((a, t)) = decode_trace_action(&mut structured_traces, &transaction_trace, &tx_hash) {
+
+            let (action, trace_address) = if let Some((a, t)) =
+                decode_trace_action(&mut structured_traces, &transaction_trace, &tx_hash)
+            {
                 (a, t)
             } else {
-                continue;
+                continue
             };
-
 
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
@@ -139,15 +140,9 @@ impl Parser {
                 }
             }
 
-            // Decode the input based on the ABI.
-            // If the decoding fails, you have to make a call to:
-            // facetAddress(function selector) which is a function on any diamond proxy contract, if
-            // it returns it will give you the address of the facet which can be used to
-            // fetch the ABI Use the sol macro to previously generate the facetAddress
-            // function binding & call it on the to address that is being called in the first place https://docs.rs/alloy-sol-macro/latest/alloy_sol_macro/macro.sol.html
-
-            
-            match abi_decoding_pipeline(&self.client, &abi, &action, &trace_address, &tx_hash).await {
+            match abi_decoding_pipeline(&self, &abi, &action, &trace_address, &tx_hash, block_num)
+                .await
+            {
                 Ok(s) => {
                     success_trace!(
                         tx_hash,
@@ -155,7 +150,7 @@ impl Parser {
                         call_type = format!("{:?}", action.call_type)
                     );
                     structured_traces.push(s);
-                },
+                }
                 Err(e) => {
                     error_trace!(tx_hash, idx, e);
                     structured_traces.push(StructuredTrace::CALL(CallAction::new(
@@ -172,11 +167,6 @@ impl Parser {
             info!(?tx_hash, trace = ?structured_traces.last());
         }
 
-
         Ok(TxTrace { trace: structured_traces, tx_hash: trace.transaction_hash, tx_index })
     }
-
 }
-
-
-
