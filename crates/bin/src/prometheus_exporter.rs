@@ -27,6 +27,8 @@ pub async fn initialize(listen_addr: SocketAddr, prometheus_collector: Collector
         .install()
         .wrap_err("Couldn't set metrics recorder.")?;
 
+    prometheus_collector.collect();
+
     Ok(())
 }
 
