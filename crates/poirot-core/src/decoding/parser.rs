@@ -1,12 +1,13 @@
 use crate::{
     decoding::utils::*,
     errors::TraceParseError,
+    stats::TraceMetricEvent,
     structured_trace::{
         CallAction,
         StructuredTrace::{self},
         TxTrace,
     },
-    *, stats::TraceMetricEvent,
+    *,
 };
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
@@ -25,7 +26,8 @@ use std::{
     collections::HashSet,
     error::Error,
     fs,
-    path::{Path, PathBuf}, sync::Arc,
+    path::{Path, PathBuf},
+    sync::Arc,
 };
 use tracing::{error, info, instrument};
 
@@ -41,12 +43,15 @@ use reth_rpc::eth::revm_utils::EvmOverrides;
 pub struct Parser {
     pub client: Client,
     pub tracer: TracingClient,
-    pub metrics_tx: Arc<UnboundedSender<TraceMetricEvent>>
+    pub metrics_tx: Arc<UnboundedSender<TraceMetricEvent>>,
 }
 
 impl Parser {
-    pub fn new(etherscan_key: String, tracer: TracingClient, metrics_tx: UnboundedSender<TraceMetricEvent>) -> Self {
-
+    pub fn new(
+        etherscan_key: String,
+        tracer: TracingClient,
+        metrics_tx: UnboundedSender<TraceMetricEvent>,
+    ) -> Self {
         // TODO: tf is the double check in a dir we know exists?
         let _paths = fs::read_dir("./").unwrap();
 
@@ -72,7 +77,7 @@ impl Parser {
             )
             .unwrap(),
             tracer,
-            metrics_tx: Arc::new(metrics_tx)
+            metrics_tx: Arc::new(metrics_tx),
         }
     }
 
@@ -106,12 +111,11 @@ impl Parser {
         block_num: u64,
         block_trace: Vec<TraceResultsWithTransactionHash>,
     ) -> Vec<TxTrace> {
-        // allocate vector for specific size needed 
-        
+        // allocate vector for specific size needed
+
         let mut result: Vec<TxTrace> = vec![];
 
-
-        // TODO: this can be converted into a filter map and then we don't have to 
+        // TODO: this can be converted into a filter map and then we don't have to
         // move the results into a new vector;
         for (idx, trace) in block_trace.iter().enumerate() {
             // We don't need to through an error for this given transaction so long as the error is
@@ -153,7 +157,14 @@ impl Parser {
             let (action, trace_address) = if let Some((a, t)) =
                 decode_trace_action(&mut structured_traces, &transaction_trace)
             {
-                self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", a.call_type))]))?;
+                self.trace_result(
+                    block_num,
+                    tx_hash,
+                    tx_index,
+                    idx,
+                    None,
+                    Some(vec![("Trace Action", &format!("{:?}", a.call_type))]),
+                )?;
                 (a, t)
             } else {
                 continue
@@ -162,7 +173,14 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    self.trace_result(block_num, tx_hash, tx_index, idx, Some(TraceParseError::from(e)), None)?;
+                    self.trace_result(
+                        block_num,
+                        tx_hash,
+                        tx_index,
+                        idx,
+                        Some(TraceParseError::from(e)),
+                        None,
+                    )?;
                     continue
                 }
             };
@@ -173,11 +191,25 @@ impl Parser {
                 match handle_empty_input(&abi, &action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
                         structured_traces.push(structured_trace);
-                        self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", action.call_type))]))?;
+                        self.trace_result(
+                            block_num,
+                            tx_hash,
+                            tx_index,
+                            idx,
+                            None,
+                            Some(vec![("Trace Action", &format!("{:?}", action.call_type))]),
+                        )?;
                         continue
                     }
                     Err(e) => {
-                        self.trace_result(block_num, tx_hash, tx_index, idx, Some(TraceParseError::from(e)), None)?;
+                        self.trace_result(
+                            block_num,
+                            tx_hash,
+                            tx_index,
+                            idx,
+                            Some(TraceParseError::from(e)),
+                            None,
+                        )?;
                         continue
                     }
                 }
@@ -188,11 +220,25 @@ impl Parser {
                 .await
             {
                 Ok(s) => {
-                    self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", action.call_type))]))?;
+                    self.trace_result(
+                        block_num,
+                        tx_hash,
+                        tx_index,
+                        idx,
+                        None,
+                        Some(vec![("Trace Action", &format!("{:?}", action.call_type))]),
+                    )?;
                     structured_traces.push(s);
                 }
                 Err(e) => {
-                    self.trace_result(block_num, tx_hash, tx_index, idx, Some(TraceParseError::from(e)), None)?;
+                    self.trace_result(
+                        block_num,
+                        tx_hash,
+                        tx_index,
+                        idx,
+                        Some(TraceParseError::from(e)),
+                        None,
+                    )?;
                     structured_traces.push(StructuredTrace::CALL(CallAction::new(
                         action.from,
                         action.to,
@@ -261,62 +307,51 @@ impl Parser {
         let call_request =
             CallRequest { to: Some(action.to), data: Some(call_data.into()), ..Default::default() };
 
-        // TODO: this over below example
         let data: Bytes = self
             .tracer
             .api
             .call(call_request, Some(block_num.into()), EvmOverrides::default())
             .await
-            .map_err(into::Into)?;
+            .map_err(|e| Into::<TraceParseError>::into(e))?;
 
-        // let call_res: Result<Bytes, reth_rpc::eth::error::EthApiError> = self
-        //     .tracer
-        //     .api
-        //     .call(call_request, Some(block_num.into()), EvmOverrides::default())
-        //     .await;
+        let facet_address = facetAddressCall::decode_returns(&data, true).unwrap().facetAddress_;
 
-        // TODO: map_err?
-        // let data = if let Err(e) = call_res {
-        //         return Err(e.into());
-        //     } else {
-        //         call_res.unwrap()
-        //     };
+        let abi = self
+            .client
+            .contract_abi(facet_address.into_array().into())
+            .await
+            .map_err(|e| Into::<TraceParseError>::into(e))?;
 
-        let facet_address =
-            facetAddressCall::decode_returns(&data, true).unwrap().facetAddress_;
-
-        // TODO: cloned. map_err
-        match self.client.contract_abi(facet_address.into_array().into()).await {
-            Ok(a) => Ok(a.clone()),
-            Err(e) => Err(TraceParseError::from(e)),
-        }
+        Ok(abi)
     }
 
-
-    /// TODO: sir run the formatter
     /// sends the trace result to prometheus
-    fn trace_result(&self, block_num: u64, tx_hash: &H256, tx_idx: usize, tx_trace_idx: usize, error: Option<TraceParseError>, extra_fields: Option<Vec<(&str, &str)>>) -> Result<(), TraceParseError> {
-         
+    fn trace_result(
+        &self,
+        block_num: u64,
+        tx_hash: &H256,
+        tx_idx: usize,
+        tx_trace_idx: usize,
+        error: Option<TraceParseError>,
+        extra_fields: Option<Vec<(&str, &str)>>,
+    ) -> Result<(), TraceParseError> {
+
         if let Some(err) = &error {
-            error_trace!(
-                tx_hash,
-                err,
-                vec=extra_fields.unwrap_or(vec![])
-            );
+            error_trace!(tx_hash, err, vec = extra_fields.unwrap_or_else(Vec::new));
         } else {
-            success_trace!(
-                tx_hash,
-                vec=extra_fields.unwrap_or(vec![])
-            );
+            success_trace!(tx_hash, vec = extra_fields.unwrap_or_else(Vec::new));
         }
 
-        let res = self.metrics_tx.send(TraceMetricEvent::TraceMetricRecieved { block_num, tx_hash: *tx_hash, tx_idx: tx_idx as u64, tx_trace_idx: tx_trace_idx as u64, error: error.map(|e| e.into()) });
+        self.metrics_tx
+        .send(TraceMetricEvent::TraceMetricRecieved {
+            block_num,
+            tx_hash: *tx_hash,
+            tx_idx: tx_idx as u64,
+            tx_trace_idx: tx_trace_idx as u64,
+            error: error.map(|e| e.into()),
+        })
+        .map_err(|e| TraceParseError::ChannelSendError(e.to_string()))?;
 
-        // TODO: we can just map err and return that
-        if let Err(e) = res {
-            Err(TraceParseError::ChannelSendError(e.to_string()))
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 }
