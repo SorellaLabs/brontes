@@ -79,7 +79,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     // the block stats collect the aggregate stats of each tx
     // the tx stats collect the aggregate stats of each trace
 
-    let (start_block, end_block) = (17794930, 17794931); //(17795047,	17795048); //(17788433, 17788434);
+    let (start_block, end_block) = (17784930, 17794931); //(17795047,	17795048); //(17788433, 17788434);
     for i in start_block..end_block {
         init_block!(i, start_block, end_block);
         let block_trace: Vec<TraceResultsWithTransactionHash> =
