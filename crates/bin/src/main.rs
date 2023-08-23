@@ -49,6 +49,8 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
         PROMETHEUS_ENDPOINT_PORT,
     )).await.unwrap();
+    info!("Initialized prometheus endpoint");
+
 
     let db_path = match env::var("DB_PATH") {
         Ok(path) => path,
