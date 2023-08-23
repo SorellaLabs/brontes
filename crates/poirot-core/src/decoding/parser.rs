@@ -6,36 +6,47 @@ use crate::{
         StructuredTrace::{self},
         TxTrace,
     },
-    *,
+    *, stats::TraceMetricEvent,
 };
-use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_etherscan::Client;
-use alloy_json_abi::{JsonAbi, StateMutability};
+use alloy_json_abi::JsonAbi;
 use colored::Colorize;
 use reth_tracing::TracingClient;
+use tokio::sync::mpsc::UnboundedSender;
 
-use super::*;
-use ethers_core::{k256::elliptic_curve::rand_core::block, types::Chain};
-use reth_primitives::{H256, U256};
-use reth_rpc_types::trace::parity::{
-    Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
+use super::{utils::IDiamondLoupe::facetAddressCall, *};
+use ethers_core::types::Chain;
+use reth_primitives::{BlockId, BlockNumberOrTag, H256};
+use reth_rpc_types::{
+    trace::parity::{CallAction as RethCallAction, TraceResultsWithTransactionHash, TraceType},
+    CallRequest,
 };
 use std::{
+    collections::HashSet,
+    error::Error,
     fs,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, sync::Arc,
 };
-use tracing::{debug, error, info, instrument};
+use tracing::{error, info, instrument};
+
+extern crate reth_tracing;
+use lazy_static::__Deref;
+
+use alloy_sol_types::SolCall;
+use reth_primitives::Bytes;
+
+use reth_rpc::eth::revm_utils::EvmOverrides;
 
 /// A [`Parser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
-#[derive(Debug)]
 pub struct Parser {
     pub client: Client,
     pub tracer: TracingClient,
+    pub metrics_tx: Arc<UnboundedSender<TraceMetricEvent>>
 }
 
 impl Parser {
-    pub fn new(etherscan_key: String, tracer: TracingClient) -> Self {
+    pub fn new(etherscan_key: String, tracer: TracingClient, metrics_tx: UnboundedSender<TraceMetricEvent>) -> Self {
         let _paths = fs::read_dir("./").unwrap();
 
         let _paths = fs::read_dir("./").unwrap_or_else(|err| {
@@ -58,14 +69,35 @@ impl Parser {
                 CACHE_TIMEOUT,
             )
             .unwrap(),
-
             tracer,
+            metrics_tx: Arc::new(metrics_tx)
         }
+    }
+
+    /// traces a block into a vec of tx traces
+    pub async fn trace_block(
+        &self,
+        block_number: u64,
+    ) -> Result<Vec<TraceResultsWithTransactionHash>, Box<dyn Error>> {
+        let mut trace_type = HashSet::new();
+        trace_type.insert(TraceType::Trace);
+
+        let parity_trace = self
+            .tracer
+            .trace
+            .replay_block_transactions(
+                BlockId::Number(BlockNumberOrTag::Number(block_number)),
+                trace_type,
+            )
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn Error>)?
+            .unwrap();
+
+        Ok(parity_trace)
     }
 
     // Should parse all transactions, if a tx fails to parse it should still be stored with None
     // fields on the decoded subfield
-
     #[instrument(skip(self, block_trace))]
     pub async fn parse_block(
         &mut self,
@@ -94,6 +126,7 @@ impl Parser {
         result
     }
 
+    /// parses the traces in a tx
     pub async fn parse_tx(
         &self,
         trace: &TraceResultsWithTransactionHash,
@@ -110,8 +143,9 @@ impl Parser {
             init_trace!(tx_hash, idx, transaction_traces.len());
 
             let (action, trace_address) = if let Some((a, t)) =
-                decode_trace_action(&mut structured_traces, &transaction_trace, &tx_hash)
+                decode_trace_action(&mut structured_traces, &transaction_trace)
             {
+                self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", a))]))?;
                 (a, t)
             } else {
                 continue
@@ -120,7 +154,7 @@ impl Parser {
             let abi = match self.client.contract_abi(action.to.into()).await {
                 Ok(a) => a,
                 Err(e) => {
-                    error_trace!(tx_hash, idx, TraceParseError::from(e));
+                    self.trace_result(block_num, tx_hash, tx_index, idx, Some(TraceParseError::from(e)), None)?;
                     continue
                 }
             };
@@ -131,28 +165,26 @@ impl Parser {
                 match handle_empty_input(&abi, &action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
                         structured_traces.push(structured_trace);
+                        self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", action))]))?;
                         continue
                     }
                     Err(e) => {
-                        error_trace!(tx_hash, idx, e);
+                        self.trace_result(block_num, tx_hash, tx_index, idx, Some(TraceParseError::from(e)), None)?;
                         continue
                     }
                 }
             }
 
-            match abi_decoding_pipeline(&self, &abi, &action, &trace_address, &tx_hash, block_num)
+            match self
+                .abi_decoding_pipeline(&abi, &action, &trace_address, &tx_hash, block_num)
                 .await
             {
                 Ok(s) => {
-                    success_trace!(
-                        tx_hash,
-                        trace_action = "CALL",
-                        call_type = format!("{:?}", action.call_type)
-                    );
+                    self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", action))]))?;
                     structured_traces.push(s);
                 }
                 Err(e) => {
-                    error_trace!(tx_hash, idx, e);
+                    self.trace_result(block_num, tx_hash, tx_index, idx, Some(TraceParseError::from(e)), None)?;
                     structured_traces.push(StructuredTrace::CALL(CallAction::new(
                         action.from,
                         action.to,
@@ -168,5 +200,96 @@ impl Parser {
         }
 
         Ok(TxTrace { trace: structured_traces, tx_hash: trace.transaction_hash, tx_index })
+    }
+
+    /// cycles through all possible abi decodings
+    /// 1) regular
+    /// 2) proxy
+    /// 3) diamond proxy
+    async fn abi_decoding_pipeline(
+        &self,
+        abi: &JsonAbi,
+        action: &RethCallAction,
+        trace_address: &[usize],
+        tx_hash: &H256,
+        block_num: u64,
+    ) -> Result<StructuredTrace, TraceParseError> {
+        // check decoding with the regular abi
+        if let Ok(structured_trace) = decode_input_with_abi(&abi, &action, &trace_address, &tx_hash)
+        {
+            return Ok(structured_trace)
+        };
+
+        // tries to get the proxy abi -> decode
+        let proxy_abi = self.client.proxy_contract_abi(action.to.into()).await?;
+        if let Ok(structured_trace) =
+            decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash)
+        {
+            return Ok(structured_trace)
+        };
+
+        // tries to decode with the new abi
+        // if unsuccessful, returns an error
+        let diamond_proxy_abi = self.diamond_proxy_contract_abi(&action, block_num).await?;
+        if let Ok(structured_trace) =
+            decode_input_with_abi(&diamond_proxy_abi, &action, &trace_address, &tx_hash)
+        {
+            return Ok(structured_trace)
+        };
+
+        Err(TraceParseError::AbiDecodingFailed(tx_hash.clone().into()))
+    }
+
+    /// retrieves the abi from a possible diamond proxy contract
+    async fn diamond_proxy_contract_abi(
+        &self,
+        action: &RethCallAction,
+        block_num: u64,
+    ) -> Result<JsonAbi, TraceParseError> {
+        let diamond_call =
+            facetAddressCall { _functionSelector: action.input[..4].try_into().unwrap() };
+
+        let call_data = diamond_call.encode();
+
+        let call_request =
+            CallRequest { to: Some(action.to), data: Some(call_data.into()), ..Default::default() };
+
+        let data: Result<Bytes, reth_rpc::eth::error::EthApiError> = self
+            .tracer
+            .api
+            .call(call_request, Some(block_num.into()), EvmOverrides::default())
+            .await;
+
+        let facet_address =
+            facetAddressCall::decode_returns(data.unwrap().deref(), true).unwrap().facetAddress_;
+
+        match self.client.contract_abi(facet_address.into_array().into()).await {
+            Ok(a) => Ok(a.clone()),
+            Err(e) => Err(TraceParseError::from(e)),
+        }
+    }
+
+    /// sends the trace result to prometheus
+    fn trace_result(&self, block_num: u64, tx_hash: &H256, tx_idx: usize, tx_trace_idx: usize, error: Option<TraceParseError>, extra_fields: Option<Vec<(&str, &str)>>) -> Result<(), TraceParseError> {
+         
+        if let Some(err) = &error {
+            error_trace!(
+                tx_hash,
+                err,
+                vec=extra_fields.unwrap_or(vec![])
+            );
+        } else {
+            success_trace!(
+                tx_hash,
+                vec=extra_fields.unwrap_or(vec![])
+            );
+        }
+
+        let res = self.metrics_tx.send(TraceMetricEvent::TraceMetricRecieved { block_num, tx_hash: *tx_hash, tx_idx: tx_idx as u64, tx_trace_idx: tx_trace_idx as u64, error: error.map(|e| e.into()) });
+        if let Err(e) = res {
+            Err(TraceParseError::ChannelSendError(e.to_string()))
+        } else {
+            Ok(())
+        }
     }
 }

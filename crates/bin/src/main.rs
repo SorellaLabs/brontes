@@ -1,13 +1,19 @@
+use bin::{prometheus_exporter::initialize, *};
 use colored::Colorize;
-use poirot_core::{decoding::parser::Parser, init_block, success_all, success_block};
-use reth_primitives::{BlockId, BlockNumberOrTag::Number};
-use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
+use poirot_core::{decoding::parser::Parser, init_block, success_block, stats::TraceMetricsListener};
+use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
 use reth_tracing::TracingClient;
+use tokio::sync::mpsc::unbounded_channel;
 use tracing::{info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
 
 //Std
-use std::{collections::HashSet, env, error::Error, path::Path};
+use std::{
+    env,
+    error::Error,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
+};
 
 fn main() {
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -15,6 +21,7 @@ fn main() {
         .thread_stack_size(8 * 1024 * 1024)
         .build()
         .unwrap();
+
     let filter = EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
 
     let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
@@ -37,6 +44,12 @@ fn main() {
 }
 
 async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
+    // initializes the prometheus endpoint
+    initialize(SocketAddr::new(
+        IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
+        PROMETHEUS_ENDPOINT_PORT,
+    )).await.unwrap();
+
     let db_path = match env::var("DB_PATH") {
         Ok(path) => path,
         Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
@@ -50,9 +63,14 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     };
     info!("Found Etherscan API Key");
 
+    let (metrics_tx, metrics_rx) = unbounded_channel();
+    let metrics_listener = tokio::spawn(async move { TraceMetricsListener::new(metrics_rx).await });
+
     let tracer = TracingClient::new(Path::new(&db_path), handle);
 
-    let mut parser = Parser::new(key.clone());
+    let mut parser = Parser::new(key.clone(), tracer, metrics_tx);
+
+
 
     // you have a intermediate parse function for the range of blocks you want to parse
     // it collects the aggregate stats of each block stats
@@ -63,28 +81,12 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     for i in start_block..end_block {
         init_block!(i, start_block, end_block);
         let block_trace: Vec<TraceResultsWithTransactionHash> =
-            trace_block(&tracer, i).await.unwrap();
+            parser.trace_block(i).await.unwrap();
         let _action = parser.parse_block(i, block_trace).await;
         success_block!(i);
     }
-    success_all!(start_block, end_block, 3);
+    info!("Successfully Parsed Blocks {} To {} ", start_block, end_block);
 
+    metrics_listener.await?;
     Ok(())
-}
-
-async fn trace_block(
-    tracer: &TracingClient,
-    block_number: u64,
-) -> Result<Vec<TraceResultsWithTransactionHash>, Box<dyn Error>> {
-    let mut trace_type = HashSet::new();
-    trace_type.insert(TraceType::Trace);
-
-    let parity_trace = tracer
-        .trace
-        .replay_block_transactions(BlockId::Number(Number(block_number)), trace_type)
-        .await
-        .map_err(|e| Box::new(e) as Box<dyn Error>)?
-        .unwrap();
-
-    Ok(parity_trace)
 }
