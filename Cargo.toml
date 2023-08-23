@@ -8,9 +8,10 @@ members = [
     "crates/poirot-inspect",
 ]
 
+
+
 [patch.crates-io]
 # patched for quantity U256 responses <https://github.com/recmo/uint/issues/224>
-ruint = { git = "https://github.com/paradigmxyz/uint" }
 revm-primitives = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
 revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
 
@@ -19,3 +20,7 @@ revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
 console-subscriber = "0.1.5"
+c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
+
+[patch."https://github.com/ethereum/c-kzg-4844"]
+c-kzg = { git = "https://github.com/rjected/c-kzg-4844", branch = "dan/add-serde-feature" }
