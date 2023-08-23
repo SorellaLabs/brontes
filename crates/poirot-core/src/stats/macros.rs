@@ -9,50 +9,36 @@ macro_rules! init_trace {
 
 #[macro_export]
 macro_rules! error_trace {
-    ($tx:expr, $idx:expr, $err:expr) => {
-        use $crate::stats::{stats::*, *};
-        {
-            let error: Box<dyn std::error::Error + Sync + Send + 'static> = Box::new($err);
-
-            error!(?error);
-
-            let mut tx_stats = TX_STATS.lock().unwrap();
-            let tx_stat = tx_stats.get_mut($tx).unwrap();
-
-            tx_stat.error_parses.push(TraceStat { idx: $idx, error });
+    ($tx:expr, $err:expr, vec = $values:expr) => {
+        let tx_hash = format!("{:#x}", $tx).bright_blue();
+        let result = format!("Error Parsing Trace").bright_red();
+        let error = format!("{:?}", $err).bright_red();
+        let mut values_str = format!("Result = {:?}, Tx Hash = {:?}, Error = {:?}", result, tx_hash, error);
+        for (key, val) in $values.iter() {
+            values_str = format!("{:?}, {} = {}", values_str, key, val);
         }
+        // replace `println!` with your logging mechanism
+        info!("result = {}", values_str);
     };
 }
 
 #[macro_export]
 macro_rules! success_trace {
-    ($tx:expr, $( $key:ident = $val:expr ),* $(,)? ) => {
-        use $crate::stats::*;
-        {
-            let mut tx_stats = TX_STATS.lock().unwrap(); // locks the Mutex
-            let tx_stat = tx_stats.get_mut($tx).unwrap();
-
-            tx_stat.successful_parses += 1;
-
-            let tx_hash = format!("{:#x}", $tx);
-            info!(result = "Successfully Parsed Trace", tx_hash = tx_hash, $( $key = $val ),*);
-
+    ($tx:expr, vec = $values:expr) => {
+        let tx_hash = format!("{:#x}", $tx).bright_blue();
+        let result = format!("Successfully Parsed Trace").bright_green();
+        let mut values_str = format!("Result = {:?}, Tx Hash = {:?}", result, tx_hash);
+        for (key, val) in $values.iter() {
+            values_str = format!("{:?}, {}: {}", values_str, key, val);
         }
+        // replace `println!` with your logging mechanism
+        info!("result = {}", values_str);
     };
 }
 
 #[macro_export]
 macro_rules! init_tx {
     ($tx:expr, $idx:expr, $total_len:expr) => {
-        use $crate::stats::{stats::*, *};
-        {
-            let mut tx_stats = TX_STATS.lock().unwrap();
-            tx_stats.entry($tx).or_insert_with(|| TransactionStats {
-                tx_hash: $tx,
-                successful_parses: 0,
-                error_parses: Vec::new(),
-            });
-        }
 
         let tx_hash = format!("{:#x}", $tx);
         let message = format!(
@@ -68,16 +54,7 @@ macro_rules! init_tx {
 #[macro_export]
 macro_rules! success_tx {
     ($blk:expr, $tx:expr) => {
-        use $crate::stats::*;
         {
-            let mut block_stats = BLOCK_STATS.lock().unwrap();
-            let mut tx_stats = TX_STATS.lock().unwrap();
-
-            let tx_stat = tx_stats.remove(&$tx).unwrap();
-
-            let block_stat = block_stats.get_mut(&$blk).unwrap();
-            block_stat.tx_stats.push(tx_stat);
-
             let tx_hash = format!("{:#x}", $tx);
             info!("result = \"Successfully Parsed Transaction\", tx_hash = {}\n", tx_hash);
         }
@@ -87,12 +64,7 @@ macro_rules! success_tx {
 #[macro_export]
 macro_rules! init_block {
     ($blk:expr, $start_blk:expr, $end_blk:expr) => {
-        use $crate::stats::{stats::*, *};
         {
-            let mut block_stats = BLOCK_STATS.lock().unwrap();
-            let block_stat = block_stats
-                .entry($blk)
-                .or_insert_with(|| BlockStats { block_num: $blk, tx_stats: Vec::new() });
 
             let progress = format!(
                 "Progress: {} / {}",
@@ -120,15 +92,3 @@ macro_rules! success_block {
     }};
 }
 
-// displays all the stuff
-#[macro_export]
-macro_rules! success_all {
-    ($start_blk:expr, $end_blk:expr, $verbosity:expr) => {{
-        let message = format!(
-            "Successfuly Parsed Blocks {}",
-            format!("{} to {}", $start_blk, $end_blk).bright_blue().bold()
-        );
-        info!(message = message);
-        poirot_core::stats::display::display_all_stats($verbosity);
-    }};
-}
