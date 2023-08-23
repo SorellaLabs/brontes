@@ -30,7 +30,6 @@ use std::{
 use tracing::{error, info, instrument};
 
 extern crate reth_tracing;
-use lazy_static::__Deref;
 
 use alloy_sol_types::SolCall;
 use reth_primitives::Bytes;
@@ -252,14 +251,20 @@ impl Parser {
         let call_request =
             CallRequest { to: Some(action.to), data: Some(call_data.into()), ..Default::default() };
 
-        let data: Result<Bytes, reth_rpc::eth::error::EthApiError> = self
+        let call_res: Result<Bytes, reth_rpc::eth::error::EthApiError> = self
             .tracer
             .api
             .call(call_request, Some(block_num.into()), EvmOverrides::default())
             .await;
 
+        let data = if let Err(e) = call_res {
+                return Err(e.into());
+            } else {
+                call_res.unwrap()
+            };
+
         let facet_address =
-            facetAddressCall::decode_returns(data.unwrap().deref(), true).unwrap().facetAddress_;
+            facetAddressCall::decode_returns(&data, true).unwrap().facetAddress_;
 
         match self.client.contract_abi(facet_address.into_array().into()).await {
             Ok(a) => Ok(a.clone()),
