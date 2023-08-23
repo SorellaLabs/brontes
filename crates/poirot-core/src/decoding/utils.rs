@@ -6,6 +6,7 @@ use crate::{
     },
 };
 extern crate reth_tracing;
+use super::*;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_json_abi::{JsonAbi, StateMutability};
 use alloy_sol_types::sol;
@@ -13,7 +14,6 @@ use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, TransactionTrace,
 };
-use super::*;
 
 sol! {
     interface IDiamondLoupe {
