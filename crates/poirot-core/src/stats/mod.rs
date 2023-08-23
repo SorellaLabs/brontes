@@ -60,7 +60,7 @@ impl TraceMetricsListener {
                 tx_trace_idx,
                 error,
             } => {
-                let tx_metrics = self.tx_metrics.get_transaction_metrics(tx_hash.to_string());
+                let tx_metrics = self.tx_metrics.get_transaction_metrics(format!("{:#x}", tx_hash));
 
                 tx_metrics.block_num.set(block_num as f64);
                 tx_metrics.tx_idx.set(tx_idx as f64);
