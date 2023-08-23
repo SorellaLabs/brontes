@@ -91,4 +91,50 @@ pub(crate) struct TransactionTracingMetrics {
     pub(crate) etherscan_page_not_found: Counter,
     /// Etherscan Cache Error
     pub(crate) etherscan_cache_error: Counter,
+    /// Etherscan Cache Error
+    pub(crate) eth_api_error: Counter,
+    /// EthApi Empty Raw Transaction Data Errors
+    pub(crate) eth_api_empty_raw_transaction_data: Counter,
+    /// EthApi Failed To Decode Signed Transaction Errors
+    pub(crate) eth_api_failed_to_decode_signed_transaction: Counter,
+    /// EthApi Invalid Transaction Signature Errors
+    pub(crate) eth_api_invalid_transaction_signature: Counter,
+    /// EthApi Pool Error
+    pub(crate) eth_api_pool_error: Counter,
+    /// EthApi Unknown Block Number Errors
+    pub(crate) eth_api_unknown_block_number: Counter,
+    /// EthApi Unknown Block Or Tx Index Errors
+    pub(crate) eth_api_unknown_block_or_tx_index: Counter,
+    /// EthApi Invalid Block Range Errors
+    pub(crate) eth_api_invalid_block_range: Counter,
+    /// EthApi Prevrandao Not Set Errors
+    pub(crate) eth_api_prevrandao_not_set: Counter,
+    /// EthApi Conflicting Fee Fields In Request Errors
+    pub(crate) eth_api_conflicting_fee_fields_in_request: Counter,
+    /// EthApi Invalid Transaction Errors
+    pub(crate) eth_api_invalid_transaction: Counter,
+    /// EthApi Invalid Block Data Errors
+    pub(crate) eth_api_invalid_block_data: Counter,
+    /// EthApi Both State And State Diff In Override Errors
+    pub(crate) eth_api_both_state_and_state_diff_in_override: Counter,
+    /// EthApi Internal Errors
+    pub(crate) eth_api_internal: Counter,
+    /// EthApi Signing Errors
+    pub(crate) eth_api_signing: Counter,
+    /// EthApi Transaction Not Found Errors
+    pub(crate) eth_api_transaction_not_found: Counter,
+    /// EthApi Unsupported Errors
+    pub(crate) eth_api_unsupported: Counter,
+    /// EthApi Invalid Params Errors
+    pub(crate) eth_api_invalid_params: Counter,
+    /// EthApi Invalid Tracer Config Errors
+    pub(crate) eth_api_invalid_tracer_config: Counter,
+    /// EthApi Invalid Reward Percentiles Errors
+    pub(crate) eth_api_invalid_reward_percentiles: Counter,
+    /// EthApi Internal Tracing Error
+    pub(crate) eth_api_internal_tracing_error: Counter,
+    /// EthApi Internal Eth Error
+    pub(crate) eth_api_internal_eth_error: Counter,
+    /// EthApi Internal Js Tracer Error
+    pub(crate) eth_api_internal_js_tracer_error: Counter,
 }

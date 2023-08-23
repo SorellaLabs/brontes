@@ -1,6 +1,7 @@
 use alloy_etherscan::errors::EtherscanError;
 use ethers_core::types::H256;
 use thiserror::Error;
+use reth_rpc::eth::error::EthApiError;
 
 /// Custom error type
 #[derive(Debug, Error)]
@@ -19,11 +20,19 @@ pub enum TraceParseError {
     AbiDecodingFailed(H256),
     #[error("send error to prometheus")]
     ChannelSendError(String),
+    #[error("trace missing")]
+    EthApiError(EthApiError),
 }
 
 impl From<EtherscanError> for TraceParseError {
     fn from(err: EtherscanError) -> TraceParseError {
         TraceParseError::EtherscanError(err)
+    }
+}
+
+impl From<EthApiError> for TraceParseError {
+    fn from(err: EthApiError) -> TraceParseError {
+        TraceParseError::EthApiError(err)
     }
 }
 
@@ -35,6 +44,7 @@ pub enum TraceParseErrorKind {
     TraceMissing,
     EmptyInput,
     AbiParseError,
+    EthApiError,
     InvalidFunctionSelector,
     AbiDecodingFailed,
     ChannelSendError,
@@ -64,8 +74,29 @@ pub enum TraceParseErrorKind {
     EtherscanCloudFlareSecurityChallenge,
     EtherscanPageNotFound,
     EtherscanCacheError,
+    EthApiEmptyRawTransactionData,
+    EthApiFailedToDecodeSignedTransaction,
+    EthApiInvalidTransactionSignature,
+    EthApiPoolError,
+    EthApiUnknownBlockNumber,
+    EthApiUnknownBlockOrTxIndex,
+    EthApiInvalidBlockRange,
+    EthApiPrevrandaoNotSet,
+    EthApiConflictingFeeFieldsInRequest,
+    EthApiInvalidTransaction,
+    EthApiInvalidBlockData,
+    EthApiBothStateAndStateDiffInOverride,
+    EthApiInternal,
+    EthApiSigning,
+    EthApiTransactionNotFound,
+    EthApiUnsupported,
+    EthApiInvalidParams,
+    EthApiInvalidTracerConfig,
+    EthApiInvalidRewardPercentiles,
+    EthApiInternalTracingError,
+    EthApiInternalEthError,
+    EthApiInternalJsTracerError
 }
-
 
 
 impl From<TraceParseError> for TraceParseErrorKind {
@@ -73,6 +104,30 @@ impl From<TraceParseError> for TraceParseErrorKind {
         match err {
             TraceParseError::TraceMissing => TraceParseErrorKind::TraceMissing,
             TraceParseError::EmptyInput(_) => TraceParseErrorKind::EmptyInput,
+            TraceParseError::EthApiError(e) => match e {
+                EthApiError::EmptyRawTransactionData => TraceParseErrorKind::EthApiEmptyRawTransactionData,
+                EthApiError::FailedToDecodeSignedTransaction => TraceParseErrorKind::EthApiFailedToDecodeSignedTransaction,
+                EthApiError::InvalidTransactionSignature => TraceParseErrorKind::EthApiInvalidTransactionSignature,
+                EthApiError::PoolError(_) => TraceParseErrorKind::EthApiPoolError,
+                EthApiError::UnknownBlockNumber => TraceParseErrorKind::EthApiUnknownBlockNumber,
+                EthApiError::UnknownBlockOrTxIndex => TraceParseErrorKind::EthApiUnknownBlockOrTxIndex,
+                EthApiError::InvalidBlockRange => TraceParseErrorKind::EthApiInvalidBlockRange,
+                EthApiError::PrevrandaoNotSet => TraceParseErrorKind::EthApiPrevrandaoNotSet,
+                EthApiError::ConflictingFeeFieldsInRequest => TraceParseErrorKind::EthApiConflictingFeeFieldsInRequest,
+                EthApiError::InvalidTransaction(_) => TraceParseErrorKind::EthApiInvalidTransaction,
+                EthApiError::InvalidBlockData(_) => TraceParseErrorKind::EthApiInvalidBlockData,
+                EthApiError::BothStateAndStateDiffInOverride(_) => TraceParseErrorKind::EthApiBothStateAndStateDiffInOverride,
+                EthApiError::Internal(_) => TraceParseErrorKind::EthApiInternal,
+                EthApiError::Signing(_) => TraceParseErrorKind::EthApiSigning,
+                EthApiError::TransactionNotFound => TraceParseErrorKind::EthApiTransactionNotFound,
+                EthApiError::Unsupported(_) => TraceParseErrorKind::EthApiUnsupported,
+                EthApiError::InvalidParams(_) => TraceParseErrorKind::EthApiInvalidParams,
+                EthApiError::InvalidTracerConfig => TraceParseErrorKind::EthApiInvalidTracerConfig,
+                EthApiError::InvalidRewardPercentiles => TraceParseErrorKind::EthApiInvalidRewardPercentiles,
+                EthApiError::InternalTracingError => TraceParseErrorKind::EthApiInternalTracingError,
+                EthApiError::InternalEthError => TraceParseErrorKind::EthApiInternalEthError,
+                EthApiError::InternalJsTracerError(_) => TraceParseErrorKind::EthApiInternalJsTracerError,
+            },
             TraceParseError::EtherscanError(e) => {
                 match e {
                     EtherscanError::ChainNotSupported(_) => TraceParseErrorKind::EtherscanChainNotSupported,
