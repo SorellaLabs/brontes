@@ -105,6 +105,8 @@ impl Parser {
         block_num: u64,
         block_trace: Vec<TraceResultsWithTransactionHash>,
     ) -> Vec<TxTrace> {
+        // allocate vector for specific size needed 
+        
         let mut result: Vec<TxTrace> = vec![];
 
         for (idx, trace) in block_trace.iter().enumerate() {
