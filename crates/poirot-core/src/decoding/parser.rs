@@ -47,7 +47,7 @@ pub struct Parser {
 impl Parser {
     pub fn new(etherscan_key: String, tracer: TracingClient, metrics_tx: UnboundedSender<TraceMetricEvent>) -> Self {
 
-        // this bad
+        // TODO: tf is the double check in a dir we know exists?
         let _paths = fs::read_dir("./").unwrap();
 
         let _paths = fs::read_dir("./").unwrap_or_else(|err| {
@@ -57,6 +57,7 @@ impl Parser {
 
         let cache_directory = "./abi_cache";
 
+        // TODO: create dir all only creates if not exists. this is redundamt check
         // Check if the cache directory exists, and create it if it doesn't.
         if !Path::new(cache_directory).exists() {
             fs::create_dir_all(cache_directory).expect("Failed to create cache directory");
@@ -109,6 +110,9 @@ impl Parser {
         
         let mut result: Vec<TxTrace> = vec![];
 
+
+        // TODO: this can be converted into a filter map and then we don't have to 
+        // move the results into a new vector;
         for (idx, trace) in block_trace.iter().enumerate() {
             // We don't need to through an error for this given transaction so long as the error is
             // logged & emmitted and the transaction is stored.
@@ -145,6 +149,7 @@ impl Parser {
         for (idx, transaction_trace) in transaction_traces.iter().enumerate() {
             init_trace!(tx_hash, idx, transaction_traces.len());
 
+            // TODO: we can use the let else caluse here instead of if let else
             let (action, trace_address) = if let Some((a, t)) =
                 decode_trace_action(&mut structured_traces, &transaction_trace)
             {
@@ -248,6 +253,7 @@ impl Parser {
         block_num: u64,
     ) -> Result<JsonAbi, TraceParseError> {
         let diamond_call =
+            // TODO: why _ ?
             facetAddressCall { _functionSelector: action.input[..4].try_into().unwrap() };
 
         let call_data = diamond_call.encode();
@@ -255,27 +261,39 @@ impl Parser {
         let call_request =
             CallRequest { to: Some(action.to), data: Some(call_data.into()), ..Default::default() };
 
-        let call_res: Result<Bytes, reth_rpc::eth::error::EthApiError> = self
+        // TODO: this over below example
+        let data: Bytes = self
             .tracer
             .api
             .call(call_request, Some(block_num.into()), EvmOverrides::default())
-            .await;
+            .await
+            .map_err(into::Into)?;
 
-        let data = if let Err(e) = call_res {
-                return Err(e.into());
-            } else {
-                call_res.unwrap()
-            };
+        // let call_res: Result<Bytes, reth_rpc::eth::error::EthApiError> = self
+        //     .tracer
+        //     .api
+        //     .call(call_request, Some(block_num.into()), EvmOverrides::default())
+        //     .await;
+
+        // TODO: map_err?
+        // let data = if let Err(e) = call_res {
+        //         return Err(e.into());
+        //     } else {
+        //         call_res.unwrap()
+        //     };
 
         let facet_address =
             facetAddressCall::decode_returns(&data, true).unwrap().facetAddress_;
 
+        // TODO: cloned. map_err
         match self.client.contract_abi(facet_address.into_array().into()).await {
             Ok(a) => Ok(a.clone()),
             Err(e) => Err(TraceParseError::from(e)),
         }
     }
 
+
+    /// TODO: sir run the formatter
     /// sends the trace result to prometheus
     fn trace_result(&self, block_num: u64, tx_hash: &H256, tx_idx: usize, tx_trace_idx: usize, error: Option<TraceParseError>, extra_fields: Option<Vec<(&str, &str)>>) -> Result<(), TraceParseError> {
          
@@ -293,6 +311,8 @@ impl Parser {
         }
 
         let res = self.metrics_tx.send(TraceMetricEvent::TraceMetricRecieved { block_num, tx_hash: *tx_hash, tx_idx: tx_idx as u64, tx_trace_idx: tx_trace_idx as u64, error: error.map(|e| e.into()) });
+
+        // TODO: we can just map err and return that
         if let Err(e) = res {
             Err(TraceParseError::ChannelSendError(e.to_string()))
         } else {

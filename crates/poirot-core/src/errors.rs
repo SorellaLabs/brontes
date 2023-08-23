@@ -99,6 +99,8 @@ pub enum TraceParseErrorKind {
 }
 
 
+/// TODO: why don't we just use the default error here since we are litterally just mapping 1-1 and
+/// dropping some state. 
 impl From<TraceParseError> for TraceParseErrorKind {
     fn from(err: TraceParseError) -> TraceParseErrorKind {
         match err {
