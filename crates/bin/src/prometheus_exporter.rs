@@ -13,13 +13,13 @@ use std::sync::Arc;
 pub async fn initialize(listen_addr: SocketAddr, prometheus_collector: Collector) -> eyre::Result<()> {
 
     let clone_collector = prometheus_collector.clone();
-    let collector: Box<dyn Fn() + Send + Sync > = Box::new(move || clone_collector.collect());
+    let collector: Box<dyn Fn() + Send + Sync> = Box::new(move || clone_collector.collect());
 
     let recorder = PrometheusBuilder::new().build_recorder();
     let handle = recorder.handle();
 
     // Start endpoint
-    start_endpoint(listen_addr, handle, Arc::new(collector)).await.wrap_err("Could not start Prometheus endpoint")?;
+    start_endpoint(listen_addr, handle, Arc::new(move || collector())).await.wrap_err("Could not start Prometheus endpoint")?;
 
     // Build metrics stack
     Stack::new(recorder)
@@ -31,7 +31,7 @@ pub async fn initialize(listen_addr: SocketAddr, prometheus_collector: Collector
 }
 
 /// Starts an endpoint at the given address to serve Prometheus metrics.
-async fn start_endpoint(listen_addr: SocketAddr, handle: PrometheusHandle, collector: Arc<Box<dyn Fn() + Send + Sync >>) -> Result<()> {
+async fn start_endpoint<T: 'static + Fn() + Sync + Send>(listen_addr: SocketAddr, handle: PrometheusHandle, collector: Arc<T>) -> Result<()> {
     let make_svc = make_service_fn(move |_| {
         let handle = handle.clone();
         let collector = Arc::clone(&collector);
