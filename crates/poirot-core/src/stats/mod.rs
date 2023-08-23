@@ -1,21 +1,154 @@
-use crate::stats::stats::*;
-use colored::{Color, ColoredString, Colorize};
-use lazy_static::*;
-use revm_primitives::B256;
-use std::{collections::HashMap, fmt::Debug, sync::Mutex};
-
-pub mod display;
 pub mod macros;
-#[allow(clippy::module_inception)]
-pub mod stats;
+pub mod metrics;
 
-// block and transaction stats
-lazy_static! {
-    pub static ref BLOCK_STATS: Mutex<HashMap<u64, BlockStats>> = Mutex::new(HashMap::new());
-    pub static ref TX_STATS: Mutex<HashMap<B256, TransactionStats>> = Mutex::new(HashMap::new());
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{ready, Context, Poll}};
+    
+use revm_primitives::B256;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tracing::trace;
+
+use crate::errors::TraceParseErrorKind;
+
+use self::metrics::{TraceMetrics, TransactionTracingMetrics};
+
+
+/// Alias type for metric producers to use.
+pub type TraceMetricEventsSender = UnboundedSender<TraceMetricEvent>;
+
+/// metric event for individual traces
+#[derive(Clone, Copy, Debug)]
+pub enum TraceMetricEvent {
+    /// relay recorded a new live block
+    TraceMetricRecieved {
+        /// block number of the new live block
+        block_num: u64,
+        /// the relay
+        tx_hash: B256,
+        /// The tB256action index in the block
+        tx_idx: u64,
+        /// The trace index in the transaction
+        tx_trace_idx: u64,
+        /// error type
+        error: Option<TraceParseErrorKind>
+    },
 }
 
-/// formats a stat with a color based on its value + kind
-pub fn format_color(stat: &str, val: impl Debug, color: Color) -> ColoredString {
-    format!("{}: {:?}", stat, val).color(color)
+/// Metrics routine that listens to new metric events on the `events_rx` receiver.
+/// Upon receiving new event, related metrics are updated.
+#[derive(Debug)]
+pub struct TraceMetricsListener {
+    events_rx: UnboundedReceiver<TraceMetricEvent>,
+    pub(crate) tx_metrics: TraceMetrics,
+}
+
+impl TraceMetricsListener {
+    /// Creates a new [MetricsListener] with the provided receiver of [MetricEvent].
+    pub fn new(events_rx: UnboundedReceiver<TraceMetricEvent>) -> Self {
+        Self { events_rx, tx_metrics: TraceMetrics::default() }
+    }
+
+    fn handle_event(&mut self, event: TraceMetricEvent) {
+        trace!(target: "tracing::metrics", ?event, "Metric event received");
+        match event {
+            TraceMetricEvent::TraceMetricRecieved {block_num, tx_hash, tx_idx, tx_trace_idx, error} => {
+                let tx_metrics = self.tx_metrics.get_transaction_metrics(tx_hash.to_string());
+
+                tx_metrics.block_num.set(block_num as f64);
+                tx_metrics.tx_idx.set(tx_idx as f64);
+                tx_metrics.tx_trace_idx.set(tx_trace_idx as f64);
+
+                if let Some(err) = error {
+                    tx_metrics.error_traces.increment(1);
+                    increment_error(tx_metrics, err);
+                } else {
+                    tx_metrics.success_traces.increment(1);
+                }
+
+            },
+        }
+    }
+
+}
+
+
+impl Future for TraceMetricsListener {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.get_mut();
+
+        // Loop until we drain the `events_rx` channel
+        loop {
+            let Some(event) = ready!(this.events_rx.poll_recv(cx)) else {
+                // Channel has closed
+                return Poll::Ready(())
+            };
+
+            this.handle_event(event);
+        }
+    }
+}
+
+
+/// computes error increment
+fn increment_error(tx_metric: &mut TransactionTracingMetrics, error: TraceParseErrorKind) {
+    match error {
+        TraceParseErrorKind::TraceMissing => tx_metric.trace_missing_errors.increment(1),
+        TraceParseErrorKind::EmptyInput => tx_metric.empty_input_errors.increment(1),
+        TraceParseErrorKind::AbiParseError => tx_metric.abi_parse_errors.increment(1),
+        TraceParseErrorKind::InvalidFunctionSelector => tx_metric.invalid_function_selector_errors.increment(1),
+        TraceParseErrorKind::AbiDecodingFailed => tx_metric.abi_decoding_failed_errors.increment(1),
+        TraceParseErrorKind::EtherscanChainNotSupported => tx_metric.etherscan_chain_not_supported.increment(1),
+        TraceParseErrorKind::EtherscanExecutionFailed => tx_metric.etherscan_execution_failed.increment(1),
+        TraceParseErrorKind::EtherscanBalanceFailed => tx_metric.etherscan_balance_failed.increment(1),
+        TraceParseErrorKind::EtherscanNotProxy => tx_metric.etherscan_not_proxy.increment(1),
+        TraceParseErrorKind::EtherscanMissingImplementationAddress => {
+            tx_metric.etherscan_missing_implementation_address.increment(1)
+        }
+        TraceParseErrorKind::EtherscanBlockNumberByTimestampFailed => {
+            tx_metric.etherscan_block_number_by_timestamp_failed.increment(1)
+        }
+        TraceParseErrorKind::EtherscanTransactionReceiptFailed => {
+            tx_metric.etherscan_transaction_receipt_failed.increment(1)
+        }
+        TraceParseErrorKind::EtherscanGasEstimationFailed => {
+            tx_metric.etherscan_gas_estimation_failed.increment(1)
+        }
+        TraceParseErrorKind::EtherscanBadStatusCode => tx_metric.etherscan_bad_status_code.increment(1),
+        TraceParseErrorKind::EtherscanEnvVarNotFound => tx_metric.etherscan_env_var_not_found.increment(1),
+        TraceParseErrorKind::EtherscanReqwest => tx_metric.etherscan_reqwest.increment(1),
+        TraceParseErrorKind::EtherscanSerde => tx_metric.etherscan_serde.increment(1),
+        TraceParseErrorKind::EtherscanContractCodeNotVerified => {
+            tx_metric.etherscan_contract_code_not_verified.increment(1)
+        }
+        TraceParseErrorKind::EtherscanEmptyResult => {
+            tx_metric.etherscan_empty_result.increment(1)
+        }
+        TraceParseErrorKind::EtherscanRateLimitExceeded => tx_metric.etherscan_rate_limit_exceeded.increment(1),
+        TraceParseErrorKind::EtherscanIO => tx_metric.etherscan_io.increment(1),
+        TraceParseErrorKind::EtherscanLocalNetworksNotSupported => {
+            tx_metric.etherscan_local_networks_not_supported.increment(1)
+        }
+        TraceParseErrorKind::EtherscanErrorResponse => {
+            tx_metric.etherscan_error_response.increment(1)
+        }
+        TraceParseErrorKind::EtherscanUnknown => tx_metric.etherscan_unknown.increment(1),
+        TraceParseErrorKind::EtherscanBuilder => tx_metric.etherscan_builder.increment(1),
+        TraceParseErrorKind::EtherscanMissingSolcVersion => {
+            tx_metric.etherscan_missing_solc_version.increment(1)
+        }
+        TraceParseErrorKind::EtherscanInvalidApiKey => tx_metric.etherscan_invalid_api_key.increment(1),
+        TraceParseErrorKind::EtherscanBlockedByCloudflare => {
+            tx_metric.etherscan_blocked_by_cloudflare.increment(1)
+        }
+        TraceParseErrorKind::EtherscanCloudFlareSecurityChallenge => {
+            tx_metric.etherscan_cloudflare_security_challenge.increment(1)
+        }
+        TraceParseErrorKind::EtherscanPageNotFound => tx_metric.etherscan_page_not_found.increment(1),
+        TraceParseErrorKind::EtherscanCacheError => tx_metric.etherscan_cache_error.increment(1),
+        TraceParseErrorKind::ChannelSendError => (),
+    }
 }
