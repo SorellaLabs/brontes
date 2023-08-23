@@ -12,7 +12,7 @@ impl TraceMetrics {
     pub(crate) fn get_transaction_metrics(&mut self, tx_hash: String) -> &mut TransactionTracingMetrics {
         self.txs
             .entry(tx_hash.clone())
-            .or_insert_with(|| TransactionTracingMetrics::new_with_labels(&[("Transaction_tracing", tx_hash)]))
+            .or_insert_with(|| TransactionTracingMetrics::new_with_labels(&[("transaction_tracing", tx_hash)]))
     }
 }
 
