@@ -145,7 +145,7 @@ impl Parser {
             let (action, trace_address) = if let Some((a, t)) =
                 decode_trace_action(&mut structured_traces, &transaction_trace)
             {
-                self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", a))]))?;
+                self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", a.call_type))]))?;
                 (a, t)
             } else {
                 continue
@@ -165,7 +165,7 @@ impl Parser {
                 match handle_empty_input(&abi, &action, &trace_address, tx_hash) {
                     Ok(structured_trace) => {
                         structured_traces.push(structured_trace);
-                        self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", action))]))?;
+                        self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", action.call_type))]))?;
                         continue
                     }
                     Err(e) => {
@@ -180,7 +180,7 @@ impl Parser {
                 .await
             {
                 Ok(s) => {
-                    self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", action))]))?;
+                    self.trace_result(block_num, tx_hash, tx_index, idx, None, Some(vec![("Trace Action", &format!("{:?}", action.call_type))]))?;
                     structured_traces.push(s);
                 }
                 Err(e) => {
