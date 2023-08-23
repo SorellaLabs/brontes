@@ -1,4 +1,4 @@
-use metrics::{Gauge, Counter};
+use metrics::{Counter, Gauge};
 use reth_metrics::Metrics;
 use std::collections::HashMap;
 
@@ -9,10 +9,13 @@ pub(crate) struct TraceMetrics {
 
 impl TraceMetrics {
     /// Returns existing or initializes a new instance of [LiveRelayMetrics]
-    pub(crate) fn get_transaction_metrics(&mut self, tx_hash: String) -> &mut TransactionTracingMetrics {
-        self.txs
-            .entry(tx_hash.clone())
-            .or_insert_with(|| TransactionTracingMetrics::new_with_labels(&[("transaction_tracing", tx_hash)]))
+    pub(crate) fn get_transaction_metrics(
+        &mut self,
+        tx_hash: String,
+    ) -> &mut TransactionTracingMetrics {
+        self.txs.entry(tx_hash.clone()).or_insert_with(|| {
+            TransactionTracingMetrics::new_with_labels(&[("transaction_tracing", tx_hash)])
+        })
     }
 }
 
