@@ -1,3 +1,4 @@
+// TODO: All of these can just be functions and then have them tagged with #[inline(always)]
 #[macro_export]
 macro_rules! init_trace {
     ($tx:expr, $idx:expr, $total:expr) => {{
@@ -39,7 +40,6 @@ macro_rules! success_trace {
 #[macro_export]
 macro_rules! init_tx {
     ($tx:expr, $idx:expr, $total_len:expr) => {
-
         let tx_hash = format!("{:#x}", $tx);
         let message = format!(
             "{}",
@@ -53,34 +53,29 @@ macro_rules! init_tx {
 
 #[macro_export]
 macro_rules! success_tx {
-    ($blk:expr, $tx:expr) => {
-        {
-            let tx_hash = format!("{:#x}", $tx);
-            info!("result = \"Successfully Parsed Transaction\", tx_hash = {}\n", tx_hash);
-        }
-    };
+    ($blk:expr, $tx:expr) => {{
+        let tx_hash = format!("{:#x}", $tx);
+        info!("result = \"Successfully Parsed Transaction\", tx_hash = {}\n", tx_hash);
+    }};
 }
 
 #[macro_export]
 macro_rules! init_block {
-    ($blk:expr, $start_blk:expr, $end_blk:expr) => {
-        {
-
-            let progress = format!(
-                "Progress: {} / {}",
-                ($blk - $start_blk + 1) as usize,
-                ($end_blk - $start_blk) as usize
-            )
-            .bright_blue()
-            .bold();
-            let message = format!(
-                "Starting Parsing Block {} --- Progress: {}",
-                format!("{}", $blk).bright_blue().bold(),
-                progress
-            );
-            info!(message = message);
-        }
-    };
+    ($blk:expr, $start_blk:expr, $end_blk:expr) => {{
+        let progress = format!(
+            "Progress: {} / {}",
+            ($blk - $start_blk + 1) as usize,
+            ($end_blk - $start_blk) as usize
+        )
+        .bright_blue()
+        .bold();
+        let message = format!(
+            "Starting Parsing Block {} --- Progress: {}",
+            format!("{}", $blk).bright_blue().bold(),
+            progress
+        );
+        info!(message = message);
+    }};
 }
 
 #[macro_export]
@@ -91,4 +86,3 @@ macro_rules! success_block {
         info!(message = message);
     }};
 }
-
