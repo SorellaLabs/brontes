@@ -10,7 +10,11 @@ use std::{convert::Infallible, net::SocketAddr};
 use std::sync::Arc;
 
 /// Installs Prometheus as the metrics recorder and serves it over HTTP.
-pub async fn initialize(listen_addr: SocketAddr, collector: Collector) -> eyre::Result<()> {
+pub async fn initialize(listen_addr: SocketAddr, prometheus_collector: Collector) -> eyre::Result<()> {
+
+    let clone_collector = prometheus_collector.clone();
+    let collector: Box<dyn Fn() + Send + Sync > = Box::new(move || clone_collector.collect());
+
     let recorder = PrometheusBuilder::new().build_recorder();
     let handle = recorder.handle();
 
@@ -27,7 +31,7 @@ pub async fn initialize(listen_addr: SocketAddr, collector: Collector) -> eyre::
 }
 
 /// Starts an endpoint at the given address to serve Prometheus metrics.
-async fn start_endpoint(listen_addr: SocketAddr, handle: PrometheusHandle, collector: Arc<Collector>) -> Result<()> {
+async fn start_endpoint(listen_addr: SocketAddr, handle: PrometheusHandle, collector: Arc<Box<dyn Fn() + Send + Sync >>) -> Result<()> {
     let make_svc = make_service_fn(move |_| {
         let handle = handle.clone();
         let collector = Arc::clone(&collector);
