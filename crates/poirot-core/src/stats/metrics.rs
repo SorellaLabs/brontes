@@ -26,7 +26,7 @@ pub(crate) struct TransactionTracingMetrics {
     /// The trace index in the transaction
     pub(crate) tx_trace_idx: Gauge,
     /// The total amount of successful traces for this Transaction hash
-    pub(crate) success_traces: Counter,
+    pub(crate) success_traces: Counter, 
     /// The total amount of trace errors for this Transaction hash
     pub(crate) error_traces: Counter,
     /// Empty Input Errors
