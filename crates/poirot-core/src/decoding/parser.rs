@@ -46,6 +46,8 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(etherscan_key: String, tracer: TracingClient, metrics_tx: UnboundedSender<TraceMetricEvent>) -> Self {
+
+        // this bad
         let _paths = fs::read_dir("./").unwrap();
 
         let _paths = fs::read_dir("./").unwrap_or_else(|err| {
@@ -103,6 +105,8 @@ impl Parser {
         block_num: u64,
         block_trace: Vec<TraceResultsWithTransactionHash>,
     ) -> Vec<TxTrace> {
+        // allocate vector for specific size needed 
+        
         let mut result: Vec<TxTrace> = vec![];
 
         for (idx, trace) in block_trace.iter().enumerate() {
