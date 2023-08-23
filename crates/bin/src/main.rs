@@ -1,5 +1,6 @@
 use bin::{prometheus_exporter::initialize, *};
 use colored::Colorize;
+use metrics_process::Collector;
 use poirot_core::{decoding::parser::Parser, init_block, success_block, stats::TraceMetricsListener};
 use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
 use reth_tracing::TracingClient;
@@ -48,7 +49,9 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     initialize(SocketAddr::new(
         IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
         PROMETHEUS_ENDPOINT_PORT,
-    )).await.unwrap();
+    ), 
+    Collector::default()
+    ).await.unwrap();
     info!("Initialized prometheus endpoint");
 
 
