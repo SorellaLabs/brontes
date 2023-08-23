@@ -195,8 +195,6 @@ impl Parser {
                     )));
                 }
             };
-
-            info!(?tx_hash, trace = ?structured_traces.last());
         }
 
         Ok(TxTrace { trace: structured_traces, tx_hash: trace.transaction_hash, tx_index })

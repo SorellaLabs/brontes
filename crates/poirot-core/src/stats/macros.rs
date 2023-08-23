@@ -13,7 +13,7 @@ macro_rules! error_trace {
         let tx_hash = format!("{:#x}", $tx).bright_blue();
         let result = format!("Error Parsing Trace").bright_red();
         let error = format!("{:?}", $err).bright_red();
-        let mut values_str = format!("Result = {}, Tx Hash = {}, Error = {}", result, tx_hash, error);
+        let mut values_str = format!("{}, Tx Hash = {}, Error = {}", result, tx_hash, error);
         for (key, val) in $values.iter() {
             values_str = format!("{}, {} = {}", values_str, key, val);
         }
@@ -27,7 +27,7 @@ macro_rules! success_trace {
     ($tx:expr, vec = $values:expr) => {
         let tx_hash = format!("{:#x}", $tx).bright_blue();
         let result = format!("Successfully Parsed Trace").bright_green();
-        let mut values_str = format!("Result = {}, Tx Hash = {}", result, tx_hash);
+        let mut values_str = format!("{}, Tx Hash = {}", result, tx_hash);
         for (key, val) in $values.iter() {
             values_str = format!("{}, {}: {}", values_str, key, val);
         }
