@@ -5,7 +5,7 @@ use std::{
     future::Future,
     pin::Pin,
     task::{ready, Context, Poll}};
-    
+
 use revm_primitives::B256;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tracing::trace;
@@ -70,7 +70,6 @@ impl TraceMetricsListener {
             },
         }
     }
-
 }
 
 
@@ -97,6 +96,7 @@ impl Future for TraceMetricsListener {
 fn increment_error(tx_metric: &mut TransactionTracingMetrics, error: TraceParseErrorKind) {
     match error {
         TraceParseErrorKind::TraceMissing => tx_metric.trace_missing_errors.increment(1),
+        TraceParseErrorKind::EthApiError => tx_metric.eth_api_error.increment(1),
         TraceParseErrorKind::EmptyInput => tx_metric.empty_input_errors.increment(1),
         TraceParseErrorKind::AbiParseError => tx_metric.abi_parse_errors.increment(1),
         TraceParseErrorKind::InvalidFunctionSelector => tx_metric.invalid_function_selector_errors.increment(1),
@@ -150,5 +150,27 @@ fn increment_error(tx_metric: &mut TransactionTracingMetrics, error: TraceParseE
         TraceParseErrorKind::EtherscanPageNotFound => tx_metric.etherscan_page_not_found.increment(1),
         TraceParseErrorKind::EtherscanCacheError => tx_metric.etherscan_cache_error.increment(1),
         TraceParseErrorKind::ChannelSendError => (),
+        TraceParseErrorKind::EthApiEmptyRawTransactionData => tx_metric.eth_api_empty_raw_transaction_data.increment(1),
+        TraceParseErrorKind::EthApiFailedToDecodeSignedTransaction => tx_metric.eth_api_failed_to_decode_signed_transaction.increment(1),
+        TraceParseErrorKind::EthApiInvalidTransactionSignature => tx_metric.eth_api_invalid_transaction_signature.increment(1),
+        TraceParseErrorKind::EthApiPoolError => tx_metric.eth_api_pool_error.increment(1),
+        TraceParseErrorKind::EthApiUnknownBlockNumber => tx_metric.eth_api_unknown_block_number.increment(1),
+        TraceParseErrorKind::EthApiUnknownBlockOrTxIndex => tx_metric.eth_api_unknown_block_or_tx_index.increment(1),
+        TraceParseErrorKind::EthApiInvalidBlockRange => tx_metric.eth_api_invalid_block_range.increment(1),
+        TraceParseErrorKind::EthApiPrevrandaoNotSet => tx_metric.eth_api_prevrandao_not_set.increment(1),
+        TraceParseErrorKind::EthApiConflictingFeeFieldsInRequest => tx_metric.eth_api_conflicting_fee_fields_in_request.increment(1),
+        TraceParseErrorKind::EthApiInvalidTransaction => tx_metric.eth_api_invalid_transaction.increment(1),
+        TraceParseErrorKind::EthApiInvalidBlockData => tx_metric.eth_api_invalid_block_data.increment(1),
+        TraceParseErrorKind::EthApiBothStateAndStateDiffInOverride => tx_metric.eth_api_both_state_and_state_diff_in_override.increment(1),
+        TraceParseErrorKind::EthApiInternal => tx_metric.eth_api_internal.increment(1),
+        TraceParseErrorKind::EthApiSigning => tx_metric.eth_api_signing.increment(1),
+        TraceParseErrorKind::EthApiTransactionNotFound => tx_metric.eth_api_transaction_not_found.increment(1),
+        TraceParseErrorKind::EthApiUnsupported => tx_metric.eth_api_unsupported.increment(1),
+        TraceParseErrorKind::EthApiInvalidParams => tx_metric.eth_api_invalid_params.increment(1),
+        TraceParseErrorKind::EthApiInvalidTracerConfig => tx_metric.eth_api_invalid_tracer_config.increment(1),
+        TraceParseErrorKind::EthApiInvalidRewardPercentiles => tx_metric.eth_api_invalid_reward_percentiles.increment(1),
+        TraceParseErrorKind::EthApiInternalTracingError => tx_metric.eth_api_internal_tracing_error.increment(1),
+        TraceParseErrorKind::EthApiInternalEthError => tx_metric.eth_api_internal_eth_error.increment(1),
+        TraceParseErrorKind::EthApiInternalJsTracerError => tx_metric.eth_api_internal_js_tracer_error.increment(1),
     }
 }
