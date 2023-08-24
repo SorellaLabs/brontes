@@ -1,7 +1,9 @@
 use bin::{prometheus_exporter::initialize, *};
 use colored::Colorize;
 use metrics_process::Collector;
-use poirot_core::{decoding::parser::Parser, init_block, success_block, stats::TraceMetricsListener};
+use poirot_core::{
+    decoding::parser::Parser, init_block, stats::TraceMetricsListener, success_block,
+};
 use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
 use reth_tracing::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
@@ -46,14 +48,16 @@ fn main() {
 
 async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     // initializes the prometheus endpoint
-    initialize(SocketAddr::new(
-        IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
-        PROMETHEUS_ENDPOINT_PORT,
-    ), 
-    Collector::default()
-    ).await.unwrap();
+    initialize(
+        SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
+            PROMETHEUS_ENDPOINT_PORT,
+        ),
+        Collector::default(),
+    )
+    .await
+    .unwrap();
     info!("Initialized prometheus endpoint");
-
 
     let db_path = match env::var("DB_PATH") {
         Ok(path) => path,
@@ -74,8 +78,6 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let tracer = TracingClient::new(Path::new(&db_path), handle);
 
     let mut parser = Parser::new(key.clone(), tracer, metrics_tx);
-
-
 
     // you have a intermediate parse function for the range of blocks you want to parse
     // it collects the aggregate stats of each block stats

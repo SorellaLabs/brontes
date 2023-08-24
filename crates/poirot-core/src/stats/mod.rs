@@ -231,4 +231,3 @@ fn increment_error(tx_metric: &mut TransactionTracingMetrics, error: TraceParseE
         }
     }
 }
-

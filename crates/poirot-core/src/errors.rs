@@ -1,7 +1,7 @@
 use alloy_etherscan::errors::EtherscanError;
 use ethers_core::types::H256;
-use thiserror::Error;
 use reth_rpc::eth::error::EthApiError;
+use thiserror::Error;
 
 /// Custom error type
 #[derive(Debug, Error)]
@@ -35,8 +35,6 @@ impl From<EthApiError> for TraceParseError {
         TraceParseError::EthApiError(err)
     }
 }
-
-
 
 /// enum for error
 #[derive(Debug, Clone, Copy)]
@@ -95,73 +93,112 @@ pub enum TraceParseErrorKind {
     EthApiInvalidRewardPercentiles,
     EthApiInternalTracingError,
     EthApiInternalEthError,
-    EthApiInternalJsTracerError
+    EthApiInternalJsTracerError,
 }
 
-
 /// TODO: why don't we just use the default error here since we are litterally just mapping 1-1 and
-/// dropping some state. 
+/// dropping some state.
 impl From<TraceParseError> for TraceParseErrorKind {
     fn from(err: TraceParseError) -> TraceParseErrorKind {
         match err {
             TraceParseError::TraceMissing => TraceParseErrorKind::TraceMissing,
             TraceParseError::EmptyInput(_) => TraceParseErrorKind::EmptyInput,
             TraceParseError::EthApiError(e) => match e {
-                EthApiError::EmptyRawTransactionData => TraceParseErrorKind::EthApiEmptyRawTransactionData,
-                EthApiError::FailedToDecodeSignedTransaction => TraceParseErrorKind::EthApiFailedToDecodeSignedTransaction,
-                EthApiError::InvalidTransactionSignature => TraceParseErrorKind::EthApiInvalidTransactionSignature,
+                EthApiError::EmptyRawTransactionData => {
+                    TraceParseErrorKind::EthApiEmptyRawTransactionData
+                }
+                EthApiError::FailedToDecodeSignedTransaction => {
+                    TraceParseErrorKind::EthApiFailedToDecodeSignedTransaction
+                }
+                EthApiError::InvalidTransactionSignature => {
+                    TraceParseErrorKind::EthApiInvalidTransactionSignature
+                }
                 EthApiError::PoolError(_) => TraceParseErrorKind::EthApiPoolError,
                 EthApiError::UnknownBlockNumber => TraceParseErrorKind::EthApiUnknownBlockNumber,
-                EthApiError::UnknownBlockOrTxIndex => TraceParseErrorKind::EthApiUnknownBlockOrTxIndex,
+                EthApiError::UnknownBlockOrTxIndex => {
+                    TraceParseErrorKind::EthApiUnknownBlockOrTxIndex
+                }
                 EthApiError::InvalidBlockRange => TraceParseErrorKind::EthApiInvalidBlockRange,
                 EthApiError::PrevrandaoNotSet => TraceParseErrorKind::EthApiPrevrandaoNotSet,
-                EthApiError::ConflictingFeeFieldsInRequest => TraceParseErrorKind::EthApiConflictingFeeFieldsInRequest,
+                EthApiError::ConflictingFeeFieldsInRequest => {
+                    TraceParseErrorKind::EthApiConflictingFeeFieldsInRequest
+                }
                 EthApiError::InvalidTransaction(_) => TraceParseErrorKind::EthApiInvalidTransaction,
                 EthApiError::InvalidBlockData(_) => TraceParseErrorKind::EthApiInvalidBlockData,
-                EthApiError::BothStateAndStateDiffInOverride(_) => TraceParseErrorKind::EthApiBothStateAndStateDiffInOverride,
+                EthApiError::BothStateAndStateDiffInOverride(_) => {
+                    TraceParseErrorKind::EthApiBothStateAndStateDiffInOverride
+                }
                 EthApiError::Internal(_) => TraceParseErrorKind::EthApiInternal,
                 EthApiError::Signing(_) => TraceParseErrorKind::EthApiSigning,
                 EthApiError::TransactionNotFound => TraceParseErrorKind::EthApiTransactionNotFound,
                 EthApiError::Unsupported(_) => TraceParseErrorKind::EthApiUnsupported,
                 EthApiError::InvalidParams(_) => TraceParseErrorKind::EthApiInvalidParams,
                 EthApiError::InvalidTracerConfig => TraceParseErrorKind::EthApiInvalidTracerConfig,
-                EthApiError::InvalidRewardPercentiles => TraceParseErrorKind::EthApiInvalidRewardPercentiles,
-                EthApiError::InternalTracingError => TraceParseErrorKind::EthApiInternalTracingError,
-                EthApiError::InternalEthError => TraceParseErrorKind::EthApiInternalEthError,
-                EthApiError::InternalJsTracerError(_) => TraceParseErrorKind::EthApiInternalJsTracerError,
-            },
-            TraceParseError::EtherscanError(e) => {
-                match e {
-                    EtherscanError::ChainNotSupported(_) => TraceParseErrorKind::EtherscanChainNotSupported,
-                    EtherscanError::ExecutionFailed(_) => TraceParseErrorKind::EtherscanExecutionFailed,
-                    EtherscanError::BalanceFailed => TraceParseErrorKind::EtherscanBalanceFailed,
-                    EtherscanError::NotProxy => TraceParseErrorKind::EtherscanNotProxy,
-                    EtherscanError::MissingImplementationAddress => TraceParseErrorKind::EtherscanMissingImplementationAddress,
-                    EtherscanError::BlockNumberByTimestampFailed => TraceParseErrorKind::EtherscanBlockNumberByTimestampFailed,
-                    EtherscanError::TransactionReceiptFailed => TraceParseErrorKind::EtherscanTransactionReceiptFailed,
-                    EtherscanError::GasEstimationFailed => TraceParseErrorKind::EtherscanGasEstimationFailed,
-                    EtherscanError::BadStatusCode(_) => TraceParseErrorKind::EtherscanBadStatusCode,
-                    EtherscanError::EnvVarNotFound(_) => TraceParseErrorKind::EtherscanEnvVarNotFound,
-                    EtherscanError::Reqwest(_) => TraceParseErrorKind::EtherscanReqwest,
-                    EtherscanError::Serde(_) => TraceParseErrorKind::EtherscanSerde,
-                    EtherscanError::ContractCodeNotVerified(_) => TraceParseErrorKind::EtherscanContractCodeNotVerified,
-                    EtherscanError::EmptyResult { .. } => TraceParseErrorKind::EtherscanEmptyResult,
-                    EtherscanError::RateLimitExceeded => TraceParseErrorKind::EtherscanRateLimitExceeded,
-                    EtherscanError::IO(_) => TraceParseErrorKind::EtherscanIO,
-                    EtherscanError::LocalNetworksNotSupported => TraceParseErrorKind::EtherscanLocalNetworksNotSupported,
-                    EtherscanError::ErrorResponse { .. } => TraceParseErrorKind::EtherscanErrorResponse,
-                    EtherscanError::Unknown(_) => TraceParseErrorKind::EtherscanUnknown,
-                    EtherscanError::Builder(_) => TraceParseErrorKind::EtherscanBuilder,
-                    EtherscanError::MissingSolcVersion(_) => TraceParseErrorKind::EtherscanMissingSolcVersion,
-                    EtherscanError::InvalidApiKey => TraceParseErrorKind::EtherscanInvalidApiKey,
-                    EtherscanError::BlockedByCloudflare => TraceParseErrorKind::EtherscanBlockedByCloudflare,
-                    EtherscanError::CloudFlareSecurityChallenge => TraceParseErrorKind::EtherscanCloudFlareSecurityChallenge,
-                    EtherscanError::PageNotFound => TraceParseErrorKind::EtherscanPageNotFound,
-                    EtherscanError::CacheError(_) => TraceParseErrorKind::EtherscanCacheError,
+                EthApiError::InvalidRewardPercentiles => {
+                    TraceParseErrorKind::EthApiInvalidRewardPercentiles
                 }
-            }
+                EthApiError::InternalTracingError => {
+                    TraceParseErrorKind::EthApiInternalTracingError
+                }
+                EthApiError::InternalEthError => TraceParseErrorKind::EthApiInternalEthError,
+                EthApiError::InternalJsTracerError(_) => {
+                    TraceParseErrorKind::EthApiInternalJsTracerError
+                }
+            },
+            TraceParseError::EtherscanError(e) => match e {
+                EtherscanError::ChainNotSupported(_) => {
+                    TraceParseErrorKind::EtherscanChainNotSupported
+                }
+                EtherscanError::ExecutionFailed(_) => TraceParseErrorKind::EtherscanExecutionFailed,
+                EtherscanError::BalanceFailed => TraceParseErrorKind::EtherscanBalanceFailed,
+                EtherscanError::NotProxy => TraceParseErrorKind::EtherscanNotProxy,
+                EtherscanError::MissingImplementationAddress => {
+                    TraceParseErrorKind::EtherscanMissingImplementationAddress
+                }
+                EtherscanError::BlockNumberByTimestampFailed => {
+                    TraceParseErrorKind::EtherscanBlockNumberByTimestampFailed
+                }
+                EtherscanError::TransactionReceiptFailed => {
+                    TraceParseErrorKind::EtherscanTransactionReceiptFailed
+                }
+                EtherscanError::GasEstimationFailed => {
+                    TraceParseErrorKind::EtherscanGasEstimationFailed
+                }
+                EtherscanError::BadStatusCode(_) => TraceParseErrorKind::EtherscanBadStatusCode,
+                EtherscanError::EnvVarNotFound(_) => TraceParseErrorKind::EtherscanEnvVarNotFound,
+                EtherscanError::Reqwest(_) => TraceParseErrorKind::EtherscanReqwest,
+                EtherscanError::Serde(_) => TraceParseErrorKind::EtherscanSerde,
+                EtherscanError::ContractCodeNotVerified(_) => {
+                    TraceParseErrorKind::EtherscanContractCodeNotVerified
+                }
+                EtherscanError::EmptyResult { .. } => TraceParseErrorKind::EtherscanEmptyResult,
+                EtherscanError::RateLimitExceeded => {
+                    TraceParseErrorKind::EtherscanRateLimitExceeded
+                }
+                EtherscanError::IO(_) => TraceParseErrorKind::EtherscanIO,
+                EtherscanError::LocalNetworksNotSupported => {
+                    TraceParseErrorKind::EtherscanLocalNetworksNotSupported
+                }
+                EtherscanError::ErrorResponse { .. } => TraceParseErrorKind::EtherscanErrorResponse,
+                EtherscanError::Unknown(_) => TraceParseErrorKind::EtherscanUnknown,
+                EtherscanError::Builder(_) => TraceParseErrorKind::EtherscanBuilder,
+                EtherscanError::MissingSolcVersion(_) => {
+                    TraceParseErrorKind::EtherscanMissingSolcVersion
+                }
+                EtherscanError::InvalidApiKey => TraceParseErrorKind::EtherscanInvalidApiKey,
+                EtherscanError::BlockedByCloudflare => {
+                    TraceParseErrorKind::EtherscanBlockedByCloudflare
+                }
+                EtherscanError::CloudFlareSecurityChallenge => {
+                    TraceParseErrorKind::EtherscanCloudFlareSecurityChallenge
+                }
+                EtherscanError::PageNotFound => TraceParseErrorKind::EtherscanPageNotFound,
+                EtherscanError::CacheError(_) => TraceParseErrorKind::EtherscanCacheError,
+            },
             TraceParseError::AbiParseError(_) => TraceParseErrorKind::AbiParseError,
-            TraceParseError::InvalidFunctionSelector(_) => TraceParseErrorKind::InvalidFunctionSelector,
+            TraceParseError::InvalidFunctionSelector(_) => {
+                TraceParseErrorKind::InvalidFunctionSelector
+            }
             TraceParseError::AbiDecodingFailed(_) => TraceParseErrorKind::AbiDecodingFailed,
             TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError,
         }

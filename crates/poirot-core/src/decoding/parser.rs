@@ -327,7 +327,6 @@ impl Parser {
         error: Option<TraceParseError>,
         extra_fields: Option<Vec<(&str, &str)>>,
     ) -> Result<(), TraceParseError> {
-
         if let Some(err) = &error {
             error_trace!(tx_hash, err, vec = extra_fields.unwrap_or_else(Vec::new));
         } else {
@@ -335,14 +334,14 @@ impl Parser {
         }
 
         self.metrics_tx
-        .send(TraceMetricEvent::TraceMetricRecieved {
-            block_num,
-            tx_hash: *tx_hash,
-            tx_idx: tx_idx as u64,
-            tx_trace_idx: tx_trace_idx as u64,
-            error: error.map(|e| e.into()),
-        })
-        .map_err(|e| TraceParseError::ChannelSendError(e.to_string()))?;
+            .send(TraceMetricEvent::TraceMetricRecieved {
+                block_num,
+                tx_hash: *tx_hash,
+                tx_idx: tx_idx as u64,
+                tx_trace_idx: tx_trace_idx as u64,
+                error: error.map(|e| e.into()),
+            })
+            .map_err(|e| TraceParseError::ChannelSendError(e.to_string()))?;
 
         Ok(())
     }
