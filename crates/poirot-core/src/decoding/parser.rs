@@ -157,14 +157,6 @@ impl Parser {
             let (action, trace_address) = if let Some((a, t)) =
                 decode_trace_action(&mut structured_traces, &transaction_trace)
             {
-                self.trace_result(
-                    block_num,
-                    tx_hash,
-                    tx_index,
-                    idx,
-                    None,
-                    Some(vec![("Trace Action", &format!("{:?}", a.call_type))]),
-                )?;
                 (a, t)
             } else {
                 continue
