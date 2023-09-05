@@ -80,7 +80,7 @@ pub(crate) fn handle_empty_input(
                     RECEIVE.to_string(),
                     None,
                     trace_address.to_owned(),
-                )))
+                )));
             }
         }
 
@@ -93,7 +93,7 @@ pub(crate) fn handle_empty_input(
                     FALLBACK.to_string(),
                     None,
                     trace_address.to_owned(),
-                )))
+                )));
             }
         }
     }
@@ -101,23 +101,13 @@ pub(crate) fn handle_empty_input(
 }
 
 /// decodes the trace action
-pub(crate) fn decode_trace_action(
-    structured_traces: &mut Vec<StructuredTrace>,
-    transaction_trace: &TransactionTrace,
-) -> Option<(RethCallAction, Vec<usize>)> {
+pub(crate) fn decode_trace_action(transaction_trace: &TransactionTrace) -> StructuredTrace {
     match &transaction_trace.action {
-        RethAction::Call(call) => Some((call.clone(), transaction_trace.trace_address.clone())),
-        RethAction::Create(create_action) => {
-            structured_traces.push(StructuredTrace::CREATE(create_action.clone()));
-            None
-        }
+        RethAction::Create(create_action) => StructuredTrace::CREATE(create_action.clone()),
         RethAction::Selfdestruct(self_destruct) => {
-            structured_traces.push(StructuredTrace::SELFDESTRUCT(self_destruct.clone()));
-            None
+            StructuredTrace::SELFDESTRUCT(self_destruct.clone())
         }
-        RethAction::Reward(reward) => {
-            structured_traces.push(StructuredTrace::REWARD(reward.clone()));
-            None
-        }
+        RethAction::Reward(reward) => StructuredTrace::REWARD(reward.clone()),
+        _ => panic!("Should never be reached"),
     }
 }
