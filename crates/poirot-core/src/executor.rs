@@ -17,7 +17,7 @@ impl Executor {
     pub fn spawn_result_task_as<F, R>(&self, fut: F, task_kind: TaskKind) -> JoinHandle<R>
     where
         F: Future<Output = R> + Send + 'static,
-        R: Send,
+        R: Send + 'static,
     {
         let task = async move {
             pin_mut!(fut);
@@ -27,7 +27,7 @@ impl Executor {
         let handle = self.runtime.handle().clone();
         match task_kind {
             TaskKind::Default => handle.spawn(task),
-            TaskKind::Blocking => self.runtime.spawn_blocking(move || handle.block_on(fut)),
+            TaskKind::Blocking => self.runtime.spawn_blocking(move || handle.block_on(task)),
         }
     }
 

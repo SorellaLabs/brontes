@@ -10,6 +10,7 @@ poirot-core = { path = "../poirot-core" }
 
 # Async
 tokio = { version = "1.13.0", features = ["full", "tracing"] }
+futures = "0.3.28"
 
 # Reth
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "31af4d5" }

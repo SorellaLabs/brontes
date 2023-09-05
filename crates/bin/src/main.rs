@@ -1,9 +1,8 @@
 use bin::{prometheus_exporter::initialize, *};
 use colored::Colorize;
+use futures::StreamExt;
 use metrics_process::Collector;
-use poirot_core::{
-    decoding::parser::Parser, init_block, stats::TraceMetricsListener, success_block,
-};
+use poirot_core::{decoding::Parser, init_block, stats::TraceMetricsListener, success_block};
 use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
 use reth_tracing::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
@@ -16,6 +15,7 @@ use std::{
     error::Error,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
+    task::Poll,
 };
 
 fn main() {
@@ -75,24 +75,25 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let (metrics_tx, metrics_rx) = unbounded_channel();
     let metrics_listener = tokio::spawn(async move { TraceMetricsListener::new(metrics_rx).await });
 
-    let tracer = TracingClient::new(Path::new(&db_path), handle);
-
-    let mut parser = Parser::new(key.clone(), tracer, metrics_tx);
+    let parser = Parser::new(metrics_tx, &key, &db_path);
 
     // you have a intermediate parse function for the range of blocks you want to parse
     // it collects the aggregate stats of each block stats
     // the block stats collect the aggregate stats of each tx
     // the tx stats collect the aggregate stats of each trace
 
-    let (start_block, end_block) = (17784930, 17794931); //(17795047,	17795048); //(17788433, 17788434);
+    let (start_block, end_block) = (17794930, 17794931);
     for i in start_block..end_block {
         init_block!(i, start_block, end_block);
-        let block_trace: Vec<TraceResultsWithTransactionHash> =
-            parser.trace_block(i).await.unwrap();
-        let _action = parser.parse_block(i, block_trace).await;
-        success_block!(i);
+        parser.execute(i);
     }
     info!("Successfully Parsed Blocks {} To {} ", start_block, end_block);
+
+    let mut traces = Vec::new();
+
+    loop {
+        while let Poll::Ready(val) = parser.poll_next_unpin() {}
+    }
 
     metrics_listener.await?;
     Ok(())
