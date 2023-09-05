@@ -26,6 +26,7 @@ use reth_primitives::Bytes;
 
 use reth_rpc::eth::revm_utils::EvmOverrides;
 
+#[derive(Clone)]
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt to decode each call for
 /// later analysis.
 pub struct TraceParser {
@@ -45,7 +46,7 @@ impl TraceParser {
         tx_hash: H256,
         block_num: u64,
     ) -> Result<StructuredTrace, TraceParseError> {
-        //init_trace!(tx_hash, idx, transaction_traces.len());
+        //
 
         // TODO: we can use the let else caluse here instead of if let else
         let (action, trace_address) = if let RethAction::Call(call) = trace.action {
@@ -147,4 +148,32 @@ impl TraceParser {
 
         Ok(abi)
     }
+}
+
+/// traces a block into a vec of tx traces
+pub(crate) async fn trace_block(
+    tracer: Arc<TracingClient>,
+    metrics_tx: Arc<UnboundedSender<TraceMetricEvent>>,
+    block_num: u64,
+) -> Option<ParsedType> {
+    let mut trace_type = HashSet::new();
+    trace_type.insert(TraceType::Trace);
+
+    let parity_trace = tracer
+        .trace
+        .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num)), trace_type)
+        .await
+        .map_err(|e| Into::<TraceParseError>::into(e));
+
+    let _ = match parity_trace {
+        Ok(Some(trace)) => return Some(ParsedType::Block(trace, block_num)),
+        Ok(None) => metrics_tx.send(TraceMetricEvent::BlockTracingErrorMetric {
+            block_num,
+            error: (&TraceParseError::TracesMissingBlock(block_num)).into(),
+        }),
+        Err(e) => metrics_tx
+            .send(TraceMetricEvent::BlockTracingErrorMetric { block_num, error: (&e).into() }),
+    };
+
+    None
 }
