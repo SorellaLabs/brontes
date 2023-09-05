@@ -110,8 +110,18 @@ impl TraceMetricsListener {
                 tx_idx,
                 tx_trace_idx,
                 error,
-            } => todo!(),
-            TraceMetricEvent::BlockTracingErrorMetric { block_num, error } => todo!(),
+            } => (), //todo
+            TraceMetricEvent::BlockTracingErrorMetric { block_num, error } => (),
+            TraceMetricEvent::TxTracingErrorMetric { block_num, tx_hash, tx_idx, error } => {
+                let tx_metrics = self.tx_metrics.get_transaction_metrics(format!("{:#x}", tx_hash));
+
+                tx_metrics.block_num.set(block_num as f64);
+                tx_metrics.tx_idx.set(tx_idx as f64);
+                tx_metrics.tx_trace_idx.set(tx_idx as f64);
+
+                tx_metrics.error_traces.increment(1);
+                increment_error(tx_metrics, error);
+            }
         }
     }
 }
@@ -141,7 +151,10 @@ impl Future for TraceMetricsListener {
 /// computes error increment
 fn increment_error(tx_metric: &mut TransactionTracingMetrics, error: TraceParseErrorKind) {
     match error {
-        TraceParseErrorKind::TraceMissing => tx_metric.trace_missing_errors.increment(1),
+        TraceParseErrorKind::TracesMissingBlock => {
+            tx_metric.block_trace_missing_errors.increment(1)
+        }
+        TraceParseErrorKind::TracesMissingTx => tx_metric.tx_trace_missing_errors.increment(1),
         TraceParseErrorKind::EthApiError => tx_metric.eth_api_error.increment(1),
         TraceParseErrorKind::EmptyInput => tx_metric.empty_input_errors.increment(1),
         TraceParseErrorKind::AbiParseError => tx_metric.abi_parse_errors.increment(1),

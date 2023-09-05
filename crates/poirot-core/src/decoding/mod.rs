@@ -1,15 +1,17 @@
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
+use crate::errors::TraceParseErrorKind;
 use crate::executor::TaskKind;
 use crate::stats::TraceMetricEvent;
 use crate::structured_trace::{StructuredTrace, TxTrace};
-use crate::{error_trace, success_trace};
+use crate::{error_trace, init_trace, success_trace};
 use crate::{errors::TraceParseError, executor::Executor};
 use alloy_etherscan::Client;
+use ethers_core::types::Chain;
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt};
 use reth_primitives::H256;
@@ -19,7 +21,7 @@ use reth_tracing::TracingClient;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
-use self::parser::TraceParser;
+use self::parser::{trace_block, TraceParser};
 
 mod parser;
 mod utils;
@@ -28,6 +30,7 @@ pub(crate) const UNKNOWN: &str = "unknown";
 pub(crate) const RECEIVE: &str = "receive";
 pub(crate) const FALLBACK: &str = "fallback";
 pub(crate) const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
+const CACHE_DIRECTORY: &str = "./abi_cache";
 
 type BlockNumber = u64;
 type TransactionHash = H256;
@@ -38,57 +41,48 @@ pub struct Parser {
     executor: Executor,
     parser_fut: FuturesUnordered<JoinHandle<Option<ParsedType>>>,
     parser: TraceParser,
-    metrics_tx: UnboundedSender<TraceMetricEvent>,
+    metrics_tx: Arc<UnboundedSender<TraceMetricEvent>>,
     tracer: Arc<TracingClient>,
 }
 
 impl Parser {
     pub fn new(
         metrics_tx: UnboundedSender<TraceMetricEvent>,
-        etherscan_client: Client,
-        db_path: &Path,
+        etherscan_key: &str,
+        db_path: &str,
     ) -> Self {
         let executor = Executor::new();
-        let tracer = Arc::new(TracingClient::new(db_path, executor.runtime.handle().clone()));
+        let tracer =
+            Arc::new(TracingClient::new(&Path::new(db_path), executor.runtime.handle().clone()));
+
+        let etherscan_client = Client::new_cached(
+            Chain::Mainnet,
+            etherscan_key,
+            Some(PathBuf::from(CACHE_DIRECTORY)),
+            CACHE_TIMEOUT,
+        )
+        .unwrap();
         let parser = TraceParser::new(etherscan_client, Arc::clone(&tracer));
-        Self { executor, parser_fut: FuturesUnordered::new(), parser, metrics_tx, tracer }
+
+        Self {
+            executor,
+            parser_fut: FuturesUnordered::new(),
+            parser,
+            metrics_tx: Arc::new(metrics_tx),
+            tracer,
+        }
     }
 
     /// executes the tracing of a given block
     pub fn execute(&mut self, block_num: u64) {
-        // spawns the task to get the txs and traces
+        let tracer = self.tracer.clone();
+        let metrics_tx = self.metrics_tx.clone();
         self.parser_fut.push(
-            self.executor.spawn_result_task_as(self.trace_block(block_num), TaskKind::Default),
+            self.executor.spawn_result_task_as(
+                trace_block(tracer, metrics_tx, block_num),
+                TaskKind::Default,
+            ),
         );
-    }
-
-    /// traces a block into a vec of tx traces
-    async fn trace_block(&self, block_num: u64) -> Option<ParsedType> {
-        let mut trace_type = HashSet::new();
-        trace_type.insert(TraceType::Trace);
-
-        let parity_trace = self
-            .tracer
-            .trace
-            .replay_block_transactions(
-                BlockId::Number(BlockNumberOrTag::Number(block_num)),
-                trace_type,
-            )
-            .await
-            .map_err(|e| Into::<TraceParseError>::into(e));
-
-        match parity_trace {
-            Ok(Some(trace)) => return Some(ParsedType::Block(trace, block_num)),
-            Ok(None) => self.metrics_tx.send(TraceMetricEvent::BlockTracingErrorMetric {
-                block_num,
-                error: TraceParseError::TracesMissingBlock(block_num).into(),
-            }),
-            Err(e) => self
-                .metrics_tx
-                .send(TraceMetricEvent::BlockTracingErrorMetric { block_num, error: e.into() }),
-        };
-
-        None
     }
 
     /// parses a block and gathers the transactions
@@ -97,11 +91,11 @@ impl Parser {
             let transaction_traces = trace.full_trace.trace;
             let tx_hash = trace.transaction_hash;
             if transaction_traces.is_none() {
-                self.metrics_tx.send(TraceMetricEvent::TxTracingErrorMetric {
+                let _ = self.metrics_tx.send(TraceMetricEvent::TxTracingErrorMetric {
                     block_num,
                     tx_hash,
                     tx_idx: idx as u64,
-                    error: TraceParseError::TracesMissingTx(tx_hash.into()).into(),
+                    error: (&TraceParseError::TracesMissingTx(tx_hash.into())).into(),
                 });
                 return;
             }
@@ -118,6 +112,7 @@ impl Parser {
         tx_hash: H256,
         tx_idx: u64,
     ) {
+        init_trace!(tx_hash, tx_idx, tx_trace.len());
         for (idx, trace) in tx_trace.into_iter().enumerate() {
             self.parse_trace(trace, block_num, tx_hash, tx_idx, idx as u64);
         }
@@ -132,17 +127,31 @@ impl Parser {
         tx_idx: u64,
         trace_idx: u64,
     ) {
-        let fut = async {
-            let structured_trace = self.parser.parse(tx_trace, tx_hash, block_num).await;
-            let err: Option<TraceParseError> = if let Err(e) = structured_trace {
+        let parser = self.parser.clone();
+        let metrics_tx = self.metrics_tx.clone();
+        let fut = async move {
+            let structured_trace = parser.parse(tx_trace, tx_hash, block_num).await;
+            let err: Option<TraceParseErrorKind> = if let Err(e) = &structured_trace {
                 error_trace!(tx_hash, e);
-                Some(e)
+                Some(e.into())
             } else {
                 success_trace!(tx_hash);
                 None
             };
 
-            self.metrics_tx.send(TraceMetricEvent::TraceMetricRecieved {
+            let res = if err.is_none() {
+                Some(ParsedType::Trace(
+                    structured_trace.unwrap(),
+                    block_num,
+                    tx_hash,
+                    tx_idx as u16,
+                    trace_idx as u16,
+                ))
+            } else {
+                None
+            };
+
+            let _ = metrics_tx.send(TraceMetricEvent::TraceMetricRecieved {
                 block_num,
                 tx_hash,
                 tx_idx,
@@ -150,17 +159,7 @@ impl Parser {
                 error: err.map(|e| e.into()),
             });
 
-            if err.is_none() {
-                return Some(ParsedType::Trace(
-                    structured_trace.unwrap(),
-                    block_num,
-                    tx_hash,
-                    tx_idx as u16,
-                    trace_idx as u16,
-                ));
-            }
-
-            None
+            res
         };
 
         self.parser_fut.push(self.executor.spawn_result_task_as(fut, TaskKind::Default));
@@ -168,7 +167,7 @@ impl Parser {
 }
 
 impl Stream for Parser {
-    type Item = TxTrace;
+    type Item = ThisRet;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -184,8 +183,12 @@ impl Stream for Parser {
                 ParsedType::Block(trace_results, block_num) => {
                     this.parse_block(trace_results, block_num)
                 }
-                ParsedType::Trace(trace, block_num, tx_hash, tx_idx, trace_idx) => todo!(),
-                ParsedType::AggregatedTraces(aggr) => return Poll::Ready(Some(aggr)),
+                ParsedType::Trace(trace, block_num, tx_hash, tx_idx, trace_idx) => {
+                    return Poll::Ready(Some(ThisRet::new(
+                        trace, block_num, tx_hash, tx_idx, trace_idx,
+                    )))
+                }
+                ParsedType::AggregatedTraces(aggr) => (),
             }
         }
 
@@ -193,8 +196,28 @@ impl Stream for Parser {
     }
 }
 
-enum ParsedType {
+pub(crate) enum ParsedType {
     Block(Vec<TraceResultsWithTransactionHash>, BlockNumber),
     Trace(StructuredTrace, BlockNumber, TransactionHash, TransactionIndex, TraceIndex),
     AggregatedTraces(TxTrace),
+}
+
+pub struct ThisRet {
+    trace: StructuredTrace,
+    block_num: u64,
+    tx_hash: H256,
+    tx_idx: u16,
+    trace_idx: u16,
+}
+
+impl ThisRet {
+    fn new(
+        trace: StructuredTrace,
+        block_num: u64,
+        tx_hash: H256,
+        tx_idx: u16,
+        trace_idx: u16,
+    ) -> Self {
+        Self { trace, block_num, tx_hash, tx_idx, trace_idx }
+    }
 }

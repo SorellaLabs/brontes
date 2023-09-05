@@ -41,7 +41,9 @@ pub(crate) struct TransactionTracingMetrics {
     /// Abi Decoding Failed Errors
     pub(crate) abi_decoding_failed_errors: Counter,
     /// Trace Missing Errors
-    pub(crate) trace_missing_errors: Counter,
+    pub(crate) block_trace_missing_errors: Counter,
+    /// Trace Missing Errors
+    pub(crate) tx_trace_missing_errors: Counter,
     /// Etherscan Chain Not Supported
     pub(crate) etherscan_chain_not_supported: Counter,
     /// Etherscan Execution Failed
