@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use alloy_etherscan::errors::EtherscanError;
 use ethers_core::types::H256;
 use reth_rpc::eth::error::EthApiError;
@@ -6,12 +8,14 @@ use thiserror::Error;
 /// Custom error type
 #[derive(Debug, Error)]
 pub enum TraceParseError {
-    #[error("trace missing")]
-    TraceMissing,
+    #[error("trace missing in block {0}")]
+    TracesMissingBlock(u64),
+    #[error("trace missing in transaction {0}")]
+    TracesMissingTx(H256),
     #[error("empty input: {0}")]
     EmptyInput(H256),
     #[error("etherscan error: {0}")]
-    EtherscanError(EtherscanError),
+    EtherscanError(Arc<EtherscanError>),
     #[error("abi parse error: {0}")]
     AbiParseError(serde_json::Error),
     #[error("invalid function selector: {0}")]
@@ -26,7 +30,7 @@ pub enum TraceParseError {
 
 impl From<EtherscanError> for TraceParseError {
     fn from(err: EtherscanError) -> TraceParseError {
-        TraceParseError::EtherscanError(err)
+        TraceParseError::EtherscanError(Arc::new(err))
     }
 }
 
@@ -39,7 +43,8 @@ impl From<EthApiError> for TraceParseError {
 /// enum for error
 #[derive(Debug, Clone, Copy)]
 pub enum TraceParseErrorKind {
-    TraceMissing,
+    TracesMissingBlock,
+    TracesMissingTx,
     EmptyInput,
     AbiParseError,
     EthApiError,
@@ -101,7 +106,8 @@ pub enum TraceParseErrorKind {
 impl From<TraceParseError> for TraceParseErrorKind {
     fn from(err: TraceParseError) -> TraceParseErrorKind {
         match err {
-            TraceParseError::TraceMissing => TraceParseErrorKind::TraceMissing,
+            TraceParseError::TracesMissingBlock(_) => TraceParseErrorKind::TracesMissingBlock,
+            TraceParseError::TracesMissingTx(_) => TraceParseErrorKind::TracesMissingTx,
             TraceParseError::EmptyInput(_) => TraceParseErrorKind::EmptyInput,
             TraceParseError::EthApiError(e) => match e {
                 EthApiError::EmptyRawTransactionData => {
@@ -145,7 +151,7 @@ impl From<TraceParseError> for TraceParseErrorKind {
                     TraceParseErrorKind::EthApiInternalJsTracerError
                 }
             },
-            TraceParseError::EtherscanError(e) => match e {
+            TraceParseError::EtherscanError(e) => match e.as_ref() {
                 EtherscanError::ChainNotSupported(_) => {
                     TraceParseErrorKind::EtherscanChainNotSupported
                 }

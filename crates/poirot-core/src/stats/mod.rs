@@ -34,6 +34,37 @@ pub enum TraceMetricEvent {
         /// error type
         error: Option<TraceParseErrorKind>,
     },
+    /// relay recorded a new live block
+    TransactionMetricRecieved {
+        /// block number of the new live block
+        block_num: u64,
+        /// the relay
+        tx_hash: B256,
+        /// The tB256action index in the block
+        tx_idx: u64,
+        /// The trace index in the transaction
+        tx_trace_idx: u64,
+        /// error type
+        error: Option<TraceParseErrorKind>,
+    },
+    /// relay recorded a new live block
+    TxTracingErrorMetric {
+        /// block number of the new live block
+        block_num: u64,
+        /// the relay
+        tx_hash: B256,
+        /// The tB256action index in the block
+        tx_idx: u64,
+        /// error type
+        error: TraceParseErrorKind,
+    },
+    /// relay recorded a new live block
+    BlockTracingErrorMetric {
+        /// block number of the new live block
+        block_num: u64,
+        /// error type
+        error: TraceParseErrorKind,
+    },
 }
 
 /// Metrics routine that listens to new metric events on the `events_rx` receiver.
@@ -73,6 +104,14 @@ impl TraceMetricsListener {
                     tx_metrics.success_traces.increment(1);
                 }
             }
+            TraceMetricEvent::TransactionMetricRecieved {
+                block_num,
+                tx_hash,
+                tx_idx,
+                tx_trace_idx,
+                error,
+            } => todo!(),
+            TraceMetricEvent::BlockTracingErrorMetric { block_num, error } => todo!(),
         }
     }
 }
@@ -88,7 +127,7 @@ impl Future for TraceMetricsListener {
         loop {
             let Some(event) = ready!(this.events_rx.poll_recv(cx)) else {
                 // Channel has closed
-                return Poll::Ready(())
+                return Poll::Ready(());
             };
 
             this.handle_event(event);

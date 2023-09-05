@@ -10,14 +10,15 @@ macro_rules! init_trace {
 
 #[macro_export]
 macro_rules! error_trace {
-    ($tx:expr, $err:expr, vec = $values:expr) => {
+    ($tx:expr, $err:expr) => {
         let tx_hash = format!("{:#x}", $tx);
         let result = format!("Error Parsing Trace").bright_red();
         let error = format!("{:?}", $err).bright_red();
         let mut values_str = format!("{}, Tx Hash = {}, Error = {}", result, tx_hash, error);
+        /*
         for (key, val) in $values.iter() {
             values_str = format!("{}, {} = {}", values_str, key, val);
-        }
+        } */
         // replace `println!` with your logging mechanism
         info!("result = {}", values_str);
     };
@@ -25,14 +26,11 @@ macro_rules! error_trace {
 
 #[macro_export]
 macro_rules! success_trace {
-    ($tx:expr, vec = $values:expr) => {
+    ($tx:expr) => {
         let tx_hash = format!("{:#x}", $tx);
         let result = format!("Successfully Parsed Trace").bright_green();
         let mut values_str = format!("{}, Tx Hash = {}", result, tx_hash);
-        for (key, val) in $values.iter() {
-            values_str = format!("{}, {}: {}", values_str, key, val);
-        }
-        // replace `println!` with your logging mechanism
+
         info!("result = {}", values_str);
     };
 }
