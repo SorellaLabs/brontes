@@ -2,13 +2,13 @@ use crate::{
     decoding::utils::*,
     errors::TraceParseError,
     stats::types::{BlockStats, TraceStats, TransactionStats},
-    structured_trace::{
-        CallAction,
-        StructuredTrace::{self},
-    },
 };
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
+use poirot_types::structured_trace::{
+    CallAction,
+    StructuredTrace::{self},
+};
 
 use reth_revm::tracing::parity;
 use reth_tracing::TracingClient;
