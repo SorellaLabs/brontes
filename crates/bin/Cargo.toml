@@ -10,7 +10,7 @@ edition = "2021"
 # poirot
 poirot-core.workspace = true
 poirot-inspect.workspace = true
-poirot-normalizer.workspace = true
+poirot-types.workspace = true
 
 # Async
 tokio = { workspace = true, features = ["full", "tracing"] }
@@ -33,8 +33,8 @@ reth-revm.workspace = true
 reth-interfaces.workspace = true
 
 # Alloy
-alloy-sol-macro = { workspace = true, features = ["json"]}
-alloy-sol-types = { workspace = true, features = ["json"]}
+alloy-sol-macro = { workspace = true, features = ["json"] }
+alloy-sol-types = { workspace = true, features = ["json"] }
 
 # logging
 env_logger.workspace = true
