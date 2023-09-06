@@ -1,9 +1,10 @@
 use poirot_core::decoding::{Parser, TypeToParse};
-use poirot_core::structured_trace::TxTrace;
 use std::task::Poll;
 pub mod prometheus_exporter;
 use futures::{Future, StreamExt};
-use poirot_types::{normalized_actions::NormalizedAction, tree::TimeTree};
+use poirot_types::{
+    normalized_actions::NormalizedAction, structured_trace::TxTrace, tree::TimeTree,
+};
 use std::{pin::Pin, task::Context};
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
@@ -22,8 +23,6 @@ impl<V: NormalizedAction> Poirot<V> {
     pub(crate) fn trace_block(&self, block_num: u64) {
         self.parser.execute(TypeToParse::Block(block_num))
     }
-
-    fn build_tree(&self, traces: Vec<TxTrace>) {}
 }
 
 impl<V> Future for Poirot<V>
@@ -39,7 +38,7 @@ where
         loop {
             while let Poll::Ready(val) = this.parser.poll_next_unpin(cx) {
                 if val.is_none() {
-                    return Poll::Ready(())
+                    return Poll::Ready(());
                 }
 
                 match val.unwrap() {
@@ -50,10 +49,10 @@ where
             iters -= 1;
             if iters == 0 {
                 cx.waker().wake_by_ref();
-                break
+                break;
             }
         }
 
-        return Poll::Pending
+        return Poll::Pending;
     }
 }

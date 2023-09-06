@@ -14,7 +14,11 @@ use crate::{
     stats::TraceMetricEvent,
     success_trace,
 };
-use poirot_types::structured_trace::{StructuredTrace, TxTrace};
+use poirot_types::{
+    normalized_actions::NormalizedAction,
+    structured_trace::{StructuredTrace, TxTrace},
+    tree::TimeTree,
+};
 
 use alloy_etherscan::Client;
 use ethers_core::types::Chain;
@@ -94,7 +98,7 @@ impl Parser {
 
         if parity_trace.0.is_none() {
             this.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1)).unwrap();
-            return None
+            return None;
         }
 
         let traces = this.parse_block(parity_trace.0.unwrap(), block_num).await;
@@ -103,8 +107,8 @@ impl Parser {
     }
 }
 
-impl Stream for Parser {
-    type Item = Option<Vec<TxTrace>>;
+impl<V: NormalizedAction> Stream for Parser {
+    type Item = TimeTree<V>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -112,7 +116,7 @@ impl Stream for Parser {
         while let Poll::Ready(val) = this.parser_fut.poll_next_unpin(cx) {
             match val {
                 Some(Err(_)) | None => return Poll::Ready(None),
-                Some(Ok(val)) => return Poll::Ready(Some(val)),
+                Some(Ok(val)) => (), //return Poll::Ready(Some(val)),
             };
         }
 
