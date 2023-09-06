@@ -1,0 +1,11 @@
+[package]
+name = "poirot-normalizer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+typed-arena = "2.0.2"
+ethers.workspace = true
+tracing = "0.1.37"
