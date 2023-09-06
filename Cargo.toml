@@ -16,11 +16,56 @@ revm-primitives = { git = "https://github.com/bluealloy/revm/", branch = "releas
 revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
 
 [workspace.dependencies]
+
+# Poirot
+poirot-core = { path = "./crates/poirot-core" }
+
+
+# Reth
+reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "31af4d5" }
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "31af4d5"}
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "31af4d5"}
+reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "31af4d5"}
+reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "31af4d5"}
+reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "31af4d5"}
+reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "31af4d5"}
+reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "31af4d5"}
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "31af4d5"}
+reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "31af4d5"}
+reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "31af4d5"}
+reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "31af4d5"}
+reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "31af4d5"}
+reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", rev = "31af4d5"}
+
+# Async
+tokio = "1.13.0"
+futures = "0.3.28"
+
 #Tracing
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
-console-subscriber = "0.1.5"
+reth-tracing = { path="./crates/reth-tracing" }
+colored = "2.0"
+
+# Metrics
+metrics-exporter-prometheus = "0.12.1"
+metrics-util = "0.15.0"
+metrics-process = "1.0.9"
+
+# Logging
+env_logger = "0.10.0"
+log = "0.4.18"
+
+# http/rpc
+hyper = "0.14.25"
+
+# Serde
+serde = { version = "1.0" }
+serde_json = { version = "1.0" }
+
+# Misc
 c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
+eyre = "0.6.8"
 
 [patch."https://github.com/ethereum/c-kzg-4844"]
 c-kzg = { git = "https://github.com/rjected/c-kzg-4844", branch = "dan/add-serde-feature" }
