@@ -10,6 +10,9 @@ members = [
 ]
 
 
+resolver = "2"
+
+
 
 [patch.crates-io]
 # patched for quantity U256 responses <https://github.com/recmo/uint/issues/224>
@@ -20,6 +23,8 @@ revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
 
 # Poirot
 poirot-core = { path = "./crates/poirot-core" }
+poirot-inspect = { path = "./crates/poirot-inspect" }
+poirot-normalizer = { path = "./crates/poirot-normalizer" }
 
 # Ethers
 ethers-core = "2.0.7"
@@ -40,6 +45,11 @@ reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = 
 reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "31af4d5"}
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "31af4d5"}
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", rev = "31af4d5"}
+reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "31af4d5"}
+
+
+# ruint
+ruint = "1.9.0"
 
 # Alloy
 alloy-etherscan = {path = "./crates/alloy-etherscan"}
@@ -79,6 +89,3 @@ serde_json = { version = "1.0" }
 c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
 eyre = "0.6.8"
 hex-literal = "0.4.1"
-
-[patch."https://github.com/ethereum/c-kzg-4844"]
-c-kzg = { git = "https://github.com/rjected/c-kzg-4844", branch = "dan/add-serde-feature" }
