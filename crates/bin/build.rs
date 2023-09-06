@@ -34,7 +34,7 @@ struct ProtocolAbis {
 }
 
 fn main() {
-    println!("cargo:rerun-if-evn-changed=RUN_BUILD_SCRIPT");
+    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
     runtime.block_on(run());

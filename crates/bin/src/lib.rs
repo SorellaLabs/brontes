@@ -1,4 +1,4 @@
-use poirot_core::decoding::Parser;
+use poirot_core::decoding::{Parser, TypeToParse};
 use std::task::Poll;
 pub mod prometheus_exporter;
 use futures::Future;
@@ -18,6 +18,10 @@ impl<V: NormalizedAction> Poirot<V> {
     pub(crate) fn new(parser: Parser, tree: TimeTree<V>) -> Self {
         Self { parser, tree }
     }
+
+    pub(crate) fn trace_block(&self, block_num: u64) {
+        self.parser.execute(TypeToParse::Block(block_num))
+    }
 }
 
 impl<V> Future for Poirot<V>
@@ -29,6 +33,9 @@ where
     fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
 
+        loop {
+            while let Some(block_traces) = this.parser.unp {}
+        }
         Poll::Pending
     }
 }
