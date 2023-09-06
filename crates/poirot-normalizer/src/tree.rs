@@ -20,10 +20,10 @@ impl<V: NormalizedAction> Node<V> {
         self.frozen = true
     }
 
-    /// The address here is the from address for the trace
+    /// The address here is the FROM address for the trace
     pub fn insert(&mut self, address: Address, n: Node<V>) -> bool {
         if self.frozen {
-            return false
+            return false;
         }
 
         if address == self.address {
@@ -32,12 +32,12 @@ impl<V: NormalizedAction> Node<V> {
             if !cur_stack.contains(&address) {
                 self.inner.iter_mut().for_each(|n| n.freeze());
                 self.inner.push(n);
-                return true
+                return true;
             }
         }
 
         let last = self.inner.last_mut().expect("building tree went wrong");
-        return last.insert(address, n)
+        return last.insert(address, n);
     }
 
     pub fn get_all_sub_actions(&self) -> Vec<V> {
@@ -46,7 +46,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn current_call_stack(&self) -> Vec<Address> {
         let Some(mut stack) = self.inner.last().map(|n| n.current_call_stack()) else {
-            return vec![self.address]
+            return vec![self.address];
         };
 
         stack.push(self.address);
