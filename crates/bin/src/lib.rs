@@ -1,8 +1,9 @@
 use poirot_core::decoding::{Parser, TypeToParse};
 use std::task::Poll;
 pub mod prometheus_exporter;
-use futures::Future;
+use futures::{Future, StreamExt};
 use poirot_normalizer::{normalized_actions::NormalizedAction, tree::TimeTree};
+use std::pin::Pin;
 use std::task::Context;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
@@ -29,12 +30,28 @@ where
 {
     type Output = ();
 
-    fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
 
+        let mut budget = 1024;
         loop {
-            while let Some(block_traces) = this.parser.unp {}
+            while let Poll::Ready(val) = this.parser.poll_next_unpin(cx) {
+                if val.is_none() {
+                    return Poll::Ready(());
+                }
+
+                match val.unwrap() {
+                    Some(block_traces) => (),
+                    None => (),
+                }
+            }
+            budget -= 1;
+            if budget == 0 {
+                cx.waker().wake_by_ref();
+                break;
+            }
         }
-        Poll::Pending
+
+        return Poll::Pending;
     }
 }
