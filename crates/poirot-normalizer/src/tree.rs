@@ -1,7 +1,9 @@
 use ethers::types::{Address, H256};
 use tracing::error;
 
-pub struct Node<V> {
+use crate::normalized_actions::NormalizedAction;
+
+pub struct Node<V: NormalizedAction> {
     pub inner: Vec<Node<V>>,
     pub frozen: bool,
 
@@ -9,7 +11,7 @@ pub struct Node<V> {
     pub data: V,
 }
 
-impl<V> Node<V> {
+impl<V: NormalizedAction> Node<V> {
     pub fn is_frozen(&self) -> bool {
         self.frozen
     }
@@ -24,17 +26,18 @@ impl<V> Node<V> {
             return false
         }
 
-        let mut cur_stack = self.current_call_stack();
-        cur_stack.pop();
-
-        if address == self.address && (!cur_stack.contains(&address) || cur_stack.is_empty()) {
-            self.inner.iter_mut().for_each(|n| n.freeze());
-            self.inner.push(n);
-            return true
-        } else {
-            let last = self.inner.last_mut().expect("building tree went wrong");
-            return last.insert(address, n)
+        if address == self.address {
+            let mut cur_stack = self.current_call_stack();
+            cur_stack.pop();
+            if !cur_stack.contains(&address) {
+                self.inner.iter_mut().for_each(|n| n.freeze());
+                self.inner.push(n);
+                return true
+            }
         }
+
+        let last = self.inner.last_mut().expect("building tree went wrong");
+        return last.insert(address, n)
     }
 
     pub fn get_all_sub_actions(&self) -> Vec<V> {
@@ -52,13 +55,12 @@ impl<V> Node<V> {
     }
 }
 
-pub struct Root<V> {
+pub struct Root<V: NormalizedAction> {
     pub head: Node<V>,
-
     pub tx_hash: H256,
 }
 
-impl<V> Root<V> {
+impl<V: NormalizedAction> Root<V> {
     pub fn insert(&mut self, from: Address, node: Node<V>) {
         if !self.head.insert(from, node) {
             error!("failed to insert node");
@@ -66,11 +68,11 @@ impl<V> Root<V> {
     }
 }
 
-pub struct TimeTree<V> {
+pub struct TimeTree<V: NormalizedAction> {
     pub roots: Vec<Root<V>>,
 }
 
-impl<V> TimeTree<V> {
+impl<V: NormalizedAction> TimeTree<V> {
     pub fn new(txes: usize) -> Self {
         Self { roots: Vec::with_capacity(txes) }
     }
