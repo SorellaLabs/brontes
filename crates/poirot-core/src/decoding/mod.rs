@@ -12,9 +12,10 @@ use crate::{
     executor::{Executor, TaskKind},
     init_trace,
     stats::TraceMetricEvent,
-    structured_trace::{StructuredTrace, TxTrace},
     success_trace,
 };
+use poirot_types::structured_trace::{StructuredTrace, TxTrace};
+
 use alloy_etherscan::Client;
 use ethers_core::types::Chain;
 use futures::{stream::FuturesUnordered, Stream, StreamExt};
@@ -93,7 +94,7 @@ impl Parser {
 
         if parity_trace.0.is_none() {
             this.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1)).unwrap();
-            return None;
+            return None
         }
 
         let traces = this.parse_block(parity_trace.0.unwrap(), block_num).await;

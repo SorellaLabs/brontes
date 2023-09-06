@@ -1,10 +1,5 @@
-use crate::{
-    errors::TraceParseError,
-    structured_trace::{
-        CallAction,
-        StructuredTrace::{self},
-    },
-};
+use crate::errors::TraceParseError;
+use poirot_types::structured_trace::{CallAction, StructuredTrace};
 extern crate reth_tracing;
 use super::*;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
