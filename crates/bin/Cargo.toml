@@ -66,3 +66,4 @@ alloy-etherscan.workspace = true
 ethers-core.workspace = true
 phf = { version = "0.11.1", default-features = false }
 phf_codegen = "0.11.1"
+eyre.workspace = true

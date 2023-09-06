@@ -44,9 +44,9 @@ reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth
 # Alloy
 alloy-etherscan = {path = "./crates/alloy-etherscan"}
 alloy-sol-types = {git = "https://github.com/alloy-rs/core", package = "alloy-sol-types"}
-alloy-sol-macro = {git = "https://github.com/alloy-rs/core", package = "alloy-sol-macro"}
 alloy-primitives = {git = "https://github.com/alloy-rs/core", package = "alloy-primitives"}
 alloy-json-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-json-abi"}
+alloy-sol-macro = {git = "https://github.com/alloy-rs/core", package = "alloy-sol-macro"}
 alloy-dyn-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi"}
 
 # Async
