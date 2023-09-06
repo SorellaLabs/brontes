@@ -2,6 +2,7 @@ use bin::{prometheus_exporter::initialize, *};
 use colored::Colorize;
 use futures::StreamExt;
 use metrics_process::Collector;
+use poirot_core::decoding::TypeToParse;
 use poirot_core::{decoding::Parser, init_block, stats::TraceMetricsListener, success_block};
 use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
 use reth_tracing::TracingClient;
@@ -85,7 +86,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let (start_block, end_block) = (17794930, 17794931);
     for i in start_block..end_block {
         init_block!(i, start_block, end_block);
-        parser.execute(i);
+        parser.execute(TypeToParse::Block(i));
     }
     info!("Successfully Parsed Blocks {} To {} ", start_block, end_block);
 
