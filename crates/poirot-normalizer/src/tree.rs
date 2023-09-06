@@ -24,10 +24,10 @@ impl<V: NormalizedAction> Node<V> {
         self.frozen = true
     }
 
-    /// The address here is the FROM address for the trace
+    /// The address here is the from address for the trace
     pub fn insert(&mut self, address: Address, n: Node<V>) -> bool {
         if self.frozen {
-            return false;
+            return false
         }
 
         if address == self.address {
@@ -36,12 +36,12 @@ impl<V: NormalizedAction> Node<V> {
             if !cur_stack.contains(&address) {
                 self.inner.iter_mut().for_each(|n| n.freeze());
                 self.inner.push(n);
-                return true;
+                return true
             }
         }
 
         let last = self.inner.last_mut().expect("building tree went wrong");
-        return last.insert(address, n);
+        return last.insert(address, n)
     }
 
     pub fn get_all_sub_actions(&self) -> Vec<V> {
@@ -54,7 +54,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn current_call_stack(&self) -> Vec<Address> {
         let Some(mut stack) = self.inner.last().map(|n| n.current_call_stack()) else {
-            return vec![self.address];
+            return vec![self.address]
         };
 
         stack.push(self.address);
@@ -62,7 +62,7 @@ impl<V: NormalizedAction> Node<V> {
         stack
     }
 
-    pub fn inspect<F>(&mut self, prev: &mut Vec<Vec<V>>, call: &F)
+    pub fn inspect<F>(&mut self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
         F: Fn(&mut Vec<V>) -> bool,
     {
@@ -70,18 +70,17 @@ impl<V: NormalizedAction> Node<V> {
 
         // the previous sub-action was best
         if !call(&mut subactions) {
-            return
+            return false
         }
+        let lower_has_better = self.inner.iter_mut().map(|i| i.inspect(result, call)).any(|f| f);
 
-        // remove parent sub-action as it was suboptimal
-        prev.pop();
-        // add our new best sub-action
-        prev.push(subactions);
-
-        // check if inners are better
-        for inner in &mut self.inner {
-            inner.inspect(prev, call)
+        // if all child nodes don't have a best sub-action. Then the current node is the best
+        if !lower_has_better {
+            result.push(subactions);
+            return true
         }
+        // lower node has a better subaction.
+        return false
     }
 }
 
@@ -125,17 +124,21 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.roots.last_mut().expect("no root_nodes inserted").insert(from, node);
     }
 
-    pub fn inspect<F>(hash: H256, call: F) -> Vec<Vec<V>>
+    pub fn inspect<F>(&mut self, hash: H256, call: F) -> Vec<Vec<V>>
     where
         F: Fn(&mut Vec<V>) -> bool,
     {
-        todo!()
+        if let Some(root) = self.roots.iter_mut().find(|r| r.tx_hash == hash) {
+            return root.inspect(&call)
+        } else {
+            vec![]
+        }
     }
 
-    pub fn inspect_all<F>(call: F) -> HashMap<H256, Vec<Vec<V>>>
+    pub fn inspect_all<F>(&mut self, call: F) -> HashMap<H256, Vec<Vec<V>>>
     where
         F: Fn(&mut Vec<V>) -> bool,
     {
-        todo!()
+        self.roots.iter_mut().map(|r| (r.tx_hash, r.inspect(&call))).collect()
     }
 }

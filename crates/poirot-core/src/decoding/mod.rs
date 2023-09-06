@@ -21,9 +21,13 @@ use futures::{stream::FuturesUnordered, Stream, StreamExt};
 use reth_primitives::{BlockId, BlockNumberOrTag, H256};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType, TransactionTrace};
 use reth_tracing::TracingClient;
-use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::oneshot::{channel, Receiver};
-use tokio::task::JoinHandle;
+use tokio::{
+    sync::{
+        mpsc::UnboundedSender,
+        oneshot::{channel, Receiver},
+    },
+    task::JoinHandle,
+};
 
 use self::parser::TraceParser;
 
@@ -89,7 +93,7 @@ impl Parser {
 
         if parity_trace.0.is_none() {
             this.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1)).unwrap();
-            return None;
+            return None
         }
 
         let traces = this.parse_block(parity_trace.0.unwrap(), block_num).await;

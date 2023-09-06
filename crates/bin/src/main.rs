@@ -2,8 +2,12 @@ use bin::{prometheus_exporter::initialize, *};
 use colored::Colorize;
 use futures::StreamExt;
 use metrics_process::Collector;
-use poirot_core::decoding::TypeToParse;
-use poirot_core::{decoding::Parser, init_block, stats::TraceMetricsListener, success_block};
+use poirot_core::{
+    decoding::{Parser, TypeToParse},
+    init_block,
+    stats::TraceMetricsListener,
+    success_block,
+};
 use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
 use reth_tracing::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;

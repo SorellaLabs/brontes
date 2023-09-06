@@ -45,7 +45,7 @@ async fn run() {
         cc
     } else {
         println!("Clickhouse DB env variables not found: \nCLICKHOUSE_URL\nCLICKHOUSE_PORT\nCLICKHOUSE_USER\nCLICKHOUSE_PASS\nCLICKHOUSE_DATABASE");
-        return;
+        return
     };
     let etherscan_client = build_etherscan();
 
