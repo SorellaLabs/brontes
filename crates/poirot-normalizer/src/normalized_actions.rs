@@ -1,4 +1,5 @@
 pub enum Actions {}
-pub trait NormalizedAction {
+
+pub trait NormalizedAction: Clone{
     fn get_action(&self) -> Actions;
 }
