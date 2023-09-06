@@ -1,0 +1,16 @@
+max_width = 100
+chain_width = 50
+error_on_line_overflow = true
+error_on_unformatted = false
+wrap_comments = true
+use_small_heuristics = "Max"
+use_field_init_shorthand = true
+trailing_semicolon = false
+trailing_comma = "Never"
+imports_granularity = "Crate"
+condense_wildcard_suffixes = true
+enum_discrim_align_threshold = 20
+struct_field_align_threshold = 20
+format_strings = true
+reorder_impl_items = true
+group_imports = "StdExternalCrate"
