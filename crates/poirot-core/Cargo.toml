@@ -35,15 +35,16 @@ lazy_static = "1.4.0"
 futures = "0.3.28"
 
 # Alloy
-alloy-sol-types = {git = "https://github.com/alloy-rs/core", package = "alloy-sol-types"}
-alloy-primitives = {git = "https://github.com/alloy-rs/core", package = "alloy-primitives"}
-alloy-json-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-json-abi"}
-alloy-dyn-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi"}
+alloy-sol-types.workspace = true
+alloy-primitives.workspace = true
+alloy-json-abi.workspace = true
+alloy-dyn-abi.workspace = true
+alloy-etherscan.workspace = true
+
 
 # Ethers
-alloy-etherscan = {path = "../alloy-etherscan"}
-ethers-core = "2.0.7"
-ethers = "2.0.0"
+ethers-core.workspace = true
+ethers.workspace = true
 
 # Revm
 revm-primitives = "1.1.2"
