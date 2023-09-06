@@ -2,8 +2,7 @@ use poirot_core::decoding::Parser;
 use std::task::Poll;
 pub mod prometheus_exporter;
 use futures::Future;
-use poirot_normalizer::normalized_actions::NormalizedAction;
-use poirot_normalizer::tree::TimeTree;
+use poirot_normalizer::{normalized_actions::NormalizedAction, tree::TimeTree};
 use std::task::Context;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
