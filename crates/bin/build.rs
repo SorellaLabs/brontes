@@ -1,6 +1,5 @@
 use clickhouse::{Client, Row};
 use ethers_core::types::{Chain, H160};
-use eyre::Result;
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,18 +34,14 @@ struct ProtocolAbis {
 }
 
 fn main() {
+    println!("cargo:rerun-if-evn-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
     runtime.block_on(run());
 }
 
 async fn run() {
-    let clickhouse_client = if let Ok(cc) = build_db() {
-        cc
-    } else {
-        println!("Clickhouse DB env variables not found: \nCLICKHOUSE_URL\nCLICKHOUSE_PORT\nCLICKHOUSE_USER\nCLICKHOUSE_PASS\nCLICKHOUSE_DATABASE");
-        return;
-    };
+    let clickhouse_client = build_db();
     let etherscan_client = build_etherscan();
 
     let protocol_abis = query_db::<ProtocolAbis>(&clickhouse_client, PROTOCOL_ABIS).await;
@@ -60,12 +55,12 @@ async fn run() {
 }
 
 /// builds the clickhouse database client
-fn build_db() -> Result<Client> {
+fn build_db() -> Client {
     // clickhouse path
     let clickhouse_path = format!(
         "{}:{}",
-        &env::var("CLICKHOUSE_URL")?, //.expect("CLICKHOUSE_URL not found in .env"),
-        &env::var("CLICKHOUSE_PORT")?  //.expect("CLICKHOUSE_PORT not found in .env")
+        &env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
+        &env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env")
     );
 
     // builds the https connector
@@ -75,13 +70,12 @@ fn build_db() -> Result<Client> {
     // builds the clickhouse client
     let client = Client::with_http_client(https_client)
         .with_url(clickhouse_path)
-        .with_user(env::var("CLICKHOUSE_USER")?) //.expect("CLICKHOUSE_USER not found in .env"))
-        .with_password(env::var("CLICKHOUSE_PASS")?) //.expect("CLICKHOUSE_PASS not found in .env"))
+        .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
+        .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
         .with_database(
-            env::var("CLICKHOUSE_DATABASE")?, //.expect("CLICKHOUSE_DATABASE not found in .env"),
+            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
         );
-
-    Ok(client)
+    client
 }
 
 /// builds the etherscan client
