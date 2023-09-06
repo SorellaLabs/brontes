@@ -1,25 +1,27 @@
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+};
 
-use crate::errors::TraceParseErrorKind;
-use crate::executor::TaskKind;
-use crate::stats::TraceMetricEvent;
-use crate::structured_trace::{StructuredTrace, TxTrace};
-use crate::{error_trace, init_trace, success_trace};
-use crate::{errors::TraceParseError, executor::Executor};
+use crate::{
+    error_trace,
+    errors::{TraceParseError, TraceParseErrorKind},
+    executor::{Executor, TaskKind},
+    init_trace,
+    stats::TraceMetricEvent,
+    structured_trace::{StructuredTrace, TxTrace},
+    success_trace,
+};
 use alloy_etherscan::Client;
 use ethers_core::types::Chain;
-use futures::stream::FuturesUnordered;
-use futures::{Stream, StreamExt};
-use reth_primitives::H256;
-use reth_primitives::{BlockId, BlockNumberOrTag};
+use futures::{stream::FuturesUnordered, Stream, StreamExt};
+use reth_primitives::{BlockId, BlockNumberOrTag, H256};
 use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType, TransactionTrace};
 use reth_tracing::TracingClient;
-use tokio::sync::mpsc::UnboundedSender;
-use tokio::task::JoinHandle;
+use tokio::{sync::mpsc::UnboundedSender, task::JoinHandle};
 
 use self::parser::{trace_block, TraceParser};
 
@@ -97,7 +99,7 @@ impl Parser {
                     tx_idx: idx as u64,
                     error: (&TraceParseError::TracesMissingTx(tx_hash.into())).into(),
                 });
-                return;
+                return
             }
 
             self.parse_transaction(transaction_traces.unwrap(), block_num, tx_hash, idx as u64);
