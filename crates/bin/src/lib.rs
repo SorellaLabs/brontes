@@ -4,6 +4,7 @@ pub mod prometheus_exporter;
 use futures::Future;
 use poirot_normalizer::normalized_actions::NormalizedAction;
 use poirot_normalizer::tree::TimeTree;
+use std::task::Context;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
