@@ -1,4 +1,3 @@
-use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
 use ethers_core::types::{Chain, H160};
 use hyper_tls::HttpsConnector;
@@ -12,7 +11,7 @@ use std::{
     str::FromStr,
 };
 
-const BINDINGS_DIRECTORY: &str = "../poirot-core/src/bindings/";
+const BINDINGS_DIRECTORY: &str = "../poirot-core/src/";
 const ABI_DIRECTORY: &str = "../poirot-core/abis/";
 const PROTOCOL_ADDRESS_MAPPING_PATH: &str = "../poirot-core/src/protocol_addr_mapping.rs";
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
@@ -101,32 +100,36 @@ async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
 }
 
 /// writes json abi to file
-fn write_file(file_path: &str) -> &mut File {
+fn write_file(file_path: &str) -> File {
     File::create(&file_path).unwrap();
 
-    let mut file = fs::OpenOptions::new()
+    let file = fs::OpenOptions::new()
         .append(true)
         .read(true)
         .open(&file_path)
         .expect("could not open file");
 
-    //file.write_all(serde_json::to_string(abi).unwrap().as_bytes()).unwrap();
     file
 }
 
 /// writes the provider json abis to files given the protocol name
 async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<ProtocolAbis>) {
+    let mut bindings = Vec::new();
+    bindings.push("use alloy_sol_types::sol;\n\n".to_string());
     for protocol_addr in addresses {
         let abi = get_abi(client.clone(), &protocol_addr.address).await;
         let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
-        let file = write_file(&abi_file_path);
+        let mut file = write_file(&abi_file_path);
         file.write_all(serde_json::to_string(&abi).unwrap().as_bytes()).unwrap();
 
-        let binding: JsonAbi = serde_json::from_value(abi).unwrap();
-
-        let bindings_file_path = get_file_path(&protocol_addr.protocol, BINDINGS_DIRECTORY, ".rs");
-        generate_bindings(&abi_file_path, &abi);
+        let abi_file_path = get_file_path("./abis/", &protocol_addr.protocol, ".json");
+        bindings.push(generate_bindings(&abi_file_path, &protocol_addr.protocol))
     }
+
+    let bindings_file_path = get_file_path(BINDINGS_DIRECTORY, "bindings", ".rs");
+    let mut file = write_file(&bindings_file_path);
+    let bindings_str = bindings.join("\n");
+    file.write_all(bindings_str.as_bytes()).unwrap();
 }
 
 /// creates a mapping of each address to an abi
@@ -147,6 +150,11 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
         phf_map.build()
     )
     .unwrap();
+}
+
+/// generates the bindings
+fn generate_bindings(file_path: &str, protocol_name: &str) -> String {
+    format!("sol! ({}, \"{}\");", protocol_name, file_path)
 }
 
 /// generates a file path as <DIRECTORY>/<FILENAME><SUFFIX>
