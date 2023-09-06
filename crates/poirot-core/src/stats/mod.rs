@@ -1,70 +1,36 @@
 pub mod macros;
 pub mod metrics;
+pub(crate) mod types;
 
+use reth_primitives::H256;
+use revm_primitives::B256;
 use std::{
     future::Future,
     pin::Pin,
     task::{ready, Context, Poll},
 };
-
-use revm_primitives::B256;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tracing::trace;
 
 use crate::errors::TraceParseErrorKind;
 
-use self::metrics::{TraceMetrics, TransactionTracingMetrics};
+use self::{
+    metrics::{TraceMetrics, TransactionTracingMetrics},
+    types::*,
+};
 
 /// Alias type for metric producers to use.
 pub type TraceMetricEventsSender = UnboundedSender<TraceMetricEvent>;
 
 /// metric event for individual traces
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum TraceMetricEvent {
     /// relay recorded a new live block
-    TraceMetricRecieved {
-        /// block number of the new live block
-        block_num: u64,
-        /// the relay
-        tx_hash: B256,
-        /// The tB256action index in the block
-        tx_idx: u64,
-        /// The trace index in the transaction
-        tx_trace_idx: u64,
-        /// error type
-        error: Option<TraceParseErrorKind>,
-    },
+    TraceMetricRecieved(TraceStats),
     /// relay recorded a new live block
-    TransactionMetricRecieved {
-        /// block number of the new live block
-        block_num: u64,
-        /// the relay
-        tx_hash: B256,
-        /// The tB256action index in the block
-        tx_idx: u64,
-        /// The trace index in the transaction
-        tx_trace_idx: u64,
-        /// error type
-        error: Option<TraceParseErrorKind>,
-    },
+    TransactionMetricRecieved(TransactionStats),
     /// relay recorded a new live block
-    TxTracingErrorMetric {
-        /// block number of the new live block
-        block_num: u64,
-        /// the relay
-        tx_hash: B256,
-        /// The tB256action index in the block
-        tx_idx: u64,
-        /// error type
-        error: TraceParseErrorKind,
-    },
-    /// relay recorded a new live block
-    BlockTracingErrorMetric {
-        /// block number of the new live block
-        block_num: u64,
-        /// error type
-        error: TraceParseErrorKind,
-    },
+    BlockMetricRecieved(BlockStats),
 }
 
 /// Metrics routine that listens to new metric events on the `events_rx` receiver.
@@ -84,6 +50,10 @@ impl TraceMetricsListener {
     fn handle_event(&mut self, event: TraceMetricEvent) {
         trace!(target: "tracing::metrics", ?event, "Metric event received");
         match event {
+            TraceMetricEvent::TraceMetricRecieved(_) => (), //TO IMPLEMENT
+            TraceMetricEvent::TransactionMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+            TraceMetricEvent::BlockMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+            /*
             TraceMetricEvent::TraceMetricRecieved {
                 block_num,
                 tx_hash,
@@ -104,13 +74,7 @@ impl TraceMetricsListener {
                     tx_metrics.success_traces.increment(1);
                 }
             }
-            TraceMetricEvent::TransactionMetricRecieved {
-                block_num,
-                tx_hash,
-                tx_idx,
-                tx_trace_idx,
-                error,
-            } => (), //todo
+            TraceMetricEvent::TransactionMetricRecieved { block_num, tx_hash, tx_idx, error } => (), //todo
             TraceMetricEvent::BlockTracingErrorMetric { block_num, error } => (),
             TraceMetricEvent::TxTracingErrorMetric { block_num, tx_hash, tx_idx, error } => {
                 let tx_metrics = self.tx_metrics.get_transaction_metrics(format!("{:#x}", tx_hash));
@@ -122,6 +86,8 @@ impl TraceMetricsListener {
                 tx_metrics.error_traces.increment(1);
                 increment_error(tx_metrics, error);
             }
+            TraceMetricEvent::BlockMetricRecieved { block_num, error } => (),
+             */
         }
     }
 }
