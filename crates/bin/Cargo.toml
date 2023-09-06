@@ -7,7 +7,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# poirot
 poirot-core.workspace = true
+poirot-inspect.workspace = true
+poirot-normalizer.workspace = true
 
 # Async
 tokio = { workspace = true, features = ["full", "tracing"] }
@@ -66,4 +69,3 @@ alloy-etherscan.workspace = true
 ethers-core.workspace = true
 phf = { version = "0.11.1", default-features = false }
 phf_codegen = "0.11.1"
-eyre.workspace = true
