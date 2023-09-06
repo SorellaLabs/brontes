@@ -22,15 +22,15 @@ use self::{
 /// Alias type for metric producers to use.
 pub type TraceMetricEventsSender = UnboundedSender<TraceMetricEvent>;
 
-/// metric event for individual traces
+/// metric event for traces
 #[derive(Clone, Debug)]
 pub enum TraceMetricEvent {
-    /// relay recorded a new live block
-    TraceMetricRecieved(TraceStats),
-    /// relay recorded a new live block
-    TransactionMetricRecieved(TransactionStats),
-    /// relay recorded a new live block
+    /// recorded a new block trace
     BlockMetricRecieved(BlockStats),
+    /// recorded a new tx trace
+    TransactionMetricRecieved(TransactionStats),
+    /// recorded a new individual tx trace
+    TraceMetricRecieved(TraceStats),
 }
 
 /// Metrics routine that listens to new metric events on the `events_rx` receiver.
@@ -103,7 +103,7 @@ impl Future for TraceMetricsListener {
         loop {
             let Some(event) = ready!(this.events_rx.poll_recv(cx)) else {
                 // Channel has closed
-                return Poll::Ready(())
+                return Poll::Ready(());
             };
 
             this.handle_event(event);
