@@ -48,7 +48,7 @@ type TraceIndex = u16;
 
 pub struct Parser {
     executor: Executor,
-    parser_fut: FuturesUnordered<JoinHandle<Option<ParsedType>>>,
+    parser_fut: FuturesUnordered<JoinHandle<Option<Vec<TxTrace>>>>,
     parser: Arc<TraceParser>,
 }
 
@@ -89,7 +89,7 @@ impl Parser {
     }
 
     /// executes the tracing of a given block
-    async fn execute_block(this: self::Arc<TraceParser>, block_num: u64) -> Option<ParsedType> {
+    async fn execute_block(this: self::Arc<TraceParser>, block_num: u64) -> Option<Vec<TxTrace>> {
         let parity_trace = this.trace_block(block_num).await;
 
         if parity_trace.0.is_none() {
@@ -99,12 +99,12 @@ impl Parser {
 
         let traces = this.parse_block(parity_trace.0.unwrap(), block_num).await;
         this.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(traces.1)).unwrap();
-        Some(ParsedType::Block(traces.0, block_num))
+        Some(traces.0)
     }
 }
 
 impl Stream for Parser {
-    type Item = Option<ParsedType>;
+    type Item = Option<Vec<TxTrace>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -127,9 +127,11 @@ pub enum TypeToParse {
     TxTrace((H256, u16)), // if we want to parser a single trace in a tx
 }
 
+/*
 pub enum ParsedType {
     Block(Vec<TxTrace>, BlockNumber),
     // see above enum for more inputs
     // Tx(...)
     // TxTrace(...)
 }
+*/
