@@ -12,9 +12,10 @@ use crate::{
     executor::{Executor, TaskKind},
     init_trace,
     stats::TraceMetricEvent,
-    structured_trace::{StructuredTrace, TxTrace},
     success_trace,
 };
+use poirot_types::structured_trace::{StructuredTrace, TxTrace};
+
 use alloy_etherscan::Client;
 use ethers_core::types::Chain;
 use futures::{stream::FuturesUnordered, Stream, StreamExt};

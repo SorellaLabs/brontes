@@ -1,4 +1,4 @@
-use ethers::types::{Address, H256};
+use reth_primitives::{Address, H256, U256};
 use std::collections::HashMap;
 use tracing::error;
 
