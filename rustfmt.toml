@@ -1,5 +1,5 @@
 max_width = 100
-chain_width = 50
+chain_width = 60
 error_on_line_overflow = true
 error_on_unformatted = false
 wrap_comments = true
