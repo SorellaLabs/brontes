@@ -75,7 +75,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let (metrics_tx, metrics_rx) = unbounded_channel();
     let metrics_listener = tokio::spawn(async move { TraceMetricsListener::new(metrics_rx).await });
 
-    let parser = Parser::new(metrics_tx, &key, &db_path);
+    let mut parser = Parser::new(metrics_tx, &key, &db_path);
 
     // you have a intermediate parse function for the range of blocks you want to parse
     // it collects the aggregate stats of each block stats
@@ -88,12 +88,6 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         parser.execute(i);
     }
     info!("Successfully Parsed Blocks {} To {} ", start_block, end_block);
-
-    let mut traces = Vec::new();
-
-    loop {
-        while let Poll::Ready(val) = parser.poll_next_unpin() {}
-    }
 
     metrics_listener.await?;
     Ok(())

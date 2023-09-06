@@ -49,8 +49,8 @@ ethers = "2.0.0"
 revm-primitives = "1.1.2"
 
 # Serde 
-serde = { version = "1.0" }
-serde_json = { version = "1.0" }
+serde.workspace = true
+serde_json.workspace = true
 
 # error handling
 eyre = "0.6.8"
