@@ -20,6 +20,9 @@ revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
 # Poirot
 poirot-core = { path = "./crates/poirot-core" }
 
+# Ethers
+ethers-core = "2.0.7"
+ethers = "2.0.0"
 
 # Reth
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "31af4d5" }
@@ -36,6 +39,13 @@ reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = 
 reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "31af4d5"}
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "31af4d5"}
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", rev = "31af4d5"}
+
+# Alloy
+alloy-etherscan = {path = "./crates/alloy-etherscan"}
+alloy-sol-types = {git = "https://github.com/alloy-rs/core", package = "alloy-sol-types"}
+alloy-primitives = {git = "https://github.com/alloy-rs/core", package = "alloy-primitives"}
+alloy-json-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-json-abi"}
+alloy-dyn-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi"}
 
 # Async
 tokio = "1.13.0"
@@ -66,6 +76,7 @@ serde_json = { version = "1.0" }
 # Misc
 c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
 eyre = "0.6.8"
+hex-literal = "0.4.1"
 
 [patch."https://github.com/ethereum/c-kzg-4844"]
 c-kzg = { git = "https://github.com/rjected/c-kzg-4844", branch = "dan/add-serde-feature" }
