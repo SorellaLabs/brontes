@@ -1,17 +1,35 @@
+use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
+use ethers_core::types::{Chain, H160};
+use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
-use std::env;
+use serde_json::Value;
+use std::{
+    env,
+    fs::{self, File},
+    io::{BufWriter, Write},
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
-const PROTOCOL_ADDRESS_QUERY: &str = "
-SELECT
-    protocol,
-    any(address) AS address
-FROM pools
-GROUP BY protocol
-";
+const BINDINGS_DIRECTORY: &str = "../poirot-core/src/bindings/";
+const ABI_DIRECTORY: &str = "../poirot-core/abis/";
+const PROTOCOL_ADDRESS_MAPPING_PATH: &str = "../poirot-core/src/protocol_addr_mapping.rs";
+const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
+const CACHE_DIRECTORY: &str = "./abi_cache";
+const PROTOCOL_ADDRESSES: &str =
+    "SELECT protocol, groupArray(toString(address)) AS addresses FROM pools GROUP BY protocol";
+const PROTOCOL_ABIS: &str =
+    "SELECT protocol, toString(any(address)) AS address FROM pools GROUP BY protocol";
 
-#[derive(Serialize, Deserialize, Row)]
-struct ProtocolAbiAddress {
+#[derive(Debug, Serialize, Deserialize, Row)]
+struct AddressToProtocolMapping {
+    protocol: String,
+    addresses: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Row)]
+struct ProtocolAbis {
     protocol: String,
     address: String,
 }
@@ -19,7 +37,21 @@ struct ProtocolAbiAddress {
 fn main() {
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
+    runtime.block_on(run());
+}
+
+async fn run() {
     let clickhouse_client = build_db();
+    let etherscan_client = build_etherscan();
+
+    let protocol_abis = query_db::<ProtocolAbis>(&clickhouse_client, PROTOCOL_ABIS).await;
+
+    write_all_abis(etherscan_client, protocol_abis).await;
+
+    let protocol_address_map =
+        query_db::<AddressToProtocolMapping>(&clickhouse_client, PROTOCOL_ADDRESSES).await;
+
+    address_abi_mapping(protocol_address_map)
 }
 
 /// builds the clickhouse database client
@@ -31,9 +63,12 @@ fn build_db() -> Client {
         &env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env")
     );
 
+    // builds the https connector
+    let https = HttpsConnector::new();
+    let https_client = hyper::Client::builder().build::<_, hyper::Body>(https);
+
     // builds the clickhouse client
-    let http_client = hyper::Client::builder().pool_max_idle_per_host(10).build_http();
-    let client = Client::with_http_client(http_client)
+    let client = Client::with_http_client(https_client)
         .with_url(clickhouse_path)
         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
         .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
@@ -43,7 +78,81 @@ fn build_db() -> Client {
     client
 }
 
+/// builds the etherscan client
+fn build_etherscan() -> alloy_etherscan::Client {
+    alloy_etherscan::Client::new_cached(
+        Chain::Mainnet,
+        env::var("ETHERSCAN_API_KEY").expect("ETHERSCAN_API_KEY not found in .env"),
+        Some(PathBuf::from(CACHE_DIRECTORY)),
+        CACHE_TIMEOUT,
+    )
+    .unwrap()
+}
+
 /// queries the db
-async fn query_db(db: Client, query: String) -> Vec<ProtocolAbiAddress> {
-    db.query(&query).fetch_all::<ProtocolAbiAddress>().await.unwrap()
+async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
+    db.query(query).fetch_all::<T>().await.unwrap()
+}
+
+/// gets the abi's for the given addresses from etherscan
+async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
+    let raw = client.raw_contract(H160::from_str(&address).unwrap()).await.unwrap();
+    serde_json::from_str(&raw).unwrap()
+}
+
+/// writes json abi to file
+fn write_file(file_path: &str) -> &mut File {
+    File::create(&file_path).unwrap();
+
+    let mut file = fs::OpenOptions::new()
+        .append(true)
+        .read(true)
+        .open(&file_path)
+        .expect("could not open file");
+
+    //file.write_all(serde_json::to_string(abi).unwrap().as_bytes()).unwrap();
+    file
+}
+
+/// writes the provider json abis to files given the protocol name
+async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<ProtocolAbis>) {
+    for protocol_addr in addresses {
+        let abi = get_abi(client.clone(), &protocol_addr.address).await;
+        let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
+        let file = write_file(&abi_file_path);
+        file.write_all(serde_json::to_string(&abi).unwrap().as_bytes()).unwrap();
+
+        let binding: JsonAbi = serde_json::from_value(abi).unwrap();
+
+        let bindings_file_path = get_file_path(&protocol_addr.protocol, BINDINGS_DIRECTORY, ".rs");
+        generate_bindings(&abi_file_path, &abi);
+    }
+}
+
+/// creates a mapping of each address to an abi
+fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
+    let path = Path::new(PROTOCOL_ADDRESS_MAPPING_PATH);
+    let mut file = BufWriter::new(File::create(&path).unwrap());
+
+    let mut phf_map = phf_codegen::Map::new();
+    for map in &mapping {
+        for address in &map.addresses {
+            phf_map.entry(address, &format!("\"{}\"", &map.protocol));
+        }
+    }
+
+    writeln!(
+        &mut file,
+        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<&'static str, &'static str> = \n{};\n",
+        phf_map.build()
+    )
+    .unwrap();
+}
+
+/// generates a file path as <DIRECTORY>/<FILENAME><SUFFIX>
+fn get_file_path(directory: &str, file_name: &str, suffix: &str) -> String {
+    let mut file_path = directory.to_string();
+    file_path.push_str(file_name);
+    file_path.push_str(suffix);
+    file_path
 }
