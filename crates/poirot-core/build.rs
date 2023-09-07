@@ -11,11 +11,11 @@ use std::{
     str::FromStr,
 };
 
-const BINDINGS_DIRECTORY: &str = "../poirot-core/src/";
-const ABI_DIRECTORY: &str = "../poirot-core/abis/";
+const BINDINGS_DIRECTORY: &str = "./src/";
+const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_MAPPING_PATH: &str = "protocol_addr_mapping.rs";
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
-const CACHE_DIRECTORY: &str = "./abi_cache";
+const CACHE_DIRECTORY: &str = "../../abi_cache";
 const PROTOCOL_ADDRESSES: &str =
     "SELECT protocol, groupArray(toString(address)) AS addresses FROM pools GROUP BY protocol";
 const PROTOCOL_ABIS: &str =
