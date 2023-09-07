@@ -25,6 +25,7 @@ revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
 poirot-core = { path = "./crates/poirot-core" }
 poirot-inspect = { path = "./crates/poirot-inspect" }
 poirot-types = { path = "./crates/poirot-types/" }
+poirot-classifer = { path = "./crates/poirot-classifer/" }
 reth-tracing = { path = "./crates/reth-tracing/" }
 
 # Ethers
