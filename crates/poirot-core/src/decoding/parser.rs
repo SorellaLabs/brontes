@@ -1,4 +1,5 @@
 use crate::{
+    bindings::{Curve_Crypto_Factory_V2, StaticBindings},
     decoding::utils::*,
     errors::TraceParseError,
     stats::types::{BlockStats, TraceStats, TransactionStats},
@@ -154,6 +155,7 @@ impl TraceParser {
             return Ok(decode_trace_action(&trace));
         };
 
+        let binding = StaticBindings::Curve_Crypto_Factory_V2;
         let addr = format!("{:#x}", action.from);
         let abi = if let Some(abi_path) = PROTOCOL_ADDRESS_MAPPING.get(&addr) {
             serde_json::from_str(abi_path).map_err(|e| TraceParseError::AbiParseError(e))?
