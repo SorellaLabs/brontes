@@ -92,7 +92,7 @@ pub struct CallAction {
     /// Name of the function that has been called.
     pub function_name: String,
     /// Vector of inputs to the function.
-    pub inputs: Option<DynSolValue>,
+    pub inputs: Option<SolValueType>,
     //
     pub trace_address: Vec<usize>,
 }
@@ -104,9 +104,15 @@ impl CallAction {
         to: Address,
         value: U256,
         function_name: String,
-        inputs: Option<DynSolValue>,
+        inputs: Option<SolValueType>,
         trace_address: Vec<usize>,
     ) -> Self {
         Self { from, to, value, function_name, inputs, trace_address }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum SolValueType {
+    Dynamic(DynSolValue),
+    Static,
 }

@@ -1,5 +1,5 @@
 use crate::errors::TraceParseError;
-use poirot_types::structured_trace::{CallAction, StructuredTrace};
+use poirot_types::structured_trace::{CallAction, SolValueType, StructuredTrace};
 extern crate reth_tracing;
 use super::*;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
@@ -44,7 +44,7 @@ pub(crate) fn decode_input_with_abi(
                             action.to,
                             action.value,
                             function.name.clone(),
-                            Some(decoded_params),
+                            Some(SolValueType::Dynamic(decoded_params)),
                             trace_address.to_owned(),
                         )))
                     }
@@ -56,6 +56,9 @@ pub(crate) fn decode_input_with_abi(
 
     Err(TraceParseError::InvalidFunctionSelector((*tx_hash).into()))
 }
+
+/// statically decodes call data using the abi bindings
+pub(crate) fn static_decode() -> Result<StructuredTrace, TraceParseError> {}
 
 pub(crate) fn handle_empty_input(
     abi: &JsonAbi,
@@ -104,6 +107,3 @@ pub(crate) fn decode_trace_action(transaction_trace: &TransactionTrace) -> Struc
         _ => panic!("Should never be reached"),
     }
 }
-
-// statically decodes call data using the abi bindings
-//pub(crate) fn
