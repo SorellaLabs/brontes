@@ -5,8 +5,7 @@ use super::*;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_json_abi::{JsonAbi, StateMutability};
 use alloy_sol_types::sol;
-use reth_primitives::{H160, H256, U256};
-use reth_rpc_types::trace::parity::Action;
+use reth_primitives::{H256, U256};
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, TransactionTrace,
 };
@@ -105,3 +104,6 @@ pub(crate) fn decode_trace_action(transaction_trace: &TransactionTrace) -> Struc
         _ => panic!("Should never be reached"),
     }
 }
+
+// statically decodes call data using the abi bindings
+//pub(crate) fn

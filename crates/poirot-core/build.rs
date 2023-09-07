@@ -34,8 +34,8 @@ struct ProtocolAbis {
 }
 
 fn main() {
-    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     dotenv::dotenv().ok();
+    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
     runtime.block_on(run());
@@ -118,6 +118,7 @@ fn write_file(file_path: &str) -> File {
 async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<ProtocolAbis>) {
     let mut bindings = Vec::new();
     bindings.push("use alloy_sol_types::sol;\n\n".to_string());
+    let mut enum_bindings = "\n\npub enum StaticBindings {\n".to_string();
     for protocol_addr in addresses {
         let abi = get_abi(client.clone(), &protocol_addr.address).await;
         let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
@@ -125,38 +126,68 @@ async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<Protocol
         file.write_all(serde_json::to_string(&abi).unwrap().as_bytes()).unwrap();
 
         let abi_file_path = get_file_path("./abis/", &protocol_addr.protocol, ".json");
-        bindings.push(generate_bindings(&abi_file_path, &protocol_addr.protocol))
+        let one_binding = generate_bindings(&abi_file_path, &protocol_addr.protocol);
+        bindings.push(one_binding.0);
+        enum_bindings.push_str(&one_binding.1);
     }
+    enum_bindings.push_str("}");
 
     let bindings_file_path = get_file_path(BINDINGS_DIRECTORY, "bindings", ".rs");
     let mut file = write_file(&bindings_file_path);
-    let bindings_str = bindings.join("\n");
+    let mut bindings_str = bindings.join("\n");
+    bindings_str.push_str(&enum_bindings);
     file.write_all(bindings_str.as_bytes()).unwrap();
 }
 
-/// creates a mapping of each address to an abi
+/// creates a mapping of each address to an abi binding
 fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_MAPPING_PATH);
+    //let path = Path::new("./src/").join(PROTOCOL_ADDRESS_MAPPING_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
+    file.write_all("use crate::bindings::StaticBindings;\n\n".as_bytes()).unwrap();
 
     let mut phf_map = phf_codegen::Map::new();
     for map in &mapping {
         for address in &map.addresses {
-            phf_map.entry(address, &format!("\"{}\"", &map.protocol));
+            phf_map.entry(
+                address,
+                &format!(
+                    "StaticBindings::{}",
+                    &map.protocol
+                ),
+            );
         }
     }
 
     writeln!(
         &mut file,
-        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<&'static str, &'static str> = \n{};\n",
+        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<&'static str, StaticBindings> = \n{};\n",
         phf_map.build()
     )
     .unwrap();
+
+    //write_lib("./src/lib.rs");
+}
+
+/// writes the built module into the lib
+fn write_lib(path: &str) {
+    let mut insert_str = "pub mod protocol_addr_mapping;".to_string();
+
+    let input = fs::read_to_string(&path).unwrap();
+    let exists_in_file = input.lines().any(|line| line.contains(&insert_str));
+    insert_str.push_str("\n");
+    if !exists_in_file {
+        let mut file = write_file(path);
+        insert_str.push_str(&input);
+        file.write_all(insert_str.as_bytes()).unwrap();
+    }
 }
 
 /// generates the bindings
-fn generate_bindings(file_path: &str, protocol_name: &str) -> String {
-    format!("sol! ({}, \"{}\");", protocol_name, file_path)
+fn generate_bindings(file_path: &str, protocol_name: &str) -> (String, String) {
+    let binding = format!("sol! ({}, \"{}\");", protocol_name, file_path);
+    let enum_binding = format!("   {},\n", protocol_name);
+    (binding, enum_binding)
 }
 
 /// generates a file path as <DIRECTORY>/<FILENAME><SUFFIX>
