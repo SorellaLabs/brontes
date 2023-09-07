@@ -9,7 +9,6 @@ use poirot_types::structured_trace::{
     CallAction,
     StructuredTrace::{self},
 };
-
 use reth_tracing::TracingClient;
 
 use super::{utils::IDiamondLoupe::facetAddressCall, *};
@@ -175,27 +174,6 @@ impl TraceParser {
                 )))
             }
         }
-
-        /*
-        let err: Option<TraceParseErrorKind> = if let Err(e) = &structured_trace {
-            error_trace!(tx_hash, e);
-            Some(e.into())
-        } else {
-            success_trace!(tx_hash);
-            None
-        };
-
-        let res = if err.is_none() { Some(structured_trace.unwrap()) } else { None };
-
-        let _ = self.metrics_tx.send(TraceMetricEvent::TraceMetricRecieved {
-            block_num,
-            tx_hash,
-            tx_idx,
-            tx_trace_idx: trace_idx,
-            error: err.map(|e| e.into()),
-        });
-
-        res*/
     }
 
     /// cycles through all possible abi decodings
