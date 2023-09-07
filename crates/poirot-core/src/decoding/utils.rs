@@ -104,3 +104,6 @@ pub(crate) fn decode_trace_action(transaction_trace: &TransactionTrace) -> Struc
         _ => panic!("Should never be reached"),
     }
 }
+
+// statically decodes call data using the abi bindings
+//pub(crate) fn
