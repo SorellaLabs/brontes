@@ -142,7 +142,6 @@ async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<Protocol
 /// creates a mapping of each address to an abi binding
 fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_MAPPING_PATH);
-    //let path = Path::new("./src/").join(PROTOCOL_ADDRESS_MAPPING_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
     file.write_all("use crate::bindings::StaticBindings;\n\n".as_bytes()).unwrap();
 
@@ -159,22 +158,6 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
         phf_map.build()
     )
     .unwrap();
-
-    //write_lib("./src/lib.rs");
-}
-
-/// writes the built module into the lib
-fn write_lib(path: &str) {
-    let mut insert_str = "pub mod protocol_addr_mapping;".to_string();
-
-    let input = fs::read_to_string(&path).unwrap();
-    let exists_in_file = input.lines().any(|line| line.contains(&insert_str));
-    insert_str.push_str("\n");
-    if !exists_in_file {
-        let mut file = write_file(path);
-        insert_str.push_str(&input);
-        file.write_all(insert_str.as_bytes()).unwrap();
-    }
 }
 
 /// generates the bindings
