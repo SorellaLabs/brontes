@@ -1,4 +1,4 @@
-use reth_primitives::{Address, H256, U256};
+use reth_primitives::{Address, H256};
 use std::collections::HashMap;
 use tracing::error;
 
@@ -74,13 +74,22 @@ impl<V: NormalizedAction> Node<V> {
         }
         let lower_has_better = self.inner.iter_mut().map(|i| i.inspect(result, call)).any(|f| f);
 
-        // if all child nodes don't have a best sub-action. Then the current node is the best
+        // if all child nodes don't have a best sub-action. Then the current node is the best.
         if !lower_has_better {
             result.push(subactions);
             return true
         }
-        // lower node has a better subaction.
+        // lower node has a better sub-action.
         return false
+    }
+
+    pub fn map<F>(&mut self, call: &F)
+    where
+        F: Fn(&mut Node<V>) -> bool,
+    {
+        if call(self) {
+            self.inner.iter_mut().for_each(|i| i.map(call))
+        }
     }
 }
 
@@ -104,6 +113,13 @@ impl<V: NormalizedAction> Root<V> {
         self.head.inspect(&mut result, call);
 
         result
+    }
+
+    pub fn map<F>(&mut self, call: &F)
+    where
+        F: Fn(&mut Node<V>) -> bool,
+    {
+        self.head.map(call)
     }
 }
 
@@ -140,5 +156,13 @@ impl<V: NormalizedAction> TimeTree<V> {
         F: Fn(&mut Vec<V>) -> bool,
     {
         self.roots.iter_mut().map(|r| (r.tx_hash, r.inspect(&call))).collect()
+    }
+
+    /// returns true if the mapper wants to execute on a lower node
+    pub fn map<F>(&mut self, call: &F)
+    where
+        F: Fn(&mut Node<V>) -> bool,
+    {
+        self.roots.iter_mut().for_each(|root| root.map(call));
     }
 }
