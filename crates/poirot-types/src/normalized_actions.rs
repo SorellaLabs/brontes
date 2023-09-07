@@ -1,6 +1,6 @@
-use reth_primitives::{Address, U256};
+use reth_primitives::{Address, Log, U256};
 
-use crate::structured_trace::StructuredTrace;
+use crate::structured_trace::{StructuredTrace, TxTrace};
 
 #[derive(Debug, Clone, Default)]
 pub enum Actions {
@@ -8,13 +8,14 @@ pub enum Actions {
     Transfer(NormalizedTransfer),
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
-    Unclassified(StructuredTrace),
+    Unclassified(TxTrace),
     #[default]
     None,
 }
 
 #[derive(Debug, Clone)]
 pub struct NormalizedSwap {
+    pub address: Address,
     pub token_in: Address,
     pub token_out: Address,
     pub amount_in: U256,

@@ -1,5 +1,5 @@
 use alloy_dyn_abi::DynSolValue;
-use reth_primitives::{Address, H256, U256};
+use reth_primitives::{Address, Log, H256, U256};
 use reth_rpc_types::trace::parity::{CreateAction, RewardAction, SelfdestructAction};
 
 use crate::{
@@ -37,15 +37,22 @@ impl StructuredTrace {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct TxTrace {
     pub trace: Vec<StructuredTrace>,
+    pub logs: Vec<Log>,
     pub tx_hash: H256,
     pub tx_index: usize,
 }
 
 impl TxTrace {
-    pub fn new(trace: Vec<StructuredTrace>, tx_hash: H256, tx_index: usize) -> Self {
-        Self { trace, tx_hash, tx_index }
+    pub fn new(
+        trace: Vec<StructuredTrace>,
+        tx_hash: H256,
+        logs: Vec<Log>,
+        tx_index: usize,
+    ) -> Self {
+        Self { trace, tx_hash, tx_index, logs }
     }
 }
 

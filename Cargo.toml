@@ -4,10 +4,10 @@ members = [
   "crates/bin",
   "crates/alloy-etherscan",
   "crates/reth-tracing",
-  "crates/tracing",
   "crates/poirot-inspect",
   "crates/poirot-types",
   "crates/poirot-classifer",
+  "crates/tracing",
 ]
 
 
@@ -25,6 +25,7 @@ revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
 poirot-core = { path = "./crates/poirot-core" }
 poirot-inspect = { path = "./crates/poirot-inspect" }
 poirot-types = { path = "./crates/poirot-types/" }
+reth-tracing = { path = "./crates/reth-tracing/" }
 
 # Ethers
 ethers-core = "2.0.7"
@@ -69,7 +70,6 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
   "env-filter",
   "fmt",
 ] }
-reth-tracing = { path = "./crates/reth-tracing" }
 colored = "2.0"
 
 # Metrics
