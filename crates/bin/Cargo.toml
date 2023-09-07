@@ -58,15 +58,3 @@ eyre.workspace = true
 hyper.workspace = true
 
 
-[build-dependencies]
-tokio.workspace = true
-clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
-hyper.workspace = true
-hyper-tls = "0.5.0"
-serde.workspace = true
-serde_json.workspace = true
-alloy-etherscan.workspace = true
-ethers-core.workspace = true
-phf = { version = "0.11.1", default-features = false }
-phf_codegen = "0.11.1"
-dotenv = "0.15.0"
