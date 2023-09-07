@@ -85,7 +85,7 @@ impl Parser {
 
         if parity_trace.0.is_none() {
             this.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1)).unwrap();
-            return None;
+            return None
         }
 
         let traces = this.parse_block(parity_trace.0.unwrap(), block_num).await;
