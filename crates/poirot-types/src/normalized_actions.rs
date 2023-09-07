@@ -8,7 +8,7 @@ pub enum Actions {
     Transfer(NormalizedTransfer),
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
-    Unclassified(TxTrace),
+    Unclassified(StructuredTrace, Vec<Log>),
     #[default]
     None,
 }

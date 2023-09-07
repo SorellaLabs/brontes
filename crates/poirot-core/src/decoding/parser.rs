@@ -99,7 +99,7 @@ impl TraceParser {
                     traces: vec![],
                     err: Some(TraceParseErrorKind::TracesMissingTx),
                 });
-                continue;
+                continue
             }
 
             let tx_traces = self
@@ -159,7 +159,7 @@ impl TraceParser {
         let (action, trace_address) = if let RethAction::Call(call) = trace.action {
             (call, trace.trace_address)
         } else {
-            return Ok(decode_trace_action(&trace));
+            return Ok(decode_trace_action(&trace))
         };
 
         //let binding = StaticBindings::Curve_Crypto_Factory_V2;
@@ -173,7 +173,7 @@ impl TraceParser {
         // Check if the input is empty, indicating a potential `receive` or `fallback` function
         // call.
         if action.input.is_empty() {
-            return handle_empty_input(&abi, &action, &trace_address, &tx_hash);
+            return handle_empty_input(&abi, &action, &trace_address, &tx_hash)
         }
 
         match self.abi_decoding_pipeline(&abi, &action, &trace_address, &tx_hash, block_num).await {
@@ -206,7 +206,7 @@ impl TraceParser {
         // check decoding with the regular abi
         if let Ok(structured_trace) = decode_input_with_abi(&abi, &action, &trace_address, &tx_hash)
         {
-            return Ok(structured_trace);
+            return Ok(structured_trace)
         };
 
         // tries to get the proxy abi -> decode
@@ -214,7 +214,7 @@ impl TraceParser {
         if let Ok(structured_trace) =
             decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash)
         {
-            return Ok(structured_trace);
+            return Ok(structured_trace)
         };
 
         // tries to decode with the new abi
@@ -223,7 +223,7 @@ impl TraceParser {
         if let Ok(structured_trace) =
             decode_input_with_abi(&diamond_proxy_abi, &action, &trace_address, &tx_hash)
         {
-            return Ok(structured_trace);
+            return Ok(structured_trace)
         };
 
         Err(TraceParseError::AbiDecodingFailed(tx_hash.clone().into()))

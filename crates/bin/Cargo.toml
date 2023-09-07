@@ -11,6 +11,7 @@ edition = "2021"
 poirot-core.workspace = true
 poirot-inspect.workspace = true
 poirot-types.workspace = true
+poirot-classifer.workspace = true
 
 # Async
 tokio = { workspace = true, features = ["full", "tracing"] }
