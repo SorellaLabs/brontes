@@ -35,10 +35,10 @@ impl Future for Poirot {
             iters -= 1;
             if iters == 0 {
                 cx.waker().wake_by_ref();
-                break;
+                break
             }
         }
 
-        return Poll::Pending;
+        return Poll::Pending
     }
 }

@@ -7,6 +7,7 @@ members = [
   "crates/tracing",
   "crates/poirot-inspect",
   "crates/poirot-types",
+  "crates/poirot-classifer",
 ]
 
 
