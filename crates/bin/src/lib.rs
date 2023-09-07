@@ -1,7 +1,7 @@
-use poirot_core::{
-    decoding::{Parser, TypeToParse},
-    structured_trace::TxTrace,
-};
+use poirot_core::decoding::{Parser, TypeToParse};
+
+use poirot_types::structured_trace::TxTrace;
+
 use std::task::Poll;
 pub mod prometheus_exporter;
 use futures::{Future, StreamExt};
