@@ -5,7 +5,8 @@ use super::*;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_json_abi::{JsonAbi, StateMutability};
 use alloy_sol_types::sol;
-use reth_primitives::{H256, U256};
+use reth_primitives::{H160, H256, U256};
+use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, TransactionTrace,
 };
@@ -73,7 +74,7 @@ pub(crate) fn handle_empty_input(
                     RECEIVE.to_string(),
                     None,
                     trace_address.to_owned(),
-                )))
+                )));
             }
         }
 
@@ -86,7 +87,7 @@ pub(crate) fn handle_empty_input(
                     FALLBACK.to_string(),
                     None,
                     trace_address.to_owned(),
-                )))
+                )));
             }
         }
     }
@@ -103,4 +104,16 @@ pub(crate) fn decode_trace_action(transaction_trace: &TransactionTrace) -> Struc
         RethAction::Reward(reward) => StructuredTrace::REWARD(reward.clone()),
         _ => panic!("Should never be reached"),
     }
+}
+
+/// gets the from address of a action
+pub(crate) fn get_action_addr(action: &Action) -> String {
+    let addr = match action {
+        Action::Call(c) => c.from,
+        Action::Create(c) => c.from,
+        Action::Selfdestruct(c) => c.address, // check this
+        Action::Reward(c) => c.author,
+    };
+
+    format!("{:#x}", addr)
 }
