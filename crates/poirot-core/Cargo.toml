@@ -64,3 +64,16 @@ reqwest = { version = "0.11.18", features = ["json"] }
 log = "0.4.18"
 env_logger = "0.10.0"
 phf = { version = "0.11", default-features = false }
+
+[build-dependencies]
+tokio.workspace = true
+clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
+hyper.workspace = true
+hyper-tls = "0.5.0"
+serde.workspace = true
+serde_json.workspace = true
+alloy-etherscan.workspace = true
+ethers-core.workspace = true
+phf = { version = "0.11.1", default-features = false }
+phf_codegen = "0.11.1"
+dotenv = "0.15.0"
