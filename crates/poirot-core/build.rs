@@ -156,7 +156,7 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
 
 /// generates the bindings
 fn generate_bindings(file_path: &str, protocol_name: &str) -> String {
-    format!("sol! ({}, \"{}\");", protocol_name, file_path)
+    format!("sol!({}, \"{}\");", protocol_name, file_path)
 }
 
 /// generates a file path as <DIRECTORY>/<FILENAME><SUFFIX>
