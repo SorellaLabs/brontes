@@ -35,6 +35,7 @@ struct ProtocolAbis {
 
 fn main() {
     dotenv::dotenv().ok();
+    dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
@@ -149,7 +150,7 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
     let mut phf_map = phf_codegen::Map::new();
     for map in &mapping {
         for address in &map.addresses {
-            phf_map.entry(address, &format!("StaticBindings::{}", &map.protocol));
+            phf_map.entry(address, &format!("\"{}\"", &map.protocol));
         }
     }
 
@@ -178,10 +179,8 @@ fn write_lib(path: &str) {
 }
 
 /// generates the bindings
-fn generate_bindings(file_path: &str, protocol_name: &str) -> (String, String) {
-    let binding = format!("sol! ({}, \"{}\");", protocol_name, file_path);
-    let enum_binding = format!("   {},\n", protocol_name);
-    (binding, enum_binding)
+fn generate_bindings(file_path: &str, protocol_name: &str) -> String {
+    format!("sol!({}, \"{}\");", protocol_name, file_path)
 }
 
 /// generates a file path as <DIRECTORY>/<FILENAME><SUFFIX>

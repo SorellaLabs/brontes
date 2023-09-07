@@ -6,3 +6,5 @@ pub mod normalize;
 pub mod stats;
 
 include!(concat!(env!("OUT_DIR"), "/protocol_addr_mapping.rs"));
+
+//include!(concat!(".", "/protocol_addr_mapping.rs"));
