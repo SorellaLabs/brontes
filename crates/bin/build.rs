@@ -13,7 +13,7 @@ use std::{
 
 const BINDINGS_DIRECTORY: &str = "../poirot-core/src/";
 const ABI_DIRECTORY: &str = "../poirot-core/abis/";
-const PROTOCOL_ADDRESS_MAPPING_PATH: &str = "../poirot-core/src/protocol_addr_mapping.rs";
+const PROTOCOL_ADDRESS_MAPPING_PATH: &str = "protocol_addr_mapping.rs";
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 const CACHE_DIRECTORY: &str = "./abi_cache";
 const PROTOCOL_ADDRESSES: &str =
@@ -136,7 +136,7 @@ async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<Protocol
 
 /// creates a mapping of each address to an abi
 fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
-    let path = Path::new(PROTOCOL_ADDRESS_MAPPING_PATH);
+    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_MAPPING_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
     let mut phf_map = phf_codegen::Map::new();
