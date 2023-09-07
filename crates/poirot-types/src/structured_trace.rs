@@ -30,9 +30,9 @@ impl StructuredTrace {
     pub fn get_call_len(&self) -> usize {
         match self {
             StructuredTrace::CALL(c) => c.trace_address.len(),
-            StructuredTrace::CREATE(c) => panic!("SHOULD NEVER REACH THIS"),
-            StructuredTrace::SELFDESTRUCT(c) => panic!("SHOULD NEVER REACH THIS"),
-            StructuredTrace::REWARD(c) => panic!("SHOULD NEVER REACH THIS"),
+            StructuredTrace::CREATE(_) => panic!("SHOULD NEVER REACH THIS"),
+            StructuredTrace::SELFDESTRUCT(_) => panic!("SHOULD NEVER REACH THIS"),
+            StructuredTrace::REWARD(_) => panic!("SHOULD NEVER REACH THIS"),
         }
     }
 }
