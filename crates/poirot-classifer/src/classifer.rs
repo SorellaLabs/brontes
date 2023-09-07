@@ -1,9 +1,3 @@
-pub struct Classifier {
-    pub db_handle: (),
-}
-
-impl Classifier {
-    pub fn classify_tree(&mut self, tree: TimeTree<Actions>) -> TimeTree<Actions> {
-
-    }
-}
+use poirot_core::PROTOCOL_ADDRESS_MAPPING;
+/// goes through and classifies all
+pub fn classify_tree(tree: TimeTree<Actions>) -> TimeTree<Actions> {}
