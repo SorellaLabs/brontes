@@ -1,3 +1,4 @@
+use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::{Parser, TypeToParse};
 use std::task::Poll;
 pub mod prometheus_exporter;
@@ -9,11 +10,12 @@ pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 pub(crate) struct Poirot {
     parser: Parser,
+    classifier: Classifier,
 }
 
 impl Poirot {
-    pub(crate) fn new(parser: Parser) -> Self {
-        Self { parser }
+    pub(crate) fn new(parser: Parser, classifier: Classifier) -> Self {
+        Self { parser, classifier }
     }
 
     pub(crate) fn trace_block(&self, block_num: u64) {
@@ -30,7 +32,8 @@ impl Future for Poirot {
         let mut iters = 1024;
         loop {
             while let Poll::Ready(val) = this.parser.poll_next_unpin(cx) {
-                let tree = if let Some(t) = val { t } else { return Poll::Ready(()) };
+                let Some(traces) = val else { return Poll::Ready(()) };
+                let tree = this.classifier.build_tree(traces);
             }
             iters -= 1;
             if iters == 0 {
