@@ -51,6 +51,14 @@ impl<V: NormalizedAction> Node<V> {
         }
     }
 
+    pub fn all_sub_addresses(&self) -> Vec<Address> {
+        self.inner
+            .iter()
+            .flat_map(|i| i.all_sub_addresses())
+            .chain(vec![self.address].into_iter())
+            .collect()
+    }
+
     pub fn current_call_stack(&self) -> Vec<Address> {
         let Some(mut stack) = self.inner.last().map(|n| n.current_call_stack()) else {
             return vec![self.address]
