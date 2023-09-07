@@ -26,7 +26,7 @@ impl<V: NormalizedAction> Node<V> {
     /// The address here is the from address for the trace
     pub fn insert(&mut self, address: Address, n: Node<V>) -> bool {
         if self.frozen {
-            return false
+            return false;
         }
 
         if address == self.address {
@@ -35,12 +35,12 @@ impl<V: NormalizedAction> Node<V> {
             if !cur_stack.contains(&address) {
                 self.inner.iter_mut().for_each(|n| n.freeze());
                 self.inner.push(n);
-                return true
+                return true;
             }
         }
 
         let last = self.inner.last_mut().expect("building tree went wrong");
-        return last.insert(address, n)
+        return last.insert(address, n);
     }
 
     pub fn get_all_sub_actions(&self) -> Vec<V> {
@@ -53,7 +53,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn current_call_stack(&self) -> Vec<Address> {
         let Some(mut stack) = self.inner.last().map(|n| n.current_call_stack()) else {
-            return vec![self.address]
+            return vec![self.address];
         };
 
         stack.push(self.address);
@@ -69,17 +69,17 @@ impl<V: NormalizedAction> Node<V> {
 
         // the previous sub-action was best
         if !call(&mut subactions) {
-            return false
+            return false;
         }
         let lower_has_better = self.inner.iter_mut().map(|i| i.inspect(result, call)).any(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the best.
         if !lower_has_better {
             result.push(subactions);
-            return true
+            return true;
         }
         // lower node has a better sub-action.
-        return false
+        return false;
     }
 
     pub fn map<F>(&mut self, call: &F)
@@ -144,7 +144,7 @@ impl<V: NormalizedAction> TimeTree<V> {
         F: Fn(&mut Vec<V>) -> bool,
     {
         if let Some(root) = self.roots.iter_mut().find(|r| r.tx_hash == hash) {
-            return root.inspect(&call)
+            return root.inspect(&call);
         } else {
             vec![]
         }

@@ -73,7 +73,7 @@ pub(crate) fn handle_empty_input(
                     RECEIVE.to_string(),
                     None,
                     trace_address.to_owned(),
-                )))
+                )));
             }
         }
 
@@ -86,7 +86,7 @@ pub(crate) fn handle_empty_input(
                     FALLBACK.to_string(),
                     None,
                     trace_address.to_owned(),
-                )))
+                )));
             }
         }
     }
@@ -104,3 +104,6 @@ pub(crate) fn decode_trace_action(transaction_trace: &TransactionTrace) -> Struc
         _ => panic!("Should never be reached"),
     }
 }
+
+// statically decodes call data using the abi bindings
+//pub(crate) fn
