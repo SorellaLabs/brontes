@@ -105,15 +105,3 @@ pub(crate) fn decode_trace_action(transaction_trace: &TransactionTrace) -> Struc
         _ => panic!("Should never be reached"),
     }
 }
-
-/// gets the from address of a action
-pub(crate) fn get_action_addr(action: &Action) -> String {
-    let addr = match action {
-        Action::Call(c) => c.from,
-        Action::Create(c) => c.from,
-        Action::Selfdestruct(c) => c.address, // check this
-        Action::Reward(c) => c.author,
-    };
-
-    format!("{:#x}", addr)
-}
