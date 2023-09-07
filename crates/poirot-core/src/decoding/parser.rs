@@ -155,13 +155,13 @@ impl TraceParser {
             return Ok(decode_trace_action(&trace));
         };
 
-        let binding = StaticBindings::Curve_Crypto_Factory_V2;
+        //let binding = StaticBindings::Curve_Crypto_Factory_V2;
         let addr = format!("{:#x}", action.from);
-        let abi = if let Some(abi_path) = PROTOCOL_ADDRESS_MAPPING.get(&addr) {
-            serde_json::from_str(abi_path).map_err(|e| TraceParseError::AbiParseError(e))?
-        } else {
-            self.etherscan_client.contract_abi(action.to.into()).await?
-        };
+        let abi = //if let Some(abi_path) = PROTOCOL_ADDRESS_MAPPING.get(&addr) {
+            //serde_json::from_str(abi_path).map_err(|e| TraceParseError::AbiParseError(e))?
+        //} else {
+            self.etherscan_client.contract_abi(action.to.into()).await?;
+        //};
 
         // Check if the input is empty, indicating a potential `receive` or `fallback` function
         // call.
