@@ -158,10 +158,10 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 
     /// returns true if the mapper wants to execute on a lower node
-    pub fn map<F>(&mut self, call: &F)
+    pub fn map<F>(&mut self, call: F)
     where
         F: Fn(&mut Node<V>) -> bool,
     {
-        self.roots.iter_mut().for_each(|root| root.map(call));
+        self.roots.iter_mut().for_each(|root| root.map(&call));
     }
 }

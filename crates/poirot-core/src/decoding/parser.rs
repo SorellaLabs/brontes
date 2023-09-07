@@ -11,17 +11,16 @@ use poirot_types::structured_trace::{
     CallAction,
     StructuredTrace::{self},
 };
+use reth_provider::ReceiptProvider;
 use reth_tracing::TracingClient;
 
 use super::{utils::IDiamondLoupe::facetAddressCall, *};
-use reth_primitives::H256;
+use reth_primitives::{Log, H256};
 use reth_rpc_types::{
     trace::parity::{Action as RethAction, CallAction as RethCallAction},
     CallRequest,
 };
 use std::sync::Arc;
-
-extern crate reth_tracing;
 
 use alloy_sol_types::SolCall;
 use reth_primitives::Bytes;
@@ -90,8 +89,9 @@ impl TraceParser {
         for (idx, trace) in block_trace.into_iter().enumerate() {
             let transaction_traces = trace.full_trace.trace;
             let tx_hash = trace.transaction_hash;
+            let logs = self.tracer.api.provider().receipt_by_hash(tx_hash).unwrap().unwrap().logs;
             if transaction_traces.is_none() {
-                traces.push(TxTrace::new(vec![], tx_hash, idx as usize));
+                traces.push(TxTrace::new(vec![], tx_hash, logs.clone(), idx as usize));
                 stats.txs.push(TransactionStats {
                     block_num,
                     tx_hash,
@@ -103,7 +103,13 @@ impl TraceParser {
             }
 
             let tx_traces = self
-                .parse_transaction(transaction_traces.unwrap(), block_num, tx_hash, idx as u16)
+                .parse_transaction(
+                    transaction_traces.unwrap(),
+                    logs.clone(),
+                    block_num,
+                    tx_hash,
+                    idx as u16,
+                )
                 .await;
             traces.push(tx_traces.0);
             stats.txs.push(tx_traces.1);
@@ -117,6 +123,7 @@ impl TraceParser {
     async fn parse_transaction(
         &self,
         tx_trace: Vec<TransactionTrace>,
+        logs: Vec<Log>,
         block_num: u64,
         tx_hash: H256,
         tx_idx: u16,
@@ -139,7 +146,7 @@ impl TraceParser {
         }
 
         stats.trace();
-        (TxTrace::new(traces, tx_hash, tx_idx as usize), stats)
+        (TxTrace::new(traces, tx_hash, logs, tx_idx as usize), stats)
     }
 
     /// pushes each trace to parser_fut

@@ -184,10 +184,15 @@ fn write_lib(path: &str) {
 }
 
 /// generates the bindings
+<<<<<<< HEAD
 fn generate_bindings(file_path: &str, protocol_name: &str) -> (String, String) {
     let binding = format!("sol! ({}, \"{}\");", protocol_name, file_path);
     let enum_binding = format!("   {},\n", protocol_name);
     (binding, enum_binding)
+=======
+fn generate_bindings(file_path: &str, protocol_name: &str) -> String {
+    format!("sol!({}, \"{}\");", protocol_name, file_path)
+>>>>>>> c0fc48a4178e707f4047e56ba244ba17870e679d
 }
 
 /// generates a file path as <DIRECTORY>/<FILENAME><SUFFIX>
