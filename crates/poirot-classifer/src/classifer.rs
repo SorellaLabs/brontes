@@ -1,16 +1,17 @@
 use crate::IntoAction;
 use poirot_core::StaticBindings;
-use poirot_types::{
-    structured_trace::StructuredTrace,
-    tree::{Node, Root, TimeTree},
-};
+use poirot_types::tree::{Node, Root, TimeTree};
+use reth_rpc_types::trace::parity::TransactionTrace;
 use std::sync::Arc;
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use poirot_core::{TryDecodeSol, PROTOCOL_ADDRESS_MAPPING};
-use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace};
+use poirot_core::TryDecodeSol;
+use poirot_types::{
+    normalized_actions::Actions,
+    structured_trace::{GetAddr, TxTrace},
+};
 use reth_primitives::{Address, Log, U256};
 
 /// goes through and classifies all exchanges
@@ -56,7 +57,7 @@ impl Classifier {
         tree
     }
 
-    fn classify_node(&self, trace: StructuredTrace, logs: &Vec<Log>) -> Actions {
+    fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>) -> Actions {
         let address = trace.get_from_addr();
 
         if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
@@ -167,7 +168,7 @@ impl Classifier {
         None
     }
 
-    fn is_possible_action(&mut self, node_addr: Address, actions: Vec<Actions>) -> bool {
+    fn is_possible_action(&self, node_addr: Address, actions: Vec<Actions>) -> bool {
         // let sub_address = actions.iter().map(|action| action.
         false
     }
