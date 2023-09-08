@@ -56,33 +56,6 @@ impl TxTrace {
     }
 }
 
-impl Into<Root<Actions>> for TxTrace {
-    fn into(self) -> Root<Actions> {
-        let node = Node {
-            inner: vec![],
-            frozen: false,
-            subactions: vec![],
-            address: self.trace[0].get_from_addr(),
-            data: Actions::None,
-        };
-        let mut root = Root { head: node, tx_hash: self.tx_hash };
-
-        let traces = self.trace[1..].to_vec();
-        for trace in traces {
-            let node = Node {
-                inner: vec![],
-                frozen: false,
-                subactions: vec![],
-                address: trace.get_from_addr(),
-                data: Actions::None,
-            };
-            root.insert(node.address, node);
-        }
-
-        root
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct CallAction {
     pub from: Address,
