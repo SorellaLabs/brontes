@@ -1,10 +1,10 @@
 use crate::normalized_actions::NormalizedAction;
-use rayon::prelude::{IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, H256};
 use std::collections::HashMap;
 use tracing::error;
 
-pub struct Node<V: NormalizedAction + IntoParallelIterator> {
+pub struct Node<V: NormalizedAction> {
     pub inner: Vec<Node<V>>,
     pub frozen: bool,
 
@@ -14,7 +14,7 @@ pub struct Node<V: NormalizedAction + IntoParallelIterator> {
     pub data: V,
 }
 
-impl<V: NormalizedAction + IntoParallelIterator> Node<V> {
+impl<V: NormalizedAction> Node<V> {
     pub fn is_frozen(&self) -> bool {
         self.frozen
     }
@@ -108,12 +108,12 @@ impl<V: NormalizedAction + IntoParallelIterator> Node<V> {
     }
 }
 
-pub struct Root<V: NormalizedAction + IntoParallelIterator> {
+pub struct Root<V: NormalizedAction> {
     pub head: Node<V>,
     pub tx_hash: H256,
 }
 
-impl<V: NormalizedAction + IntoParallelIterator> Root<V> {
+impl<V: NormalizedAction> Root<V> {
     pub fn insert(&mut self, from: Address, node: Node<V>) {
         if !self.head.insert(from, node) {
             error!("failed to insert node");
@@ -144,11 +144,11 @@ impl<V: NormalizedAction + IntoParallelIterator> Root<V> {
     }
 }
 
-pub struct TimeTree<V: NormalizedAction + IntoParallelIterator> {
+pub struct TimeTree<V: NormalizedAction> {
     pub roots: Vec<Root<V>>,
 }
 
-impl<V: NormalizedAction + IntoParallelIterator> TimeTree<V> {
+impl<V: NormalizedAction> TimeTree<V> {
     pub fn new(txes: usize) -> Self {
         Self { roots: Vec::with_capacity(txes) }
     }
@@ -174,7 +174,7 @@ impl<V: NormalizedAction + IntoParallelIterator> TimeTree<V> {
 
     pub fn inspect_all<F>(&mut self, call: F) -> HashMap<H256, Vec<Vec<V>>>
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> bool + Sync,
     {
         self.roots.par_iter_mut().map(|r| (r.tx_hash, r.inspect(&call))).collect()
     }
@@ -184,8 +184,8 @@ impl<V: NormalizedAction + IntoParallelIterator> TimeTree<V> {
     /// executed in order to capture the data
     pub fn dyn_classify<T, F>(&mut self, find: T, call: F)
     where
-        T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>),
+        T: Fn(Address, Vec<V>) -> bool + Sync,
+        F: Fn(&mut Node<V>) + Sync,
     {
         self.roots.par_iter_mut().for_each(|root| root.dyn_classify(&find, &call));
     }
