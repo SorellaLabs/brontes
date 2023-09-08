@@ -152,7 +152,7 @@ fn enum_impl_macro(mod_enum: &mut Vec<String>, protocol_name: &str) {
 fn bindings_try_decode_impl_init() -> Vec<String> {
     let mut impl_str = Vec::new();
     impl_str.push("impl StaticBindings {".to_string());
-    impl_str.push(" pub fn try_decode(self, call_data: &[u8]) -> Result<StaticReturnBindings, alloy_sol_types::Error> {".to_string());
+    impl_str.push(" pub fn try_decode(&self, call_data: &[u8]) -> Result<StaticReturnBindings, alloy_sol_types::Error> {".to_string());
     impl_str.push("     match self {".to_string());
     impl_str
 }
