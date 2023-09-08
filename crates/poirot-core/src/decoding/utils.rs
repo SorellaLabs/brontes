@@ -58,7 +58,6 @@ pub(crate) fn decode_input_with_abi(
 }
 
 /// statically decodes call data using the abi bindings
-pub(crate) fn static_decode() -> Result<StructuredTrace, TraceParseError> {}
 
 pub(crate) fn handle_empty_input(
     abi: &JsonAbi,

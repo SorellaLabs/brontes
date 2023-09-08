@@ -6,3 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
+hyper.workspace = true
+hyper-tls = "0.5.0"
