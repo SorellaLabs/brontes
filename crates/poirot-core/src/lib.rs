@@ -6,7 +6,7 @@ pub mod stats;
 use alloy_sol_types::{sol, SolInterface};
 use reth_primitives::H160;
 
-include!(concat!(env!("OUT_DIR"), "/protocol_addr_mapping.rs"));
+include!(concat!(env!("OUT_DIR"), "/protocol_addr_set.rs"));
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 pub trait TryDecodeSol {
