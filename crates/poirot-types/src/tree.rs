@@ -1,9 +1,10 @@
 use crate::normalized_actions::NormalizedAction;
+use rayon::prelude::{IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, H256};
 use std::collections::HashMap;
 use tracing::error;
 
-pub struct Node<V: NormalizedAction> {
+pub struct Node<V: NormalizedAction + IntoParallelIterator> {
     pub inner: Vec<Node<V>>,
     pub frozen: bool,
 
@@ -13,14 +14,16 @@ pub struct Node<V: NormalizedAction> {
     pub data: V,
 }
 
-impl<V: NormalizedAction> Node<V> {
+impl<V: NormalizedAction + IntoParallelIterator> Node<V> {
     pub fn is_frozen(&self) -> bool {
         self.frozen
     }
 
     pub fn freeze(&mut self) {
         self.subactions = self.get_all_sub_actions();
-        self.frozen = true
+        self.frozen = true;
+
+        self.inner.iter_mut().for_each(|f| f.freeze());
     }
 
     /// The address here is the from address for the trace
@@ -33,7 +36,6 @@ impl<V: NormalizedAction> Node<V> {
             let mut cur_stack = self.current_call_stack();
             cur_stack.pop();
             if !cur_stack.contains(&address) {
-                self.inner.iter_mut().for_each(|n| n.freeze());
                 self.inner.push(n);
                 return true
             }
@@ -71,19 +73,17 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn inspect<F>(&mut self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
-        F: Fn(&mut Vec<V>) -> bool,
+        F: Fn(&Node<V>) -> bool,
     {
-        let mut subactions = self.get_all_sub_actions();
-
         // the previous sub-action was best
-        if !call(&mut subactions) {
+        if !call(&self) {
             return false
         }
         let lower_has_better = self.inner.iter_mut().map(|i| i.inspect(result, call)).any(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the best.
         if !lower_has_better {
-            result.push(subactions);
+            result.push(self.get_all_sub_actions());
             return true
         }
         // lower node has a better sub-action.
@@ -108,12 +108,12 @@ impl<V: NormalizedAction> Node<V> {
     }
 }
 
-pub struct Root<V: NormalizedAction> {
+pub struct Root<V: NormalizedAction + IntoParallelIterator> {
     pub head: Node<V>,
     pub tx_hash: H256,
 }
 
-impl<V: NormalizedAction> Root<V> {
+impl<V: NormalizedAction + IntoParallelIterator> Root<V> {
     pub fn insert(&mut self, from: Address, node: Node<V>) {
         if !self.head.insert(from, node) {
             error!("failed to insert node");
@@ -122,7 +122,7 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn inspect<F>(&mut self, call: &F) -> Vec<Vec<V>>
     where
-        F: Fn(&mut Vec<V>) -> bool,
+        F: Fn(&Node<V>) -> bool,
     {
         let mut result = Vec::new();
         self.head.inspect(&mut result, call);
@@ -138,13 +138,17 @@ impl<V: NormalizedAction> Root<V> {
         // bool is used for recursion
         let _ = self.head.dyn_classify(find, call);
     }
+
+    pub fn freeze(&mut self) {
+        self.head.freeze();
+    }
 }
 
-pub struct TimeTree<V: NormalizedAction> {
+pub struct TimeTree<V: NormalizedAction + IntoParallelIterator> {
     pub roots: Vec<Root<V>>,
 }
 
-impl<V: NormalizedAction> TimeTree<V> {
+impl<V: NormalizedAction + IntoParallelIterator> TimeTree<V> {
     pub fn new(txes: usize) -> Self {
         Self { roots: Vec::with_capacity(txes) }
     }
@@ -159,7 +163,7 @@ impl<V: NormalizedAction> TimeTree<V> {
 
     pub fn inspect<F>(&mut self, hash: H256, call: F) -> Vec<Vec<V>>
     where
-        F: Fn(&mut Vec<V>) -> bool,
+        F: Fn(&Node<V>) -> bool,
     {
         if let Some(root) = self.roots.iter_mut().find(|r| r.tx_hash == hash) {
             return root.inspect(&call)
@@ -170,9 +174,9 @@ impl<V: NormalizedAction> TimeTree<V> {
 
     pub fn inspect_all<F>(&mut self, call: F) -> HashMap<H256, Vec<Vec<V>>>
     where
-        F: Fn(&mut Vec<V>) -> bool,
+        F: Fn(&Node<V>) -> bool,
     {
-        self.roots.iter_mut().map(|r| (r.tx_hash, r.inspect(&call))).collect()
+        self.roots.par_iter_mut().map(|r| (r.tx_hash, r.inspect(&call))).collect()
     }
 
     /// the first function parses down through the tree to the point where we are at
@@ -183,6 +187,6 @@ impl<V: NormalizedAction> TimeTree<V> {
         T: Fn(Address, Vec<V>) -> bool,
         F: Fn(&mut Node<V>),
     {
-        self.roots.iter_mut().for_each(|root| root.dyn_classify(&find, &call));
+        self.roots.par_iter_mut().for_each(|root| root.dyn_classify(&find, &call));
     }
 }

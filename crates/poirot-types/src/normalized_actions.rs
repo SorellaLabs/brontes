@@ -1,6 +1,6 @@
 use reth_primitives::{Address, Log, U256};
 
-use crate::structured_trace::{StructuredTrace, TxTrace};
+use crate::structured_trace::StructuredTrace;
 
 #[derive(Debug, Clone, Default)]
 pub enum Actions {
