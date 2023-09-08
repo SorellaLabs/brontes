@@ -2,15 +2,13 @@ use reth_primitives::{Address, Log, U256};
 
 use crate::structured_trace::StructuredTrace;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub enum Actions {
     Swap(NormalizedSwap),
     Transfer(NormalizedTransfer),
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
     Unclassified(StructuredTrace, Vec<Log>),
-    #[default]
-    None,
 }
 
 impl Actions {
