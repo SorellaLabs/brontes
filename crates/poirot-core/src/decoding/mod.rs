@@ -12,7 +12,7 @@ use crate::{
     init_trace,
     stats::TraceMetricEvent,
 };
-use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace};
+use poirot_types::structured_trace::TxTrace;
 
 use alloy_etherscan::Client;
 use ethers_core::types::Chain;
@@ -25,7 +25,6 @@ use tokio::{sync::mpsc::UnboundedSender, task::JoinHandle};
 use self::parser::TraceParser;
 
 mod parser;
-mod utils;
 
 pub(crate) const UNKNOWN: &str = "unknown";
 pub(crate) const RECEIVE: &str = "receive";
