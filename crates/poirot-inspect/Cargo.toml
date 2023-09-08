@@ -15,3 +15,9 @@ poirot-types.workspace = true
 
 # error handling
 thiserror.workspace = true
+
+# serde
+serde_with = { version = "3.3.0", features = ["macros"] }
+
+# numbers
+malachite.workspace = true
