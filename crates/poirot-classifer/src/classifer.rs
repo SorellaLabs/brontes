@@ -1,5 +1,5 @@
 use crate::IntoAction;
-use poirot_core::{StaticBindings, StaticReturnBindings, TryDecodeSol, PROTOCOL_ADDRESS_SET};
+use poirot_core::{StaticBindings, StaticReturnBindings,  PROTOCOL_ADDRESS_MAPPING};
 use poirot_types::{
     normalized_actions::Actions,
     structured_trace::{TraceActions, TxTrace},
@@ -59,10 +59,13 @@ impl Classifier {
     fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>) -> Actions {
         let address = trace.get_from_addr();
 
-        if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
-            // let bytes=  t
-            //
-            // let decode = StaticBindings::try_decode(trace.);
+        if let Some(mapping) =  PROTOCOL_ADDRESS_MAPPING.get(format!("{address}").as_str()) {
+            let calldata = trace.get_calldata();
+            let return_bytes = trace.get_return_calldata();
+            let sig =  &calldata[0..3];
+            let res: StaticReturnBindings = mapping.try_decode(&calldata).unwrap();
+
+            return self.static_exchanges.get(sig).unwrap().decode_trace_data(res, return_bytes)
         } else {
             let rem =
                 logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
@@ -163,6 +166,7 @@ impl Classifier {
     }
 
     fn decode_transfer(&self, log: Log) -> Option<(Address, Address, Address, U256)> {
+        if log.
         None
     }
 

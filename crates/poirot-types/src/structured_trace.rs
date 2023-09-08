@@ -12,6 +12,7 @@ use crate::{
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
     fn get_calldata(&self) -> Bytes;
+    fn get_return_calldata(&self) -> Bytes;
 }
 
 impl TraceActions for TransactionTrace {
@@ -23,10 +24,19 @@ impl TraceActions for TransactionTrace {
             Action::Selfdestruct(call) => call.address,
         }
     }
+
     fn get_calldata(&self) -> Bytes {
         match &self.action {
             Action::Call(call) => call.input.clone(),
             Action::Create(call) => call.init.clone(),
+            _ => Bytes::default(),
+        }
+    }
+
+    fn get_return_calldata(&self) -> Bytes {
+        let Some(res)  = &self.result else { return Bytes::default() };
+        match res {
+            reth_rpc_types::trace::parity::TraceOutput::Call(bytes) => bytes.output.clone(),
             _ => Bytes::default(),
         }
     }
