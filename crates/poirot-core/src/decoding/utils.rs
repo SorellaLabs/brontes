@@ -75,7 +75,7 @@ pub(crate) fn handle_empty_input(
                     RECEIVE.to_string(),
                     None,
                     trace_address.to_owned(),
-                )));
+                )))
             }
         }
 
@@ -88,7 +88,7 @@ pub(crate) fn handle_empty_input(
                     FALLBACK.to_string(),
                     None,
                     trace_address.to_owned(),
-                )));
+                )))
             }
         }
     }
