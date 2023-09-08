@@ -2,7 +2,7 @@ use poirot_types::{
     structured_trace::StructuredTrace,
     tree::{Node, Root, TimeTree},
 };
-use std::collections::HashSet;
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 use poirot_core::PROTOCOL_ADDRESS_MAPPING;
 use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace};
@@ -10,7 +10,7 @@ use reth_primitives::{Address, Log};
 
 /// goes through and classifies all exchanges
 pub struct Classifier {
-    known_dyn_exchanges: HashSet<Address>,
+    known_dyn_exchanges: HashMap<Address, (Address, Address)>,
 }
 
 impl Classifier {
@@ -60,10 +60,20 @@ impl Classifier {
         }
     }
 
+    fn try_classify_swap(
+        &self,
+        node: &mut Node<Actions>,
+        token_0: Address,
+        token_1: Address,
+    ) -> Option<Actions> {
+        None
+    }
+
     fn try_classify_unknown(&mut self, tree: &mut TimeTree<Actions>) {
         tree.map(|node| {
-            // let addresses = node.
-            if self.known_dyn_exchanges.contains(&node.address) {
+            if self.known_dyn_exchanges.contains_key(&node.address) {
+                let (token_0, token_1) = self.known_dyn_exchanges.get(&node.address).unwrap();
+                if let Some(res) = self.try_classify_swap(node, *token_0, *token_1) {}
             } else {
                 // try to classify, else yoink
             }
