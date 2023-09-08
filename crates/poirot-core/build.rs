@@ -78,7 +78,7 @@ async fn generate(bindings_file_path: &str, addresses: Vec<ProtocolAbis>, abis: 
 
         binding_enums.push(enum_binding_string(&protocol_addr.protocol));
 
-        individual_sub_enums(&mut mod_enums, &abi_file_path, &protocol_addr.protocol, abi);
+        individual_sub_enums(&mut mod_enums, &abi_file_path, &protocol_addr.protocol);
     }
 
     binding_enums.push("}".to_string());
@@ -119,7 +119,7 @@ fn binding_string(file_path: &str, protocol_name: &str) -> String {
 
 /// generates the string of an enum for a binding
 fn enum_binding_string(protocol_name: &str) -> String {
-    let binding = format!("   {}({}_Enum),", protocol_name, protocol_name);
+    let binding = format!("   {},", protocol_name);
     binding
 }
 
@@ -139,15 +139,7 @@ fn function_selector_mapping(map: &mut Map<[u8; 4]>, abi_file_path: &str, protoc
 }
 
 /// generates the mapping of function selector to decodable type
-fn individual_sub_enums(
-    mod_enum: &mut Vec<String>,
-    abi_file_path: &str,
-    protocol_name: &str,
-    abi: Value,
-) {
-    //let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
-
-    //let reader = BufReader::new(File::open(abi_file_path).unwrap());
+fn individual_sub_enums(mod_enum: &mut Vec<String>, abi_file_path: &str, protocol_name: &str) {
     let input = fs::read_to_string(abi_file_path).unwrap();
     let json_abi: JsonAbi = serde_json::from_str(&input).unwrap();
 
@@ -158,8 +150,8 @@ fn individual_sub_enums(
         if functions.len() > 1 {
             for (idx, function) in functions.into_iter().enumerate() {
                 let val = format!(
-                    "   {}({}::{}_{}Call),",
-                    &function.name, protocol_name, &function.name, idx
+                    "   {}_{}({}::{}_{}Call),",
+                    &function.name, idx, protocol_name, &function.name, idx
                 );
                 mod_enum.push(val)
             }
@@ -174,6 +166,9 @@ fn individual_sub_enums(
 
     mod_enum.push("}".to_string());
 }
+
+/// generates the matching of function selector to type to decode
+fn fn_sig_protocol_mapping() {}
 
 //
 //
