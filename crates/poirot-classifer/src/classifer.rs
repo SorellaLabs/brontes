@@ -60,7 +60,9 @@ impl Classifier {
         let address = trace.get_from_addr();
 
         if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
-            let decode = StaticBindings::try_decode();
+            // let bytes=  t
+            //
+            // let decode = StaticBindings::try_decode(trace.);
             panic!()
         } else {
             let rem =
