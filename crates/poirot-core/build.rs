@@ -12,7 +12,7 @@ use std::{
 };
 
 const ABI_DIRECTORY: &str = "./abis/";
-const PROTOCOL_ADDRESS_MAPPING_PATH: &str = "protocol_addr_mapping.rs";
+const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 const CACHE_DIRECTORY: &str = "../../abi_cache";
@@ -152,7 +152,7 @@ fn enum_impl_macro(mod_enum: &mut Vec<String>, protocol_name: &str) {
 fn bindings_try_decode_impl_init() -> Vec<String> {
     let mut impl_str = Vec::new();
     impl_str.push("impl StaticBindings {".to_string());
-    impl_str.push(" pub fn try_decode(&self, call_data: &[u8]) -> Result<StaticReturnBindings, alloy_sol_types::Error> {".to_string());
+    impl_str.push(" pub fn try_decode(self, call_data: &[u8]) -> Result<StaticReturnBindings, alloy_sol_types::Error> {".to_string());
     impl_str.push("     match self {".to_string());
     impl_str
 }
@@ -183,7 +183,7 @@ async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<Protocol
 
 /// creates a mapping of each address to an abi binding
 fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
-    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_MAPPING_PATH);
+    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
     //file.write_all("use crate::bindings::*;\n\n".as_bytes()).unwrap();
 

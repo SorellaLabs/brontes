@@ -1,19 +1,18 @@
 use crate::IntoAction;
-use poirot_core::StaticBindings;
-use poirot_types::tree::{Node, Root, TimeTree};
-use reth_rpc_types::trace::parity::TransactionTrace;
-use std::sync::Arc;
-
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::{hash_map::Entry, HashMap, HashSet};
-
-use poirot_core::TryDecodeSol;
-use poirot_core::PROTOCOL_ADDRESS_MAPPING;
+use poirot_core::{StaticBindings, StaticReturnBindings, TryDecodeSol, PROTOCOL_ADDRESS_SET};
 use poirot_types::{
     normalized_actions::Actions,
-    structured_trace::{GetAddr, TxTrace},
+    structured_trace::{TraceActions, TxTrace},
+    tree::{Node, Root, TimeTree},
 };
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Log, U256};
+use reth_rpc_types::trace::parity::TransactionTrace;
+use std::{
+    collections::{hash_map::Entry, HashMap, HashSet},
+    sync::Arc,
+};
+
 /// goes through and classifies all exchanges
 pub struct Classifier {
     known_dyn_exchanges: HashMap<Address, (Address, Address)>,
@@ -64,7 +63,6 @@ impl Classifier {
             // let bytes=  t
             //
             // let decode = StaticBindings::try_decode(trace.);
-            panic!()
         } else {
             let rem =
                 logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
