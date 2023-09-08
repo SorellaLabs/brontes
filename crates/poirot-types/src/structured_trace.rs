@@ -35,7 +35,6 @@ impl StructuredTrace {
             StructuredTrace::REWARD(_) => panic!("SHOULD NEVER REACH THIS"),
         }
     }
-
 }
 
 #[derive(Debug, Clone)]
