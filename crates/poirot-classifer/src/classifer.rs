@@ -8,12 +8,12 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 use poirot_core::TryDecodeSol;
+use poirot_core::PROTOCOL_ADDRESS_MAPPING;
 use poirot_types::{
     normalized_actions::Actions,
     structured_trace::{GetAddr, TxTrace},
 };
 use reth_primitives::{Address, Log, U256};
-
 /// goes through and classifies all exchanges
 pub struct Classifier {
     known_dyn_exchanges: HashMap<Address, (Address, Address)>,
