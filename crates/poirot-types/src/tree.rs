@@ -157,6 +157,10 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.roots.push(root);
     }
 
+    pub fn freeze_tree(&mut self) {
+        self.roots.iter_mut().for_each(|root| root.freeze());
+    }
+
     pub fn insert_node(&mut self, from: Address, node: Node<V>) {
         self.roots.last_mut().expect("no root_nodes inserted").insert(from, node);
     }
