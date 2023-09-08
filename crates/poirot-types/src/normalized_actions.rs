@@ -42,6 +42,7 @@ pub struct NormalizedTransfer {
 #[derive(Debug, Clone)]
 pub struct NormalizedMint {
     pub from: Vec<Address>,
+    pub to: Vec<Address>,
     pub token: Vec<Address>,
     pub amount: Vec<U256>,
 }
@@ -49,6 +50,7 @@ pub struct NormalizedMint {
 #[derive(Debug, Clone)]
 pub struct NormalizedBurn {
     pub from: Vec<Address>,
+    pub to: Vec<Address>,
     pub token: Vec<Address>,
     pub amount: Vec<U256>,
 }
