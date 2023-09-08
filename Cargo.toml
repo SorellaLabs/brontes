@@ -93,6 +93,9 @@ hyper = "0.14.25"
 serde = { version = "1.0" }
 serde_json = { version = "1.0" }
 
+# Numbers
+malachite = "0.4.0"
+
 # Misc
 c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
 hex-literal = "0.4.1"
