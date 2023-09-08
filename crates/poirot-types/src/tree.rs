@@ -90,13 +90,21 @@ impl<V: NormalizedAction> Node<V> {
         return false
     }
 
-    pub fn map<F>(&mut self, call: &F)
+    pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> bool
     where
-        F: Fn(&mut Node<V>) -> bool,
+        T: Fn(Address, Vec<V>) -> bool,
+        F: Fn(&mut Node<V>),
     {
-        if call(self) {
-            self.inner.iter_mut().for_each(|i| i.map(call))
+        let works = find(self.address, self.get_all_sub_actions());
+        if !works {
+            return false
         }
+
+        let lower_has_better = self.inner.iter_mut().any(|i| i.dyn_classify(find, call));
+        if !lower_has_better {
+            call(self);
+        }
+        return true
     }
 }
 
@@ -122,11 +130,13 @@ impl<V: NormalizedAction> Root<V> {
         result
     }
 
-    pub fn map<F>(&mut self, call: &F)
+    pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F)
     where
-        F: Fn(&mut Node<V>) -> bool,
+        T: Fn(Address, Vec<V>) -> bool,
+        F: Fn(&mut Node<V>),
     {
-        self.head.map(call)
+        // bool is used for recursion
+        let _ = self.head.dyn_classify(find, call);
     }
 }
 
@@ -166,10 +176,11 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 
     /// returns true if the mapper wants to execute on a lower node
-    pub fn map<F>(&mut self, call: F)
+    pub fn dyn_classify<T, F>(&mut self, find: T, call: F)
     where
-        F: Fn(&mut Node<V>) -> bool,
+        T: Fn(Address, Vec<V>) -> bool,
+        F: Fn(&mut Node<V>),
     {
-        self.roots.iter_mut().for_each(|root| root.map(&call));
+        self.roots.iter_mut().for_each(|root| root.dyn_classify(&find, &call));
     }
 }
