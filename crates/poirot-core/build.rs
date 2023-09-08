@@ -70,10 +70,11 @@ async fn run() {
 async fn generate(bindings_file_path: &str, addresses: Vec<ProtocolAbis>) {
     let mut file = write_file(bindings_file_path, true);
 
-    let mut addr_bindings = init_bindings();
+    let mut addr_bindings = Vec::new();
     let mut binding_enums = init_enum("StaticBindings");
     let mut return_binding_enums = init_enum("StaticReturnBindings");
     let mut mod_enums = Vec::new();
+    let mut bindings_impl_try_decode = bindings_try_decode_impl_init();
 
     for protocol_addr in addresses {
         let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
@@ -86,27 +87,25 @@ async fn generate(bindings_file_path: &str, addresses: Vec<ProtocolAbis>) {
         ));
         individual_sub_enums(&mut mod_enums, &protocol_addr.protocol);
         enum_impl_macro(&mut mod_enums, &protocol_addr.protocol);
+        bindings_impl_try_decode.push(bindings_try_row(&protocol_addr.protocol));
     }
 
     binding_enums.push("}".to_string());
     return_binding_enums.push("}".to_string());
+    bindings_impl_try_decode.push("     }".to_string());
+    bindings_impl_try_decode.push(" }".to_string());
+    bindings_impl_try_decode.push("}".to_string());
 
     let aggr = format!(
-        "{}\n\n{}\n\n{}\n{}",
+        "{}\n\n{}\n{}\n\n{}\n{}",
         addr_bindings.join("\n"),
         binding_enums.join("\n"),
+        bindings_impl_try_decode.join("\n"),
         return_binding_enums.join("\n"),
         mod_enums.join("\n")
     );
 
     file.write_all(aggr.as_bytes()).unwrap();
-}
-
-/// generates the bindings for the given abis
-fn init_bindings() -> Vec<String> {
-    let mut bindings = Vec::new();
-    bindings.push("\n\n".to_string());
-    bindings
 }
 
 /// generates the bindings for the given abis
@@ -147,6 +146,23 @@ fn enum_impl_macro(mod_enum: &mut Vec<String>, protocol_name: &str) {
     );
     mod_enum.push(macro_impl);
     mod_enum.push("\n".to_string());
+}
+
+/// implements try_decode() for the StaticBindings Enum
+fn bindings_try_decode_impl_init() -> Vec<String> {
+    let mut impl_str = Vec::new();
+    impl_str.push("impl StaticBindings {".to_string());
+    impl_str.push(" pub fn try_decode(&self, call_data: &[u8]) -> Result<StaticReturnBindings, alloy_sol_types::Error> {".to_string());
+    impl_str.push("     match self {".to_string());
+    impl_str
+}
+
+/// implements try_decode() for the StaticBindings Enum
+fn bindings_try_row(protocol_name: &str) -> String {
+    format!(
+        "       StaticBindings::{}(val) => Ok(StaticReturnBindings::{}({}_Enum::try_decode(call_data)?)),",
+        protocol_name, protocol_name, protocol_name
+    )
 }
 
 //
