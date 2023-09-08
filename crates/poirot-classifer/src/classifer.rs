@@ -1,18 +1,22 @@
-use poirot_core::TryDecodeSol;
+use crate::IntoAction;
+use poirot_core::StaticBindings;
 use poirot_types::{
     structured_trace::StructuredTrace,
     tree::{Node, Root, TimeTree},
 };
+use std::sync::Arc;
+
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use poirot_core::PROTOCOL_ADDRESS_MAPPING;
+use poirot_core::{TryDecodeSol, PROTOCOL_ADDRESS_MAPPING};
 use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace};
 use reth_primitives::{Address, Log, U256};
 
 /// goes through and classifies all exchanges
 pub struct Classifier {
     known_dyn_exchanges: HashMap<Address, (Address, Address)>,
+    static_exchanges: HashMap<[u8; 4], Box<dyn IntoAction>>,
 }
 
 impl Classifier {
@@ -47,14 +51,17 @@ impl Classifier {
 
         let mut tree = TimeTree { roots };
         self.try_classify_unknown(&mut tree);
+        tree.freeze_tree();
 
         tree
     }
 
     fn classify_node(&self, trace: StructuredTrace, logs: &Vec<Log>) -> Actions {
         let address = trace.get_from_addr();
-        if let Some(known_mapping) = PROTOCOL_ADDRESS_MAPPING.get(format!("{address}").as_str()) {
-            // known_mapping::try_decode(trace)
+
+        if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
+            let decode = StaticBindings::try_decode();
+            panic!()
         } else {
             let rem =
                 logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
@@ -97,6 +104,7 @@ impl Classifier {
                 if to0 == node.address {
                     return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
                         from: vec![from0, from1],
+                        to: vec![to0, to1],
                         token: vec![t0, t1],
                         amount: vec![value0, value1],
                     }))
@@ -105,13 +113,14 @@ impl Classifier {
                 else {
                     return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
                         from: vec![from0, from1],
+                        to: vec![to0, to1],
                         token: vec![t0, t1],
                         amount: vec![value0, value1],
                     }))
                 }
             }
-            // if t0 == from1
-            if t0 == addr {
+            // if to0 is to our addr then its the out token
+            if to0 == addr {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                     address: addr,
                     token_in: t1,
@@ -129,8 +138,26 @@ impl Classifier {
                 }))
             }
         }
+        // pure mint and burn
+        if transfer_data.len() == 1 {
+            let (token, from, to, value) = transfer_data.remove(0);
+            if from == addr {
+                return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
+                    from: vec![from],
+                    to: vec![to],
+                    token: vec![token],
+                    amount: vec![value],
+                }))
+            } else {
+                return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
+                    from: vec![from],
+                    to: vec![to],
+                    token: vec![token],
+                    amount: vec![value],
+                }))
+            }
+        }
 
-        //
         None
     }
 
@@ -138,7 +165,8 @@ impl Classifier {
         None
     }
 
-    fn is_possible_swap(&mut self, node_addr: Address, actions: Vec<Actions>) -> bool {
+    fn is_possible_action(&mut self, node_addr: Address, actions: Vec<Actions>) -> bool {
+        // let sub_address = actions.iter().map(|action| action.
         false
     }
 
@@ -147,8 +175,9 @@ impl Classifier {
             |address, sub_actions| {
                 // we can dyn classify this shit
                 if self.known_dyn_exchanges.contains_key(&address) {
+                    return true
                 } else {
-                    if self.is_possible_swap(address, sub_actions) {
+                    if self.is_possible_action(address, sub_actions) {
                         return true
                     };
                 }
@@ -159,6 +188,8 @@ impl Classifier {
                 if self.known_dyn_exchanges.contains_key(&node.address) {
                     let (token_0, token_1) = self.known_dyn_exchanges.get(&node.address).unwrap();
                     if let Some(res) = self.prove_dyn_action(node, *token_0, *token_1) {
+                        // we have reduced the lower part of the tree. we can delete this now
+                        node.inner.clear();
                         node.data = res;
                     }
                     return
