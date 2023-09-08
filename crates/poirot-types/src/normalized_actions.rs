@@ -1,6 +1,6 @@
 use reth_primitives::{Address, Log, U256};
 
-use crate::structured_trace::{StructuredTrace, TxTrace};
+use crate::structured_trace::StructuredTrace;
 
 #[derive(Debug, Clone, Default)]
 pub enum Actions {
@@ -44,7 +44,7 @@ pub struct NormalizedBurn {
     pub amount: U256,
 }
 
-pub trait NormalizedAction: Clone {
+pub trait NormalizedAction: Send + Clone {
     fn get_action(&self) -> &Actions;
 }
 
