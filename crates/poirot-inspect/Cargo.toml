@@ -21,3 +21,5 @@ serde_with = { version = "3.3.0", features = ["macros"] }
 
 # numbers
 malachite.workspace = true
+
+sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients" , branch = "modifications"}
