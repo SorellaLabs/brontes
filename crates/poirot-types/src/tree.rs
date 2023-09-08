@@ -175,7 +175,9 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.roots.iter_mut().map(|r| (r.tx_hash, r.inspect(&call))).collect()
     }
 
-    /// returns true if the mapper wants to execute on a lower node
+    /// the first function parses down through the tree to the point where we are at
+    /// the lowest subset of the valid action. once we reach here, the call function gets
+    /// executed in order to capture the data
     pub fn dyn_classify<T, F>(&mut self, find: T, call: F)
     where
         T: Fn(Address, Vec<V>) -> bool,
