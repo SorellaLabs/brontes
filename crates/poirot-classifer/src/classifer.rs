@@ -1,18 +1,17 @@
 use crate::IntoAction;
-use poirot_core::StaticBindings;
-use poirot_types::tree::{Node, Root, TimeTree};
-use reth_rpc_types::trace::parity::TransactionTrace;
-use std::sync::Arc;
-
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::{hash_map::Entry, HashMap, HashSet};
-
-use poirot_core::TryDecodeSol;
+use poirot_core::{StaticBindings, StaticReturnBindings, TryDecodeSol, PROTOCOL_ADDRESS_SET};
 use poirot_types::{
     normalized_actions::Actions,
-    structured_trace::{GetAddr, TxTrace},
+    structured_trace::{TraceActions, TxTrace},
+    tree::{Node, Root, TimeTree},
 };
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Log, U256};
+use reth_rpc_types::trace::parity::TransactionTrace;
+use std::{
+    collections::{hash_map::Entry, HashMap, HashSet},
+    sync::Arc,
+};
 
 /// goes through and classifies all exchanges
 pub struct Classifier {
@@ -60,14 +59,14 @@ impl Classifier {
     fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>) -> Actions {
         let address = trace.get_from_addr();
 
-        // if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
-        //     //
-        //     let decode = StaticBindings::try_decode(trace.);
-        //     panic!()
-        // } else {
-        let rem = logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
-        return Actions::Unclassified(trace, rem)
-        // }
+        if PROTOCOL_ADDRESS_SET.contains(&*address) {
+            let decode: StaticReturnBindings = StaticBindings::try_decode(trace).unwrap();
+            panic!()
+        } else {
+            let rem =
+                logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
+            return Actions::Unclassified(trace, rem)
+        }
     }
 
     /// tries to prove dyn mint, dyn burn and dyn swap.
