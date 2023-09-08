@@ -12,3 +12,5 @@ reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 tracing.workspace = true
 poirot-core.workspace = true
+
+rayon = "1.7.0"

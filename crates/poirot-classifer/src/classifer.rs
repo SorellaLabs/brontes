@@ -2,6 +2,7 @@ use poirot_types::{
     structured_trace::StructuredTrace,
     tree::{Node, Root, TimeTree},
 };
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 use poirot_core::PROTOCOL_ADDRESS_MAPPING;
@@ -16,7 +17,7 @@ pub struct Classifier {
 impl Classifier {
     pub fn build_tree(&mut self, traces: Vec<TxTrace>) -> TimeTree<Actions> {
         let roots = traces
-            .into_iter()
+            .into_par_iter()
             .map(|mut trace| {
                 let logs = &trace.logs;
                 let node = Node {
@@ -60,7 +61,7 @@ impl Classifier {
         }
     }
 
-    fn try_classify_swap(
+    fn prove_dyn_swap(
         &self,
         node: &mut Node<Actions>,
         token_0: Address,
@@ -69,17 +70,32 @@ impl Classifier {
         None
     }
 
-    fn try_classify_unknown(&mut self, tree: &mut TimeTree<Actions>) {
-        tree.map(|node| {
-            if self.known_dyn_exchanges.contains_key(&node.address) {
-                let (token_0, token_1) = self.known_dyn_exchanges.get(&node.address).unwrap();
-                if let Some(res) = self.try_classify_swap(node, *token_0, *token_1) {}
-            } else {
-                // try to classify, else yoink
-            }
+    fn find_dyn_swap(&self, data: Vec<Actions>) {}
 
-            // false
-            true
-        });
+    fn try_classify_unknown(&mut self, tree: &mut TimeTree<Actions>) {
+        tree.dyn_classify(
+            |address, sub_actions| {
+                // we can dyn classify this shit
+                if !self.known_dyn_exchanges.contains_key(&address) {
+                    return false
+                }
+
+                true
+            },
+            |node| {
+                if self.known_dyn_exchanges.contains_key(&node.address) {
+                    let (token_0, token_1) = self.known_dyn_exchanges.get(&node.address).unwrap();
+                    if let Some(res) = self.prove_dyn_swap(node, *token_0, *token_1) {
+                        node.data = res;
+                    }
+                    return
+                } else {
+                    // try to classify, else yoink
+                    //
+                }
+
+                // false
+            },
+        );
     }
 }
