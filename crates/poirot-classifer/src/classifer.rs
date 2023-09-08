@@ -1,17 +1,21 @@
 use crate::IntoAction;
-use poirot_core::{StaticBindings, StaticReturnBindings,  PROTOCOL_ADDRESS_MAPPING};
+use hex_literal::hex;
+use poirot_core::{StaticBindings, StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 use poirot_types::{
     normalized_actions::Actions,
     structured_trace::{TraceActions, TxTrace},
     tree::{Node, Root, TimeTree},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, Log, U256};
+use reth_primitives::{keccak256, Address, Log, H256, U256};
 use reth_rpc_types::trace::parity::TransactionTrace;
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     sync::Arc,
 };
+
+const TRANSFER_TOPIC: H256 =
+    H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 /// goes through and classifies all exchanges
 pub struct Classifier {
@@ -59,17 +63,17 @@ impl Classifier {
     fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>) -> Actions {
         let address = trace.get_from_addr();
 
-        if let Some(mapping) =  PROTOCOL_ADDRESS_MAPPING.get(format!("{address}").as_str()) {
+        if let Some(mapping) = PROTOCOL_ADDRESS_MAPPING.get(format!("{address}").as_str()) {
             let calldata = trace.get_calldata();
             let return_bytes = trace.get_return_calldata();
-            let sig =  &calldata[0..3];
+            let sig = &calldata[0..3];
             let res: StaticReturnBindings = mapping.try_decode(&calldata).unwrap();
 
             return self.static_exchanges.get(sig).unwrap().decode_trace_data(res, return_bytes)
         } else {
             let rem =
                 logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
-            return Actions::Unclassified(trace, rem);
+            return Actions::Unclassified(trace, rem)
         }
     }
 
@@ -91,7 +95,7 @@ impl Classifier {
             if let Some((token, from, to, value)) = self.decode_transfer(log) {
                 // if tokens don't overlap and to & from don't overlap
                 if (token_0 != token && token_1 != token) || (from != addr && to != addr) {
-                    continue;
+                    continue
                 }
 
                 transfer_data.push((token, from, to, value));
@@ -111,7 +115,7 @@ impl Classifier {
                         to: vec![to0, to1],
                         token: vec![t0, t1],
                         amount: vec![value0, value1],
-                    }));
+                    }))
                 }
                 // mint
                 else {
@@ -120,7 +124,7 @@ impl Classifier {
                         to: vec![to0, to1],
                         token: vec![t0, t1],
                         amount: vec![value0, value1],
-                    }));
+                    }))
                 }
             }
             // if to0 is to our addr then its the out token
@@ -131,7 +135,7 @@ impl Classifier {
                     token_out: t0,
                     amount_in: value1,
                     amount_out: value0,
-                }));
+                }))
             } else {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                     address: addr,
@@ -139,7 +143,7 @@ impl Classifier {
                     token_out: t1,
                     amount_in: value0,
                     amount_out: value1,
-                }));
+                }))
             }
         }
         // pure mint and burn
@@ -151,14 +155,14 @@ impl Classifier {
                     to: vec![to],
                     token: vec![token],
                     amount: vec![value],
-                }));
+                }))
             } else {
                 return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
                     from: vec![from],
                     to: vec![to],
                     token: vec![token],
                     amount: vec![value],
-                }));
+                }))
             }
         }
 
@@ -166,7 +170,13 @@ impl Classifier {
     }
 
     fn decode_transfer(&self, log: Log) -> Option<(Address, Address, Address, U256)> {
-        if log.
+        if log.topics.get(0).eq(&Some(&TRANSFER_TOPIC)) {
+            let from = Address::from_slice(&log.data[11..31]);
+            let to = Address::from_slice(&log.data[41..63]);
+            let data = U256::try_from_be_slice(&log.data[64..]).unwrap();
+            return Some((log.address, from, to, data))
+        }
+
         None
     }
 
@@ -180,14 +190,14 @@ impl Classifier {
             |address, sub_actions| {
                 // we can dyn classify this shit
                 if self.known_dyn_exchanges.contains_key(&address) {
-                    return true;
+                    return true
                 } else {
                     if self.is_possible_action(address, sub_actions) {
-                        return true;
+                        return true
                     };
                 }
 
-                return false;
+                return false
             },
             |node| {
                 if self.known_dyn_exchanges.contains_key(&node.address) {
@@ -197,7 +207,7 @@ impl Classifier {
                         node.inner.clear();
                         node.data = res;
                     }
-                    return;
+                    return
                 } else {
                     // try to classify, else yoink
                     //
