@@ -9,7 +9,7 @@ use crate::{
     tree::{Node, Root},
 };
 
-trait GetAddr {
+pub trait GetAddr {
     fn get_from_addr(&self) -> Address;
 }
 

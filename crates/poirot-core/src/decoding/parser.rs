@@ -191,54 +191,7 @@ impl TraceParser {
 
         // tries to get the proxy abi -> decode
         let proxy_abi = self.etherscan_client.proxy_contract_abi(action.to.into()).await?;
-        if let Ok(structured_trace) =
-            decode_input_with_abi(&proxy_abi, &action, &trace_address, &tx_hash)
-        {
-            return Ok(())
-        };
 
-        // tries to decode with the new abi
-        // if unsuccessful, returns an error
-        let diamond_proxy_abi = self.diamond_proxy_contract_abi(&action, block_num).await?;
-        if let Ok(structured_trace) =
-            decode_input_with_abi(&diamond_proxy_abi, &action, &trace_address, &tx_hash)
-        {
-            return Ok(())
-        };
-
-        Err(TraceParseError::AbiDecodingFailed(tx_hash.clone().into()))
-    }
-
-    /// retrieves the abi from a possible diamond proxy contract
-    async fn diamond_proxy_contract_abi(
-        &self,
-        action: &RethCallAction,
-        block_num: u64,
-    ) -> Result<JsonAbi, TraceParseError> {
-        let diamond_call =
-            // TODO: why _ ?
-            facetAddressCall { _functionSelector: action.input[..4].try_into().unwrap() };
-
-        let call_data = diamond_call.encode();
-
-        let call_request =
-            CallRequest { to: Some(action.to), data: Some(call_data.into()), ..Default::default() };
-
-        let data: Bytes = self
-            .tracer
-            .api
-            .call(call_request, Some(block_num.into()), EvmOverrides::default())
-            .await
-            .map_err(|e| Into::<TraceParseError>::into(e))?;
-
-        let facet_address = facetAddressCall::decode_returns(&data, true).unwrap().facetAddress_;
-
-        let abi = self
-            .etherscan_client
-            .contract_abi(facet_address.into_array().into())
-            .await
-            .map_err(|e| Into::<TraceParseError>::into(e))?;
-
-        Ok(abi)
+        Ok(())
     }
 }
