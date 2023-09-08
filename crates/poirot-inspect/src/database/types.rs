@@ -12,3 +12,4 @@ pub struct TardisQuotes {
     bid_price: f64,
     bid_amt: f64,
 }
+
