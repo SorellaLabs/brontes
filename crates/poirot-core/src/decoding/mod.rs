@@ -25,6 +25,7 @@ use tokio::{sync::mpsc::UnboundedSender, task::JoinHandle};
 use self::parser::TraceParser;
 
 mod parser;
+mod utils;
 
 pub(crate) const UNKNOWN: &str = "unknown";
 pub(crate) const RECEIVE: &str = "receive";
