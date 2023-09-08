@@ -59,9 +59,10 @@ impl Classifier {
     fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>) -> Actions {
         let address = trace.get_from_addr();
 
-        if PROTOCOL_ADDRESS_SET.contains(&*address) {
-            let decode: StaticReturnBindings = StaticBindings::try_decode(trace).unwrap();
-            panic!()
+        if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
+            // let bytes=  t
+            //
+            // let decode = StaticBindings::try_decode(trace.);
         } else {
             let rem =
                 logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();

@@ -1,5 +1,8 @@
 use clickhouse::Row;
+use malachite::Rational;
 use serde::Deserialize;
+
+use crate::database::serialize::as_rational;
 
 #[derive(Debug, Clone, Row, Deserialize)]
 pub struct TardisQuotes {
@@ -7,8 +10,12 @@ pub struct TardisQuotes {
     symbol: String,
     timestamp: u64,
     local_timestamp: u64,
-    ask_amt: f64,
-    ask_price: f64,
-    bid_price: f64,
-    bid_amt: f64,
+    #[serde(with = "as_rational")]
+    ask_amt: Rational,
+    #[serde(with = "as_rational")]
+    ask_price: Rational,
+    #[serde(with = "as_rational")]
+    bid_price: Rational,
+    #[serde(with = "as_rational")]
+    bid_amt: Rational,
 }
