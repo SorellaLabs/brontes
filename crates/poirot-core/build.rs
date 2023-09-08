@@ -1,12 +1,14 @@
+use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
 use ethers_core::types::{Chain, H160};
 use hyper_tls::HttpsConnector;
+use phf_codegen::Map;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     env,
     fs::{self, File},
-    io::{BufWriter, Write},
+    io::{BufReader, BufWriter, Write},
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -27,7 +29,7 @@ struct AddressToProtocolMapping {
     addresses: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Row)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone)]
 struct ProtocolAbis {
     protocol: String,
     address: String,
@@ -47,13 +49,198 @@ async fn run() {
 
     let protocol_abis = query_db::<ProtocolAbis>(&clickhouse_client, PROTOCOL_ABIS).await;
 
-    write_all_abis(etherscan_client, protocol_abis).await;
+    let abis = write_all_abis(etherscan_client, protocol_abis.clone()).await;
 
     let protocol_address_map =
         query_db::<AddressToProtocolMapping>(&clickhouse_client, PROTOCOL_ADDRESSES).await;
 
+    generate("./src/bindings.rs", protocol_abis.clone(), abis).await;
     address_abi_mapping(protocol_address_map)
 }
+
+//
+//
+// ------------------------ BINDINGS ------------------------
+//
+//
+
+/// generates all bindings and enums for them and writes them to a file
+async fn generate(bindings_file_path: &str, addresses: Vec<ProtocolAbis>, abis: Vec<Value>) {
+    let mut file = write_file(bindings_file_path, true);
+
+    let mut bindings = init_bindings();
+    let mut binding_enums = init_enum("StaticBindings");
+    let mut mod_enums = Vec::new();
+
+    for (protocol_addr, abi) in addresses.into_iter().zip(abis) {
+        let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
+        bindings.push(binding_string(&abi_file_path, &protocol_addr.protocol));
+
+        binding_enums.push(enum_binding_string(&protocol_addr.protocol));
+
+        individual_sub_enums(&mut mod_enums, &abi_file_path, &protocol_addr.protocol, abi);
+    }
+
+    binding_enums.push("}".to_string());
+
+    let aggr = format!(
+        "{}\n\n{}\n{}",
+        bindings.join("\n"),
+        binding_enums.join("\n"),
+        mod_enums.join("\n")
+    );
+
+    file.write_all(aggr.as_bytes()).unwrap();
+}
+
+/// generates the bindings for the given abis
+fn init_bindings() -> Vec<String> {
+    let mut bindings = Vec::new();
+    bindings.push("use alloy_sol_types::sol;\n\n".to_string());
+    bindings
+}
+
+/// generates the bindings for the given abis
+fn init_enum(name: &str) -> Vec<String> {
+    let mut bindings = Vec::new();
+    bindings.push("\n#[allow(non_camel_case_types)]".to_string());
+    bindings.push(format!("pub enum {} {{", name));
+
+    bindings
+}
+
+/// generates the string of an individual binding
+fn binding_string(file_path: &str, protocol_name: &str) -> String {
+    let binding = format!("sol! ({}, \"{}\");", protocol_name, file_path);
+    //let enum_binding = format!("   {},\n", protocol_name);
+    //(binding, enum_binding)
+    binding
+}
+
+/// generates the string of an enum for a binding
+fn enum_binding_string(protocol_name: &str) -> String {
+    let binding = format!("   {}({}_Enum),", protocol_name, protocol_name);
+    binding
+}
+
+/// generates the mapping of function selector to decodable type
+fn function_selector_mapping(map: &mut Map<[u8; 4]>, abi_file_path: &str, protocol_name: &str) {
+    //let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
+    let reader = BufReader::new(File::open(abi_file_path).unwrap());
+    let json_abi: JsonAbi = serde_json::from_reader(reader).unwrap();
+
+    for functions in json_abi.functions.values() {
+        for function in functions {
+            let val =
+                format!("StaticBindings::{}({}::{})", protocol_name, protocol_name, function.name);
+            let map = map.entry(function.selector(), &val);
+        }
+    }
+}
+
+/// generates the mapping of function selector to decodable type
+fn individual_sub_enums(
+    mod_enum: &mut Vec<String>,
+    abi_file_path: &str,
+    protocol_name: &str,
+    abi: Value,
+) {
+    //let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
+
+    //let reader = BufReader::new(File::open(abi_file_path).unwrap());
+    let input = fs::read_to_string(abi_file_path).unwrap();
+    let json_abi: JsonAbi = serde_json::from_str(&input).unwrap();
+
+    let mut enum_protocol_name = protocol_name.to_string();
+    enum_protocol_name.push_str("_Enum");
+    mod_enum.extend(init_enum(&enum_protocol_name));
+    for functions in json_abi.functions.values() {
+        if functions.len() > 1 {
+            for (idx, function) in functions.into_iter().enumerate() {
+                let val = format!(
+                    "   {}({}::{}_{}Call),",
+                    &function.name, protocol_name, &function.name, idx
+                );
+                mod_enum.push(val)
+            }
+        } else {
+            let val = format!(
+                "   {}({}::{}Call),",
+                &functions[0].name, protocol_name, &functions[0].name
+            );
+            mod_enum.push(val);
+        }
+    }
+
+    mod_enum.push("}".to_string());
+}
+
+//
+//
+// ------------------------ ABIs ------------------------
+//
+//
+
+/// writes the provider json abis to files given the protocol name
+async fn write_all_abis(
+    client: alloy_etherscan::Client,
+    addresses: Vec<ProtocolAbis>,
+) -> Vec<Value> {
+    let mut abis = Vec::new();
+    for protocol_addr in addresses {
+        let abi = get_abi(client.clone(), &protocol_addr.address).await;
+        abis.push(abi.clone());
+        let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
+        let mut file = write_file(&abi_file_path, true);
+        file.write_all(serde_json::to_string(&abi).unwrap().as_bytes()).unwrap();
+    }
+
+    abis
+}
+
+/// creates a mapping of each address to an abi binding
+fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
+    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_MAPPING_PATH);
+    let mut file = BufWriter::new(File::create(&path).unwrap());
+    file.write_all("use crate::bindings::StaticBindings;\n\n".as_bytes()).unwrap();
+
+    let mut phf_map = phf_codegen::Map::new();
+    for map in &mapping {
+        for address in &map.addresses {
+            phf_map.entry(address, &format!("StaticBindings::{}", &map.protocol));
+        }
+    }
+
+    writeln!(
+        &mut file,
+        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<&'static str, StaticBindings> = \n{};\n",
+        phf_map.build()
+    )
+    .unwrap();
+}
+
+//
+//
+// ------------------------ ETHERSCAN/DATABASE ------------------------
+//
+//
+
+/// gets the abis (as a serde 'Value') for the given addresses from etherscan
+async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
+    let raw = client.raw_contract(H160::from_str(&address).unwrap()).await.unwrap();
+    serde_json::from_str(&raw).unwrap()
+}
+
+/// queries the db
+async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
+    db.query(query).fetch_all::<T>().await.unwrap()
+}
+
+//
+//
+// ------------------------ BUILDERS ------------------------
+//
+//
 
 /// builds the clickhouse database client
 fn build_db() -> Client {
@@ -90,82 +277,11 @@ fn build_etherscan() -> alloy_etherscan::Client {
     .unwrap()
 }
 
-/// queries the db
-async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
-    db.query(query).fetch_all::<T>().await.unwrap()
-}
-
-/// gets the abi's for the given addresses from etherscan
-async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
-    let raw = client.raw_contract(H160::from_str(&address).unwrap()).await.unwrap();
-    serde_json::from_str(&raw).unwrap()
-}
-
-/// writes json abi to file
-fn write_file(file_path: &str) -> File {
-    File::create(&file_path).unwrap();
-
-    let file = fs::OpenOptions::new()
-        .append(true)
-        .read(true)
-        .open(&file_path)
-        .expect("could not open file");
-
-    file
-}
-
-/// writes the provider json abis to files given the protocol name
-async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<ProtocolAbis>) {
-    let mut bindings = Vec::new();
-    bindings.push("use alloy_sol_types::sol;\n\n".to_string());
-    let mut enum_bindings = "\n\npub enum StaticBindings {\n".to_string();
-    for protocol_addr in addresses {
-        let abi = get_abi(client.clone(), &protocol_addr.address).await;
-        let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
-        let mut file = write_file(&abi_file_path);
-        file.write_all(serde_json::to_string(&abi).unwrap().as_bytes()).unwrap();
-
-        let abi_file_path = get_file_path("./abis/", &protocol_addr.protocol, ".json");
-        let one_binding = generate_bindings(&abi_file_path, &protocol_addr.protocol);
-        bindings.push(one_binding.0);
-        enum_bindings.push_str(&one_binding.1);
-    }
-    enum_bindings.push_str("}");
-
-    let bindings_file_path = get_file_path(BINDINGS_DIRECTORY, "bindings", ".rs");
-    let mut file = write_file(&bindings_file_path);
-    let mut bindings_str = bindings.join("\n");
-    bindings_str.push_str(&enum_bindings);
-    file.write_all(bindings_str.as_bytes()).unwrap();
-}
-
-/// creates a mapping of each address to an abi binding
-fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
-    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_MAPPING_PATH);
-    let mut file = BufWriter::new(File::create(&path).unwrap());
-    file.write_all("use crate::bindings::StaticBindings;\n\n".as_bytes()).unwrap();
-
-    let mut phf_map = phf_codegen::Map::new();
-    for map in &mapping {
-        for address in &map.addresses {
-            phf_map.entry(address, &format!("StaticBindings::{}", &map.protocol));
-        }
-    }
-
-    writeln!(
-        &mut file,
-        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<&'static str, StaticBindings> = \n{};\n",
-        phf_map.build()
-    )
-    .unwrap();
-}
-
-/// generates the bindings
-fn generate_bindings(file_path: &str, protocol_name: &str) -> (String, String) {
-    let binding = format!("sol! ({}, \"{}\");", protocol_name, file_path);
-    let enum_binding = format!("   {},\n", protocol_name);
-    (binding, enum_binding)
-}
+//
+//
+// ------------------------ FILE UTILS ------------------------
+//
+//
 
 /// generates a file path as <DIRECTORY>/<FILENAME><SUFFIX>
 fn get_file_path(directory: &str, file_name: &str, suffix: &str) -> String {
@@ -173,4 +289,13 @@ fn get_file_path(directory: &str, file_name: &str, suffix: &str) -> String {
     file_path.push_str(file_name);
     file_path.push_str(suffix);
     file_path
+}
+
+/// returns a writeable file
+fn write_file(file_path: &str, create: bool) -> File {
+    if create {
+        File::create(&file_path).unwrap();
+    }
+
+    fs::OpenOptions::new().append(true).read(true).open(&file_path).expect("could not open file")
 }
