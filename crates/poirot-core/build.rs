@@ -57,7 +57,7 @@ async fn run() {
         protocol_abis.clone(),
     )
     .await;
-    //address_abi_mapping(protocol_address_map)
+    address_abi_mapping(protocol_address_map)
 }
 
 //
@@ -181,31 +181,26 @@ async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<Protocol
     }
 }
 
-/*
 /// creates a mapping of each address to an abi binding
 fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_MAPPING_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
-    //file.write_all("use crate::bindings::*;\n\n".as_bytes()).unwrap();
 
-    let mut phf_map = phf_codegen::Map::new();
+    let mut phf_set = phf_codegen::Set::new();
     for map in &mapping {
         for address in &map.addresses {
-            phf_map.entry(
-                address,
-                &format!("StaticBindings::{}({}_Enum::None)", &map.protocol, &map.protocol),
-            );
+            phf_set.entry(H160::from_str(address).unwrap().0);
         }
     }
 
     writeln!(
         &mut file,
-        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<&'static str, StaticBindings> = \n{};\n",
-        phf_map.build()
+        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Set<[u8; 20]> = \n{};\n",
+        phf_set.build()
     )
     .unwrap();
 }
-*/
+
 //
 //
 // ------------------------ ETHERSCAN/DATABASE ------------------------
