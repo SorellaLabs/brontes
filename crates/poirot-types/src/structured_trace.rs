@@ -34,7 +34,7 @@ impl TraceActions for TransactionTrace {
     }
 
     fn get_return_calldata(&self) -> Bytes {
-        let Some(res)  = &self.result else { return Bytes::default() };
+        let Some(res) = &self.result else { return Bytes::default() };
         match res {
             reth_rpc_types::trace::parity::TraceOutput::Call(bytes) => bytes.output.clone(),
             _ => Bytes::default(),
