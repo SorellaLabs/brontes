@@ -7,5 +7,8 @@ edition = "2021"
 
 [dependencies]
 clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
-hyper.workspace = true
 hyper-tls = "0.5.0"
+hyper.workspace = true
+serde.workspace = true
+async-trait.workspace = true
+poirot-types.workspace = true
