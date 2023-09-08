@@ -1,8 +1,13 @@
-use serde::Deserialize;
+pub mod errors;
+pub mod types;
+
+use serde::{Deserialize, Serialize};
 use std::env;
 
 use clickhouse::{Client, Row};
 use hyper_tls::HttpsConnector;
+
+use self::errors::DatabaseError;
 
 pub struct InspectorDataClient {
     client: Client,
@@ -107,5 +112,4 @@ impl InspectorDataClient {
 
         Ok(())
     }
-}
 }

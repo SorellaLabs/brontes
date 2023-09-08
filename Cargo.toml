@@ -49,7 +49,6 @@ reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm"
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", rev = "31af4d5" }
 reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "31af4d5" }
 
-
 # ruint
 ruint = "1.9.0"
 
@@ -83,6 +82,10 @@ metrics-process = "1.0.9"
 env_logger = "0.10.0"
 log = "0.4.18"
 
+# error handling
+thiserror = "1.0.44"
+eyre = "0.6.8"
+
 # http/rpc
 hyper = "0.14.25"
 
@@ -92,5 +95,4 @@ serde_json = { version = "1.0" }
 
 # Misc
 c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
-eyre = "0.6.8"
 hex-literal = "0.4.1"
