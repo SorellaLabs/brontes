@@ -1,5 +1,5 @@
 use alloy_dyn_abi::DynSolValue;
-use reth_primitives::{Address, Log, H256, U256};
+use reth_primitives::{Address, Bytes, Log, H256, U256};
 use reth_rpc_types::trace::parity::{
     Action, CreateAction, RewardAction, SelfdestructAction, TransactionTrace,
 };
@@ -9,17 +9,25 @@ use crate::{
     tree::{Node, Root},
 };
 
-pub trait GetAddr {
+pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
+    fn get_calldata(&self) -> Bytes;
 }
 
-impl GetAddr for TransactionTrace {
+impl TraceActions for TransactionTrace {
     fn get_from_addr(&self) -> Address {
         match &self.action {
             Action::Call(call) => call.from,
             Action::Create(call) => call.from,
             Action::Reward(call) => call.author,
             Action::Selfdestruct(call) => call.address,
+        }
+    }
+    fn get_calldata(&self) -> Bytes {
+        match &self.action {
+            Action::Call(call) => call.input.clone(),
+            Action::Create(call) => call.init.clone(),
+            _ => Bytes::default(),
         }
     }
 }
