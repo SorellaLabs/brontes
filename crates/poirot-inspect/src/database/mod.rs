@@ -1,4 +1,5 @@
 pub mod errors;
+pub(crate) mod serialize;
 pub mod types;
 
 use serde::{Deserialize, Serialize};
