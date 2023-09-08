@@ -8,6 +8,6 @@ pub use impls::*;
 
 use poirot_types::normalized_actions::Actions;
 
-pub trait IntoAction {
+pub trait IntoAction: Send + Sync {
     fn decode_trace_data(&self, calldata: Bytes, return_data: Bytes) -> Actions;
 }
