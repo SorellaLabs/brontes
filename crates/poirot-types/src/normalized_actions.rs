@@ -1,6 +1,5 @@
 use reth_primitives::{Address, Log, U256};
-
-use crate::structured_trace::StructuredTrace;
+use reth_rpc_types::trace::parity::TransactionTrace;
 
 #[derive(Debug, Clone)]
 pub enum Actions {
@@ -8,7 +7,7 @@ pub enum Actions {
     Transfer(NormalizedTransfer),
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
-    Unclassified(StructuredTrace, Vec<Log>),
+    Unclassified(TransactionTrace, Vec<Log>),
 }
 
 impl Actions {
