@@ -9,7 +9,7 @@ use std::sync::Arc;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use poirot_core::{TryDecodeSol, PROTOCOL_ADDRESS_MAPPING};
+use poirot_core::{TryDecodeSol};
 use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace};
 use reth_primitives::{Address, Log, U256};
 
@@ -59,16 +59,15 @@ impl Classifier {
     fn classify_node(&self, trace: StructuredTrace, logs: &Vec<Log>) -> Actions {
         let address = trace.get_from_addr();
 
-        if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
-            // let bytes=  t
-            //
-            // let decode = StaticBindings::try_decode(trace.);
-            panic!()
-        } else {
+        // if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
+        //     //
+        //     let decode = StaticBindings::try_decode(trace.);
+        //     panic!()
+        // } else {
             let rem =
                 logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
             return Actions::Unclassified(trace, rem)
-        }
+        // }
     }
 
     /// tries to prove dyn mint, dyn burn and dyn swap.
@@ -167,7 +166,7 @@ impl Classifier {
         None
     }
 
-    fn is_possible_action(&mut self, node_addr: Address, actions: Vec<Actions>) -> bool {
+    fn is_possible_action(&self, node_addr: Address, actions: Vec<Actions>) -> bool {
         // let sub_address = actions.iter().map(|action| action.
         false
     }
