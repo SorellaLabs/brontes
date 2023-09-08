@@ -57,7 +57,7 @@ async fn run() {
         protocol_abis.clone(),
     )
     .await;
-    address_abi_mapping(protocol_address_map)
+    //address_abi_mapping(protocol_address_map)
 }
 
 //
@@ -181,6 +181,7 @@ async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<Protocol
     }
 }
 
+/*
 /// creates a mapping of each address to an abi binding
 fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_MAPPING_PATH);
@@ -204,7 +205,7 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
     )
     .unwrap();
 }
-
+*/
 //
 //
 // ------------------------ ETHERSCAN/DATABASE ------------------------

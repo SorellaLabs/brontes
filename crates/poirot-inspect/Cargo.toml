@@ -12,3 +12,6 @@ hyper.workspace = true
 serde.workspace = true
 async-trait.workspace = true
 poirot-types.workspace = true
+
+# error handling
+thiserror.workspace = true
