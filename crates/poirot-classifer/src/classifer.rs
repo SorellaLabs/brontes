@@ -138,7 +138,7 @@ impl Classifier {
             // if to0 is to our addr then its the out token
             if to0 == addr {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
-                    address: addr,
+                    call_address: addr,
                     token_in: t1,
                     token_out: t0,
                     amount_in: value1,
@@ -146,7 +146,7 @@ impl Classifier {
                 }))
             } else {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
-                    address: addr,
+                    call_address: addr,
                     token_in: t0,
                     token_out: t1,
                     amount_in: value0,
@@ -248,7 +248,7 @@ impl Classifier {
         {
             let swap = if t0 == addr {
                 Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
-                    address: addr,
+                    call_address: addr,
                     token_in: t1,
                     token_out: t0,
                     amount_in: value1,
@@ -256,7 +256,7 @@ impl Classifier {
                 })
             } else {
                 Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
-                    address: addr,
+                    call_address: addr,
                     token_in: t0,
                     token_out: t1,
                     amount_in: value0,
