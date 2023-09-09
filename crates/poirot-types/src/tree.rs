@@ -15,6 +15,10 @@ pub struct Node<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Node<V> {
+    pub fn is_root(&self) -> bool {
+        self.frozen
+    }
+
     pub fn is_frozen(&self) -> bool {
         self.frozen
     }
@@ -29,7 +33,7 @@ impl<V: NormalizedAction> Node<V> {
     /// The address here is the from address for the trace
     pub fn insert(&mut self, address: Address, n: Node<V>) -> bool {
         if self.frozen {
-            return false
+            return false;
         }
 
         if address == self.address {
@@ -37,12 +41,12 @@ impl<V: NormalizedAction> Node<V> {
             cur_stack.pop();
             if !cur_stack.contains(&address) {
                 self.inner.push(n);
-                return true
+                return true;
             }
         }
 
         let last = self.inner.last_mut().expect("building tree went wrong");
-        return last.insert(address, n)
+        return last.insert(address, n);
     }
 
     pub fn get_all_sub_actions(&self) -> Vec<V> {
@@ -63,7 +67,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn current_call_stack(&self) -> Vec<Address> {
         let Some(mut stack) = self.inner.last().map(|n| n.current_call_stack()) else {
-            return vec![self.address]
+            return vec![self.address];
         };
 
         stack.push(self.address);
@@ -77,17 +81,17 @@ impl<V: NormalizedAction> Node<V> {
     {
         // the previous sub-action was best
         if !call(&self) {
-            return false
+            return false;
         }
         let lower_has_better = self.inner.iter().map(|i| i.inspect(result, call)).any(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the best.
         if !lower_has_better {
             result.push(self.get_all_sub_actions());
-            return true
+            return true;
         }
         // lower node has a better sub-action.
-        return false
+        return false;
     }
 
     pub fn dyn_classify<T, F>(
@@ -102,7 +106,7 @@ impl<V: NormalizedAction> Node<V> {
     {
         let works = find(self.address, self.get_all_sub_actions());
         if !works {
-            return false
+            return false;
         }
 
         let lower_has_better = self.inner.iter_mut().any(|i| i.dyn_classify(find, call, result));
@@ -112,7 +116,7 @@ impl<V: NormalizedAction> Node<V> {
                 result.push(res);
             }
         }
-        return true
+        return true;
     }
 }
 
@@ -185,7 +189,7 @@ impl<V: NormalizedAction> TimeTree<V> {
         F: Fn(&Node<V>) -> bool,
     {
         if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
-            return root.inspect(&call)
+            return root.inspect(&call);
         } else {
             vec![]
         }
