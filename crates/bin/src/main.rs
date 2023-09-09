@@ -6,8 +6,7 @@ use poirot_core::{
     decoding::{Parser, TypeToParse},
     init_block, success_block,
 };
-use poirot_metrics::prometheus_exporter::initialize;
-use poirot_metrics::PoirotMetricsListener;
+use poirot_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
 use reth_tracing::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;

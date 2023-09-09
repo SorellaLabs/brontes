@@ -11,6 +11,11 @@ pub struct SandwichInspector {
     db: Arc<InspectorDataClient>,
 }
 
+//TODO: Sandwiching detection Algo:
+// 1. Create a vec for each swap pair & index all swaps on that pair / contract
+// 2. For each swap pair, check if more than 3 swaps. If so look for 2 swaps in opposite direction
+//    from same addr
+// 3. Check profitability of sandwich & index accordingly
 #[async_trait::async_trait]
 impl Inspector for SandwichInspector {
     async fn process_tree(&self, tree: Arc<TimeTree<Actions>>) {

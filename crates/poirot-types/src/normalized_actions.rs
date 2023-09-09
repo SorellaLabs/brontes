@@ -79,4 +79,3 @@ impl NormalizedAction for Actions {
         &self
     }
 }
-

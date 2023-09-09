@@ -42,12 +42,15 @@ impl TraceActions for TransactionTrace {
     }
 }
 
+// TODO (WILL): Add in the gas used for the tx trace, it gets a bit weird:
+// TODO: Parity traces seems to be a bit convulted in that respect see: https://ethereum.stackexchange.com/questions/31443/what-do-the-response-values-of-a-parity-trace-transaction-call-actually-repres
 #[derive(Debug, Clone)]
 pub struct TxTrace {
     pub trace: Vec<TransactionTrace>,
     pub logs: Vec<Log>,
     pub tx_hash: H256,
     pub tx_index: usize,
+    /*pub gas_used: U256,*/
 }
 
 impl TxTrace {
@@ -56,7 +59,8 @@ impl TxTrace {
         tx_hash: H256,
         logs: Vec<Log>,
         tx_index: usize,
+        /*gas_used: U256,*/
     ) -> Self {
-        Self { trace, tx_hash, tx_index, logs }
+        Self { trace, tx_hash, tx_index, logs /* , gas_used*/ }
     }
 }
