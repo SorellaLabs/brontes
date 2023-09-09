@@ -41,7 +41,7 @@ impl Actions {
 
 #[derive(Debug, Clone)]
 pub struct NormalizedSwap {
-    pub address: Address,
+    pub call_address: Address,
     pub token_in: Address,
     pub token_out: Address,
     pub amount_in: U256,
