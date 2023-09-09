@@ -1,3 +1,4 @@
+use crate::PoirotMetricEvents;
 use colored::Colorize;
 use reth_primitives::H160;
 use tracing::info;
@@ -16,6 +17,12 @@ impl DynamicContractMetricEvent {
                 format!("{:#x}", val.address)
             }
         }
+    }
+}
+
+impl Into<PoirotMetricEvents> for DynamicContractMetricEvent {
+    fn into(self) -> PoirotMetricEvents {
+        PoirotMetricEvents::DynamicContractMetricRecieved(self)
     }
 }
 
