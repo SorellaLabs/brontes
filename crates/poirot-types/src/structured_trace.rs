@@ -50,7 +50,7 @@ pub struct TxTrace {
     pub logs: Vec<Log>,
     pub tx_hash: H256,
     pub tx_index: usize,
-    /*pub gas_used: U256,*/
+    /* pub gas_used: U256, */
 }
 
 impl TxTrace {
@@ -59,8 +59,8 @@ impl TxTrace {
         tx_hash: H256,
         logs: Vec<Log>,
         tx_index: usize,
-        /*gas_used: U256,*/
+        /* gas_used: U256, */
     ) -> Self {
-        Self { trace, tx_hash, tx_index, logs /* , gas_used*/ }
+        Self { trace, tx_hash, tx_index, logs /* , gas_used */ }
     }
 }
