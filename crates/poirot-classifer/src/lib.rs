@@ -10,6 +10,8 @@ pub use impls::*;
 
 use poirot_types::normalized_actions::Actions;
 
+include!(concat!(env!("OUT_DIR"), "/token_mappings.rs"));
+
 pub trait IntoAction: Send + Sync {
     fn decode_trace_data(
         &self,

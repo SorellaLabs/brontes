@@ -3,9 +3,8 @@ use poirot_types::{normalized_actions::Actions, tree::TimeTree};
 use reth_primitives::{Address, H256};
 use std::collections::hash_map::Entry;
 
-use reth_primitives::rpc_utils::ParseUnits::I256;
 use std::{
-    collections::{hash_map::OccupiedEntry, HashMap},
+    collections::{ HashMap},
     sync::Arc,
 };
 
