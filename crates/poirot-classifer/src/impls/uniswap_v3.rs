@@ -2,10 +2,10 @@ use crate::{enum_unwrap, IntoAction};
 use alloy_sol_types::SolCall;
 use poirot_core::{
     StaticReturnBindings,
-    Uniswap_V3::{burnCall, mintCall, swapCall, swapReturn, Uniswap_V3Calls},
+    Uniswap_V3::{burnCall, mintCall, swapCall, Uniswap_V3Calls},
 };
 use poirot_types::normalized_actions::Actions;
-use reth_primitives::{Address, Bytes, U256};
+use reth_primitives::{Address, Bytes, Log, U256};
 use std::collections::HashMap;
 
 /// TODO: JOSEPH
@@ -15,12 +15,11 @@ pub struct V3SwapImpl;
 impl IntoAction for V3SwapImpl {
     fn decode_trace_data(
         &self,
-        data: StaticReturnBindings,
+        _data: StaticReturnBindings,
         mut return_data: Bytes,
         address: Address,
+        _logs: &Vec<Log>,
     ) -> Actions {
-        let res = enum_unwrap!(data, Uniswap_V3, swapCall);
-
         let return_data = swapCall::decode_returns(&mut return_data, true).unwrap();
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
@@ -55,11 +54,11 @@ pub struct V3BurnImpl;
 impl IntoAction for V3BurnImpl {
     fn decode_trace_data(
         &self,
-        data: StaticReturnBindings,
+        _data: StaticReturnBindings,
         return_data: Bytes,
         address: Address,
+        _logs: &Vec<Log>,
     ) -> Actions {
-        let res = enum_unwrap!(data, Uniswap_V3, burnCall);
         let return_data = burnCall::decode_returns(&return_data, true).unwrap();
         let token_0_delta: U256 = return_data.amount0.into();
         let token_1_delta: U256 = return_data.amount1.into();
@@ -77,11 +76,11 @@ pub struct V3MintImpl;
 impl IntoAction for V3MintImpl {
     fn decode_trace_data(
         &self,
-        data: StaticReturnBindings,
+        _data: StaticReturnBindings,
         return_data: Bytes,
         address: Address,
+        _logs: &Vec<Log>,
     ) -> Actions {
-        let res = enum_unwrap!(data, Uniswap_V3, mintCall);
         let return_data = mintCall::decode_returns(&return_data, true).unwrap();
         let token_0_delta = return_data.amount0.into();
         let token_1_delta = return_data.amount1.into();
