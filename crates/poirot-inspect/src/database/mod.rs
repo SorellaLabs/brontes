@@ -25,6 +25,4 @@ impl Default for InspectorDataClient {
     }
 }
 
-impl InspectorDataClient {
-    
-}
+impl InspectorDataClient {}

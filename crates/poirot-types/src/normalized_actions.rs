@@ -17,6 +17,10 @@ impl Actions {
             _ => vec![],
         }
     }
+
+    pub fn is_unclassified(&self) -> bool {
+        matches!(self, Actions::Unclassified(_, _))
+    }
 }
 
 #[derive(Debug, Clone)]
