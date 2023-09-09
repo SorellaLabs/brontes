@@ -1,5 +1,5 @@
 use crate::normalized_actions::NormalizedAction;
-use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
+use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, H256};
 use std::collections::HashMap;
 use tracing::error;
@@ -71,7 +71,7 @@ impl<V: NormalizedAction> Node<V> {
         stack
     }
 
-    pub fn inspect<F>(&mut self, result: &mut Vec<Vec<V>>, call: &F) -> bool
+    pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
         F: Fn(&Node<V>) -> bool,
     {
@@ -79,7 +79,7 @@ impl<V: NormalizedAction> Node<V> {
         if !call(&self) {
             return false
         }
-        let lower_has_better = self.inner.iter_mut().map(|i| i.inspect(result, call)).any(|f| f);
+        let lower_has_better = self.inner.iter().map(|i| i.inspect(result, call)).any(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the best.
         if !lower_has_better {
@@ -128,7 +128,7 @@ impl<V: NormalizedAction> Root<V> {
         }
     }
 
-    pub fn inspect<F>(&mut self, call: &F) -> Vec<Vec<V>>
+    pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
     where
         F: Fn(&Node<V>) -> bool,
     {
@@ -180,22 +180,22 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.roots.iter().map(|r| r.tx_hash).collect()
     }
 
-    pub fn inspect<F>(&mut self, hash: H256, call: F) -> Vec<Vec<V>>
+    pub fn inspect<F>(&self, hash: H256, call: F) -> Vec<Vec<V>>
     where
         F: Fn(&Node<V>) -> bool,
     {
-        if let Some(root) = self.roots.iter_mut().find(|r| r.tx_hash == hash) {
+        if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
             return root.inspect(&call)
         } else {
             vec![]
         }
     }
 
-    pub fn inspect_all<F>(&mut self, call: F) -> HashMap<H256, Vec<Vec<V>>>
+    pub fn inspect_all<F>(&self, call: F) -> HashMap<H256, Vec<Vec<V>>>
     where
-        F: Fn(&Node<V>) -> bool + Sync,
+        F: Fn(&Node<V>) -> bool + Send + Sync,
     {
-        self.roots.par_iter_mut().map(|r| (r.tx_hash, r.inspect(&call))).collect()
+        self.roots.par_iter().map(|r| (r.tx_hash, r.inspect(&call))).collect()
     }
 
     /// the first function parses down through the tree to the point where we are at
