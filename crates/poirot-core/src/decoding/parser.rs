@@ -2,10 +2,10 @@ use super::*;
 use crate::errors::TraceParseError;
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
-use poirot_metrics::trace::types::TraceParseErrorKind;
-use poirot_metrics::trace::types::TraceStats;
-use poirot_metrics::trace::types::TransactionStats;
-use poirot_metrics::{trace::types::BlockStats, PoirotMetricEvents};
+use poirot_metrics::{
+    trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
+    PoirotMetricEvents,
+};
 use reth_primitives::{Log, H256};
 use reth_provider::ReceiptProvider;
 use reth_rpc_types::trace::parity::{Action as RethAction, CallAction as RethCallAction};
@@ -84,7 +84,7 @@ impl TraceParser {
                     traces: vec![],
                     err: Some(TraceParseErrorKind::TracesMissingTx),
                 });
-                continue;
+                continue
             }
 
             let tx_traces = self
@@ -144,7 +144,7 @@ impl TraceParser {
         let (action, trace_address) = if let RethAction::Call(call) = trace.action {
             (call, trace.trace_address)
         } else {
-            return Ok(());
+            return Ok(())
         };
 
         //let binding = StaticBindings::Curve_Crypto_Factory_V2;
@@ -158,12 +158,12 @@ impl TraceParser {
         // Check if the input is empty, indicating a potential `receive` or `fallback` function
         // call.
         if action.input.is_empty() {
-            return Ok(());
+            return Ok(())
         }
 
         let _ =
             self.abi_decoding_pipeline(&abi, &action, &trace_address, &tx_hash, block_num).await;
-        return Ok(());
+        return Ok(())
     }
 
     /// cycles through all possible abi decodings
