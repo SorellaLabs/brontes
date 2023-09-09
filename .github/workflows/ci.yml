@@ -16,8 +16,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.CI }}
+        # with:
+        #   token: ${{ secrets.CI }}
 
       - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
         shell: bash
