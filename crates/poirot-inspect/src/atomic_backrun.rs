@@ -56,6 +56,4 @@ impl Inspector for AtomicBackrunInspector {
     }
 }
 
-pub struct AtomicArb {
-
-}
+pub struct AtomicArb {}
