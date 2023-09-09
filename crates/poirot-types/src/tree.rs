@@ -176,6 +176,10 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.roots.last_mut().expect("no root_nodes inserted").insert(from, node);
     }
 
+    pub fn get_hashes(&self) -> Vec<H256> {
+        self.roots.iter().map(|r| r.tx_hash).collect()
+    }
+
     pub fn inspect<F>(&mut self, hash: H256, call: F) -> Vec<Vec<V>>
     where
         F: Fn(&Node<V>) -> bool,
