@@ -1,8 +1,8 @@
 use crate::trace::{types::TraceMetricEvent, TraceMetrics};
 use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
 use futures::Future;
-use std::collections::HashMap;
 use std::{
+    collections::HashMap,
     pin::Pin,
     task::{ready, Context, Poll},
 };

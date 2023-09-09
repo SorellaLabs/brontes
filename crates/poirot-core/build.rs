@@ -211,6 +211,23 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
 //
 //
 
+// TODO! Implement these classifiers for the different protocols:
+// 1. UniswapV3
+// 2. UniswapV2
+// 3. Aave
+// 4. Curve
+// 5. Compound
+// 6. Sushiswap
+// 7. Balancer
+// 8. Yearn
+// 9. Synthetix
+// 10. Maker
+// 11. 0x
+// 12. Bancor
+// 13. Kyber
+// 14. dYdX
+// 15. Ambient
+
 /// gets the abis (as a serde 'Value') for the given addresses from etherscan
 async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
     let raw = client.raw_contract(H160::from_str(&address).unwrap()).await.unwrap();
