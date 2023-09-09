@@ -12,6 +12,7 @@ poirot-core.workspace = true
 poirot-inspect.workspace = true
 poirot-types.workspace = true
 poirot-classifer.workspace = true
+poirot-metrics.workspace = true
 
 # Async
 tokio = { workspace = true, features = ["full", "tracing"] }
@@ -47,11 +48,6 @@ tracing-subscriber.workspace = true
 reth-tracing.workspace = true
 colored.workspace = true
 
-# prometheus
-metrics-exporter-prometheus.workspace = true
-metrics-util.workspace = true
-metrics-process.workspace = true
-
 # misc
 eyre.workspace = true
 
@@ -59,3 +55,5 @@ eyre.workspace = true
 hyper.workspace = true
 
 
+# prometheus
+metrics-process.workspace = true

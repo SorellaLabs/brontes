@@ -1,25 +1,16 @@
-use crate::{
-    decoding::utils::*,
-    errors::TraceParseError,
-    stats::types::{BlockStats, TraceStats, TransactionStats},
-};
+use super::*;
+use crate::errors::TraceParseError;
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
-use reth_provider::ReceiptProvider;
-use reth_tracing::TracingClient;
-
-use super::{utils::IDiamondLoupe::facetAddressCall, *};
+use poirot_metrics::trace::types::TraceParseErrorKind;
+use poirot_metrics::trace::types::TraceStats;
+use poirot_metrics::trace::types::TransactionStats;
+use poirot_metrics::{trace::types::BlockStats, PoirotMetricEvents};
 use reth_primitives::{Log, H256};
-use reth_rpc_types::{
-    trace::parity::{Action as RethAction, CallAction as RethCallAction},
-    CallRequest,
-};
+use reth_provider::ReceiptProvider;
+use reth_rpc_types::trace::parity::{Action as RethAction, CallAction as RethCallAction};
+use reth_tracing::TracingClient;
 use std::sync::Arc;
-
-use alloy_sol_types::SolCall;
-use reth_primitives::Bytes;
-
-use reth_rpc::eth::revm_utils::EvmOverrides;
 
 #[derive(Clone)]
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt to decode each call
@@ -27,14 +18,14 @@ use reth_rpc::eth::revm_utils::EvmOverrides;
 pub(crate) struct TraceParser {
     etherscan_client: Client,
     tracer: Arc<TracingClient>,
-    pub(crate) metrics_tx: Arc<UnboundedSender<TraceMetricEvent>>,
+    pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
 impl TraceParser {
     pub fn new(
         etherscan_client: Client,
         tracer: Arc<TracingClient>,
-        metrics_tx: Arc<UnboundedSender<TraceMetricEvent>>,
+        metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
         Self { etherscan_client, tracer, metrics_tx }
     }
@@ -93,7 +84,7 @@ impl TraceParser {
                     traces: vec![],
                     err: Some(TraceParseErrorKind::TracesMissingTx),
                 });
-                continue
+                continue;
             }
 
             let tx_traces = self
@@ -153,7 +144,7 @@ impl TraceParser {
         let (action, trace_address) = if let RethAction::Call(call) = trace.action {
             (call, trace.trace_address)
         } else {
-            return Ok(())
+            return Ok(());
         };
 
         //let binding = StaticBindings::Curve_Crypto_Factory_V2;
@@ -167,12 +158,12 @@ impl TraceParser {
         // Check if the input is empty, indicating a potential `receive` or `fallback` function
         // call.
         if action.input.is_empty() {
-            return Ok(())
+            return Ok(());
         }
 
         let _ =
             self.abi_decoding_pipeline(&abi, &action, &trace_address, &tx_hash, block_num).await;
-        return Ok(())
+        return Ok(());
     }
 
     /// cycles through all possible abi decodings

@@ -1,5 +1,5 @@
 use crate::errors::TraceParseError;
-extern crate reth_tracing;
+
 use super::*;
 use alloy_dyn_abi::{DynSolType, ResolveSolType};
 use alloy_json_abi::{JsonAbi, StateMutability};
