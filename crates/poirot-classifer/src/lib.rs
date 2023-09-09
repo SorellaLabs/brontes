@@ -1,4 +1,4 @@
-use reth_primitives::{Address, Bytes, Log};
+use reth_primitives::{Address, Bytes, Log, H160};
 
 use poirot_core::StaticReturnBindings;
 

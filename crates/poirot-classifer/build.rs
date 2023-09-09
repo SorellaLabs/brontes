@@ -11,7 +11,7 @@ use std::{
 };
 
 const TOKEN_MAPPING: &str = "token_mappings.rs";
-const TOKEN_QUERIES: &str = "SELECT address,tokens FROM pools WHERE length(tokens) = ";
+const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x),tokens) AS tokens FROM pools WHERE length(tokens) = ";
 
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct DecodedTokens {
@@ -31,7 +31,8 @@ fn main() {
 
         for i in 2..4 {
             let res =
-                query_db::<DecodedTokens>(&client, &(TOKEN_QUERIES.to_string() + &i.to_string())).await;
+                query_db::<DecodedTokens>(&client, &(TOKEN_QUERIES.to_string() + &i.to_string()))
+                    .await;
 
             build_token_map(i, res, &mut file)
         }
@@ -40,20 +41,19 @@ fn main() {
 
 async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
-
 }
 
 fn to_string_vec(tokens: Vec<String>) -> String {
     let tokens = tokens.into_iter().map(|t| H160::from_str(&t).unwrap()).collect::<Vec<_>>();
     let mut res = "[".to_string();
     for token in tokens {
-        res += "[";
+        res += "H160([";
         for byte in token.to_fixed_bytes() {
             res += &byte.to_string();
             res += ",";
         }
         let _ = res.pop();
-        res += "],";
+        res += "]),";
     }
     let _ = res.pop();
     res += "]";
@@ -73,7 +73,7 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 
     writeln!(
         file,
-        "pub static ADDRESS_TO_TOKENS_{}: phf::Map<[u8; 20], [[u8;20]; {}]> = \n{};\n",
+        "pub static ADDRESS_TO_TOKENS_{}: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
         amount,
         amount,
         phf_map.build()

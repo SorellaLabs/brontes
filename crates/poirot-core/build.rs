@@ -33,8 +33,6 @@ struct ProtocolAbis {
     address: String,
 }
 
-
-
 fn main() {
     dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
