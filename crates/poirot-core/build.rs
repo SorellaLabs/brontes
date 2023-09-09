@@ -228,8 +228,6 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
 // 14. dYdX
 // 15. Ambient
 
-
-
 /// gets the abis (as a serde 'Value') for the given addresses from etherscan
 async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
     let raw = client.raw_contract(H160::from_str(&address).unwrap()).await.unwrap();
