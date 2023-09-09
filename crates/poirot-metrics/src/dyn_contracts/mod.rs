@@ -4,33 +4,28 @@ use std::collections::HashMap;
 use tracing::trace;
 
 use self::types::DynamicContractMetricEvent;
-
 pub mod types;
 
 #[derive(Debug, Default, Clone)]
 pub struct DynamicContractMetrics {
-    contracts: HashMap<String, ContractMetrics>,
-    function: HashMap<String, ContractMetrics>,
+    contracts: ContractMetrics,
+    functions: HashMap<String, ContractFunctionMetrics>,
 }
 
 impl DynamicContractMetrics {
     /// Returns existing or initializes a new instance of [ContractMetrics]
     pub(crate) fn get_contract_metrics(&mut self, address: String) -> &mut ContractMetrics {
-        self.contracts
-            .entry(address.clone())
-            .or_insert_with(|| ContractMetrics::new_with_labels(&[("contracts", address)]))
+        &mut self.contracts
     }
 
     /// Returns existing or initializes a new instance of [ContractFunctionMetrics]
-    pub(crate) fn get_function(
+    pub(crate) fn get_function_metrics(
         &mut self,
-        address: String,
         function_name: String,
-    ) -> &mut ContractMetrics {
-        let this = format!("{}_{}", address, function_name);
-        self.contracts
-            .entry(this.clone())
-            .or_insert_with(|| ContractMetrics::new_with_labels(&[("functions", this)]))
+    ) -> &mut ContractFunctionMetrics {
+        self.functions.entry(function_name.clone()).or_insert_with(|| {
+            ContractFunctionMetrics::new_with_labels(&[("functions", function_name)])
+        })
     }
 
     pub(crate) fn handle_event(&mut self, event: DynamicContractMetricEvent) {
