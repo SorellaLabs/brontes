@@ -23,23 +23,23 @@ impl IntoAction for V2SwapImpl {
         for log in logs {
             if let Ok(data) = Swap::decode_data(&log.data, true) {
                 let (amount_0_in, amount_1_in, amount_0_out, amount_1_out) = data;
-                let amount_0_in: U256 = amount_0_in.into();
+                let amount_0_in: U256 = amount_0_in;
 
                 if amount_0_in == U256::ZERO {
                     return Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                         call_address: address,
                         token_in: token_1,
                         token_out: token_0,
-                        amount_in: amount_1_in.into(),
-                        amount_out: amount_0_out.into(),
+                        amount_in: amount_1_in,
+                        amount_out: amount_0_out,
                     })
                 } else {
                     return Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                         call_address: address,
                         token_in: token_0,
                         token_out: token_1,
-                        amount_in: amount_0_in.into(),
-                        amount_out: amount_1_out.into(),
+                        amount_in: amount_0_in,
+                        amount_out: amount_1_out,
                     })
                 }
             }
@@ -65,7 +65,7 @@ impl IntoAction for V2MintImpl {
                 return Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
                     to,
                     token: vec![token_0, token_1],
-                    amount: vec![amount_0.into(), amount_1.into()],
+                    amount: vec![amount_0, amount_1],
                 })
             }
         }
@@ -82,7 +82,7 @@ impl IntoAction for V2BurnImpl {
         address: Address,
         logs: &Vec<Log>,
     ) -> Actions {
-        let data = enum_unwrap!(data, SushiSwap_V2, burnCall);
+        let _data = enum_unwrap!(data, SushiSwap_V2, burnCall);
 
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2.get(&*address).copied().unwrap();
         for log in logs {
@@ -90,7 +90,7 @@ impl IntoAction for V2BurnImpl {
                 return Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
                     from: address,
                     token: vec![token_0, token_1],
-                    amount: vec![amount_0.into(), amount_1.into()],
+                    amount: vec![amount_0, amount_1],
                 })
             }
         }

@@ -4,7 +4,7 @@ use poirot_types::{
     normalized_actions::{Actions, NormalizedAction},
     tree::{Node, Root, TimeTree},
 };
-use reth_primitives::H256;
+
 use std::{collections::VecDeque, sync::Arc};
 
 pub struct SandwichInspector {
@@ -20,7 +20,7 @@ pub struct SandwichInspector {
 impl Inspector for SandwichInspector {
     async fn process_tree(&self, tree: Arc<TimeTree<Actions>>) {
         let mut roots: VecDeque<&Root<Actions>> =
-            tree.roots.iter().map(|n| n).collect::<Vec<&Root<Actions>>>().into();
+            tree.roots.iter().collect::<Vec<&Root<Actions>>>().into();
         if roots.len() < 3 {
             return
         }
@@ -29,7 +29,7 @@ impl Inspector for SandwichInspector {
 
         while buffer.len() > 2 {
             let first_node = buffer.pop_front().unwrap();
-            let third_node = buffer.get(buffer.len() - 1).unwrap();
+            let third_node = buffer.back().unwrap();
             if first_node.head.address != first_node.head.address {
                 buffer.push_back(roots.pop_front().unwrap());
                 continue
@@ -37,9 +37,9 @@ impl Inspector for SandwichInspector {
 
             let second_node = buffer.get(buffer.len() - 2).unwrap();
 
-            let first_swaps = tree.inspect(first_node.tx_hash, |node| Self::get_swaps(node));
-            let second_swaps = tree.inspect(second_node.tx_hash, |node| Self::get_swaps(node));
-            let third_swaps = tree.inspect(third_node.tx_hash, |node| Self::get_swaps(node));
+            let _first_swaps = tree.inspect(first_node.tx_hash, Self::get_swaps);
+            let _second_swaps = tree.inspect(second_node.tx_hash, Self::get_swaps);
+            let _third_swaps = tree.inspect(third_node.tx_hash, Self::get_swaps);
         }
     }
 }

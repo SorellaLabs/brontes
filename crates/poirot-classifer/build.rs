@@ -94,13 +94,13 @@ fn build_db() -> Client {
     let https_client = hyper::Client::builder().build::<_, hyper::Body>(https);
 
     // builds the clickhouse client
-    let client = Client::with_http_client(https_client)
+    
+
+    Client::with_http_client(https_client)
         .with_url(clickhouse_path)
         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
         .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
         .with_database(
             env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
-        );
-
-    client
+        )
 }

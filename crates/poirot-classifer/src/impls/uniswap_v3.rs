@@ -57,8 +57,8 @@ impl IntoAction for V3BurnImpl {
         _logs: &Vec<Log>,
     ) -> Actions {
         let return_data = burnCall::decode_returns(&return_data, true).unwrap();
-        let token_0_delta: U256 = return_data.amount0.into();
-        let token_1_delta: U256 = return_data.amount1.into();
+        let token_0_delta: U256 = return_data.amount0;
+        let token_1_delta: U256 = return_data.amount1;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2.get(&*address).copied().unwrap();
 
         Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
@@ -79,8 +79,8 @@ impl IntoAction for V3MintImpl {
         _logs: &Vec<Log>,
     ) -> Actions {
         let return_data = mintCall::decode_returns(&return_data, true).unwrap();
-        let token_0_delta = return_data.amount0.into();
-        let token_1_delta = return_data.amount1.into();
+        let token_0_delta = return_data.amount0;
+        let token_1_delta = return_data.amount1;
         let [token0, token1] = ADDRESS_TO_TOKENS_2.get(&*address).copied().unwrap();
 
         Actions::Mint(poirot_types::normalized_actions::NormalizedMint {

@@ -44,7 +44,7 @@ impl Parser {
     ) -> Self {
         let executor = Executor::new();
         let tracer =
-            Arc::new(TracingClient::new(&Path::new(db_path), executor.runtime.handle().clone()));
+            Arc::new(TracingClient::new(Path::new(db_path), executor.runtime.handle().clone()));
 
         let etherscan_client = Client::new_cached(
             Chain::Mainnet,

@@ -86,7 +86,7 @@ impl Classifier {
                 }
             }
 
-            return Actions::Unclassified(trace, rem)
+            Actions::Unclassified(trace, rem)
         }
     }
 
@@ -274,19 +274,17 @@ impl Classifier {
         let new_classifed_exchanges = tree.dyn_classify(
             |address, sub_actions| {
                 // we can dyn classify this shit
-                if PROTOCOL_ADDRESS_MAPPING.contains_key(&format!("{address}").as_str()) {
+                if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
                     // this is already classified
                     return false
                 }
                 if self.known_dyn_exchanges.contains_key(&address) {
                     return true
-                } else {
-                    if self.is_possible_exchange(sub_actions) {
-                        return true
-                    };
+                } else if self.is_possible_exchange(sub_actions) {
+                    return true
                 }
 
-                return false
+                false
             },
             |node| {
                 if self.known_dyn_exchanges.contains_key(&node.address) {
@@ -296,13 +294,11 @@ impl Classifier {
                         node.inner.clear();
                         node.data = res;
                     }
-                } else {
-                    if let Some((ex_addr, tokens, action)) = self.try_clasify_exchange(node) {
-                        node.inner.clear();
-                        node.data = action;
+                } else if let Some((ex_addr, tokens, action)) = self.try_clasify_exchange(node) {
+                    node.inner.clear();
+                    node.data = action;
 
-                        return Some((ex_addr, tokens))
-                    }
+                    return Some((ex_addr, tokens))
                 }
                 None
             },
