@@ -63,7 +63,7 @@ impl Classifier {
         if let Some(mapping) = PROTOCOL_ADDRESS_MAPPING.get(format!("{address}").as_str()) {
             let calldata = trace.get_calldata();
             let return_bytes = trace.get_return_calldata();
-            let sig = &calldata[0..3];
+            let sig = &calldata[0..4];
             let res: StaticReturnBindings = mapping.try_decode(&calldata).unwrap();
 
             return self.static_exchanges.get(sig).unwrap().decode_trace_data(res, return_bytes)
