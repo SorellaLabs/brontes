@@ -1,11 +1,11 @@
+use crate::trace::{types::TraceMetricEvent, TraceMetrics};
+use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
+use futures::Future;
+use std::collections::HashMap;
 use std::{
     pin::Pin,
     task::{ready, Context, Poll},
 };
-
-use crate::trace::{types::TraceMetricEvent, TraceMetrics};
-use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
-use futures::Future;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::trace;
 pub mod dyn_contracts;
@@ -27,7 +27,7 @@ pub enum PoirotMetricEvents {
 pub struct PoirotMetricsListener {
     events_rx: UnboundedReceiver<PoirotMetricEvents>,
     tx_metrics: TraceMetrics,
-    contract_metrics: DynamicContractMetrics,
+    contract_metrics: HashMap<String, DynamicContractMetrics>,
 }
 
 impl PoirotMetricsListener {
@@ -36,7 +36,7 @@ impl PoirotMetricsListener {
         Self {
             events_rx,
             tx_metrics: TraceMetrics::default(),
-            contract_metrics: DynamicContractMetrics::default(),
+            contract_metrics: HashMap::default(),
         }
     }
 
@@ -45,7 +45,11 @@ impl PoirotMetricsListener {
         match event {
             PoirotMetricEvents::TraceMetricRecieved(val) => self.tx_metrics.handle_event(val),
             PoirotMetricEvents::DynamicContractMetricRecieved(val) => {
-                self.contract_metrics.handle_event(val)
+                let this = self
+                    .contract_metrics
+                    .entry(val.get_addr())
+                    .or_insert_with(|| DynamicContractMetrics::default());
+                this.handle_event(val)
             }
         }
     }

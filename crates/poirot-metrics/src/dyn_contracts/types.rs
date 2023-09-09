@@ -9,6 +9,16 @@ pub enum DynamicContractMetricEvent {
     ContractMetricRecieved(ContractMetric),
 }
 
+impl DynamicContractMetricEvent {
+    pub(crate) fn get_addr(&self) -> String {
+        match self {
+            DynamicContractMetricEvent::ContractMetricRecieved(val) => {
+                format!("{:#x}", val.address)
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ContractMetric {
     pub address: H160,

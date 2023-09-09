@@ -1,8 +1,8 @@
-pub mod types;
 use metrics::{Counter, Gauge};
 use reth_metrics::Metrics;
 use std::collections::HashMap;
 use tracing::trace;
+pub mod types;
 pub mod utils;
 
 use super::TraceMetricEvent;
