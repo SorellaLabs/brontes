@@ -31,7 +31,7 @@ pub(crate) async fn initialize_with_hooks<F: Hook + 'static>(
 
     // Build metrics stack
     Stack::new(recorder)
-        .push(PrefixLayer::new("sorella-db"))
+        .push(PrefixLayer::new("mev-poirot"))
         .install()
         .wrap_err("Couldn't set metrics recorder.")?;
 
