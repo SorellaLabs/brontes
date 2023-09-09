@@ -17,7 +17,7 @@ impl Inspector for SandwichInspector {
         let mut roots: VecDeque<&Root<Actions>> =
             tree.roots.iter().map(|n| n).collect::<Vec<&Root<Actions>>>().into();
         if roots.len() < 3 {
-            return;
+            return
         }
 
         let mut buffer: VecDeque<&Root<Actions>> = roots.drain(..3).collect();
@@ -27,7 +27,7 @@ impl Inspector for SandwichInspector {
             let third_node = buffer.get(buffer.len() - 1).unwrap();
             if first_node.head.address != first_node.head.address {
                 buffer.push_back(roots.pop_front().unwrap());
-                continue;
+                continue
             }
 
             let second_node = buffer.get(buffer.len() - 2).unwrap();
@@ -35,8 +35,6 @@ impl Inspector for SandwichInspector {
             let first_swaps = tree.inspect(first_node.tx_hash, |node| Self::get_swaps(node));
             let second_swaps = tree.inspect(second_node.tx_hash, |node| Self::get_swaps(node));
             let third_swaps = tree.inspect(third_node.tx_hash, |node| Self::get_swaps(node));
-
-            
         }
     }
 }
