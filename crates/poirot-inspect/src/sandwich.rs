@@ -11,7 +11,7 @@ pub struct SandwichInspector {
     db: Arc<InspectorDataClient>,
 }
 
-//TODO: Sandwiching Algo:
+//TODO: Sandwiching detection Algo:
 // 1. Create a vec for each swap pair & index all swaps on that pair / contract
 // 2. For each swap pair, check if more than 3 swaps. If so look for 2 swaps in opposite direction
 //    from same addr
