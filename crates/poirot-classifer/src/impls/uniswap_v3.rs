@@ -1,9 +1,9 @@
 use crate::{yoink_decoded_type, IntoAction};
+use alloy_sol_types::SolCall;
 use poirot_core::{
     StaticReturnBindings,
-    Uniswap_V3::{swapCall, Uniswap_V3Calls, swapReturn},
+    Uniswap_V3::{swapCall, swapReturn, Uniswap_V3Calls},
 };
-use alloy_sol_types::SolCall;
 use poirot_types::normalized_actions::Actions;
 use reth_primitives::Bytes;
 
