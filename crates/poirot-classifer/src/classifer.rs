@@ -70,6 +70,7 @@ impl Classifier {
                 res,
                 return_bytes,
                 address,
+                logs,
             )
         } else {
             let rem =
@@ -161,13 +162,13 @@ impl Classifier {
             let (token, from, to, value) = transfer_data.remove(0);
             if from == addr {
                 return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
-                    to: to,
+                    to,
                     token: vec![token],
                     amount: vec![value],
                 }))
             } else {
                 return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
-                    from: from,
+                    from,
                     token: vec![token],
                     amount: vec![value],
                 }))
