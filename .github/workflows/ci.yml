@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.CI_PAT }}
+          token: ${{ secrets.CI }}
 
       - run: git config --global url."https://x-access-token:${{ secrets.CI_PAT }}@github.com/".insteadOf "https://github.com/"
         shell: bash
@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.CI_PAT }}
+          token: ${{ secrets.CI }}
 
       - run: git config --global url."https://x-access-token:${{ secrets.CI_PAT }}@github.com/".insteadOf "https://github.com/"
         shell: bash
