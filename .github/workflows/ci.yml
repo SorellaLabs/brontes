@@ -19,9 +19,9 @@ jobs:
         with:
           token: ${{ secrets.CI }}
 
-      - run: git config --global url."https://x-access-token:${{ secrets.CI_PAT }}@github.com/".insteadOf "https://github.com/"
+      - run: git config --global url."https://x-access-token:${{ secrets.CI}}@github.com/".insteadOf "https://github.com/"
         shell: bash
-      - run: git config --global url."https://${{ secrets.CI_PAT }}@github.com/".insteadOf "git@github.com:"
+      - run: git config --global url."https://${{ secrets.CI}}@github.com/".insteadOf "git@github.com:"
         shell: bash
 
       - name: Install toolchain
@@ -45,9 +45,9 @@ jobs:
         with:
           token: ${{ secrets.CI }}
 
-      - run: git config --global url."https://x-access-token:${{ secrets.CI_PAT }}@github.com/".insteadOf "https://github.com/"
+      - run: git config --global url."https://x-access-token:${{ secrets.CI}}@github.com/".insteadOf "https://github.com/"
         shell: bash
-      - run: git config --global url."https://${{ secrets.CI_PAT }}@github.com/".insteadOf "git@github.com:"
+      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
         shell: bash
 
       - name: Install toolchain
