@@ -11,3 +11,4 @@ reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 tracing.workspace = true
 rayon = "1.7.0"
+malachite.workspace  = true

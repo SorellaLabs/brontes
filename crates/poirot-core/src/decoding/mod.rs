@@ -58,18 +58,12 @@ impl Parser {
         Self { executor, parser_fut: FuturesUnordered::new(), parser: Arc::new(parser) }
     }
 
-    /// executes the tracing of a given block OR tx hash OR trace idx in a tx
-    pub fn execute(&self, identifier: TypeToParse) {
-        match identifier {
-            TypeToParse::Block(block_num) => {
-                self.parser_fut.push(self.executor.spawn_result_task_as(
-                    Self::execute_block(self.parser.clone(), block_num),
-                    TaskKind::Default,
-                ))
-            }
-            TypeToParse::Tx(_) => panic!("NOT IMPLEMENTED YET"),
-            TypeToParse::TxTrace(_) => panic!("NOT IMPLEMENTED YET"),
-        }
+    /// executes the tracing of a given block
+    pub fn execute(&self, block_num: u64) {
+        self.parser_fut.push(self.executor.spawn_result_task_as(
+            Self::execute_block(self.parser.clone(), block_num),
+            TaskKind::Default,
+        ))
     }
 
     /// executes the tracing of a given block
@@ -105,11 +99,4 @@ impl Stream for Parser {
 
         Poll::Pending
     }
-}
-
-/// types of traces that can be executed
-pub enum TypeToParse {
-    Block(u64),
-    Tx(H256),             // if we want to parser a single tx
-    TxTrace((H256, u16)), // if we want to parser a single trace in a tx
 }
