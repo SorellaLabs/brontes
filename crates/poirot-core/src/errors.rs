@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use alloy_etherscan::errors::EtherscanError;
 use ethers_core::types::H256;
+use poirot_metrics::trace::types::TraceParseErrorKind;
 use reth_rpc::eth::error::EthApiError;
 use thiserror::Error;
 
@@ -40,72 +41,11 @@ impl From<EthApiError> for TraceParseError {
     }
 }
 
-/// enum for error
-#[derive(Debug, Clone, Copy)]
-pub enum TraceParseErrorKind {
-    TracesMissingBlock,
-    TracesMissingTx,
-    EmptyInput,
-    AbiParseError,
-    EthApiError,
-    InvalidFunctionSelector,
-    AbiDecodingFailed,
-    ChannelSendError,
-    EtherscanChainNotSupported,
-    EtherscanExecutionFailed,
-    EtherscanBalanceFailed,
-    EtherscanNotProxy,
-    EtherscanMissingImplementationAddress,
-    EtherscanBlockNumberByTimestampFailed,
-    EtherscanTransactionReceiptFailed,
-    EtherscanGasEstimationFailed,
-    EtherscanBadStatusCode,
-    EtherscanEnvVarNotFound,
-    EtherscanReqwest,
-    EtherscanSerde,
-    EtherscanContractCodeNotVerified,
-    EtherscanEmptyResult,
-    EtherscanRateLimitExceeded,
-    EtherscanIO,
-    EtherscanLocalNetworksNotSupported,
-    EtherscanErrorResponse,
-    EtherscanUnknown,
-    EtherscanBuilder,
-    EtherscanMissingSolcVersion,
-    EtherscanInvalidApiKey,
-    EtherscanBlockedByCloudflare,
-    EtherscanCloudFlareSecurityChallenge,
-    EtherscanPageNotFound,
-    EtherscanCacheError,
-    EthApiEmptyRawTransactionData,
-    EthApiFailedToDecodeSignedTransaction,
-    EthApiInvalidTransactionSignature,
-    EthApiPoolError,
-    EthApiUnknownBlockNumber,
-    EthApiUnknownBlockOrTxIndex,
-    EthApiInvalidBlockRange,
-    EthApiPrevrandaoNotSet,
-    EthApiConflictingFeeFieldsInRequest,
-    EthApiInvalidTransaction,
-    EthApiInvalidBlockData,
-    EthApiBothStateAndStateDiffInOverride,
-    EthApiInternal,
-    EthApiSigning,
-    EthApiTransactionNotFound,
-    EthApiUnsupported,
-    EthApiInvalidParams,
-    EthApiInvalidTracerConfig,
-    EthApiInvalidRewardPercentiles,
-    EthApiInternalTracingError,
-    EthApiInternalEthError,
-    EthApiInternalJsTracerError,
-}
-
 /// TODO: why don't we just use the default error here since we are litterally just mapping 1-1 and
 /// dropping some state.
-impl From<&TraceParseError> for TraceParseErrorKind {
-    fn from(err: &TraceParseError) -> TraceParseErrorKind {
-        match err {
+impl Into<TraceParseErrorKind> for &TraceParseError {
+    fn into(self) -> TraceParseErrorKind {
+        match self {
             TraceParseError::TracesMissingBlock(_) => TraceParseErrorKind::TracesMissingBlock,
             TraceParseError::TracesMissingTx(_) => TraceParseErrorKind::TracesMissingTx,
             TraceParseError::EmptyInput(_) => TraceParseErrorKind::EmptyInput,

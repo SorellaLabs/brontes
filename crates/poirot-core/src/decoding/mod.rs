@@ -7,13 +7,12 @@ use std::{
 };
 
 use crate::{
-    errors::TraceParseErrorKind,
     executor::{Executor, TaskKind},
     init_trace,
-    stats::TraceMetricEvent,
 };
 use poirot_types::structured_trace::TxTrace;
 
+use self::parser::TraceParser;
 use alloy_etherscan::Client;
 use ethers_core::types::Chain;
 use futures::{stream::FuturesUnordered, Stream, StreamExt};
@@ -22,11 +21,9 @@ use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType, 
 use reth_tracing::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinHandle};
 
-use self::parser::TraceParser;
-
 mod parser;
 mod utils;
-
+use poirot_metrics::{trace::types::TraceMetricEvent, PoirotMetricEvents};
 pub(crate) const UNKNOWN: &str = "unknown";
 pub(crate) const RECEIVE: &str = "receive";
 pub(crate) const FALLBACK: &str = "fallback";
@@ -41,7 +38,7 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(
-        metrics_tx: UnboundedSender<TraceMetricEvent>,
+        metrics_tx: UnboundedSender<PoirotMetricEvents>,
         etherscan_key: &str,
         db_path: &str,
     ) -> Self {
@@ -80,12 +77,14 @@ impl Parser {
         let parity_trace = this.trace_block(block_num).await;
 
         if parity_trace.0.is_none() {
-            this.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1)).unwrap();
-            return None
+            this.metrics_tx
+                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
+                .unwrap();
+            return None;
         }
 
         let traces = this.parse_block(parity_trace.0.unwrap(), block_num).await;
-        this.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(traces.1)).unwrap();
+        this.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(traces.1).into()).unwrap();
         Some(traces.0)
     }
 }

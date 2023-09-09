@@ -1,9 +1,14 @@
+pub mod types;
 use metrics::{Counter, Gauge};
 use reth_metrics::Metrics;
 use std::collections::HashMap;
+use tracing::trace;
+pub mod utils;
+
+use super::TraceMetricEvent;
 
 #[derive(Debug, Default, Clone)]
-pub(crate) struct TraceMetrics {
+pub struct TraceMetrics {
     pub(crate) txs: HashMap<String, TransactionTracingMetrics>,
 }
 
@@ -16,6 +21,15 @@ impl TraceMetrics {
         self.txs.entry(tx_hash.clone()).or_insert_with(|| {
             TransactionTracingMetrics::new_with_labels(&[("transaction_tracing", tx_hash)])
         })
+    }
+
+    pub fn handle_event(&mut self, event: TraceMetricEvent) {
+        trace!(target: "tracing::metrics", ?event, "Metric event received");
+        match event {
+            TraceMetricEvent::TraceMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+            TraceMetricEvent::TransactionMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+            TraceMetricEvent::BlockMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+        }
     }
 }
 

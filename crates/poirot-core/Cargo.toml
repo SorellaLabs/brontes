@@ -25,10 +25,10 @@ reth-metrics.workspace = true
 reth-tracing.workspace = true
 ruint = { workspace = true, features = ["primitive-types", "rlp"] }
 poirot-types.workspace = true
+poirot-metrics.workspace = true
 
 # tracing
 tracing = "0.1.37"
-metrics = "0.21.1"
 
 # Async
 tokio = { version = "1.28.2", features = ["full", "tracing"] }
