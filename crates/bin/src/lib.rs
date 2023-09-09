@@ -1,6 +1,6 @@
 use futures::{future::join_all, Future, FutureExt, StreamExt};
 use poirot_classifer::classifer::Classifier;
-use poirot_core::decoding::{Parser, TypeToParse};
+use poirot_core::decoding::Parser;
 use poirot_inspect::Inspector;
 use std::{
     pin::Pin,
@@ -35,7 +35,7 @@ impl<'a> Poirot<'a> {
         if self.inspector_task.is_some() {
             return false
         }
-        self.parser.execute(TypeToParse::Block(block_num));
+        self.parser.execute(block_num);
 
         true
     }
