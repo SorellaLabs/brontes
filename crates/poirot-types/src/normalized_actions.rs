@@ -18,6 +18,22 @@ impl Actions {
         }
     }
 
+    pub fn is_swap(&self) -> bool {
+        matches!(self, Actions::Swap(_))
+    }
+
+    pub fn is_burn(&self) -> bool {
+        matches!(self, Actions::Burn(_))
+    }
+
+    pub fn is_mint(&self) -> bool {
+        matches!(self, Actions::Mint(_))
+    }
+
+    pub fn is_transfer(&self) -> bool {
+        matches!(self, Actions::Transfer(_))
+    }
+
     pub fn is_unclassified(&self) -> bool {
         matches!(self, Actions::Unclassified(_, _))
     }
@@ -56,7 +72,7 @@ pub struct NormalizedBurn {
     pub amount: Vec<U256>,
 }
 
-pub trait NormalizedAction: Send + Clone {
+pub trait NormalizedAction: Send + Sync + Clone {
     fn get_action(&self) -> &Actions;
 }
 
