@@ -50,24 +50,22 @@ pub struct NormalizedSwap {
 
 #[derive(Debug, Clone)]
 pub struct NormalizedTransfer {
-    pub from: Address,
     pub to: Address,
+    pub from: Address,
     pub token: Address,
     pub amount: U256,
 }
 
 #[derive(Debug, Clone)]
 pub struct NormalizedMint {
-    pub from: Vec<Address>,
-    pub to: Vec<Address>,
+    pub to: Address,
     pub token: Vec<Address>,
     pub amount: Vec<U256>,
 }
 
 #[derive(Debug, Clone)]
 pub struct NormalizedBurn {
-    pub from: Vec<Address>,
-    pub to: Vec<Address>,
+    pub from: Address,
     pub token: Vec<Address>,
     pub amount: Vec<U256>,
 }
@@ -81,3 +79,4 @@ impl NormalizedAction for Actions {
         &self
     }
 }
+

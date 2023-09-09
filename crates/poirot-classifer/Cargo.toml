@@ -8,11 +8,13 @@ edition = "2021"
 [dependencies]
 poirot-types.workspace = true
 alloy-dyn-abi.workspace = true
+alloy-sol-types.workspace = true
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 tracing.workspace = true
 poirot-core.workspace = true
 hex-literal.workspace = true
+serde_json.workspace = true
 
 rayon = "1.7.0"
 paste = "1.0.14"
