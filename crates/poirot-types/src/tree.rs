@@ -15,6 +15,10 @@ pub struct Node<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Node<V> {
+    pub fn is_root(&self) -> bool {
+        self.frozen
+    }
+
     pub fn is_frozen(&self) -> bool {
         self.frozen
     }
