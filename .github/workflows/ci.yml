@@ -1,20 +1,28 @@
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
 
 name: CI
 
 jobs:
   tests-stable:
+
     name: Tests (Stable)
     runs-on: ubuntu-latest
     env:
       ETH_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/Lc7oIGYeL_QvInzI0Wiu_pOZZDEKBrdf
+
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        # with:
+        #   token: ${{ secrets.CI }}
+
+      - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+        shell: bash
+      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+        shell: bash
 
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
@@ -33,8 +41,14 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.CI }}
+
+      - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+        shell: bash
+      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+        shell: bash
 
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
