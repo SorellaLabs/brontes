@@ -1,12 +1,53 @@
 use crate::{database::InspectorDataClient, Inspector};
 use poirot_types::{normalized_actions::Actions, tree::TimeTree};
-use std::sync::Arc;
+use reth_primitives::{Address, H256};
+use std::collections::hash_map::Entry;
+
+use reth_primitives::rpc_utils::ParseUnits::I256;
+use std::{
+    collections::{hash_map::OccupiedEntry, HashMap},
+    sync::Arc,
+};
 
 pub struct AtomicBackrunInspector {
     db: Arc<InspectorDataClient>,
 }
 
-impl AtomicBackrunInspector {}
+impl AtomicBackrunInspector {
+    fn process_swaps(&self, all_swaps: Vec<Vec<Actions>>) {
+        // address and there token delta's
+        let mut deltas = HashMap::new();
+        for swap in all_swaps.into_iter().flatten() {
+            let Actions::Swap(swap) = swap else { unreachable!() };
+            match deltas.entry(swap.call_address) {
+                Entry::Occupied(mut o) => {
+                    let inner: &mut HashMap<Address, i128> = o.get_mut();
+                    match inner.entry(swap.token_in) {
+                        Entry::Occupied(mut o) => {
+                            *o.get_mut() -= swap.amount_in.to::<i128>();
+                        }
+                        Entry::Vacant(v) => {
+                            v.insert(-swap.amount_in.to::<i128>());
+                        }
+                    }
+                    match inner.entry(swap.token_out) {
+                        Entry::Vacant(v) => {
+                            v.insert(swap.amount_out.to::<i128>());
+                        }
+                        Entry::Occupied(mut o) => {
+                            *o.get_mut() += swap.amount_out.to::<i128>();
+                        }
+                    }
+                }
+                Entry::Vacant(v) => {
+                    let mut default = HashMap::default();
+                    default.insert(swap.token_in, swap.amount_in.to::<i128>());
+                    v.insert(default);
+                }
+            }
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl Inspector for AtomicBackrunInspector {
@@ -14,3 +55,5 @@ impl Inspector for AtomicBackrunInspector {
         let intersting_state = tree.inspect_all(|node| node.data.is_swap());
     }
 }
+
+pub struct AtomicArb {}

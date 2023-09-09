@@ -12,7 +12,7 @@ hyper.workspace = true
 serde.workspace = true
 async-trait.workspace = true
 poirot-types.workspace = true
-
+reth-primitives.workspace = true
 # error handling
 thiserror.workspace = true
 
@@ -22,5 +22,4 @@ serde_with = { version = "3.3.0", features = ["macros"] }
 # numbers
 malachite.workspace = true
 
-sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients" , branch = "modifications"}
-reth-primitives.workspace = true
+sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients", branch = "modifications" }
