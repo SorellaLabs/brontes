@@ -90,19 +90,27 @@ impl<V: NormalizedAction> Node<V> {
         return false
     }
 
-    pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> bool
+    pub fn dyn_classify<T, F>(
+        &mut self,
+        find: &T,
+        call: &F,
+        result: &mut Vec<(Address, (Address, Address))>,
+    ) -> bool
     where
         T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>),
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         let works = find(self.address, self.get_all_sub_actions());
         if !works {
             return false
         }
 
-        let lower_has_better = self.inner.iter_mut().any(|i| i.dyn_classify(find, call));
+        let lower_has_better = self.inner.iter_mut().any(|i| i.dyn_classify(find, call, result));
+
         if !lower_has_better {
-            call(self);
+            if let Some(res) = call(self) {
+                result.push(res);
+            }
         }
         return true
     }
@@ -130,13 +138,16 @@ impl<V: NormalizedAction> Root<V> {
         result
     }
 
-    pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F)
+    pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
     where
         T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>),
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         // bool is used for recursion
-        let _ = self.head.dyn_classify(find, call);
+        let mut results = Vec::new();
+        let _ = self.head.dyn_classify(find, call, &mut results);
+
+        results
     }
 
     pub fn freeze(&mut self) {
@@ -186,11 +197,11 @@ impl<V: NormalizedAction> TimeTree<V> {
     /// the first function parses down through the tree to the point where we are at
     /// the lowest subset of the valid action. once we reach here, the call function gets
     /// executed in order to capture the data
-    pub fn dyn_classify<T, F>(&mut self, find: T, call: F)
+    pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
     where
         T: Fn(Address, Vec<V>) -> bool + Sync,
-        F: Fn(&mut Node<V>) + Sync,
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
-        self.roots.par_iter_mut().for_each(|root| root.dyn_classify(&find, &call));
+        self.roots.par_iter_mut().flat_map(|root| root.dyn_classify(&find, &call)).collect()
     }
 }

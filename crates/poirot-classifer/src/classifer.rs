@@ -1,18 +1,15 @@
 use crate::IntoAction;
 use hex_literal::hex;
-use poirot_core::{StaticBindings, StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
+use poirot_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 use poirot_types::{
     normalized_actions::Actions,
     structured_trace::{TraceActions, TxTrace},
     tree::{Node, Root, TimeTree},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{keccak256, Address, Log, H256, U256};
+use reth_primitives::{Address, Log, H256, U256};
 use reth_rpc_types::trace::parity::TransactionTrace;
-use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
-    sync::Arc,
-};
+use std::collections::{HashMap, HashSet};
 
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -73,6 +70,17 @@ impl Classifier {
         } else {
             let rem =
                 logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
+            if rem.len() == 1 {
+                if let Some((addr, from, to, value)) = self.decode_transfer(&rem[0]) {
+                    return Actions::Transfer(poirot_types::normalized_actions::NormalizedTransfer {
+                        from,
+                        to,
+                        token: addr,
+                        amount: value,
+                    })
+                }
+            }
+
             return Actions::Unclassified(trace, rem)
         }
     }
@@ -92,7 +100,7 @@ impl Classifier {
 
         // index all transfers. due to tree this should only be two transactions
         for log in logs {
-            if let Some((token, from, to, value)) = self.decode_transfer(log) {
+            if let Some((token, from, to, value)) = self.decode_transfer(&log) {
                 // if tokens don't overlap and to & from don't overlap
                 if (token_0 != token && token_1 != token) || (from != addr && to != addr) {
                     continue
@@ -169,7 +177,7 @@ impl Classifier {
         None
     }
 
-    fn decode_transfer(&self, log: Log) -> Option<(Address, Address, Address, U256)> {
+    fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
         if log.topics.get(0).eq(&Some(&TRANSFER_TOPIC)) {
             let from = Address::from_slice(&log.data[11..31]);
             let to = Address::from_slice(&log.data[41..63]);
@@ -180,19 +188,99 @@ impl Classifier {
         None
     }
 
-    fn is_possible_action(&self, node_addr: Address, actions: Vec<Actions>) -> bool {
-        // let sub_address = actions.iter().map(|action| action.
+    /// checks to see if we have a direct to <> from mapping for underlying transfers
+    fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
+        let mut to_address = HashSet::new();
+        let mut from_address = HashSet::new();
+
+        for action in &actions {
+            if let Actions::Transfer(t) = action {
+                to_address.insert(t.to);
+                from_address.insert(t.from);
+            }
+        }
+
+        for to_addr in to_address {
+            if from_address.contains(&to_addr) {
+                return true
+            }
+        }
+
         false
     }
 
+    /// tries to classify new exchanges
+    fn try_clasify_exchange(
+        &self,
+        node: &mut Node<Actions>,
+    ) -> Option<(Address, (Address, Address), Actions)> {
+        let addr = node.address;
+        let subactions = node.get_all_sub_actions();
+        let logs = subactions.iter().flat_map(|i| i.get_logs()).collect::<Vec<_>>();
+
+        let mut transfer_data = Vec::new();
+
+        // index all transfers. due to tree this should only be two transactions
+        for log in logs {
+            if let Some((token, from, to, value)) = self.decode_transfer(&log) {
+                // if tokens don't overlap and to & from don't overlap
+                if from != addr && to != addr {
+                    continue
+                }
+
+                transfer_data.push((token, from, to, value));
+            }
+        }
+
+        // isn't an exchange
+        if transfer_data.len() != 2 {
+            return None
+        }
+
+        let (t0, from0, to0, value0) = transfer_data.remove(0);
+        let (t1, from1, to1, value1) = transfer_data.remove(1);
+
+        // is a exchange
+        if t0 != t1 &&
+            (from0 == addr || to0 == addr) &&
+            (from1 == addr || to1 == addr) &&
+            (from0 != from1)
+        {
+            let swap = if t0 == addr {
+                Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
+                    address: addr,
+                    token_in: t1,
+                    token_out: t0,
+                    amount_in: value1,
+                    amount_out: value0,
+                })
+            } else {
+                Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
+                    address: addr,
+                    token_in: t0,
+                    token_out: t1,
+                    amount_in: value0,
+                    amount_out: value1,
+                })
+            };
+            return Some((addr, (t0, t1), swap))
+        }
+
+        None
+    }
+
     fn try_classify_unknown(&mut self, tree: &mut TimeTree<Actions>) {
-        tree.dyn_classify(
+        let new_classifed_exchanges = tree.dyn_classify(
             |address, sub_actions| {
                 // we can dyn classify this shit
+                if PROTOCOL_ADDRESS_MAPPING.contains_key(&format!("{address}").as_str()) {
+                    // this is already classified
+                    return false
+                }
                 if self.known_dyn_exchanges.contains_key(&address) {
                     return true
                 } else {
-                    if self.is_possible_action(address, sub_actions) {
+                    if self.is_possible_exchange(sub_actions) {
                         return true
                     };
                 }
@@ -207,14 +295,20 @@ impl Classifier {
                         node.inner.clear();
                         node.data = res;
                     }
-                    return
                 } else {
-                    // try to classify, else yoink
-                    //
-                }
+                    if let Some((ex_addr, tokens, action)) = self.try_clasify_exchange(node) {
+                        node.inner.clear();
+                        node.data = action;
 
-                // false
+                        return Some((ex_addr, tokens))
+                    }
+                }
+                None
             },
         );
+
+        new_classifed_exchanges.into_iter().for_each(|(k, v)| {
+            self.known_dyn_exchanges.insert(k, v);
+        });
     }
 }
