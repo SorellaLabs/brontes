@@ -1,9 +1,10 @@
 use crate::normalized_actions::NormalizedAction;
+use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
-use reth_primitives::{Address, H256};
+use reth_primitives::{Address, H256, U256};
+use reth_rpc_types::Header;
 use std::collections::HashMap;
 use tracing::error;
-
 pub struct Node<V: NormalizedAction> {
     pub inner: Vec<Node<V>>,
     pub frozen: bool,
@@ -123,6 +124,8 @@ impl<V: NormalizedAction> Node<V> {
 pub struct Root<V: NormalizedAction> {
     pub head: Node<V>,
     pub tx_hash: H256,
+    pub tx_index: usize,
+    pub private: bool,
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -161,11 +164,13 @@ impl<V: NormalizedAction> Root<V> {
 
 pub struct TimeTree<V: NormalizedAction> {
     pub roots: Vec<Root<V>>,
+    pub header: Header,
+    pub eth_price: Rational,
 }
 
 impl<V: NormalizedAction> TimeTree<V> {
-    pub fn new(txes: usize) -> Self {
-        Self { roots: Vec::with_capacity(txes) }
+    pub fn new(txes: usize, header: Header, eth_price: Rational) -> Self {
+        Self { roots: Vec::with_capacity(txes), header, eth_price }
     }
 
     pub fn insert_root(&mut self, root: Root<V>) {

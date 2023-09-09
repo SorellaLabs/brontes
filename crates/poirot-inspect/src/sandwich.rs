@@ -1,4 +1,4 @@
-use super::database::InspectorDataClient;
+use poirot_labeller::database::InspectorDataClient;
 use crate::Inspector;
 use poirot_types::{
     normalized_actions::{Actions, NormalizedAction},
