@@ -1,121 +1,13 @@
-pub mod macros;
-pub mod metrics;
-pub(crate) mod types;
-
-use reth_primitives::H256;
-use revm_primitives::B256;
-use std::{
-    future::Future,
-    pin::Pin,
-    task::{ready, Context, Poll},
-};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tracing::trace;
-
-use crate::errors::TraceParseErrorKind;
-
-use self::{
-    metrics::{TraceMetrics, TransactionTracingMetrics},
-    types::*,
-};
-
-/// Alias type for metric producers to use.
-pub type TraceMetricEventsSender = UnboundedSender<TraceMetricEvent>;
-
-/// metric event for traces
-#[derive(Clone, Debug)]
-pub enum TraceMetricEvent {
-    /// recorded a new block trace
-    BlockMetricRecieved(BlockStats),
-    /// recorded a new tx trace
-    TransactionMetricRecieved(TransactionStats),
-    /// recorded a new individual tx trace
-    TraceMetricRecieved(TraceStats),
-}
-
-/// Metrics routine that listens to new metric events on the `events_rx` receiver.
-/// Upon receiving new event, related metrics are updated.
-#[derive(Debug)]
-pub struct TraceMetricsListener {
-    events_rx: UnboundedReceiver<TraceMetricEvent>,
-    pub(crate) tx_metrics: TraceMetrics,
-}
-
-impl TraceMetricsListener {
-    /// Creates a new [MetricsListener] with the provided receiver of [MetricEvent].
-    pub fn new(events_rx: UnboundedReceiver<TraceMetricEvent>) -> Self {
-        Self { events_rx, tx_metrics: TraceMetrics::default() }
-    }
-
-    fn handle_event(&mut self, event: TraceMetricEvent) {
-        trace!(target: "tracing::metrics", ?event, "Metric event received");
-        match event {
-            TraceMetricEvent::TraceMetricRecieved(_) => (), //TO IMPLEMENT
-            TraceMetricEvent::TransactionMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
-            TraceMetricEvent::BlockMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
-            /*
-            TraceMetricEvent::TraceMetricRecieved {
-                block_num,
-                tx_hash,
-                tx_idx,
-                tx_trace_idx,
-                error,
-            } => {
-                let tx_metrics = self.tx_metrics.get_transaction_metrics(format!("{:#x}", tx_hash));
-
-                tx_metrics.block_num.set(block_num as f64);
-                tx_metrics.tx_idx.set(tx_idx as f64);
-                tx_metrics.tx_trace_idx.set(tx_trace_idx as f64);
-
-                if let Some(err) = error {
-                    tx_metrics.error_traces.increment(1);
-                    increment_error(tx_metrics, err);
-                } else {
-                    tx_metrics.success_traces.increment(1);
-                }
-            }
-            TraceMetricEvent::TransactionMetricRecieved { block_num, tx_hash, tx_idx, error } => (), //todo
-            TraceMetricEvent::BlockTracingErrorMetric { block_num, error } => (),
-            TraceMetricEvent::TxTracingErrorMetric { block_num, tx_hash, tx_idx, error } => {
-                let tx_metrics = self.tx_metrics.get_transaction_metrics(format!("{:#x}", tx_hash));
-
-                tx_metrics.block_num.set(block_num as f64);
-                tx_metrics.tx_idx.set(tx_idx as f64);
-                tx_metrics.tx_trace_idx.set(tx_idx as f64);
-
-                tx_metrics.error_traces.increment(1);
-                increment_error(tx_metrics, error);
-            }
-            TraceMetricEvent::BlockMetricRecieved { block_num, error } => (),
-             */
-        }
-    }
-}
-
-impl Future for TraceMetricsListener {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.get_mut();
-
-        // Loop until we drain the `events_rx` channel
-        // TODO: use while let
-        loop {
-            let Some(event) = ready!(this.events_rx.poll_recv(cx)) else {
-                // Channel has closed
-                return Poll::Ready(())
-            };
-
-            this.handle_event(event);
-        }
-    }
-}
+use super::{types::TraceParseErrorKind, TransactionTracingMetrics};
 
 /// TODO: I would of just made a qick macro here todo this automatically because its a
 ///  1-1 defined mapping and im lazy and dont trust chatgpt. also kinda autistic how these don't
 ///  match
 /// computes error increment
-fn increment_error(tx_metric: &mut TransactionTracingMetrics, error: TraceParseErrorKind) {
+pub(crate) fn increment_error(
+    tx_metric: &mut TransactionTracingMetrics,
+    error: TraceParseErrorKind,
+) {
     match error {
         TraceParseErrorKind::TracesMissingBlock => {
             tx_metric.block_trace_missing_errors.increment(1)

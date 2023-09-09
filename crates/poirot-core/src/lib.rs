@@ -1,7 +1,7 @@
 pub mod decoding;
 pub mod errors;
 pub mod executor;
-pub mod stats;
+pub mod macros;
 
 use alloy_sol_types::{sol, SolInterface};
 use reth_primitives::H160;

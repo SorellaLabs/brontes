@@ -1,13 +1,13 @@
-use bin::{prometheus_exporter::initialize, *};
+use bin::{PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use colored::Colorize;
 use futures::StreamExt;
 use metrics_process::Collector;
 use poirot_core::{
     decoding::{Parser, TypeToParse},
-    init_block,
-    stats::TraceMetricsListener,
-    success_block,
+    init_block, success_block,
 };
+use poirot_metrics::prometheus_exporter::initialize;
+use poirot_metrics::PoirotMetricsListener;
 use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
 use reth_tracing::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
@@ -78,7 +78,8 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     info!("Found Etherscan API Key");
 
     let (metrics_tx, metrics_rx) = unbounded_channel();
-    let metrics_listener = tokio::spawn(async move { TraceMetricsListener::new(metrics_rx).await });
+    let metrics_listener =
+        tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
     let mut parser = Parser::new(metrics_tx, &key, &db_path);
 
