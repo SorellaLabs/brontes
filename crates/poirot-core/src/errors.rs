@@ -43,9 +43,9 @@ impl From<EthApiError> for TraceParseError {
 
 /// TODO: why don't we just use the default error here since we are litterally just mapping 1-1 and
 /// dropping some state.
-impl Into<TraceParseErrorKind> for &TraceParseError {
-    fn into(self) -> TraceParseErrorKind {
-        match self {
+impl From<&TraceParseError> for TraceParseErrorKind {
+    fn from(val: &TraceParseError) -> Self {
+        match val {
             TraceParseError::TracesMissingBlock(_) => TraceParseErrorKind::TracesMissingBlock,
             TraceParseError::TracesMissingTx(_) => TraceParseErrorKind::TracesMissingTx,
             TraceParseError::EmptyInput(_) => TraceParseErrorKind::EmptyInput,
