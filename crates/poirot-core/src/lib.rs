@@ -20,6 +20,7 @@ macro_rules! impl_decode_sol {
     ($enum_name:ident, $inner_type:path ) => {
         impl TryDecodeSol for $enum_name {
             type DecodingType = $inner_type;
+
             fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error> {
                 Self::DecodingType::decode(call_data, true)
             }

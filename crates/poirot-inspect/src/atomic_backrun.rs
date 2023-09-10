@@ -1,10 +1,13 @@
-use crate::Inspector;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc
+};
+
 use poirot_labeller::Labeller;
 use poirot_types::{normalized_actions::Actions, tree::TimeTree};
 use reth_primitives::Address;
-use std::collections::hash_map::Entry;
 
-use std::{collections::HashMap, sync::Arc};
+use crate::Inspector;
 
 pub struct AtomicBackrunInspector {}
 

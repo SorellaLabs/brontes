@@ -1,28 +1,29 @@
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc
+};
+
 use database::Database;
 use malachite::Rational;
 use poirot_metrics::PoirotMetricEvents;
 use reth_primitives::{Address, TxHash, U256};
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
 use tokio::sync::mpsc::UnboundedSender;
 
 pub mod database;
 
 pub struct Metadata {
-    pub block_num: u64,
-    pub block_hash: U256,
+    pub block_num:       u64,
+    pub block_hash:      U256,
     pub relay_timestamp: u64,
-    pub p2p_timestamp: u64,
-    pub token_prices: HashMap<Address, (Rational, Rational)>,
-    pub eth_prices: (Rational, Rational),
-    pub mempool: HashSet<TxHash>,
+    pub p2p_timestamp:   u64,
+    pub token_prices:    HashMap<Address, (Rational, Rational)>,
+    pub eth_prices:      (Rational, Rational),
+    pub mempool:         HashSet<TxHash>
 }
 
 pub struct Labeller<'a> {
-    pub client: &'a Database,
-    pub(crate) metrics_tx: UnboundedSender<PoirotMetricEvents>,
+    pub client:            &'a Database,
+    pub(crate) metrics_tx: UnboundedSender<PoirotMetricEvents>
 }
 
 impl<'a> Labeller<'a> {

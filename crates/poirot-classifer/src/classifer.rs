@@ -1,4 +1,5 @@
-use crate::IntoAction;
+use std::collections::{HashMap, HashSet};
+
 use hex_literal::hex;
 use malachite::Rational;
 use poirot_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
@@ -6,12 +7,13 @@ use poirot_labeller::database::Metadata;
 use poirot_types::{
     normalized_actions::Actions,
     structured_trace::{TraceActions, TxTrace},
-    tree::{Node, Root, TimeTree},
+    tree::{Node, Root, TimeTree}
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Header, Log, H256, U256};
 use reth_rpc_types::trace::parity::TransactionTrace;
-use std::collections::{HashMap, HashSet};
+
+use crate::IntoAction;
 
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -20,7 +22,7 @@ const TRANSFER_TOPIC: H256 =
 #[derive(Debug)]
 pub struct Classifier {
     known_dyn_exchanges: HashMap<Address, (Address, Address)>,
-    static_exchanges: HashMap<[u8; 4], Box<dyn IntoAction>>,
+    static_exchanges:    HashMap<[u8; 4], Box<dyn IntoAction>>
 }
 
 impl Classifier {
@@ -32,29 +34,29 @@ impl Classifier {
         &mut self,
         traces: Vec<TxTrace>,
         header: Header,
-        metadata: Metadata,
+        metadata: Metadata
     ) -> TimeTree<Actions> {
         let roots = traces
             .into_par_iter()
             .map(|mut trace| {
                 let logs = &trace.logs;
                 let node = Node {
-                    inner: vec![],
-                    frozen: false,
+                    inner:      vec![],
+                    frozen:     false,
                     subactions: vec![],
-                    address: trace.trace[0].get_from_addr(),
-                    data: self.classify_node(trace.trace.remove(0), logs),
+                    address:    trace.trace[0].get_from_addr(),
+                    data:       self.classify_node(trace.trace.remove(0), logs)
                 };
                 let mut root =
                     Root { head: node, tx_hash: trace.tx_hash, tx_index: 0, private: false };
 
                 for trace in trace.trace {
                     let node = Node {
-                        inner: vec![],
-                        frozen: false,
+                        inner:      vec![],
+                        frozen:     false,
                         subactions: vec![],
-                        address: trace.get_from_addr(),
-                        data: self.classify_node(trace, logs),
+                        address:    trace.get_from_addr(),
+                        data:       self.classify_node(trace, logs)
                     };
                     root.insert(node.address, node);
                 }
@@ -83,18 +85,21 @@ impl Classifier {
                 res,
                 return_bytes,
                 address,
-                logs,
+                logs
             )
         } else {
-            let rem =
-                logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
+            let rem = logs
+                .iter()
+                .filter(|log| log.address == address)
+                .cloned()
+                .collect::<Vec<Log>>();
             if rem.len() == 1 {
                 if let Some((addr, from, to, value)) = self.decode_transfer(&rem[0]) {
                     return Actions::Transfer(poirot_types::normalized_actions::NormalizedTransfer {
                         to,
                         from,
                         token: addr,
-                        amount: value,
+                        amount: value
                     })
                 }
             }
@@ -108,11 +113,14 @@ impl Classifier {
         &self,
         node: &mut Node<Actions>,
         token_0: Address,
-        token_1: Address,
+        token_1: Address
     ) -> Option<Actions> {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
-        let logs = subactions.iter().flat_map(|i| i.get_logs()).collect::<Vec<_>>();
+        let logs = subactions
+            .iter()
+            .flat_map(|i| i.get_logs())
+            .collect::<Vec<_>>();
 
         let mut transfer_data = Vec::new();
 
@@ -137,17 +145,17 @@ impl Classifier {
                 // burn
                 if to0 == node.address {
                     return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
-                        from: from0,
-                        token: vec![t0, t1],
-                        amount: vec![value0, value1],
+                        from:   from0,
+                        token:  vec![t0, t1],
+                        amount: vec![value0, value1]
                     }))
                 }
                 // mint
                 else {
                     return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
-                        to: to0,
-                        token: vec![t0, t1],
-                        amount: vec![value0, value1],
+                        to:     to0,
+                        token:  vec![t0, t1],
+                        amount: vec![value0, value1]
                     }))
                 }
             }
@@ -155,18 +163,18 @@ impl Classifier {
             if to0 == addr {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                     call_address: addr,
-                    token_in: t1,
-                    token_out: t0,
-                    amount_in: value1,
-                    amount_out: value0,
+                    token_in:     t1,
+                    token_out:    t0,
+                    amount_in:    value1,
+                    amount_out:   value0
                 }))
             } else {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                     call_address: addr,
-                    token_in: t0,
-                    token_out: t1,
-                    amount_in: value0,
-                    amount_out: value1,
+                    token_in:     t0,
+                    token_out:    t1,
+                    amount_in:    value0,
+                    amount_out:   value1
                 }))
             }
         }
@@ -177,13 +185,13 @@ impl Classifier {
                 return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
                     to,
                     token: vec![token],
-                    amount: vec![value],
+                    amount: vec![value]
                 }))
             } else {
                 return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
                     from,
                     token: vec![token],
-                    amount: vec![value],
+                    amount: vec![value]
                 }))
             }
         }
@@ -202,7 +210,8 @@ impl Classifier {
         None
     }
 
-    /// checks to see if we have a direct to <> from mapping for underlying transfers
+    /// checks to see if we have a direct to <> from mapping for underlying
+    /// transfers
     fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
         let mut to_address = HashSet::new();
         let mut from_address = HashSet::new();
@@ -226,11 +235,14 @@ impl Classifier {
     /// tries to classify new exchanges
     fn try_clasify_exchange(
         &self,
-        node: &mut Node<Actions>,
+        node: &mut Node<Actions>
     ) -> Option<(Address, (Address, Address), Actions)> {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
-        let logs = subactions.iter().flat_map(|i| i.get_logs()).collect::<Vec<_>>();
+        let logs = subactions
+            .iter()
+            .flat_map(|i| i.get_logs())
+            .collect::<Vec<_>>();
 
         let mut transfer_data = Vec::new();
 
@@ -255,26 +267,26 @@ impl Classifier {
         let (t1, from1, to1, value1) = transfer_data.remove(1);
 
         // is a exchange
-        if t0 != t1 &&
-            (from0 == addr || to0 == addr) &&
-            (from1 == addr || to1 == addr) &&
-            (from0 != from1)
+        if t0 != t1
+            && (from0 == addr || to0 == addr)
+            && (from1 == addr || to1 == addr)
+            && (from0 != from1)
         {
             let swap = if t0 == addr {
                 Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                     call_address: addr,
-                    token_in: t1,
-                    token_out: t0,
-                    amount_in: value1,
-                    amount_out: value0,
+                    token_in:     t1,
+                    token_out:    t0,
+                    amount_in:    value1,
+                    amount_out:   value0
                 })
             } else {
                 Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                     call_address: addr,
-                    token_in: t0,
-                    token_out: t1,
-                    amount_in: value0,
-                    amount_out: value1,
+                    token_in:     t0,
+                    token_out:    t1,
+                    amount_in:    value0,
+                    amount_out:   value1
                 })
             };
             return Some((addr, (t0, t1), swap))
@@ -314,7 +326,7 @@ impl Classifier {
                     return Some((ex_addr, tokens))
                 }
                 None
-            },
+            }
         );
 
         new_classifed_exchanges.into_iter().for_each(|(k, v)| {

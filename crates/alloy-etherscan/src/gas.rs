@@ -1,7 +1,9 @@
-use crate::{Client, EtherscanError, Response, Result};
+use std::{collections::HashMap, str::FromStr};
+
 use ethers_core::{types::U256, utils::parse_units};
 use serde::{de, Deserialize, Deserializer};
-use std::{collections::HashMap, str::FromStr};
+
+use crate::{Client, EtherscanError, Response, Result};
 
 const WEI_PER_GWEI: u64 = 1_000_000_000;
 
@@ -10,16 +12,16 @@ const WEI_PER_GWEI: u64 = 1_000_000_000;
 pub struct GasOracle {
     /// Safe Gas Price in wei
     #[serde(deserialize_with = "deser_gwei_amount")]
-    pub safe_gas_price: U256,
+    pub safe_gas_price:     U256,
     /// Propose Gas Price in wei
     #[serde(deserialize_with = "deser_gwei_amount")]
-    pub propose_gas_price: U256,
+    pub propose_gas_price:  U256,
     /// Fast Gas Price in wei
     #[serde(deserialize_with = "deser_gwei_amount")]
-    pub fast_gas_price: U256,
+    pub fast_gas_price:     U256,
     /// Last Block
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub last_block: u64,
+    pub last_block:         u64,
     /// Suggested Base Fee in wei
     #[serde(deserialize_with = "deser_gwei_amount")]
     #[serde(rename = "suggestBaseFee")]
@@ -27,7 +29,7 @@ pub struct GasOracle {
     /// Gas Used Ratio
     #[serde(deserialize_with = "deserialize_f64_vec")]
     #[serde(rename = "gasUsedRatio")]
-    pub gas_used_ratio: Vec<f64>,
+    pub gas_used_ratio:     Vec<f64>
 }
 
 // This function is used to deserialize a string or number into a U256 with an
@@ -35,20 +37,20 @@ pub struct GasOracle {
 // is a string, attempt to deser as first a decimal f64 then a decimal U256.
 fn deser_gwei_amount<'de, D>(deserializer: D) -> Result<U256, D::Error>
 where
-    D: Deserializer<'de>,
+    D: Deserializer<'de>
 {
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum StringOrInt {
         Number(u64),
-        String(String),
+        String(String)
     }
 
     match StringOrInt::deserialize(deserializer)? {
         StringOrInt::Number(i) => Ok(U256::from(i) * WEI_PER_GWEI),
-        StringOrInt::String(s) => {
-            parse_units(s, "gwei").map(Into::into).map_err(serde::de::Error::custom)
-        }
+        StringOrInt::String(s) => parse_units(s, "gwei")
+            .map(Into::into)
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -56,24 +58,24 @@ fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Er
 where
     D: Deserializer<'de>,
     T: FromStr + serde::Deserialize<'de>,
-    <T as FromStr>::Err: std::fmt::Display,
+    <T as FromStr>::Err: std::fmt::Display
 {
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum StringOrInt<T> {
         String(String),
-        Number(T),
+        Number(T)
     }
 
     match StringOrInt::<T>::deserialize(deserializer)? {
         StringOrInt::String(s) => s.parse::<T>().map_err(serde::de::Error::custom),
-        StringOrInt::Number(i) => Ok(i),
+        StringOrInt::Number(i) => Ok(i)
     }
 }
 
 fn deserialize_f64_vec<'de, D>(deserializer: D) -> core::result::Result<Vec<f64>, D::Error>
 where
-    D: de::Deserializer<'de>,
+    D: de::Deserializer<'de>
 {
     let str_sequence = String::deserialize(deserializer)?;
     str_sequence
@@ -83,13 +85,13 @@ where
 }
 
 impl Client {
-    /// Returns the estimated time, in seconds, for a transaction to be confirmed on the blockchain
-    /// for the specified gas price
+    /// Returns the estimated time, in seconds, for a transaction to be
+    /// confirmed on the blockchain for the specified gas price
     pub async fn gas_estimate(&self, gas_price: U256) -> Result<u32> {
         let query = self.create_query(
             "gastracker",
             "gasestimate",
-            HashMap::from([("gasprice", gas_price.to_string())]),
+            HashMap::from([("gasprice", gas_price.to_string())])
         );
         let response: Response<String> = self.get_json(&query).await?;
 
@@ -102,7 +104,8 @@ impl Client {
 
     /// Returns the current Safe, Proposed and Fast gas prices
     /// Post EIP-1559 changes:
-    /// - Safe/Proposed/Fast gas price recommendations are now modeled as Priority Fees.
+    /// - Safe/Proposed/Fast gas price recommendations are now modeled as
+    ///   Priority Fees.
     /// - New field `suggestBaseFee`, the baseFee of the next pending block
     /// - New field `gasUsedRatio`, to estimate how busy the network is
     pub async fn gas_oracle(&self) -> Result<GasOracle> {
