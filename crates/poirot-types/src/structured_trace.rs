@@ -48,12 +48,7 @@ pub struct TxTrace {
 }
 
 impl TxTrace {
-    pub fn new(
-        trace: Vec<TransactionTrace>,
-        tx_hash: H256,
-        logs: Vec<Log>,
-        tx_index: u64 /* gas_used: U256, */
-    ) -> Self {
-        Self { trace, tx_hash, tx_index, logs /* , gas_used */ }
+    pub fn new(trace: Vec<TransactionTrace>, tx_hash: H256, logs: Vec<Log>, tx_index: u64) -> Self {
+        Self { trace, tx_hash, tx_index, logs }
     }
 }
