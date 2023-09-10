@@ -48,7 +48,7 @@ impl PoirotMetricsListener {
                 let this = self
                     .contract_metrics
                     .entry(val.get_addr())
-                    .or_insert_with(|| DynamicContractMetrics::default());
+                    .or_default();
                 this.handle_event(val)
             }
         }

@@ -40,7 +40,7 @@ impl<'a> Poirot<'a> {
         true
     }
 
-    fn on_inspectors_finish(&mut self, data: ()) {}
+    fn on_inspectors_finish(&mut self, _data: ()) {}
 }
 
 impl<'a> Future for Poirot<'a> {
@@ -78,6 +78,6 @@ impl<'a> Future for Poirot<'a> {
             }
         }
 
-        return Poll::Pending
+        Poll::Pending
     }
 }

@@ -230,7 +230,7 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
 
 /// gets the abis (as a serde 'Value') for the given addresses from etherscan
 async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
-    let raw = client.raw_contract(H160::from_str(&address).unwrap()).await.unwrap();
+    let raw = client.raw_contract(H160::from_str(address).unwrap()).await.unwrap();
     serde_json::from_str(&raw).unwrap()
 }
 
@@ -259,14 +259,14 @@ fn build_db() -> Client {
     let https_client = hyper::Client::builder().build::<_, hyper::Body>(https);
 
     // builds the clickhouse client
-    let client = Client::with_http_client(https_client)
+    
+    Client::with_http_client(https_client)
         .with_url(clickhouse_path)
         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
         .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
         .with_database(
             env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
-        );
-    client
+        )
 }
 
 /// builds the etherscan client
@@ -297,8 +297,8 @@ fn get_file_path(directory: &str, file_name: &str, suffix: &str) -> String {
 /// returns a writeable file
 fn write_file(file_path: &str, create: bool) -> File {
     if create {
-        File::create(&file_path).unwrap();
+        File::create(file_path).unwrap();
     }
 
-    fs::OpenOptions::new().append(true).read(true).open(&file_path).expect("could not open file")
+    fs::OpenOptions::new().append(true).read(true).open(file_path).expect("could not open file")
 }
