@@ -10,8 +10,8 @@ use poirot_types::{
     tree::{Node, Root, TimeTree}
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, Header, Log, H256, U256};
-use reth_rpc_types::trace::parity::TransactionTrace;
+use reth_primitives::{Address, Header, H256, U256};
+use reth_rpc_types::{Log, trace::parity::TransactionTrace};
 
 use crate::IntoAction;
 
