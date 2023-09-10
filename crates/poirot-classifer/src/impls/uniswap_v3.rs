@@ -8,6 +8,7 @@ use poirot_core::{
 use poirot_types::normalized_actions::Actions;
 use reth_primitives::{Address, Bytes, Log, U256};
 
+#[derive(Debug, Default)]
 pub struct V3SwapImpl;
 impl IntoAction for V3SwapImpl {
     fn decode_trace_data(
@@ -47,6 +48,7 @@ impl IntoAction for V3SwapImpl {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct V3BurnImpl;
 impl IntoAction for V3BurnImpl {
     fn decode_trace_data(
@@ -69,6 +71,7 @@ impl IntoAction for V3BurnImpl {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct V3MintImpl;
 impl IntoAction for V3MintImpl {
     fn decode_trace_data(

@@ -1,13 +1,10 @@
-use bin::{PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
+use bin::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use colored::Colorize;
-use futures::StreamExt;
 use metrics_process::Collector;
-use poirot_core::{
-    decoding::{Parser, TypeToParse},
-    init_block,
-};
+use poirot_classifer::Classifier;
+use poirot_core::{decoding::Parser, init_block};
 use poirot_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
-
+use std::collections::HashMap;
 
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{info, Level};
@@ -78,19 +75,16 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let metrics_listener =
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
+    let inspectors = &[];
     let parser = Parser::new(metrics_tx, &key, &db_path);
+    let classifier = Classifier::new(HashMap::default());
+
+    Poirot::new(parser, classifier &inspectors, 69420).await;
 
     // you have a intermediate parse function for the range of blocks you want to parse
     // it collects the aggregate stats of each block stats
     // the block stats collect the aggregate stats of each tx
     // the tx stats collect the aggregate stats of each trace
-
-    let (start_block, end_block) = (17794930, 17794931);
-    for i in start_block..end_block {
-        init_block!(i, start_block, end_block);
-        parser.execute(TypeToParse::Block(i));
-    }
-    info!("Successfully Parsed Blocks {} To {} ", start_block, end_block);
 
     metrics_listener.await?;
     Ok(())

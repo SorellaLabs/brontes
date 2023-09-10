@@ -8,6 +8,7 @@ use alloy_sol_types::SolEvent;
 use poirot_types::normalized_actions::Actions;
 use reth_primitives::{Address, Bytes, Log, H160, U256};
 
+#[derive(Debug, Default)]
 pub struct V2SwapImpl;
 
 impl IntoAction for V2SwapImpl {
@@ -48,6 +49,7 @@ impl IntoAction for V2SwapImpl {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct V2MintImpl;
 impl IntoAction for V2MintImpl {
     fn decode_trace_data(
@@ -73,6 +75,7 @@ impl IntoAction for V2MintImpl {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct V2BurnImpl;
 impl IntoAction for V2BurnImpl {
     fn decode_trace_data(
