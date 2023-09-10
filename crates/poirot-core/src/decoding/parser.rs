@@ -3,6 +3,7 @@ use std::sync::Arc;
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
 use ethers_core::k256::elliptic_curve::rand_core::block;
+use futures::future::join_all;
 use poirot_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
     PoirotMetricEvents
@@ -117,52 +118,56 @@ impl TraceParser {
         (receipts, stats)
     }
 
-    /// parses a block and gathers the transactions
     pub(crate) async fn parse_block(
         &self,
         block_trace: Vec<TraceResultsWithTransactionHash>,
         block_receipts: Vec<TransactionReceipt>,
         block_num: u64
     ) -> (Vec<TxTrace>, BlockStats, Header) {
-        let mut traces = Vec::new();
         let mut stats = BlockStats::new(block_num, None);
-        block_trace
-            .into_iter()
-            .zip(block_receipts.into_iter())
-            .map(|(trace, receipt)| {
-                let transaction_traces = trace.full_trace.trace;
-                let tx_hash = trace.transaction_hash;
 
-                if transaction_traces.is_none() {
-                    traces.push(TxTrace::new(
-                        vec![],
-                        tx_hash,
-                        receipt.logs.clone(),
-                        receipt.transaction_index.to_u64()
-                    ));
-                    stats.txs.push(TransactionStats {
-                        block_num,
-                        tx_hash,
-                        tx_idx: idx as u16,
-                        traces: vec![],
-                        err: Some(TraceParseErrorKind::TracesMissingTx)
-                    });
-                } else {
-                    let tx_traces: (TxTrace, TransactionStats) = self
-                        .parse_transaction(
+        let (traces, tx_stats): (Vec<_>, Vec<_>) =
+            join_all(block_trace.into_iter().zip(block_receipts.into_iter()).map(
+                |(trace, receipt)| async move {
+                    let transaction_traces = trace.full_trace.trace;
+                    let tx_hash = trace.transaction_hash;
+
+                    if transaction_traces.is_none() {
+                        let tx_stats = TransactionStats {
+                            block_num,
+                            tx_hash,
+                            tx_idx: receipt.transaction_index.unwrap().to(),
+                            traces: vec![],
+                            err: Some(TraceParseErrorKind::TracesMissingTx)
+                        };
+                        (
+                            TxTrace::new(
+                                vec![],
+                                tx_hash,
+                                receipt.logs.clone(),
+                                receipt.transaction_index.unwrap().to()
+                            ),
+                            tx_stats
+                        )
+                    } else {
+                        self.parse_transaction(
                             transaction_traces.unwrap(),
                             receipt.logs.clone(),
                             block_num,
                             tx_hash,
-                            receipt.transaction_index.unwrap()
+                            receipt.transaction_index.unwrap().to()
                         )
-                        .await;
-                    traces.push(tx_traces.0);
-                    stats.txs.push(tx_traces.1);
+                        .await
+                    }
                 }
-            });
+            ))
+            .await
+            .into_iter()
+            .unzip();
 
+        stats.txs = tx_stats;
         stats.trace();
+
         (
             traces,
             stats,
@@ -182,18 +187,24 @@ impl TraceParser {
         logs: Vec<Log>,
         block_num: u64,
         tx_hash: H256,
-        tx_idx: U256
+        tx_idx: u64
     ) -> (TxTrace, TransactionStats) {
         init_trace!(tx_hash, tx_idx, tx_trace.len());
         let mut traces = Vec::new();
-        let mut stats = TransactionStats { block_num, tx_hash, tx_idx, traces: vec![], err: None };
+        let mut stats = TransactionStats {
+            block_num,
+            tx_hash,
+            tx_idx: tx_idx as u16,
+            traces: vec![],
+            err: None
+        };
 
         let len = tx_trace.len();
         for (idx, trace) in tx_trace.into_iter().enumerate() {
             let abi_trace = self
                 .update_abi_cache(trace.clone(), block_num, tx_hash)
                 .await;
-            let mut stat = TraceStats::new(block_num, tx_hash, tx_idx, idx as u16, None);
+            let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
             if let Err(e) = abi_trace {
                 stat.err = Some(Into::<TraceParseErrorKind>::into(&e));
             } else {
@@ -204,7 +215,7 @@ impl TraceParser {
         }
 
         stats.trace();
-        (TxTrace::new(traces, tx_hash, logs, tx_idx as usize), stats)
+        (TxTrace::new(traces, tx_hash, logs, tx_idx), stats)
     }
 
     /// pushes each trace to parser_fut
