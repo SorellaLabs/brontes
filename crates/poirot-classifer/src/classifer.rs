@@ -11,7 +11,7 @@ use poirot_types::{
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
-use reth_rpc_types::{Log, trace::parity::TransactionTrace};
+use reth_rpc_types::{trace::parity::TransactionTrace, Log};
 
 use crate::IntoAction;
 
