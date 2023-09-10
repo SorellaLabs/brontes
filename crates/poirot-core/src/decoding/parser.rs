@@ -76,7 +76,7 @@ impl TraceParser {
             let tx_hash = trace.transaction_hash;
             let logs = self.tracer.api.provider().receipt_by_hash(tx_hash).unwrap().unwrap().logs;
             if transaction_traces.is_none() {
-                traces.push(TxTrace::new(vec![], tx_hash, logs.clone(), idx as usize));
+                traces.push(TxTrace::new(vec![], tx_hash, logs.clone(), idx));
                 stats.txs.push(TransactionStats {
                     block_num,
                     tx_hash,
@@ -148,7 +148,7 @@ impl TraceParser {
         };
 
         //let binding = StaticBindings::Curve_Crypto_Factory_V2;
-        let addr = format!("{:#x}", action.from);
+        let _addr = format!("{:#x}", action.from);
         let abi = //if let Some(abi_path) = PROTOCOL_ADDRESS_MAPPING.get(&addr) {
             //serde_json::from_str(abi_path).map_err(|e| TraceParseError::AbiParseError(e))?
         //} else {
@@ -163,7 +163,7 @@ impl TraceParser {
 
         let _ =
             self.abi_decoding_pipeline(&abi, &action, &trace_address, &tx_hash, block_num).await;
-        return Ok(())
+        Ok(())
     }
 
     /// cycles through all possible abi decodings
@@ -172,16 +172,16 @@ impl TraceParser {
     /// 3) diamond proxy
     async fn abi_decoding_pipeline(
         &self,
-        abi: &JsonAbi,
+        _abi: &JsonAbi,
         action: &RethCallAction,
-        trace_address: &[usize],
-        tx_hash: &H256,
-        block_num: u64,
+        _trace_address: &[usize],
+        _tx_hash: &H256,
+        _block_num: u64,
     ) -> Result<(), TraceParseError> {
         // check decoding with the regular abi
 
         // tries to get the proxy abi -> decode
-        let proxy_abi = self.etherscan_client.proxy_contract_abi(action.to.into()).await?;
+        let _proxy_abi = self.etherscan_client.proxy_contract_abi(action.to.into()).await?;
 
         Ok(())
     }

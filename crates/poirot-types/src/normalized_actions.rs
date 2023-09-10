@@ -76,6 +76,6 @@ pub trait NormalizedAction: Send + Sync + Clone {
 
 impl NormalizedAction for Actions {
     fn get_action(&self) -> &Actions {
-        &self
+        self
     }
 }
