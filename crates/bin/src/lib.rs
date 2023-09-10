@@ -6,25 +6,26 @@ use malachite::Rational;
 use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::Parser;
 use poirot_inspect::Inspector;
+use poirot_labeller::{database::Metadata, Labeller};
 use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use reth_primitives::Header;
 use std::{
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll}, thread::current,
+    task::{Context, Poll},
+    thread::current,
 };
 use tokio::task::JoinError;
-use poirot_labeller::{Labeller, database::Metadata};
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 type InspectorFut<'a> = JoinAll<Pin<Box<dyn Future<Output = ()> + Send + 'a>>>;
 
-type CollectionFut = Pin<
+type CollectionFut<'a> = Pin<
     Box<
         dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Metadata)>
             + Send
-            + 'static,
+            + 'a,
     >,
 >;
 
@@ -32,19 +33,19 @@ pub struct Poirot<'a> {
     current_block: u64,
     parser: Parser,
     classifier: Classifier,
-    labeller: Labeller,
+    labeller: Labeller<'a>,
 
     inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
 
     // pending future data
     inspector_task: Option<InspectorFut<'a>>,
-    classifier_data: Option<CollectionFut>,
+    classifier_data: Option<CollectionFut<'a>>,
 }
 
 impl<'a> Poirot<'a> {
     pub fn new(
         parser: Parser,
-        labeller: Labeller,
+        labeller: Labeller<'a>,
         classifier: Classifier,
         inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
         init_block: u64,
@@ -85,7 +86,7 @@ impl<'a> Poirot<'a> {
     }
 
     fn on_inspectors_finish(&mut self, _data: Vec<()>) {}
-    
+
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
         if let Some(mut collection_fut) = self.classifier_data.take() {
             match collection_fut.poll_unpin(cx) {
