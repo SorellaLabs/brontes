@@ -94,7 +94,6 @@ fn build_db() -> Client {
     let https_client = hyper::Client::builder().build::<_, hyper::Body>(https);
 
     // builds the clickhouse client
-    
 
     Client::with_http_client(https_client)
         .with_url(clickhouse_path)

@@ -10,5 +10,6 @@ alloy-dyn-abi.workspace = true
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 tracing.workspace = true
-rayon = "1.7.0"
+rayon.workspace = true
+
 malachite.workspace  = true

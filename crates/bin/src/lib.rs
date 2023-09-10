@@ -1,46 +1,112 @@
-use futures::{future::join_all, Future, FutureExt, StreamExt};
+use futures::{
+    future::{join_all, JoinAll},
+    Future, FutureExt,
+};
+use malachite::Rational;
 use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::Parser;
 use poirot_inspect::Inspector;
+use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
+use reth_primitives::Header;
 use std::{
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
 };
+use tokio::task::JoinError;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-type InspectorFut<'a> = Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
+type InspectorFut<'a> = JoinAll<Pin<Box<dyn Future<Output = ()> + Send + 'a>>>;
 
-pub(crate) struct Poirot<'a> {
+type CollectionFut = Pin<
+    Box<
+        dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Rational)>
+            + Send
+            + 'static,
+    >,
+>;
+
+pub struct Poirot<'a> {
+    current_block: u64,
     parser: Parser,
     classifier: Classifier,
-    // do we care enough to enum dispatch this?
+
     inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
+
+    // pending future data
     inspector_task: Option<InspectorFut<'a>>,
+    classifier_data: Option<CollectionFut>,
 }
 
 impl<'a> Poirot<'a> {
-    pub(crate) fn new(
+    pub fn new(
         parser: Parser,
         classifier: Classifier,
         inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
+        init_block: u64,
     ) -> Self {
-        Self { parser, classifier, inspectors, inspector_task: None }
-    }
-
-    /// returns false if we are already tracing a block
-    pub(crate) fn trace_block(&self, block_num: u64) -> bool {
-        if self.inspector_task.is_some() {
-            return false
+        Self {
+            parser,
+            classifier,
+            inspectors,
+            inspector_task: None,
+            current_block: init_block,
+            classifier_data: None,
         }
-        self.parser.execute(block_num);
-
-        true
     }
 
-    fn on_inspectors_finish(&mut self, _data: ()) {}
+    fn start_new_block(&self) -> bool {
+        self.classifier_data.is_none() && self.inspector_task.is_none()
+    }
+
+    fn start_collection(&mut self) {
+        let Ok(Some(hash)) = self.parser.get_block_hash_for_number(self.current_block + 1) else {
+            // no new block ready
+            return
+        };
+        self.current_block += 1;
+
+        let parser_fut = self.parser.execute(self.current_block);
+        // placeholder for ludwigs shit
+        let labeller_fut = async { Rational::from(1) };
+
+        self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
+    }
+
+    fn start_inspecting(&mut self, tree: Arc<TimeTree<Actions>>) {
+        self.inspector_task = Some(join_all(
+            self.inspectors.iter().map(|inspector| inspector.process_tree(tree.clone())),
+        ) as InspectorFut<'a>);
+    }
+
+    fn on_inspectors_finish(&mut self, _data: Vec<()>) {}
+
+    fn progress_futures(&mut self, cx: &mut Context<'_>) {
+        if let Some(mut collection_fut) = self.classifier_data.take() {
+            match collection_fut.poll_unpin(cx) {
+                Poll::Ready((parser_data, labeller_data)) => {
+                    let (traces, header) = parser_data.unwrap().unwrap();
+                    let tree = self.classifier.build_tree(traces, header, labeller_data);
+                    self.start_inspecting(tree.into());
+                }
+                Poll::Pending => {
+                    self.classifier_data = Some(collection_fut);
+                    return
+                }
+            }
+        }
+
+        if let Some(mut inspector_results) = self.inspector_task.take() {
+            match inspector_results.poll_unpin(cx) {
+                Poll::Ready(data) => self.on_inspectors_finish(data),
+                Poll::Pending => {
+                    self.inspector_task = Some(inspector_results);
+                }
+            }
+        }
+    }
 }
 
 impl<'a> Future for Poirot<'a> {
@@ -49,27 +115,11 @@ impl<'a> Future for Poirot<'a> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut iters = 1024;
         loop {
-            while let Poll::Ready(val) = self.parser.poll_next_unpin(cx) {
-                let Some(traces) = val else { return Poll::Ready(()) };
-                let tree = Arc::new(self.classifier.build_tree(traces));
-                let inspectors = self.inspectors;
-
-                let fut = Box::pin(async move {
-                    join_all(
-                        inspectors.iter().map(|i| i.process_tree(tree.clone())).collect::<Vec<_>>(),
-                    )
-                    .await;
-                }) as InspectorFut<'a>;
-
-                self.inspector_task = Some(fut);
+            if self.start_new_block() {
+                self.start_collection();
             }
 
-            if let Some(mut fut) = self.inspector_task.take() {
-                match fut.poll_unpin(cx) {
-                    Poll::Pending => self.inspector_task = Some(fut),
-                    Poll::Ready(fut) => self.on_inspectors_finish(fut),
-                }
-            }
+            self.progress_futures(cx);
 
             iters -= 1;
             if iters == 0 {
