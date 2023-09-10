@@ -14,7 +14,7 @@ use std::{
     task::{Context, Poll},
 };
 use tokio::task::JoinError;
-
+use poirot_labeller::{Labeller, database::Metadata};
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
@@ -22,7 +22,7 @@ type InspectorFut<'a> = JoinAll<Pin<Box<dyn Future<Output = ()> + Send + 'a>>>;
 
 type CollectionFut = Pin<
     Box<
-        dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Rational)>
+        dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Metadata)>
             + Send
             + 'static,
     >,
@@ -32,6 +32,7 @@ pub struct Poirot<'a> {
     current_block: u64,
     parser: Parser,
     classifier: Classifier,
+    labeller: Labeller,
 
     inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
 
@@ -43,12 +44,14 @@ pub struct Poirot<'a> {
 impl<'a> Poirot<'a> {
     pub fn new(
         parser: Parser,
+        labeller: Labeller,
         classifier: Classifier,
         inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
         init_block: u64,
     ) -> Self {
         Self {
             parser,
+            labeller,
             classifier,
             inspectors,
             inspector_task: None,
@@ -70,7 +73,7 @@ impl<'a> Poirot<'a> {
 
         let parser_fut = self.parser.execute(self.current_block);
         // placeholder for ludwigs shit
-        let labeller_fut = async { Rational::from(1) };
+        let labeller_fut = self.labeller.client.get_metadata(block_num, hash);
 
         self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
     }
@@ -81,7 +84,6 @@ impl<'a> Poirot<'a> {
         ) as InspectorFut<'a>);
     }
 
-    fn on_inspectors_finish(&mut self, _data: Vec<()>) {}
 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
         if let Some(mut collection_fut) = self.classifier_data.take() {

@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+poirot-labeller.worskpace = true
 poirot-types.workspace = true
 alloy-dyn-abi.workspace = true
 alloy-sol-types.workspace = true

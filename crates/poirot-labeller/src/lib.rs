@@ -5,7 +5,7 @@ use poirot_metrics::PoirotMetricEvents;
 pub mod database;
 
 pub struct Labeller {
-    client: Database,
+    pub client: Database,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
