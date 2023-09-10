@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-//Std
 use std::{
+    collections::HashMap,
     env,
     error::Error,
     net::{IpAddr, Ipv4Addr, SocketAddr}
@@ -11,6 +10,7 @@ use colored::Colorize;
 use metrics_process::Collector;
 use poirot_classifer::Classifier;
 use poirot_core::{decoding::Parser, init_block};
+use poirot_inspect::atomic_backrun::AtomicBackrunInspector;
 use poirot_labeller::{database::Database, Labeller};
 use poirot_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use tokio::sync::mpsc::unbounded_channel;
@@ -77,13 +77,14 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let metrics_listener =
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
-    let inspectors = &[];
+    let dummy_inspector = Box::new(AtomicBackrunInspector);
+    let inspectors = &[&dummy_inspector];
     let db = Database::default();
     let poirot_labeller = Labeller::new(metrics_tx.clone(), &db);
     let parser = Parser::new(metrics_tx, &key, &db_path);
     let classifier = Classifier::new(HashMap::default());
 
-    Poirot::new(parser, poirot_labeller, classifier & inspectors, 69420).await;
+    Poirot::new(parser, poirot_labeller, classifier, inspectors, 69420).await;
 
     // you have a intermediate parse function for the range of blocks you want to
     // parse it collects the aggregate stats of each block stats

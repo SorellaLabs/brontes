@@ -44,9 +44,8 @@ pub struct TxTrace {
     pub trace:    Vec<TransactionTrace>,
     pub logs:     Vec<Log>,
     pub tx_hash:  H256,
-    pub tx_index: usize
-    // pub gas_used: u64,
-    /* pub gas_used: U256, */
+    pub tx_index: U256 /* pub gas_used: u64, */
+                       /* pub gas_used: U256, */
 }
 
 impl TxTrace {
@@ -54,8 +53,7 @@ impl TxTrace {
         trace: Vec<TransactionTrace>,
         tx_hash: H256,
         logs: Vec<Log>,
-        tx_index: U256
-        /* gas_used: U256, */
+        tx_index: U256 /* gas_used: U256, */
     ) -> Self {
         Self { trace, tx_hash, tx_index, logs /* , gas_used */ }
     }
