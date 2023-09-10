@@ -1,4 +1,4 @@
-use crate::{enum_unwrap, IntoAction, ADDRESS_TO_TOKENS_2};
+use crate::{enum_unwrap, IntoAction, ADDRESS_TO_TOKENS_2_POOL};
 use poirot_core::{
     StaticReturnBindings,
     SushiSwap_V2::{burnCall, mintCall, Burn, Mint, SushiSwap_V2Calls, Swap},
@@ -18,7 +18,7 @@ impl IntoAction for V2SwapImpl {
         address: Address,
         logs: &Vec<Log>,
     ) -> Actions {
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2.get(&*address).copied().unwrap();
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
 
         for log in logs {
             if let Ok(data) = Swap::decode_data(&log.data, true) {
@@ -59,7 +59,7 @@ impl IntoAction for V2MintImpl {
     ) -> Actions {
         let data = enum_unwrap!(data, SushiSwap_V2, mintCall);
         let to = H160(*data.to.0);
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2.get(&*address).copied().unwrap();
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
         for log in logs {
             if let Ok((amount_0, amount_1)) = Mint::decode_data(&log.data, true) {
                 return Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
@@ -84,7 +84,7 @@ impl IntoAction for V2BurnImpl {
     ) -> Actions {
         let _data = enum_unwrap!(data, SushiSwap_V2, burnCall);
 
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2.get(&*address).copied().unwrap();
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
         for log in logs {
             if let Ok((amount_0, amount_1)) = Burn::decode_data(&log.data, true) {
                 return Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
