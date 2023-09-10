@@ -63,9 +63,11 @@ impl<'a> Poirot<'a> {
 
     fn start_collection(&mut self) {
         let Ok(Some(hash)) = self.parser.get_block_hash_for_number(self.current_block + 1) else {
+            // no new block ready
             return
         };
         self.current_block += 1;
+
         let parser_fut = self.parser.execute(self.current_block);
         // placeholder for ludwigs shit
         let labeller_fut = async { Rational::from(1) };
