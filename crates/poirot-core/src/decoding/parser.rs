@@ -2,6 +2,7 @@ use super::*;
 use crate::errors::TraceParseError;
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
+use ethers_core::k256::elliptic_curve::rand_core::block;
 use poirot_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
     PoirotMetricEvents,
@@ -9,6 +10,7 @@ use poirot_metrics::{
 use reth_primitives::{Header, Log, H256};
 use reth_provider::{HeaderProvider, ReceiptProvider};
 
+use reth_rpc_api::EthApiServer;
 use reth_rpc_types::trace::parity::{
     Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash, TraceType,
     TransactionTrace,
@@ -78,6 +80,7 @@ impl TraceParser {
         for (idx, trace) in block_trace.into_iter().enumerate() {
             let transaction_traces = trace.full_trace.trace;
             let tx_hash = trace.transaction_hash;
+            let receipts = self.tracer.api.block_receipts(BlockNumberOrTag::Number(block_num)).await.unwrap().unwrap();
             let logs = self.tracer.api.provider().receipt_by_hash(tx_hash).unwrap().unwrap().logs;
             if transaction_traces.is_none() {
                 traces.push(TxTrace::new(vec![], tx_hash, logs.clone(), idx));
