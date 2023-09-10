@@ -1,13 +1,12 @@
 pub mod errors;
 pub(crate) mod serialize;
 pub mod types;
-use sorella_db_clients::databases::clickhouse::ClickhouseClient;
-use sorella_db_clients::errors::DatabaseError;
-use hyper_tls::HttpsConnector;
 use clickhouse::{Client, Row};
-use reth_primitives::{U256, Address, TxHash};
-use std::collections::{HashMap, HashSet};
+use hyper_tls::HttpsConnector;
 use malachite::Rational;
+use reth_primitives::{Address, TxHash, U256};
+use sorella_db_clients::{databases::clickhouse::ClickhouseClient, errors::DatabaseError};
+use std::collections::{HashMap, HashSet};
 
 const RELAYS_TABLE: &str = "relays";
 const MEMPOOL_TABLE: &str = "chainbound_mempool";
@@ -26,7 +25,6 @@ impl Default for Database {
     }
 }
 
-
 pub struct Metadata {
     pub block_num: u64,
     pub block_hash: U256,
@@ -37,18 +35,12 @@ pub struct Metadata {
     pub mempool: HashSet<TxHash>,
 }
 
-
 impl Database {
-
-    pub async fn get_metadata<'a> (&'a self, block_num: u64, block_hash: U256) -> Metadata  {
+    pub async fn get_metadata<'a>(&'a self, block_num: u64, block_hash: U256) -> Metadata {
         let query = format!("SELECT * FROM {} LIMIT 1", RELAYS_TABLE);
         //let res = self.client.query_all::<types::Relay>(&query).await?;
         //println!("{:?}", res);
 
         todo!()
     }
-
-
-    
 }
-
