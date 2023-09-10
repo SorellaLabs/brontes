@@ -134,10 +134,12 @@ impl<V: NormalizedAction> Node<V> {
 }
 
 pub struct Root<V: NormalizedAction> {
-    pub head:     Node<V>,
-    pub tx_hash:  H256,
-    pub tx_index: usize,
-    pub private:  bool
+    pub head:                Node<V>,
+    pub tx_hash:             H256,
+    pub private:             bool,
+    pub coinbase_transfer:   Option<U256>,
+    pub gas_used:            u64,
+    pub effective_gas_price: u64
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -175,14 +177,22 @@ impl<V: NormalizedAction> Root<V> {
 }
 
 pub struct TimeTree<V: NormalizedAction> {
-    pub roots:      Vec<Root<V>>,
-    pub header:     Header,
-    pub eth_prices: (Rational, Rational)
+    pub roots:            Vec<Root<V>>,
+    pub header:           Header,
+    pub avg_priority_fee: u64,
+    /// first is on block submission, second is when the block gets accepted
+    pub eth_prices:       (Rational, Rational)
 }
 
 impl<V: NormalizedAction> TimeTree<V> {
-    pub fn new(txes: usize, header: Header, eth_prices: (Rational, Rational)) -> Self {
-        Self { roots: Vec::with_capacity(txes), header, eth_prices }
+    pub fn new(header: Header, eth_prices: (Rational, Rational)) -> Self {
+        Self { roots: Vec::with_capacity(150), header, eth_prices, avg_priority_fee: 0 }
+    }
+
+    pub fn get_priority_fee_for_transaction(&self, hash: H256) -> Option<u64> {
+        let tx = self.roots.iter().find(|h| h.tx_hash == hash)?;
+
+        Some(tx.effective_gas_price - self.header.base_fee_per_gas?)
     }
 
     pub fn insert_root(&mut self, root: Root<V>) {
@@ -190,6 +200,13 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 
     pub fn freeze_tree(&mut self) {
+        self.avg_priority_fee = self
+            .roots
+            .iter()
+            .map(|tx| tx.effective_gas_price - self.header.base_fee_per_gas.unwrap())
+            .sum::<u64>()
+            / self.roots.len() as u64;
+
         self.roots.iter_mut().for_each(|root| root.freeze());
     }
 
