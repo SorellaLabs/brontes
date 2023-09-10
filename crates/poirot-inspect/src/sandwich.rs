@@ -1,18 +1,19 @@
-use crate::Inspector;
+use std::{collections::VecDeque, sync::Arc};
+
 use poirot_labeller::Labeller;
 use poirot_types::{
     normalized_actions::{Actions, NormalizedAction},
-    tree::{Node, Root, TimeTree},
+    tree::{Node, Root, TimeTree}
 };
 
-use std::{collections::VecDeque, sync::Arc};
+use crate::Inspector;
 
 pub struct SandwichInspector {}
 
 //TODO: Sandwiching detection Algo:
 // 1. Create a vec for each swap pair & index all swaps on that pair / contract
-// 2. For each swap pair, check if more than 3 swaps. If so look for 2 swaps in opposite direction
-//    from same addr
+// 2. For each swap pair, check if more than 3 swaps. If so look for 2 swaps in
+//    opposite direction from same addr
 // 3. Check profitability of sandwich & index accordingly
 #[async_trait::async_trait]
 impl Inspector for SandwichInspector {

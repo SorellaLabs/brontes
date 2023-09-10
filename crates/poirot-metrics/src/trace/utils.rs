@@ -1,12 +1,12 @@
 use super::{types::TraceParseErrorKind, TransactionTracingMetrics};
 
-/// TODO: I would of just made a qick macro here todo this automatically because its a
-///  1-1 defined mapping and im lazy and dont trust chatgpt. also kinda autistic how these don't
-///  match
+/// TODO: I would of just made a qick macro here todo this automatically because
+/// its a  1-1 defined mapping and im lazy and dont trust chatgpt. also kinda
+/// autistic how these don't  match
 /// computes error increment
 pub(crate) fn increment_error(
     tx_metric: &mut TransactionTracingMetrics,
-    error: TraceParseErrorKind,
+    error: TraceParseErrorKind
 ) {
     match error {
         TraceParseErrorKind::TracesMissingBlock => {
@@ -30,12 +30,12 @@ pub(crate) fn increment_error(
             tx_metric.etherscan_balance_failed.increment(1)
         }
         TraceParseErrorKind::EtherscanNotProxy => tx_metric.etherscan_not_proxy.increment(1),
-        TraceParseErrorKind::EtherscanMissingImplementationAddress => {
-            tx_metric.etherscan_missing_implementation_address.increment(1)
-        }
-        TraceParseErrorKind::EtherscanBlockNumberByTimestampFailed => {
-            tx_metric.etherscan_block_number_by_timestamp_failed.increment(1)
-        }
+        TraceParseErrorKind::EtherscanMissingImplementationAddress => tx_metric
+            .etherscan_missing_implementation_address
+            .increment(1),
+        TraceParseErrorKind::EtherscanBlockNumberByTimestampFailed => tx_metric
+            .etherscan_block_number_by_timestamp_failed
+            .increment(1),
         TraceParseErrorKind::EtherscanTransactionReceiptFailed => {
             tx_metric.etherscan_transaction_receipt_failed.increment(1)
         }
@@ -58,9 +58,9 @@ pub(crate) fn increment_error(
             tx_metric.etherscan_rate_limit_exceeded.increment(1)
         }
         TraceParseErrorKind::EtherscanIO => tx_metric.etherscan_io.increment(1),
-        TraceParseErrorKind::EtherscanLocalNetworksNotSupported => {
-            tx_metric.etherscan_local_networks_not_supported.increment(1)
-        }
+        TraceParseErrorKind::EtherscanLocalNetworksNotSupported => tx_metric
+            .etherscan_local_networks_not_supported
+            .increment(1),
         TraceParseErrorKind::EtherscanErrorResponse => {
             tx_metric.etherscan_error_response.increment(1)
         }
@@ -75,9 +75,9 @@ pub(crate) fn increment_error(
         TraceParseErrorKind::EtherscanBlockedByCloudflare => {
             tx_metric.etherscan_blocked_by_cloudflare.increment(1)
         }
-        TraceParseErrorKind::EtherscanCloudFlareSecurityChallenge => {
-            tx_metric.etherscan_cloudflare_security_challenge.increment(1)
-        }
+        TraceParseErrorKind::EtherscanCloudFlareSecurityChallenge => tx_metric
+            .etherscan_cloudflare_security_challenge
+            .increment(1),
         TraceParseErrorKind::EtherscanPageNotFound => {
             tx_metric.etherscan_page_not_found.increment(1)
         }
@@ -86,9 +86,9 @@ pub(crate) fn increment_error(
         TraceParseErrorKind::EthApiEmptyRawTransactionData => {
             tx_metric.eth_api_empty_raw_transaction_data.increment(1)
         }
-        TraceParseErrorKind::EthApiFailedToDecodeSignedTransaction => {
-            tx_metric.eth_api_failed_to_decode_signed_transaction.increment(1)
-        }
+        TraceParseErrorKind::EthApiFailedToDecodeSignedTransaction => tx_metric
+            .eth_api_failed_to_decode_signed_transaction
+            .increment(1),
         TraceParseErrorKind::EthApiInvalidTransactionSignature => {
             tx_metric.eth_api_invalid_transaction_signature.increment(1)
         }
@@ -105,18 +105,18 @@ pub(crate) fn increment_error(
         TraceParseErrorKind::EthApiPrevrandaoNotSet => {
             tx_metric.eth_api_prevrandao_not_set.increment(1)
         }
-        TraceParseErrorKind::EthApiConflictingFeeFieldsInRequest => {
-            tx_metric.eth_api_conflicting_fee_fields_in_request.increment(1)
-        }
+        TraceParseErrorKind::EthApiConflictingFeeFieldsInRequest => tx_metric
+            .eth_api_conflicting_fee_fields_in_request
+            .increment(1),
         TraceParseErrorKind::EthApiInvalidTransaction => {
             tx_metric.eth_api_invalid_transaction.increment(1)
         }
         TraceParseErrorKind::EthApiInvalidBlockData => {
             tx_metric.eth_api_invalid_block_data.increment(1)
         }
-        TraceParseErrorKind::EthApiBothStateAndStateDiffInOverride => {
-            tx_metric.eth_api_both_state_and_state_diff_in_override.increment(1)
-        }
+        TraceParseErrorKind::EthApiBothStateAndStateDiffInOverride => tx_metric
+            .eth_api_both_state_and_state_diff_in_override
+            .increment(1),
         TraceParseErrorKind::EthApiInternal => tx_metric.eth_api_internal.increment(1),
         TraceParseErrorKind::EthApiSigning => tx_metric.eth_api_signing.increment(1),
         TraceParseErrorKind::EthApiTransactionNotFound => {

@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use metrics::{Counter, Gauge};
 use reth_metrics::Metrics;
-use std::collections::HashMap;
 use tracing::trace;
 pub mod types;
 pub mod utils;
@@ -9,14 +10,14 @@ use super::TraceMetricEvent;
 
 #[derive(Debug, Default, Clone)]
 pub struct TraceMetrics {
-    txs: HashMap<String, TransactionTracingMetrics>,
+    txs: HashMap<String, TransactionTracingMetrics>
 }
 
 impl TraceMetrics {
     /// Returns existing or initializes a new instance of [LiveRelayMetrics]
     pub(crate) fn get_transaction_metrics(
         &mut self,
-        tx_hash: String,
+        tx_hash: String
     ) -> &mut TransactionTracingMetrics {
         self.txs.entry(tx_hash.clone()).or_insert_with(|| {
             TransactionTracingMetrics::new_with_labels(&[("transaction_tracing", tx_hash)])
@@ -28,7 +29,7 @@ impl TraceMetrics {
         match event {
             TraceMetricEvent::TraceMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
             TraceMetricEvent::TransactionMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
-            TraceMetricEvent::BlockMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+            TraceMetricEvent::BlockMetricRecieved(_) => panic!("NOT IMPLEMENTED YET")
         }
     }
 }
@@ -155,5 +156,5 @@ pub(crate) struct TransactionTracingMetrics {
     /// EthApi Internal Eth Error
     pub(crate) eth_api_internal_eth_error: Counter,
     /// EthApi Internal Js Tracer Error
-    pub(crate) eth_api_internal_js_tracer_error: Counter,
+    pub(crate) eth_api_internal_js_tracer_error: Counter
 }

@@ -2,24 +2,25 @@
 #![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-use crate::errors::{is_blocked_by_cloudflare_response, is_cloudflare_security_challenge};
+use std::{
+    borrow::Cow,
+    io::Write,
+    path::PathBuf,
+    time::{Duration, SystemTime, UNIX_EPOCH}
+};
+
 use alloy_json_abi::JsonAbi;
 use contract::ContractMetadata;
 use errors::EtherscanError;
 use ethers_core::{
     abi::Address,
-    types::{Chain, H256},
+    types::{Chain, H256}
 };
 use reqwest::{header, IntoUrl, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{
-    borrow::Cow,
-    io::Write,
-    path::PathBuf,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
-
 use tracing::{debug, error, trace};
+
+use crate::errors::{is_blocked_by_cloudflare_response, is_cloudflare_security_challenge};
 
 pub mod account;
 pub mod blocks;
@@ -37,15 +38,15 @@ pub type Result<T, E = EtherscanError> = std::result::Result<T, E>;
 #[derive(Clone, Debug)]
 pub struct Client {
     /// Client that executes HTTP requests
-    client: reqwest::Client,
+    client:            reqwest::Client,
     /// Etherscan API key
-    api_key: Option<String>,
+    api_key:           Option<String>,
     /// Etherscan API endpoint like <https://api(-chain).etherscan.io/api>
     etherscan_api_url: Url,
     /// Etherscan base endpoint like <https://etherscan.io>
-    etherscan_url: Url,
+    etherscan_url:     Url,
     /// Path to where ABI files should be cached
-    cache: Option<Cache>,
+    cache:             Option<Cache>
 }
 
 impl Client {
@@ -69,20 +70,24 @@ impl Client {
         chain: Chain,
         api_key: impl Into<String>,
         cache_root: Option<PathBuf>,
-        cache_ttl: Duration,
+        cache_ttl: Duration
     ) -> Result<Self> {
         let mut this = Self::new(chain, api_key)?;
         this.cache = cache_root.map(|root| Cache::new(root, cache_ttl));
         Ok(this)
     }
 
-    /// Create a new client with the correct endpoints based on the chain and provided API key
+    /// Create a new client with the correct endpoints based on the chain and
+    /// provided API key
     pub fn new(chain: Chain, api_key: impl Into<String>) -> Result<Self> {
-        Client::builder().with_api_key(api_key).chain(chain)?.build()
+        Client::builder()
+            .with_api_key(api_key)
+            .chain(chain)?
+            .build()
     }
 
-    /// Create a new client with the correct endpoints based on the chain and API key
-    /// from the default environment variable defined in [`Chain`].
+    /// Create a new client with the correct endpoints based on the chain and
+    /// API key from the default environment variable defined in [`Chain`].
     pub fn new_from_env(chain: Chain) -> Result<Self> {
         let api_key = match chain {
             // Extra aliases
@@ -91,29 +96,29 @@ impl Client {
                 .map_err(Into::into),
 
             // Backwards compatibility, ideally these should return an error.
-            Chain::XDai |
-            Chain::Chiado |
-            Chain::Sepolia |
-            Chain::Rsk |
-            Chain::Sokol |
-            Chain::Poa |
-            Chain::Oasis |
-            Chain::Emerald |
-            Chain::EmeraldTestnet |
-            Chain::Evmos |
-            Chain::EvmosTestnet => Ok(String::new()),
+            Chain::XDai
+            | Chain::Chiado
+            | Chain::Sepolia
+            | Chain::Rsk
+            | Chain::Sokol
+            | Chain::Poa
+            | Chain::Oasis
+            | Chain::Emerald
+            | Chain::EmeraldTestnet
+            | Chain::Evmos
+            | Chain::EvmosTestnet => Ok(String::new()),
             Chain::AnvilHardhat | Chain::Dev => Err(EtherscanError::LocalNetworksNotSupported),
 
             _ => chain
                 .etherscan_api_key_name()
                 .ok_or_else(|| EtherscanError::ChainNotSupported(chain))
-                .and_then(|key_name| std::env::var(key_name).map_err(Into::into)),
+                .and_then(|key_name| std::env::var(key_name).map_err(Into::into))
         }?;
         Self::new(chain, api_key)
     }
 
-    /// Create a new client with the correct endpoints based on the chain and API key
-    /// from the default environment variable defined in [`Chain`].
+    /// Create a new client with the correct endpoints based on the chain and
+    /// API key from the default environment variable defined in [`Chain`].
     ///
     /// If the environment variable is not set, create a new client without it.
     pub fn new_from_opt_env(chain: Chain) -> Result<Self> {
@@ -122,7 +127,7 @@ impl Client {
             Err(EtherscanError::EnvVarNotFound(_)) => {
                 Self::builder().chain(chain).and_then(|c| c.build())
             }
-            Err(e) => Err(e),
+            Err(e) => Err(e)
         }
     }
 
@@ -166,7 +171,8 @@ impl Client {
         self.sanitize_response(res)
     }
 
-    /// Execute a GET request with parameters, without sanity checking the response.
+    /// Execute a GET request with parameters, without sanity checking the
+    /// response.
     async fn get<Q: Serialize>(&self, query: &Q) -> Result<String> {
         trace!(target: "etherscan", "GET {}", self.etherscan_api_url);
         let response = self
@@ -187,7 +193,8 @@ impl Client {
         self.sanitize_response(res)
     }
 
-    /// Execute a POST request with a form, without sanity checking the response.
+    /// Execute a POST request with a form, without sanity checking the
+    /// response.
     async fn post<F: Serialize>(&self, form: &F) -> Result<String> {
         trace!(target: "etherscan", "POST {}", self.etherscan_api_url);
         let response = self
@@ -201,7 +208,8 @@ impl Client {
         Ok(response)
     }
 
-    /// Perform sanity checks on a response and deserialize it into a [Response].
+    /// Perform sanity checks on a response and deserialize it into a
+    /// [Response].
     fn sanitize_response<T: DeserializeOwned>(&self, res: impl AsRef<str>) -> Result<Response<T>> {
         let res = res.as_ref();
         let res: ResponseData<T> = serde_json::from_str(res).map_err(|err| {
@@ -228,7 +236,7 @@ impl Client {
                 }
                 Err(EtherscanError::ErrorResponse { status, message, result })
             }
-            ResponseData::Success(res) => Ok(res),
+            ResponseData::Success(res) => Ok(res)
         }
     }
 
@@ -236,13 +244,13 @@ impl Client {
         &self,
         module: &'static str,
         action: &'static str,
-        other: T,
+        other: T
     ) -> Query<T> {
         Query {
             apikey: self.api_key.as_deref().map(Cow::Borrowed),
             module: Cow::Borrowed(module),
             action: Cow::Borrowed(action),
-            other,
+            other
         }
     }
 }
@@ -250,15 +258,15 @@ impl Client {
 #[derive(Clone, Debug, Default)]
 pub struct ClientBuilder {
     /// Client that executes HTTP requests
-    client: Option<reqwest::Client>,
+    client:            Option<reqwest::Client>,
     /// Etherscan API key
-    api_key: Option<String>,
+    api_key:           Option<String>,
     /// Etherscan API endpoint like <https://api(-chain).etherscan.io/api>
     etherscan_api_url: Option<Url>,
     /// Etherscan base endpoint like <https://etherscan.io>
-    etherscan_url: Option<Url>,
+    etherscan_url:     Option<Url>,
     /// Path to where ABI files should be cached
-    cache: Option<Cache>,
+    cache:             Option<Cache>
 }
 
 // === impl ClientBuilder ===
@@ -272,7 +280,7 @@ impl ClientBuilder {
     pub fn chain(self, chain: Chain) -> Result<Self> {
         fn urls(
             api: impl IntoUrl,
-            url: impl IntoUrl,
+            url: impl IntoUrl
         ) -> (reqwest::Result<Url>, reqwest::Result<Url>) {
             (api.into_url(), url.into_url())
         }
@@ -280,7 +288,8 @@ impl ClientBuilder {
             .etherscan_urls()
             .map(|(api, base)| urls(api, base))
             .ok_or_else(|| EtherscanError::ChainNotSupported(chain))?;
-        self.with_api_url(etherscan_api_url?)?.with_url(etherscan_url?)
+        self.with_api_url(etherscan_api_url?)?
+            .with_url(etherscan_url?)
     }
 
     /// Configures the etherscan url
@@ -338,7 +347,7 @@ impl ClientBuilder {
                 .ok_or_else(|| EtherscanError::Builder("etherscan api url".to_string()))?,
             etherscan_url: etherscan_url
                 .ok_or_else(|| EtherscanError::Builder("etherscan url".to_string()))?,
-            cache,
+            cache
         };
         Ok(client)
     }
@@ -348,14 +357,14 @@ impl ClientBuilder {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct CacheEnvelope<T> {
     expiry: u64,
-    data: T,
+    data:   T
 }
 
 /// Simple cache for etherscan requests
 #[derive(Clone, Debug)]
 struct Cache {
     root: PathBuf,
-    ttl: Duration,
+    ttl:  Duration
 }
 
 impl Cache {
@@ -370,7 +379,7 @@ impl Cache {
     fn set_abi(
         &self,
         address: Address,
-        abi: Option<&JsonAbi>,
+        abi: Option<&JsonAbi>
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.set("abi", address, abi)?;
         Ok(())
@@ -383,7 +392,7 @@ impl Cache {
     fn set_source(
         &self,
         address: Address,
-        source: Option<&ContractMetadata>,
+        source: Option<&ContractMetadata>
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.set("sources", address, source)?;
         Ok(())
@@ -393,7 +402,7 @@ impl Cache {
         &self,
         prefix: &str,
         address: Address,
-        item: T,
+        item: T
     ) -> Result<(), EtherscanError> {
         let dir_path = self.root.join(prefix);
         std::fs::create_dir_all(&dir_path)?;
@@ -410,8 +419,8 @@ impl Cache {
                     .duration_since(UNIX_EPOCH)
                     .expect("system time is before unix epoch")
                     .as_secs(),
-                data: item,
-            },
+                data:   item
+            }
         )?;
         writer.flush()?;
         Ok(())
@@ -442,16 +451,16 @@ impl Cache {
 /// The API response type
 #[derive(Debug, Clone, Deserialize)]
 pub struct Response<T> {
-    pub status: String,
+    pub status:  String,
     pub message: String,
-    pub result: T,
+    pub result:  T
 }
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ResponseData<T> {
     Success(Response<T>),
-    Error { status: String, message: String, result: Option<String> },
+    Error { status: String, message: String, result: Option<String> }
 }
 
 /// The type that gets serialized as query
@@ -462,10 +471,11 @@ struct Query<'a, T: Serialize> {
     module: Cow<'a, str>,
     action: Cow<'a, str>,
     #[serde(flatten)]
-    other: T,
+    other:  T
 }
 
-/// Ensures that the url is well formatted to be used by the Client's functions that join paths.
+/// Ensures that the url is well formatted to be used by the Client's functions
+/// that join paths.
 fn ensure_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
     let url_str = url.as_str();
 
@@ -477,8 +487,8 @@ fn ensure_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
     }
 }
 
-/// This is a hack to work around `IntoUrl`'s sealed private functions, which can't be called
-/// normally.
+/// This is a hack to work around `IntoUrl`'s sealed private functions, which
+/// can't be called normally.
 #[inline]
 fn into_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
     url.into_url()
@@ -486,8 +496,9 @@ fn into_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Client, EtherscanError, ResponseData};
     use ethers_core::types::{Address, Chain, H256};
+
+    use crate::{Client, EtherscanError, ResponseData};
 
     // <https://github.com/foundry-rs/foundry/issues/4406>
     #[test]

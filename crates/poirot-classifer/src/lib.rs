@@ -1,14 +1,13 @@
-use reth_primitives::{Address, Bytes, Log, H160};
 use std::fmt::Debug;
 
 use poirot_core::StaticReturnBindings;
+use reth_primitives::{Address, Bytes, Log, H160};
 
 pub mod classifer;
 pub use classifer::*;
 
 mod impls;
 pub use impls::*;
-
 use poirot_types::normalized_actions::Actions;
 
 include!(concat!(env!("OUT_DIR"), "/token_mappings.rs"));
@@ -19,6 +18,6 @@ pub trait IntoAction: Debug + Send + Sync {
         data: StaticReturnBindings,
         return_data: Bytes,
         address: Address,
-        logs: &Vec<Log>,
+        logs: &Vec<Log>
     ) -> Actions;
 }

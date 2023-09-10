@@ -1,13 +1,14 @@
-use crate::PoirotMetricEvents;
 use colored::Colorize;
 use reth_primitives::H160;
 use tracing::info;
+
+use crate::PoirotMetricEvents;
 
 /// metric event for traces
 #[derive(Clone, Debug)]
 pub enum DynamicContractMetricEvent {
     /// recorded a new contract metric
-    ContractMetricRecieved(ContractMetric),
+    ContractMetricRecieved(ContractMetric)
 }
 
 impl DynamicContractMetricEvent {
@@ -28,8 +29,8 @@ impl From<DynamicContractMetricEvent> for PoirotMetricEvents {
 
 #[derive(Clone, Debug)]
 pub struct ContractMetric {
-    pub address: H160,
-    pub function_called: String,
+    pub address:         H160,
+    pub function_called: String
 }
 
 impl ContractMetric {

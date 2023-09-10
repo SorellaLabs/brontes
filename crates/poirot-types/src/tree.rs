@@ -1,17 +1,19 @@
-use crate::normalized_actions::NormalizedAction;
+use std::collections::HashMap;
+
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
-use std::collections::HashMap;
 use tracing::error;
+
+use crate::normalized_actions::NormalizedAction;
 pub struct Node<V: NormalizedAction> {
-    pub inner: Vec<Node<V>>,
+    pub inner:  Vec<Node<V>>,
     pub frozen: bool,
 
     /// This only has values when the node is frozen
     pub subactions: Vec<V>,
-    pub address: Address,
-    pub data: V,
+    pub address:    Address,
+    pub data:       V
 }
 
 impl<V: NormalizedAction> Node<V> {
@@ -53,12 +55,19 @@ impl<V: NormalizedAction> Node<V> {
         if self.frozen {
             self.subactions.clone()
         } else {
-            self.inner.iter().flat_map(|inner| inner.get_all_sub_actions()).collect()
+            self.inner
+                .iter()
+                .flat_map(|inner| inner.get_all_sub_actions())
+                .collect()
         }
     }
 
     pub fn all_sub_addresses(&self) -> Vec<Address> {
-        self.inner.iter().flat_map(|i| i.all_sub_addresses()).chain(vec![self.address]).collect()
+        self.inner
+            .iter()
+            .flat_map(|i| i.all_sub_addresses())
+            .chain(vec![self.address])
+            .collect()
     }
 
     pub fn current_call_stack(&self) -> Vec<Address> {
@@ -73,15 +82,20 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> bool
     {
         // the previous sub-action was best
         if !call(self) {
             return false
         }
-        let lower_has_better = self.inner.iter().map(|i| i.inspect(result, call)).any(|f| f);
+        let lower_has_better = self
+            .inner
+            .iter()
+            .map(|i| i.inspect(result, call))
+            .any(|f| f);
 
-        // if all child nodes don't have a best sub-action. Then the current node is the best.
+        // if all child nodes don't have a best sub-action. Then the current node is the
+        // best.
         if !lower_has_better {
             result.push(self.get_all_sub_actions());
             return true
@@ -94,18 +108,21 @@ impl<V: NormalizedAction> Node<V> {
         &mut self,
         find: &T,
         call: &F,
-        result: &mut Vec<(Address, (Address, Address))>,
+        result: &mut Vec<(Address, (Address, Address))>
     ) -> bool
     where
         T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
     {
         let works = find(self.address, self.get_all_sub_actions());
         if !works {
             return false
         }
 
-        let lower_has_better = self.inner.iter_mut().any(|i| i.dyn_classify(find, call, result));
+        let lower_has_better = self
+            .inner
+            .iter_mut()
+            .any(|i| i.dyn_classify(find, call, result));
 
         if !lower_has_better {
             if let Some(res) = call(self) {
@@ -117,10 +134,10 @@ impl<V: NormalizedAction> Node<V> {
 }
 
 pub struct Root<V: NormalizedAction> {
-    pub head: Node<V>,
-    pub tx_hash: H256,
+    pub head:     Node<V>,
+    pub tx_hash:  H256,
     pub tx_index: usize,
-    pub private: bool,
+    pub private:  bool
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -132,7 +149,7 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> bool
     {
         let mut result = Vec::new();
         self.head.inspect(&mut result, call);
@@ -143,7 +160,7 @@ impl<V: NormalizedAction> Root<V> {
     pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
     where
         T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
     {
         // bool is used for recursion
         let mut results = Vec::new();
@@ -158,9 +175,9 @@ impl<V: NormalizedAction> Root<V> {
 }
 
 pub struct TimeTree<V: NormalizedAction> {
-    pub roots: Vec<Root<V>>,
-    pub header: Header,
-    pub eth_prices: (Rational, Rational),
+    pub roots:      Vec<Root<V>>,
+    pub header:     Header,
+    pub eth_prices: (Rational, Rational)
 }
 
 impl<V: NormalizedAction> TimeTree<V> {
@@ -177,7 +194,10 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 
     pub fn insert_node(&mut self, from: Address, node: Node<V>) {
-        self.roots.last_mut().expect("no root_nodes inserted").insert(from, node);
+        self.roots
+            .last_mut()
+            .expect("no root_nodes inserted")
+            .insert(from, node);
     }
 
     pub fn get_hashes(&self) -> Vec<H256> {
@@ -186,7 +206,7 @@ impl<V: NormalizedAction> TimeTree<V> {
 
     pub fn inspect<F>(&self, hash: H256, call: F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> bool
     {
         if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
             root.inspect(&call)
@@ -197,19 +217,25 @@ impl<V: NormalizedAction> TimeTree<V> {
 
     pub fn inspect_all<F>(&self, call: F) -> HashMap<H256, Vec<Vec<V>>>
     where
-        F: Fn(&Node<V>) -> bool + Send + Sync,
+        F: Fn(&Node<V>) -> bool + Send + Sync
     {
-        self.roots.par_iter().map(|r| (r.tx_hash, r.inspect(&call))).collect()
+        self.roots
+            .par_iter()
+            .map(|r| (r.tx_hash, r.inspect(&call)))
+            .collect()
     }
 
-    /// the first function parses down through the tree to the point where we are at
-    /// the lowest subset of the valid action. once we reach here, the call function gets
-    /// executed in order to capture the data
+    /// the first function parses down through the tree to the point where we
+    /// are at the lowest subset of the valid action. once we reach here,
+    /// the call function gets executed in order to capture the data
     pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
     where
         T: Fn(Address, Vec<V>) -> bool + Sync,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
     {
-        self.roots.par_iter_mut().flat_map(|root| root.dyn_classify(&find, &call)).collect()
+        self.roots
+            .par_iter_mut()
+            .flat_map(|root| root.dyn_classify(&find, &call))
+            .collect()
     }
 }

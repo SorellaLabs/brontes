@@ -1,3 +1,11 @@
+use std::collections::HashMap;
+//Std
+use std::{
+    env,
+    error::Error,
+    net::{IpAddr, Ipv4Addr, SocketAddr}
+};
+
 use bin::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use colored::Colorize;
 use metrics_process::Collector;
@@ -5,18 +13,9 @@ use poirot_classifer::Classifier;
 use poirot_core::{decoding::Parser, init_block};
 use poirot_labeller::{database::Database, Labeller};
 use poirot_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
-use std::collections::HashMap;
-
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
-
-//Std
-use std::{
-    env,
-    error::Error,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-};
 
 fn main() {
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -25,7 +24,9 @@ fn main() {
         .build()
         .unwrap();
 
-    let filter = EnvFilter::builder().with_default_directive(Level::INFO.into()).from_env_lossy();
+    let filter = EnvFilter::builder()
+        .with_default_directive(Level::INFO.into())
+        .from_env_lossy();
 
     let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
 
@@ -51,9 +52,9 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     initialize(
         SocketAddr::new(
             IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
-            PROMETHEUS_ENDPOINT_PORT,
+            PROMETHEUS_ENDPOINT_PORT
         ),
-        Collector::default(),
+        Collector::default()
     )
     .await
     .unwrap();
@@ -61,14 +62,14 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let db_path = match env::var("DB_PATH") {
         Ok(path) => path,
-        Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
+        Err(_) => return Err(Box::new(std::env::VarError::NotPresent))
     };
 
     info!("Found DB Path");
 
     let key = match env::var("ETHERSCAN_API_KEY") {
         Ok(key) => key,
-        Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
+        Err(_) => return Err(Box::new(std::env::VarError::NotPresent))
     };
     info!("Found Etherscan API Key");
 
@@ -84,8 +85,8 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     Poirot::new(parser, poirot_labeller, classifier & inspectors, 69420).await;
 
-    // you have a intermediate parse function for the range of blocks you want to parse
-    // it collects the aggregate stats of each block stats
+    // you have a intermediate parse function for the range of blocks you want to
+    // parse it collects the aggregate stats of each block stats
     // the block stats collect the aggregate stats of each tx
     // the tx stats collect the aggregate stats of each trace
 

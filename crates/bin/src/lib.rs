@@ -1,6 +1,13 @@
+use std::{
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+    thread::current
+};
+
 use futures::{
     future::{join_all, JoinAll},
-    Future, FutureExt,
+    Future, FutureExt
 };
 use malachite::Rational;
 use poirot_classifer::classifer::Classifier;
@@ -9,12 +16,6 @@ use poirot_inspect::Inspector;
 use poirot_labeller::{database::Metadata, Labeller};
 use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use reth_primitives::Header;
-use std::{
-    pin::Pin,
-    sync::Arc,
-    task::{Context, Poll},
-    thread::current,
-};
 use tokio::task::JoinError;
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
@@ -25,21 +26,21 @@ type CollectionFut<'a> = Pin<
     Box<
         dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Metadata)>
             + Send
-            + 'a,
-    >,
+            + 'a
+    >
 >;
 
 pub struct Poirot<'a> {
     current_block: u64,
-    parser: Parser,
-    classifier: Classifier,
-    labeller: Labeller<'a>,
+    parser:        Parser,
+    classifier:    Classifier,
+    labeller:      Labeller<'a>,
 
     inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
 
     // pending future data
-    inspector_task: Option<InspectorFut<'a>>,
-    classifier_data: Option<CollectionFut<'a>>,
+    inspector_task:  Option<InspectorFut<'a>>,
+    classifier_data: Option<CollectionFut<'a>>
 }
 
 impl<'a> Poirot<'a> {
@@ -48,7 +49,7 @@ impl<'a> Poirot<'a> {
         labeller: Labeller<'a>,
         classifier: Classifier,
         inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
-        init_block: u64,
+        init_block: u64
     ) -> Self {
         Self {
             parser,
@@ -57,7 +58,7 @@ impl<'a> Poirot<'a> {
             inspectors,
             inspector_task: None,
             current_block: init_block,
-            classifier_data: None,
+            classifier_data: None
         }
     }
 
@@ -66,7 +67,10 @@ impl<'a> Poirot<'a> {
     }
 
     fn start_collection(&mut self) {
-        let Ok(Some(hash)) = self.parser.get_block_hash_for_number(self.current_block + 1) else {
+        let Ok(Some(hash)) = self
+            .parser
+            .get_block_hash_for_number(self.current_block + 1)
+        else {
             // no new block ready
             return
         };
@@ -74,14 +78,19 @@ impl<'a> Poirot<'a> {
 
         let parser_fut = self.parser.execute(self.current_block);
         // placeholder for ludwigs shit
-        let labeller_fut = self.labeller.client.get_metadata(self.current_block, hash.into());
+        let labeller_fut = self
+            .labeller
+            .client
+            .get_metadata(self.current_block, hash.into());
 
         self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
     }
 
     fn start_inspecting(&mut self, tree: Arc<TimeTree<Actions>>) {
         self.inspector_task = Some(join_all(
-            self.inspectors.iter().map(|inspector| inspector.process_tree(tree.clone())),
+            self.inspectors
+                .iter()
+                .map(|inspector| inspector.process_tree(tree.clone()))
         ) as InspectorFut<'a>);
     }
 

@@ -4,7 +4,7 @@ pub(crate) mod as_rational {
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Rational, D::Error>
     where
-        D: Deserializer<'de>,
+        D: Deserializer<'de>
     {
         let val = f64::deserialize(deserializer)?;
         Ok(Rational::try_from(val).unwrap())
