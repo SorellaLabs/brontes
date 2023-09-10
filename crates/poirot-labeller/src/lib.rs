@@ -1,7 +1,17 @@
+use database::Database;
+use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
+use poirot_metrics::PoirotMetricEvents;
 pub mod database;
-use futures::{future::join_all, Future, FutureExt, StreamExt};
-use poirot_core::executor::Executor;
+
 pub struct Labeller {
-    executor: Executor,
+    client: Database,
+    pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
+}
+
+impl Labeller {
+    pub fn new(metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>) -> Self {
+        Self { client: Database::default(), metrics_tx }
+    }
 }
 
