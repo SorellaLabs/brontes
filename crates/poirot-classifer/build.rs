@@ -1,27 +1,32 @@
-use clickhouse::{Client, Row};
-use ethers_core::types::H160;
-use hyper_tls::HttpsConnector;
-use serde::{Deserialize, Serialize};
 use std::{
     env,
     fs::File,
     io::{BufWriter, Write},
     path::Path,
-    str::FromStr,
+    str::FromStr
 };
 
+use clickhouse::{Client, Row};
+use ethers_core::types::H160;
+use hyper_tls::HttpsConnector;
+use serde::{Deserialize, Serialize};
+
 const TOKEN_MAPPING: &str = "token_mappings.rs";
-const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x),tokens) AS tokens FROM pools WHERE length(tokens) = ";
+const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x),tokens) AS \
+                             tokens FROM pools WHERE length(tokens) = ";
 
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct DecodedTokens {
     address: String,
-    tokens: Vec<String>,
+    tokens:  Vec<String>
 }
 
 fn main() {
     dotenv::dotenv().ok();
-    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
 
     runtime.block_on(async {
         let client = build_db();
@@ -44,7 +49,10 @@ async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) ->
 }
 
 fn to_string_vec(tokens: Vec<String>) -> String {
-    let tokens = tokens.into_iter().map(|t| H160::from_str(&t).unwrap()).collect::<Vec<_>>();
+    let tokens = tokens
+        .into_iter()
+        .map(|t| H160::from_str(&t).unwrap())
+        .collect::<Vec<_>>();
     let mut res = "[".to_string();
     for token in tokens {
         res += "H160([";
@@ -67,7 +75,7 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
     for row in rows {
         phf_map.entry(
             H160::from_str(&row.address).unwrap().to_fixed_bytes(),
-            &to_string_vec(row.tokens),
+            &to_string_vec(row.tokens)
         );
     }
 
@@ -100,6 +108,6 @@ fn build_db() -> Client {
         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
         .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
         .with_database(
-            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
+            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env")
         )
 }

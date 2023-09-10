@@ -1,31 +1,32 @@
-use crate::{
-    source_tree::{SourceTree, SourceTreeEntry},
-    utils::{deserialize_address_opt, deserialize_source_code},
-    Client, EtherscanError, Response, Result,
-};
+use std::{collections::HashMap, path::Path};
+
 use alloy_json_abi::JsonAbi;
 use ethers_core::{
     abi::{Address, RawAbi},
-    types::{serde_helpers::deserialize_stringified_u64, Bytes},
+    types::{serde_helpers::deserialize_stringified_u64, Bytes}
 };
-use semver::Version;
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
-use tracing::debug;
-
 #[cfg(feature = "ethers-solc")]
 use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
+use semver::Version;
+use serde::{Deserialize, Serialize};
+use tracing::debug;
+
+use crate::{
+    source_tree::{SourceTree, SourceTreeEntry},
+    utils::{deserialize_address_opt, deserialize_source_code},
+    Client, EtherscanError, Response, Result
+};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub enum SourceCodeLanguage {
     #[default]
     Solidity,
-    Vyper,
+    Vyper
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SourceCodeEntry {
-    pub content: String,
+    pub content: String
 }
 
 impl<T: Into<String>> From<T> for SourceCodeEntry {
@@ -48,25 +49,29 @@ pub enum SourceCodeMetadata {
         language: Option<SourceCodeLanguage>,
         /// Source path => source code
         #[serde(default)]
-        sources: HashMap<String, SourceCodeEntry>,
+        sources:  HashMap<String, SourceCodeEntry>,
         /// Compiler settings, None if the language is not Solidity.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        settings: Option<serde_json::Value>,
+        settings: Option<serde_json::Value>
     },
     /// Contains only the source code.
-    SourceCode(String),
+    SourceCode(String)
 }
 
 impl SourceCodeMetadata {
     pub fn source_code(&self) -> String {
         match self {
-            Self::Metadata { sources, .. } => {
-                sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
-            }
-            Self::Sources(sources) => {
-                sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
-            }
-            Self::SourceCode(s) => s.clone(),
+            Self::Metadata { sources, .. } => sources
+                .values()
+                .map(|s| s.content.clone())
+                .collect::<Vec<_>>()
+                .join("\n"),
+            Self::Sources(sources) => sources
+                .values()
+                .map(|s| s.content.clone())
+                .collect::<Vec<_>>()
+                .join("\n"),
+            Self::SourceCode(s) => s.clone()
         }
     }
 
@@ -74,7 +79,7 @@ impl SourceCodeMetadata {
         match self {
             Self::Metadata { language, .. } => language.clone(),
             Self::Sources(_) => None,
-            Self::SourceCode(_) => None,
+            Self::SourceCode(_) => None
         }
     }
 
@@ -82,7 +87,7 @@ impl SourceCodeMetadata {
         match self {
             Self::Metadata { sources, .. } => sources.clone(),
             Self::Sources(sources) => sources.clone(),
-            Self::SourceCode(s) => HashMap::from([("Contract".into(), s.into())]),
+            Self::SourceCode(s) => HashMap::from([("Contract".into(), s.into())])
         }
     }
 
@@ -97,10 +102,10 @@ impl SourceCodeMetadata {
                         Ok(Some(serde_json::from_value(value.to_owned())?))
                     }
                 }
-                None => Ok(None),
+                None => Ok(None)
             },
             Self::Sources(_) => Ok(None),
-            Self::SourceCode(_) => Ok(None),
+            Self::SourceCode(_) => Ok(None)
         }
     }
 
@@ -109,7 +114,7 @@ impl SourceCodeMetadata {
         match self {
             Self::Metadata { settings, .. } => settings.as_ref(),
             Self::Sources(_) => None,
-            Self::SourceCode(_) => None,
+            Self::SourceCode(_) => None
         }
     }
 }
@@ -129,8 +134,8 @@ pub struct Metadata {
     /// The name of the contract.
     pub contract_name: String,
 
-    /// The version that this contract was compiled with. If it is a Vyper contract, it will start
-    /// with "vyper:".
+    /// The version that this contract was compiled with. If it is a Vyper
+    /// contract, it will start with "vyper:".
     pub compiler_version: String,
 
     /// Whether the optimizer was used. This value should only be 0 or 1.
@@ -144,8 +149,9 @@ pub struct Metadata {
     /// The constructor arguments the contract was deployed with.
     pub constructor_arguments: Bytes,
 
-    /// The version of the EVM the contract was deployed in. Can be either a variant of EvmVersion
-    /// or "Default" which indicates the compiler's default.
+    /// The version of the EVM the contract was deployed in. Can be either a
+    /// variant of EvmVersion or "Default" which indicates the compiler's
+    /// default.
     #[serde(rename = "EVMVersion")]
     pub evm_version: String,
 
@@ -168,7 +174,7 @@ pub struct Metadata {
     pub implementation: Option<Address>,
 
     /// The swarm source of the contract.
-    pub swarm_source: String,
+    pub swarm_source: String
 }
 
 impl Metadata {
@@ -212,9 +218,10 @@ impl Metadata {
             Err(e) => {
                 let v = v.replace('a', "-alpha.");
                 let v = v.replace('b', "-beta.");
-                v.parse().map_err(|_| EtherscanError::Unknown(format!("bad compiler version: {e}")))
+                v.parse()
+                    .map_err(|_| EtherscanError::Unknown(format!("bad compiler version: {e}")))
             }
-            Ok(v) => Ok(v),
+            Ok(v) => Ok(v)
         }
     }
 
@@ -284,12 +291,12 @@ impl Metadata {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ContractMetadata {
-    pub items: Vec<Metadata>,
+    pub items: Vec<Metadata>
 }
 
 impl IntoIterator for ContractMetadata {
-    type Item = Metadata;
     type IntoIter = std::vec::IntoIter<Metadata>;
+    type Item = Metadata;
 
     fn into_iter(self) -> Self::IntoIter {
         self.items.into_iter()
@@ -309,12 +316,22 @@ impl ContractMetadata {
 
     /// Returns the combined source code of all contracts.
     pub fn source_code(&self) -> String {
-        self.items.iter().map(|c| c.source_code()).collect::<Vec<_>>().join("\n")
+        self.items
+            .iter()
+            .map(|c| c.source_code())
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     /// Returns the combined [SourceTree] of all contracts.
     pub fn source_tree(&self) -> SourceTree {
-        SourceTree { entries: self.items.iter().flat_map(|item| item.source_entries()).collect() }
+        SourceTree {
+            entries: self
+                .items
+                .iter()
+                .flat_map(|item| item.source_entries())
+                .collect()
+        }
     }
 }
 
@@ -338,7 +355,7 @@ impl Client {
                 debug!(?address, "Cache hit for contract_abi");
                 return match src {
                     Some(src) => Ok(src),
-                    None => Err(EtherscanError::ContractCodeNotVerified(address)),
+                    None => Err(EtherscanError::ContractCodeNotVerified(address))
                 }
             } else {
                 debug!(?address, "Cache miss for contract_abi");
@@ -356,7 +373,7 @@ impl Client {
                 }
                 return Err(EtherscanError::EmptyResult {
                     message: resp.message,
-                    status: resp.status,
+                    status:  resp.status
                 })
             }
         };
@@ -365,8 +382,10 @@ impl Client {
             return Err(EtherscanError::RateLimitExceeded)
         }
 
-        if result.starts_with("Contract source code not verified") ||
-            resp.message.starts_with("Contract source code not verified")
+        if result.starts_with("Contract source code not verified")
+            || resp
+                .message
+                .starts_with("Contract source code not verified")
         {
             if let Some(ref cache) = self.cache {
                 cache.set_abi(address, None)?;
@@ -394,7 +413,7 @@ impl Client {
                 }
                 return Err(EtherscanError::EmptyResult {
                     message: resp.message,
-                    status: resp.status,
+                    status:  resp.status
                 })
             }
         };
@@ -403,8 +422,10 @@ impl Client {
             return Err(EtherscanError::RateLimitExceeded)
         }
 
-        if result.starts_with("Contract source code not verified") ||
-            resp.message.starts_with("Contract source code not verified")
+        if result.starts_with("Contract source code not verified")
+            || resp
+                .message
+                .starts_with("Contract source code not verified")
         {
             if let Some(ref cache) = self.cache {
                 cache.set_abi(address, None)?;
@@ -421,10 +442,11 @@ impl Client {
         // Use the first item in the metadata.
         let first_item = &contract_metadata.items[0];
 
-        // If the first item is a proxy, get its implementation address and fetch the ABI.
+        // If the first item is a proxy, get its implementation address and fetch the
+        // ABI.
         let implementation_address = match first_item.implementation {
             Some(impl_addr) => impl_addr,
-            None => return Err(EtherscanError::MissingImplementationAddress),
+            None => return Err(EtherscanError::MissingImplementationAddress)
         };
 
         // Get the ABI of the implementation contract.
@@ -450,7 +472,7 @@ impl Client {
                 debug!(?address, "Cache hit for contract_source_code with address");
                 return match src {
                     Some(src) => Ok(src),
-                    None => Err(EtherscanError::ContractCodeNotVerified(address)),
+                    None => Err(EtherscanError::ContractCodeNotVerified(address))
                 }
             } else {
                 debug!(?address, "Cache miss for contract_source_code with address");

@@ -1,13 +1,15 @@
-use crate::trace::{types::TraceMetricEvent, TraceMetrics};
-use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
-use futures::Future;
 use std::{
     collections::HashMap,
     pin::Pin,
-    task::{ready, Context, Poll},
+    task::{ready, Context, Poll}
 };
+
+use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
+use futures::Future;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::trace;
+
+use crate::trace::{types::TraceMetricEvent, TraceMetrics};
 pub mod dyn_contracts;
 pub mod prometheus_exporter;
 pub mod trace;
@@ -18,25 +20,26 @@ pub enum PoirotMetricEvents {
     /// recorded a new trace event
     TraceMetricRecieved(TraceMetricEvent),
     /// recorded a new dynamic contract recording
-    DynamicContractMetricRecieved(DynamicContractMetricEvent),
+    DynamicContractMetricRecieved(DynamicContractMetricEvent)
 }
 
-/// Metrics routine that listens to new metric events on the `events_rx` receiver.
-/// Upon receiving new event, related metrics are updated.
+/// Metrics routine that listens to new metric events on the `events_rx`
+/// receiver. Upon receiving new event, related metrics are updated.
 #[derive(Debug)]
 pub struct PoirotMetricsListener {
-    events_rx: UnboundedReceiver<PoirotMetricEvents>,
-    tx_metrics: TraceMetrics,
-    contract_metrics: HashMap<String, DynamicContractMetrics>,
+    events_rx:        UnboundedReceiver<PoirotMetricEvents>,
+    tx_metrics:       TraceMetrics,
+    contract_metrics: HashMap<String, DynamicContractMetrics>
 }
 
 impl PoirotMetricsListener {
-    /// Creates a new [MetricsListener] with the provided receiver of [MetricEvent].
+    /// Creates a new [MetricsListener] with the provided receiver of
+    /// [MetricEvent].
     pub fn new(events_rx: UnboundedReceiver<PoirotMetricEvents>) -> Self {
         Self {
             events_rx,
             tx_metrics: TraceMetrics::default(),
-            contract_metrics: HashMap::default(),
+            contract_metrics: HashMap::default()
         }
     }
 

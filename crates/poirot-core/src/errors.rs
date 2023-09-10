@@ -26,7 +26,7 @@ pub enum TraceParseError {
     #[error("send error to prometheus")]
     ChannelSendError(String),
     #[error("trace missing")]
-    EthApiError(EthApiError),
+    EthApiError(EthApiError)
 }
 
 impl From<EtherscanError> for TraceParseError {
@@ -41,8 +41,8 @@ impl From<EthApiError> for TraceParseError {
     }
 }
 
-/// TODO: why don't we just use the default error here since we are litterally just mapping 1-1 and
-/// dropping some state.
+/// TODO: why don't we just use the default error here since we are litterally
+/// just mapping 1-1 and dropping some state.
 impl From<&TraceParseError> for TraceParseErrorKind {
     fn from(val: &TraceParseError) -> Self {
         match val {
@@ -139,14 +139,14 @@ impl From<&TraceParseError> for TraceParseErrorKind {
                     TraceParseErrorKind::EtherscanCloudFlareSecurityChallenge
                 }
                 EtherscanError::PageNotFound => TraceParseErrorKind::EtherscanPageNotFound,
-                EtherscanError::CacheError(_) => TraceParseErrorKind::EtherscanCacheError,
+                EtherscanError::CacheError(_) => TraceParseErrorKind::EtherscanCacheError
             },
             TraceParseError::AbiParseError(_) => TraceParseErrorKind::AbiParseError,
             TraceParseError::InvalidFunctionSelector(_) => {
                 TraceParseErrorKind::InvalidFunctionSelector
             }
             TraceParseError::AbiDecodingFailed(_) => TraceParseErrorKind::AbiDecodingFailed,
-            TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError,
+            TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError
         }
     }
 }

@@ -1,7 +1,9 @@
-use crate::{Client, Response, Result};
+use std::collections::HashMap;
+
 use ethers_core::types::Address;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
+use crate::{Client, Response, Result};
 
 /// Arguments for verifying contracts
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,24 +28,26 @@ pub struct VerifyContract {
     pub runs: Option<String>,
     /// The constructor arguments for the contract, if any.
     ///
-    /// NOTE: This is renamed as the misspelled `ethers-etherscan/src/verify.rs`. The reason for
-    /// this is that Etherscan has had this misspelling on their API for quite a long time, and
-    /// changing it would break verification with arguments.
+    /// NOTE: This is renamed as the misspelled
+    /// `ethers-etherscan/src/verify.rs`. The reason for this is that
+    /// Etherscan has had this misspelling on their API for quite a long time,
+    /// and changing it would break verification with arguments.
     ///
-    /// For instances (e.g. blockscout) that might support the proper spelling, the field
-    /// `blockscout_constructor_arguments` is populated with the exact arguments passed to this
-    /// field as well.
+    /// For instances (e.g. blockscout) that might support the proper spelling,
+    /// the field `blockscout_constructor_arguments` is populated with the
+    /// exact arguments passed to this field as well.
     #[serde(rename = "constructorArguements", skip_serializing_if = "Option::is_none")]
     pub constructor_arguments: Option<String>,
-    /// Properly spelled constructor arguments. This is needed as some blockscout instances
-    /// can identify the correct spelling instead of the misspelled version above.
+    /// Properly spelled constructor arguments. This is needed as some
+    /// blockscout instances can identify the correct spelling instead of
+    /// the misspelled version above.
     #[serde(rename = "constructorArguments", skip_serializing_if = "Option::is_none")]
     pub blockscout_constructor_arguments: Option<String>,
     /// applicable when codeformat=solidity-single-file
     #[serde(rename = "evmversion", skip_serializing_if = "Option::is_none")]
     pub evm_version: Option<String>,
     #[serde(flatten)]
-    pub other: HashMap<String, String>,
+    pub other: HashMap<String, String>
 }
 
 impl VerifyContract {
@@ -51,7 +55,7 @@ impl VerifyContract {
         address: Address,
         contract_name: String,
         source: String,
-        compiler_version: String,
+        compiler_version: String
     ) -> Self {
         Self {
             address,
@@ -64,7 +68,7 @@ impl VerifyContract {
             constructor_arguments: None,
             blockscout_constructor_arguments: None,
             evm_version: None,
-            other: Default::default(),
+            other: Default::default()
         }
     }
 
@@ -110,7 +114,7 @@ impl VerifyContract {
     #[must_use]
     pub fn constructor_arguments(
         mut self,
-        constructor_arguments: Option<impl Into<String>>,
+        constructor_arguments: Option<impl Into<String>>
     ) -> Self {
         let constructor_args = constructor_arguments.map(|s| {
             s.into()
@@ -129,10 +133,10 @@ impl VerifyContract {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerifyProxyContract {
     /// Proxy contract's address
-    pub address: Address,
+    pub address:       Address,
     /// Implementation contract proxy points to - must be verified before call.
     #[serde(default, rename = "expectedimplementation", skip_serializing_if = "Option::is_none")]
-    pub expected_impl: Option<Address>,
+    pub expected_impl: Option<Address>
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -142,14 +146,14 @@ pub enum CodeFormat {
 
     #[default]
     #[serde(rename = "solidity-standard-json-input")]
-    StandardJsonInput,
+    StandardJsonInput
 }
 
 impl AsRef<str> for CodeFormat {
     fn as_ref(&self) -> &str {
         match self {
             CodeFormat::SingleFile => "solidity-single-file",
-            CodeFormat::StandardJsonInput => "solidity-standard-json-input",
+            CodeFormat::StandardJsonInput => "solidity-standard-json-input"
         }
     }
 }
@@ -158,7 +162,7 @@ impl Client {
     /// Submit Source Code for Verification
     pub async fn submit_contract_verification(
         &self,
-        contract: &VerifyContract,
+        contract: &VerifyContract
     ) -> Result<Response<String>> {
         let body = self.create_query("contract", "verifysourcecode", contract);
         self.post_form(&body).await
@@ -168,12 +172,12 @@ impl Client {
     /// `[Self::submit_contract_verification]`
     pub async fn check_contract_verification_status(
         &self,
-        guid: impl AsRef<str>,
+        guid: impl AsRef<str>
     ) -> Result<Response<String>> {
         let body = self.create_query(
             "contract",
             "checkverifystatus",
-            HashMap::from([("guid", guid.as_ref())]),
+            HashMap::from([("guid", guid.as_ref())])
         );
         self.post_form(&body).await
     }
@@ -181,7 +185,7 @@ impl Client {
     /// Submit Proxy Contract for Verification
     pub async fn submit_proxy_contract_verification(
         &self,
-        contract: &VerifyProxyContract,
+        contract: &VerifyProxyContract
     ) -> Result<Response<String>> {
         let body = self.create_query("contract", "verifyproxycontract", contract);
         self.post_form(&body).await
@@ -191,12 +195,12 @@ impl Client {
     /// `[Self::submit_proxy_contract_verification]`
     pub async fn check_proxy_contract_verification_status(
         &self,
-        guid: impl AsRef<str>,
+        guid: impl AsRef<str>
     ) -> Result<Response<String>> {
         let body = self.create_query(
             "contract",
             "checkproxyverification",
-            HashMap::from([("guid", guid.as_ref())]),
+            HashMap::from([("guid", guid.as_ref())])
         );
         self.post_form(&body).await
     }

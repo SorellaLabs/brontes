@@ -1,5 +1,6 @@
-use ethers_core::types::{Address, Chain};
 use std::env::VarError;
+
+use ethers_core::types::{Address, Chain};
 
 #[derive(Debug, thiserror::Error)]
 pub enum EtherscanError {
@@ -49,12 +50,15 @@ pub enum EtherscanError {
     InvalidApiKey,
     #[error("Sorry, you have been blocked by Cloudflare, See also https://community.cloudflare.com/t/sorry-you-have-been-blocked/110790")]
     BlockedByCloudflare,
-    #[error("The Requested prompted a cloudflare captcha security challenge to review the security of your connection before proceeding.")]
+    #[error(
+        "The Requested prompted a cloudflare captcha security challenge to review the security of \
+         your connection before proceeding."
+    )]
     CloudFlareSecurityChallenge,
     #[error("Received `Page not found` response. API server is likely down")]
     PageNotFound,
     #[error("Cache failure")]
-    CacheError(#[from] Box<dyn std::error::Error>),
+    CacheError(#[from] Box<dyn std::error::Error>)
 }
 
 /// etherscan/polyscan is protected by cloudflare, which can lead to html responses like `Sorry, you have been blocked` See also <https://community.cloudflare.com/t/sorry-you-have-been-blocked/110790>
@@ -64,11 +68,13 @@ pub(crate) fn is_blocked_by_cloudflare_response(txt: &str) -> bool {
     txt.to_lowercase().contains("sorry, you have been blocked")
 }
 
-/// etherscan/polyscan is protected by cloudflare, which can require captchas to "review the
-/// security of your connection before proceeding"
+/// etherscan/polyscan is protected by cloudflare, which can require captchas to
+/// "review the security of your connection before proceeding"
 pub(crate) fn is_cloudflare_security_challenge(txt: &str) -> bool {
-    txt.contains("https://www.cloudflare.com?utm_source=challenge") ||
-        txt.to_lowercase().contains("checking if the site connection is secure")
+    txt.contains("https://www.cloudflare.com?utm_source=challenge")
+        || txt
+            .to_lowercase()
+            .contains("checking if the site connection is secure")
 }
 
 #[cfg(test)]

@@ -1,15 +1,16 @@
-use clickhouse::{Client, Row};
-use ethers_core::types::{Chain, H160};
-use hyper_tls::HttpsConnector;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::{
     env,
     fs::{self, File},
     io::{BufWriter, Write},
     path::{Path, PathBuf},
-    str::FromStr,
+    str::FromStr
 };
+
+use clickhouse::{Client, Row};
+use ethers_core::types::{Chain, H160};
+use hyper_tls::HttpsConnector;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
@@ -23,20 +24,23 @@ const PROTOCOL_ABIS: &str =
 
 #[derive(Debug, Serialize, Deserialize, Row)]
 struct AddressToProtocolMapping {
-    protocol: String,
-    addresses: Vec<String>,
+    protocol:  String,
+    addresses: Vec<String>
 }
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone)]
 struct ProtocolAbis {
     protocol: String,
-    address: String,
+    address:  String
 }
 
 fn main() {
     dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
-    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
 
     runtime.block_on(run());
 }
@@ -53,8 +57,11 @@ async fn run() {
         query_db::<AddressToProtocolMapping>(&clickhouse_client, PROTOCOL_ADDRESSES).await;
 
     generate(
-        Path::new(&env::var("OUT_DIR").unwrap()).join(BINDINGS_PATH).to_str().unwrap(),
-        protocol_abis.clone(),
+        Path::new(&env::var("OUT_DIR").unwrap())
+            .join(BINDINGS_PATH)
+            .to_str()
+            .unwrap(),
+        protocol_abis.clone()
     )
     .await;
     address_abi_mapping(protocol_address_map)
@@ -83,7 +90,7 @@ async fn generate(bindings_file_path: &str, addresses: Vec<ProtocolAbis>) {
         binding_enums.push(enum_binding_string(&protocol_addr.protocol, Some("_Enum")));
         return_binding_enums.push(enum_binding_string(
             &protocol_addr.protocol,
-            Some(&format!("::{}Calls", &protocol_addr.protocol)),
+            Some(&format!("::{}Calls", &protocol_addr.protocol))
         ));
         individual_sub_enums(&mut mod_enums, &protocol_addr.protocol);
         enum_impl_macro(&mut mod_enums, &protocol_addr.protocol);
@@ -152,7 +159,11 @@ fn enum_impl_macro(mod_enum: &mut Vec<String>, protocol_name: &str) {
 fn bindings_try_decode_impl_init() -> Vec<String> {
     let mut impl_str = Vec::new();
     impl_str.push("impl StaticBindings {".to_string());
-    impl_str.push(" pub fn try_decode(&self, call_data: &[u8]) -> Result<StaticReturnBindings, alloy_sol_types::Error> {".to_string());
+    impl_str.push(
+        " pub fn try_decode(&self, call_data: &[u8]) -> Result<StaticReturnBindings, \
+         alloy_sol_types::Error> {"
+            .to_string()
+    );
     impl_str.push("     match self {".to_string());
     impl_str
 }
@@ -160,7 +171,8 @@ fn bindings_try_decode_impl_init() -> Vec<String> {
 /// implements try_decode() for the StaticBindings Enum
 fn bindings_try_row(protocol_name: &str) -> String {
     format!(
-        "       StaticBindings::{}(val) => Ok(StaticReturnBindings::{}({}_Enum::try_decode(call_data)?)),",
+        "       StaticBindings::{}(val) => \
+         Ok(StaticReturnBindings::{}({}_Enum::try_decode(call_data)?)),",
         protocol_name, protocol_name, protocol_name
     )
 }
@@ -177,7 +189,8 @@ async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<Protocol
         let abi = get_abi(client.clone(), &protocol_addr.address).await;
         let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
         let mut file = write_file(&abi_file_path, true);
-        file.write_all(serde_json::to_string(&abi).unwrap().as_bytes()).unwrap();
+        file.write_all(serde_json::to_string(&abi).unwrap().as_bytes())
+            .unwrap();
     }
 }
 
@@ -192,7 +205,7 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
         for address in &map.addresses {
             phf_map.entry(
                 address,
-                &format!("StaticBindings::{}({}_Enum::None)", &map.protocol, &map.protocol),
+                &format!("StaticBindings::{}({}_Enum::None)", &map.protocol, &map.protocol)
             );
         }
     }
@@ -230,7 +243,10 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
 
 /// gets the abis (as a serde 'Value') for the given addresses from etherscan
 async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
-    let raw = client.raw_contract(H160::from_str(address).unwrap()).await.unwrap();
+    let raw = client
+        .raw_contract(H160::from_str(address).unwrap())
+        .await
+        .unwrap();
     serde_json::from_str(&raw).unwrap()
 }
 
@@ -265,7 +281,7 @@ fn build_db() -> Client {
         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
         .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
         .with_database(
-            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
+            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env")
         )
 }
 
@@ -275,7 +291,7 @@ fn build_etherscan() -> alloy_etherscan::Client {
         Chain::Mainnet,
         env::var("ETHERSCAN_API_KEY").expect("ETHERSCAN_API_KEY not found in .env"),
         Some(PathBuf::from(CACHE_DIRECTORY)),
-        CACHE_TIMEOUT,
+        CACHE_TIMEOUT
     )
     .unwrap()
 }
@@ -300,5 +316,9 @@ fn write_file(file_path: &str, create: bool) -> File {
         File::create(file_path).unwrap();
     }
 
-    fs::OpenOptions::new().append(true).read(true).open(file_path).expect("could not open file")
+    fs::OpenOptions::new()
+        .append(true)
+        .read(true)
+        .open(file_path)
+        .expect("could not open file")
 }

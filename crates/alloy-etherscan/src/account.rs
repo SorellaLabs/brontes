@@ -1,54 +1,57 @@
-use crate::{Client, EtherscanError, Query, Response, Result};
-use ethers_core::{
-    abi::Address,
-    types::{serde_helpers::*, BlockNumber, Bytes, H256, H32, U256},
-};
-use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     collections::HashMap,
-    fmt::{Display, Error, Formatter},
+    fmt::{Display, Error, Formatter}
 };
+
+use ethers_core::{
+    abi::Address,
+    types::{serde_helpers::*, BlockNumber, Bytes, H256, H32, U256}
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{Client, EtherscanError, Query, Response, Result};
 
 /// The raw response from the balance-related API endpoints
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AccountBalance {
     pub account: Address,
-    pub balance: String,
+    pub balance: String
 }
 
 mod genesis_string {
-    use super::*;
     use serde::{
         de::{DeserializeOwned, Error as _},
         ser::Error as _,
-        Deserializer, Serializer,
+        Deserializer, Serializer
     };
+
+    use super::*;
 
     pub fn serialize<T, S>(
         value: &GenesisOption<T>,
-        serializer: S,
+        serializer: S
     ) -> std::result::Result<S::Ok, S::Error>
     where
         T: Serialize,
-        S: Serializer,
+        S: Serializer
     {
         let json = match value {
             GenesisOption::None => Cow::from(""),
             GenesisOption::Genesis => Cow::from("GENESIS"),
-            GenesisOption::Some(value) => {
-                serde_json::to_string(value).map_err(S::Error::custom)?.into()
-            }
+            GenesisOption::Some(value) => serde_json::to_string(value)
+                .map_err(S::Error::custom)?
+                .into()
         };
         serializer.serialize_str(&json)
     }
 
     pub fn deserialize<'de, T, D>(
-        deserializer: D,
+        deserializer: D
     ) -> std::result::Result<GenesisOption<T>, D::Error>
     where
         T: DeserializeOwned,
-        D: Deserializer<'de>,
+        D: Deserializer<'de>
     {
         let json = Cow::<'de, str>::deserialize(deserializer)?;
         if !json.is_empty() && !json.starts_with("GENESIS") {
@@ -64,21 +67,24 @@ mod genesis_string {
 }
 
 mod json_string {
-    use super::*;
     use serde::{
         de::{DeserializeOwned, Error as _},
         ser::Error as _,
-        Deserializer, Serializer,
+        Deserializer, Serializer
     };
+
+    use super::*;
 
     pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         T: Serialize,
-        S: Serializer,
+        S: Serializer
     {
         let json = match value {
             Option::None => Cow::from(""),
-            Option::Some(value) => serde_json::to_string(value).map_err(S::Error::custom)?.into(),
+            Option::Some(value) => serde_json::to_string(value)
+                .map_err(S::Error::custom)?
+                .into()
         };
         serializer.serialize_str(&json)
     }
@@ -86,7 +92,7 @@ mod json_string {
     pub fn deserialize<'de, T, D>(deserializer: D) -> std::result::Result<Option<T>, D::Error>
     where
         T: DeserializeOwned,
-        D: Deserializer<'de>,
+        D: Deserializer<'de>
     {
         let json = Cow::<'de, str>::deserialize(deserializer)?;
         if json.is_empty() {
@@ -100,21 +106,24 @@ mod json_string {
 }
 
 mod hex_string {
-    use super::*;
     use serde::{
         de::{DeserializeOwned, Error as _},
         ser::Error as _,
-        Deserializer, Serializer,
+        Deserializer, Serializer
     };
+
+    use super::*;
 
     pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         T: Serialize,
-        S: Serializer,
+        S: Serializer
     {
         let json = match value {
             Option::None => Cow::from("0x"),
-            Option::Some(value) => serde_json::to_string(value).map_err(S::Error::custom)?.into(),
+            Option::Some(value) => serde_json::to_string(value)
+                .map_err(S::Error::custom)?
+                .into()
         };
         serializer.serialize_str(&json)
     }
@@ -122,7 +131,7 @@ mod hex_string {
     pub fn deserialize<'de, T, D>(deserializer: D) -> std::result::Result<Option<T>, D::Error>
     where
         T: DeserializeOwned,
-        D: Deserializer<'de>,
+        D: Deserializer<'de>
     {
         let json = Cow::<'de, str>::deserialize(deserializer)?;
         if json.is_empty() || json == "0x" {
@@ -137,20 +146,20 @@ mod hex_string {
 
 /// Possible values for some field responses.
 ///
-/// Transactions from the Genesis block may contain fields that do not conform to the expected
-/// types.
+/// Transactions from the Genesis block may contain fields that do not conform
+/// to the expected types.
 #[derive(Clone, Debug)]
 pub enum GenesisOption<T> {
     None,
     Genesis,
-    Some(T),
+    Some(T)
 }
 
 impl<T> From<GenesisOption<T>> for Option<T> {
     fn from(value: GenesisOption<T>) -> Self {
         match value {
             GenesisOption::Some(value) => Some(value),
-            _ => None,
+            _ => None
         }
     }
 }
@@ -163,7 +172,7 @@ impl<T> GenesisOption<T> {
     pub fn value(&self) -> Option<&T> {
         match self {
             GenesisOption::Some(value) => Some(value),
-            _ => None,
+            _ => None
         }
     }
 }
@@ -172,43 +181,43 @@ impl<T> GenesisOption<T> {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NormalTransaction {
-    pub is_error: String,
+    pub is_error:            String,
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
-    pub block_number: BlockNumber,
-    pub time_stamp: String,
+    pub block_number:        BlockNumber,
+    pub time_stamp:          String,
     #[serde(with = "genesis_string")]
-    pub hash: GenesisOption<H256>,
+    pub hash:                GenesisOption<H256>,
     #[serde(with = "json_string")]
-    pub nonce: Option<U256>,
+    pub nonce:               Option<U256>,
     #[serde(with = "json_string")]
-    pub block_hash: Option<U256>,
+    pub block_hash:          Option<U256>,
     #[serde(deserialize_with = "deserialize_stringified_u64_opt")]
-    pub transaction_index: Option<u64>,
+    pub transaction_index:   Option<u64>,
     #[serde(with = "genesis_string")]
-    pub from: GenesisOption<Address>,
+    pub from:                GenesisOption<Address>,
     #[serde(with = "json_string")]
-    pub to: Option<Address>,
+    pub to:                  Option<Address>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub value: U256,
+    pub value:               U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas: U256,
+    pub gas:                 U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric_opt")]
-    pub gas_price: Option<U256>,
+    pub gas_price:           Option<U256>,
     #[serde(rename = "txreceipt_status")]
-    pub tx_receipt_status: String,
-    pub input: Bytes,
+    pub tx_receipt_status:   String,
+    pub input:               Bytes,
     #[serde(with = "json_string")]
-    pub contract_address: Option<Address>,
+    pub contract_address:    Option<Address>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas_used: U256,
+    pub gas_used:            U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub cumulative_gas_used: U256,
     #[serde(deserialize_with = "deserialize_stringified_u64")]
-    pub confirmations: u64,
+    pub confirmations:       u64,
     #[serde(with = "hex_string")]
-    pub method_id: Option<H32>,
+    pub method_id:           Option<H32>,
     #[serde(with = "json_string")]
-    pub function_name: Option<String>,
+    pub function_name:       Option<String>
 }
 
 /// The raw response from the internal transaction list API endpoint
@@ -216,27 +225,27 @@ pub struct NormalTransaction {
 #[serde(rename_all = "camelCase")]
 pub struct InternalTransaction {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
-    pub block_number: BlockNumber,
-    pub time_stamp: String,
-    pub hash: H256,
-    pub from: Address,
+    pub block_number:     BlockNumber,
+    pub time_stamp:       String,
+    pub hash:             H256,
+    pub from:             Address,
     #[serde(with = "genesis_string")]
-    pub to: GenesisOption<Address>,
+    pub to:               GenesisOption<Address>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub value: U256,
+    pub value:            U256,
     #[serde(with = "genesis_string")]
     pub contract_address: GenesisOption<Address>,
     #[serde(with = "genesis_string")]
-    pub input: GenesisOption<Bytes>,
+    pub input:            GenesisOption<Bytes>,
     #[serde(rename = "type")]
-    pub result_type: String,
+    pub result_type:      String,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas: U256,
+    pub gas:              U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas_used: U256,
-    pub trace_id: String,
-    pub is_error: String,
-    pub err_code: String,
+    pub gas_used:         U256,
+    pub trace_id:         String,
+    pub is_error:         String,
+    pub err_code:         String
 }
 
 /// The raw response from the ERC20 transfer list API endpoint
@@ -244,34 +253,34 @@ pub struct InternalTransaction {
 #[serde(rename_all = "camelCase")]
 pub struct ERC20TokenTransferEvent {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
-    pub block_number: BlockNumber,
-    pub time_stamp: String,
-    pub hash: H256,
+    pub block_number:        BlockNumber,
+    pub time_stamp:          String,
+    pub hash:                H256,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub nonce: U256,
-    pub block_hash: H256,
-    pub from: Address,
-    pub contract_address: Address,
-    pub to: Option<Address>,
+    pub nonce:               U256,
+    pub block_hash:          H256,
+    pub from:                Address,
+    pub contract_address:    Address,
+    pub to:                  Option<Address>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub value: U256,
-    pub token_name: String,
-    pub token_symbol: String,
-    pub token_decimal: String,
+    pub value:               U256,
+    pub token_name:          String,
+    pub token_symbol:        String,
+    pub token_decimal:       String,
     #[serde(deserialize_with = "deserialize_stringified_u64")]
-    pub transaction_index: u64,
+    pub transaction_index:   u64,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas: U256,
+    pub gas:                 U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric_opt")]
-    pub gas_price: Option<U256>,
+    pub gas_price:           Option<U256>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas_used: U256,
+    pub gas_used:            U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub cumulative_gas_used: U256,
     /// deprecated
-    pub input: String,
+    pub input:               String,
     #[serde(deserialize_with = "deserialize_stringified_u64")]
-    pub confirmations: u64,
+    pub confirmations:       u64
 }
 
 /// The raw response from the ERC721 transfer list API endpoint
@@ -279,34 +288,34 @@ pub struct ERC20TokenTransferEvent {
 #[serde(rename_all = "camelCase")]
 pub struct ERC721TokenTransferEvent {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
-    pub block_number: BlockNumber,
-    pub time_stamp: String,
-    pub hash: H256,
+    pub block_number:        BlockNumber,
+    pub time_stamp:          String,
+    pub hash:                H256,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub nonce: U256,
-    pub block_hash: H256,
-    pub from: Address,
-    pub contract_address: Address,
-    pub to: Option<Address>,
+    pub nonce:               U256,
+    pub block_hash:          H256,
+    pub from:                Address,
+    pub contract_address:    Address,
+    pub to:                  Option<Address>,
     #[serde(rename = "tokenID")]
-    pub token_id: String,
-    pub token_name: String,
-    pub token_symbol: String,
-    pub token_decimal: String,
+    pub token_id:            String,
+    pub token_name:          String,
+    pub token_symbol:        String,
+    pub token_decimal:       String,
     #[serde(deserialize_with = "deserialize_stringified_u64")]
-    pub transaction_index: u64,
+    pub transaction_index:   u64,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas: U256,
+    pub gas:                 U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric_opt")]
-    pub gas_price: Option<U256>,
+    pub gas_price:           Option<U256>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas_used: U256,
+    pub gas_used:            U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub cumulative_gas_used: U256,
     /// deprecated
-    pub input: String,
+    pub input:               String,
     #[serde(deserialize_with = "deserialize_stringified_u64")]
-    pub confirmations: u64,
+    pub confirmations:       u64
 }
 
 /// The raw response from the ERC1155 transfer list API endpoint
@@ -314,34 +323,34 @@ pub struct ERC721TokenTransferEvent {
 #[serde(rename_all = "camelCase")]
 pub struct ERC1155TokenTransferEvent {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
-    pub block_number: BlockNumber,
-    pub time_stamp: String,
-    pub hash: H256,
+    pub block_number:        BlockNumber,
+    pub time_stamp:          String,
+    pub hash:                H256,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub nonce: U256,
-    pub block_hash: H256,
-    pub from: Address,
-    pub contract_address: Address,
-    pub to: Option<Address>,
+    pub nonce:               U256,
+    pub block_hash:          H256,
+    pub from:                Address,
+    pub contract_address:    Address,
+    pub to:                  Option<Address>,
     #[serde(rename = "tokenID")]
-    pub token_id: String,
-    pub token_value: String,
-    pub token_name: String,
-    pub token_symbol: String,
+    pub token_id:            String,
+    pub token_value:         String,
+    pub token_name:          String,
+    pub token_symbol:        String,
     #[serde(deserialize_with = "deserialize_stringified_u64")]
-    pub transaction_index: u64,
+    pub transaction_index:   u64,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas: U256,
+    pub gas:                 U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric_opt")]
-    pub gas_price: Option<U256>,
+    pub gas_price:           Option<U256>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
-    pub gas_used: U256,
+    pub gas_used:            U256,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub cumulative_gas_used: U256,
     /// deprecated
-    pub input: String,
+    pub input:               String,
     #[serde(deserialize_with = "deserialize_stringified_u64")]
-    pub confirmations: u64,
+    pub confirmations:       u64
 }
 
 /// The raw response from the mined blocks API endpoint
@@ -350,8 +359,8 @@ pub struct ERC1155TokenTransferEvent {
 pub struct MinedBlock {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
     pub block_number: BlockNumber,
-    pub time_stamp: String,
-    pub block_reward: String,
+    pub time_stamp:   String,
+    pub block_reward: String
 }
 
 /// The pre-defined block parameter for balance API endpoints
@@ -360,7 +369,7 @@ pub enum Tag {
     Earliest,
     Pending,
     #[default]
-    Latest,
+    Latest
 }
 
 impl Display for Tag {
@@ -368,7 +377,7 @@ impl Display for Tag {
         match self {
             Tag::Earliest => write!(f, "earliest"),
             Tag::Pending => write!(f, "pending"),
-            Tag::Latest => write!(f, "latest"),
+            Tag::Latest => write!(f, "latest")
         }
     }
 }
@@ -377,14 +386,14 @@ impl Display for Tag {
 #[derive(Clone, Copy, Debug)]
 pub enum Sort {
     Asc,
-    Desc,
+    Desc
 }
 
 impl Display for Sort {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), Error> {
         match self {
             Sort::Asc => write!(f, "asc"),
-            Sort::Desc => write!(f, "desc"),
+            Sort::Desc => write!(f, "desc")
         }
     }
 }
@@ -393,10 +402,10 @@ impl Display for Sort {
 #[derive(Clone, Copy, Debug)]
 pub struct TxListParams {
     pub start_block: u64,
-    pub end_block: u64,
-    pub page: u64,
-    pub offset: u64,
-    pub sort: Sort,
+    pub end_block:   u64,
+    pub page:        u64,
+    pub offset:      u64,
+    pub sort:        Sort
 }
 
 impl TxListParams {
@@ -407,7 +416,13 @@ impl TxListParams {
 
 impl Default for TxListParams {
     fn default() -> Self {
-        Self { start_block: 0, end_block: 99999999, page: 0, offset: 10000, sort: Sort::Asc }
+        Self {
+            start_block: 0,
+            end_block:   99999999,
+            page:        0,
+            offset:      10000,
+            sort:        Sort::Asc
+        }
     }
 }
 
@@ -428,7 +443,7 @@ impl From<TxListParams> for HashMap<&'static str, String> {
 pub enum InternalTxQueryOption {
     ByAddress(Address),
     ByTransactionHash(H256),
-    ByBlockRange,
+    ByBlockRange
 }
 
 /// Options for querying ERC20 or ERC721 token transfers
@@ -436,7 +451,7 @@ pub enum InternalTxQueryOption {
 pub enum TokenQueryOption {
     ByAddress(Address),
     ByContract(Address),
-    ByAddressAndContract(Address, Address),
+    ByAddressAndContract(Address, Address)
 }
 
 impl TokenQueryOption {
@@ -465,14 +480,14 @@ impl TokenQueryOption {
 pub enum BlockType {
     #[default]
     CanonicalBlocks,
-    Uncles,
+    Uncles
 }
 
 impl Display for BlockType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), Error> {
         match self {
             BlockType::CanonicalBlocks => write!(f, "blocks"),
-            BlockType::Uncles => write!(f, "uncles"),
+            BlockType::Uncles => write!(f, "uncles")
         }
     }
 }
@@ -491,21 +506,21 @@ impl Client {
     pub async fn get_ether_balance_single(
         &self,
         address: &Address,
-        tag: Option<Tag>,
+        tag: Option<Tag>
     ) -> Result<AccountBalance> {
         let tag_str = tag.unwrap_or_default().to_string();
         let addr_str = format!("{address:?}");
         let query = self.create_query(
             "account",
             "balance",
-            HashMap::from([("address", &addr_str), ("tag", &tag_str)]),
+            HashMap::from([("address", &addr_str), ("tag", &tag_str)])
         );
         let response: Response<String> = self.get_json(&query).await?;
 
         match response.status.as_str() {
             "0" => Err(EtherscanError::BalanceFailed),
             "1" => Ok(AccountBalance { account: *address, balance: response.result }),
-            err => Err(EtherscanError::BadStatusCode(err.to_string())),
+            err => Err(EtherscanError::BadStatusCode(err.to_string()))
         }
     }
 
@@ -527,25 +542,30 @@ impl Client {
     pub async fn get_ether_balance_multi(
         &self,
         addresses: &[Address],
-        tag: Option<Tag>,
+        tag: Option<Tag>
     ) -> Result<Vec<AccountBalance>> {
         let tag_str = tag.unwrap_or_default().to_string();
-        let addrs = addresses.iter().map(|x| format!("{x:?}")).collect::<Vec<String>>().join(",");
+        let addrs = addresses
+            .iter()
+            .map(|x| format!("{x:?}"))
+            .collect::<Vec<String>>()
+            .join(",");
         let query: Query<HashMap<&str, &str>> = self.create_query(
             "account",
             "balancemulti",
-            HashMap::from([("address", addrs.as_ref()), ("tag", tag_str.as_ref())]),
+            HashMap::from([("address", addrs.as_ref()), ("tag", tag_str.as_ref())])
         );
         let response: Response<Vec<AccountBalance>> = self.get_json(&query).await?;
 
         match response.status.as_str() {
             "0" => Err(EtherscanError::BalanceFailed),
             "1" => Ok(response.result),
-            err => Err(EtherscanError::BadStatusCode(err.to_string())),
+            err => Err(EtherscanError::BadStatusCode(err.to_string()))
         }
     }
 
-    /// Returns the list of transactions performed by an address, with optional pagination.
+    /// Returns the list of transactions performed by an address, with optional
+    /// pagination.
     ///
     /// # Examples
     ///
@@ -558,7 +578,7 @@ impl Client {
     pub async fn get_transactions(
         &self,
         address: &Address,
-        params: Option<TxListParams>,
+        params: Option<TxListParams>
     ) -> Result<Vec<NormalTransaction>> {
         let mut tx_params: HashMap<&str, String> = params.unwrap_or_default().into();
         tx_params.insert("address", format!("{address:?}"));
@@ -568,8 +588,8 @@ impl Client {
         Ok(response.result)
     }
 
-    /// Returns the list of internal transactions performed by an address or within a transaction,
-    /// with optional pagination.
+    /// Returns the list of internal transactions performed by an address or
+    /// within a transaction, with optional pagination.
     ///
     /// # Examples
     ///
@@ -585,7 +605,7 @@ impl Client {
     pub async fn get_internal_transactions(
         &self,
         tx_query_option: InternalTxQueryOption,
-        params: Option<TxListParams>,
+        params: Option<TxListParams>
     ) -> Result<Vec<InternalTransaction>> {
         let mut tx_params: HashMap<&str, String> = params.unwrap_or_default().into();
         match tx_query_option {
@@ -603,8 +623,8 @@ impl Client {
         Ok(response.result)
     }
 
-    /// Returns the list of ERC-20 tokens transferred by an address, with optional filtering by
-    /// token contract.
+    /// Returns the list of ERC-20 tokens transferred by an address, with
+    /// optional filtering by token contract.
     ///
     /// # Examples
     ///
@@ -620,7 +640,7 @@ impl Client {
     pub async fn get_erc20_token_transfer_events(
         &self,
         event_query_option: TokenQueryOption,
-        params: Option<TxListParams>,
+        params: Option<TxListParams>
     ) -> Result<Vec<ERC20TokenTransferEvent>> {
         let params = event_query_option.into_params(params.unwrap_or_default());
         let query = self.create_query("account", "tokentx", params);
@@ -629,8 +649,8 @@ impl Client {
         Ok(response.result)
     }
 
-    /// Returns the list of ERC-721 ( NFT ) tokens transferred by an address, with optional
-    /// filtering by token contract.
+    /// Returns the list of ERC-721 ( NFT ) tokens transferred by an address,
+    /// with optional filtering by token contract.
     ///
     /// # Examples
     ///
@@ -646,7 +666,7 @@ impl Client {
     pub async fn get_erc721_token_transfer_events(
         &self,
         event_query_option: TokenQueryOption,
-        params: Option<TxListParams>,
+        params: Option<TxListParams>
     ) -> Result<Vec<ERC721TokenTransferEvent>> {
         let params = event_query_option.into_params(params.unwrap_or_default());
         let query = self.create_query("account", "tokennfttx", params);
@@ -655,8 +675,8 @@ impl Client {
         Ok(response.result)
     }
 
-    /// Returns the list of ERC-1155 ( NFT ) tokens transferred by an address, with optional
-    /// filtering by token contract.
+    /// Returns the list of ERC-1155 ( NFT ) tokens transferred by an address,
+    /// with optional filtering by token contract.
     ///
     /// # Examples
     ///
@@ -673,7 +693,7 @@ impl Client {
     pub async fn get_erc1155_token_transfer_events(
         &self,
         event_query_option: TokenQueryOption,
-        params: Option<TxListParams>,
+        params: Option<TxListParams>
     ) -> Result<Vec<ERC1155TokenTransferEvent>> {
         let params = event_query_option.into_params(params.unwrap_or_default());
         let query = self.create_query("account", "token1155tx", params);
@@ -696,7 +716,7 @@ impl Client {
         &self,
         address: &Address,
         block_type: Option<BlockType>,
-        page_and_offset: Option<(u64, u64)>,
+        page_and_offset: Option<(u64, u64)>
     ) -> Result<Vec<MinedBlock>> {
         let mut params = HashMap::new();
         params.insert("address", format!("{address:?}"));

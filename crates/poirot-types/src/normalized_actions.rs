@@ -7,14 +7,14 @@ pub enum Actions {
     Transfer(NormalizedTransfer),
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
-    Unclassified(TransactionTrace, Vec<Log>),
+    Unclassified(TransactionTrace, Vec<Log>)
 }
 
 impl Actions {
     pub fn get_logs(&self) -> Vec<Log> {
         match self {
             Self::Unclassified(_, log) => log.clone(),
-            _ => vec![],
+            _ => vec![]
         }
     }
 
@@ -42,32 +42,32 @@ impl Actions {
 #[derive(Debug, Clone)]
 pub struct NormalizedSwap {
     pub call_address: Address,
-    pub token_in: Address,
-    pub token_out: Address,
-    pub amount_in: U256,
-    pub amount_out: U256,
+    pub token_in:     Address,
+    pub token_out:    Address,
+    pub amount_in:    U256,
+    pub amount_out:   U256
 }
 
 #[derive(Debug, Clone)]
 pub struct NormalizedTransfer {
-    pub to: Address,
-    pub from: Address,
-    pub token: Address,
-    pub amount: U256,
+    pub to:     Address,
+    pub from:   Address,
+    pub token:  Address,
+    pub amount: U256
 }
 
 #[derive(Debug, Clone)]
 pub struct NormalizedMint {
-    pub to: Address,
-    pub token: Vec<Address>,
-    pub amount: Vec<U256>,
+    pub to:     Address,
+    pub token:  Vec<Address>,
+    pub amount: Vec<U256>
 }
 
 #[derive(Debug, Clone)]
 pub struct NormalizedBurn {
-    pub from: Address,
-    pub token: Vec<Address>,
-    pub amount: Vec<U256>,
+    pub from:   Address,
+    pub token:  Vec<Address>,
+    pub amount: Vec<U256>
 }
 
 pub trait NormalizedAction: Send + Sync + Clone {
