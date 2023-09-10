@@ -73,7 +73,7 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 
     writeln!(
         file,
-        "pub static ADDRESS_TO_TOKENS_{}: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
+        "pub static ADDRESS_TO_TOKENS_{}_POOL: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
         amount,
         amount,
         phf_map.build()
