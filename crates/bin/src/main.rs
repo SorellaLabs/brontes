@@ -10,7 +10,7 @@ use colored::Colorize;
 use metrics_process::Collector;
 use poirot_classifer::Classifier;
 use poirot_core::{decoding::Parser, init_block};
-use poirot_inspect::atomic_backrun::AtomicBackrunInspector;
+use poirot_inspect::{atomic_backrun::AtomicBackrunInspector, Inspector};
 use poirot_labeller::{database::Database, Labeller};
 use poirot_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use tokio::sync::mpsc::unbounded_channel;
@@ -77,7 +77,7 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let metrics_listener =
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
-    let dummy_inspector = Box::new(AtomicBackrunInspector);
+    let dummy_inspector = Box::new(AtomicBackrunInspector {}) as Box<dyn Inspector>;
     let inspectors = &[&dummy_inspector];
     let db = Database::default();
     let poirot_labeller = Labeller::new(metrics_tx.clone(), &db);
