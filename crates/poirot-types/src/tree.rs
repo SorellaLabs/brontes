@@ -137,7 +137,9 @@ pub struct Root<V: NormalizedAction> {
     pub head:     Node<V>,
     pub tx_hash:  H256,
     pub tx_index: usize,
-    pub private:  bool
+    pub private:  bool,
+    pub gas_used: u64,
+
 }
 
 impl<V: NormalizedAction> Root<V> {
