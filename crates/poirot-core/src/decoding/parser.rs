@@ -34,6 +34,25 @@ impl TraceParser {
         Self { etherscan_client, tracer, metrics_tx }
     }
 
+    /// executes the tracing of a given block
+    pub async fn execute_block(
+        &self,
+        block_num: u64,
+    ) -> Option<(Vec<TxTrace>, Header)> {
+        let parity_trace = self.trace_block(block_num).await;
+
+        if parity_trace.0.is_none() {
+            self.metrics_tx
+                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
+                .unwrap();
+            return None
+        }
+
+        let traces = self.parse_block(parity_trace.0.unwrap(), block_num).await;
+        self.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(traces.1).into()).unwrap();
+        Some((traces.0, traces.2))
+    }
+
     /// traces a block into a vec of tx traces
     pub(crate) async fn trace_block(
         &self,
