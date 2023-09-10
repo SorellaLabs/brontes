@@ -1,4 +1,4 @@
-use poirot_labeller::database::InspectorDataClient;
+use poirot_labeller::Labeller;
 use crate::Inspector;
 use poirot_types::{
     normalized_actions::{Actions, NormalizedAction},
@@ -8,7 +8,7 @@ use reth_primitives::H256;
 use std::{collections::VecDeque, sync::Arc};
 
 pub struct SandwichInspector {
-    db: Arc<InspectorDataClient>,
+    db: Arc<Labeller>,
 }
 
 //TODO: Sandwiching detection Algo:
