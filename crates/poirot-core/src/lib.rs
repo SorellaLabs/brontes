@@ -4,7 +4,7 @@ pub mod executor;
 pub mod macros;
 
 use alloy_sol_types::{sol, SolInterface};
-use reth_primitives::H160;
+
 
 include!(concat!(env!("OUT_DIR"), "/protocol_addr_set.rs"));
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));

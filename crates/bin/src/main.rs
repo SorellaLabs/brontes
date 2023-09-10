@@ -4,11 +4,11 @@ use futures::StreamExt;
 use metrics_process::Collector;
 use poirot_core::{
     decoding::{Parser, TypeToParse},
-    init_block, success_block,
+    init_block,
 };
 use poirot_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
-use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
-use reth_tracing::TracingClient;
+
+
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
@@ -18,8 +18,6 @@ use std::{
     env,
     error::Error,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::Path,
-    task::Poll,
 };
 
 fn main() {
@@ -50,7 +48,7 @@ fn main() {
     }
 }
 
-async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
+async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     // initializes the prometheus endpoint
     initialize(
         SocketAddr::new(
@@ -80,7 +78,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let metrics_listener =
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
-    let mut parser = Parser::new(metrics_tx, &key, &db_path);
+    let parser = Parser::new(metrics_tx, &key, &db_path);
 
     // you have a intermediate parse function for the range of blocks you want to parse
     // it collects the aggregate stats of each block stats
