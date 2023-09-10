@@ -1,11 +1,4 @@
-
-
-
-
-
 use alloy_sol_types::sol;
-
-
 
 sol! {
     interface IDiamondLoupe {

@@ -1,10 +1,5 @@
-
 use reth_primitives::{Address, Bytes, Log, H256};
-use reth_rpc_types::trace::parity::{
-    Action, TransactionTrace,
-};
-
-
+use reth_rpc_types::trace::parity::{Action, TransactionTrace};
 
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
