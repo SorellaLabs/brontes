@@ -42,6 +42,7 @@ pub struct TxTrace {
     pub logs: Vec<Log>,
     pub tx_hash: H256,
     pub tx_index: usize,
+    // pub gas_used: u64,
     /* pub gas_used: U256, */
 }
 
