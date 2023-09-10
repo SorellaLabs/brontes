@@ -1,5 +1,5 @@
-use poirot_labeller::database::InspectorDataClient;
 use crate::Inspector;
+use poirot_labeller::database::InspectorDataClient;
 use poirot_types::{
     normalized_actions::{Actions, NormalizedAction},
     tree::{Node, Root, TimeTree},

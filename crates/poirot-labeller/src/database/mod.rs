@@ -2,12 +2,7 @@ pub mod errors;
 pub(crate) mod serialize;
 pub mod types;
 
-
-
 use sorella_db_clients::databases::clickhouse::ClickhouseClient;
-
-
-
 
 const RELAYS_TABLE: &str = "relays";
 const MEMPOOL_TABLE: &str = "chainbound_mempool";
@@ -19,7 +14,5 @@ const TARDIS_QUOTES_TRADES: &str = "tardis_trades";
 pub struct InspectorDataClient {
     client: ClickhouseClient,
 }
-
-
 
 impl InspectorDataClient {}
