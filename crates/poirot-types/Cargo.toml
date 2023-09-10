@@ -11,5 +11,21 @@ reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 tracing.workspace = true
 rayon.workspace = true
+malachite.workspace = true
+serde.workspace = true
+phf = { version = "0.11.1", default-features = false }
 
-malachite.workspace  = true
+
+[build-dependencies]
+strum = { version = "0.25.0", features = ["derive"] }
+tokio.workspace = true
+hyper.workspace = true
+hyper-tls = "0.5.0"
+serde.workspace = true
+serde_json.workspace = true
+alloy-etherscan.workspace = true
+alloy-json-abi.workspace = true
+ethers-core.workspace = true
+phf = { version = "0.11.1", default-features = false }
+phf_codegen = "0.11.1"
+dotenv = "0.15.0"
