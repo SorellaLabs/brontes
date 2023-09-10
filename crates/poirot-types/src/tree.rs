@@ -165,7 +165,7 @@ pub struct TimeTree<V: NormalizedAction> {
 
 impl<V: NormalizedAction> TimeTree<V> {
     pub fn new(txes: usize, header: Header, eth_prices: (Rational, Rational)) -> Self {
-        Self { roots: Vec::with_capacity(txes), header, eth_prices}
+        Self { roots: Vec::with_capacity(txes), header, eth_prices }
     }
 
     pub fn insert_root(&mut self, root: Root<V>) {

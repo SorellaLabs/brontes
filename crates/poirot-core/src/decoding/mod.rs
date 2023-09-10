@@ -73,11 +73,9 @@ impl Parser {
     /// executes the tracing of a given block
     pub fn execute(&self, block_num: u64) -> ParserFuture {
         let parser = self.parser.clone();
-        Box::pin(
-            self.executor.spawn_result_task_as(
-                async move {parser.execute_block(block_num).await },
-                TaskKind::Default,
-            ),
-        ) as ParserFuture
+        Box::pin(self.executor.spawn_result_task_as(
+            async move { parser.execute_block(block_num).await },
+            TaskKind::Default,
+        )) as ParserFuture
     }
 }

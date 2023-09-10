@@ -26,10 +26,7 @@ pub struct Labeller<'a> {
 }
 
 impl<'a> Labeller<'a> {
-    pub fn new(
-        metrics_tx: UnboundedSender<PoirotMetricEvents>,
-        database: &'a Database,
-    ) -> Self {
+    pub fn new(metrics_tx: UnboundedSender<PoirotMetricEvents>, database: &'a Database) -> Self {
         Self { client: database, metrics_tx }
     }
 
