@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
 use hex_literal::hex;
-use malachite::Rational;
 use poirot_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 use poirot_labeller::database::Metadata;
 use poirot_types::{
@@ -11,7 +10,10 @@ use poirot_types::{
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
-use reth_rpc_types::{trace::parity::TransactionTrace, Log};
+use reth_rpc_types::{
+    trace::parity::{Action, TransactionTrace},
+    Log
+};
 
 use crate::IntoAction;
 
@@ -47,10 +49,19 @@ impl Classifier {
                     address:    trace.trace[0].get_from_addr(),
                     data:       self.classify_node(trace.trace.remove(0), logs)
                 };
-                let mut root =
-                    Root { head: node, tx_hash: trace.tx_hash, tx_index: 0, private: false };
+                let mut root = Root {
+                    head:                node,
+                    tx_hash:             trace.tx_hash,
+                    private:             false,
+                    effective_gas_price: trace.effective_price,
+                    gas_used:            trace.gas_used,
+                    coinbase_transfer:   None
+                };
 
                 for trace in trace.trace {
+                    root.coinbase_transfer =
+                        self.get_coinbase_transfer(header.beneficiary, &trace.action);
+
                     let node = Node {
                         inner:      vec![],
                         frozen:     false,
@@ -70,6 +81,18 @@ impl Classifier {
         tree.freeze_tree();
 
         tree
+    }
+
+    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<U256> {
+        match action {
+            Action::Call(action) => {
+                if action.to == builder {
+                    return Some(action.value)
+                }
+                None
+            }
+            _ => None
+        }
     }
 
     fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>) -> Actions {

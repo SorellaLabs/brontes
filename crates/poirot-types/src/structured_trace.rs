@@ -41,14 +41,23 @@ impl TraceActions for TransactionTrace {
 // TODO: Parity traces seems to be a bit convulted in that respect see: https://ethereum.stackexchange.com/questions/31443/what-do-the-response-values-of-a-parity-trace-transaction-call-actually-repres
 #[derive(Debug, Clone)]
 pub struct TxTrace {
-    pub trace:    Vec<TransactionTrace>,
-    pub logs:     Vec<Log>,
-    pub tx_hash:  H256,
-    pub tx_index: u64
+    pub trace:           Vec<TransactionTrace>,
+    pub logs:            Vec<Log>,
+    pub tx_hash:         H256,
+    pub gas_used:        u64,
+    pub effective_price: u64,
+    pub tx_index:        u64
 }
 
 impl TxTrace {
-    pub fn new(trace: Vec<TransactionTrace>, tx_hash: H256, logs: Vec<Log>, tx_index: u64) -> Self {
-        Self { trace, tx_hash, tx_index, logs }
+    pub fn new(
+        trace: Vec<TransactionTrace>,
+        tx_hash: H256,
+        logs: Vec<Log>,
+        tx_index: u64,
+        gas_used: u64,
+        effective_price: u64
+    ) -> Self {
+        Self { trace, tx_hash, tx_index, logs, effective_price, gas_used }
     }
 }
