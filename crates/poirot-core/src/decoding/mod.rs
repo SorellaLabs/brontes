@@ -72,28 +72,12 @@ impl Parser {
 
     /// executes the tracing of a given block
     pub fn execute(&self, block_num: u64) -> ParserFuture {
-        Box::pin(self.executor.spawn_result_task_as(
-            Self::execute_block(self.parser.clone(), block_num),
-            TaskKind::Default,
-        )) as ParserFuture
-    }
-
-    /// executes the tracing of a given block
-    async fn execute_block(
-        this: self::Arc<TraceParser>,
-        block_num: u64,
-    ) -> Option<(Vec<TxTrace>, Header)> {
-        let parity_trace = this.trace_block(block_num).await;
-
-        if parity_trace.0.is_none() {
-            this.metrics_tx
-                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
-                .unwrap();
-            return None
-        }
-
-        let traces = this.parse_block(parity_trace.0.unwrap(), block_num).await;
-        this.metrics_tx.send(TraceMetricEvent::BlockMetricRecieved(traces.1).into()).unwrap();
-        Some((traces.0, traces.2))
+        let parser = self.parser.clone();
+        Box::pin(
+            self.executor.spawn_result_task_as(
+                async move {parser.execute_block(block_num).await },
+                TaskKind::Default,
+            ),
+        ) as ParserFuture
     }
 }
