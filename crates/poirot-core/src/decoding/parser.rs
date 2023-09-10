@@ -94,7 +94,7 @@ impl TraceParser {
 
         (trace, stats)
     }
-
+    /// gets the transaction $receipts for a block   
     pub(crate) async fn get_receipts(
         &self,
         block_num: u64
@@ -134,7 +134,7 @@ impl TraceParser {
 
                     if transaction_traces.is_none() {
                         let tx_stats = TransactionStats {
-                            block_num,
+                            block_num, 
                             tx_hash,
                             tx_idx: receipt.transaction_index.unwrap().to(),
                             traces: vec![],
