@@ -2,14 +2,13 @@ use std::sync::Arc;
 
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
-use ethers_core::k256::elliptic_curve::rand_core::block;
 use futures::future::join_all;
 use poirot_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
     PoirotMetricEvents
 };
-use reth_primitives::{Header, H256, U256};
-use reth_provider::{HeaderProvider, ReceiptProvider};
+use reth_primitives::{Header, H256};
+use reth_provider::HeaderProvider;
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{
     trace::parity::{
@@ -19,7 +18,6 @@ use reth_rpc_types::{
     Log, TransactionReceipt
 };
 use reth_tracing::TracingClient;
-use tokio::task::spawn;
 
 use super::*;
 use crate::errors::TraceParseError;
@@ -145,7 +143,9 @@ impl TraceParser {
                                 vec![],
                                 tx_hash,
                                 receipt.logs.clone(),
-                                receipt.transaction_index.unwrap().to()
+                                receipt.transaction_index.unwrap().to(),
+                                receipt.gas_used.unwrap().to(),
+                                receipt.effective_gas_price.to()
                             ),
                             tx_stats
                         )
@@ -155,7 +155,9 @@ impl TraceParser {
                             receipt.logs.clone(),
                             block_num,
                             tx_hash,
-                            receipt.transaction_index.unwrap().to()
+                            receipt.transaction_index.unwrap().to(),
+                            receipt.gas_used.unwrap().to(),
+                            receipt.effective_gas_price.to()
                         )
                         .await
                     }
@@ -187,7 +189,9 @@ impl TraceParser {
         logs: Vec<Log>,
         block_num: u64,
         tx_hash: H256,
-        tx_idx: u64
+        tx_idx: u64,
+        gas_used: u64,
+        effective_gas_price: u64
     ) -> (TxTrace, TransactionStats) {
         init_trace!(tx_hash, tx_idx, tx_trace.len());
         let mut traces = Vec::new();
@@ -215,7 +219,7 @@ impl TraceParser {
         }
 
         stats.trace();
-        (TxTrace::new(traces, tx_hash, logs, tx_idx), stats)
+        (TxTrace::new(traces, tx_hash, logs, tx_idx, gas_used, effective_gas_price), stats)
     }
 
     /// pushes each trace to parser_fut
