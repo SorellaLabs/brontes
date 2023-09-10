@@ -5,7 +5,6 @@ pub mod macros;
 
 use alloy_sol_types::{sol, SolInterface};
 
-
 include!(concat!(env!("OUT_DIR"), "/protocol_addr_set.rs"));
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 

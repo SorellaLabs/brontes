@@ -45,10 +45,7 @@ impl PoirotMetricsListener {
         match event {
             PoirotMetricEvents::TraceMetricRecieved(val) => self.tx_metrics.handle_event(val),
             PoirotMetricEvents::DynamicContractMetricRecieved(val) => {
-                let this = self
-                    .contract_metrics
-                    .entry(val.get_addr())
-                    .or_default();
+                let this = self.contract_metrics.entry(val.get_addr()).or_default();
                 this.handle_event(val)
             }
         }

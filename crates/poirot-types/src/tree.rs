@@ -1,8 +1,7 @@
 use crate::normalized_actions::NormalizedAction;
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
-use reth_primitives::{Address, H256, U256};
-use reth_rpc_types::Header;
+use reth_primitives::{Address, Header, H256, U256};
 use std::collections::HashMap;
 use tracing::error;
 pub struct Node<V: NormalizedAction> {
@@ -59,11 +58,7 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     pub fn all_sub_addresses(&self) -> Vec<Address> {
-        self.inner
-            .iter()
-            .flat_map(|i| i.all_sub_addresses())
-            .chain(vec![self.address])
-            .collect()
+        self.inner.iter().flat_map(|i| i.all_sub_addresses()).chain(vec![self.address]).collect()
     }
 
     pub fn current_call_stack(&self) -> Vec<Address> {
