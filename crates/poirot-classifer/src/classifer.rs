@@ -2,6 +2,7 @@ use crate::IntoAction;
 use hex_literal::hex;
 use malachite::Rational;
 use poirot_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
+use poirot_labeller::database::Metadata;
 use poirot_types::{
     normalized_actions::Actions,
     structured_trace::{TraceActions, TxTrace},
@@ -31,7 +32,7 @@ impl Classifier {
         &mut self,
         traces: Vec<TxTrace>,
         header: Header,
-        eth_price: Rational,
+        metadata: Metadata,
     ) -> TimeTree<Actions> {
         let roots = traces
             .into_par_iter()
@@ -62,7 +63,7 @@ impl Classifier {
             })
             .collect::<Vec<Root<Actions>>>();
 
-        let mut tree = TimeTree { roots, header, eth_price };
+        let mut tree = TimeTree { roots, header, metadata.eth_prices};
         self.try_classify_unknown(&mut tree);
         tree.freeze_tree();
 

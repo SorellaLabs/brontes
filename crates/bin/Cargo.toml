@@ -12,6 +12,7 @@ poirot-core.workspace = true
 poirot-inspect.workspace = true
 poirot-types.workspace = true
 poirot-classifer.workspace = true
+poirot-labeller.workspace = true
 poirot-metrics.workspace = true
 malachite.workspace = true
 
