@@ -28,7 +28,7 @@ type CollectionFut = Pin<
     >,
 >;
 
-pub(crate) struct Poirot<'a> {
+pub struct Poirot<'a> {
     current_block: u64,
     parser: Parser,
     classifier: Classifier,
@@ -41,7 +41,7 @@ pub(crate) struct Poirot<'a> {
 }
 
 impl<'a> Poirot<'a> {
-    pub(crate) fn new(
+    pub fn new(
         parser: Parser,
         classifier: Classifier,
         inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],

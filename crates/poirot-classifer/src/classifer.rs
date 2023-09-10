@@ -16,12 +16,17 @@ const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 /// goes through and classifies all exchanges
+#[derive(Debug)]
 pub struct Classifier {
     known_dyn_exchanges: HashMap<Address, (Address, Address)>,
     static_exchanges: HashMap<[u8; 4], Box<dyn IntoAction>>,
 }
 
 impl Classifier {
+    pub fn new(known_exchanges: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
+        Self { static_exchanges: known_exchanges, known_dyn_exchanges: HashMap::default() }
+    }
+
     pub fn build_tree(
         &mut self,
         traces: Vec<TxTrace>,
