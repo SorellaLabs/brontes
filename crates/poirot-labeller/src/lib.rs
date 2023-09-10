@@ -12,7 +12,6 @@ use tokio::sync::mpsc::UnboundedSender;
 
 pub mod database;
 
-
 #[derive(Debug)]
 pub struct Metadata {
     pub block_num:       u64,
@@ -59,11 +58,6 @@ impl<'a> Labeller<'a> {
         //let res = self.client.query_all::<types::Relay>(&query).await?;
         //println!("{:?}", res);
 
-
         todo!()
     }
 }
-
-
-
-
