@@ -37,12 +37,10 @@ impl TraceParser {
     }
 
     /// executes the tracing of a given block
-    pub async fn execute_block(
-        &self,
-        block_num: u64,
-    ) -> Option<(Vec<TxTrace>, Header)> {
+    pub async fn execute_block(&self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         let parity_trace = self.trace_block(block_num).await;
-
+        let receipts = self.tracer.api.block_receipts(BlockNumberOrTag::Number(block_num)).await.unwrap().unwrap();
+        
         if parity_trace.0.is_none() {
             self.metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
@@ -99,7 +97,13 @@ impl TraceParser {
         for (idx, trace) in block_trace.into_iter().enumerate() {
             let transaction_traces = trace.full_trace.trace;
             let tx_hash = trace.transaction_hash;
-            let receipts = self.tracer.api.block_receipts(BlockNumberOrTag::Number(block_num)).await.unwrap().unwrap();
+            let receipts = self
+                .tracer
+                .api
+                .block_receipts(BlockNumberOrTag::Number(block_num))
+                .await
+                .unwrap()
+                .unwrap();
             let logs = self.tracer.api.provider().receipt_by_hash(tx_hash).unwrap().unwrap().logs;
             if transaction_traces.is_none() {
                 traces.push(TxTrace::new(vec![], tx_hash, logs.clone(), idx));

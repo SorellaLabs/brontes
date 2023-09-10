@@ -63,7 +63,7 @@ impl Classifier {
             })
             .collect::<Vec<Root<Actions>>>();
 
-        let mut tree = TimeTree { roots, header, eth_prices: metadata.eth_prices};
+        let mut tree = TimeTree { roots, header, eth_prices: metadata.eth_prices };
         self.try_classify_unknown(&mut tree);
         tree.freeze_tree();
 
