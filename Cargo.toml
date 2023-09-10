@@ -7,8 +7,9 @@ members = [
   "crates/poirot-inspect",
   "crates/poirot-types",
   "crates/poirot-classifer",
-    "crates/poirot-metrics",
+  "crates/poirot-metrics",
   "crates/tracing",
+  "crates/poirot-labeller",
 ]
 
 
@@ -28,6 +29,7 @@ poirot-inspect = { path = "./crates/poirot-inspect" }
 poirot-types = { path = "./crates/poirot-types/" }
 poirot-classifer = { path = "./crates/poirot-classifer/" }
 poirot-metrics = { path = "./crates/poirot-metrics/" }
+poirot-labeller = { path = "./crates/poirot-labeller/" }
 reth-tracing = { path = "./crates/reth-tracing/" }
 
 # Ethers
