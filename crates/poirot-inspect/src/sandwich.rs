@@ -1,6 +1,5 @@
 use poirot_labeller::Labeller;
 use crate::Inspector;
-use poirot_labeller::database::InspectorDataClient;
 use poirot_types::{
     normalized_actions::{Actions, NormalizedAction},
     tree::{Node, Root, TimeTree},
@@ -8,9 +7,7 @@ use poirot_types::{
 
 use std::{collections::VecDeque, sync::Arc};
 
-pub struct SandwichInspector {
-    db: Arc<Labeller>,
-}
+pub struct SandwichInspector {}
 
 //TODO: Sandwiching detection Algo:
 // 1. Create a vec for each swap pair & index all swaps on that pair / contract

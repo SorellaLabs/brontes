@@ -11,7 +11,7 @@ use reth_primitives::Header;
 use std::{
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
+    task::{Context, Poll}, thread::current,
 };
 use tokio::task::JoinError;
 use poirot_labeller::{Labeller, database::Metadata};
@@ -73,7 +73,7 @@ impl<'a> Poirot<'a> {
 
         let parser_fut = self.parser.execute(self.current_block);
         // placeholder for ludwigs shit
-        let labeller_fut = self.labeller.client.get_metadata(block_num, hash);
+        let labeller_fut = self.labeller.client.get_metadata(self.current_block, hash.into());
 
         self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
     }
@@ -84,7 +84,8 @@ impl<'a> Poirot<'a> {
         ) as InspectorFut<'a>);
     }
 
-
+    fn on_inspectors_finish(&mut self, _data: Vec<()>) {}
+    
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
         if let Some(mut collection_fut) = self.classifier_data.take() {
             match collection_fut.poll_unpin(cx) {

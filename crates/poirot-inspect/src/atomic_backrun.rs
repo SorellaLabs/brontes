@@ -6,9 +6,7 @@ use std::collections::hash_map::Entry;
 
 use std::{collections::HashMap, sync::Arc};
 
-pub struct AtomicBackrunInspector {
-    db: Arc<Labeller>,
-}
+pub struct AtomicBackrunInspector {}
 
 impl AtomicBackrunInspector {
     fn process_swaps(&self, all_swaps: Vec<Vec<Actions>>) {
