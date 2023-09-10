@@ -4,7 +4,8 @@ use poirot_core::{
     Uniswap_V3::{burnCall, mintCall, swapCall}
 };
 use poirot_types::normalized_actions::Actions;
-use reth_primitives::{Address, Bytes, Log, U256};
+use reth_primitives::{Address, Bytes, U256};
+use reth_rpc_types::Log;
 
 use crate::{IntoAction, ADDRESS_TO_TOKENS_2_POOL};
 
