@@ -7,10 +7,13 @@ use database::Database;
 use malachite::Rational;
 use poirot_metrics::PoirotMetricEvents;
 use reth_primitives::{Address, TxHash, U256};
+use serde_with::DeserializeFromStr;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub mod database;
 
+
+#[derive(Debug)]
 pub struct Metadata {
     pub block_num:       u64,
     pub block_hash:      U256,
@@ -21,6 +24,27 @@ pub struct Metadata {
     pub mempool:         HashSet<TxHash>
 }
 
+impl Metadata {
+    pub fn new(
+        block_num: u64,
+        block_hash: U256,
+        relay_timestamp: u64,
+        p2p_timestamp: u64,
+        token_prices: HashMap<Address, (Rational, Rational)>,
+        eth_prices: (Rational, Rational),
+        mempool: HashSet<TxHash>
+    ) -> Self {
+        Self {
+            block_num,
+            block_hash,
+            relay_timestamp,
+            p2p_timestamp,
+            token_prices,
+            eth_prices,
+            mempool
+        }
+    }
+}
 pub struct Labeller<'a> {
     pub client:            &'a Database,
     pub(crate) metrics_tx: UnboundedSender<PoirotMetricEvents>
@@ -35,6 +59,11 @@ impl<'a> Labeller<'a> {
         //let res = self.client.query_all::<types::Relay>(&query).await?;
         //println!("{:?}", res);
 
+
         todo!()
     }
 }
+
+
+
+
