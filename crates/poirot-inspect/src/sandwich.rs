@@ -1,3 +1,4 @@
+use poirot_labeller::Labeller;
 use crate::Inspector;
 use poirot_labeller::database::InspectorDataClient;
 use poirot_types::{
@@ -8,7 +9,7 @@ use poirot_types::{
 use std::{collections::VecDeque, sync::Arc};
 
 pub struct SandwichInspector {
-    db: Arc<InspectorDataClient>,
+    db: Arc<Labeller>,
 }
 
 //TODO: Sandwiching detection Algo:

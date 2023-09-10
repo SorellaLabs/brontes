@@ -1,5 +1,5 @@
 use crate::Inspector;
-use poirot_labeller::database::InspectorDataClient;
+use poirot_labeller::Labeller;
 use poirot_types::{normalized_actions::Actions, tree::TimeTree};
 use reth_primitives::Address;
 use std::collections::hash_map::Entry;
@@ -7,7 +7,7 @@ use std::collections::hash_map::Entry;
 use std::{collections::HashMap, sync::Arc};
 
 pub struct AtomicBackrunInspector {
-    db: Arc<InspectorDataClient>,
+    db: Arc<Labeller>,
 }
 
 impl AtomicBackrunInspector {

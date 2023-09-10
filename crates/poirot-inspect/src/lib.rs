@@ -3,6 +3,7 @@ pub mod sandwich;
 
 use poirot_labeller::database::InspectorDataClient;
 use poirot_types::{normalized_actions::Actions, tree::TimeTree};
+use poirot_labeller::Labeller;
 use std::sync::Arc;
 
 #[async_trait::async_trait]

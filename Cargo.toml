@@ -8,8 +8,8 @@ members = [
   "crates/poirot-types",
   "crates/poirot-classifer",
   "crates/poirot-metrics",
-  "crates/poirot-labeller",
   "crates/tracing",
+  "crates/poirot-labeller",
 ]
 
 
