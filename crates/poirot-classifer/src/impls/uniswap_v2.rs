@@ -4,8 +4,8 @@ use poirot_core::{
     SushiSwap_V2::{burnCall, mintCall, Burn, Mint, SushiSwap_V2Calls, Swap}
 };
 use poirot_types::normalized_actions::Actions;
-use reth_primitives::{Address, Bytes, Log, H160, U256};
-
+use reth_primitives::{Address, Bytes, H160, U256};
+use reth_rpc_types::Log;
 use crate::{enum_unwrap, IntoAction, ADDRESS_TO_TOKENS_2_POOL};
 
 #[derive(Debug, Default)]
