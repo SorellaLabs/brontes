@@ -1,15 +1,13 @@
 use std::{
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
-    thread::current
+    task::{Context, Poll}
 };
 
 use futures::{
     future::{join_all, JoinAll},
     Future, FutureExt
 };
-use malachite::Rational;
 use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::Parser;
 use poirot_inspect::Inspector;
@@ -31,25 +29,25 @@ type CollectionFut<'a> = Pin<
     >
 >;
 
-pub struct Poirot<'a> {
+pub struct Poirot<'a, const N: usize> {
     current_block: u64,
     parser:        Parser,
     classifier:    Classifier,
     labeller:      Labeller<'a>,
 
-    inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
+    inspectors: &'a [&'a Box<dyn Inspector>; N],
 
     // pending future data
     inspector_task:  Option<InspectorFut<'a>>,
     classifier_data: Option<CollectionFut<'a>>
 }
 
-impl<'a> Poirot<'a> {
+impl<'a, const N: usize> Poirot<'a, N> {
     pub fn new(
         parser: Parser,
         labeller: Labeller<'a>,
         classifier: Classifier,
-        inspectors: &'a [&'a Box<dyn Inspector + Send + Sync>],
+        inspectors: &'a [&'a Box<dyn Inspector>; N],
         init_block: u64
     ) -> Self {
         Self {
@@ -123,7 +121,7 @@ impl<'a> Poirot<'a> {
     }
 }
 
-impl<'a> Future for Poirot<'a> {
+impl<'a, const N: usize> Future for Poirot<'a, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
