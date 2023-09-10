@@ -1,5 +1,5 @@
-use reth_primitives::{Address, Log, U256};
-use reth_rpc_types::trace::parity::TransactionTrace;
+use reth_primitives::{Address, U256};
+use reth_rpc_types::{Log, trace::parity::TransactionTrace};
 
 #[derive(Debug, Clone)]
 pub enum Actions {
