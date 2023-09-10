@@ -1,28 +1,38 @@
 use crate::IntoAction;
 use hex_literal::hex;
+use malachite::Rational;
 use poirot_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 use poirot_types::{
     normalized_actions::Actions,
     structured_trace::{TraceActions, TxTrace},
     tree::{Node, Root, TimeTree},
 };
-use malachite::Rational;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, Log, H256, U256};
-use reth_rpc_types::{trace::parity::TransactionTrace, Header};
+use reth_primitives::{Address, Header, Log, H256, U256};
+use reth_rpc_types::trace::parity::TransactionTrace;
 use std::collections::{HashMap, HashSet};
 
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 /// goes through and classifies all exchanges
+#[derive(Debug)]
 pub struct Classifier {
     known_dyn_exchanges: HashMap<Address, (Address, Address)>,
     static_exchanges: HashMap<[u8; 4], Box<dyn IntoAction>>,
 }
 
 impl Classifier {
-    pub fn build_tree(&mut self, traces: Vec<TxTrace>, header: Header, eth_price: Rational) -> TimeTree<Actions> {
+    pub fn new(known_exchanges: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
+        Self { static_exchanges: known_exchanges, known_dyn_exchanges: HashMap::default() }
+    }
+
+    pub fn build_tree(
+        &mut self,
+        traces: Vec<TxTrace>,
+        header: Header,
+        eth_price: Rational,
+    ) -> TimeTree<Actions> {
         let roots = traces
             .into_par_iter()
             .map(|mut trace| {
@@ -34,7 +44,8 @@ impl Classifier {
                     address: trace.trace[0].get_from_addr(),
                     data: self.classify_node(trace.trace.remove(0), logs),
                 };
-                let mut root = Root { head: node, tx_hash: trace.tx_hash, tx_index: 0, private: false  };
+                let mut root =
+                    Root { head: node, tx_hash: trace.tx_hash, tx_index: 0, private: false };
 
                 for trace in trace.trace {
                     let node = Node {
