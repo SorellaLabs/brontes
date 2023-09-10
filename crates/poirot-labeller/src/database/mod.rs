@@ -9,7 +9,6 @@ use reth_primitives::{U256, Address, TxHash};
 use std::collections::{HashMap, HashSet};
 use malachite::Rational;
 
-
 const RELAYS_TABLE: &str = "relays";
 const MEMPOOL_TABLE: &str = "chainbound_mempool";
 const TARDIS_QUOTES_L2: &str = "tardis_l2";

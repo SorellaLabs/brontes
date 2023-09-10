@@ -6,9 +6,13 @@ use poirot_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
     PoirotMetricEvents,
 };
-use reth_primitives::{Log, H256};
-use reth_provider::ReceiptProvider;
-use reth_rpc_types::trace::parity::{Action as RethAction, CallAction as RethCallAction};
+use reth_primitives::{Header, Log, H256};
+use reth_provider::{HeaderProvider, ReceiptProvider};
+
+use reth_rpc_types::trace::parity::{
+    Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash, TraceType,
+    TransactionTrace,
+};
 use reth_tracing::TracingClient;
 use std::sync::Arc;
 
@@ -17,7 +21,7 @@ use std::sync::Arc;
 /// for later analysis.
 pub(crate) struct TraceParser {
     etherscan_client: Client,
-    tracer: Arc<TracingClient>,
+    pub tracer: Arc<TracingClient>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
@@ -68,7 +72,7 @@ impl TraceParser {
         &self,
         block_trace: Vec<TraceResultsWithTransactionHash>,
         block_num: u64,
-    ) -> (Vec<TxTrace>, BlockStats) {
+    ) -> (Vec<TxTrace>, BlockStats, Header) {
         let mut traces = Vec::new();
         let mut stats = BlockStats::new(block_num, None);
         for (idx, trace) in block_trace.into_iter().enumerate() {
@@ -101,7 +105,7 @@ impl TraceParser {
         }
 
         stats.trace();
-        (traces, stats)
+        (traces, stats, self.tracer.trace.provider().header_by_number(block_num).unwrap().unwrap())
     }
 
     /// parses a transaction and gathers the traces
