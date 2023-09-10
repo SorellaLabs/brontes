@@ -79,7 +79,7 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let parser = Parser::new(metrics_tx, &key, &db_path);
     let classifier = Classifier::new(HashMap::default());
 
-    // Poirot::new(parser, classifier &inspectors, 69420).await;
+    Poirot::new(parser, classifier &inspectors, 69420).await;
 
     // you have a intermediate parse function for the range of blocks you want to parse
     // it collects the aggregate stats of each block stats
