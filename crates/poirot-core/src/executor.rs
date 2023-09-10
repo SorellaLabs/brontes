@@ -57,7 +57,7 @@ impl Executor {
     }
 
     /// Spawns a future blocking tokio runtime
-    pub fn block_on_rt<F>(&self, fut: F) -> ()
+    pub fn block_on_rt<F>(&self, fut: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {

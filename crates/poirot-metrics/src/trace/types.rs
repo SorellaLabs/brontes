@@ -15,9 +15,9 @@ pub enum TraceMetricEvent {
     TraceMetricRecieved(TraceStats),
 }
 
-impl Into<PoirotMetricEvents> for TraceMetricEvent {
-    fn into(self) -> PoirotMetricEvents {
-        PoirotMetricEvents::TraceMetricRecieved(self)
+impl From<TraceMetricEvent> for PoirotMetricEvents {
+    fn from(val: TraceMetricEvent) -> Self {
+        PoirotMetricEvents::TraceMetricRecieved(val)
     }
 }
 

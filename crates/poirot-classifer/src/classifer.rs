@@ -67,22 +67,27 @@ impl Classifier {
             let sig = &calldata[0..4];
             let res: StaticReturnBindings = mapping.try_decode(&calldata).unwrap();
 
-            return self.static_exchanges.get(sig).unwrap().decode_trace_data(res, return_bytes)
+            return self.static_exchanges.get(sig).unwrap().decode_trace_data(
+                res,
+                return_bytes,
+                address,
+                logs,
+            )
         } else {
             let rem =
                 logs.iter().filter(|log| log.address == address).cloned().collect::<Vec<Log>>();
             if rem.len() == 1 {
                 if let Some((addr, from, to, value)) = self.decode_transfer(&rem[0]) {
                     return Actions::Transfer(poirot_types::normalized_actions::NormalizedTransfer {
-                        from,
                         to,
+                        from,
                         token: addr,
                         amount: value,
                     })
                 }
             }
 
-            return Actions::Unclassified(trace, rem)
+            Actions::Unclassified(trace, rem)
         }
     }
 
@@ -120,8 +125,7 @@ impl Classifier {
                 // burn
                 if to0 == node.address {
                     return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
-                        from: vec![from0, from1],
-                        to: vec![to0, to1],
+                        from: from0,
                         token: vec![t0, t1],
                         amount: vec![value0, value1],
                     }))
@@ -129,8 +133,7 @@ impl Classifier {
                 // mint
                 else {
                     return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
-                        from: vec![from0, from1],
-                        to: vec![to0, to1],
+                        to: to0,
                         token: vec![t0, t1],
                         amount: vec![value0, value1],
                     }))
@@ -160,15 +163,13 @@ impl Classifier {
             let (token, from, to, value) = transfer_data.remove(0);
             if from == addr {
                 return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
-                    from: vec![from],
-                    to: vec![to],
+                    to,
                     token: vec![token],
                     amount: vec![value],
                 }))
             } else {
                 return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
-                    from: vec![from],
-                    to: vec![to],
+                    from,
                     token: vec![token],
                     amount: vec![value],
                 }))
@@ -274,19 +275,17 @@ impl Classifier {
         let new_classifed_exchanges = tree.dyn_classify(
             |address, sub_actions| {
                 // we can dyn classify this shit
-                if PROTOCOL_ADDRESS_MAPPING.contains_key(&format!("{address}").as_str()) {
+                if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
                     // this is already classified
                     return false
                 }
                 if self.known_dyn_exchanges.contains_key(&address) {
                     return true
-                } else {
-                    if self.is_possible_exchange(sub_actions) {
-                        return true
-                    };
+                } else if self.is_possible_exchange(sub_actions) {
+                    return true
                 }
 
-                return false
+                false
             },
             |node| {
                 if self.known_dyn_exchanges.contains_key(&node.address) {
@@ -296,13 +295,11 @@ impl Classifier {
                         node.inner.clear();
                         node.data = res;
                     }
-                } else {
-                    if let Some((ex_addr, tokens, action)) = self.try_clasify_exchange(node) {
-                        node.inner.clear();
-                        node.data = action;
+                } else if let Some((ex_addr, tokens, action)) = self.try_clasify_exchange(node) {
+                    node.inner.clear();
+                    node.data = action;
 
-                        return Some((ex_addr, tokens))
-                    }
+                    return Some((ex_addr, tokens))
                 }
                 None
             },
