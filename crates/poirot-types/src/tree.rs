@@ -47,7 +47,7 @@ impl<V: NormalizedAction> Node<V> {
         }
 
         let last = self.inner.last_mut().expect("building tree went wrong");
-        return last.insert(address, n)
+        last.insert(address, n)
     }
 
     pub fn get_all_sub_actions(&self) -> Vec<V> {
@@ -62,7 +62,7 @@ impl<V: NormalizedAction> Node<V> {
         self.inner
             .iter()
             .flat_map(|i| i.all_sub_addresses())
-            .chain(vec![self.address].into_iter())
+            .chain(vec![self.address])
             .collect()
     }
 
@@ -81,7 +81,7 @@ impl<V: NormalizedAction> Node<V> {
         F: Fn(&Node<V>) -> bool,
     {
         // the previous sub-action was best
-        if !call(&self) {
+        if !call(self) {
             return false
         }
         let lower_has_better = self.inner.iter().map(|i| i.inspect(result, call)).any(|f| f);
@@ -92,7 +92,7 @@ impl<V: NormalizedAction> Node<V> {
             return true
         }
         // lower node has a better sub-action.
-        return false
+        false
     }
 
     pub fn dyn_classify<T, F>(
@@ -117,7 +117,7 @@ impl<V: NormalizedAction> Node<V> {
                 result.push(res);
             }
         }
-        return true
+        true
     }
 }
 
@@ -194,7 +194,7 @@ impl<V: NormalizedAction> TimeTree<V> {
         F: Fn(&Node<V>) -> bool,
     {
         if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
-            return root.inspect(&call)
+            root.inspect(&call)
         } else {
             vec![]
         }

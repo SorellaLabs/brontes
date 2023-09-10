@@ -14,7 +14,7 @@ pub struct DynamicContractMetrics {
 
 impl DynamicContractMetrics {
     /// Returns existing or initializes a new instance of [ContractMetrics]
-    pub(crate) fn get_contract_metrics(&mut self, address: String) -> &mut ContractMetrics {
+    pub(crate) fn get_contract_metrics(&mut self, _address: String) -> &mut ContractMetrics {
         &mut self.contracts
     }
 

@@ -20,9 +20,9 @@ impl DynamicContractMetricEvent {
     }
 }
 
-impl Into<PoirotMetricEvents> for DynamicContractMetricEvent {
-    fn into(self) -> PoirotMetricEvents {
-        PoirotMetricEvents::DynamicContractMetricRecieved(self)
+impl From<DynamicContractMetricEvent> for PoirotMetricEvents {
+    fn from(val: DynamicContractMetricEvent) -> Self {
+        PoirotMetricEvents::DynamicContractMetricRecieved(val)
     }
 }
 
@@ -41,7 +41,7 @@ impl ContractMetric {
         let message = format!(
             "Successfuly Parsed Contract: {} --- Function Called: {}",
             format!("{:#x}", self.address).bright_blue().bold(),
-            format!("{}", self.function_called).bright_blue().bold(),
+            self.function_called.to_string().bright_blue().bold(),
         );
         info!(message = message);
     }
