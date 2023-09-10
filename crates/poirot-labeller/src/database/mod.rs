@@ -40,7 +40,7 @@ pub struct Metadata {
 
 impl Database {
 
-    pub async fn get_metadata(&self, block_num: u64, block_hash: U256) -> Metadata  {
+    pub async fn get_metadata<'a> (&'a self, block_num: u64, block_hash: U256) -> Metadata  {
         let query = format!("SELECT * FROM {} LIMIT 1", RELAYS_TABLE);
         //let res = self.client.query_all::<types::Relay>(&query).await?;
         //println!("{:?}", res);
