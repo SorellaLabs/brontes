@@ -1,0 +1,19 @@
+[package]
+name = "poirot-labeller"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients", branch = "modifications" }
+# serde
+serde_with = { version = "3.3.0", features = ["macros"] }
+serde.workspace = true
+# error handling
+thiserror.workspace = true
+# numbers
+malachite.workspace = true
+hyper-tls = "0.5.0"
+hyper.workspace = true
+clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }

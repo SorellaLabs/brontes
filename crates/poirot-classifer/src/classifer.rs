@@ -6,9 +6,10 @@ use poirot_types::{
     structured_trace::{TraceActions, TxTrace},
     tree::{Node, Root, TimeTree},
 };
+use malachite::Rational;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Log, H256, U256};
-use reth_rpc_types::trace::parity::TransactionTrace;
+use reth_rpc_types::{trace::parity::TransactionTrace, Header};
 use std::collections::{HashMap, HashSet};
 
 const TRANSFER_TOPIC: H256 =
@@ -21,7 +22,7 @@ pub struct Classifier {
 }
 
 impl Classifier {
-    pub fn build_tree(&mut self, traces: Vec<TxTrace>) -> TimeTree<Actions> {
+    pub fn build_tree(&mut self, traces: Vec<TxTrace>, header: Header, eth_price: Rational) -> TimeTree<Actions> {
         let roots = traces
             .into_par_iter()
             .map(|mut trace| {
@@ -33,7 +34,7 @@ impl Classifier {
                     address: trace.trace[0].get_from_addr(),
                     data: self.classify_node(trace.trace.remove(0), logs),
                 };
-                let mut root = Root { head: node, tx_hash: trace.tx_hash };
+                let mut root = Root { head: node, tx_hash: trace.tx_hash, tx_index: 0, private: false  };
 
                 for trace in trace.trace {
                     let node = Node {
@@ -50,7 +51,7 @@ impl Classifier {
             })
             .collect::<Vec<Root<Actions>>>();
 
-        let mut tree = TimeTree { roots };
+        let mut tree = TimeTree { roots, header, eth_price };
         self.try_classify_unknown(&mut tree);
         tree.freeze_tree();
 
