@@ -8,9 +8,9 @@ macro_rules! enum_unwrap {
 
         unsafe {
             let a = &$data as *const _ as *mut u8;
-            let ptr = a.add(16);
+            let ptr = a.add(2);
             let inner = ptr.cast() as *mut paste!([<$exchange Calls>]);
-            let ptr = inner.add(8);
+            let ptr = inner.add(1);
 
             &*(ptr.cast() as *mut $return)
         }}

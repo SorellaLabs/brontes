@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
-const TOKEN_QUERIES: &str = "SELECT toString(address),symbol,decimals FROM tokens";
+const TOKEN_QUERIES: &str = "SELECT toString(address),decimals FROM tokens";
 
 fn main() {
     dotenv::dotenv().ok();
@@ -36,18 +36,20 @@ fn main() {
 #[derive(Debug, Serialize, Deserialize, Clone, Row)]
 pub struct TokenDetails {
     address:  String,
-    symbol:   String,
     decimals: u8
 }
 
 async fn build_token_details_map(file: &mut BufWriter<File>) {
-    let client = build_db();
-    let rows = query_db::<TokenDetails>(&client, TOKEN_QUERIES).await;
+    let mut phf_map: phf_codegen::Map<[u8; 20]> = phf_codegen::Map::new();
+    #[cfg(feature = "server")]
+    {
+        let client = build_db();
+        let rows = query_db::<TokenDetails>(&client, TOKEN_QUERIES).await;
 
-    let mut phf_map = phf_codegen::Map::new();
-
-    for row in rows {
-        phf_map.entry(H160::from_str(&row.address).unwrap().0, row.decimals.to_string().as_str());
+        for row in rows {
+            phf_map
+                .entry(H160::from_str(&row.address).unwrap().0, row.decimals.to_string().as_str());
+        }
     }
 
     writeln!(

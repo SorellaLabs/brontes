@@ -30,3 +30,6 @@ phf = { version = "0.11.1", default-features = false }
 phf_codegen = "0.11.1"
 dotenv = "0.15.0"
 clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
+
+[features]
+server = []

@@ -61,3 +61,6 @@ hyper.workspace = true
 metrics-process.workspace = true
 
 rayon.workspace = true
+
+[features]
+server = ["poirot-types/server"]
