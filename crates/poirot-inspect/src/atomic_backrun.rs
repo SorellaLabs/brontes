@@ -3,19 +3,19 @@ use std::{
     sync::Arc
 };
 
-use poirot_labeller::Labeller;
+use poirot_labeller::{Labeller, Metadata};
 use poirot_types::{normalized_actions::Actions, tree::TimeTree};
 use reth_primitives::Address;
 
-use crate::Inspector;
+use crate::{ClassifiedMev, Inspector};
 
 pub struct AtomicBackrunInspector {}
 
 impl AtomicBackrunInspector {
-    fn process_swaps(&self, all_swaps: Vec<Vec<Actions>>) {
+    fn process_swaps(&self, swaps: Vec<Actions>) -> Option<ClassifiedMev> {
         // address and there token delta's
         let mut deltas = HashMap::new();
-        for swap in all_swaps.into_iter().flatten() {
+        for swap in swaps.into_iter() {
             let Actions::Swap(swap) = swap else { unreachable!() };
             match deltas.entry(swap.call_address) {
                 Entry::Occupied(mut o) => {
@@ -44,13 +44,20 @@ impl AtomicBackrunInspector {
                 }
             }
         }
+
+        None
     }
 }
 
 #[async_trait::async_trait]
 impl Inspector for AtomicBackrunInspector {
-    async fn process_tree(&self, tree: Arc<TimeTree<Actions>>) {
+    async fn process_tree(
+        &self,
+        tree: Arc<TimeTree<Actions>>,
+        meta_data: Arc<Metadata>
+    ) -> Vec<ClassifiedMev> {
         let _intersting_state = tree.inspect_all(|node| node.data.is_swap());
+        vec![]
     }
 }
 

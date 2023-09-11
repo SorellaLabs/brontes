@@ -1,13 +1,13 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc
+    future::Future,
+    pin::Pin
 };
 
 use database::Database;
 use malachite::Rational;
 use poirot_metrics::PoirotMetricEvents;
 use reth_primitives::{Address, TxHash, U256};
-use serde_with::DeserializeFromStr;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub mod database;
@@ -54,10 +54,13 @@ impl<'a> Labeller<'a> {
         Self { client: database, metrics_tx }
     }
 
-    pub async fn get_metadata(&self, block_num: u64, block_hash: U256) -> Metadata {
+    pub fn get_metadata(
+        &self,
+        block_num: u64,
+        block_hash: U256
+    ) -> Pin<Box<dyn Future<Output = Metadata> + Send + 'a>> {
+        Box::pin(self.client.get_metadata(block_num, block_hash))
         //let res = self.client.query_all::<types::Relay>(&query).await?;
         //println!("{:?}", res);
-
-        todo!()
     }
 }
