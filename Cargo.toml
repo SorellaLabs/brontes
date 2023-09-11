@@ -104,3 +104,4 @@ malachite = "0.4.0"
 c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
 hex-literal = "0.4.1"
 rayon = "1.7.0"
+
