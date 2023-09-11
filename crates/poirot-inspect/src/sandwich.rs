@@ -1,12 +1,12 @@
 use std::{collections::VecDeque, sync::Arc};
 
-use poirot_labeller::Labeller;
+use poirot_labeller::{Labeller, Metadata};
 use poirot_types::{
     normalized_actions::{Actions, NormalizedAction},
     tree::{Node, Root, TimeTree}
 };
 
-use crate::Inspector;
+use crate::{ClassifiedMev, Inspector};
 
 pub struct SandwichInspector {}
 
@@ -17,11 +17,15 @@ pub struct SandwichInspector {}
 // 3. Check profitability of sandwich & index accordingly
 #[async_trait::async_trait]
 impl Inspector for SandwichInspector {
-    async fn process_tree(&self, tree: Arc<TimeTree<Actions>>) {
+    async fn process_tree(
+        &self,
+        tree: Arc<TimeTree<Actions>>,
+        meta_data: Arc<Metadata>
+    ) -> Vec<ClassifiedMev> {
         let mut roots: VecDeque<&Root<Actions>> =
             tree.roots.iter().collect::<Vec<&Root<Actions>>>().into();
         if roots.len() < 3 {
-            return
+            return vec![]
         }
 
         let mut buffer: VecDeque<&Root<Actions>> = roots.drain(..3).collect();
@@ -40,6 +44,8 @@ impl Inspector for SandwichInspector {
             let _second_swaps = tree.inspect(second_node.tx_hash, Self::get_swaps);
             let _third_swaps = tree.inspect(third_node.tx_hash, Self::get_swaps);
         }
+
+        vec![]
     }
 }
 

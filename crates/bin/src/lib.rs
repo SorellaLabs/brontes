@@ -10,8 +10,8 @@ use futures::{
 };
 use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::Parser;
-use poirot_inspect::Inspector;
-use poirot_labeller::{database::Metadata, Labeller};
+use poirot_inspect::{ClassifiedMev, Inspector};
+use poirot_labeller::{Labeller, Metadata};
 use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use reth_primitives::Header;
 use tokio::task::JoinError;
@@ -19,7 +19,7 @@ use tokio::task::JoinError;
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-type InspectorFut<'a> = JoinAll<Pin<Box<dyn Future<Output = ()> + Send + 'a>>>;
+type InspectorFut<'a> = JoinAll<Pin<Box<dyn Future<Output = Vec<ClassifiedMev>> + Send + 'a>>>;
 
 type CollectionFut<'a> = Pin<
     Box<
@@ -76,32 +76,30 @@ impl<'a, const N: usize> Poirot<'a, N> {
         self.current_block += 1;
 
         let parser_fut = self.parser.execute(self.current_block);
-        // placeholder for ludwigs shit
-        let labeller_fut = self
-            .labeller
-            .client
-            .get_metadata(self.current_block, hash.into());
+        let labeller_fut = self.labeller.get_metadata(self.current_block, hash.into());
 
         self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
     }
 
-    fn start_inspecting(&mut self, tree: Arc<TimeTree<Actions>>) {
+    fn start_inspecting(&mut self, tree: Arc<TimeTree<Actions>>, metadata: Arc<Metadata>) {
         self.inspector_task = Some(join_all(
             self.inspectors
                 .iter()
-                .map(|inspector| inspector.process_tree(tree.clone()))
+                .map(|inspector| inspector.process_tree(tree.clone(), metadata.clone()))
         ) as InspectorFut<'a>);
     }
 
-    fn on_inspectors_finish(&mut self, _data: Vec<()>) {}
+    fn on_inspectors_finish(&mut self, _data: Vec<Vec<ClassifiedMev>>) {
+        todo!()
+    }
 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
         if let Some(mut collection_fut) = self.classifier_data.take() {
             match collection_fut.poll_unpin(cx) {
                 Poll::Ready((parser_data, labeller_data)) => {
                     let (traces, header) = parser_data.unwrap().unwrap();
-                    let tree = self.classifier.build_tree(traces, header, labeller_data);
-                    self.start_inspecting(tree.into());
+                    let tree = self.classifier.build_tree(traces, header, &labeller_data);
+                    self.start_inspecting(tree.into(), labeller_data.into());
                 }
                 Poll::Pending => {
                     self.classifier_data = Some(collection_fut);
