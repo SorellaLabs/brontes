@@ -372,7 +372,7 @@ impl<V: NormalizedAction> Node<V> {
     where
         F: Fn(&Node<V>) -> bool
     {
-        // the previous sub-action was best
+        // the previous sub-action was the last one to meet the criteria
         if !call(self) {
             return false
         }
@@ -386,10 +386,10 @@ impl<V: NormalizedAction> Node<V> {
         // best.
         if !lower_has_better {
             result.push(self.get_all_sub_actions());
-            return true
+           
         }
         // lower node has a better sub-action.
-        false
+        true
     }
 
     pub fn dyn_classify<T, F>(
