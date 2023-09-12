@@ -24,12 +24,12 @@ const TRANSFER_TOPIC: H256 =
 #[derive(Debug)]
 pub struct Classifier {
     known_dyn_protocols: HashMap<Address, (Address, Address)>,
-    static_exchanges:    HashMap<[u8; 4], Box<dyn IntoAction>>
+    static_protocols:    HashMap<[u8; 4], Box<dyn IntoAction>>
 }
 
 impl Classifier {
     pub fn new(known_protocols: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
-        Self { static_exchanges: known_protocols, known_dyn_protocols: HashMap::default() }
+        Self { static_protocols: known_protocols, known_dyn_protocols: HashMap::default() }
     }
 
     pub fn build_tree(
@@ -164,7 +164,7 @@ impl Classifier {
             let sig = &calldata[0..4];
             let res: StaticReturnBindings = mapping.try_decode(&calldata).unwrap();
 
-            return self.static_exchanges.get(sig).unwrap().decode_trace_data(
+            return self.static_protocols.get(sig).unwrap().decode_trace_data(
                 res,
                 return_bytes,
                 address,
