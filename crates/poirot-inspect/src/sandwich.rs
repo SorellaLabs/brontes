@@ -37,7 +37,11 @@ impl Inspector for SandwichInspector {
             pairs.1 = root;
         }
 
-        let search_fn = |node: &Node<Actions>| node.data.is_swap() || node.data.is_transfer();
+        let search_fn = |node: &Node<Actions>| {
+            node.subactions
+                .iter()
+                .any(|action| action.is_swap() || action.is_transfer())
+        };
 
         set.into_iter()
             .filter_map(|(tx0, tx1)| {
