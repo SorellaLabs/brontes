@@ -8,6 +8,158 @@ use serde::{Deserialize, Serialize};
 
 use crate::normalized_actions::{Actions, NormalizedAction};
 
+pub struct TimeTree<V: NormalizedAction> {
+    pub roots:            Vec<Root<V>>,
+    pub header:           Header,
+    pub avg_priority_fee: u64,
+    /// first is on block submission, second is when the block gets accepted
+    pub eth_prices:       (Rational, Rational)
+}
+
+impl<V: NormalizedAction> TimeTree<V> {
+    pub fn new(header: Header, eth_prices: (Rational, Rational)) -> Self {
+        Self { roots: Vec::with_capacity(150), header, eth_prices, avg_priority_fee: 0 }
+    }
+
+    pub fn get_priority_fee_for_transaction(&self, hash: H256) -> Option<u64> {
+        let tx = self.roots.iter().find(|h| h.tx_hash == hash)?;
+
+        Some(tx.gas_details.effective_gas_price - self.header.base_fee_per_gas?)
+    }
+
+    pub fn get_gas_details(&self, hash: H256) -> Option<&GasDetails> {
+        self.roots
+            .iter()
+            .find(|h| h.tx_hash == hash)
+            .map(|root| &root.gas_details)
+    }
+
+    pub fn insert_root(&mut self, root: Root<V>) {
+        self.roots.push(root);
+    }
+
+    pub fn finalize_tree(&mut self) {
+        self.avg_priority_fee = self
+            .roots
+            .iter()
+            .map(|tx| tx.gas_details.effective_gas_price - self.header.base_fee_per_gas.unwrap())
+            .sum::<u64>()
+            / self.roots.len() as u64;
+
+        self.roots.iter_mut().for_each(|root| root.finalize());
+    }
+
+    pub fn insert_node(&mut self, from: Address, node: Node<V>) {
+        self.roots
+            .last_mut()
+            .expect("no root_nodes inserted")
+            .insert(from, node);
+    }
+
+    pub fn get_hashes(&self) -> Vec<H256> {
+        self.roots.iter().map(|r| r.tx_hash).collect()
+    }
+
+    pub fn inspect<F>(&self, hash: H256, call: F) -> Vec<Vec<V>>
+    where
+        F: Fn(&Node<V>) -> bool
+    {
+        if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
+            root.inspect(&call)
+        } else {
+            vec![]
+        }
+    }
+
+    pub fn inspect_all<F>(&self, call: F) -> HashMap<H256, Vec<Vec<V>>>
+    where
+        F: Fn(&Node<V>) -> bool + Send + Sync
+    {
+        self.roots
+            .par_iter()
+            .map(|r| (r.tx_hash, r.inspect(&call)))
+            .collect()
+    }
+
+    /// the first function parses down through the tree to the point where we
+    /// are at the lowest subset of the valid action. once we reach here,
+    /// the call function gets executed in order to capture the data
+    pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
+    where
+        T: Fn(Address, Vec<V>) -> bool + Sync,
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
+    {
+        self.roots
+            .par_iter_mut()
+            .flat_map(|root| root.dyn_classify(&find, &call))
+            .collect()
+    }
+
+    pub fn remove_duplicate_data<F, C, T, R>(&mut self, find: F, classify: C, info: T)
+    where
+        T: Fn(&Node<V>) -> R + Sync,
+        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
+        F: Fn(&Node<V>) -> bool + Sync
+    {
+        self.roots
+            .par_iter_mut()
+            .for_each(|root| root.remove_duplicate_data(&find, &classify, &info));
+    }
+}
+
+pub struct Root<V: NormalizedAction> {
+    pub head:        Node<V>,
+    pub tx_hash:     H256,
+    pub private:     bool,
+    pub gas_details: GasDetails
+}
+
+impl<V: NormalizedAction> Root<V> {
+    pub fn insert(&mut self, from: Address, node: Node<V>) {
+        self.head.insert(from, node)
+    }
+
+    pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
+    where
+        F: Fn(&Node<V>) -> bool
+    {
+        let mut result = Vec::new();
+        self.head.inspect(&mut result, call);
+
+        result
+    }
+
+    pub fn remove_duplicate_data<F, C, T, R>(&mut self, find: &F, classify: &C, info: &T)
+    where
+        T: Fn(&Node<V>) -> R,
+        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
+        F: Fn(&Node<V>) -> bool
+    {
+        let mut indexes = HashSet::new();
+        self.head
+            .indexes_to_remove(&mut indexes, find, classify, info);
+        indexes
+            .into_iter()
+            .for_each(|index| self.head.remove_index_and_childs(index));
+    }
+
+    pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
+    where
+        T: Fn(Address, Vec<V>) -> bool,
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
+    {
+        // bool is used for recursion
+        let mut results = Vec::new();
+        let _ = self.head.dyn_classify(find, call, &mut results);
+
+        results
+    }
+
+    pub fn finalize(&mut self) {
+        self.head.finalize();
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row)]
 pub struct GasDetails {
     pub coinbase_transfer:   Option<U256>,
@@ -266,157 +418,5 @@ impl<V: NormalizedAction> Node<V> {
             }
         }
         true
-    }
-}
-
-pub struct Root<V: NormalizedAction> {
-    pub head:        Node<V>,
-    pub tx_hash:     H256,
-    pub private:     bool,
-    pub gas_details: GasDetails
-}
-
-impl<V: NormalizedAction> Root<V> {
-    pub fn insert(&mut self, from: Address, node: Node<V>) {
-        self.head.insert(from, node)
-    }
-
-    pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
-    where
-        F: Fn(&Node<V>) -> bool
-    {
-        let mut result = Vec::new();
-        self.head.inspect(&mut result, call);
-
-        result
-    }
-
-    pub fn remove_duplicate_data<F, C, T, R>(&mut self, find: &F, classify: &C, info: &T)
-    where
-        T: Fn(&Node<V>) -> R,
-        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
-        F: Fn(&Node<V>) -> bool
-    {
-        let mut indexes = HashSet::new();
-        self.head
-            .indexes_to_remove(&mut indexes, find, classify, info);
-        indexes
-            .into_iter()
-            .for_each(|index| self.head.remove_index_and_childs(index));
-    }
-
-    pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
-    where
-        T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
-    {
-        // bool is used for recursion
-        let mut results = Vec::new();
-        let _ = self.head.dyn_classify(find, call, &mut results);
-
-        results
-    }
-
-    pub fn finalize(&mut self) {
-        self.head.finalize();
-    }
-}
-
-pub struct TimeTree<V: NormalizedAction> {
-    pub roots:            Vec<Root<V>>,
-    pub header:           Header,
-    pub avg_priority_fee: u64,
-    /// first is on block submission, second is when the block gets accepted
-    pub eth_prices:       (Rational, Rational)
-}
-
-impl<V: NormalizedAction> TimeTree<V> {
-    pub fn new(header: Header, eth_prices: (Rational, Rational)) -> Self {
-        Self { roots: Vec::with_capacity(150), header, eth_prices, avg_priority_fee: 0 }
-    }
-
-    pub fn get_priority_fee_for_transaction(&self, hash: H256) -> Option<u64> {
-        let tx = self.roots.iter().find(|h| h.tx_hash == hash)?;
-
-        Some(tx.gas_details.effective_gas_price - self.header.base_fee_per_gas?)
-    }
-
-    pub fn get_gas_details(&self, hash: H256) -> Option<&GasDetails> {
-        self.roots
-            .iter()
-            .find(|h| h.tx_hash == hash)
-            .map(|root| &root.gas_details)
-    }
-
-    pub fn insert_root(&mut self, root: Root<V>) {
-        self.roots.push(root);
-    }
-
-    pub fn finalize_tree(&mut self) {
-        self.avg_priority_fee = self
-            .roots
-            .iter()
-            .map(|tx| tx.gas_details.effective_gas_price - self.header.base_fee_per_gas.unwrap())
-            .sum::<u64>()
-            / self.roots.len() as u64;
-
-        self.roots.iter_mut().for_each(|root| root.finalize());
-    }
-
-    pub fn insert_node(&mut self, from: Address, node: Node<V>) {
-        self.roots
-            .last_mut()
-            .expect("no root_nodes inserted")
-            .insert(from, node);
-    }
-
-    pub fn get_hashes(&self) -> Vec<H256> {
-        self.roots.iter().map(|r| r.tx_hash).collect()
-    }
-
-    pub fn inspect<F>(&self, hash: H256, call: F) -> Vec<Vec<V>>
-    where
-        F: Fn(&Node<V>) -> bool
-    {
-        if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
-            root.inspect(&call)
-        } else {
-            vec![]
-        }
-    }
-
-    pub fn inspect_all<F>(&self, call: F) -> HashMap<H256, Vec<Vec<V>>>
-    where
-        F: Fn(&Node<V>) -> bool + Send + Sync
-    {
-        self.roots
-            .par_iter()
-            .map(|r| (r.tx_hash, r.inspect(&call)))
-            .collect()
-    }
-
-    /// the first function parses down through the tree to the point where we
-    /// are at the lowest subset of the valid action. once we reach here,
-    /// the call function gets executed in order to capture the data
-    pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
-    where
-        T: Fn(Address, Vec<V>) -> bool + Sync,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
-    {
-        self.roots
-            .par_iter_mut()
-            .flat_map(|root| root.dyn_classify(&find, &call))
-            .collect()
-    }
-
-    pub fn remove_duplicate_data<F, C, T, R>(&mut self, find: F, classify: C, info: T)
-    where
-        T: Fn(&Node<V>) -> R + Sync,
-        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        F: Fn(&Node<V>) -> bool + Sync
-    {
-        self.roots
-            .par_iter_mut()
-            .for_each(|root| root.remove_duplicate_data(&find, &classify, &info));
     }
 }
