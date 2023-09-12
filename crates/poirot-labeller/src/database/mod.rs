@@ -76,13 +76,16 @@ impl Database {
             })
             .collect::<HashMap<Address, (Rational, Rational)>>();
 
+        // todo
+        let eth_prices = Default::default();
+
         let metadata = Metadata::new(
             block_num,
             block_hash,
             times.0,
             times.1,
             token_prices,
-            Default::default(),
+            eth_prices,
             private_txs,
         );
 
