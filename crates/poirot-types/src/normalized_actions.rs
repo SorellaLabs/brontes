@@ -70,6 +70,14 @@ pub struct NormalizedBurn {
     pub amount: Vec<U256>
 }
 
+pub struct NormalizedLiquidation {
+    pub liquidator: Address,
+    pub liquidatee: Address,
+    pub token:      Address,
+    pub amount:     U256,
+    pub reward:     U256
+}
+
 pub trait NormalizedAction: Send + Sync + Clone {
     fn get_action(&self) -> &Actions;
 }
