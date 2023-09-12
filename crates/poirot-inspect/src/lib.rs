@@ -105,7 +105,7 @@ pub trait Inspector: Send + Sync {
         &self,
         deltas: HashMap<Address, HashMap<Address, Rational>>,
         metadata: Arc<Metadata>,
-        time_selector: impl Fn(&(Rational, Rational)) -> &Rational
+        time_selector: Box<dyn Fn(&(Rational, Rational)) -> &Rational>
     ) -> Option<(Address, Rational)> {
         deltas
             .clone()

@@ -42,14 +42,16 @@ impl Classifier {
             .into_par_iter()
             .map(|mut trace| {
                 let logs = &trace.logs;
+                let address = trace.trace[0].get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), logs);
+
                 let node = Node {
-                    inner:      vec![],
-                    index:      0,
-                    finalized:  !classification.is_unclassified(),
+                    inner: vec![],
+                    index: 0,
+                    finalized: !classification.is_unclassified(),
                     subactions: vec![],
-                    address:    trace.trace[0].get_from_addr(),
-                    data:       classification
+                    address,
+                    data: classification
                 };
 
                 let mut root = Root {
@@ -67,14 +69,15 @@ impl Classifier {
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.action);
 
+                    let address = trace.get_from_addr();
                     let classification = self.classify_node(trace, logs);
                     let node = Node {
-                        index:      (index + 1) as u64,
-                        inner:      vec![],
-                        finalized:  !classification.is_unclassified(),
+                        index: (index + 1) as u64,
+                        inner: vec![],
+                        finalized: !classification.is_unclassified(),
                         subactions: vec![],
-                        address:    trace.get_from_addr(),
-                        data:       classification
+                        address,
+                        data: classification
                     };
 
                     root.insert(node.address, node);
@@ -92,6 +95,49 @@ impl Classifier {
         };
 
         self.try_classify_unknown(&mut tree);
+
+        // remove duplicate swaps
+        tree.remove_duplicate_data(
+            |node| node.data.is_swap(),
+            |other_nodes, node| {
+                let Actions::Swap(swap_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        if transfer.amount == swap_data.amount_in
+                            && transfer.token == swap_data.token_in
+                        {
+                            return Some(*index)
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+            |node| (node.index, node.data.clone())
+        );
+
+        // remove duplicate mints
+        tree.remove_duplicate_data(
+            |node| node.data.is_mint(),
+            |other_nodes, node| {
+                let Actions::Mint(mint_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        for (amount, token) in mint_data.amount.iter().zip(mint_data.token) {
+                            if amount == transfer.amount && token == transfer.token {
+                                return Some(*index)
+                            }
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+            |node| (node.index, node.data.clone())
+        );
+
         tree.finalize_tree();
 
         tree
