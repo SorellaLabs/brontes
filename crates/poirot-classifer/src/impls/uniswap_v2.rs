@@ -1,8 +1,8 @@
-use alloy_sol_types::SolEvent;
+use alloy_sol_types::{SolCall, SolEvent};
 use hex_literal::hex;
 use poirot_core::{
     StaticReturnBindings,
-    SushiSwap_V2::{mintCall, Burn, Mint, SushiSwap_V2Calls, Swap}
+    SushiSwap_V2::{mintCall, swapCall, Burn, Mint, SushiSwap_V2Calls, Swap, burnCall}
 };
 use poirot_types::normalized_actions::Actions;
 use reth_primitives::{Address, Bytes, H160, U256};
@@ -15,7 +15,7 @@ pub struct V2SwapImpl;
 
 impl IntoAction for V2SwapImpl {
     fn get_signature(&self) -> [u8; 4] {
-        hex!("022c0d9f")
+        swapCall::SELECTOR
     }
 
     fn decode_trace_data(
@@ -59,7 +59,7 @@ impl IntoAction for V2SwapImpl {
 pub struct V2MintImpl;
 impl IntoAction for V2MintImpl {
     fn get_signature(&self) -> [u8; 4] {
-        hex!("6a627842")
+        mintCall::SELECTOR
     }
 
     fn decode_trace_data(
@@ -89,7 +89,7 @@ impl IntoAction for V2MintImpl {
 pub struct V2BurnImpl;
 impl IntoAction for V2BurnImpl {
     fn get_signature(&self) -> [u8; 4] {
-        hex!("89afcb44")
+        burnCall::SELECTOR
     }
 
     fn decode_trace_data(
