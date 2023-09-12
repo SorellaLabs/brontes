@@ -42,12 +42,14 @@ impl Classifier {
             .into_par_iter()
             .map(|mut trace| {
                 let logs = &trace.logs;
+                let classification = self.classify_node(trace.trace.remove(0), logs);
                 let node = Node {
                     inner:      vec![],
-                    frozen:     false,
+                    index:      0,
+                    finalized:  !classification.is_unclassified(),
                     subactions: vec![],
                     address:    trace.trace[0].get_from_addr(),
-                    data:       self.classify_node(trace.trace.remove(0), logs)
+                    data:       classification
                 };
 
                 let mut root = Root {
@@ -61,17 +63,20 @@ impl Classifier {
                     }
                 };
 
-                for trace in trace.trace {
+                for (index, trace) in trace.trace.into_iter().enumerate() {
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.action);
 
+                    let classification = self.classify_node(trace, logs);
                     let node = Node {
+                        index:      index + 1 as u64,
                         inner:      vec![],
-                        frozen:     false,
+                        finalized:  !classification.is_unclassified(),
                         subactions: vec![],
                         address:    trace.get_from_addr(),
-                        data:       self.classify_node(trace, logs)
+                        data:       classification
                     };
+
                     root.insert(node.address, node);
                 }
 
@@ -87,7 +92,7 @@ impl Classifier {
         };
 
         self.try_classify_unknown(&mut tree);
-        tree.freeze_tree();
+        tree.finalize_tree();
 
         tree
     }
@@ -125,6 +130,7 @@ impl Classifier {
                 .filter(|log| log.address == address)
                 .cloned()
                 .collect::<Vec<Log>>();
+
             if rem.len() == 1 {
                 if let Some((addr, from, to, value)) = self.decode_transfer(&rem[0]) {
                     return Actions::Transfer(poirot_types::normalized_actions::NormalizedTransfer {

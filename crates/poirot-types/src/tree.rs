@@ -5,9 +5,8 @@ use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
 use serde::{Deserialize, Serialize};
-use tracing::error;
 
-use crate::normalized_actions::NormalizedAction;
+use crate::normalized_actions::{Actions, NormalizedAction};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row)]
 pub struct GasDetails {
@@ -19,6 +18,7 @@ pub struct GasDetails {
 impl GasDetails {
     pub fn gas_paid(&self) -> u64 {
         let mut gas = self.gas_used * self.effective_gas_price;
+
         if let Some(coinbase) = self.coinbase_transfer {
             gas += coinbase.to::<u64>();
         }
@@ -28,8 +28,9 @@ impl GasDetails {
 }
 
 pub struct Node<V: NormalizedAction> {
-    pub inner:  Vec<Node<V>>,
-    pub frozen: bool,
+    pub inner:     Vec<Node<V>>,
+    pub finalized: bool,
+    pub index:     u64,
 
     /// This only has values when the node is frozen
     pub subactions: Vec<V>,
@@ -38,25 +39,21 @@ pub struct Node<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Node<V> {
-    pub fn is_root(&self) -> bool {
-        self.frozen
+    pub fn is_finalized(&self) -> bool {
+        self.finalized
     }
 
-    pub fn is_frozen(&self) -> bool {
-        self.frozen
-    }
-
-    pub fn freeze(&mut self) {
+    pub fn finalize(&mut self) {
         self.subactions = self.get_all_sub_actions();
-        self.frozen = true;
+        self.finalized = true;
 
-        self.inner.iter_mut().for_each(|f| f.freeze());
+        self.inner.iter_mut().for_each(|f| f.finalize());
     }
 
     /// The address here is the from address for the trace
-    pub fn insert(&mut self, address: Address, n: Node<V>) -> bool {
-        if self.frozen {
-            return false
+    pub fn insert(&mut self, address: Address, n: Node<V>) {
+        if self.finalized {
+            return
         }
 
         if address == self.address {
@@ -64,7 +61,7 @@ impl<V: NormalizedAction> Node<V> {
             cur_stack.pop();
             if !cur_stack.contains(&address) {
                 self.inner.push(n);
-                return true
+                return
             }
         }
 
@@ -73,7 +70,7 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     pub fn get_all_sub_actions(&self) -> Vec<V> {
-        if self.frozen {
+        if self.finalized {
             self.subactions.clone()
         } else {
             self.inner
@@ -99,6 +96,100 @@ impl<V: NormalizedAction> Node<V> {
         stack.push(self.address);
 
         stack
+    }
+
+    pub fn indexes_to_remove<F>(&self, indexes: &mut Vec<u64>, prev_index: u64, call: &F)
+    where
+        F: Fn() -> bool
+    {
+        let a: &Vec<u64> = &*indexes;
+    }
+
+    pub fn get_bounded_data(&self, lower: u64, upper: u64, res: &mut Vec<V>) {
+        if self.inner.is_empty() {
+            return
+        }
+
+        let last = self.inner.last().unwrap();
+
+        // fully in bounds
+        if self.index >= lower && last.index <= upper {
+            res.push(self.data.clone());
+            self.inner
+                .iter()
+                .for_each(|node| node.get_bounded_data(lower, upper, res));
+
+            return
+        }
+
+        // find bounded limit
+        let mut iter = self.inner.iter().enumerate().peekable();
+        let mut start = None;
+        let mut end = None;
+
+        loop {
+            if start.is_some() && end.is_some() {
+                break
+            }
+
+            if let Some((our_index, next)) = iter.next() {
+                if let Some((_, peek)) = iter.peek() {
+                    // find lower
+                    if next.index >= lower && start.is_none() {
+                        start = Some(our_index);
+                    }
+                    // find upper
+                    if peek.index > upper {
+                        end = Some(our_index);
+                    }
+                } else {
+                    break
+                }
+            }
+        }
+
+        match (start, end) {
+            (Some(start), Some(end)) => {
+                self.inner[start..end]
+                    .iter()
+                    .for_each(|node| node.get_bounded_data(lower, upper, res));
+            }
+            (Some(start), None) => {
+                self.inner[start..]
+                    .iter()
+                    .for_each(|node| node.get_bounded_data(lower, upper, res));
+            }
+            _ => {}
+        }
+    }
+
+    pub fn remove_index_and_childs(&mut self, index: u64) {
+        if self.inner.is_empty() {
+            return
+        }
+
+        let mut iter = self.inner.iter_mut().enumerate().peekable();
+
+        let val = loop {
+            if let Some((our_index, next)) = iter.next() {
+                if index == next.index {
+                    break Some(our_index)
+                }
+
+                if let Some(peek) = iter.peek() {
+                    if index > next.index && index < peek.1.index {
+                        next.remove_index_and_childs(index);
+                        break None
+                    }
+                } else {
+                    break None
+                }
+            }
+        };
+
+        if let Some(val) = val {
+            self.inner.remove(val);
+        }
     }
 
     pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
@@ -163,9 +254,7 @@ pub struct Root<V: NormalizedAction> {
 
 impl<V: NormalizedAction> Root<V> {
     pub fn insert(&mut self, from: Address, node: Node<V>) {
-        if !self.head.insert(from, node) {
-            error!("failed to insert node");
-        }
+        self.head.insert(from, node)
     }
 
     pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
@@ -190,8 +279,8 @@ impl<V: NormalizedAction> Root<V> {
         results
     }
 
-    pub fn freeze(&mut self) {
-        self.head.freeze();
+    pub fn finalize(&mut self) {
+        self.head.finalize();
     }
 }
 
@@ -225,7 +314,7 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.roots.push(root);
     }
 
-    pub fn freeze_tree(&mut self) {
+    pub fn finalize_tree(&mut self) {
         self.avg_priority_fee = self
             .roots
             .iter()
@@ -233,7 +322,7 @@ impl<V: NormalizedAction> TimeTree<V> {
             .sum::<u64>()
             / self.roots.len() as u64;
 
-        self.roots.iter_mut().for_each(|root| root.freeze());
+        self.roots.iter_mut().for_each(|root| root.finalize());
     }
 
     pub fn insert_node(&mut self, from: Address, node: Node<V>) {
