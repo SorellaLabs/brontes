@@ -25,6 +25,10 @@ impl GasDetails {
 
         gas
     }
+
+    pub fn priority_fee(&self, base_fee: u64) -> u64 {
+        self.effective_gas_price - base_fee
+    }
 }
 
 pub struct Node<V: NormalizedAction> {
@@ -106,9 +110,9 @@ impl<V: NormalizedAction> Node<V> {
         info: &T
     ) -> bool
     where
-        T: Fn(&Node<V>) -> R,
+        F: Fn(&Node<V>) -> bool,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
-        F: Fn(&Node<V>) -> bool
+        T: Fn(&Node<V>) -> R
     {
         // prev better
         if !find(self) {
@@ -155,24 +159,16 @@ impl<V: NormalizedAction> Node<V> {
         let mut start = None;
         let mut end = None;
 
-        loop {
-            if start.is_some() && end.is_some() {
-                break
-            }
-
+        while start.is_none() || end.is_none() {
             if let Some((our_index, next)) = iter.next() {
                 if let Some((_, peek)) = iter.peek() {
                     // find lower
-                    if next.index >= lower && start.is_none() {
-                        start = Some(our_index);
-                    }
+                    start = start.or(Some(our_index).filter(|_| next.index >= lower));
                     // find upper
-                    if peek.index > upper {
-                        end = Some(our_index);
-                    }
-                } else {
-                    break
+                    end = end.or(Some(our_index).filter(|_| peek.index > upper));
                 }
+            } else {
+                break
             }
         }
 

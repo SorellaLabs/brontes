@@ -23,13 +23,13 @@ const TRANSFER_TOPIC: H256 =
 /// goes through and classifies all exchanges
 #[derive(Debug)]
 pub struct Classifier {
-    known_dyn_exchanges: HashMap<Address, (Address, Address)>,
+    known_dyn_protocols: HashMap<Address, (Address, Address)>,
     static_exchanges:    HashMap<[u8; 4], Box<dyn IntoAction>>
 }
 
 impl Classifier {
-    pub fn new(known_exchanges: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
-        Self { static_exchanges: known_exchanges, known_dyn_exchanges: HashMap::default() }
+    pub fn new(known_protocols: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
+        Self { static_exchanges: known_protocols, known_dyn_protocols: HashMap::default() }
     }
 
     pub fn build_tree(
@@ -387,7 +387,7 @@ impl Classifier {
                     // this is already classified
                     return false
                 }
-                if self.known_dyn_exchanges.contains_key(&address) {
+                if self.known_dyn_protocols.contains_key(&address) {
                     return true
                 } else if self.is_possible_exchange(sub_actions) {
                     return true
@@ -396,8 +396,8 @@ impl Classifier {
                 false
             },
             |node| {
-                if self.known_dyn_exchanges.contains_key(&node.address) {
-                    let (token_0, token_1) = self.known_dyn_exchanges.get(&node.address).unwrap();
+                if self.known_dyn_protocols.contains_key(&node.address) {
+                    let (token_0, token_1) = self.known_dyn_protocols.get(&node.address).unwrap();
                     if let Some(res) = self.prove_dyn_action(node, *token_0, *token_1) {
                         // we have reduced the lower part of the tree. we can delete this now
                         node.inner.clear();
@@ -414,7 +414,7 @@ impl Classifier {
         );
 
         new_classifed_exchanges.into_iter().for_each(|(k, v)| {
-            self.known_dyn_exchanges.insert(k, v);
+            self.known_dyn_protocols.insert(k, v);
         });
     }
 }
