@@ -9,8 +9,7 @@ pub struct DBP2PRelayTimes {
 
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct DBTardisTrades {
-    pub address0: String,
-    pub address1: String,
+    pub address: String,
     pub price1: f64,
     pub price0: f64,
 }
