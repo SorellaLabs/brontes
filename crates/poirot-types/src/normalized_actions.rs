@@ -39,6 +39,9 @@ impl Actions {
     }
 }
 
+//TODO(Will) : call address is a bit weird of a name here, we should just call it swapper
+//TODO (Will): but i guess caller might be more precise if you are considering that a swap that transfers
+// TODO(Will): to a diff address is a swap + transfer
 #[derive(Debug, Clone)]
 pub struct NormalizedSwap {
     pub call_address: Address,
