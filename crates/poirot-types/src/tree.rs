@@ -386,7 +386,6 @@ impl<V: NormalizedAction> Node<V> {
         // best.
         if !lower_has_better {
             result.push(self.get_all_sub_actions());
-           
         }
         // lower node has a better sub-action.
         true
