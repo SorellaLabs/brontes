@@ -126,8 +126,8 @@ impl Classifier {
                     .into_iter()
                     .filter_map(|(index, data)| {
                         let Actions::Transfer(transfer) = data else { return None };
-                        for (amount, token) in mint_data.amount.iter().zip(mint_data.token) {
-                            if amount == transfer.amount && token == transfer.token {
+                        for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
+                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
                                 return Some(*index)
                             }
                         }
