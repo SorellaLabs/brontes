@@ -2,7 +2,7 @@ use alloy_sol_types::SolCall;
 use hex_literal::hex;
 use poirot_core::{
     StaticReturnBindings,
-    Uniswap_V3::{burnCall, mintCall, swapCall}, SushiSwap_V2::swapCall
+    Uniswap_V3::{burnCall, mintCall, swapCall}
 };
 use poirot_types::normalized_actions::Actions;
 use reth_primitives::{Address, Bytes, U256};
