@@ -49,17 +49,20 @@ impl Classifier {
                     address:    trace.trace[0].get_from_addr(),
                     data:       self.classify_node(trace.trace.remove(0), logs)
                 };
+
                 let mut root = Root {
-                    head:                node,
-                    tx_hash:             trace.tx_hash,
-                    private:             false,
-                    effective_gas_price: trace.effective_price,
-                    gas_used:            trace.gas_used,
-                    coinbase_transfer:   None
+                    head:        node,
+                    tx_hash:     trace.tx_hash,
+                    private:     false,
+                    gas_details: poirot_types::tree::GasDetails {
+                        coinbase_transfer:   None,
+                        gas_used:            trace.gas_used,
+                        effective_gas_price: trace.effective_price
+                    }
                 };
 
                 for trace in trace.trace {
-                    root.coinbase_transfer =
+                    root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.action);
 
                     let node = Node {

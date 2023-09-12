@@ -1,7 +1,8 @@
 use alloy_sol_types::SolEvent;
+use hex_literal::hex;
 use poirot_core::{
     StaticReturnBindings,
-    SushiSwap_V2::{burnCall, mintCall, Burn, Mint, SushiSwap_V2Calls, Swap}
+    SushiSwap_V2::{mintCall, Burn, Mint, SushiSwap_V2Calls, Swap}
 };
 use poirot_types::normalized_actions::Actions;
 use reth_primitives::{Address, Bytes, H160, U256};
@@ -13,6 +14,10 @@ use crate::{enum_unwrap, IntoAction, ADDRESS_TO_TOKENS_2_POOL};
 pub struct V2SwapImpl;
 
 impl IntoAction for V2SwapImpl {
+    fn get_signature(&self) -> [u8; 4] {
+        hex!("022c0d9f")
+    }
+
     fn decode_trace_data(
         &self,
         _data: StaticReturnBindings,
@@ -53,6 +58,10 @@ impl IntoAction for V2SwapImpl {
 #[derive(Debug, Default)]
 pub struct V2MintImpl;
 impl IntoAction for V2MintImpl {
+    fn get_signature(&self) -> [u8; 4] {
+        hex!("6a627842")
+    }
+
     fn decode_trace_data(
         &self,
         data: StaticReturnBindings,
@@ -79,15 +88,17 @@ impl IntoAction for V2MintImpl {
 #[derive(Debug, Default)]
 pub struct V2BurnImpl;
 impl IntoAction for V2BurnImpl {
+    fn get_signature(&self) -> [u8; 4] {
+        hex!("89afcb44")
+    }
+
     fn decode_trace_data(
         &self,
-        data: StaticReturnBindings,
+        _data: StaticReturnBindings,
         _return_data: Bytes,
         address: Address,
         logs: &Vec<Log>
     ) -> Actions {
-        let _data = enum_unwrap!(data, SushiSwap_V2, burnCall);
-
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
         for log in logs {
             if let Ok((amount_0, amount_1)) = Burn::decode_data(&log.data, true) {
