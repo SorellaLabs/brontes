@@ -4,7 +4,7 @@ use poirot_core::{
     StaticReturnBindings,
     SushiSwap_V2::{mintCall, Burn, Mint, SushiSwap_V2Calls, Swap}
 };
-use poirot_types::normalized_actions::Actions;
+use poirot_types::normalized_actions::{Actions, NormalizedSwap, NormalizedMint, NormalizedBurn};
 use reth_primitives::{Address, Bytes, H160, U256};
 use reth_rpc_types::Log;
 
@@ -33,7 +33,7 @@ impl IntoAction for V2SwapImpl {
                 let amount_0_in: U256 = amount_0_in;
 
                 if amount_0_in == U256::ZERO {
-                    return Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
+                    return Actions::Swap( NormalizedSwap {
                         call_address: address,
                         token_in:     token_1,
                         token_out:    token_0,
@@ -41,7 +41,7 @@ impl IntoAction for V2SwapImpl {
                         amount_out:   amount_0_out
                     })
                 } else {
-                    return Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
+                    return Actions::Swap( NormalizedSwap {
                         call_address: address,
                         token_in:     token_0,
                         token_out:    token_1,
@@ -74,7 +74,7 @@ impl IntoAction for V2MintImpl {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
         for log in logs {
             if let Ok((amount_0, amount_1)) = Mint::decode_data(&log.data, true) {
-                return Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
+                return Actions::Mint( NormalizedMint {
                     to,
                     token: vec![token_0, token_1],
                     amount: vec![amount_0, amount_1]
@@ -102,7 +102,7 @@ impl IntoAction for V2BurnImpl {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
         for log in logs {
             if let Ok((amount_0, amount_1)) = Burn::decode_data(&log.data, true) {
-                return Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
+                return Actions::Burn( NormalizedBurn {
                     from:   address,
                     token:  vec![token_0, token_1],
                     amount: vec![amount_0, amount_1]
