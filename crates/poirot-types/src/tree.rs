@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use clickhouse::Row;
 use malachite::Rational;
@@ -98,14 +98,42 @@ impl<V: NormalizedAction> Node<V> {
         stack
     }
 
-    pub fn indexes_to_remove<F>(&self, indexes: &mut Vec<u64>, prev_index: u64, call: &F)
+    pub fn indexes_to_remove<F, C, T, R>(
+        &self,
+        indexes: &mut HashSet<u64>,
+        find: &F,
+        classify: &C,
+        info: &T
+    ) -> bool
     where
-        F: Fn() -> bool
+        T: Fn(&Node<V>) -> R,
+        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
+        F: Fn(&Node<V>) -> bool
     {
-        let a: &Vec<u64> = &*indexes;
+        // prev better
+        if !find(self) {
+            return false
+        }
+        let lower_has_better = self
+            .inner
+            .iter()
+            .map(|i| i.indexes_to_remove(indexes, find, classify, info))
+            .any(|f| f);
+
+        if !lower_has_better {
+            let mut data = Vec::new();
+            self.get_bounded_info(0, self.index, &mut data, info);
+            let classified_indexes = classify(&data, self);
+            indexes.extend(classified_indexes);
+        }
+
+        return true
     }
 
-    pub fn get_bounded_data(&self, lower: u64, upper: u64, res: &mut Vec<V>) {
+    pub fn get_bounded_info<F, R>(&self, lower: u64, upper: u64, res: &mut Vec<R>, info_fn: &F)
+    where
+        F: Fn(&Node<V>) -> R
+    {
         if self.inner.is_empty() {
             return
         }
@@ -114,10 +142,10 @@ impl<V: NormalizedAction> Node<V> {
 
         // fully in bounds
         if self.index >= lower && last.index <= upper {
-            res.push(self.data.clone());
+            res.push(info_fn(self));
             self.inner
                 .iter()
-                .for_each(|node| node.get_bounded_data(lower, upper, res));
+                .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
 
             return
         }
@@ -152,12 +180,12 @@ impl<V: NormalizedAction> Node<V> {
             (Some(start), Some(end)) => {
                 self.inner[start..end]
                     .iter()
-                    .for_each(|node| node.get_bounded_data(lower, upper, res));
+                    .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
             }
             (Some(start), None) => {
                 self.inner[start..]
                     .iter()
-                    .for_each(|node| node.get_bounded_data(lower, upper, res));
+                    .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
             }
             _ => {}
         }
@@ -267,6 +295,20 @@ impl<V: NormalizedAction> Root<V> {
         result
     }
 
+    pub fn remove_duplicate_data<F, C, T, R>(&mut self, find: &F, classify: &C, info: &T)
+    where
+        T: Fn(&Node<V>) -> R,
+        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
+        F: Fn(&Node<V>) -> bool
+    {
+        let mut indexes = HashSet::new();
+        self.head
+            .indexes_to_remove(&mut indexes, find, classify, info);
+        indexes
+            .into_iter()
+            .for_each(|index| self.head.remove_index_and_childs(index));
+    }
+
     pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
     where
         T: Fn(Address, Vec<V>) -> bool,
@@ -369,5 +411,16 @@ impl<V: NormalizedAction> TimeTree<V> {
             .par_iter_mut()
             .flat_map(|root| root.dyn_classify(&find, &call))
             .collect()
+    }
+
+    pub fn remove_duplicate_data<F, C, T, R>(&mut self, find: F, classify: C, info: T)
+    where
+        T: Fn(&Node<V>) -> R + Sync,
+        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
+        F: Fn(&Node<V>) -> bool + Sync
+    {
+        self.roots
+            .par_iter_mut()
+            .for_each(|root| root.remove_duplicate_data(&find, &classify, &info));
     }
 }

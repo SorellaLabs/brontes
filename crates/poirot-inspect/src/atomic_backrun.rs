@@ -49,7 +49,7 @@ impl AtomicBackrunInspector {
         );
 
         Some(ClassifiedMev {
-            contract: vec![finalized.0],
+            contract: finalized.0,
             gas_details: vec![gas_details.clone()],
             tx_hash: vec![hash],
             priority_fee: vec![priority_fee],

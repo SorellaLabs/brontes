@@ -69,7 +69,7 @@ impl Classifier {
 
                     let classification = self.classify_node(trace, logs);
                     let node = Node {
-                        index:      index + 1 as u64,
+                        index:      (index + 1) as u64,
                         inner:      vec![],
                         finalized:  !classification.is_unclassified(),
                         subactions: vec![],
