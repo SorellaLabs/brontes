@@ -14,17 +14,17 @@ use poirot_types::{
     tree::{GasDetails, TimeTree},
     ToScaledRational, TOKEN_TO_DECIMALS
 };
-use reth_primitives::{Address, H256, U256};
+use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
 #[derive(Debug, Serialize, Deserialize, Row)]
 pub struct ClassifiedMev {
-    pub tx_hash:      H256,
+    // can be multiple for sandwich
+    pub tx_hash:      Vec<H256>,
     pub contract:     Address,
-    // gas related
-    pub gas_details:  GasDetails,
-    pub priority_fee: u64,
+    pub gas_details:  Vec<GasDetails>,
+    pub priority_fee: Vec<u64>,
 
     // results
     pub block_appearance_revenue_usd: f64,
@@ -43,7 +43,9 @@ pub trait Inspector: Send + Sync {
     ) -> Vec<ClassifiedMev>;
 
     /// Calculates the swap deltas. if transfers are also passed in. we also
-    /// move those around accordingly.
+    /// move those deltas on the map around accordingly.
+    /// NOTE: the upper level inspector needs to know if the transfer is related
+    /// to the underlying swap. action otherwise you could get misreads
     fn calculate_swap_deltas(
         &self,
         actions: &Vec<Vec<Actions>>
@@ -97,6 +99,30 @@ pub trait Inspector: Send + Sync {
         }
 
         deltas
+    }
+
+    fn get_best_usd_delta(
+        &self,
+        deltas: HashMap<Address, HashMap<Address, Rational>>,
+        metadata: Arc<Metadata>,
+        time_selector: impl Fn(&(Rational, Rational)) -> &Rational
+    ) -> Option<(Address, Rational)> {
+        deltas
+            .clone()
+            .into_iter()
+            .map(|(caller, tokens)| {
+                let summed_value = tokens
+                    .into_iter()
+                    .map(|(address, mut value)| {
+                        if let Some(price) = metadata.token_prices.get(&address) {
+                            value *= time_selector(price);
+                        }
+                        value
+                    })
+                    .sum::<Rational>();
+                (caller, summed_value)
+            })
+            .max_by(|x, y| x.1.cmp(&y.1))
     }
 }
 
