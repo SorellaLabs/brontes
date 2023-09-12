@@ -77,11 +77,14 @@ impl SandwichInspector {
     ) -> Option<ClassifiedMev> {
         let deltas = self.calculate_swap_deltas(&actions);
 
-        let appearance_usd_deltas =
-            self.get_best_usd_delta(deltas.clone(), metadata.clone(), |(appearance, _)| appearance);
+        let appearance_usd_deltas = self.get_best_usd_delta(
+            deltas.clone(),
+            metadata.clone(),
+            Box::new(|(appearance, _)| appearance)
+        );
 
         let finalized_usd_deltas =
-            self.get_best_usd_delta(deltas, metadata.clone(), |(_, finalized)| finalized);
+            self.get_best_usd_delta(deltas, metadata.clone(), Box::new(|(_, finalized)| finalized));
 
         if finalized_usd_deltas.is_none() || appearance_usd_deltas.is_none() {
             return None
