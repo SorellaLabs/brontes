@@ -1,11 +1,32 @@
 use std::collections::HashMap;
 
+use clickhouse::Row;
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
+use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::normalized_actions::NormalizedAction;
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Row)]
+pub struct GasDetails {
+    pub coinbase_transfer:   Option<U256>,
+    pub gas_used:            u64,
+    pub effective_gas_price: u64
+}
+
+impl GasDetails {
+    pub fn gas_paid(&self) -> u64 {
+        let mut gas = self.gas_used * self.effective_gas_price;
+        if let Some(coinbase) = self.coinbase_transfer {
+            gas += coinbase.to::<u64>();
+        }
+
+        gas
+    }
+}
+
 pub struct Node<V: NormalizedAction> {
     pub inner:  Vec<Node<V>>,
     pub frozen: bool,
@@ -134,12 +155,10 @@ impl<V: NormalizedAction> Node<V> {
 }
 
 pub struct Root<V: NormalizedAction> {
-    pub head:                Node<V>,
-    pub tx_hash:             H256,
-    pub private:             bool,
-    pub coinbase_transfer:   Option<U256>,
-    pub gas_used:            u64,
-    pub effective_gas_price: u64
+    pub head:        Node<V>,
+    pub tx_hash:     H256,
+    pub private:     bool,
+    pub gas_details: GasDetails
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -192,7 +211,14 @@ impl<V: NormalizedAction> TimeTree<V> {
     pub fn get_priority_fee_for_transaction(&self, hash: H256) -> Option<u64> {
         let tx = self.roots.iter().find(|h| h.tx_hash == hash)?;
 
-        Some(tx.effective_gas_price - self.header.base_fee_per_gas?)
+        Some(tx.gas_details.effective_gas_price - self.header.base_fee_per_gas?)
+    }
+
+    pub fn get_gas_details(&self, hash: H256) -> Option<&GasDetails> {
+        self.roots
+            .iter()
+            .find(|h| h.tx_hash == hash)
+            .map(|root| &root.gas_details)
     }
 
     pub fn insert_root(&mut self, root: Root<V>) {
@@ -203,7 +229,7 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.avg_priority_fee = self
             .roots
             .iter()
-            .map(|tx| tx.effective_gas_price - self.header.base_fee_per_gas.unwrap())
+            .map(|tx| tx.gas_details.effective_gas_price - self.header.base_fee_per_gas.unwrap())
             .sum::<u64>()
             / self.roots.len() as u64;
 
