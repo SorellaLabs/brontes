@@ -12,7 +12,7 @@ use tracing::error;
 
 use crate::{ClassifiedMev, Inspector};
 
-pub struct AtomicBackrunInspector {}
+pub struct AtomicBackrunInspector;
 
 impl AtomicBackrunInspector {
     fn process_swaps(
@@ -25,43 +25,15 @@ impl AtomicBackrunInspector {
     ) -> Option<ClassifiedMev> {
         let deltas = self.calculate_swap_deltas(&swaps);
 
-        let appearance_usd_deltas = deltas
-            .clone()
-            .into_iter()
-            .map(|(caller, tokens)| {
-                let summed_value = tokens
-                    .into_iter()
-                    .map(|(address, mut value)| {
-                        if let Some(price) = metadata.token_prices.get(&address) {
-                            value *= &price.0;
-                        }
-                        value
-                    })
-                    .sum::<Rational>();
-                (caller, summed_value)
-            })
-            .max_by(|x, y| x.1.cmp(&y.1));
+        let appearance_usd_deltas =
+            self.get_best_usd_delta(deltas.clone(), metadata.clone(), |(appearance, _)| appearance);
 
-        let finalized_usd_deltas = deltas
-            .clone()
-            .into_iter()
-            .map(|(caller, tokens)| {
-                let summed_value = tokens
-                    .into_iter()
-                    .map(|(address, mut value)| {
-                        if let Some(price) = metadata.token_prices.get(&address) {
-                            value *= &price.1;
-                        }
-                        value
-                    })
-                    .sum::<Rational>();
-                (caller, summed_value)
-            })
-            .max_by(|x, y| x.1.cmp(&y.1));
+        let finalized_usd_deltas =
+            self.get_best_usd_delta(deltas, metadata.clone(), |(_, finalized)| finalized);
+
         if finalized_usd_deltas.is_none() || appearance_usd_deltas.is_none() {
             return None
         }
-
         let (finalized, appearance) =
             (finalized_usd_deltas.unwrap(), appearance_usd_deltas.unwrap());
 
@@ -77,10 +49,10 @@ impl AtomicBackrunInspector {
         );
 
         Some(ClassifiedMev {
-            contract: finalized.0,
-            gas_details: gas_details.clone(),
-            tx_hash: hash,
-            priority_fee,
+            contract: vec![finalized.0],
+            gas_details: vec![gas_details.clone()],
+            tx_hash: vec![hash],
+            priority_fee: vec![priority_fee],
             block_finalized_profit_usd: f64::rounding_from(
                 &finalized.1 - gas_used_usd_finalized,
                 RoundingMode::Nearest
