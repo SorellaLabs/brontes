@@ -1,4 +1,5 @@
 use alloy_sol_types::SolCall;
+use hex_literal::hex;
 use poirot_core::{
     StaticReturnBindings,
     Uniswap_V3::{burnCall, mintCall, swapCall}
@@ -12,6 +13,10 @@ use crate::{IntoAction, ADDRESS_TO_TOKENS_2_POOL};
 #[derive(Debug, Default)]
 pub struct V3SwapImpl;
 impl IntoAction for V3SwapImpl {
+    fn get_signature(&self) -> [u8; 4] {
+        hex!("128acb08")
+    }
+
     fn decode_trace_data(
         &self,
         _data: StaticReturnBindings,
@@ -52,6 +57,10 @@ impl IntoAction for V3SwapImpl {
 #[derive(Debug, Default)]
 pub struct V3BurnImpl;
 impl IntoAction for V3BurnImpl {
+    fn get_signature(&self) -> [u8; 4] {
+        hex!("a34123a7")
+    }
+
     fn decode_trace_data(
         &self,
         _data: StaticReturnBindings,
@@ -75,6 +84,10 @@ impl IntoAction for V3BurnImpl {
 #[derive(Debug, Default)]
 pub struct V3MintImpl;
 impl IntoAction for V3MintImpl {
+    fn get_signature(&self) -> [u8; 4] {
+        hex!("3c8a7d8d")
+    }
+
     fn decode_trace_data(
         &self,
         _data: StaticReturnBindings,
