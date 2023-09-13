@@ -25,7 +25,6 @@ pub struct ClassifiedMev {
     pub tx_hash:      Vec<H256>,
     pub contract:     Address,
     pub gas_details:  Vec<GasDetails>,
-    pub priority_fee: Vec<u64>,
 
     // results
     pub block_appearance_revenue_usd: f64,
