@@ -25,7 +25,8 @@ impl CexDexInspector {
         gas_details: &GasDetails,
         swaps: Vec<Vec<Actions>>
     ) -> Option<ClassifiedMev> {
-        let cex_dex_deltas = self
+        let cex_dex_d = self.cex_dex_profit_no_gas(swaps, metadata);
+
 
         let appearance_usd_deltas = self.get_best_usd_delta(
             deltas.clone(),
@@ -82,17 +83,14 @@ impl CexDexInspector {
         let mut deltas = HashMap::new();
     
         for actions in swaps.iter() {
-            for action in actions.iter() {
+            for action in actions.iter().map(|action| ) {
                 if let Actions::Swap(swap) = action {
                     
                     // think it should be fine to unwrap here because it should never fail but we never know
-                    let dex_price = self.rational_price(&swap);
-                    let centralized_prices = metadata.token_prices.get(&swap.token_out);
+                    
+                    
     
-                    if centralized_prices.is_none() || dex_price.is_none() {
-                        // TODO(Joe) rip logs here, so if its a big token we should add it 
-                        continue;
-                    }
+                    
     
                     let (cex_price1, cex_price2) = centralized_prices.unwrap();
     
@@ -110,15 +108,41 @@ impl CexDexInspector {
         deltas
     }
 
-    pub fn rational_price(
+    pub fn get_cex_dex(&self, swap: &NormalizedSwap, metadata: &Metadata, dex_price: Rational) -> Option<(&Rational, &Rational)> {
+        let arb = &self.rational_dex_price(&swap, metadata).and_then(| (dex_price, cex_price1, cex_price2 )| {
+            self.profit_classifier(swap, dex_price, cex_price1, cex_price2)
+        });
+    }
+
+    fn profit_classifier(&self,swap: &NormalizedSwap, dex_price: &Rational, cex_price1: &Rational, cex_price2: &Rational, ) -> Option<(Option<Rational>, Option<Rational>)> {
+       // Calculate the price differences between DEX and CEX
+        let delta_price1 = cex_price1 - dex_price;
+        let delta_price2 = cex_price2 - dex_price;
+
+        // Calculate the potential profit
+        let profit1 = delta_price1 * swap.amount_in.to_scaled_rational(18);
+        let profit2 = delta_price2 * swap.amount_in.to_scaled_rational(18);
+
+        // Check if the profit is positive 
+        match (profit1 > Rational::from(0), profit2 > Rational::from(0)) {
+            (true, true) => Some((Some(profit1), Some(profit2))),
+            (true, false) => Some((Some(profit1), None)),
+            (false, true) => Some((None, Some(profit2))),
+            (false, false) => None,
+        }
+    }
+
+
+    pub fn rational_dex_price(
         &self,
         swap: &NormalizedSwap,
-    ) -> Option<Rational> {
+        metadata: &Metadata,
+    ) -> Option<(&Rational, &Rational, &Rational)> {
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             return None
         };
-
+        //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can log it
         let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             return None
@@ -127,10 +151,10 @@ impl CexDexInspector {
         let adjusted_in = swap.amount_in.to_scaled_rational(*decimals_in);
         let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
 
-        Some(adjusted_in / adjusted_out)
+        let centralized_prices = metadata.token_prices.get(&swap.token_out)?;
+
+        Some((&(adjusted_out / adjusted_in), &centralized_prices.0, &centralized_prices.1))
     }
-
-
 }
 
 //TODO(WILL) I think we should reorganise the way we do priority fee, becuase why force a unecessary call on all inspectos when we can just
