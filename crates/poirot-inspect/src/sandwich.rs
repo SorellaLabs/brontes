@@ -45,11 +45,6 @@ impl Inspector for SandwichInspector {
 
         set.into_iter()
             .filter_map(|(tx0, tx1)| {
-                let priority = [
-                    tree.get_priority_fee_for_transaction(tx0).unwrap(),
-                    tree.get_priority_fee_for_transaction(tx1).unwrap()
-                ];
-
                 let gas = [
                     tree.get_gas_details(tx0).cloned().unwrap(),
                     tree.get_gas_details(tx1).cloned().unwrap()
@@ -59,7 +54,6 @@ impl Inspector for SandwichInspector {
                     meta_data.clone(),
                     [tx0, tx1],
                     gas,
-                    priority,
                     vec![tree.inspect(tx0, search_fn.clone()), tree.inspect(tx1, search_fn)]
                         .into_iter()
                         .flatten()
@@ -76,7 +70,6 @@ impl SandwichInspector {
         metadata: Arc<Metadata>,
         txes: [H256; 2],
         gas_details: [GasDetails; 2],
-        priority_fee: [u64; 2],
         actions: Vec<Vec<Actions>>
     ) -> Option<ClassifiedMev> {
         let deltas = self.calculate_swap_deltas(&actions);
@@ -112,7 +105,6 @@ impl SandwichInspector {
             contract: finalized.0,
             gas_details: gas_details.to_vec(),
             tx_hash: txes.to_vec(),
-            priority_fee: priority_fee.to_vec(),
             block_finalized_profit_usd: f64::rounding_from(
                 &finalized.1 - gas_used_usd_finalized,
                 RoundingMode::Nearest
