@@ -61,7 +61,9 @@ impl Classifier {
                     gas_details: poirot_types::tree::GasDetails {
                         coinbase_transfer:   None,
                         gas_used:            trace.gas_used,
-                        effective_gas_price: trace.effective_price
+                        effective_gas_price: trace.effective_price,
+                        priority_fee:        trace.effective_price
+                            - header.base_fee_per_gas.unwrap()
                     }
                 };
 
