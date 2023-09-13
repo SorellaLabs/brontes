@@ -21,12 +21,6 @@ impl<V: NormalizedAction> TimeTree<V> {
         Self { roots: Vec::with_capacity(150), header, eth_prices, avg_priority_fee: 0 }
     }
 
-    pub fn get_priority_fee_for_transaction(&self, hash: H256) -> Option<u64> {
-        let tx = self.roots.iter().find(|h| h.tx_hash == hash)?;
-
-        Some(tx.gas_details.effective_gas_price - self.header.base_fee_per_gas?)
-    }
-
     pub fn get_gas_details(&self, hash: H256) -> Option<&GasDetails> {
         self.roots
             .iter()
@@ -163,6 +157,7 @@ impl<V: NormalizedAction> Root<V> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row)]
 pub struct GasDetails {
     pub coinbase_transfer:   Option<U256>,
+    pub priority_fee:        u64,
     pub gas_used:            u64,
     pub effective_gas_price: u64
 }

@@ -18,7 +18,6 @@ impl AtomicBackrunInspector {
     fn process_swaps(
         &self,
         hash: H256,
-        priority_fee: u64,
         metadata: Arc<Metadata>,
         gas_details: &GasDetails,
         swaps: Vec<Vec<Actions>>
@@ -55,7 +54,6 @@ impl AtomicBackrunInspector {
             contract: finalized.0,
             gas_details: vec![gas_details.clone()],
             tx_hash: vec![hash],
-            priority_fee: vec![priority_fee],
             block_finalized_profit_usd: f64::rounding_from(
                 &finalized.1 - gas_used_usd_finalized,
                 RoundingMode::Nearest
@@ -89,13 +87,7 @@ impl Inspector for AtomicBackrunInspector {
             .into_par_iter()
             .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?;
-                self.process_swaps(
-                    tx,
-                    tree.get_priority_fee_for_transaction(tx).unwrap(),
-                    meta_data.clone(),
-                    gas_details,
-                    swaps
-                )
+                self.process_swaps(tx, meta_data.clone(), gas_details, swaps)
             })
             .collect::<Vec<_>>()
     }
