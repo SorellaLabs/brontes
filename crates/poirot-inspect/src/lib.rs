@@ -1,6 +1,6 @@
 pub mod atomic_backrun;
-pub mod sandwich;
 pub mod cex_dex;
+pub mod sandwich;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -22,9 +22,9 @@ use tracing::error;
 #[derive(Debug, Serialize, Deserialize, Row)]
 pub struct ClassifiedMev {
     // can be multiple for sandwich
-    pub tx_hash:      Vec<H256>,
-    pub contract:     Address,
-    pub gas_details:  Vec<GasDetails>,
+    pub tx_hash:     Vec<H256>,
+    pub contract:    Address,
+    pub gas_details: Vec<GasDetails>,
 
     // results
     pub block_appearance_revenue_usd: f64,
@@ -50,6 +50,8 @@ pub trait Inspector: Send + Sync {
         &self,
         actions: &Vec<Vec<Actions>>
     ) -> HashMap<Address, HashMap<Address, Rational>> {
+        let mut transfers = Vec::new();
+
         // address and there token delta's
         let mut deltas = HashMap::new();
         for action in actions.into_iter().flatten() {
@@ -83,21 +85,40 @@ pub trait Inspector: Send + Sync {
                     }
                 }
             } else if let Actions::Transfer(transfer) = action {
-                let Some(decimals) = TOKEN_TO_DECIMALS.get(&transfer.token.0) else {
-                    error!(missing_token=?transfer.token, "missing token in token to decimal map");
-                    continue
-                };
-
-                let adjusted_amount = transfer.amount.to_scaled_rational(*decimals);
-
-                let from_token_map = deltas.entry(transfer.from).or_default();
-                apply_entry(transfer.token, -adjusted_amount.clone(), from_token_map);
-
-                let to_token_map = deltas.entry(transfer.to).or_default();
-                apply_entry(transfer.token, adjusted_amount, to_token_map);
+                transfers.push(transfer);
             }
         }
 
+        loop {
+            let mut changed = false;
+
+            transfers = transfers
+                .into_iter()
+                .filter_map(|transfer| {
+                    let Some(decimals) = TOKEN_TO_DECIMALS.get(&transfer.token.0) else {
+                        error!(missing_token=?transfer.token, "missing token in token to decimal map");
+                        return None;
+                    };
+                    let adjusted_amount = transfer.amount.to_scaled_rational(*decimals);
+
+                    if let Some(from_token_map) = deltas.get_mut(&transfer.from) {
+                        changed = true;
+                        apply_entry(transfer.token, -adjusted_amount.clone(), from_token_map);
+                    } else {
+                        return Some(transfer)
+                    }
+
+                    let to_token_map = deltas.entry(transfer.to).or_default();
+                    apply_entry(transfer.token, adjusted_amount, to_token_map);
+
+                    return None
+                })
+                .collect::<Vec<_>>();
+
+            if changed == false {
+                break
+            }
+        }
         deltas
     }
 
