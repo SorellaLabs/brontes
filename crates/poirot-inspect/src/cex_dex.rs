@@ -5,6 +5,7 @@ use malachite::{
     rounding_modes::RoundingMode,
     Rational
 };
+use poirot_classifer::enum_unwrap;
 use poirot_labeller::Metadata;
 use poirot_types::{
     normalized_actions::{Actions, NormalizedSwap},
@@ -27,12 +28,12 @@ impl CexDexInspector {
         gas_details: &GasDetails,
         swaps: Vec<Actions>
     ) -> Option<ClassifiedMev> {
-        let (pre, post) = swaps
+        let (swap_data, (pre, post)) = swaps
             .into_iter()
             .filter_map(|action| {
                 if let Actions::Swap(normalized_swap) = action {
-                    // Call get_cex_dex for each normalized swap
-                    Some(self.get_cex_dex(&normalized_swap, metadata.as_ref()))
+                    let (pre, post) = self.get_cex_dex(&normalized_swap, metadata.as_ref());
+                    Some((normalized_swap, (pre, post)))
                 } else {
                     None
                 }
@@ -44,8 +45,9 @@ impl CexDexInspector {
 
         if profit_pre.is_some() || profit_post.is_some() {
             let mev = Some(ClassifiedMev {
-                tx_hash:     vec![hash],
-                gas_details: vec![gas_details.clone()] // TODO: add other fields
+                tx_hash:      vec![hash],
+                block_number: metadata.block_num,
+                mev_bot:      swap[0].call_address
             });
             return mev
         }
