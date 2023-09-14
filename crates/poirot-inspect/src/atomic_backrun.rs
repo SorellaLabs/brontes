@@ -92,5 +92,3 @@ impl Inspector for AtomicBackrunInspector {
             .collect::<Vec<_>>()
     }
 }
-
-pub struct AtomicArb {}
