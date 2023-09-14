@@ -11,16 +11,14 @@ use clickhouse::Row;
 use malachite::Rational;
 use poirot_labeller::Metadata;
 use poirot_types::{
+    classified_mev::{ClassifiedMev, MevBlock},
     normalized_actions::Actions,
     tree::{GasDetails, TimeTree},
-    ToScaledRational, TOKEN_TO_DECIMALS,
-    classified_mev::{ClassifiedMev, MevBlock},
+    ToScaledRational, TOKEN_TO_DECIMALS
 };
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 use tracing::error;
-
-
 
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {

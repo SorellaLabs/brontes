@@ -50,6 +50,7 @@ impl AtomicBackrunInspector {
             Rational::from(gas_used) * &metadata.eth_prices.1
         );
 
+        //TODO(WILL): Add fields, see classified_mev.rs
         Some(ClassifiedMev {
             contract: finalized.0,
             gas_details: vec![gas_details.clone()],
