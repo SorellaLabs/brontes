@@ -94,7 +94,7 @@ eyre = "0.6.8"
 hyper = "0.14.25"
 
 # Serde
-serde = { version = "1.0" }
+serde = "1.0.171"
 serde_json = { version = "1.0" }
 
 # Numbers
