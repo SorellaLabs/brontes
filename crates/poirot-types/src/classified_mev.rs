@@ -29,7 +29,6 @@ pub struct ClassifiedMev {
     pub mev_bot:               Address,
     pub mev_type:              MevType,
     pub submission_profit_usd: f64,
-    pub finalized_profit_usd:  f64,
     pub submission_bribe_uds:  f64,
     pub finalized_bribe_usd:   f64
 }
@@ -37,12 +36,8 @@ pub struct ClassifiedMev {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MevType {
     Sandwich,
-    AtomicBackrun,
     CexDex,
-    DexDex,
-    DexCex,
-    Dex,
-    Cex,
+    Liquidation,
     Unknown
 }
 
