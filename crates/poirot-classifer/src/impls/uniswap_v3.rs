@@ -1,4 +1,5 @@
 use alloy_sol_types::SolCall;
+use hex_literal::hex;
 use poirot_core::{
     StaticReturnBindings,
     Uniswap_V3::{burnCall, mintCall, swapCall}
@@ -12,8 +13,13 @@ use crate::{IntoAction, ADDRESS_TO_TOKENS_2_POOL};
 #[derive(Debug, Default)]
 pub struct V3SwapImpl;
 impl IntoAction for V3SwapImpl {
+    fn get_signature(&self) -> [u8; 4] {
+        swapCall::SELECTOR
+    }
+
     fn decode_trace_data(
         &self,
+        index: u64,
         _data: StaticReturnBindings,
         mut return_data: Bytes,
         address: Address,
@@ -40,6 +46,7 @@ impl IntoAction for V3SwapImpl {
         };
 
         Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
+            index,
             call_address: address,
             token_in,
             token_out,
@@ -52,8 +59,14 @@ impl IntoAction for V3SwapImpl {
 #[derive(Debug, Default)]
 pub struct V3BurnImpl;
 impl IntoAction for V3BurnImpl {
+    fn get_signature(&self) -> [u8; 4] {
+        burnCall::SELECTOR
+    }
+
     fn decode_trace_data(
         &self,
+        index: u64,
+
         _data: StaticReturnBindings,
         return_data: Bytes,
         address: Address,
@@ -65,8 +78,9 @@ impl IntoAction for V3BurnImpl {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
 
         Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
-            from:   address,
-            token:  vec![token_0, token_1],
+            index,
+            from: address,
+            token: vec![token_0, token_1],
             amount: vec![token_0_delta, token_1_delta]
         })
     }
@@ -75,8 +89,13 @@ impl IntoAction for V3BurnImpl {
 #[derive(Debug, Default)]
 pub struct V3MintImpl;
 impl IntoAction for V3MintImpl {
+    fn get_signature(&self) -> [u8; 4] {
+        mintCall::SELECTOR
+    }
+
     fn decode_trace_data(
         &self,
+        index: u64,
         _data: StaticReturnBindings,
         return_data: Bytes,
         address: Address,
@@ -88,8 +107,9 @@ impl IntoAction for V3MintImpl {
         let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
 
         Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
-            to:     address,
-            token:  vec![token0, token1],
+            index,
+            to: address,
+            token: vec![token0, token1],
             amount: vec![token_0_delta, token_1_delta]
         })
     }

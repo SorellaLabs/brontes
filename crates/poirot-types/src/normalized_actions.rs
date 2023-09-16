@@ -1,6 +1,7 @@
+use clickhouse::Row;
 use reth_primitives::{Address, U256};
 use reth_rpc_types::{trace::parity::TransactionTrace, Log};
-
+use serde::Serialize;
 #[derive(Debug, Clone)]
 pub enum Actions {
     Swap(NormalizedSwap),
@@ -39,35 +40,54 @@ impl Actions {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Clone, Row)]
 pub struct NormalizedSwap {
-    pub call_address: Address,
-    pub token_in:     Address,
-    pub token_out:    Address,
-    pub amount_in:    U256,
-    pub amount_out:   U256
+    pub index:      u64,
+    pub from:       Address,
+    pub pool:       Address,
+    pub token_in:   Address,
+    pub token_out:  Address,
+    pub amount_in:  U256,
+    pub amount_out: U256
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Row)]
 pub struct NormalizedTransfer {
+    pub index:  u64,
     pub to:     Address,
     pub from:   Address,
     pub token:  Address,
     pub amount: U256
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Row)]
 pub struct NormalizedMint {
-    pub to:     Address,
-    pub token:  Vec<Address>,
-    pub amount: Vec<U256>
+    pub index:     u64,
+    pub from:      Address,
+    pub to:        Address,
+    pub recipient: Address,
+    pub token:     Vec<Address>,
+    pub amount:    Vec<U256>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Row)]
 pub struct NormalizedBurn {
-    pub from:   Address,
-    pub token:  Vec<Address>,
-    pub amount: Vec<U256>
+    pub index:     u64,
+    pub from:      Address,
+    pub to:        Address,
+    pub recipient: Address,
+    pub token:     Vec<Address>,
+    pub amount:    Vec<U256>
+}
+
+#[derive(Debug, Clone, Row)]
+pub struct NormalizedLiquidation {
+    pub index:      u64,
+    pub liquidator: Address,
+    pub liquidatee: Address,
+    pub token:      Address,
+    pub amount:     U256,
+    pub reward:     U256
 }
 
 pub trait NormalizedAction: Send + Sync + Clone {

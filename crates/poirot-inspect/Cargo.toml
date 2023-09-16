@@ -13,7 +13,10 @@ serde.workspace = true
 async-trait.workspace = true
 poirot-types.workspace = true
 poirot-labeller.workspace = true
+poirot-classifer.workspace = true
 reth-primitives.workspace = true
+rayon.workspace = true
+tracing.workspace = true
 # error handling
 thiserror.workspace = true
 
@@ -22,4 +25,5 @@ serde_with = { version = "3.3.0", features = ["macros"] }
 
 # numbers
 malachite.workspace = true
+
 
