@@ -2,19 +2,22 @@ pub mod const_sql;
 pub mod errors;
 pub(crate) mod serialize;
 pub mod types;
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr
+};
+
+use clickhouse::{Client, Row};
+use hyper_tls::HttpsConnector;
 use malachite::Rational;
-use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
+use reth_primitives::{Address, TxHash, U256};
+use sorella_db_clients::{databases::clickhouse::ClickhouseClient, errors::DatabaseError};
 
 use super::Metadata;
 use crate::database::{
     const_sql::*,
-    types::{DBP2PRelayTimes, DBTardisTrades},
+    types::{DBP2PRelayTimes, DBTardisTrades}
 };
-use clickhouse::{Client, Row};
-use hyper_tls::HttpsConnector;
-use reth_primitives::{Address, TxHash, U256};
-use sorella_db_clients::{databases::clickhouse::ClickhouseClient, errors::DatabaseError};
 
 const RELAYS_TABLE: &str = "relays";
 const MEMPOOL_TABLE: &str = "chainbound_mempool";
@@ -23,7 +26,7 @@ const TARDIS_QUOTES_QUOTES: &str = "tardis_quotes";
 const TARDIS_QUOTES_TRADES: &str = "tardis_trades";
 
 pub struct Database {
-    client: ClickhouseClient,
+    client: ClickhouseClient
 }
 
 impl Default for Database {
@@ -54,7 +57,7 @@ impl Database {
             relay_p2p_times.1,
             cex_prices,
             eth_prices,
-            private_txs,
+            private_txs
         );
 
         metadata
@@ -65,7 +68,7 @@ impl Database {
             .client
             .query_all_params::<String, String>(
                 PRIVATE_FLOW,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
+                vec![block_num.to_string(), format!("{:#x}", block_hash)]
             )
             .await
             .unwrap();
@@ -80,7 +83,7 @@ impl Database {
             .client
             .query_one_params(
                 RELAY_P2P_TIMES,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
+                vec![block_num.to_string(), format!("{:#x}", block_hash)]
             )
             .await
             .unwrap();
@@ -91,13 +94,13 @@ impl Database {
     async fn get_cex_prices(
         &self,
         relay_time: u64,
-        p2p_time: U256,
+        p2p_time: U256
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
             .query_all_params::<u64, (String, f64, f64)>(
                 PRICE,
-                vec![times.0, times.0, times.1, times.1],
+                vec![times.0, times.0, times.1, times.1]
             )
             .await
             .unwrap();
@@ -107,7 +110,7 @@ impl Database {
             .map(|row| {
                 (
                     Address::from_str(&row.0).unwrap(),
-                    (Rational::try_from(row.1).unwrap(), Rational::try_from(row.2).unwrap()),
+                    (Rational::try_from(row.1).unwrap(), Rational::try_from(row.2).unwrap())
                 )
             })
             .collect::<HashMap<Address, (Rational, Rational)>>();
