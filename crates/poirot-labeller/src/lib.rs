@@ -60,7 +60,5 @@ impl<'a> Labeller<'a> {
         block_hash: U256
     ) -> Pin<Box<dyn Future<Output = Metadata> + Send + 'a>> {
         Box::pin(self.client.get_metadata(block_num, block_hash))
-        //let res = self.client.query_all::<types::Relay>(&query).await?;
-        //println!("{:?}", res);
     }
 }
