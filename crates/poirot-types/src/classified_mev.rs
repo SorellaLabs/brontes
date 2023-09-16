@@ -49,10 +49,7 @@ pub enum MevType {
 }
 
 #[derive(Debug, Serialize, Row)]
-pub struct Sandwich<A>
-where
-    A: Row + Serialize
-{
+pub struct Sandwich {
     pub front_run:             H256,
     pub front_run_gas_details: GasDetails,
     pub front_run_swaps:       Vec<NormalizedSwap>,
@@ -67,13 +64,8 @@ where
 
 #[derive(Debug, Serialize)]
 pub struct CexDex {
-    pub mev_bot:               Address,
-    pub gas_details:           Vec<GasDetails>,
-    pub tokens:                Vec<Address>,
-    pub contracts:             Vec<Address>,
-    // results
-    pub submission_profit_usd: f64,
-    pub finalized_profit_usd:  f64,
-    pub submission_bribe_uds:  f64,
-    pub finalized_bribe_usd:   f64
+    pub swaps:       Vec<NormalizedSwap>,
+    pub cex_prices:  Vec<f64>,
+    pub dex_prices:  Vec<f64>,
+    pub gas_details: Vec<GasDetails>
 }
