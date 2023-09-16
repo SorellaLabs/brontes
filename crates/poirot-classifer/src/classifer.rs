@@ -233,7 +233,7 @@ impl Classifier {
                 // burn
                 if to0 == node.address {
                     return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
-                        index: node.index,
+                        index:  node.index,
                         from:   from0,
                         token:  vec![t0, t1],
                         amount: vec![value0, value1]
@@ -242,7 +242,7 @@ impl Classifier {
                 // mint
                 else {
                     return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
-                        index: node.index,
+                        index:  node.index,
                         to:     to0,
                         token:  vec![t0, t1],
                         amount: vec![value0, value1]
@@ -254,19 +254,19 @@ impl Classifier {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                     index,
                     call_address: addr,
-                    token_in:     t1,
-                    token_out:    t0,
-                    amount_in:    value1,
-                    amount_out:   value0
+                    token_in: t1,
+                    token_out: t0,
+                    amount_in: value1,
+                    amount_out: value0
                 }))
             } else {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
                     index,
                     call_address: addr,
-                    token_in:     t0,
-                    token_out:    t1,
-                    amount_in:    value0,
-                    amount_out:   value1
+                    token_in: t0,
+                    token_out: t1,
+                    amount_in: value0,
+                    amount_out: value1
                 }))
             }
         }

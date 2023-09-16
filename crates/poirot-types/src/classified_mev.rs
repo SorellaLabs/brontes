@@ -1,5 +1,4 @@
 use clickhouse::Row;
-use malachite::Rational;
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 
@@ -31,20 +30,27 @@ pub struct ClassifiedMev {
     pub block_number: u64,
     pub tx_hash: H256,
     pub mev_bot: Address,
-    pub mev_type: String,
+    pub mev_type: MevType,
     pub submission_profit_usd: f64,
     pub finalized_profit_usd: f64,
     pub submission_bribe_usd: f64,
     pub finalized_bribe_usd: f64,
 }
 
-#[derive(Debug)]
-
+#[derive(Debug, Serialize, Deserialize)]
 pub enum MevType {
     Sandwich,
     CexDex,
     Liquidation,
     Unknown,
+}
+
+impl Row for MevType {
+    const COLUMN_NAMES: &'static [&'static str] = &["mev_type"];
+}
+
+pub trait SpecificMev: Serialize + Row {
+    const MEV_TYPE: MevType;
 }
 
 #[derive(Debug, Serialize, Row)]
@@ -61,13 +67,21 @@ pub struct Sandwich {
     pub mev_bot: Address,
 }
 
-#[derive(Debug, Serialize)]
+impl SpecificMev for Sandwich {
+    const MEV_TYPE: MevType = MevType::Sandwich;
+}
+
+#[derive(Debug, Serialize, Row)]
 pub struct CexDex {
     pub tx_hash: H256,
     pub swaps: Vec<NormalizedSwap>,
     pub cex_prices: Vec<f64>,
     pub dex_prices: Vec<f64>,
     pub gas_details: Vec<GasDetails>,
+}
+
+impl SpecificMev for CexDex {
+    const MEV_TYPE: MevType = MevType::CexDex;
 }
 
 pub struct Liquidation {
