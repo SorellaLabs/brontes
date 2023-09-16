@@ -3,7 +3,7 @@ use malachite::Rational;
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 
-use crate::tree::GasDetails;
+use crate::{normalized_actions::NormalizedSwap, tree::GasDetails};
 
 #[derive(Debug, Serialize, Deserialize, Row)]
 pub struct MevBlock {
@@ -27,7 +27,12 @@ pub struct ClassifiedMev {
     // can be multiple for sandwich
     pub block_number: u64,
     pub tx_hash: H256,
+    pub mev_bot: Address,
     pub mev_type: String,
+    pub submission_profit_usd: f64,
+    pub finalized_profit_usd: f64,
+    pub submission_bribe_uds: f64,
+    pub finalized_bribe_usd: f64,
 }
 
 #[derive(Debug)]
@@ -48,19 +53,16 @@ pub struct Sandwich<A>
 where
     A: Row + Serialize,
 {
-    pub front_run: (H256, GasDetails),
+    pub front_run: H256,
+    pub front_run_gas_details: GasDetails,
+    pub front_run_swaps: Vec<NormalizedSwap>,
     pub victim: Vec<H256>,
+    pub victim_gas_details: Vec<GasDetails>,
+    pub victim_swaps: Vec<NormalizedSwap>,
     pub back_run: H256,
+    pub back_run_gas_details: GasDetails,
+    pub back_run_swaps: Vec<NormalizedSwap>,
     pub mev_bot: Address,
-    pub gas_details: Vec<GasDetails>,
-    pub tokens: Vec<Address>,
-    pub contracts: Vec<Address>,
-    pub action: Vec<A>,
-    // results
-    pub submission_profit_usd: f64,
-    pub finalized_profit_usd: f64,
-    pub submission_bribe_uds: f64,
-    pub finalized_bribe_usd: f64,
 }
 
 #[derive(Debug, Serialize)]

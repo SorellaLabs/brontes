@@ -1,7 +1,7 @@
 use clickhouse::Row;
 use reth_primitives::{Address, U256};
 use reth_rpc_types::{trace::parity::TransactionTrace, Log};
-
+use serde::Serialize;
 #[derive(Debug, Clone)]
 pub enum Actions {
     Swap(NormalizedSwap),
@@ -44,7 +44,7 @@ impl Actions {
 // it swapper TODO (Will): but i guess caller might be more precise if you are
 // considering that a swap that transfers TODO(Will): to a diff address is a
 // swap + transfer
-#[derive(Debug, Clone, Row)]
+#[derive(Debug, Serialize, Clone, Row)]
 pub struct NormalizedSwap {
     pub call_address: Address,
     pub pool: Address,
