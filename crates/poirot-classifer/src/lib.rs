@@ -14,8 +14,11 @@ use poirot_types::normalized_actions::Actions;
 include!(concat!(env!("OUT_DIR"), "/token_mappings.rs"));
 
 pub trait IntoAction: Debug + Send + Sync {
+    fn get_signature(&self) -> [u8; 4];
+
     fn decode_trace_data(
         &self,
+        index: u64,
         data: StaticReturnBindings,
         return_data: Bytes,
         address: Address,

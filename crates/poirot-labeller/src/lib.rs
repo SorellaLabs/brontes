@@ -11,6 +11,7 @@ use reth_primitives::{Address, TxHash, U256};
 use tokio::sync::mpsc::UnboundedSender;
 pub(crate) mod const_sql;
 
+pub mod const_sql;
 pub mod database;
 
 #[derive(Debug)]

@@ -12,7 +12,10 @@ use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::Parser;
 use poirot_inspect::{ClassifiedMev, Inspector};
 use poirot_labeller::{Labeller, Metadata};
-use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
+use poirot_types::{
+    classified_mev::SpecificMev, normalized_actions::Actions, structured_trace::TxTrace,
+    tree::TimeTree
+};
 use reth_primitives::Header;
 use tokio::task::JoinError;
 
@@ -35,7 +38,7 @@ pub struct Poirot<'a, const N: usize> {
     classifier:    Classifier,
     labeller:      Labeller<'a>,
 
-    inspectors: &'a [&'a Box<dyn Inspector>; N],
+    inspectors: &'a [&'a Box<dyn Inspector<Mev = dyn SpecificMev>>; N],
 
     // pending future data
     inspector_task:  Option<InspectorFut<'a>>,
@@ -123,6 +126,20 @@ impl<'a, const N: usize> Future for Poirot<'a, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // This loop drives the entire state of network and does a lot of work.
+        // Under heavy load (many messages/events), data may arrive faster than it can
+        // be processed (incoming messages/requests -> events), and it is
+        // possible that more data has already arrived by the time an internal
+        // event is processed. Which could turn this loop into a busy loop.
+        // Without yielding back to the executor, it can starve other tasks waiting on
+        // that executor to execute them, or drive underlying resources To prevent this,
+        // we preemptively return control when the `budget` is exhausted. The
+        // value itself is chosen somewhat arbitrarily, it is high enough so the
+        // swarm can make meaningful progress but low enough that this loop does
+        // not starve other tasks for too long. If the budget is exhausted we
+        // manually yield back control to the (coop) scheduler. This manual yield point should prevent situations where polling appears to be frozen. See also <https://tokio.rs/blog/2020-04-preemption>
+        // And tokio's docs on cooperative scheduling <https://docs.rs/tokio/latest/tokio/task/#cooperative-scheduling>
+
         let mut iters = 1024;
         loop {
             if self.start_new_block() {

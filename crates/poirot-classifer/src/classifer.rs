@@ -23,13 +23,13 @@ const TRANSFER_TOPIC: H256 =
 /// goes through and classifies all exchanges
 #[derive(Debug)]
 pub struct Classifier {
-    known_dyn_exchanges: HashMap<Address, (Address, Address)>,
-    static_exchanges:    HashMap<[u8; 4], Box<dyn IntoAction>>
+    known_dyn_protocols: HashMap<Address, (Address, Address)>,
+    static_protocols:    HashMap<[u8; 4], Box<dyn IntoAction>>
 }
 
 impl Classifier {
-    pub fn new(known_exchanges: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
-        Self { static_exchanges: known_exchanges, known_dyn_exchanges: HashMap::default() }
+    pub fn new(known_protocols: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
+        Self { static_protocols: known_protocols, known_dyn_protocols: HashMap::default() }
     }
 
     pub fn build_tree(
@@ -42,33 +42,46 @@ impl Classifier {
             .into_par_iter()
             .map(|mut trace| {
                 let logs = &trace.logs;
+                let address = trace.trace[0].get_from_addr();
+                let classification = self.classify_node(trace.trace.remove(0), logs, 0);
+
                 let node = Node {
-                    inner:      vec![],
-                    frozen:     false,
+                    inner: vec![],
+                    index: 0,
+                    finalized: !classification.is_unclassified(),
                     subactions: vec![],
-                    address:    trace.trace[0].get_from_addr(),
-                    data:       self.classify_node(trace.trace.remove(0), logs)
-                };
-                let mut root = Root {
-                    head:                node,
-                    tx_hash:             trace.tx_hash,
-                    private:             false,
-                    effective_gas_price: trace.effective_price,
-                    gas_used:            trace.gas_used,
-                    coinbase_transfer:   None
+                    address,
+                    data: classification
                 };
 
-                for trace in trace.trace {
-                    root.coinbase_transfer =
+                let mut root = Root {
+                    head:        node,
+                    tx_hash:     trace.tx_hash,
+                    private:     false,
+                    gas_details: poirot_types::tree::GasDetails {
+                        coinbase_transfer:   None,
+                        gas_used:            trace.gas_used,
+                        effective_gas_price: trace.effective_price,
+                        priority_fee:        trace.effective_price
+                            - header.base_fee_per_gas.unwrap()
+                    }
+                };
+
+                for (index, trace) in trace.trace.into_iter().enumerate() {
+                    root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.action);
 
+                    let address = trace.get_from_addr();
+                    let classification = self.classify_node(trace, logs, (index + 1) as u64);
                     let node = Node {
-                        inner:      vec![],
-                        frozen:     false,
+                        index: (index + 1) as u64,
+                        inner: vec![],
+                        finalized: !classification.is_unclassified(),
                         subactions: vec![],
-                        address:    trace.get_from_addr(),
-                        data:       self.classify_node(trace, logs)
+                        address,
+                        data: classification
                     };
+
                     root.insert(node.address, node);
                 }
 
@@ -84,7 +97,50 @@ impl Classifier {
         };
 
         self.try_classify_unknown(&mut tree);
-        tree.freeze_tree();
+
+        // remove duplicate swaps
+        tree.remove_duplicate_data(
+            |node| node.data.is_swap(),
+            |other_nodes, node| {
+                let Actions::Swap(swap_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        if transfer.amount == swap_data.amount_in
+                            && transfer.token == swap_data.token_in
+                        {
+                            return Some(*index)
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+            |node| (node.index, node.data.clone())
+        );
+
+        // remove duplicate mints
+        tree.remove_duplicate_data(
+            |node| node.data.is_mint(),
+            |other_nodes, node| {
+                let Actions::Mint(mint_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
+                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
+                                return Some(*index)
+                            }
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+            |node| (node.index, node.data.clone())
+        );
+
+        tree.finalize_tree();
 
         tree
     }
@@ -101,7 +157,7 @@ impl Classifier {
         }
     }
 
-    fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>) -> Actions {
+    fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>, index: u64) -> Actions {
         let address = trace.get_from_addr();
 
         if let Some(mapping) = PROTOCOL_ADDRESS_MAPPING.get(format!("{address}").as_str()) {
@@ -110,7 +166,8 @@ impl Classifier {
             let sig = &calldata[0..4];
             let res: StaticReturnBindings = mapping.try_decode(&calldata).unwrap();
 
-            return self.static_exchanges.get(sig).unwrap().decode_trace_data(
+            return self.static_protocols.get(sig).unwrap().decode_trace_data(
+                index,
                 res,
                 return_bytes,
                 address,
@@ -122,9 +179,11 @@ impl Classifier {
                 .filter(|log| log.address == address)
                 .cloned()
                 .collect::<Vec<Log>>();
+
             if rem.len() == 1 {
                 if let Some((addr, from, to, value)) = self.decode_transfer(&rem[0]) {
                     return Actions::Transfer(poirot_types::normalized_actions::NormalizedTransfer {
+                        index,
                         to,
                         from,
                         token: addr,
@@ -174,6 +233,7 @@ impl Classifier {
                 // burn
                 if to0 == node.address {
                     return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
+                        index:  node.index,
                         from:   from0,
                         token:  vec![t0, t1],
                         amount: vec![value0, value1]
@@ -182,6 +242,7 @@ impl Classifier {
                 // mint
                 else {
                     return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
+                        index:  node.index,
                         to:     to0,
                         token:  vec![t0, t1],
                         amount: vec![value0, value1]
@@ -191,19 +252,21 @@ impl Classifier {
             // if to0 is to our addr then its the out token
             if to0 == addr {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
+                    index,
                     call_address: addr,
-                    token_in:     t1,
-                    token_out:    t0,
-                    amount_in:    value1,
-                    amount_out:   value0
+                    token_in: t1,
+                    token_out: t0,
+                    amount_in: value1,
+                    amount_out: value0
                 }))
             } else {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
+                    index,
                     call_address: addr,
-                    token_in:     t0,
-                    token_out:    t1,
-                    amount_in:    value0,
-                    amount_out:   value1
+                    token_in: t0,
+                    token_out: t1,
+                    amount_in: value0,
+                    amount_out: value1
                 }))
             }
         }
@@ -212,12 +275,14 @@ impl Classifier {
             let (token, from, to, value) = transfer_data.remove(0);
             if from == addr {
                 return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
+                    index,
                     to,
                     token: vec![token],
                     amount: vec![value]
                 }))
             } else {
                 return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
+                    index,
                     from,
                     token: vec![token],
                     amount: vec![value]
@@ -332,7 +397,7 @@ impl Classifier {
                     // this is already classified
                     return false
                 }
-                if self.known_dyn_exchanges.contains_key(&address) {
+                if self.known_dyn_protocols.contains_key(&address) {
                     return true
                 } else if self.is_possible_exchange(sub_actions) {
                     return true
@@ -341,8 +406,8 @@ impl Classifier {
                 false
             },
             |node| {
-                if self.known_dyn_exchanges.contains_key(&node.address) {
-                    let (token_0, token_1) = self.known_dyn_exchanges.get(&node.address).unwrap();
+                if self.known_dyn_protocols.contains_key(&node.address) {
+                    let (token_0, token_1) = self.known_dyn_protocols.get(&node.address).unwrap();
                     if let Some(res) = self.prove_dyn_action(node, *token_0, *token_1) {
                         // we have reduced the lower part of the tree. we can delete this now
                         node.inner.clear();
@@ -359,7 +424,7 @@ impl Classifier {
         );
 
         new_classifed_exchanges.into_iter().for_each(|(k, v)| {
-            self.known_dyn_exchanges.insert(k, v);
+            self.known_dyn_protocols.insert(k, v);
         });
     }
 }

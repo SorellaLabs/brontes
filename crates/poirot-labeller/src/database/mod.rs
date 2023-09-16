@@ -35,6 +35,29 @@ impl Default for Database {
 /// NEED TO WRITE QUERY FOR ETH PRICE
 impl Database {
     pub async fn get_metadata(&self, block_num: u64, block_hash: U256) -> Metadata {
+        let private_flow = self.get_private_flow(block_num, block_hash).await;
+        let relay_p2p_times = self.get_relay_p2p_times(block_num, block_hash).await;
+        let cex_prices = self
+            .get_cex_prices(relay_p2p_times.0, relay_p2p_times.1)
+            .await;
+
+        // eth price is in cex_prices
+        let eth_prices = Default::default();
+
+        let metadata = Metadata::new(
+            block_num,
+            block_hash,
+            relay_p2p_times.0,
+            relay_p2p_times.1,
+            cex_prices,
+            eth_prices,
+            private_txs,
+        );
+
+        metadata
+    }
+
+    async fn get_private_flow(&self, block_num: u64, block_hash: U256) -> HashSet<TxHash> {
         let private_txs = self
             .client
             .query_all_params::<String, String>(
@@ -47,16 +70,26 @@ impl Database {
             .into_iter()
             .map(|tx| TxHash::from_str(&tx).unwrap())
             .collect::<HashSet<TxHash>>();
+    }
 
-        let times = self
+    async fn get_relay_p2p_times(&self, block_num: u64, block_hash: U256) -> (u64, u64) {
+        let times: (u64, u64) = self
             .client
-            .query_one_params::<String, (u64, u64)>(
-                RELAYS_P2P_TIME,
+            .query_one_params(
+                RELAY_P2P_TIMES,
                 vec![block_num.to_string(), format!("{:#x}", block_hash)],
             )
             .await
             .unwrap();
 
+        times
+    }
+
+    async fn get_cex_prices(
+        &self,
+        relay_time: u64,
+        p2p_time: U256,
+    ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
             .query_all_params::<u64, (String, f64, f64)>(
@@ -76,19 +109,6 @@ impl Database {
             })
             .collect::<HashMap<Address, (Rational, Rational)>>();
 
-        // todo
-        let eth_prices = Default::default();
-
-        let metadata = Metadata::new(
-            block_num,
-            block_hash,
-            times.0,
-            times.1,
-            token_prices,
-            eth_prices,
-            private_txs,
-        );
-
-        metadata
+        token_prices
     }
 }

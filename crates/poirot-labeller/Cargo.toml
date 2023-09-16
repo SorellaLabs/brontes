@@ -8,7 +8,10 @@ edition = "2021"
 [dependencies]
 reth-primitives.workspace = true
 sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients", branch = "main" }
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
 # serde
 serde = { workspace = true, features = ["derive"]}
 serde_json.workspace = true
