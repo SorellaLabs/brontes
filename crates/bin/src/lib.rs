@@ -12,7 +12,10 @@ use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::Parser;
 use poirot_inspect::{ClassifiedMev, Inspector};
 use poirot_labeller::{Labeller, Metadata};
-use poirot_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
+use poirot_types::{
+    classified_mev::SpecificMev, normalized_actions::Actions, structured_trace::TxTrace,
+    tree::TimeTree
+};
 use reth_primitives::Header;
 use tokio::task::JoinError;
 
@@ -35,7 +38,7 @@ pub struct Poirot<'a, const N: usize> {
     classifier:    Classifier,
     labeller:      Labeller<'a>,
 
-    inspectors: &'a [&'a Box<dyn Inspector>; N],
+    inspectors: &'a [&'a Box<dyn Inspector<Mev = dyn SpecificMev>>; N],
 
     // pending future data
     inspector_task:  Option<InspectorFut<'a>>,

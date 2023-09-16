@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    collections::{hash_map::Entry, HashMap, HashSet},
+    sync::Arc
+};
 
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use poirot_labeller::Metadata;
@@ -27,14 +30,26 @@ impl Inspector for SandwichInspector {
         }
 
         let mut set = Vec::new();
-        let mut pairs = (iter.next().unwrap(), iter.next().unwrap());
+        let mut pairs = HashMap::new();
+        let mut possible_victims = HashMap::new();
 
         for root in iter {
-            if root.head.address == pairs.0.head.address {
-                set.push((root.tx_hash, pairs.0.tx_hash));
+            match pairs.entry(root.head.address) {
+                Entry::Vacant(v) => {
+                    v.insert(root.tx_hash);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+                Entry::Occupied(mut o) => {
+                    let entry = o.remove();
+                    if let Some(victims) = possible_victims.remove(o) {
+                        set.push((o, root.tx_hash, victims));
+                    }
+                }
             }
-            pairs.0 = pairs.1;
-            pairs.1 = root;
+
+            possible_victims.iter_mut().for_each(|_, v| {
+                v.push(root.tx_hash);
+            });
         }
 
         let search_fn = |node: &Node<Actions>| {
