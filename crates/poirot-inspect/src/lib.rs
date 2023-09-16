@@ -28,7 +28,7 @@ pub trait Inspector: Send + Sync {
         &self,
         tree: Arc<TimeTree<Actions>>,
         metadata: Arc<Metadata>
-    ) -> (Vec<ClassifiedMev>, Self::Mev);
+    ) -> Vec<(ClassifiedMev, Self::Mev)>;
 
     /// Calculates the swap deltas. if transfers are also passed in. we also
     /// move those deltas on the map around accordingly.
