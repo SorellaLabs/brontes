@@ -31,15 +31,25 @@ impl Inspector for SandwichInspector {
 
         let mut set = Vec::new();
         let mut pairs = HashMap::new();
+        let mut possible_victims = HashMap::new();
 
         for root in iter {
             match pairs.entry(root.head.address) {
-                Entry::Vacant(v) => v.insert(root.tx_hash),
+                Entry::Vacant(v) => {
+                    v.insert(root.tx_hash);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
                 Entry::Occupied(mut o) => {
                     let entry = o.remove();
-                    set.push((o, root.tx_hash));
+                    if let Some(victims) = possible_victims.remove(o) {
+                        set.push((o, root.tx_hash, victims));
+                    }
                 }
             }
+
+            possible_victims.iter_mut().for_each(|_, v| {
+                v.push(root.tx_hash);
+            });
         }
 
         let search_fn = |node: &Node<Actions>| {
