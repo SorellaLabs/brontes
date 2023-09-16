@@ -167,9 +167,16 @@ impl SandwichInspector {
         };
 
         let classified_mev = ClassifiedMev {
+            tx_hash: txes.0,
             mev_bot: mev_addr,
-            block_number: block_number,
+            block_number,
             mev_type: MevType::Sandwich,
-        }
+            submission_profit_usd: f64::rounding_from(appearance.1 * &gas_used_usd_appearance, RoundingMode::Nearest),
+            submission_bribe_usd: f64::rounding_from(gas_used_usd_appearance,RoundingMode::Nearest),
+            finalized_profit_usd: f64::rounding_from(finalized.1 * &gas_used_usd_finalized, RoundingMode::Nearest),
+            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest),
+        };
+
+        Some((classified_mev, sandwich))
     }
 }
