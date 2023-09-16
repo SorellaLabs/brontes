@@ -46,6 +46,7 @@ impl Actions {
 // swap + transfer
 #[derive(Debug, Serialize, Clone, Row)]
 pub struct NormalizedSwap {
+    pub index:        u64,
     pub call_address: Address,
     pub pool: Address,
     pub token_in: Address,
@@ -56,28 +57,32 @@ pub struct NormalizedSwap {
 
 #[derive(Debug, Clone, Row)]
 pub struct NormalizedTransfer {
-    pub to: Address,
-    pub from: Address,
-    pub token: Address,
-    pub amount: U256,
+    pub index:  u64,
+    pub to:     Address,
+    pub from:   Address,
+    pub token:  Address,
+    pub amount: U256
 }
 
 #[derive(Debug, Clone, Row)]
 pub struct NormalizedMint {
-    pub to: Address,
-    pub token: Vec<Address>,
-    pub amount: Vec<U256>,
+    pub index:  u64,
+    pub to:     Address,
+    pub token:  Vec<Address>,
+    pub amount: Vec<U256>
 }
 
 #[derive(Debug, Clone, Row)]
 pub struct NormalizedBurn {
-    pub from: Address,
-    pub token: Vec<Address>,
-    pub amount: Vec<U256>,
+    pub index:  u64,
+    pub from:   Address,
+    pub token:  Vec<Address>,
+    pub amount: Vec<U256>
 }
 
 #[derive(Debug, Clone, Row)]
 pub struct NormalizedLiquidation {
+    pub index:      u64,
     pub liquidator: Address,
     pub liquidatee: Address,
     pub token: Address,
