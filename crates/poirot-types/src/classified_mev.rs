@@ -3,7 +3,10 @@ use malachite::Rational;
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 
-use crate::{normalized_actions::NormalizedSwap, tree::GasDetails};
+use crate::{
+    normalized_actions::{NormalizedLiquidation, NormalizedSwap},
+    tree::GasDetails,
+};
 
 #[derive(Debug, Serialize, Deserialize, Row)]
 pub struct MevBlock {
@@ -30,7 +33,8 @@ pub struct ClassifiedMev {
     pub mev_bot: Address,
     pub mev_type: String,
     pub submission_profit_usd: f64,
-    pub submission_bribe_uds: f64,
+    pub finalized_profit_usd: f64,
+    pub submission_bribe_usd: f64,
     pub finalized_bribe_usd: f64,
 }
 
@@ -59,8 +63,17 @@ pub struct Sandwich {
 
 #[derive(Debug, Serialize)]
 pub struct CexDex {
+    pub tx_hash: H256,
     pub swaps: Vec<NormalizedSwap>,
     pub cex_prices: Vec<f64>,
     pub dex_prices: Vec<f64>,
     pub gas_details: Vec<GasDetails>,
+}
+
+pub struct Liquidation {
+    pub trigger: H256,
+    pub liquidation_tx_hash: H256,
+    pub liquidation_gas_details: GasDetails,
+    pub liquidation_swaps: Vec<NormalizedSwap>,
+    pub liquidation: Vec<NormalizedLiquidation>,
 }
