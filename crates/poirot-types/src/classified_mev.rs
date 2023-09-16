@@ -84,10 +84,15 @@ impl SpecificMev for CexDex {
     const MEV_TYPE: MevType = MevType::CexDex;
 }
 
+#[derive(Debug, Serialize, Row)]
 pub struct Liquidation {
     pub trigger:                 H256,
     pub liquidation_tx_hash:     H256,
     pub liquidation_gas_details: GasDetails,
     pub liquidation_swaps:       Vec<NormalizedSwap>,
     pub liquidation:             Vec<NormalizedLiquidation>
+}
+
+impl SpecificMev for Liquidation {
+    const MEV_TYPE: MevType = MevType::Liquidation;
 }
