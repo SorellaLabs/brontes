@@ -77,7 +77,7 @@ impl Inspector for SandwichInspector {
                             .into_iter()
                             .flatten()
                             .map(|v| {
-                                let Actions::Swap(s) = v else { panic!()};
+                                let Actions::Swap(s) = v else { panic!() };
                                 s
                             })
                             .collect::<Vec<_>>()
@@ -91,7 +91,7 @@ impl Inspector for SandwichInspector {
                             .into_iter()
                             .flatten()
                             .map(|v| {
-                                let Actions::Swap(s) = v else { panic!()};
+                                let Actions::Swap(s) = v else { panic!() };
                                 s
                             })
                             .collect()
@@ -171,10 +171,19 @@ impl SandwichInspector {
             mev_bot: mev_addr,
             block_number,
             mev_type: MevType::Sandwich,
-            submission_profit_usd: f64::rounding_from(appearance.1 * &gas_used_usd_appearance, RoundingMode::Nearest),
-            submission_bribe_usd: f64::rounding_from(gas_used_usd_appearance,RoundingMode::Nearest),
-            finalized_profit_usd: f64::rounding_from(finalized.1 * &gas_used_usd_finalized, RoundingMode::Nearest),
-            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest),
+            submission_profit_usd: f64::rounding_from(
+                appearance.1 * &gas_used_usd_appearance,
+                RoundingMode::Nearest
+            ),
+            submission_bribe_usd: f64::rounding_from(
+                gas_used_usd_appearance,
+                RoundingMode::Nearest
+            ),
+            finalized_profit_usd: f64::rounding_from(
+                finalized.1 * &gas_used_usd_finalized,
+                RoundingMode::Nearest
+            ),
+            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest)
         };
 
         Some((classified_mev, sandwich))

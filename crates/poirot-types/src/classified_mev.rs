@@ -53,6 +53,10 @@ pub trait SpecificMev: Serialize + Row {
     const MEV_TYPE: MevType;
 }
 
+impl<B: SpecificMev + ?Sized> SpecificMev for Box<B> {
+    const MEV_TYPE: MevType = B::MEV_TYPE;
+}
+
 #[derive(Debug, Serialize, Row)]
 pub struct Sandwich {
     pub front_run:             H256,
