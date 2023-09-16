@@ -43,7 +43,7 @@ impl Classifier {
             .map(|mut trace| {
                 let logs = &trace.logs;
                 let address = trace.trace[0].get_from_addr();
-                let classification = self.classify_node(trace.trace.remove(0), logs);
+                let classification = self.classify_node(trace.trace.remove(0), logs, 0);
 
                 let node = Node {
                     inner: vec![],
@@ -72,7 +72,7 @@ impl Classifier {
                         self.get_coinbase_transfer(header.beneficiary, &trace.action);
 
                     let address = trace.get_from_addr();
-                    let classification = self.classify_node(trace, logs);
+                    let classification = self.classify_node(trace, logs, (index + 1) as u64);
                     let node = Node {
                         index: (index + 1) as u64,
                         inner: vec![],
@@ -157,7 +157,7 @@ impl Classifier {
         }
     }
 
-    fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>) -> Actions {
+    fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>, index: u64) -> Actions {
         let address = trace.get_from_addr();
 
         if let Some(mapping) = PROTOCOL_ADDRESS_MAPPING.get(format!("{address}").as_str()) {
@@ -167,6 +167,7 @@ impl Classifier {
             let res: StaticReturnBindings = mapping.try_decode(&calldata).unwrap();
 
             return self.static_protocols.get(sig).unwrap().decode_trace_data(
+                index,
                 res,
                 return_bytes,
                 address,
@@ -182,6 +183,7 @@ impl Classifier {
             if rem.len() == 1 {
                 if let Some((addr, from, to, value)) = self.decode_transfer(&rem[0]) {
                     return Actions::Transfer(poirot_types::normalized_actions::NormalizedTransfer {
+                        index,
                         to,
                         from,
                         token: addr,
@@ -231,6 +233,7 @@ impl Classifier {
                 // burn
                 if to0 == node.address {
                     return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
+                        index: node.index,
                         from:   from0,
                         token:  vec![t0, t1],
                         amount: vec![value0, value1]
@@ -239,6 +242,7 @@ impl Classifier {
                 // mint
                 else {
                     return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
+                        index: node.index,
                         to:     to0,
                         token:  vec![t0, t1],
                         amount: vec![value0, value1]
@@ -248,6 +252,7 @@ impl Classifier {
             // if to0 is to our addr then its the out token
             if to0 == addr {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
+                    index,
                     call_address: addr,
                     token_in:     t1,
                     token_out:    t0,
@@ -256,6 +261,7 @@ impl Classifier {
                 }))
             } else {
                 return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
+                    index,
                     call_address: addr,
                     token_in:     t0,
                     token_out:    t1,
@@ -269,12 +275,14 @@ impl Classifier {
             let (token, from, to, value) = transfer_data.remove(0);
             if from == addr {
                 return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
+                    index,
                     to,
                     token: vec![token],
                     amount: vec![value]
                 }))
             } else {
                 return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
+                    index,
                     from,
                     token: vec![token],
                     amount: vec![value]
