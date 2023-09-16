@@ -11,7 +11,7 @@ use clickhouse::Row;
 use malachite::Rational;
 use poirot_labeller::Metadata;
 use poirot_types::{
-    classified_mev::{ClassifiedMev, MevBlock},
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
     tree::{GasDetails, TimeTree},
     ToScaledRational, TOKEN_TO_DECIMALS
@@ -22,11 +22,13 @@ use tracing::error;
 
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
+    type Mev: SpecificMev;
+
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
         metadata: Arc<Metadata>
-    ) -> Vec<ClassifiedMev>;
+    ) -> (Vec<ClassifiedMev>, Self::Mev);
 
     /// Calculates the swap deltas. if transfers are also passed in. we also
     /// move those deltas on the map around accordingly.
