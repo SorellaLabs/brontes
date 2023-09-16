@@ -1,3 +1,4 @@
+pub mod const_sql;
 pub mod errors;
 pub(crate) mod serialize;
 pub mod types;
@@ -6,8 +7,10 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use super::Metadata;
-use crate::const_sql::*;
-use crate::database::types::{DBP2PRelayTimes, DBTardisTrades};
+use crate::database::{
+    const_sql::*,
+    types::{DBP2PRelayTimes, DBTardisTrades},
+};
 use clickhouse::{Client, Row};
 use hyper_tls::HttpsConnector;
 use reth_primitives::{Address, TxHash, U256};

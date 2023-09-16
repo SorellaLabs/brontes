@@ -14,7 +14,7 @@ fn main() {
 /// writes the sql file as a string to ./src/const_sql.rs
 /// '?' are parameters that need to be bound to
 fn write_sql() {
-    let dest_path = Path::new("./src/const_sql.rs");
+    let dest_path = Path::new("./src/database/const_sql.rs");
     let mut f = File::create(dest_path).unwrap();
 
     for entry in fs::read_dir(SQL_FILE_DIRECTORY).unwrap() {
