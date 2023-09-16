@@ -9,9 +9,7 @@ use malachite::Rational;
 use poirot_metrics::PoirotMetricEvents;
 use reth_primitives::{Address, TxHash, U256};
 use tokio::sync::mpsc::UnboundedSender;
-pub(crate) mod const_sql;
 
-pub mod const_sql;
 pub mod database;
 
 #[derive(Debug)]
@@ -62,7 +60,5 @@ impl<'a> Labeller<'a> {
         block_hash: U256,
     ) -> Pin<Box<dyn Future<Output = Metadata> + Send + 'a>> {
         Box::pin(self.client.get_metadata(block_num, block_hash))
-        //let res = self.client.query_all::<types::Relay>(&query).await?;
-        //println!("{:?}", res);
     }
 }

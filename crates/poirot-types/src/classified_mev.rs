@@ -60,7 +60,7 @@ pub struct Sandwich {
     pub front_run_swaps: Vec<NormalizedSwap>,
     pub victim: Vec<H256>,
     pub victim_gas_details: Vec<GasDetails>,
-    pub victim_swaps: Vec<NormalizedSwap>,
+    pub victim_swaps: Vec<Vec<NormalizedSwap>>,
     pub back_run: H256,
     pub back_run_gas_details: GasDetails,
     pub back_run_swaps: Vec<NormalizedSwap>,
