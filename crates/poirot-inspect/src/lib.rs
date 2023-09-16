@@ -11,6 +11,7 @@ use clickhouse::Row;
 use malachite::Rational;
 use poirot_labeller::Metadata;
 use poirot_types::{
+    classified_mev::{ClassifiedMev, MevBlock},
     normalized_actions::Actions,
     tree::{GasDetails, TimeTree},
     ToScaledRational, TOKEN_TO_DECIMALS
@@ -18,23 +19,6 @@ use poirot_types::{
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 use tracing::error;
-
-#[derive(Debug, Serialize, Deserialize, Row)]
-pub struct ClassifiedMev {
-    // can be multiple for sandwich
-    pub tx_hash:     Vec<H256>,
-    pub mev_bot:     Address,
-    pub gas_details: Vec<GasDetails>,
-    pub tokens:      Vec<Address>,
-    pub protocols:   Vec<(String, Address)>,
-
-    pub block_number:                 u64,
-    // results
-    pub submission_profit_usd:        f64,
-    pub finalized_profit_usd:         f64,
-    pub submission_bribe_percentage_: f64,
-    pub finalized_bribe_percentage_:  f64
-}
 
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {

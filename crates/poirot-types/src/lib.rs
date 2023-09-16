@@ -1,6 +1,7 @@
 use malachite::{num::arithmetic::traits::Pow, Natural, Rational};
 use reth_primitives::U256;
 
+pub mod classified_mev;
 pub mod normalized_actions;
 pub mod structured_trace;
 pub mod tree;
