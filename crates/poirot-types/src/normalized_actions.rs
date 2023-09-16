@@ -40,13 +40,9 @@ impl Actions {
     }
 }
 
-//TODO(Will) : call address is a bit weird of a name here, we should just call
-// it swapper TODO (Will): but i guess caller might be more precise if you are
-// considering that a swap that transfers TODO(Will): to a diff address is a
-// swap + transfer
 #[derive(Debug, Serialize, Clone, Row)]
 pub struct NormalizedSwap {
-    pub call_address: Address,
+    pub from: Address,
     pub pool: Address,
     pub token_in: Address,
     pub token_out: Address,
@@ -64,7 +60,9 @@ pub struct NormalizedTransfer {
 
 #[derive(Debug, Clone, Row)]
 pub struct NormalizedMint {
+    pub from: Address,
     pub to: Address,
+    pub recipient: Address,
     pub token: Vec<Address>,
     pub amount: Vec<U256>,
 }
@@ -72,6 +70,8 @@ pub struct NormalizedMint {
 #[derive(Debug, Clone, Row)]
 pub struct NormalizedBurn {
     pub from: Address,
+    pub to: Address,
+    pub recipient: Address,
     pub token: Vec<Address>,
     pub amount: Vec<U256>,
 }
