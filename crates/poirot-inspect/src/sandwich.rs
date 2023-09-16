@@ -6,10 +6,11 @@ use std::{
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use poirot_labeller::Metadata;
 use poirot_types::{
-    normalized_actions::Actions,
+    classified_mev::Sandwich,
+    normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, Node, TimeTree}
 };
-use reth_primitives::H256;
+use reth_primitives::{Address, H256};
 use tracing::error;
 
 use crate::{ClassifiedMev, Inspector};
@@ -18,11 +19,13 @@ pub struct SandwichInspector;
 
 #[async_trait::async_trait]
 impl Inspector for SandwichInspector {
+    type Mev = Sandwich;
+
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
         meta_data: Arc<Metadata>
-    ) -> Vec<ClassifiedMev> {
+    ) -> (ClassifiedMev, Vec<Self::Mev>) {
         // lets grab the set of all possible sandwich txes
         let mut iter = tree.roots.iter();
         if iter.len() < 3 {
@@ -31,7 +34,7 @@ impl Inspector for SandwichInspector {
 
         let mut set = Vec::new();
         let mut pairs = HashMap::new();
-        let mut possible_victims = HashMap::new();
+        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
 
         for root in iter {
             match pairs.entry(root.head.address) {
@@ -40,9 +43,9 @@ impl Inspector for SandwichInspector {
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
-                    let entry = o.remove();
+                    let entry: H256 = o.remove();
                     if let Some(victims) = possible_victims.remove(o) {
-                        set.push((o, root.tx_hash, victims));
+                        set.push((o, root.tx_hash, root.head.address, victims));
                     }
                 }
             }
@@ -52,27 +55,59 @@ impl Inspector for SandwichInspector {
             });
         }
 
-        let search_fn = |node: &Node<Actions>| {
-            node.subactions
-                .iter()
-                .any(|action| action.is_swap() || action.is_transfer())
-        };
+        let search_fn =
+            |node: &Node<Actions>| node.subactions.iter().any(|action| action.is_swap());
 
         set.into_iter()
-            .filter_map(|(tx0, tx1)| {
+            .filter_map(|(tx0, tx1, mev_addr, victim)| {
                 let gas = [
                     tree.get_gas_details(tx0).cloned().unwrap(),
                     tree.get_gas_details(tx1).cloned().unwrap()
                 ];
 
+                let victim_gas = victim
+                    .iter()
+                    .map(|victim| tree.get_gas_details(victim).cloned().unwrap())
+                    .collect::<Vec<_>>();
+
+                let victim_actions = victim
+                    .iter()
+                    .map(|victim| {
+                        tree.inspect(victim, search_fn.clone())
+                            .into_iter()
+                            .flatten()
+                            .map(|v| {
+                                let Actions::Swap(s) = v else { panic!()};
+                                s
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<Vec<NormalizedSwap>>>();
+
+                let searcher_actions = vec![tx0, tx1]
+                    .into_iter()
+                    .map(|tx| {
+                        tree.inspect(tx, search_fn.clone())
+                            .into_iter()
+                            .flatten()
+                            .map(|v| {
+                                let Actions::Swap(s) = v else { panic!()};
+                                s
+                            })
+                            .collect()
+                    })
+                    .collect::<Vec<Vec<NormalizedSwap>>>();
+
                 self.calculate_sandwich(
+                    tree.header.number,
+                    mev_addr,
                     meta_data.clone(),
                     [tx0, tx1],
                     gas,
-                    vec![tree.inspect(tx0, search_fn.clone()), tree.inspect(tx1, search_fn)]
-                        .into_iter()
-                        .flatten()
-                        .collect::<Vec<Vec<Actions>>>()
+                    searcher_actions,
+                    victim,
+                    victim_actions,
+                    victim_gas
                 )
             })
             .collect::<Vec<_>>()
@@ -82,11 +117,17 @@ impl Inspector for SandwichInspector {
 impl SandwichInspector {
     fn calculate_sandwich(
         &self,
+        block_number: u64,
+        mev_addr: Address,
         metadata: Arc<Metadata>,
         txes: [H256; 2],
-        gas_details: [GasDetails; 2],
-        actions: Vec<Vec<Actions>>
-    ) -> Option<ClassifiedMev> {
+        searcher_gas_details: [GasDetails; 2],
+        searcher_actions: Vec<Vec<NormalizedSwap>>,
+        // victim
+        victim_txes: Vec<H256>,
+        victim_actions: Vec<Vec<NormalizedSwap>>,
+        victim_gas: Vec<GasDetails>
+    ) -> Option<(ClassifiedMev, Sandwich)> {
         let deltas = self.calculate_swap_deltas(&actions);
 
         let appearance_usd_deltas = self.get_best_usd_delta(
@@ -98,11 +139,7 @@ impl SandwichInspector {
         let finalized_usd_deltas =
             self.get_best_usd_delta(deltas, metadata.clone(), Box::new(|(_, finalized)| finalized));
 
-        if finalized_usd_deltas.is_none() || appearance_usd_deltas.is_none() {
-            return None
-        }
-        let (finalized, appearance) =
-            (finalized_usd_deltas.unwrap(), appearance_usd_deltas.unwrap());
+        let (finalized, appearance) = (finalized_usd_deltas?, appearance_usd_deltas?);
 
         if finalized.0 != appearance.0 {
             error!("finalized addr != appearance addr");
@@ -116,22 +153,30 @@ impl SandwichInspector {
             Rational::from(gas_used) * &metadata.eth_prices.1
         );
 
-        Some(ClassifiedMev {
-            contract: finalized.0,
-            gas_details: gas_details.to_vec(),
-            tx_hash: txes.to_vec(),
-            block_finalized_profit_usd: f64::rounding_from(
-                &finalized.1 - gas_used_usd_finalized,
-                RoundingMode::Nearest
-            )
-            .0,
-            block_appearance_profit_usd: f64::rounding_from(
-                &appearance.1 - gas_used_usd_appearance,
-                RoundingMode::Nearest
-            )
-            .0,
-            block_finalized_revenue_usd: f64::rounding_from(finalized.1, RoundingMode::Nearest).0,
-            block_appearance_revenue_usd: f64::rounding_from(appearance.1, RoundingMode::Nearest).0
-        })
+        let sandwich = Sandwich {
+            front_run:             txes.0,
+            front_run_gas_details: gas_details.0,
+            front_run_swaps:       searcher_actions.remove(0)?,
+            victim:                victim_txes,
+            victim_gas_details:    victim_gas,
+            victim_swaps:          victim_actions,
+            back_run:              txes.1,
+            back_run_gas_details:  gas_details.1,
+            back_run_swaps:        searcher_actions.remove(0)?,
+            mev_bot:               mev_addr
+        };
+
+        let classified_mev = ClassifiedMev {
+            tx_hash: txes.0,
+            mev_bot: mev_addr,
+            block_number,
+            mev_type: MevType::Sandwich,
+            submission_profit_usd: f64::rounding_from(appearance.1 * &gas_used_usd_appearance, RoundingMode::Nearest),
+            submission_bribe_usd: f64::rounding_from(gas_used_usd_appearance,RoundingMode::Nearest),
+            finalized_profit_usd: f64::rounding_from(finalized.1 * &gas_used_usd_finalized, RoundingMode::Nearest),
+            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest),
+        };
+
+        Some((classified_mev, sandwich))
     }
 }

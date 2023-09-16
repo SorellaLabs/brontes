@@ -51,7 +51,7 @@ pub struct NormalizedSwap {
     pub amount_out: U256
 }
 
-#[derive(Debug, Clone, Row)]
+#[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedTransfer {
     pub index:  u64,
     pub to:     Address,
@@ -60,7 +60,7 @@ pub struct NormalizedTransfer {
     pub amount: U256
 }
 
-#[derive(Debug, Clone, Row)]
+#[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedMint {
     pub index:     u64,
     pub from:      Address,
@@ -70,7 +70,7 @@ pub struct NormalizedMint {
     pub amount:    Vec<U256>
 }
 
-#[derive(Debug, Clone, Row)]
+#[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedBurn {
     pub index:     u64,
     pub from:      Address,
@@ -80,7 +80,7 @@ pub struct NormalizedBurn {
     pub amount:    Vec<U256>
 }
 
-#[derive(Debug, Clone, Row)]
+#[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedLiquidation {
     pub index:      u64,
     pub liquidator: Address,
