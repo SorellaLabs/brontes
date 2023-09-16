@@ -10,15 +10,20 @@ use poirot_types::{
 type InspectorFut<'a> =
     JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>>;
 
+pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
+
 pub struct DaddyInspector<'a, const N: usize> {
     baby_inspectors:      &'a [&'a Box<dyn Inspector<Mev = Box<dyn SpecificMev>>>; N],
-    inspectors_execution: Option<InspectorFut<'a>>,
-    core:                 DaddyInspectorCore
+    inspectors_execution: Option<InspectorFut<'a>>
 }
 
 impl<'a, const N: usize> DaddyInspector<'a, N> {
     pub fn new(baby_inspectors: &'a [&'a Box<dyn Inspector<Mev = dyn SpecificMev>>; N]) -> Self {
-        Self { baby_inspectors, inspectors_execution: None, core: DaddyInspectorCore::new() }
+        Self { baby_inspectors, inspectors_execution: None }
+    }
+
+    pub fn is_processing(&self) -> bool {
+        self.inspectors_execution.is_some()
     }
 
     pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) {
@@ -29,23 +34,30 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         ) as InspectorFut<'a>);
     }
 
-    pub fn is_processing(&self) -> bool {
-        self.inspectors_execution.is_some()
+    fn on_baby_resolution(
+        &mut self,
+        baby_data: Vec<Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
+    ) -> Poll<Option<DaddyInspectorResults>> {
+        let mut mev_block = MevBlock {
+
+        }
     }
+
+
 }
 
 impl<const N: usize> Stream for DaddyInspector<'_, N> {
-    type Item = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
+    type Item = DaddyInspectorResults;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        todo!()
-    }
-}
-
-pub struct DaddyInspectorCore {}
-
-impl DaddyInspectorCore {
-    pub fn new() -> Self {
-        Self {}
+        if let Some(mut calculations) = self.inspectors_execution.take() {
+            match calculations.poll_next_unpin(cx) {
+                Poll::Ready(data) => self.on_baby_resolution(data),
+                Poll::Pending => {
+                    self.inspectors_execution = Some(calculations);
+                    Poll::Pending
+                }
+            }
+        }
     }
 }
