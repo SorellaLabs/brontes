@@ -18,6 +18,7 @@ pub trait IntoAction: Debug + Send + Sync {
 
     fn decode_trace_data(
         &self,
+        index: u64,
         data: StaticReturnBindings,
         return_data: Bytes,
         address: Address,
