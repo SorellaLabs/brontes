@@ -15,15 +15,15 @@ poirot-types.workspace = true
 poirot-labeller.workspace = true
 poirot-classifer.workspace = true
 reth-primitives.workspace = true
+reth-rpc-types.workspace = true
 rayon.workspace = true
 tracing.workspace = true
 # error handling
 thiserror.workspace = true
-
+auto_impl = "1.1.0"
 # serde
 serde_with = { version = "3.3.0", features = ["macros"] }
 
+strum = { version = "0.25.0", features = ["derive"] }
 # numbers
 malachite.workspace = true
-
-

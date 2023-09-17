@@ -1,5 +1,6 @@
 pub mod atomic_backrun;
 pub mod cex_dex;
+pub mod daddy_inspector;
 pub mod sandwich;
 
 use std::{
