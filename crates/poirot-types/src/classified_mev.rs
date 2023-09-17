@@ -123,7 +123,6 @@ impl SpecificMev for Liquidation {
 }
 
 #[derive(Debug, Serialize, Row)]
-
 pub struct JitLiquidity {
     pub mint_tx_hash: H256,
     pub mint_gas_details: GasDetails,
