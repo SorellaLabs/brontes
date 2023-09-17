@@ -33,19 +33,22 @@ mev_composability!(
     JitSandwich => Sandwich, Jit => false;
 );
 
-type InspectorFut<'a> =
-    JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>>;
+type TypedSpecifiedMev =
+    Box<dyn SpecificMev<ComposableType = dyn SpecificMev, ComposableResult = dyn SpecificMev>>;
 
-pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
+type InspectorFut<'a> =
+    JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, TypedSpecifiedMev)>> + Send + 'a>>>;
+
+pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, TypedSpecifiedMev)>);
 
 pub struct DaddyInspector<'a, const N: usize> {
-    baby_inspectors:      &'a [&'a Box<dyn Inspector<Mev = Box<dyn SpecificMev>>>; N],
+    baby_inspectors:      &'a [&'a Box<dyn Inspector<Mev = TypedSpecifiedMev>>; N],
     inspectors_execution: Option<InspectorFut<'a>>,
     pre_processing:       Option<BlockPreprocessing>
 }
 
 impl<'a, const N: usize> DaddyInspector<'a, N> {
-    pub fn new(baby_inspectors: &'a [&'a Box<dyn Inspector<Mev = dyn SpecificMev>>; N]) -> Self {
+    pub fn new(baby_inspectors: &'a [&'a Box<dyn Inspector<Mev = TypedSpecifiedMev>>; N]) -> Self {
         Self { baby_inspectors, inspectors_execution: None, pre_processing: None }
     }
 
@@ -152,9 +155,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         deps: &[MevType],
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
     ) {
-        let Some(head_mev) = sorted_mev.get(head_mev_type) else {
-            return
-        };
+        let Some(head_mev) = sorted_mev.get(head_mev_type) else { return };
 
         let mut remove_count: HashMap<MevType, usize> = HashMap::new();
 
@@ -164,9 +165,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 let hashes = specific.mev_transaction_hashes();
                 let mut remove_data: Vec<(MevType, usize)> = Vec::new();
                 for dep in deps {
-                    let Some(dep_mev) = sorted_mev.get(dep) else {
-                        continue
-                    };
+                    let Some(dep_mev) = sorted_mev.get(dep) else { continue };
                     for (i, (class, specific)) in dep_mev.iter().enumerate() {
                         let dep_hashes = specific.mev_transaction_hashes();
                         // verify both match
@@ -198,10 +197,55 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
     fn compose_dep_filter(
         &mut self,
-        head_mev_type: &MevType,
-        deps: &&[MevType],
+        parent_mev_type: &MevType,
+        composable_types: &[MevType],
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
     ) {
+        let mut mapping = HashMap::new();
+        // index
+        for x in composable_types {
+            mapping.insert(
+                *x,
+                sorted_mev
+                    .get(x)
+                    .unwrap()
+                    .into_iter()
+                    .map(|(k, v)| (v.mev_transaction_hashes(), (k, v)))
+                    .collect::<HashMap<_, _>>()
+            );
+        }
+
+        // so retarded gotta fix
+        for x in composable_types {
+            let Some(x_types) = sorted_mev.get(x) else {
+                continue
+            };
+            for (classified, regular) in x_types {
+                let addresses = regular.mev_transaction_hashes();
+
+                for y in composable_types {
+                    if y == x {
+                        break
+                    }
+                    let Some(y_types) = sorted_mev.get(y) else {
+                        continue
+                    };
+                    let Some((classified, other)) =
+                        y_types.into_iter().find(|(classifed, underlying)| {
+                            let hashes = underlying.mev_transaction_hashes();
+                            if hashes.len() == addresses.len() && hashes == addresses {
+                                return true
+                            }
+                            dep_hashes
+                                .iter()
+                                .map(|hash| hashes.contains(hash))
+                                .any(|f| f)
+                        }) else {
+                            continue;
+                        };
+                }
+            }
+        }
     }
 }
 

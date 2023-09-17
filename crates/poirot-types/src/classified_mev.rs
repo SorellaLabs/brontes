@@ -66,10 +66,13 @@ impl Row for MevType {
 
 pub trait SpecificMev: Serialize + Row {
     const MEV_TYPE: MevType;
+    type ComposableResult: SpecificMev;
+    type ComposableType: SpecificMev;
 
     fn bribe(&self) -> u64;
     fn priority_fee_paid(&self) -> u64;
     fn mev_transaction_hashes(&self) -> Vec<H256>;
+    fn compose(&mut self, other: Box<Self::ComposableType>) -> Option<Box<Self::ComposableResult>>;
 }
 
 #[derive(Debug, Serialize, Row)]
@@ -86,6 +89,9 @@ pub struct Sandwich {
 }
 
 impl SpecificMev for Sandwich {
+    type ComposableResult = JitLiquiditySandwich;
+    type ComposableType = JitLiquidity;
+
     const MEV_TYPE: MevType = MevType::Sandwich;
 
     fn bribe(&self) -> u64 {
@@ -97,6 +103,10 @@ impl SpecificMev for Sandwich {
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
+        todo!()
+    }
+
+    fn compose(&mut self, other: Box<Self::ComposableType>) -> Option<Box<Self::ComposableResult>> {
         todo!()
     }
 }
@@ -116,6 +126,29 @@ pub struct JitLiquiditySandwich {
     pub back_run_swaps:        Vec<NormalizedSwap>
 }
 
+impl SpecificMev for JitLiquiditySandwich {
+    type ComposableResult = Self;
+    type ComposableType = Self;
+
+    const MEV_TYPE: MevType = MevType::JitSandwich;
+
+    fn bribe(&self) -> u64 {
+        todo!()
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        todo!()
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<H256> {
+        todo!()
+    }
+
+    fn compose(&mut self, other: Box<Self::ComposableType>) -> Option<Box<Self::ComposableResult>> {
+        None
+    }
+}
+
 #[derive(Debug, Serialize, Row)]
 pub struct CexDex {
     pub tx_hash:     H256,
@@ -126,6 +159,9 @@ pub struct CexDex {
 }
 
 impl SpecificMev for CexDex {
+    type ComposableResult = Self;
+    type ComposableType = Self;
+
     const MEV_TYPE: MevType = MevType::CexDex;
 
     fn bribe(&self) -> u64 {
@@ -139,6 +175,10 @@ impl SpecificMev for CexDex {
     fn mev_transaction_hashes(&self) -> Vec<H256> {
         todo!()
     }
+
+    fn compose(&mut self, other: Box<Self::ComposableType>) -> Option<Box<Self::ComposableResult>> {
+        None
+    }
 }
 
 #[derive(Debug, Serialize, Row)]
@@ -151,6 +191,9 @@ pub struct Liquidation {
 }
 
 impl SpecificMev for Liquidation {
+    type ComposableResult = Self;
+    type ComposableType = Self;
+
     const MEV_TYPE: MevType = MevType::Liquidation;
 
     fn bribe(&self) -> u64 {
@@ -163,6 +206,10 @@ impl SpecificMev for Liquidation {
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
         todo!()
+    }
+
+    fn compose(&mut self, other: Box<Self::ComposableType>) -> Option<Box<Self::ComposableResult>> {
+        None
     }
 }
 
@@ -177,4 +224,27 @@ pub struct JitLiquidity {
     pub burn_tx_hash:     H256,
     pub burn_gas_details: GasDetails,
     pub jit_burns:        Vec<NormalizedBurn>
+}
+
+impl SpecificMev for JitLiquidity {
+    type ComposableResult = JitLiquiditySandwich;
+    type ComposableType = Sandwich;
+
+    const MEV_TYPE: MevType = MevType::Jit;
+
+    fn bribe(&self) -> u64 {
+        todo!()
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        todo!()
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<H256> {
+        todo!()
+    }
+
+    fn compose(&mut self, other: Box<Self::ComposableType>) -> Option<Box<Self::ComposableResult>> {
+        todo!()
+    }
 }
