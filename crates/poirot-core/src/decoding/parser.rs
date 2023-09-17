@@ -131,37 +131,16 @@ impl TraceParser {
                     let transaction_traces = trace.full_trace.trace;
                     let tx_hash = trace.transaction_hash;
 
-                    if transaction_traces {
-                        let tx_stats = TransactionStats {
-                            block_num,
-                            tx_hash,
-                            tx_idx: receipt.transaction_index.unwrap().to(),
-                            traces: vec![],
-                            err: Some(TraceParseErrorKind::TracesMissingTx),
-                        };
-                        (
-                            TxTrace::new(
-                                vec![],
-                                tx_hash,
-                                receipt.logs.clone(),
-                                receipt.transaction_index.unwrap().to(),
-                                receipt.gas_used.unwrap().to(),
-                                receipt.effective_gas_price.to(),
-                            ),
-                            tx_stats,
-                        )
-                    } else {
-                        self.parse_transaction(
-                            transaction_traces.unwrap(),
-                            receipt.logs.clone(),
-                            block_num,
-                            tx_hash,
-                            receipt.transaction_index.unwrap().to(),
-                            receipt.gas_used.unwrap().to(),
-                            receipt.effective_gas_price.to(),
-                        )
-                        .await
-                    }
+                    self.parse_transaction(
+                        transaction_traces,
+                        receipt.logs.clone(),
+                        block_num,
+                        tx_hash,
+                        receipt.transaction_index.try_into().unwrap(),
+                        receipt.gas_used.unwrap().to(),
+                        receipt.effective_gas_price.to(),
+                    )
+                    .await
                 },
             ))
             .await
