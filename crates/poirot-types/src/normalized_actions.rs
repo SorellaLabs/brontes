@@ -101,7 +101,7 @@ pub struct NormalizedLoan {
     pub borrower:     Address,
     pub loaned_token: Address,
     pub loan_amount:  U256,
-    pub collateral:   HashMap<Address, U256>
+    pub collateral:   Hashmap<Address, U256>
 }
 
 #[derive(Debug, Clone, Serialize, Row)]
