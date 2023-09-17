@@ -149,17 +149,51 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
     fn replace_dep_filter(
         &mut self,
         head_mev_type: &MevType,
-        deps: &&[MevType],
+        deps: &[MevType],
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
     ) {
-        let Some(head_mev) = sorted_mev.get_mut(head_mev_type) else { return; };
+        let Some(head_mev) = sorted_mev.get(head_mev_type) else {
+            return
+        };
 
-        head_mev.iter_mut().for_each(|(classified, specific)| {
-            let addresses = specific.mev_transaction_hashes();
+        let mut remove_count: HashMap<MevType, usize> = HashMap::new();
 
-            // lets check all deps for head to see if we can compose
-            // shit
-        });
+        let mut flattend_indexes = head_mev
+            .iter()
+            .flat_map(|(classified, specific)| {
+                let hashes = specific.mev_transaction_hashes();
+                let mut remove_data: Vec<(MevType, usize)> = Vec::new();
+                for dep in deps {
+                    let Some(dep_mev) = sorted_mev.get(dep) else {
+                        continue
+                    };
+                    for (i, (class, specific)) in dep_mev.iter().enumerate() {
+                        let dep_hashes = specific.mev_transaction_hashes();
+                        // verify both match
+                        if hashes.len() == dep_hashes.len() && dep_hashes == hashes {
+                            let adjustment = remove_count.entry(*dep).or_default();
+                            remove_data.push((*dep, i - *adjustment));
+                            *adjustment += 1;
+                        }
+                        // we only want one match
+                        else if dep_hashes
+                            .iter()
+                            .map(|hash| hashes.contains(hash))
+                            .any(|f| f)
+                        {
+                            let adjustment = remove_count.entry(*dep).or_default();
+                            remove_data.push((*dep, i + *adjustment));
+                            *adjustment += 1;
+                        }
+                    }
+                }
+
+                remove_data
+            })
+            .collect::<Vec<(MevType, usize)>>();
+        for (mev_type, index) in flattend_indexes {
+            sorted_mev.get_mut(&mev_type).unwrap().remove(index);
+        }
     }
 
     fn compose_dep_filter(
