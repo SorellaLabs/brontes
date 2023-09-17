@@ -82,13 +82,14 @@ pub struct Sandwich {
 
 impl SpecificMev for Sandwich {
     const MEV_TYPE: MevType = MevType::Sandwich;
+
     fn bribe(&self) -> u64 {
         todo!()
     }
+
     fn priority_fee_paid(&self) -> u64 {
         todo!()
     }
-
 }
 
 #[derive(Debug, Serialize, Row)]
@@ -117,9 +118,11 @@ pub struct CexDex {
 
 impl SpecificMev for CexDex {
     const MEV_TYPE: MevType = MevType::CexDex;
+
     fn bribe(&self) -> u64 {
         todo!()
     }
+
     fn priority_fee_paid(&self) -> u64 {
         todo!()
     }
@@ -136,9 +139,11 @@ pub struct Liquidation {
 
 impl SpecificMev for Liquidation {
     const MEV_TYPE: MevType = MevType::Liquidation;
+
     fn bribe(&self) -> u64 {
         todo!()
     }
+
     fn priority_fee_paid(&self) -> u64 {
         todo!()
     }
