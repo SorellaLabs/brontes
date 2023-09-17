@@ -1,8 +1,11 @@
-use std::{collections::HashMap, sync::Arc, task::Poll};
+use std::{any::Any, collections::HashMap, sync::Arc, task::Poll};
 
 use poirot_labeller::Metadata;
 use poirot_types::{
-    classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev},
+    classified_mev::{
+        compose_sandwich_jit, ClassifiedMev, JitLiquidity, MevBlock, MevResult, MevType, Sandwich,
+        SpecificMev
+    },
     normalized_actions::Actions,
     tree::TimeTree
 };
@@ -21,25 +24,34 @@ pub struct BlockPreprocessing {
 /// everything is ordered properly and we have already composed lower level
 /// actions that could effect the higher level composing.
 macro_rules! mev_composability {
+
     ($($mev_type:ident => $($deps:ident),+ => $replace:expr;)+) => {
-        const MEV_FILTER: &'static [(MevType, bool, &'static[MevType])] = &[
+        const MEV_FILTER: &'static [(
+                MevType,
+                Option<Box<dyn Fn(Box<dyn Any>, Box<dyn Any>, ClassifiedMev, ClassifiedMev) ->
+                (ClassifiedMev, Box<dyn SpecificMev>>>),
+                &'static[MevType])] = &[
             $((MevType::$mev_type, $replace, &[$(MevType::$deps,)+]),)+
         ];
     };
 }
 
 mev_composability!(
-    Sandwich => Backrun => true;
-    JitSandwich => Sandwich, Jit => false;
+    // reduce first
+    Sandwich => Backrun => None;
+    // try compose
+    JitSandwich => Sandwich, Jit => Some(Box::new(compose_sandwich_jit));
 );
 
-type TypedSpecifiedMev =
-    Box<dyn SpecificMev<ComposableType = dyn SpecificMev, ComposableResult = dyn SpecificMev>>;
+type TypedSpecifiedMev = Box<dyn SpecificMev>;
 
 type InspectorFut<'a> =
     JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, TypedSpecifiedMev)>> + Send + 'a>>>;
 
-pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, TypedSpecifiedMev)>);
+/// the results downcast using any in order to be able to serialize and
+/// impliment row trait due to the abosulte autism that the db library
+/// requirements
+pub type DaddyInspectorResults = (MevBlock, HashMap<MevType, Vec<(ClassifiedMev, MevResult)>>);
 
 pub struct DaddyInspector<'a, const N: usize> {
     baby_inspectors:      &'a [&'a Box<dyn Inspector<Mev = TypedSpecifiedMev>>; N],
@@ -140,13 +152,38 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
         MEV_FILTER
             .iter()
-            .for_each(|(head_mev_type, replace, dependencies)| {
-                if replace {
-                    self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
+            .for_each(|(head_mev_type, compose_fn, dependencies)| {
+                if let Some(compose_fn) = compose_fn {
+                    self.compose_dep_filter(
+                        head_mev_type,
+                        dependencies,
+                        compose_fn,
+                        &mut sorted_mev
+                    );
                 } else {
-                    self.compose_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
+                    self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
                 }
             });
+
+        // downcast all of the sorted mev results
+        Poll::Ready(Some(
+            sorted_mev
+                .into_iter()
+                .map(|(k, v)| {
+                    let new_v = v
+                        .into_iter()
+                        .map(|(class, other)| {
+                            let any_cast: Box<dyn Any> = other;
+                            match k {
+                                MevType::Jit => MevResult::Jit(*any_cast.downcast().unwrap()),
+                                _ => todo!("add other downcasts for different types")
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    (k, new_v)
+                })
+                .collect()
+        ))
     }
 
     fn replace_dep_filter(
@@ -198,54 +235,17 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
     fn compose_dep_filter(
         &mut self,
         parent_mev_type: &MevType,
+        // we know this has len 2
         composable_types: &[MevType],
+        compose: &Box<dyn Fn(Any, Any, ClassifiedMev) -> Box<dyn SpecificMev>>,
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
     ) {
-        let mut mapping = HashMap::new();
-        // index
-        for x in composable_types {
-            mapping.insert(
-                *x,
-                sorted_mev
-                    .get(x)
-                    .unwrap()
-                    .into_iter()
-                    .map(|(k, v)| (v.mev_transaction_hashes(), (k, v)))
-                    .collect::<HashMap<_, _>>()
-            );
+        if composable_types.len() != 2 {
+            panic!("we only support sequental composiblity for our specific mev");
         }
 
-        // so retarded gotta fix
-        for x in composable_types {
-            let Some(x_types) = sorted_mev.get(x) else {
-                continue
-            };
-            for (classified, regular) in x_types {
-                let addresses = regular.mev_transaction_hashes();
-
-                for y in composable_types {
-                    if y == x {
-                        break
-                    }
-                    let Some(y_types) = sorted_mev.get(y) else {
-                        continue
-                    };
-                    let Some((classified, other)) =
-                        y_types.into_iter().find(|(classifed, underlying)| {
-                            let hashes = underlying.mev_transaction_hashes();
-                            if hashes.len() == addresses.len() && hashes == addresses {
-                                return true
-                            }
-                            dep_hashes
-                                .iter()
-                                .map(|hash| hashes.contains(hash))
-                                .any(|f| f)
-                        }) else {
-                            continue;
-                        };
-                }
-            }
-        }
+        let zero = sorted_mev.get(&composable_types[0]).unwrap();
+        let one = sorted_mev.get(&composable_types[1]).unwrap();
     }
 }
 
