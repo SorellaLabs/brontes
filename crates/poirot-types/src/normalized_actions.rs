@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use clickhouse::Row;
 use reth_primitives::{Address, U256};
 use reth_rpc_types::{trace::parity::TransactionTrace, Log};
 use serde::Serialize;
+
 #[derive(Debug, Clone)]
 pub enum Actions {
     Swap(NormalizedSwap),
@@ -109,7 +112,7 @@ pub struct NormalizedRepayment {
     pub borrower:         Address,
     pub repayed_token:    Address,
     pub repayment_amount: U256,
-    pub collateral:       Hashmap<Address, U256>
+    pub collateral:       HashMap<Address, U256>
 }
 
 pub trait NormalizedAction: Send + Sync + Clone {
