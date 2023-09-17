@@ -6,7 +6,7 @@ use super::{types::TraceParseErrorKind, TransactionTracingMetrics};
 /// computes error increment
 pub(crate) fn increment_error(
     tx_metric: &mut TransactionTracingMetrics,
-    error: TraceParseErrorKind
+    error: TraceParseErrorKind,
 ) {
     match error {
         TraceParseErrorKind::TracesMissingBlock => {
@@ -91,6 +91,16 @@ pub(crate) fn increment_error(
             .increment(1),
         TraceParseErrorKind::EthApiInvalidTransactionSignature => {
             tx_metric.eth_api_invalid_transaction_signature.increment(1)
+        }
+        TraceParseErrorKind::EthApiUnknownSafeOrFinalizedBlock => tx_metric
+            .eth_api_unknown_safe_or_finalized_block
+            .increment(1),
+
+        TraceParseErrorKind::EthApiExecutionTimedOut => {
+            tx_metric.eth_api_execution_timed_out.increment(1)
+        }
+        TraceParseErrorKind::EthApiCallInputError => {
+            tx_metric.eth_api_call_input_error.increment(1)
         }
         TraceParseErrorKind::EthApiPoolError => tx_metric.eth_api_pool_error.increment(1),
         TraceParseErrorKind::EthApiUnknownBlockNumber => {

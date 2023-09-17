@@ -12,7 +12,7 @@ pub enum TraceMetricEvent {
     /// recorded a new tx trace
     TransactionMetricRecieved(TransactionStats),
     /// recorded a new individual tx trace
-    TraceMetricRecieved(TraceStats)
+    TraceMetricRecieved(TraceStats),
 }
 
 impl From<TraceMetricEvent> for PoirotMetricEvents {
@@ -24,8 +24,8 @@ impl From<TraceMetricEvent> for PoirotMetricEvents {
 #[derive(Clone, Debug)]
 pub struct BlockStats {
     pub block_num: u64,
-    pub txs:       Vec<TransactionStats>,
-    pub err:       Option<TraceParseErrorKind>
+    pub txs: Vec<TransactionStats>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl BlockStats {
@@ -45,10 +45,10 @@ impl BlockStats {
 #[derive(Clone, Debug)]
 pub struct TransactionStats {
     pub block_num: u64,
-    pub tx_hash:   H256,
-    pub tx_idx:    u16,
-    pub traces:    Vec<TraceStats>,
-    pub err:       Option<TraceParseErrorKind>
+    pub tx_hash: H256,
+    pub tx_idx: u16,
+    pub traces: Vec<TraceStats>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl TransactionStats {
@@ -56,7 +56,7 @@ impl TransactionStats {
         block_num: u64,
         tx_hash: H256,
         tx_idx: u16,
-        err: Option<TraceParseErrorKind>
+        err: Option<TraceParseErrorKind>,
     ) -> Self {
         Self { block_num, tx_hash, tx_idx, traces: Vec::new(), err }
     }
@@ -70,10 +70,10 @@ impl TransactionStats {
 #[derive(Clone, Copy, Debug)]
 pub struct TraceStats {
     pub block_num: u64,
-    pub tx_hash:   H256,
-    pub tx_idx:    u16,
+    pub tx_hash: H256,
+    pub tx_idx: u16,
     pub trace_idx: u16,
-    pub err:       Option<TraceParseErrorKind>
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl TraceStats {
@@ -82,7 +82,7 @@ impl TraceStats {
         tx_hash: H256,
         tx_idx: u16,
         trace_idx: u16,
-        err: Option<TraceParseErrorKind>
+        err: Option<TraceParseErrorKind>,
     ) -> Self {
         Self { block_num, tx_hash, tx_idx, trace_idx, err }
     }
@@ -157,5 +157,8 @@ pub enum TraceParseErrorKind {
     EthApiInvalidRewardPercentiles,
     EthApiInternalTracingError,
     EthApiInternalEthError,
-    EthApiInternalJsTracerError
+    EthApiInternalJsTracerError,
+    EthApiUnknownSafeOrFinalizedBlock,
+    EthApiExecutionTimedOut,
+    EthApiCallInputError,
 }

@@ -26,7 +26,7 @@ pub enum TraceParseError {
     #[error("send error to prometheus")]
     ChannelSendError(String),
     #[error("trace missing")]
-    EthApiError(EthApiError)
+    EthApiError(EthApiError),
 }
 
 impl From<EtherscanError> for TraceParseError {
@@ -59,6 +59,12 @@ impl From<&TraceParseError> for TraceParseErrorKind {
                 EthApiError::InvalidTransactionSignature => {
                     TraceParseErrorKind::EthApiInvalidTransactionSignature
                 }
+                EthApiError::UnknownSafeOrFinalizedBlock => {
+                    TraceParseErrorKind::EthApiUnknownSafeOrFinalizedBlock
+                }
+                EthApiError::ExecutionTimedOut(_) => TraceParseErrorKind::EthApiExecutionTimedOut,
+                EthApiError::CallInputError(_) => TraceParseErrorKind::EthApiCallInputError,
+
                 EthApiError::PoolError(_) => TraceParseErrorKind::EthApiPoolError,
                 EthApiError::UnknownBlockNumber => TraceParseErrorKind::EthApiUnknownBlockNumber,
                 EthApiError::UnknownBlockOrTxIndex => {
@@ -139,14 +145,14 @@ impl From<&TraceParseError> for TraceParseErrorKind {
                     TraceParseErrorKind::EtherscanCloudFlareSecurityChallenge
                 }
                 EtherscanError::PageNotFound => TraceParseErrorKind::EtherscanPageNotFound,
-                EtherscanError::CacheError(_) => TraceParseErrorKind::EtherscanCacheError
+                EtherscanError::CacheError(_) => TraceParseErrorKind::EtherscanCacheError,
             },
             TraceParseError::AbiParseError(_) => TraceParseErrorKind::AbiParseError,
             TraceParseError::InvalidFunctionSelector(_) => {
                 TraceParseErrorKind::InvalidFunctionSelector
             }
             TraceParseError::AbiDecodingFailed(_) => TraceParseErrorKind::AbiDecodingFailed,
-            TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError
+            TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError,
         }
     }
 }
