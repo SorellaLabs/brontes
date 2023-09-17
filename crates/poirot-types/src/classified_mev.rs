@@ -52,6 +52,9 @@ pub struct ClassifiedMev {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
 pub enum MevType {
     Sandwich,
+    Backrun,
+    JitSandwich,
+    Jit,
     CexDex,
     Liquidation,
     Unknown
@@ -66,6 +69,7 @@ pub trait SpecificMev: Serialize + Row {
 
     fn bribe(&self) -> u64;
     fn priority_fee_paid(&self) -> u64;
+    fn mev_transaction_hashes(&self) -> Vec<H256>;
 }
 
 #[derive(Debug, Serialize, Row)]
@@ -89,6 +93,10 @@ impl SpecificMev for Sandwich {
     }
 
     fn priority_fee_paid(&self) -> u64 {
+        todo!()
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<H256> {
         todo!()
     }
 }
@@ -127,6 +135,10 @@ impl SpecificMev for CexDex {
     fn priority_fee_paid(&self) -> u64 {
         todo!()
     }
+
+    fn mev_transaction_hashes(&self) -> Vec<H256> {
+        todo!()
+    }
 }
 
 #[derive(Debug, Serialize, Row)]
@@ -146,6 +158,10 @@ impl SpecificMev for Liquidation {
     }
 
     fn priority_fee_paid(&self) -> u64 {
+        todo!()
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<H256> {
         todo!()
     }
 }
