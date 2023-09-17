@@ -1,6 +1,5 @@
 use std::{sync::Arc, task::Poll};
 
-use reth_rpc_types::Action;
 use poirot_labeller::Metadata;
 use poirot_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
@@ -8,6 +7,7 @@ use poirot_types::{
     tree::TimeTree
 };
 use reth_primitives::Address;
+use reth_rpc_types::trace::parity::Action;
 
 type InspectorFut<'a> =
     JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>>;
@@ -18,12 +18,7 @@ pub struct BlockPreprocessing {
     meta_data:           Arc<Metadata>,
     cumulative_gas_used: u64,
     cumulative_gas_paid: u64,
-    builder_address:     Address,
-    proposer_address:    Address,
-
-    proposer_mev_reward:                u64,
-    proposer_submission_mev_reward_usd: u64,
-    proposer_finalized_mev_reward_usd:  u64
+    builder_address:     Address
 }
 
 pub struct DaddyInspector<'a, const N: usize> {
@@ -47,6 +42,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 .iter()
                 .map(|inspector| inspector.process_tree(tree.clone(), metadata.clone()))
         ) as InspectorFut<'a>);
+
         self.pre_process(tree, meta_data);
     }
 
@@ -64,14 +60,11 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             .map(|root| root.gas_details.effective_gas_price * root.gas_details.gas_used)
             .sum::<u64>();
 
-        let proposer_address = tree.roots.last().unwrap().inspect(&|node|{
-            node.subactions.iter().any(|action| {
-                if let Actions::Unclassified(unclassified, _) = action {
-                    if let Action::Call(call) = unclassified.action {
-                    }
-
-                }
-            })
+        self.pre_processing = Some(BlockPreprocessing {
+            meta_data,
+            cumulative_gas_used,
+            cumulative_gas_paid,
+            builder_address
         });
     }
 
@@ -79,31 +72,46 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         &mut self,
         baby_data: Vec<Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
     ) -> Poll<Option<DaddyInspectorResults>> {
+        let pre_processing = self.pre_processing.take().unwrap();
+
+        let cum_mev_priority_fee_paid = baby_data
+            .iter()
+            .flatten()
+            .map(|(_, mev)| mev.priority_fee_paid())
+            .sum::<u64>();
+
+        let builder_eth_profit = (total_bribe + pre_processing.cumulative_gas_paid);
+
         let mut mev_block = MevBlock {
-            block_hash: (),
-            block_number: (),
-            mev_count: (),
-            submission_eth_price: (),
-            finalized_eth_price: (),
-            /// Gas
-            cumulative_gas_used: (),
-            cumulative_gas_paid: (),
-            total_bribe: (),
-            cumulative_mev_priority_fee_paid: (),
-            /// Builder address (recipient of coinbase.transfers)
-            builder_address: (),
-            builder_eth_profit: (),
-            builder_submission_profit_usd: (),
-            builder_finalized_profit_usd: (),
-            /// Proposer address
-            proposer_fee_recipient: (),
-            proposer_mev_reward: (),
-            proposer_submission_mev_reward_usd: (),
-            proposer_finalized_mev_reward_usd: (),
-            // gas used * (effective gas price - base fee) for all Classified MEV txs
-            /// Mev profit
-            cumulative_mev_submission_profit_usd: (),
-            cumulative_mev_finalized_profit_usd: ()
+            block_hash: pre_processing.meta_data.block_hash,
+            block_number: pre_processing.meta_data.block_num,
+            mev_count: baby_data.iter().flatten().count() as u64,
+            submission_eth_price: pre_processing.meta_data.eth_prices.0,
+            finalized_eth_price: pre_processing.meta_data.eth_prices.1,
+            cumulative_gas_used: pre_processing.cumulative_gas_used,
+            cumulative_gas_paid: pre_processing.cumulative_gas_paid,
+            total_bribe: baby_data
+                .iter()
+                .flatten()
+                .map(|(_, mev)| mev.bribe())
+                .sum::<u64>(),
+            cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
+            builder_address: pre_processing.builder_address,
+            builder_eth_profit,
+            builder_submission_profit_usd: builder_eth_profit
+                * pre_processing.meta_data.eth_prices.0,
+            builder_finalized_profit_usd: builder_eth_profit
+                * pre_processing.meta_data.eth_prices.1,
+            proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
+            proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
+            proposer_submission_mev_reward_usd: pre_processing.meta_data.proposer_mev_reward
+                * pre_processing.meta_data.eth_prices.0,
+            proposer_finalized_mev_reward_usd: pre_processing.meta_data.proposer_mev_reward
+                * pre_processing.meta_data.eth_prices.1,
+            cumulative_mev_submission_profit_usd: cum_mev_priority_fee_paid
+                * pre_processing.meta_data.eth_prices.0,
+            cumulative_mev_finalized_profit_usd: cum_mev_priority_fee_paid
+                * pre_processing.meta_data.eth_prices.1
         };
     }
 }
