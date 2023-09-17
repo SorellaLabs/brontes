@@ -10,10 +10,15 @@ use futures::{
 };
 use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::Parser;
-use poirot_inspect::{ClassifiedMev, Inspector};
+use poirot_inspect::{
+    daddy_inspector::{self, DaddyInspector},
+    ClassifiedMev, Inspector
+};
 use poirot_labeller::{Labeller, Metadata};
 use poirot_types::{
-    classified_mev::SpecificMev, normalized_actions::Actions, structured_trace::TxTrace,
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    normalized_actions::Actions,
+    structured_trace::TxTrace,
     tree::TimeTree
 };
 use reth_primitives::Header;
@@ -21,8 +26,6 @@ use tokio::task::JoinError;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
-
-type InspectorFut<'a> = JoinAll<Pin<Box<dyn Future<Output = Vec<ClassifiedMev>> + Send + 'a>>>;
 
 type CollectionFut<'a> = Pin<
     Box<
@@ -33,15 +36,13 @@ type CollectionFut<'a> = Pin<
 >;
 
 pub struct Poirot<'a, const N: usize> {
-    current_block: u64,
-    parser:        Parser,
-    classifier:    Classifier,
-    labeller:      Labeller<'a>,
-
-    inspectors: &'a [&'a Box<dyn Inspector<Mev = dyn SpecificMev>>; N],
+    current_block:   u64,
+    parser:          Parser,
+    classifier:      Classifier,
+    labeller:        Labeller<'a>,
+    daddy_inspector: DaddyInspector<'a, N>,
 
     // pending future data
-    inspector_task:  Option<InspectorFut<'a>>,
     classifier_data: Option<CollectionFut<'a>>
 }
 
@@ -50,22 +51,21 @@ impl<'a, const N: usize> Poirot<'a, N> {
         parser: Parser,
         labeller: Labeller<'a>,
         classifier: Classifier,
-        inspectors: &'a [&'a Box<dyn Inspector>; N],
+        daddy_inspector: DaddyInspector<'a, N>,
         init_block: u64
     ) -> Self {
         Self {
             parser,
             labeller,
             classifier,
-            inspectors,
-            inspector_task: None,
+            daddy_inspector,
             current_block: init_block,
             classifier_data: None
         }
     }
 
     fn start_new_block(&self) -> bool {
-        self.classifier_data.is_none() && self.inspector_task.is_none()
+        self.classifier_data.is_none() && !self.daddy_inspector.is_processing()
     }
 
     fn start_collection(&mut self) {
@@ -84,15 +84,10 @@ impl<'a, const N: usize> Poirot<'a, N> {
         self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
     }
 
-    fn start_inspecting(&mut self, tree: Arc<TimeTree<Actions>>, metadata: Arc<Metadata>) {
-        self.inspector_task = Some(join_all(
-            self.inspectors
-                .iter()
-                .map(|inspector| inspector.process_tree(tree.clone(), metadata.clone()))
-        ) as InspectorFut<'a>);
-    }
-
-    fn on_inspectors_finish(&mut self, _data: Vec<Vec<ClassifiedMev>>) {
+    fn on_inspectors_finish(
+        &mut self,
+        data: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>)
+    ) {
         todo!()
     }
 
@@ -102,7 +97,8 @@ impl<'a, const N: usize> Poirot<'a, N> {
                 Poll::Ready((parser_data, labeller_data)) => {
                     let (traces, header) = parser_data.unwrap().unwrap();
                     let tree = self.classifier.build_tree(traces, header, &labeller_data);
-                    self.start_inspecting(tree.into(), labeller_data.into());
+                    self.daddy_inspector
+                        .on_new_tree(tree.into(), labeller_data.into());
                 }
                 Poll::Pending => {
                     self.classifier_data = Some(collection_fut);
@@ -111,13 +107,8 @@ impl<'a, const N: usize> Poirot<'a, N> {
             }
         }
 
-        if let Some(mut inspector_results) = self.inspector_task.take() {
-            match inspector_results.poll_unpin(cx) {
-                Poll::Ready(data) => self.on_inspectors_finish(data),
-                Poll::Pending => {
-                    self.inspector_task = Some(inspector_results);
-                }
-            }
+        if let Poll::Ready(Some(data)) = self.daddy_inspector.poll_next_unpin(cx) {
+            self.on_inspectors_finish(data);
         }
     }
 }

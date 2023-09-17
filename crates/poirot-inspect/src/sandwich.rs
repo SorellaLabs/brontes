@@ -99,7 +99,6 @@ impl Inspector for SandwichInspector {
                     .collect::<Vec<Vec<NormalizedSwap>>>();
 
                 self.calculate_sandwich(
-                    tree.header.number,
                     mev_addr,
                     meta_data.clone(),
                     [tx0, tx1],
@@ -117,7 +116,6 @@ impl Inspector for SandwichInspector {
 impl SandwichInspector {
     fn calculate_sandwich(
         &self,
-        block_number: u64,
         mev_addr: Address,
         metadata: Arc<Metadata>,
         txes: [H256; 2],
@@ -175,15 +173,18 @@ impl SandwichInspector {
                 appearance.1 * &gas_used_usd_appearance,
                 RoundingMode::Nearest
             ),
-            submission_bribe_usd: f64::rounding_from(
+            submission_bribe_usd:  f64::rounding_from(
                 gas_used_usd_appearance,
                 RoundingMode::Nearest
             ),
-            finalized_profit_usd: f64::rounding_from(
+            finalized_profit_usd:  f64::rounding_from(
                 finalized.1 * &gas_used_usd_finalized,
                 RoundingMode::Nearest
             ),
-            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest)
+            finalized_bribe_usd:   f64::rounding_from(
+                gas_used_usd_finalized,
+                RoundingMode::Nearest
+            )
         };
 
         Some((classified_mev, sandwich))
