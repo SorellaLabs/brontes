@@ -5,7 +5,7 @@ use strum::EnumIter;
 
 use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    tree::GasDetails
+    tree::GasDetails,
 };
 
 #[derive(Debug, Serialize, Deserialize, Row)]
@@ -33,20 +33,21 @@ pub struct MevBlock {
     // gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
     pub cumulative_mev_submission_profit_usd: u64,
-    pub cumulative_mev_finalized_profit_usd: u64
+    pub cumulative_mev_finalized_profit_usd: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Row)]
 pub struct ClassifiedMev {
     // can be multiple for sandwich
-    pub block_number:          u64,
-    pub tx_hash:               H256,
-    pub mev_bot:               Address,
-    pub mev_type:              MevType,
+    pub block_number: u64,
+    pub tx_hash: H256,
+    pub mev_executor: Address,
+    pub mev_collector: Address,
+    pub mev_type: MevType,
     pub submission_profit_usd: f64,
-    pub finalized_profit_usd:  f64,
-    pub submission_bribe_usd:  f64,
-    pub finalized_bribe_usd:   f64
+    pub finalized_profit_usd: f64,
+    pub submission_bribe_usd: f64,
+    pub finalized_bribe_usd: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
@@ -57,7 +58,7 @@ pub enum MevType {
     Jit,
     CexDex,
     Liquidation,
-    Unknown
+    Unknown,
 }
 
 impl Row for MevType {
@@ -77,15 +78,15 @@ pub trait SpecificMev: Serialize + Row {
 
 #[derive(Debug, Serialize, Row)]
 pub struct Sandwich {
-    pub front_run:             H256,
+    pub front_run: H256,
     pub front_run_gas_details: GasDetails,
-    pub front_run_swaps:       Vec<NormalizedSwap>,
-    pub victim:                Vec<H256>,
-    pub victim_gas_details:    Vec<GasDetails>,
-    pub victim_swaps:          Vec<Vec<NormalizedSwap>>,
-    pub back_run:              H256,
-    pub back_run_gas_details:  GasDetails,
-    pub back_run_swaps:        Vec<NormalizedSwap>
+    pub front_run_swaps: Vec<NormalizedSwap>,
+    pub victim: Vec<H256>,
+    pub victim_gas_details: Vec<GasDetails>,
+    pub victim_swaps: Vec<Vec<NormalizedSwap>>,
+    pub back_run: H256,
+    pub back_run_gas_details: GasDetails,
+    pub back_run_swaps: Vec<NormalizedSwap>,
 }
 
 impl SpecificMev for Sandwich {
@@ -113,17 +114,17 @@ impl SpecificMev for Sandwich {
 
 #[derive(Debug, Serialize, Row)]
 pub struct JitLiquiditySandwich {
-    pub front_run:             H256,
+    pub front_run: H256,
     pub front_run_gas_details: GasDetails,
-    pub front_run_swaps:       Vec<NormalizedSwap>,
-    pub front_run_mint:        Vec<NormalizedMint>,
-    pub victim:                Vec<H256>,
-    pub victim_gas_details:    Vec<GasDetails>,
-    pub victim_swaps:          Vec<Vec<NormalizedSwap>>,
-    pub back_run:              H256,
-    pub back_run_gas_details:  GasDetails,
-    pub back_run_burn:         Vec<NormalizedBurn>,
-    pub back_run_swaps:        Vec<NormalizedSwap>
+    pub front_run_swaps: Vec<NormalizedSwap>,
+    pub front_run_mint: Vec<NormalizedMint>,
+    pub victim: Vec<H256>,
+    pub victim_gas_details: Vec<GasDetails>,
+    pub victim_swaps: Vec<Vec<NormalizedSwap>>,
+    pub back_run: H256,
+    pub back_run_gas_details: GasDetails,
+    pub back_run_burn: Vec<NormalizedBurn>,
+    pub back_run_swaps: Vec<NormalizedSwap>,
 }
 
 impl SpecificMev for JitLiquiditySandwich {
@@ -151,11 +152,11 @@ impl SpecificMev for JitLiquiditySandwich {
 
 #[derive(Debug, Serialize, Row)]
 pub struct CexDex {
-    pub tx_hash:     H256,
-    pub swaps:       Vec<NormalizedSwap>,
-    pub cex_prices:  Vec<f64>,
-    pub dex_prices:  Vec<f64>,
-    pub gas_details: Vec<GasDetails>
+    pub tx_hash: H256,
+    pub swaps: Vec<NormalizedSwap>,
+    pub cex_prices: Vec<f64>,
+    pub dex_prices: Vec<f64>,
+    pub gas_details: Vec<GasDetails>,
 }
 
 impl SpecificMev for CexDex {
@@ -183,11 +184,11 @@ impl SpecificMev for CexDex {
 
 #[derive(Debug, Serialize, Row)]
 pub struct Liquidation {
-    pub trigger:                 H256,
-    pub liquidation_tx_hash:     H256,
+    pub trigger: H256,
+    pub liquidation_tx_hash: H256,
     pub liquidation_gas_details: GasDetails,
-    pub liquidation_swaps:       Vec<NormalizedSwap>,
-    pub liquidation:             Vec<NormalizedLiquidation>
+    pub liquidation_swaps: Vec<NormalizedSwap>,
+    pub liquidation: Vec<NormalizedLiquidation>,
 }
 
 impl SpecificMev for Liquidation {
@@ -215,15 +216,15 @@ impl SpecificMev for Liquidation {
 
 #[derive(Debug, Serialize, Row)]
 pub struct JitLiquidity {
-    pub mint_tx_hash:     H256,
+    pub mint_tx_hash: H256,
     pub mint_gas_details: GasDetails,
-    pub jit_mints:        Vec<NormalizedMint>,
-    pub swap_tx_hash:     H256,
+    pub jit_mints: Vec<NormalizedMint>,
+    pub swap_tx_hash: H256,
     pub swap_gas_details: GasDetails,
-    pub swaps:            Vec<NormalizedSwap>,
-    pub burn_tx_hash:     H256,
+    pub swaps: Vec<NormalizedSwap>,
+    pub burn_tx_hash: H256,
     pub burn_gas_details: GasDetails,
-    pub jit_burns:        Vec<NormalizedBurn>
+    pub jit_burns: Vec<NormalizedBurn>,
 }
 
 impl SpecificMev for JitLiquidity {
