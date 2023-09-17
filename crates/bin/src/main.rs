@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     env,
     error::Error,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
+    net::{IpAddr, Ipv4Addr, SocketAddr}
 };
 
 use bin::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
@@ -52,9 +52,9 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     initialize(
         SocketAddr::new(
             IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
-            PROMETHEUS_ENDPOINT_PORT,
+            PROMETHEUS_ENDPOINT_PORT
         ),
-        Collector::default(),
+        Collector::default()
     )
     .await
     .unwrap();
@@ -62,14 +62,14 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let db_path = match env::var("DB_PATH") {
         Ok(path) => path,
-        Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
+        Err(_) => return Err(Box::new(std::env::VarError::NotPresent))
     };
 
     info!("Found DB Path");
 
     let key = match env::var("ETHERSCAN_API_KEY") {
         Ok(key) => key,
-        Err(_) => return Err(Box::new(std::env::VarError::NotPresent)),
+        Err(_) => return Err(Box::new(std::env::VarError::NotPresent))
     };
     info!("Found Etherscan API Key");
 

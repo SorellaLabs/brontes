@@ -5,7 +5,7 @@ use alloy_json_abi::JsonAbi;
 use futures::future::join_all;
 use poirot_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
-    PoirotMetricEvents
+    PoirotMetricEvents,
 };
 use reth_primitives::{Header, H256};
 use reth_provider::HeaderProvider;
@@ -13,9 +13,9 @@ use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{
     trace::parity::{
         Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
-        TraceType, TransactionTrace
+        TraceType, TransactionTrace,
     },
-    Log, TransactionReceipt
+    Log, TransactionReceipt,
 };
 use reth_tracing::TracingClient;
 
@@ -26,16 +26,16 @@ use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 pub(crate) struct TraceParser {
-    etherscan_client:      Client,
-    pub tracer:            Arc<TracingClient>,
-    pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>
+    etherscan_client: Client,
+    pub tracer: Arc<TracingClient>,
+    pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
 impl TraceParser {
     pub fn new(
         etherscan_client: Client,
         tracer: Arc<TracingClient>,
-        metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>
+        metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
         Self { etherscan_client, tracer, metrics_tx }
     }
@@ -49,7 +49,7 @@ impl TraceParser {
             self.metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
                 .unwrap();
-            return None
+            return None;
         }
         let traces = self
             .parse_block(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
@@ -63,7 +63,7 @@ impl TraceParser {
     /// traces a block into a vec of tx traces
     pub(crate) async fn trace_block(
         &self,
-        block_num: u64
+        block_num: u64,
     ) -> (Option<Vec<TraceResultsWithTransactionHash>>, BlockStats) {
         let mut trace_type = HashSet::new();
         trace_type.insert(TraceType::Trace);
@@ -73,7 +73,7 @@ impl TraceParser {
             .trace
             .replay_block_transactions(
                 BlockId::Number(BlockNumberOrTag::Number(block_num)),
-                trace_type
+                trace_type,
             )
             .await;
 
@@ -96,7 +96,7 @@ impl TraceParser {
     /// gets the transaction $receipts for a block   
     pub(crate) async fn get_receipts(
         &self,
-        block_num: u64
+        block_num: u64,
     ) -> (Option<Vec<TransactionReceipt>>, BlockStats) {
         let tx_receipts = self
             .tracer
@@ -111,7 +111,7 @@ impl TraceParser {
                 stats.err = Some(TraceParseErrorKind::TracesMissingBlock);
                 None
             }
-            _ => None
+            _ => None,
         };
 
         (receipts, stats)
@@ -121,7 +121,7 @@ impl TraceParser {
         &self,
         block_trace: Vec<TraceResultsWithTransactionHash>,
         block_receipts: Vec<TransactionReceipt>,
-        block_num: u64
+        block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
         let mut stats = BlockStats::new(block_num, None);
 
@@ -131,13 +131,13 @@ impl TraceParser {
                     let transaction_traces = trace.full_trace.trace;
                     let tx_hash = trace.transaction_hash;
 
-                    if transaction_traces.is_none() {
+                    if transaction_traces {
                         let tx_stats = TransactionStats {
                             block_num,
                             tx_hash,
                             tx_idx: receipt.transaction_index.unwrap().to(),
                             traces: vec![],
-                            err: Some(TraceParseErrorKind::TracesMissingTx)
+                            err: Some(TraceParseErrorKind::TracesMissingTx),
                         };
                         (
                             TxTrace::new(
@@ -146,9 +146,9 @@ impl TraceParser {
                                 receipt.logs.clone(),
                                 receipt.transaction_index.unwrap().to(),
                                 receipt.gas_used.unwrap().to(),
-                                receipt.effective_gas_price.to()
+                                receipt.effective_gas_price.to(),
                             ),
-                            tx_stats
+                            tx_stats,
                         )
                     } else {
                         self.parse_transaction(
@@ -158,11 +158,11 @@ impl TraceParser {
                             tx_hash,
                             receipt.transaction_index.unwrap().to(),
                             receipt.gas_used.unwrap().to(),
-                            receipt.effective_gas_price.to()
+                            receipt.effective_gas_price.to(),
                         )
                         .await
                     }
-                }
+                },
             ))
             .await
             .into_iter()
@@ -179,7 +179,7 @@ impl TraceParser {
                 .provider()
                 .header_by_number(block_num)
                 .unwrap()
-                .unwrap()
+                .unwrap(),
         )
     }
 
@@ -192,7 +192,7 @@ impl TraceParser {
         tx_hash: H256,
         tx_idx: u64,
         gas_used: u64,
-        effective_gas_price: u64
+        effective_gas_price: u64,
     ) -> (TxTrace, TransactionStats) {
         init_trace!(tx_hash, tx_idx, tx_trace.len());
         let mut traces = Vec::new();
@@ -201,7 +201,7 @@ impl TraceParser {
             tx_hash,
             tx_idx: tx_idx as u16,
             traces: vec![],
-            err: None
+            err: None,
         };
 
         let len = tx_trace.len();
@@ -228,12 +228,12 @@ impl TraceParser {
         &self,
         trace: TransactionTrace,
         block_num: u64,
-        tx_hash: H256
+        tx_hash: H256,
     ) -> Result<(), TraceParseError> {
         let (action, trace_address) = if let RethAction::Call(call) = trace.action {
             (call, trace.trace_address)
         } else {
-            return Ok(())
+            return Ok(());
         };
 
         //let binding = StaticBindings::Curve_Crypto_Factory_V2;
@@ -247,7 +247,7 @@ impl TraceParser {
         // Check if the input is empty, indicating a potential `receive` or `fallback`
         // function call.
         if action.input.is_empty() {
-            return Ok(())
+            return Ok(());
         }
 
         let _ = self
@@ -266,7 +266,7 @@ impl TraceParser {
         action: &RethCallAction,
         _trace_address: &[usize],
         _tx_hash: &H256,
-        _block_num: u64
+        _block_num: u64,
     ) -> Result<(), TraceParseError> {
         // check decoding with the regular abi
 
