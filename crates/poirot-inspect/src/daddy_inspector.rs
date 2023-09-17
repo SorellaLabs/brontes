@@ -1,18 +1,14 @@
-use std::{sync::Arc, task::Poll};
+use std::{collections::HashMap, sync::Arc, task::Poll};
 
 use poirot_labeller::Metadata;
 use poirot_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev},
     normalized_actions::Actions,
     tree::TimeTree
 };
 use reth_primitives::Address;
 use reth_rpc_types::trace::parity::Action;
-
-type InspectorFut<'a> =
-    JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>>;
-
-pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
+use strum::IntoEnumIterator;
 
 pub struct BlockPreprocessing {
     meta_data:           Arc<Metadata>,
@@ -20,6 +16,11 @@ pub struct BlockPreprocessing {
     cumulative_gas_paid: u64,
     builder_address:     Address
 }
+
+type InspectorFut<'a> =
+    JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>>;
+
+pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
 
 pub struct DaddyInspector<'a, const N: usize> {
     baby_inspectors:      &'a [&'a Box<dyn Inspector<Mev = Box<dyn SpecificMev>>>; N],
@@ -68,15 +69,12 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         });
     }
 
-    fn on_baby_resolution(
+    fn build_mev_header(
         &mut self,
-        baby_data: Vec<Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
-    ) -> Poll<Option<DaddyInspectorResults>> {
+        baby_data: impl AsRef<Iterator<Item = (ClassifiedMev, Box<dyn SpecificMev>)>>
+    ) -> MevBlock {
         let pre_processing = self.pre_processing.take().unwrap();
-
         let cum_mev_priority_fee_paid = baby_data
-            .iter()
-            .flatten()
             .map(|(_, mev)| mev.priority_fee_paid())
             .sum::<u64>();
 
@@ -85,16 +83,12 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         let mut mev_block = MevBlock {
             block_hash: pre_processing.meta_data.block_hash,
             block_number: pre_processing.meta_data.block_num,
-            mev_count: baby_data.iter().flatten().count() as u64,
+            mev_count: baby_data.count(),
             submission_eth_price: pre_processing.meta_data.eth_prices.0,
             finalized_eth_price: pre_processing.meta_data.eth_prices.1,
             cumulative_gas_used: pre_processing.cumulative_gas_used,
             cumulative_gas_paid: pre_processing.cumulative_gas_paid,
-            total_bribe: baby_data
-                .iter()
-                .flatten()
-                .map(|(_, mev)| mev.bribe())
-                .sum::<u64>(),
+            total_bribe: baby_data.map(|(_, mev)| mev.bribe()).sum::<u64>(),
             cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
             builder_address: pre_processing.builder_address,
             builder_eth_profit,
@@ -114,6 +108,19 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 * pre_processing.meta_data.eth_prices.1
         };
     }
+
+    fn on_baby_resolution(
+        &mut self,
+        baby_data: impl Iterator<Item = (ClassifiedMev, Box<dyn SpecificMev>)>
+    ) -> Poll<Option<DaddyInspectorResults>> {
+        let header = self.build_mev_header(&baby_data);
+
+        let mut sorted_mev = baby_data
+            .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
+            .collect::<HashMap<MevType, (ClassifiedMev, Box<dyn SpecificMev>)>>();
+
+        for mev_type in MevType::iter() {}
+    }
 }
 
 impl<const N: usize> Stream for DaddyInspector<'_, N> {
@@ -122,7 +129,7 @@ impl<const N: usize> Stream for DaddyInspector<'_, N> {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Some(mut calculations) = self.inspectors_execution.take() {
             match calculations.poll_next_unpin(cx) {
-                Poll::Ready(data) => self.on_baby_resolution(data),
+                Poll::Ready(data) => self.on_baby_resolution(data.into_iter().flatten()),
                 Poll::Pending => {
                     self.inspectors_execution = Some(calculations);
                     Poll::Pending
