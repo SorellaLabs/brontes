@@ -18,7 +18,6 @@ clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
 strum = { version = "0.25.0", features = ["derive"] }
 auto_impl = "1.1.0"
 
-
 [build-dependencies]
 strum = { version = "0.25.0", features = ["derive"] }
 tokio.workspace = true
