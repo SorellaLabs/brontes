@@ -24,7 +24,6 @@ thiserror.workspace = true
 # serde
 serde_with = { version = "3.3.0", features = ["macros"] }
 
+strum = { version = "0.25.0", features = ["derive"] }
 # numbers
 malachite.workspace = true
-
-
