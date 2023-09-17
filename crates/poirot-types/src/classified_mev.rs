@@ -1,6 +1,7 @@
 use clickhouse::Row;
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
+use strum::EnumIter;
 
 use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
@@ -48,7 +49,7 @@ pub struct ClassifiedMev {
     pub finalized_bribe_usd:   f64
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
 pub enum MevType {
     Sandwich,
     CexDex,
