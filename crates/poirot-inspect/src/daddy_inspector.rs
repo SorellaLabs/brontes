@@ -17,6 +17,22 @@ pub struct BlockPreprocessing {
     builder_address:     Address
 }
 
+/// we use this to define a filter that we can iterate over such that
+/// everything is ordered properly and we have already composed lower level
+/// actions that could effect the higher level composing.
+macro_rules! mev_composability {
+    ($($mev_type:ident => $($deps:ident),+ => $replace:expr;)+) => {
+        const MEV_FILTER: &'static [(MevType, bool, &'static[MevType])] = &[
+            $((MevType::$mev_type, $replace, &[$(MevType::$deps,)+]),)+
+        ];
+    };
+}
+
+mev_composability!(
+    Sandwich => Backrun => true;
+    JitSandwich => Sandwich, Jit => false;
+);
+
 type InspectorFut<'a> =
     JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>>;
 
@@ -117,9 +133,41 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
         let mut sorted_mev = baby_data
             .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
-            .collect::<HashMap<MevType, (ClassifiedMev, Box<dyn SpecificMev>)>>();
+            .collect::<HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>>();
 
-        for mev_type in MevType::iter() {}
+        MEV_FILTER
+            .iter()
+            .for_each(|(head_mev_type, replace, dependencies)| {
+                if replace {
+                    self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
+                } else {
+                    self.compose_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
+                }
+            });
+    }
+
+    fn replace_dep_filter(
+        &mut self,
+        head_mev_type: &MevType,
+        deps: &&[MevType],
+        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
+    ) {
+        let Some(head_mev) = sorted_mev.get_mut(head_mev_type) else { return; };
+
+        head_mev.iter_mut().for_each(|(classified, specific)| {
+            let addresses = specific.mev_transaction_hashes();
+
+            // lets check all deps for head to see if we can compose
+            // shit
+        });
+    }
+
+    fn compose_dep_filter(
+        &mut self,
+        head_mev_type: &MevType,
+        deps: &&[MevType],
+        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
+    ) {
     }
 }
 
