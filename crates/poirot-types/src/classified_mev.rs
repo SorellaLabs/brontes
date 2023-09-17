@@ -3,7 +3,7 @@ use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    normalized_actions::{NormalizedLiquidation, NormalizedSwap},
+    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     tree::GasDetails,
 };
 
@@ -75,11 +75,25 @@ pub struct Sandwich {
     pub back_run: H256,
     pub back_run_gas_details: GasDetails,
     pub back_run_swaps: Vec<NormalizedSwap>,
-    pub mev_bot: Address,
 }
 
 impl SpecificMev for Sandwich {
     const MEV_TYPE: MevType = MevType::Sandwich;
+}
+
+#[derive(Debug, Serialize, Row)]
+pub struct JitSandwich {
+    pub front_run: H256,
+    pub front_run_gas_details: GasDetails,
+    pub front_run_swaps: Vec<NormalizedSwap>,
+    pub front_run_mint: Vec<NormalizedMint>,
+    pub victim: Vec<H256>,
+    pub victim_gas_details: Vec<GasDetails>,
+    pub victim_swaps: Vec<Vec<NormalizedSwap>>,
+    pub back_run: H256,
+    pub back_run_gas_details: GasDetails,
+    pub back_run_burn: Vec<NormalizedBurn>,
+    pub back_run_swaps: Vec<NormalizedSwap>,
 }
 
 #[derive(Debug, Serialize, Row)]
