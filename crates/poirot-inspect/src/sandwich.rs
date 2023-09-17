@@ -165,10 +165,10 @@ impl SandwichInspector {
         };
 
         let classified_mev = ClassifiedMev {
-            tx_hash:               txes.0,
-            mev_bot:               mev_addr,
-            block_number:          metadata.block_num,
-            mev_type:              MevType::Sandwich,
+            tx_hash: txes.0,
+            mev_bot: mev_addr,
+            block_number,
+            mev_type: MevType::Sandwich,
             submission_profit_usd: f64::rounding_from(
                 appearance.1 * &gas_used_usd_appearance,
                 RoundingMode::Nearest

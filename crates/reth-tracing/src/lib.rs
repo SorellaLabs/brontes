@@ -3,14 +3,14 @@ use std::{fmt::Debug, path::Path, sync::Arc};
 use eyre::Context;
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
-    externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree
+    externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
 use reth_db::{
     database::{Database, DatabaseGAT},
     mdbx::{Env, WriteMap},
     tables,
     transaction::DbTx,
-    DatabaseError
+    DatabaseError,
 };
 use reth_network_api::noop::NoopNetwork;
 use reth_primitives::MAINNET;
@@ -19,28 +19,35 @@ use reth_revm::Factory;
 use reth_rpc::{
     eth::{
         cache::{EthStateCache, EthStateCacheConfig},
-        gas_oracle::{GasPriceOracle, GasPriceOracleConfig}
+        gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
+        RPC_DEFAULT_GAS_CAP,
     },
-    EthApi, TraceApi, TracingCallGuard
+    EthApi, TraceApi, TracingCallGuard, TracingCallPool,
 };
 use reth_tasks::TaskManager;
-use reth_transaction_pool::{EthTransactionValidator, GasCostOrdering, Pool, PooledTransaction};
+use reth_transaction_pool::{
+    blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
+    EthPooledTransaction, EthTransactionValidator, Pool, PoolTransaction, TransactionOrdering,
+    TransactionValidationTaskExecutor,
+};
 use tokio::runtime::Handle;
 
 pub type Provider = BlockchainProvider<
     Arc<Env<WriteMap>>,
-    ShareableBlockchainTree<Arc<Env<WriteMap>>, Arc<BeaconConsensus>, Factory>
+    ShareableBlockchainTree<Arc<Env<WriteMap>>, Arc<BeaconConsensus>, Factory>,
 >;
 
 pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork>;
 
-pub type RethTxPool =
-    Pool<EthTransactionValidator<Provider, PooledTransaction>, GasCostOrdering<PooledTransaction>>;
+pub type RethTxPool = Pool<
+    TransactionValidationTaskExecutor<EthTransactionValidator<Provider, EthPooledTransaction>>,
+    CoinbaseTipOrdering<EthPooledTransaction>,
+    NoopBlobStore,
+>;
 
-#[derive(Debug)]
 pub struct TracingClient {
-    pub api:   EthApi<Provider, RethTxPool, NoopNetwork>,
-    pub trace: TraceApi<Provider, RethApi>
+    pub api: EthApi<Provider, RethTxPool, NoopNetwork>,
+    pub trace: TraceApi<Provider, RethApi>,
 }
 
 impl TracingClient {
@@ -57,7 +64,7 @@ impl TracingClient {
             db.clone(),
             Arc::new(BeaconConsensus::new(Arc::clone(&chain))),
             Factory::new(chain.clone()),
-            Arc::clone(&chain)
+            Arc::clone(&chain),
         );
 
         let tree_config = BlockchainTreeConfig::default();
@@ -67,20 +74,24 @@ impl TracingClient {
 
         let blockchain_tree = ShareableBlockchainTree::new(
             BlockchainTree::new(tree_externals, canon_state_notification_sender, tree_config)
-                .unwrap()
+                .unwrap(),
         );
 
         let provider = BlockchainProvider::new(
             ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain)),
-            blockchain_tree
+            blockchain_tree,
         )
         .unwrap();
 
         let state_cache = EthStateCache::spawn(provider.clone(), EthStateCacheConfig::default());
 
+        let transaction_validator = EthTransactionValidatorBuilder::new(chain.clone())
+            .build_with_tasks(provider.clone(), task_executor.clone(), NoopBlobStore::default());
+
         let tx_pool = reth_transaction_pool::Pool::eth_pool(
-            EthTransactionValidator::new(provider.clone(), chain, task_executor.clone()),
-            Default::default()
+            transaction_validator,
+            NoopBlobStore::default(),
+            Default::default(),
         );
 
         let api = EthApi::new(
@@ -91,19 +102,15 @@ impl TracingClient {
             GasPriceOracle::new(
                 provider.clone(),
                 GasPriceOracleConfig::default(),
-                state_cache.clone()
-            )
+                state_cache.clone(),
+            ),
+            RPC_DEFAULT_GAS_CAP,
+            TracingCallPool::build().unwrap(),
         );
 
         let tracing_call_guard = TracingCallGuard::new(10);
 
-        let trace = TraceApi::new(
-            provider,
-            api.clone(),
-            state_cache,
-            Box::new(task_executor),
-            tracing_call_guard
-        );
+        let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
         Self { api, trace }
     }
@@ -114,7 +121,7 @@ impl TracingClient {
 /// /reth/crates/storage/db/src/abstraction/database.rs
 pub fn view<F, T>(db: &Env<WriteMap>, f: F) -> Result<T, DatabaseError>
 where
-    F: FnOnce(&<Env<WriteMap> as DatabaseGAT<'_>>::TX) -> T
+    F: FnOnce(&<Env<WriteMap> as DatabaseGAT<'_>>::TX) -> T,
 {
     let tx = db.tx()?;
     let res = f(&tx);
@@ -129,7 +136,7 @@ pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<Env<WriteMap>> {
     let db = reth_db::mdbx::Env::<reth_db::mdbx::WriteMap>::open(
         path.as_ref(),
         reth_db::mdbx::EnvKind::RO,
-        None
+        None,
     )?;
 
     view(&db, |tx| {
