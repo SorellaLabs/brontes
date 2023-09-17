@@ -82,7 +82,7 @@ impl SpecificMev for Sandwich {
 }
 
 #[derive(Debug, Serialize, Row)]
-pub struct JitSandwich {
+pub struct JitLiquiditySandwich {
     pub front_run: H256,
     pub front_run_gas_details: GasDetails,
     pub front_run_swaps: Vec<NormalizedSwap>,
@@ -120,4 +120,18 @@ pub struct Liquidation {
 
 impl SpecificMev for Liquidation {
     const MEV_TYPE: MevType = MevType::Liquidation;
+}
+
+#[derive(Debug, Serialize, Row)]
+
+pub struct JitLiquidity {
+    pub mint_tx_hash: H256,
+    pub mint_gas_details: GasDetails,
+    pub jit_mints: Vec<NormalizedMint>,
+    pub swap_tx_hash: H256,
+    pub swap_gas_details: GasDetails,
+    pub swaps: Vec<NormalizedSwap>,
+    pub burn_tx_hash: H256,
+    pub burn_gas_details: GasDetails,
+    pub jit_burns: Vec<NormalizedBurn>,
 }
