@@ -15,6 +15,7 @@ FROM ethereum.relays
 INNER JOIN ethereum.chainbound_block_observations_remote as cb
 ON ethereum.relays.block_number = cb.block_number
 WHERE  block_number = ? AND block_hash = ?"#;
+<<<<<<< HEAD
 
 pub const PRICES: &str = r#"SELECT 
     any(bt.timestamp) as timestamp, 
@@ -32,3 +33,5 @@ WHERE
 GROUP BY 
     bt.symbol;"#;
 
+=======
+>>>>>>> 7326a2de874dbf27f75196eb3db8b291299b972c
