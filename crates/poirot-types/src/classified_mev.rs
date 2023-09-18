@@ -38,7 +38,7 @@ pub struct MevBlock {
     pub cumulative_mev_finalized_profit_usd: u64
 }
 
-#[derive(Debug, Serialize, Deserialize, Row)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone)]
 pub struct ClassifiedMev {
     // can be multiple for sandwich
     pub block_number:          u64,
@@ -53,7 +53,7 @@ pub struct ClassifiedMev {
     pub finalized_bribe_usd:   f64
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
 pub enum MevType {
     Sandwich,
     Backrun,
@@ -77,12 +77,12 @@ impl Row for MevType {
 }
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
-pub trait SpecificMev {
+pub trait SpecificMev: 'static {
     fn mev_type(&self) -> MevType;
     fn mev_transaction_hashes(&self) -> Vec<H256>;
 }
 
-#[derive(Debug, Serialize, Row)]
+#[derive(Debug, Serialize, Row, Clone)]
 pub struct Sandwich {
     pub front_run:             H256,
     pub front_run_gas_details: GasDetails,
@@ -146,7 +146,7 @@ impl SpecificMev for Sandwich {
     }
 }
 
-#[derive(Debug, Serialize, Row)]
+#[derive(Debug, Serialize, Row, Clone)]
 pub struct JitLiquiditySandwich {
     pub front_run:             H256,
     pub front_run_gas_details: GasDetails,
@@ -171,7 +171,7 @@ impl SpecificMev for JitLiquiditySandwich {
     }
 }
 
-#[derive(Debug, Serialize, Row)]
+#[derive(Debug, Serialize, Row, Clone)]
 pub struct CexDex {
     pub tx_hash:     H256,
     pub swaps:       Vec<NormalizedSwap>,
@@ -190,7 +190,7 @@ impl SpecificMev for CexDex {
     }
 }
 
-#[derive(Debug, Serialize, Row)]
+#[derive(Debug, Serialize, Row, Clone)]
 pub struct Liquidation {
     pub trigger:                 H256,
     pub liquidation_tx_hash:     H256,
@@ -209,7 +209,7 @@ impl SpecificMev for Liquidation {
     }
 }
 
-#[derive(Debug, Serialize, Row)]
+#[derive(Debug, Serialize, Row, Clone)]
 pub struct JitLiquidity {
     pub mint_tx_hash:     H256,
     pub mint_gas_details: GasDetails,
