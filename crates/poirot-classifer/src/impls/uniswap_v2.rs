@@ -79,6 +79,7 @@ impl IntoAction for V2MintImpl {
         for log in logs {
             if let Ok((amount_0, amount_1)) = Mint::decode_data(&log.data, true) {
                 return Actions::Mint(NormalizedMint {
+                    recipient: address,
                     index,
                     to,
                     token: vec![token_0, token_1],
@@ -109,6 +110,7 @@ impl IntoAction for V2BurnImpl {
         for log in logs {
             if let Ok((amount_0, amount_1)) = Burn::decode_data(&log.data, true) {
                 return Actions::Burn(NormalizedBurn {
+                    recipient: address,
                     index,
                     from: address,
                     token: vec![token_0, token_1],
