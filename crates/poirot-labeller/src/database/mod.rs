@@ -29,6 +29,14 @@ pub struct Database {
     client: ClickhouseClient,
 }
 
+#[derive(Debug, Clone, Row, Deserialize)]
+pub struct RelayInfo {
+    pub relay_time: u64,
+    pub p2p_time: u64,
+    pub proposer_addr: Address,
+    pub proposer_reward: u64,
+}
+
 impl Default for Database {
     fn default() -> Self {
         Self { client: ClickhouseClient::default() }
@@ -116,12 +124,4 @@ impl Database {
 
         token_prices
     }
-}
-
-#[derive(Debug, Clone, Row, Deserialize)]
-pub struct RelayInfo {
-    pub relay_time: u64,
-    pub p2p_time: u64,
-    pub proposer_addr: Address,
-    pub proposer_reward: u64,
 }
