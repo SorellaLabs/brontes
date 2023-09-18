@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     future::Future,
-    pin::Pin
+    pin::Pin,
 };
 
 use database::Database;
@@ -14,15 +14,15 @@ pub mod database;
 
 #[derive(Debug)]
 pub struct Metadata {
-    pub block_num:              u64,
-    pub block_hash:             U256,
-    pub relay_timestamp:        u64,
-    pub p2p_timestamp:          u64,
-    pub token_prices:           HashMap<Address, (Rational, Rational)>,
-    pub eth_prices:             (Rational, Rational),
+    pub block_num: u64,
+    pub block_hash: U256,
+    pub relay_timestamp: u64,
+    pub p2p_timestamp: u64,
     pub proposer_fee_recipient: Address,
-    pub proposer_mev_reward:    u64,
-    pub mempool:                HashSet<TxHash>
+    pub proposer_mev_reward: u64,
+    pub token_prices: HashMap<Address, (Rational, Rational)>,
+    pub eth_prices: (Rational, Rational),
+    pub mempool_flow: HashSet<TxHash>,
 }
 
 impl Metadata {
@@ -31,11 +31,11 @@ impl Metadata {
         block_hash: U256,
         relay_timestamp: u64,
         p2p_timestamp: u64,
-        token_prices: HashMap<Address, (Rational, Rational)>,
-        eth_prices: (Rational, Rational),
         proposer_fee_recipient: Address,
         proposer_mev_reward: u64,
-        mempool: HashSet<TxHash>
+        token_prices: HashMap<Address, (Rational, Rational)>,
+        eth_prices: (Rational, Rational),
+        mempool_flow: HashSet<TxHash>,
     ) -> Self {
         Self {
             block_num,
@@ -46,13 +46,13 @@ impl Metadata {
             eth_prices,
             proposer_fee_recipient,
             proposer_mev_reward,
-            mempool
+            mempool_flow,
         }
     }
 }
 pub struct Labeller<'a> {
-    pub client:            &'a Database,
-    pub(crate) metrics_tx: UnboundedSender<PoirotMetricEvents>
+    pub client: &'a Database,
+    pub(crate) metrics_tx: UnboundedSender<PoirotMetricEvents>,
 }
 
 impl<'a> Labeller<'a> {
@@ -63,7 +63,7 @@ impl<'a> Labeller<'a> {
     pub fn get_metadata(
         &self,
         block_num: u64,
-        block_hash: U256
+        block_hash: U256,
     ) -> Pin<Box<dyn Future<Output = Metadata> + Send + 'a>> {
         Box::pin(self.client.get_metadata(block_num, block_hash))
     }
