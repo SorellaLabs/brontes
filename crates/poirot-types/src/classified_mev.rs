@@ -41,11 +41,12 @@ pub struct MevBlock {
 #[derive(Debug, Serialize, Deserialize, Row)]
 pub struct ClassifiedMev {
     // can be multiple for sandwich
-    pub block_number:          u64,
-    pub tx_hash:               H256,
-    pub mev_executor:          Address,
-    pub mev_collector:         Address,
-    pub mev_type:              MevType,
+    pub block_number: u64,
+    pub tx_hash: H256,
+    pub eoa: Address,
+    pub mev_contract: Address,
+    pub mev_profit_collector: Address,
+    pub mev_type: MevType,
     pub submission_profit_usd: f64,
     pub finalized_profit_usd:  f64,
     pub submission_bribe_usd:  f64,
