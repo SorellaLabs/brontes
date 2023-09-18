@@ -4795,6 +4795,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
+ "futures",
  "hyper",
  "hyper-tls",
  "malachite",
