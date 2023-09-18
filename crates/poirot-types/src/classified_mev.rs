@@ -71,11 +71,13 @@ pub enum MevResult {
     Liquidation(Liquidation)
 }
 
+impl Row for MevType {
+    const COLUMN_NAMES: &'static [&'static str] = &["mev_type"];
+}
+
 /// Because of annoying trait requirements. we do some degenerate shit here.
 pub trait SpecificMev {
     fn mev_type(&self) -> MevType;
-    fn bribe(&self) -> u64;
-    fn priority_fee_paid(&self) -> u64;
     fn mev_transaction_hashes(&self) -> Vec<H256>;
 }
 
@@ -101,7 +103,35 @@ pub fn compose_sandwich_jit(
     let sandwich: Sandwich = *sandwich.downcast().unwrap();
     let jit: JitLiquidity = *jit.downcast().unwrap();
 
-    todo!()
+    let jit_sand = Box::new(JitLiquiditySandwich {
+        front_run:             sandwich.front_run,
+        back_run:              sandwich.back_run,
+        front_run_mint:        jit.jit_mints,
+        front_run_swaps:       sandwich.swaps,
+        front_run_gas_details: sandwich.front_run_gas_details,
+        victim:                sandwich.victim,
+        victim_swaps:          sandwich.victim_swaps,
+        back_run_burn:         jit.jit_burns,
+        back_run_swaps:        sandwich.back_run_swaps,
+        victim_gas_details:    sandwich.victim_gas_details,
+        back_run_gas_details:  sandwich.back_run_gas_details
+    });
+
+    let new_classifed = ClassifiedMev {
+        tx_hash:               sandwich.front_run,
+        mev_type:              MevType::JitSandwich,
+        block_number:          sandwich_classified.block_number,
+        mev_executor:          sandwich_classified.mev_executor,
+        mev_collector:         sandwich_classified.mev_collector,
+        finalized_bribe_usd:   sandwich_classified.finalized_bribe_usd,
+        submission_bribe_usd:  sandwich_classified.submission_bribe_usd,
+        submission_profit_usd: sandwich_classified.submission_profit_usd
+            + jit_classified.submission_profit_usd,
+        finalized_profit_usd:  sandwich_classified.finalized_profit_usd
+            + jit_classified.finalized_profit_usd
+    };
+
+    (new_classifed, jit_sand)
 }
 
 impl SpecificMev for Sandwich {
@@ -109,16 +139,8 @@ impl SpecificMev for Sandwich {
         MevType::Sandwich
     }
 
-    fn bribe(&self) -> u64 {
-        todo!()
-    }
-
-    fn priority_fee_paid(&self) -> u64 {
-        todo!()
-    }
-
     fn mev_transaction_hashes(&self) -> Vec<H256> {
-        todo!()
+        vec![self.front_run, self.back_run]
     }
 }
 
@@ -142,16 +164,8 @@ impl SpecificMev for JitLiquiditySandwich {
         MevType::JitSandwich
     }
 
-    fn bribe(&self) -> u64 {
-        todo!()
-    }
-
-    fn priority_fee_paid(&self) -> u64 {
-        todo!()
-    }
-
     fn mev_transaction_hashes(&self) -> Vec<H256> {
-        todo!()
+        vec![self.front_run, self.back_run]
     }
 }
 
@@ -169,16 +183,8 @@ impl SpecificMev for CexDex {
         MevType::CexDex
     }
 
-    fn bribe(&self) -> u64 {
-        todo!()
-    }
-
-    fn priority_fee_paid(&self) -> u64 {
-        todo!()
-    }
-
     fn mev_transaction_hashes(&self) -> Vec<H256> {
-        todo!()
+        vec![tx_hash]
     }
 }
 
@@ -196,16 +202,8 @@ impl SpecificMev for Liquidation {
         MevType::Liquidation
     }
 
-    fn bribe(&self) -> u64 {
-        todo!()
-    }
-
-    fn priority_fee_paid(&self) -> u64 {
-        todo!()
-    }
-
     fn mev_transaction_hashes(&self) -> Vec<H256> {
-        todo!()
+        vec![self.liquidation_tx_hash]
     }
 }
 
@@ -227,15 +225,7 @@ impl SpecificMev for JitLiquidity {
         MevType::Jit
     }
 
-    fn bribe(&self) -> u64 {
-        todo!()
-    }
-
-    fn priority_fee_paid(&self) -> u64 {
-        todo!()
-    }
-
     fn mev_transaction_hashes(&self) -> Vec<H256> {
-        todo!()
+        vec![self.mint_tx_hash, self.burn_tx_hash]
     }
 }
