@@ -41,12 +41,12 @@ pub struct MevBlock {
 #[derive(Debug, Serialize, Deserialize, Row)]
 pub struct ClassifiedMev {
     // can be multiple for sandwich
-    pub block_number: u64,
-    pub tx_hash: H256,
-    pub eoa: Address,
-    pub mev_contract: Address,
-    pub mev_profit_collector: Address,
-    pub mev_type: MevType,
+    pub block_number:          u64,
+    pub tx_hash:               H256,
+    pub eoa:                   Address,
+    pub mev_contract:          Address,
+    pub mev_profit_collector:  Address,
+    pub mev_type:              MevType,
     pub submission_profit_usd: f64,
     pub finalized_profit_usd:  f64,
     pub submission_bribe_usd:  f64,
@@ -122,8 +122,9 @@ pub fn compose_sandwich_jit(
         tx_hash:               sandwich.front_run,
         mev_type:              MevType::JitSandwich,
         block_number:          sandwich_classified.block_number,
-        mev_executor:          sandwich_classified.mev_executor,
-        mev_collector:         sandwich_classified.mev_collector,
+        eoa:                   jit_classified.eoa,
+        mev_contract:          sandwich_classified.mev_contract,
+        mev_profit_collector:  sandwich_classified.mev_profit_collector,
         finalized_bribe_usd:   sandwich_classified.finalized_bribe_usd,
         submission_bribe_usd:  sandwich_classified.submission_bribe_usd,
         submission_profit_usd: sandwich_classified.submission_profit_usd
