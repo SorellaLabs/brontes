@@ -12,14 +12,14 @@ pub enum Actions {
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
 
-    Unclassified(TransactionTrace, Vec<Log>),
+    Unclassified(TransactionTrace, Vec<Log>)
 }
 
 impl Actions {
     pub fn get_logs(&self) -> Vec<Log> {
         match self {
             Self::Unclassified(_, log) => log.clone(),
-            _ => vec![],
+            _ => vec![]
         }
     }
 
@@ -46,73 +46,73 @@ impl Actions {
 
 #[derive(Debug, Serialize, Clone, Row)]
 pub struct NormalizedSwap {
-    pub index: u64,
-    pub from: Address,
-    pub pool: Address,
-    pub token_in: Address,
-    pub token_out: Address,
-    pub amount_in: U256,
-    pub amount_out: U256,
+    pub index:      u64,
+    pub from:       Address,
+    pub pool:       Address,
+    pub token_in:   Address,
+    pub token_out:  Address,
+    pub amount_in:  U256,
+    pub amount_out: U256
 }
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedTransfer {
-    pub index: u64,
-    pub to: Address,
-    pub from: Address,
-    pub token: Address,
-    pub amount: U256,
+    pub index:  u64,
+    pub to:     Address,
+    pub from:   Address,
+    pub token:  Address,
+    pub amount: U256
 }
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedMint {
-    pub index: u64,
-    pub from: Address,
-    pub to: Address,
+    pub index:     u64,
+    pub from:      Address,
+    pub to:        Address,
     pub recipient: Address,
-    pub token: Vec<Address>,
-    pub amount: Vec<U256>,
+    pub token:     Vec<Address>,
+    pub amount:    Vec<U256>
 }
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedBurn {
-    pub index: u64,
-    pub from: Address,
-    pub to: Address,
+    pub index:     u64,
+    pub from:      Address,
+    pub to:        Address,
     pub recipient: Address,
-    pub token: Vec<Address>,
-    pub amount: Vec<U256>,
+    pub token:     Vec<Address>,
+    pub amount:    Vec<U256>
 }
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedLiquidation {
-    pub index: u64,
+    pub index:      u64,
     pub liquidator: Address,
     pub liquidatee: Address,
-    pub token: Address,
-    pub amount: U256,
-    pub reward: U256,
+    pub token:      Address,
+    pub amount:     U256,
+    pub reward:     U256
 }
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedLoan {
-    pub index: u64,
-    pub lender: Address,
-    pub borrower: Address,
+    pub index:        u64,
+    pub lender:       Address,
+    pub borrower:     Address,
     pub loaned_token: Address,
-    pub loan_amount: U256,
-    pub collateral: HashMap<Address, U256>,
+    pub loan_amount:  U256,
+    pub collateral:   HashMap<Address, U256>
 }
 
 #[derive(Debug, Clone, Serialize, Row)]
 
 pub struct NormalizedRepayment {
-    pub index: u64,
-    pub lender: Address,
-    pub borrower: Address,
-    pub repayed_token: Address,
+    pub index:            u64,
+    pub lender:           Address,
+    pub borrower:         Address,
+    pub repayed_token:    Address,
     pub repayment_amount: U256,
-    pub collateral: HashMap<Address, U256>,
+    pub collateral:       HashMap<Address, U256>
 }
 
 pub trait NormalizedAction: Send + Sync + Clone {
