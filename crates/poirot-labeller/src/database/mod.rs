@@ -7,17 +7,17 @@ use std::{
     str::FromStr,
 };
 
-use clickhouse::{Client, Row};
-use hyper_tls::HttpsConnector;
-use malachite::{vecs::exhaustive::LexFixedLengthVecsFromSingle, Rational};
-use reth_primitives::{Address, TxHash, U256};
-use sorella_db_clients::{databases::clickhouse::ClickhouseClient, errors::DatabaseError};
-
 use super::Metadata;
 use crate::database::{
     const_sql::*,
     types::{DBP2PRelayTimes, DBTardisTrades},
 };
+use clickhouse::{Client, Row};
+use hyper_tls::HttpsConnector;
+use malachite::{vecs::exhaustive::LexFixedLengthVecsFromSingle, Rational};
+use reth_primitives::{Address, TxHash, U256};
+use serde::Deserialize;
+use sorella_db_clients::{databases::clickhouse::ClickhouseClient, errors::DatabaseError};
 
 const RELAYS_TABLE: &str = "relays";
 const MEMPOOL_TABLE: &str = "chainbound_mempool";
@@ -43,7 +43,9 @@ impl Database {
     pub async fn get_metadata(&self, block_num: u64, block_hash: U256) -> Metadata {
         let private_flow = self.get_private_flow(block_num, block_hash).await;
         let relay_data = self.get_relay_info(block_num, block_hash).await;
-        let cex_prices = self.get_cex_prices(relay_data.0, relay_data.1).await;
+        let cex_prices = self
+            .get_cex_prices(relay_data.relay_time, relay_data.p2p_time)
+            .await;
 
         // eth price is in cex_prices
         let eth_prices = Default::default();
@@ -51,10 +53,10 @@ impl Database {
         let metadata = Metadata::new(
             block_num,
             block_hash,
-            relay_data.0,
-            relay_data.1,
-            relay_data.2,
-            relay_data.3,
+            relay_data.relay_time,
+            relay_data.p2p_time,
+            relay_data.proposer_addr,
+            relay_data.proposer_reward,
             cex_prices,
             eth_prices,
             private_flow,
@@ -78,16 +80,14 @@ impl Database {
             .collect::<HashSet<TxHash>>()
     }
 
-    async fn get_relay_info(&self, block_num: u64, block_hash: U256) -> (u64, u64, Address, u64) {
-        let times: (u64, u64, Address, u64) = self
-            .client
+    async fn get_relay_info(&self, block_num: u64, block_hash: U256) -> RelayInfo {
+        self.client
             .query_one_params(
                 RELAY_P2P_TIMES,
                 vec![block_num.to_string(), format!("{:#x}", block_hash)],
             )
             .await
-            .unwrap();
-        times
+            .unwrap()
     }
 
     async fn get_cex_prices(
@@ -116,4 +116,12 @@ impl Database {
 
         token_prices
     }
+}
+
+#[derive(Debug, Clone, Row, Deserialize)]
+pub struct RelayInfo {
+    pub relay_time: u64,
+    pub p2p_time: u64,
+    pub proposer_addr: Address,
+    pub proposer_reward: u64,
 }

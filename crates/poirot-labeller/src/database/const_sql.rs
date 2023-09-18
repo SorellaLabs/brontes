@@ -31,3 +31,4 @@ WHERE
     AND substring(bt.symbol, -4) = 'USDT'
 GROUP BY 
     bt.symbol;"#;
+
