@@ -1,19 +1,3 @@
-pub const PRICES: &str = r#"SELECT 
-    any(bt.timestamp) as timestamp, 
-    substring(bt.symbol, 1, length(bt.symbol) - 4) as symbol, 
-    avg(bt.price) as price
-FROM 
-    cex.binance_trades as bt
-WHERE 
-    (
-        (bt.timestamp < ? + 10000 AND bt.timestamp > ? - 10000) 
-        OR 
-        (bt.timestamp < ? + 10000 AND bt.timestamp > ? - 10000)
-    )
-    AND substring(bt.symbol, -4) = 'USDT'
-GROUP BY 
-    bt.symbol;"#;
-
 pub const PRIVATE_FLOW: &str = r#"SELECT tx_hash
 FROM
 (
@@ -32,3 +16,18 @@ INNER JOIN ethereum.chainbound_block_observations_remote as cb
 ON ethereum.relays.block_number = cb.block_number
 WHERE  block_number = ? AND block_hash = ?"#;
 
+pub const PRICES: &str = r#"SELECT 
+    any(bt.timestamp) as timestamp, 
+    substring(bt.symbol, 1, length(bt.symbol) - 4) as symbol, 
+    avg(bt.price) as price
+FROM 
+    cex.binance_trades as bt
+WHERE 
+    (
+        (bt.timestamp < ? + 10000 AND bt.timestamp > ? - 10000) 
+        OR 
+        (bt.timestamp < ? + 10000 AND bt.timestamp > ? - 10000)
+    )
+    AND substring(bt.symbol, -4) = 'USDT'
+GROUP BY 
+    bt.symbol;"#;
