@@ -10,7 +10,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::H256;
 use tracing::error;
 
-use crate::{ClassifiedMev, Inspector};
+use crate::{ClassifiedMev, Inspector, SpecificMev};
 
 pub struct AtomicBackrunInspector;
 
@@ -21,7 +21,7 @@ impl AtomicBackrunInspector {
         metadata: Arc<Metadata>,
         gas_details: &GasDetails,
         swaps: Vec<Vec<Actions>>
-    ) -> Option<ClassifiedMev> {
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.calculate_swap_deltas(&swaps);
 
         let appearance_usd_deltas = self.get_best_usd_delta(
