@@ -8,7 +8,8 @@ use std::{
 const SQL_FILE_DIRECTORY: &str = "./queries/";
 
 fn main() {
-    write_sql()
+    write_sql();
+    println!("cargo:rerun-if-changed=./queries/");
 }
 
 /// writes the sql file as a string to ./src/const_sql.rs

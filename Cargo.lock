@@ -139,7 +139,7 @@ checksum = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5"
 [[package]]
 name = "alloy-dyn-abi"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#78e0bb437f106d8b42dfa378aab81e5406ff79af"
+source = "git+https://github.com/alloy-rs/core#be558941ee550fc91c8b4209431002f4669e7c19"
 dependencies = [
  "alloy-json-abi",
  "alloy-primitives",
@@ -177,7 +177,7 @@ dependencies = [
 [[package]]
 name = "alloy-json-abi"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#78e0bb437f106d8b42dfa378aab81e5406ff79af"
+source = "git+https://github.com/alloy-rs/core#be558941ee550fc91c8b4209431002f4669e7c19"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-type-parser",
@@ -188,7 +188,7 @@ dependencies = [
 [[package]]
 name = "alloy-primitives"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#78e0bb437f106d8b42dfa378aab81e5406ff79af"
+source = "git+https://github.com/alloy-rs/core#be558941ee550fc91c8b4209431002f4669e7c19"
 dependencies = [
  "alloy-rlp",
  "bytes",
@@ -217,7 +217,7 @@ dependencies = [
 [[package]]
 name = "alloy-sol-macro"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#78e0bb437f106d8b42dfa378aab81e5406ff79af"
+source = "git+https://github.com/alloy-rs/core#be558941ee550fc91c8b4209431002f4669e7c19"
 dependencies = [
  "alloy-json-abi",
  "dunce",
@@ -226,7 +226,7 @@ dependencies = [
  "quote 1.0.33",
  "serde",
  "serde_json",
- "syn 2.0.36",
+ "syn 2.0.37",
  "syn-solidity",
  "tiny-keccak",
 ]
@@ -234,12 +234,12 @@ dependencies = [
 [[package]]
 name = "alloy-sol-type-parser"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#78e0bb437f106d8b42dfa378aab81e5406ff79af"
+source = "git+https://github.com/alloy-rs/core#be558941ee550fc91c8b4209431002f4669e7c19"
 
 [[package]]
 name = "alloy-sol-types"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#78e0bb437f106d8b42dfa378aab81e5406ff79af"
+source = "git+https://github.com/alloy-rs/core#be558941ee550fc91c8b4209431002f4669e7c19"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-macro",
@@ -472,7 +472,7 @@ checksum = "5fd55a5ba1179988837d24ab4c7cc8ed6efdeff578ede0416b4225a5fca35bd0"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -483,7 +483,7 @@ checksum = "bc00ceb34980c03614e35a3a4e218276a0a824e911d07651cd0d858a51e8c0f0"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -722,7 +722,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex",
- "syn 2.0.36",
+ "syn 2.0.37",
  "which",
 ]
 
@@ -744,7 +744,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -923,7 +923,7 @@ source = "git+https://github.com/boa-dev/boa#9da687496858551c0ded0deaf66076970dd
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
  "synstructure 0.13.0",
 ]
 
@@ -1249,7 +1249,7 @@ dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "serde",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1262,7 +1262,7 @@ dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "serde",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1572,7 +1572,7 @@ checksum = "83fdaf97f4804dcebfa5862639bc9ce4121e82140bec2a987ac5140294865b5b"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1620,7 +1620,7 @@ dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "strsim 0.10.0",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1642,7 +1642,7 @@ checksum = "836a9bbc7ad63342d6d6e7b815ccab164bc77a2d95d84bc3117a8c0d5c98e2d5"
 dependencies = [
  "darling_core 0.20.3",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1712,7 +1712,7 @@ checksum = "53e0efad4403bfc52dc201159c4b842a246a14b98c64b55dfd0f2d89729dfeb8"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1839,7 +1839,7 @@ checksum = "487585f4d0c6655fe74905e2504d8ad6908e4db67f744eb140876906c2f3175d"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -2044,7 +2044,7 @@ dependencies = [
  "num-traits",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -2055,7 +2055,7 @@ checksum = "c2ad8cef1d801a4686bfd8919f0b30eac4c8e48968c437a6405ded4fb5272d2b"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -2246,7 +2246,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "syn 2.0.36",
+ "syn 2.0.37",
  "toml",
  "walkdir",
 ]
@@ -2264,7 +2264,7 @@ dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "serde_json",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -2290,7 +2290,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum",
- "syn 2.0.36",
+ "syn 2.0.37",
  "tempfile",
  "thiserror",
  "tiny-keccak",
@@ -2659,7 +2659,7 @@ checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -3974,7 +3974,7 @@ checksum = "ddece26afd34c31585c74a4db0630c376df271c285d682d1e55012197830b6df"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -4254,7 +4254,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -4266,7 +4266,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -4351,7 +4351,7 @@ checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -4623,7 +4623,7 @@ dependencies = [
  "phf_shared 0.11.2",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -4661,7 +4661,7 @@ checksum = "4359fd9c9171ec6e8c62926d6faaf553a8dc3f64e1507e76da7911b4f6a04405"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -4938,7 +4938,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae005bd773ab59b4725093fd7df83fd7892f7d8eafb48dbd7de6e024e4215f9d"
 dependencies = [
  "proc-macro2 1.0.67",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -5907,7 +5907,7 @@ dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "regex",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -5919,7 +5919,7 @@ dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "regex",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -6331,7 +6331,7 @@ source = "git+https://github.com/paradigmxyz/reth?rev=0f14ec4#0f14ec4007f2cc7d58
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -6341,7 +6341,7 @@ source = "git+https://github.com/paradigmxyz/reth?rev=0f14ec4007f2cc7d5838d3a04c
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -7310,7 +7310,7 @@ checksum = "4eca7ac642d82aa35b60049a6eccb4be6be75e599bd2e9adb5f875a737654af2"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -7398,7 +7398,7 @@ dependencies = [
  "darling 0.20.3",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -7410,7 +7410,7 @@ dependencies = [
  "darling 0.20.3",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -7435,7 +7435,7 @@ checksum = "91d129178576168c589c9ec973feedf7d3126c01ac2bf08795109aa35b69fb8f"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -7633,7 +7633,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-clients"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#0852b11c616f304c772854663aaf6f4e50292c2d"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#5ba2b43bf1403da796726f2f3b644690fa8a2094"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7647,9 +7647,23 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sorella-db-tracing",
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "sorella-db-tracing"
+version = "0.1.0"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#5ba2b43bf1403da796726f2f3b644690fa8a2094"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tracing",
+ "tracing-appender",
+ "tracing-journald",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -7739,7 +7753,7 @@ dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "rustversion",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -7827,9 +7841,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.36"
+version = "2.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91e02e55d62894af2a08aca894c6577281f76769ba47c94d5756bec8ac6e7373"
+checksum = "7303ef2c05cd654186cb250d29049a24840ca25d2747c25c0381c8d9e2f582e8"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
@@ -7839,12 +7853,12 @@ dependencies = [
 [[package]]
 name = "syn-solidity"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#78e0bb437f106d8b42dfa378aab81e5406ff79af"
+source = "git+https://github.com/alloy-rs/core#be558941ee550fc91c8b4209431002f4669e7c19"
 dependencies = [
  "paste",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -7873,7 +7887,7 @@ checksum = "285ba80e733fac80aa4270fbcdf83772a79b80aa35c97075320abfee4a915b06"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
  "unicode-xid 0.2.4",
 ]
 
@@ -7939,7 +7953,7 @@ checksum = "49922ecae66cc8a249b77e68d1d0623c1b2c514f0060c27cdc68bd62a1219d35"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -8063,7 +8077,7 @@ checksum = "630bdcf245f78637c13ec01ffae6187cca34625e8c63150d424b59e55af2675e"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -8268,6 +8282,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-appender"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09d48f71a791638519505cefafe162606f706c25592e4bde4d97600c0195312e"
+dependencies = [
+ "crossbeam-channel",
+ "time",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "tracing-attributes"
 version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8275,7 +8300,7 @@ checksum = "5f4f31f56159e98206da9efd823404b79b6ef3143b4a7ab76e67b1751b25a4ab"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -8298,6 +8323,17 @@ dependencies = [
  "futures-task",
  "pin-project",
  "tracing",
+]
+
+[[package]]
+name = "tracing-journald"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba316a74e8fc3c3896a850dba2375928a9fa171b085ecddfc7c054d39970f3fd"
+dependencies = [
+ "libc",
+ "tracing-core",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -8643,7 +8679,7 @@ dependencies = [
  "once_cell",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
  "wasm-bindgen-shared",
 ]
 
@@ -8677,7 +8713,7 @@ checksum = "54681b18a46765f095758388f2d0cf16eb8d4169b639ab575a8f5693af210c7b"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -9074,7 +9110,7 @@ checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
- "syn 2.0.36",
+ "syn 2.0.37",
 ]
 
 [[package]]
