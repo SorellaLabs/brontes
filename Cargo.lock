@@ -7633,7 +7633,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-clients"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#5ba2b43bf1403da796726f2f3b644690fa8a2094"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#bb0bcc4509ccf414a3ba71e0f31b12c1d688d79d"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7656,7 +7656,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#5ba2b43bf1403da796726f2f3b644690fa8a2094"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#bb0bcc4509ccf414a3ba71e0f31b12c1d688d79d"
 dependencies = [
  "serde",
  "serde_json",
