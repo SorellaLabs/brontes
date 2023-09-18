@@ -4,7 +4,7 @@ use hex_literal::hex;
 use poirot_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 use poirot_labeller::Metadata;
 use poirot_types::{
-    normalized_actions::Actions,
+    normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap},
     structured_trace::{TraceActions, TxTrace},
     tree::{Node, Root, TimeTree}
 };
@@ -232,40 +232,46 @@ impl Classifier {
             if to0 == to1 && from0 == from1 {
                 // burn
                 if to0 == node.address {
-                    return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
-                        index:  node.index,
-                        from:   from0,
-                        token:  vec![t0, t1],
-                        amount: vec![value0, value1]
+                    return Some(Actions::Burn(NormalizedBurn {
+                        to:        to0,
+                        recipient: to1,
+                        index:     node.index,
+                        from:      from0,
+                        token:     vec![t0, t1],
+                        amount:    vec![value0, value1]
                     }))
                 }
                 // mint
                 else {
-                    return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
-                        index:  node.index,
-                        to:     to0,
-                        token:  vec![t0, t1],
-                        amount: vec![value0, value1]
+                    return Some(Actions::Mint(NormalizedMint {
+                        from:      to0,
+                        recipient: to1,
+                        index:     node.index,
+                        to:        to0,
+                        token:     vec![t0, t1],
+                        amount:    vec![value0, value1]
                     }))
                 }
             }
             // if to0 is to our addr then its the out token
             if to0 == addr {
-                return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
-                    index,
-                    call_address: addr,
-                    token_in: t1,
-                    token_out: t0,
-                    amount_in: value1,
+                return Some(Actions::Swap(NormalizedSwap {
+                    index:      node.index,
+                    from:       to1,
+                    pool:       to0,
+                    token_in:   t1,
+                    token_out:  t0,
+                    amount_in:  value1,
                     amount_out: value0
                 }))
             } else {
-                return Some(Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
-                    index,
-                    call_address: addr,
-                    token_in: t0,
-                    token_out: t1,
-                    amount_in: value0,
+                return Some(Actions::Swap(NormalizedSwap {
+                    index:      node.index,
+                    from:       to0,
+                    pool:       to1,
+                    token_in:   t0,
+                    token_out:  t1,
+                    amount_in:  value0,
                     amount_out: value1
                 }))
             }
@@ -274,15 +280,19 @@ impl Classifier {
         if transfer_data.len() == 1 {
             let (token, from, to, value) = transfer_data.remove(0);
             if from == addr {
-                return Some(Actions::Mint(poirot_types::normalized_actions::NormalizedMint {
-                    index,
+                return Some(Actions::Mint(NormalizedMint {
+                    from,
+                    recipient: to,
+                    index: node.index,
                     to,
                     token: vec![token],
                     amount: vec![value]
                 }))
             } else {
-                return Some(Actions::Burn(poirot_types::normalized_actions::NormalizedBurn {
-                    index,
+                return Some(Actions::Burn(NormalizedBurn {
+                    to,
+                    recipient: to,
+                    index: node.index,
                     from,
                     token: vec![token],
                     amount: vec![value]
@@ -367,20 +377,24 @@ impl Classifier {
             && (from0 != from1)
         {
             let swap = if t0 == addr {
-                Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
-                    call_address: addr,
-                    token_in:     t1,
-                    token_out:    t0,
-                    amount_in:    value1,
-                    amount_out:   value0
+                Actions::Swap(NormalizedSwap {
+                    pool:       to0,
+                    index:      node.index,
+                    from:       addr,
+                    token_in:   t1,
+                    token_out:  t0,
+                    amount_in:  value1,
+                    amount_out: value0
                 })
             } else {
-                Actions::Swap(poirot_types::normalized_actions::NormalizedSwap {
-                    call_address: addr,
-                    token_in:     t0,
-                    token_out:    t1,
-                    amount_in:    value0,
-                    amount_out:   value1
+                Actions::Swap(NormalizedSwap {
+                    pool:       to1,
+                    index:      node.index,
+                    from:       addr,
+                    token_in:   t0,
+                    token_out:  t1,
+                    amount_in:  value0,
+                    amount_out: value1
                 })
             };
             return Some((addr, (t0, t1), swap))
