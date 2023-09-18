@@ -1,22 +1,27 @@
 use std::{
-    any::{self, Any},
+    any::Any,
     collections::HashMap,
+    future::Future,
+    pin::Pin,
     sync::Arc,
-    task::Poll
+    task::{Context, Poll}
 };
 
+use futures::{
+    future::{join_all, JoinAll},
+    FutureExt, Stream
+};
 use poirot_labeller::Metadata;
 use poirot_types::{
     classified_mev::{
-        compose_sandwich_jit, ClassifiedMev, JitLiquidity, MevBlock, MevResult, MevType, Sandwich,
-        SpecificMev
+        compose_sandwich_jit, ClassifiedMev, MevBlock, MevResult, MevType, SpecificMev
     },
     normalized_actions::Actions,
     tree::TimeTree
 };
 use reth_primitives::Address;
-use reth_rpc_types::trace::parity::Action;
-use strum::IntoEnumIterator;
+
+use crate::Inspector;
 
 pub struct BlockPreprocessing {
     meta_data:           Arc<Metadata>,
@@ -34,7 +39,7 @@ macro_rules! mev_composability {
         const MEV_FILTER: &'static [(
                 MevType,
                 Option<Box<dyn Fn(Box<dyn Any>, Box<dyn Any>, ClassifiedMev, ClassifiedMev) ->
-                (ClassifiedMev, Box<dyn SpecificMev>>>),
+                (ClassifiedMev, Box<dyn SpecificMev>)>>,
                 &'static[MevType])] = &[
             $((MevType::$mev_type, $replace, &[$(MevType::$deps,)+]),)+
         ];
@@ -48,10 +53,8 @@ mev_composability!(
     JitSandwich => Sandwich, Jit => Some(Box::new(compose_sandwich_jit));
 );
 
-type TypedSpecifiedMev = Box<dyn SpecificMev>;
-
 type InspectorFut<'a> =
-    JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, TypedSpecifiedMev)>> + Send + 'a>>>;
+    JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>>;
 
 /// the results downcast using any in order to be able to serialize and
 /// impliment row trait due to the abosulte autism that the db library
@@ -59,13 +62,13 @@ type InspectorFut<'a> =
 pub type DaddyInspectorResults = (MevBlock, HashMap<MevType, Vec<(ClassifiedMev, MevResult)>>);
 
 pub struct DaddyInspector<'a, const N: usize> {
-    baby_inspectors:      &'a [&'a Box<dyn Inspector<Mev = TypedSpecifiedMev>>; N],
+    baby_inspectors:      &'a [&'a Box<dyn Inspector>; N],
     inspectors_execution: Option<InspectorFut<'a>>,
     pre_processing:       Option<BlockPreprocessing>
 }
 
 impl<'a, const N: usize> DaddyInspector<'a, N> {
-    pub fn new(baby_inspectors: &'a [&'a Box<dyn Inspector<Mev = TypedSpecifiedMev>>; N]) -> Self {
+    pub fn new(baby_inspectors: &'a [&'a Box<dyn Inspector>; N]) -> Self {
         Self { baby_inspectors, inspectors_execution: None, pre_processing: None }
     }
 
@@ -77,7 +80,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         self.inspectors_execution = Some(join_all(
             self.baby_inspectors
                 .iter()
-                .map(|inspector| inspector.process_tree(tree.clone(), metadata.clone()))
+                .map(|inspector| inspector.process_tree(tree.clone(), meta_data.clone()))
         ) as InspectorFut<'a>);
 
         self.pre_process(tree, meta_data);
@@ -107,14 +110,17 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
     fn build_mev_header(
         &mut self,
-        baby_data: impl AsRef<Iterator<Item = (ClassifiedMev, Box<dyn SpecificMev>)>>
+        baby_data: Arc<impl Iterator<Item = (ClassifiedMev, Box<dyn SpecificMev>)>>
     ) -> MevBlock {
         let pre_processing = self.pre_processing.take().unwrap();
         let cum_mev_priority_fee_paid = baby_data
+            .clone()
             .map(|(_, mev)| mev.priority_fee_paid())
             .sum::<u64>();
 
-        let builder_eth_profit = (total_bribe + pre_processing.cumulative_gas_paid);
+        let total_bribe = 0;
+
+        let builder_eth_profit = total_bribe + pre_processing.cumulative_gas_paid;
 
         let mut mev_block = MevBlock {
             block_hash: pre_processing.meta_data.block_hash,
@@ -149,7 +155,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         &mut self,
         baby_data: impl Iterator<Item = (ClassifiedMev, Box<dyn SpecificMev>)>
     ) -> Poll<Option<DaddyInspectorResults>> {
-        let header = self.build_mev_header(&baby_data);
+        let header = self.build_mev_header(Arc::new(baby_data));
 
         let mut sorted_mev = baby_data
             .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
@@ -253,7 +259,14 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         parent_mev_type: &MevType,
         // we know this has len 2
         composable_types: &[MevType],
-        compose: &Box<dyn Fn(Any, Any, ClassifiedMev) -> (ClassifiedMev, Box<dyn SpecificMev>)>,
+        compose: &Box<
+            dyn Fn(
+                Box<dyn Any>,
+                Box<dyn Any>,
+                ClassifiedMev,
+                ClassifiedMev
+            ) -> (ClassifiedMev, Box<dyn SpecificMev>)
+        >,
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
     ) {
         if composable_types.len() != 2 {
@@ -301,7 +314,7 @@ impl<const N: usize> Stream for DaddyInspector<'_, N> {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Some(mut calculations) = self.inspectors_execution.take() {
-            match calculations.poll_next_unpin(cx) {
+            return match calculations.poll_unpin(cx) {
                 Poll::Ready(data) => self.on_baby_resolution(data.into_iter().flatten()),
                 Poll::Pending => {
                     self.inspectors_execution = Some(calculations);
@@ -309,5 +322,6 @@ impl<const N: usize> Stream for DaddyInspector<'_, N> {
                 }
             }
         }
+        Poll::Pending
     }
 }

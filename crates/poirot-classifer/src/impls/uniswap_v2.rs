@@ -35,6 +35,7 @@ impl IntoAction for V2SwapImpl {
 
                 if amount_0_in == U256::ZERO {
                     return Actions::Swap(NormalizedSwap {
+                        pool: address,
                         index,
                         from: address,
                         token_in: token_1,
@@ -45,6 +46,7 @@ impl IntoAction for V2SwapImpl {
                 } else {
                     return Actions::Swap(NormalizedSwap {
                         index,
+                        pool: address,
                         from: address,
                         token_in: token_0,
                         token_out: token_1,
@@ -80,6 +82,7 @@ impl IntoAction for V2MintImpl {
             if let Ok((amount_0, amount_1)) = Mint::decode_data(&log.data, true) {
                 return Actions::Mint(NormalizedMint {
                     recipient: address,
+                    from: address,
                     index,
                     to,
                     token: vec![token_0, token_1],
@@ -111,6 +114,7 @@ impl IntoAction for V2BurnImpl {
             if let Ok((amount_0, amount_1)) = Burn::decode_data(&log.data, true) {
                 return Actions::Burn(NormalizedBurn {
                     recipient: address,
+                    to: address,
                     index,
                     from: address,
                     token: vec![token_0, token_1],
