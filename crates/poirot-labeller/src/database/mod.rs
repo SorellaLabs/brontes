@@ -16,7 +16,7 @@ use hyper_tls::HttpsConnector;
 use malachite::{vecs::exhaustive::LexFixedLengthVecsFromSingle, Rational};
 use reth_primitives::{Address, TxHash, U256};
 use serde::Deserialize;
-use sorella_db_clients::databases::clickhouse::{ClickhouseClient, Row};
+use sorella_db_clients::databases::clickhouse::{self, ClickhouseClient, Row};
 
 const RELAYS_TABLE: &str = "relays";
 const MEMPOOL_TABLE: &str = "chainbound_mempool";
