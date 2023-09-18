@@ -4815,7 +4815,6 @@ dependencies = [
 name = "poirot-labeller"
 version = "0.1.0"
 dependencies = [
- "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
  "futures",
  "hyper",
  "hyper-tls",
