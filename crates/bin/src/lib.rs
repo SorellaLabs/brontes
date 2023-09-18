@@ -16,7 +16,7 @@ use poirot_inspect::{
 };
 use poirot_labeller::{Labeller, Metadata};
 use poirot_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    classified_mev::{ClassifiedMev, MevBlock, MevResult, SpecificMev},
     normalized_actions::Actions,
     structured_trace::TxTrace,
     tree::TimeTree
@@ -84,10 +84,7 @@ impl<'a, const N: usize> Poirot<'a, N> {
         self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
     }
 
-    fn on_inspectors_finish(
-        &mut self,
-        data: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>)
-    ) {
+    fn on_inspectors_finish(&mut self, data: (MevBlock, Vec<(ClassifiedMev, MevResult)>)) {
         todo!()
     }
 
