@@ -4,20 +4,17 @@ pub(crate) mod serialize;
 pub mod types;
 use std::{
     collections::{HashMap, HashSet},
-    str::FromStr,
+    str::FromStr
 };
-
-use self::types::DBTokenPrices;
-
-use super::Metadata;
-
-use crate::database::const_sql::*;
 
 use malachite::Rational;
 use reth_primitives::{Address, TxHash, U256};
 use serde::Deserialize;
-
 use sorella_db_clients::databases::clickhouse::{self, ClickhouseClient, Row};
+
+use self::types::DBTokenPrices;
+use super::Metadata;
+use crate::database::const_sql::*;
 
 const RELAYS_TABLE: &str = "relays";
 const MEMPOOL_TABLE: &str = "chainbound_mempool";
@@ -26,15 +23,15 @@ const TARDIS_QUOTES_QUOTES: &str = "tardis_quotes";
 const TARDIS_QUOTES_TRADES: &str = "tardis_trades";
 
 pub struct Database {
-    client: ClickhouseClient,
+    client: ClickhouseClient
 }
 
 #[derive(Debug, Clone, Row, Deserialize)]
 pub struct RelayInfo {
-    pub relay_time: u64,
-    pub p2p_time: u64,
-    pub proposer_addr: Address,
-    pub proposer_reward: u64,
+    pub relay_time:      u64,
+    pub p2p_time:        u64,
+    pub proposer_addr:   Address,
+    pub proposer_reward: u64
 }
 
 impl Default for Database {
@@ -67,7 +64,7 @@ impl Database {
             relay_data.proposer_reward,
             cex_prices,
             eth_prices,
-            private_flow,
+            private_flow
         );
 
         metadata
@@ -78,7 +75,7 @@ impl Database {
             .client
             .query_all_params::<String, String>(
                 PRIVATE_FLOW,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
+                vec![block_num.to_string(), format!("{:#x}", block_hash)]
             )
             .await
             .unwrap();
@@ -92,7 +89,7 @@ impl Database {
         self.client
             .query_one_params(
                 RELAY_P2P_TIMES,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
+                vec![block_num.to_string(), format!("{:#x}", block_hash)]
             )
             .await
             .unwrap()
@@ -101,13 +98,13 @@ impl Database {
     async fn get_cex_prices(
         &self,
         relay_time: u64,
-        p2p_time: u64,
+        p2p_time: u64
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
             .query_all_params::<u64, DBTokenPrices>(
                 PRICES,
-                vec![relay_time, relay_time, p2p_time, p2p_time],
+                vec![relay_time, relay_time, p2p_time, p2p_time]
             )
             .await
             .unwrap();
@@ -119,8 +116,8 @@ impl Database {
                     Address::from_str(&row.address).unwrap(),
                     (
                         Rational::try_from(row.price0).unwrap(),
-                        Rational::try_from(row.price1).unwrap(),
-                    ),
+                        Rational::try_from(row.price1).unwrap()
+                    )
                 )
             })
             .collect::<HashMap<Address, (Rational, Rational)>>();

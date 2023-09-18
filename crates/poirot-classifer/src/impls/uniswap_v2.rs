@@ -36,7 +36,7 @@ impl IntoAction for V2SwapImpl {
                 if amount_0_in == U256::ZERO {
                     return Actions::Swap(NormalizedSwap {
                         index,
-                        call_address: address,
+                        from: address,
                         token_in: token_1,
                         token_out: token_0,
                         amount_in: amount_1_in,
@@ -45,7 +45,7 @@ impl IntoAction for V2SwapImpl {
                 } else {
                     return Actions::Swap(NormalizedSwap {
                         index,
-                        call_address: address,
+                        from: address,
                         token_in: token_0,
                         token_out: token_1,
                         amount_in: amount_0_in,
