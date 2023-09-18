@@ -4,7 +4,7 @@ pub(crate) mod serialize;
 pub mod types;
 use std::{
     collections::{HashMap, HashSet},
-    str::FromStr,
+    str::FromStr
 };
 
 use clickhouse::{Client, Row};
@@ -16,7 +16,7 @@ use sorella_db_clients::{databases::clickhouse::ClickhouseClient, errors::Databa
 use super::Metadata;
 use crate::database::{
     const_sql::*,
-    types::{DBP2PRelayTimes, DBTardisTrades},
+    types::{DBP2PRelayTimes, DBTardisTrades}
 };
 
 const RELAYS_TABLE: &str = "relays";
@@ -26,7 +26,7 @@ const TARDIS_QUOTES_QUOTES: &str = "tardis_quotes";
 const TARDIS_QUOTES_TRADES: &str = "tardis_trades";
 
 pub struct Database {
-    client: ClickhouseClient,
+    client: ClickhouseClient
 }
 
 impl Default for Database {
@@ -57,7 +57,7 @@ impl Database {
             relay_data.3,
             cex_prices,
             eth_prices,
-            private_flow,
+            private_flow
         );
 
         metadata
@@ -68,7 +68,7 @@ impl Database {
             .client
             .query_all_params::<String, String>(
                 PRIVATE_FLOW,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
+                vec![block_num.to_string(), format!("{:#x}", block_hash)]
             )
             .await
             .unwrap();
@@ -83,7 +83,7 @@ impl Database {
             .client
             .query_one_params(
                 RELAY_P2P_TIMES,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
+                vec![block_num.to_string(), format!("{:#x}", block_hash)]
             )
             .await
             .unwrap();
@@ -93,13 +93,13 @@ impl Database {
     async fn get_cex_prices(
         &self,
         relay_time: u64,
-        p2p_time: u64,
+        p2p_time: u64
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
             .query_all_params::<u64, (String, f64, f64)>(
                 PRICES,
-                vec![relay_time, relay_time, p2p_time, p2p_time],
+                vec![relay_time, relay_time, p2p_time, p2p_time]
             )
             .await
             .unwrap();
@@ -109,7 +109,7 @@ impl Database {
             .map(|row| {
                 (
                     Address::from_str(&row.0).unwrap(),
-                    (Rational::try_from(row.1).unwrap(), Rational::try_from(row.2).unwrap()),
+                    (Rational::try_from(row.1).unwrap(), Rational::try_from(row.2).unwrap())
                 )
             })
             .collect::<HashMap<Address, (Rational, Rational)>>();
