@@ -8,6 +8,7 @@ use malachite::{
 use poirot_classifer::enum_unwrap;
 use poirot_labeller::Metadata;
 use poirot_types::{
+    classified_mev::SpecificMev,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, TimeTree},
     ToScaledRational, TOKEN_TO_DECIMALS
@@ -27,7 +28,7 @@ impl CexDexInspector {
         metadata: Arc<Metadata>,
         gas_details: &GasDetails,
         swaps: Vec<Actions>
-    ) -> Option<ClassifiedMev> {
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let (swap_data, (pre, post)) = swaps
             .into_iter()
             .filter_map(|action| {

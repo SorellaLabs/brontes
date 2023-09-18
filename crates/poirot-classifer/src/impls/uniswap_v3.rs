@@ -4,7 +4,7 @@ use poirot_core::{
     StaticReturnBindings,
     Uniswap_V3::{burnCall, mintCall, swapCall}
 };
-use poirot_types::normalized_actions::Actions;
+use poirot_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_primitives::{Address, Bytes, U256};
 use reth_rpc_types::Log;
 
@@ -47,7 +47,8 @@ impl IntoAction for V3SwapImpl {
 
         Actions::Swap(NormalizedSwap {
             index,
-            call_address: address,
+            from: address,
+            pool: address,
             token_in,
             token_out,
             amount_in,
@@ -66,7 +67,6 @@ impl IntoAction for V3BurnImpl {
     fn decode_trace_data(
         &self,
         index: u64,
-
         _data: StaticReturnBindings,
         return_data: Bytes,
         address: Address,
@@ -78,6 +78,8 @@ impl IntoAction for V3BurnImpl {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
 
         Actions::Burn(NormalizedBurn {
+            to: address,
+            recipient: address,
             index,
             from: address,
             token: vec![token_0, token_1],
@@ -108,6 +110,8 @@ impl IntoAction for V3MintImpl {
 
         Actions::Mint(NormalizedMint {
             index,
+            from: address,
+            recipient: address,
             to: address,
             token: vec![token0, token1],
             amount: vec![token_0_delta, token_1_delta]

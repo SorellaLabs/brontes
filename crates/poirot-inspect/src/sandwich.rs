@@ -6,7 +6,7 @@ use std::{
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use poirot_labeller::Metadata;
 use poirot_types::{
-    classified_mev::Sandwich,
+    classified_mev::{MevType, Sandwich, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, Node, TimeTree}
 };
@@ -19,13 +19,11 @@ pub struct SandwichInspector;
 
 #[async_trait::async_trait]
 impl Inspector for SandwichInspector {
-    type Mev = Sandwich;
-
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
         meta_data: Arc<Metadata>
-    ) -> (ClassifiedMev, Vec<Self::Mev>) {
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // lets grab the set of all possible sandwich txes
         let mut iter = tree.roots.iter();
         if iter.len() < 3 {
@@ -152,16 +150,15 @@ impl SandwichInspector {
         );
 
         let sandwich = Sandwich {
-            front_run:             txes.0,
-            front_run_gas_details: gas_details.0,
+            front_run:             txes[0],
+            front_run_gas_details: gas_details[0],
             front_run_swaps:       searcher_actions.remove(0)?,
             victim:                victim_txes,
             victim_gas_details:    victim_gas,
             victim_swaps:          victim_actions,
-            back_run:              txes.1,
-            back_run_gas_details:  gas_details.1,
-            back_run_swaps:        searcher_actions.remove(0)?,
-            mev_bot:               mev_addr
+            back_run:              txes[1],
+            back_run_gas_details:  gas_details[1],
+            back_run_swaps:        searcher_actions.remove(0)?
         };
 
         let classified_mev = ClassifiedMev {
