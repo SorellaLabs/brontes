@@ -7,23 +7,17 @@ use std::{
     str::FromStr,
 };
 
+use self::types::DBTokenPrices;
+
 use super::Metadata;
-use crate::database::{
-    const_sql::*,
-    types::{DBP2PRelayTimes, DBTardisTrades},
-};
-use clickhouse::{Client, Row};
+use crate::database::{const_sql::*, types::DBP2PRelayTimes};
 use hyper_tls::HttpsConnector;
 use malachite::{vecs::exhaustive::LexFixedLengthVecsFromSingle, Rational};
 use reth_primitives::{Address, TxHash, U256};
 use serde::Deserialize;
-use sorella_db_clients::{databases::clickhouse::ClickhouseClient, errors::DatabaseError};
-
-const RELAYS_TABLE: &str = "relays";
-const MEMPOOL_TABLE: &str = "chainbound_mempool";
-const TARDIS_QUOTES_L2: &str = "tardis_l2";
-const TARDIS_QUOTES_QUOTES: &str = "tardis_quotes";
-const TARDIS_QUOTES_TRADES: &str = "tardis_trades";
+use sorella_db_clients::databases::clickhouse;
+use sorella_db_clients::databases::clickhouse::ClickhouseClient;
+use sorella_db_clients::databases::clickhouse::Row;
 
 pub struct Database {
     client: ClickhouseClient,
@@ -105,7 +99,7 @@ impl Database {
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
-            .query_all_params::<u64, (String, f64, f64)>(
+            .query_all_params::<u64, DBTokenPrices>(
                 PRICES,
                 vec![relay_time, relay_time, p2p_time, p2p_time],
             )
@@ -116,8 +110,11 @@ impl Database {
             .into_iter()
             .map(|row| {
                 (
-                    Address::from_str(&row.0).unwrap(),
-                    (Rational::try_from(row.1).unwrap(), Rational::try_from(row.2).unwrap()),
+                    Address::from_str(&row.address).unwrap(),
+                    (
+                        Rational::try_from(row.price0).unwrap(),
+                        Rational::try_from(row.price1).unwrap(),
+                    ),
                 )
             })
             .collect::<HashMap<Address, (Rational, Rational)>>();
