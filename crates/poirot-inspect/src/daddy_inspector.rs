@@ -1,4 +1,9 @@
-use std::{any::Any, collections::HashMap, sync::Arc, task::Poll};
+use std::{
+    any::{self, Any},
+    collections::HashMap,
+    sync::Arc,
+    task::Poll
+};
 
 use poirot_labeller::Metadata;
 use poirot_types::{
@@ -176,6 +181,16 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                             let any_cast: Box<dyn Any> = other;
                             match k {
                                 MevType::Jit => MevResult::Jit(*any_cast.downcast().unwrap()),
+                                MevType::CexDex => MevResult::CexDex(*any_cast.downcast().unwrap()),
+                                MevType::Sandwich => {
+                                    MevResult::Sandwich(*any_cast.downcast().unwrap())
+                                }
+                                MevType::JitSandwich => {
+                                    MevResult::JitSandwich(*any_cast.downcast().unwrap())
+                                }
+                                MevType::Liquidation => {
+                                    MevResult::Liquidation(*any_cast.downcast().unwrap())
+                                }
                                 _ => todo!("add other downcasts for different types")
                             }
                         })
@@ -206,7 +221,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                     for (i, (class, specific)) in dep_mev.iter().enumerate() {
                         let dep_hashes = specific.mev_transaction_hashes();
                         // verify both match
-                        if hashes.len() == dep_hashes.len() && dep_hashes == hashes {
+                        if dep_hashes == hashes {
                             let adjustment = remove_count.entry(*dep).or_default();
                             remove_data.push((*dep, i - *adjustment));
                             *adjustment += 1;
@@ -227,6 +242,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 remove_data
             })
             .collect::<Vec<(MevType, usize)>>();
+
         for (mev_type, index) in flattend_indexes {
             sorted_mev.get_mut(&mev_type).unwrap().remove(index);
         }
@@ -237,15 +253,46 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         parent_mev_type: &MevType,
         // we know this has len 2
         composable_types: &[MevType],
-        compose: &Box<dyn Fn(Any, Any, ClassifiedMev) -> Box<dyn SpecificMev>>,
+        compose: &Box<dyn Fn(Any, Any, ClassifiedMev) -> (ClassifiedMev, Box<dyn SpecificMev>)>,
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
     ) {
         if composable_types.len() != 2 {
-            panic!("we only support sequental composiblity for our specific mev");
+            panic!("we only support sequential compatibility for our specific mev");
         }
 
-        let zero = sorted_mev.get(&composable_types[0]).unwrap();
-        let one = sorted_mev.get(&composable_types[1]).unwrap();
+        let mut zero_txes = sorted_mev.remove(&composable_types[0]).unwrap();
+        let mut one_txes = sorted_mev.get(&composable_types[1]).unwrap();
+        for (classified, mev_data) in zero_txes {
+            let addresses = mev_data.mev_transaction_hashes();
+
+            if let Some((index, _)) =
+                one_txes
+                    .iter()
+                    .enumerate()
+                    .map(|(i, d)| (i, d))
+                    .find(|(_, (k, v))| {
+                        let o_addrs = v.mev_transaction_hashes();
+                        o_addrs == addresses || addresses.iter().any(|a| o_addrs.contains(a))
+                    })
+            {
+                // remove composed type
+                let (classifed_1, mev_data_1) = sorted_mev
+                    .get_mut(&composable_types[1])
+                    .unwrap()
+                    .remove(index);
+                // insert new type
+                sorted_mev
+                    .entry(*parent_mev_type)
+                    .or_default()
+                    .push(compose(mev_data, mev_data_1, classified, classifed_1));
+            } else {
+                // if no prev match, then add back old type
+                sorted_mev
+                    .entry(composable_types[0])
+                    .or_default()
+                    .push((classified, mev_data));
+            }
+        }
     }
 }
 
