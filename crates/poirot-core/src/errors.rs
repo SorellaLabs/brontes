@@ -26,7 +26,7 @@ pub enum TraceParseError {
     #[error("send error to prometheus")]
     ChannelSendError(String),
     #[error("trace missing")]
-    EthApiError(EthApiError),
+    EthApiError(EthApiError)
 }
 
 impl From<EtherscanError> for TraceParseError {
@@ -145,14 +145,14 @@ impl From<&TraceParseError> for TraceParseErrorKind {
                     TraceParseErrorKind::EtherscanCloudFlareSecurityChallenge
                 }
                 EtherscanError::PageNotFound => TraceParseErrorKind::EtherscanPageNotFound,
-                EtherscanError::CacheError(_) => TraceParseErrorKind::EtherscanCacheError,
+                EtherscanError::CacheError(_) => TraceParseErrorKind::EtherscanCacheError
             },
             TraceParseError::AbiParseError(_) => TraceParseErrorKind::AbiParseError,
             TraceParseError::InvalidFunctionSelector(_) => {
                 TraceParseErrorKind::InvalidFunctionSelector
             }
             TraceParseError::AbiDecodingFailed(_) => TraceParseErrorKind::AbiDecodingFailed,
-            TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError,
+            TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError
         }
     }
 }
