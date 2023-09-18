@@ -14,7 +14,8 @@ use futures::{
 use poirot_labeller::Metadata;
 use poirot_types::{
     classified_mev::{
-        compose_sandwich_jit, ClassifiedMev, MevBlock, MevResult, MevType, SpecificMev
+        compose_sandwich_jit, ClassifiedMev, JitLiquiditySandwich, Liquidation, MevBlock,
+        MevResult, MevType, SpecificMev
     },
     normalized_actions::Actions,
     tree::TimeTree
@@ -123,9 +124,9 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         let builder_eth_profit = total_bribe + pre_processing.cumulative_gas_paid;
 
         let mut mev_block = MevBlock {
-            block_hash: pre_processing.meta_data.block_hash,
+            block_hash: pre_processing.meta_data.block_hash.into(),
             block_number: pre_processing.meta_data.block_num,
-            mev_count: baby_data.count(),
+            mev_count: baby_data.count() as usize,
             submission_eth_price: pre_processing.meta_data.eth_prices.0,
             finalized_eth_price: pre_processing.meta_data.eth_prices.1,
             cumulative_gas_used: pre_processing.cumulative_gas_used,
@@ -183,20 +184,26 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 .map(|(k, v)| {
                     let new_v = v
                         .into_iter()
-                        .map(|(class, other)| {
-                            let any_cast: Box<dyn Any> = other;
+                        .map(|(class, mut other)| {
+                            let mut a_ref = other.as_mut();
+                            let any_cast = &mut a_ref as &mut dyn Any;
+
                             match k {
-                                MevType::Jit => MevResult::Jit(*any_cast.downcast().unwrap()),
-                                MevType::CexDex => MevResult::CexDex(*any_cast.downcast().unwrap()),
+                                MevType::Jit => {
+                                    MevResult::Jit(any_cast.downcast_mut().cloned().unwrap())
+                                }
+                                MevType::CexDex => {
+                                    MevResult::CexDex(any_cast.downcast_mut().cloned().unwrap())
+                                }
                                 MevType::Sandwich => {
-                                    MevResult::Sandwich(*any_cast.downcast().unwrap())
+                                    MevResult::Sandwich(any_cast.downcast_mut().cloned().unwrap())
                                 }
-                                MevType::JitSandwich => {
-                                    MevResult::JitSandwich(*any_cast.downcast().unwrap())
-                                }
-                                MevType::Liquidation => {
-                                    MevResult::Liquidation(*any_cast.downcast().unwrap())
-                                }
+                                MevType::JitSandwich => MevResult::JitSandwich(
+                                    any_cast.downcast_mut().cloned().unwrap()
+                                ),
+                                MevType::Liquidation => MevResult::Liquidation(
+                                    any_cast.downcast_mut().cloned().unwrap()
+                                ),
                                 _ => todo!("add other downcasts for different types")
                             }
                         })
