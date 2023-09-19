@@ -42,12 +42,13 @@ impl Database {
     pub async fn get_metadata(&self, block_num: u64, block_hash: U256) -> Metadata {
         let private_flow = self.get_private_flow(block_num, block_hash).await;
         let relay_data = self.get_relay_info(block_num, block_hash).await;
-        let cex_prices = self
+        let mut cex_prices = self
             .get_cex_prices(relay_data.relay_time, relay_data.p2p_time)
             .await;
 
         // eth price is in cex_prices
-        let eth_prices = Default::default();
+        let eth_prices = cex_prices.get("ETH").unwrap().clone();
+        cex_prices.remove("ETH");
 
         let metadata = Metadata::new(
             block_num,
@@ -93,7 +94,7 @@ impl Database {
         &self,
         relay_time: u64,
         p2p_time: u64,
-    ) -> HashMap<Address, (Rational, Rational)> {
+    ) -> HashMap<String, (Rational, Rational)> {
         let prices = self
             .client
             .query_all_params::<u64, DBTokenPrices>(
@@ -107,14 +108,14 @@ impl Database {
             .into_iter()
             .map(|row| {
                 (
-                    Address::from_str(&row.address).unwrap(),
+                    row.symbol,
                     (
                         Rational::try_from(row.price0).unwrap(),
                         Rational::try_from(row.price1).unwrap(),
                     ),
                 )
             })
-            .collect::<HashMap<Address, (Rational, Rational)>>();
+            .collect::<HashMap<String, (Rational, Rational)>>();
 
         token_prices
     }
