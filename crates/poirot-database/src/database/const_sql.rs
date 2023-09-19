@@ -12,7 +12,8 @@ WHERE
     )
     AND substring(bt.symbol, -4) = 'USDT'
 GROUP BY 
-    bt.symbol;"#;
+    bt.symbol;
+"#;
 
 pub const PRIVATE_FLOW: &str = r#"SELECT tx_hash
 FROM

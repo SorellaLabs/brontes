@@ -658,10 +658,10 @@ dependencies = [
  "log",
  "malachite",
  "metrics-process",
- "poirot-classifer",
+ "poirot-classifier",
  "poirot-core",
+ "poirot-database",
  "poirot-inspect",
- "poirot-labeller",
  "poirot-metrics",
  "poirot-types",
  "rayon",
@@ -4708,7 +4708,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4503fa043bf02cee09a9582e9554b4c6403b2ef55e4612e96561d294419429f8"
 
 [[package]]
-name = "poirot-classifer"
+name = "poirot-classifier"
 version = "0.1.0"
 dependencies = [
  "alloy-dyn-abi",
@@ -4726,7 +4726,7 @@ dependencies = [
  "phf",
  "phf_codegen",
  "poirot-core",
- "poirot-labeller",
+ "poirot-database",
  "poirot-types",
  "rayon",
  "reth-primitives 0.1.0-alpha.8 (git+https://github.com/paradigmxyz/reth?rev=0f14ec4)",
@@ -4789,32 +4789,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poirot-inspect"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "auto_impl",
- "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
- "futures",
- "hyper",
- "hyper-tls",
- "lazy_static",
- "malachite",
- "poirot-classifer",
- "poirot-labeller",
- "poirot-types",
- "rayon",
- "reth-primitives 0.1.0-alpha.8 (git+https://github.com/paradigmxyz/reth?rev=0f14ec4)",
- "reth-rpc-types 0.1.0-alpha.8 (git+https://github.com/paradigmxyz/reth?rev=0f14ec4)",
- "serde",
- "serde_with 3.3.0",
- "strum",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "poirot-labeller"
+name = "poirot-database"
 version = "0.1.0"
 dependencies = [
  "futures",
@@ -4830,6 +4805,31 @@ dependencies = [
  "sorella-db-clients",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "poirot-inspect"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "auto_impl",
+ "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
+ "futures",
+ "hyper",
+ "hyper-tls",
+ "lazy_static",
+ "malachite",
+ "poirot-classifier",
+ "poirot-database",
+ "poirot-types",
+ "rayon",
+ "reth-primitives 0.1.0-alpha.8 (git+https://github.com/paradigmxyz/reth?rev=0f14ec4)",
+ "reth-rpc-types 0.1.0-alpha.8 (git+https://github.com/paradigmxyz/reth?rev=0f14ec4)",
+ "serde",
+ "serde_with 3.3.0",
+ "strum",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

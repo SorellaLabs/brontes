@@ -26,23 +26,23 @@ type CollectionFut<'a> = Pin<
     >,
 >;
 
-pub struct Poirot<'a, const N: usize> {
+pub struct Poirot<'inspector, 'db, const N: usize> {
     current_block:   u64,
     parser:          Parser,
     classifier:      Classifier,
-    labeller:        Labeller<'a>,
-    daddy_inspector: DaddyInspector<'a, N>,
+    labeller:        Labeller<'db>,
+    daddy_inspector: DaddyInspector<'inspector, N>,
 
     // pending future data
-    classifier_data: Option<CollectionFut<'a>>,
+    classifier_data: Option<CollectionFut<'db>>,
 }
 
-impl<'a, const N: usize> Poirot<'a, N> {
+impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
     pub fn new(
         parser: Parser,
-        labeller: Labeller<'a>,
+        labeller: Labeller<'db>,
         classifier: Classifier,
-        daddy_inspector: DaddyInspector<'a, N>,
+        daddy_inspector: DaddyInspector<'inspector, N>,
         init_block: u64,
     ) -> Self {
         Self {
@@ -101,7 +101,7 @@ impl<'a, const N: usize> Poirot<'a, N> {
     }
 }
 
-impl<'a, const N: usize> Future for Poirot<'a, N> {
+impl<const N: usize> Future for Poirot<'_, '_, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
