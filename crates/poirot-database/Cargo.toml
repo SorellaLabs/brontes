@@ -1,5 +1,5 @@
 [package]
-name = "poirot-labeller"
+name = "poirot-database"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,7 +9,7 @@ edition = "2021"
 reth-primitives.workspace = true
 sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients", branch = "main" }
 # serde
-serde = { workspace = true, features = ["derive"]}
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde_with = { version = "3.3.0", features = ["macros"] }
 
