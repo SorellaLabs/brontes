@@ -9,11 +9,11 @@ use serde::{Deserialize, Serialize};
 use crate::normalized_actions::NormalizedAction;
 
 pub struct TimeTree<V: NormalizedAction> {
-    pub roots: Vec<Root<V>>,
-    pub header: Header,
+    pub roots:            Vec<Root<V>>,
+    pub header:           Header,
     pub avg_priority_fee: u64,
     /// first is on block submission, second is when the block gets accepted
-    pub eth_prices: (Rational, Rational),
+    pub eth_prices:       (Rational, Rational)
 }
 
 impl<V: NormalizedAction> TimeTree<V> {
@@ -56,7 +56,7 @@ impl<V: NormalizedAction> TimeTree<V> {
 
     pub fn inspect<F>(&self, hash: H256, call: F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> bool
     {
         if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
             root.inspect(&call)
@@ -67,7 +67,7 @@ impl<V: NormalizedAction> TimeTree<V> {
 
     pub fn inspect_all<F>(&self, call: F) -> HashMap<H256, Vec<Vec<V>>>
     where
-        F: Fn(&Node<V>) -> bool + Send + Sync,
+        F: Fn(&Node<V>) -> bool + Send + Sync
     {
         self.roots
             .par_iter()
@@ -81,7 +81,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
     where
         T: Fn(Address, Vec<V>) -> bool + Sync,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
     {
         self.roots
             .par_iter_mut()
@@ -93,7 +93,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     where
         T: Fn(&Node<V>) -> R + Sync,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        F: Fn(&Node<V>) -> bool + Sync,
+        F: Fn(&Node<V>) -> bool + Sync
     {
         self.roots
             .par_iter_mut()
@@ -102,10 +102,10 @@ impl<V: NormalizedAction> TimeTree<V> {
 }
 
 pub struct Root<V: NormalizedAction> {
-    pub head: Node<V>,
-    pub tx_hash: H256,
-    pub private: bool,
-    pub gas_details: GasDetails,
+    pub head:        Node<V>,
+    pub tx_hash:     H256,
+    pub private:     bool,
+    pub gas_details: GasDetails
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -115,7 +115,7 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> bool
     {
         let mut result = Vec::new();
         self.head.inspect(&mut result, call);
@@ -127,7 +127,7 @@ impl<V: NormalizedAction> Root<V> {
     where
         T: Fn(&Node<V>) -> R,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> bool
     {
         let mut indexes = HashSet::new();
         self.head
@@ -140,7 +140,7 @@ impl<V: NormalizedAction> Root<V> {
     pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
     where
         T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
     {
         // bool is used for recursion
         let mut results = Vec::new();
@@ -156,10 +156,10 @@ impl<V: NormalizedAction> Root<V> {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row)]
 pub struct GasDetails {
-    pub coinbase_transfer: Option<U256>,
-    pub priority_fee: u64,
-    pub gas_used: u64,
-    pub effective_gas_price: u64,
+    pub coinbase_transfer:   Option<U256>,
+    pub priority_fee:        u64,
+    pub gas_used:            u64,
+    pub effective_gas_price: u64
 }
 
 impl GasDetails {
@@ -179,14 +179,14 @@ impl GasDetails {
 }
 
 pub struct Node<V: NormalizedAction> {
-    pub inner: Vec<Node<V>>,
+    pub inner:     Vec<Node<V>>,
     pub finalized: bool,
-    pub index: u64,
+    pub index:     u64,
 
     /// This only has values when the node is frozen
     pub subactions: Vec<V>,
-    pub address: Address,
-    pub data: V,
+    pub address:    Address,
+    pub data:       V
 }
 
 impl<V: NormalizedAction> Node<V> {
@@ -204,7 +204,7 @@ impl<V: NormalizedAction> Node<V> {
     /// The address here is the from address for the trace
     pub fn insert(&mut self, address: Address, n: Node<V>) {
         if self.finalized {
-            return;
+            return
         }
 
         if address == self.address {
@@ -212,7 +212,7 @@ impl<V: NormalizedAction> Node<V> {
             cur_stack.pop();
             if !cur_stack.contains(&address) {
                 self.inner.push(n);
-                return;
+                return
             }
         }
 
@@ -254,16 +254,16 @@ impl<V: NormalizedAction> Node<V> {
         indexes: &mut HashSet<u64>,
         find: &F,
         classify: &C,
-        info: &T,
+        info: &T
     ) -> bool
     where
         F: Fn(&Node<V>) -> bool,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
-        T: Fn(&Node<V>) -> R,
+        T: Fn(&Node<V>) -> R
     {
         // prev better
         if !find(self) {
-            return false;
+            return false
         }
         let lower_has_better = self
             .inner
@@ -278,15 +278,15 @@ impl<V: NormalizedAction> Node<V> {
             indexes.extend(classified_indexes);
         }
 
-        return true;
+        return true
     }
 
     pub fn get_bounded_info<F, R>(&self, lower: u64, upper: u64, res: &mut Vec<R>, info_fn: &F)
     where
-        F: Fn(&Node<V>) -> R,
+        F: Fn(&Node<V>) -> R
     {
         if self.inner.is_empty() {
-            return;
+            return
         }
 
         let last = self.inner.last().unwrap();
@@ -298,7 +298,7 @@ impl<V: NormalizedAction> Node<V> {
                 .iter()
                 .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
 
-            return;
+            return
         }
 
         // find bounded limit
@@ -315,7 +315,7 @@ impl<V: NormalizedAction> Node<V> {
                     end = end.or(Some(our_index).filter(|_| peek.index > upper));
                 }
             } else {
-                break;
+                break
             }
         }
 
@@ -336,7 +336,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn remove_index_and_childs(&mut self, index: u64) {
         if self.inner.is_empty() {
-            return;
+            return
         }
 
         let mut iter = self.inner.iter_mut().enumerate().peekable();
@@ -344,16 +344,16 @@ impl<V: NormalizedAction> Node<V> {
         let val = loop {
             if let Some((our_index, next)) = iter.next() {
                 if index == next.index {
-                    break Some(our_index);
+                    break Some(our_index)
                 }
 
                 if let Some(peek) = iter.peek() {
                     if index > next.index && index < peek.1.index {
                         next.remove_index_and_childs(index);
-                        break None;
+                        break None
                     }
                 } else {
-                    break None;
+                    break None
                 }
             }
         };
@@ -365,11 +365,11 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> bool
     {
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
-            return false;
+            return false
         }
         let lower_has_better = self
             .inner
@@ -390,15 +390,15 @@ impl<V: NormalizedAction> Node<V> {
         &mut self,
         find: &T,
         call: &F,
-        result: &mut Vec<(Address, (Address, Address))>,
+        result: &mut Vec<(Address, (Address, Address))>
     ) -> bool
     where
         T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
     {
         let works = find(self.address, self.get_all_sub_actions());
         if !works {
-            return false;
+            return false
         }
 
         let lower_has_better = self
