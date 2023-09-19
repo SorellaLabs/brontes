@@ -34,7 +34,6 @@ impl TraceMetrics {
     }
 }
 
-
 #[derive(Metrics, Clone)]
 #[metrics(scope = "transaction_tracing")]
 pub(crate) struct TransactionTracingMetrics {
