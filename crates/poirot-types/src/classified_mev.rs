@@ -79,7 +79,7 @@ impl Row for MevType {
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
 pub trait SpecificMev: Send + Sync + 'static {
-    fn into_any(self) -> Box<dyn Any>;
+    fn into_any(self: Box<Self>) -> Box<dyn Any>;
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u64;
     fn bribe(&self) -> u64;
@@ -141,8 +141,8 @@ pub fn compose_sandwich_jit(
 }
 
 impl SpecificMev for Sandwich {
-    fn into_any(self) -> Box<dyn Any> {
-        Box::new(self)
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
     }
 
     fn mev_type(&self) -> MevType {
@@ -190,8 +190,8 @@ impl SpecificMev for JitLiquiditySandwich {
         MevType::JitSandwich
     }
 
-    fn into_any(self) -> Box<dyn Any> {
-        Box::new(self)
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
     }
 
     fn priority_fee_paid(&self) -> u64 {
@@ -229,8 +229,8 @@ impl SpecificMev for CexDex {
         MevType::CexDex
     }
 
-    fn into_any(self) -> Box<dyn Any> {
-        Box::new(self)
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
     }
 
     fn priority_fee_paid(&self) -> u64 {
@@ -263,8 +263,8 @@ impl SpecificMev for Liquidation {
         MevType::Liquidation
     }
 
-    fn into_any(self) -> Box<dyn Any> {
-        Box::new(self)
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -321,8 +321,8 @@ impl SpecificMev for JitLiquidity {
         self.mint_gas_details.priority_fee + self.burn_gas_details.priority_fee
     }
 
-    fn into_any(self) -> Box<dyn Any> {
-        Box::new(self)
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
     }
 }
 
@@ -334,8 +334,8 @@ pub struct AtomicBackrun {
 }
 
 impl SpecificMev for AtomicBackrun {
-    fn into_any(self) -> Box<dyn Any> {
-        Box::new(self)
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
     }
 
     fn priority_fee_paid(&self) -> u64 {
