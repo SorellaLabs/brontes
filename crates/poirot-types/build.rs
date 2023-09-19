@@ -5,16 +5,16 @@ use std::{
     hash::Hash,
     io::{BufWriter, Write},
     path::Path,
-    str::FromStr,
 };
 
 use clickhouse::{Client, Row};
-use ethers_core::types::{Address, Chain, H160};
+use ethers_core::types::Address;
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
+#[allow(dead_code)]
 const TOKEN_QUERIES: &str = "SELECT toString(address),decimals FROM tokens";
 
 fn main() {
@@ -119,6 +119,7 @@ fn build_asset_map(file: &mut BufWriter<File>) {
 }
 
 /// builds the clickhouse database client
+#[allow(dead_code)]
 fn build_db() -> Client {
     // clickhouse path
     let clickhouse_path = format!(
@@ -142,6 +143,7 @@ fn build_db() -> Client {
         )
 }
 
+#[allow(dead_code)]
 async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
 }

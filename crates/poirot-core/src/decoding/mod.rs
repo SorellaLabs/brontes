@@ -7,15 +7,12 @@ use std::{
 
 use alloy_etherscan::Client;
 use ethers_core::types::Chain;
-use futures::{stream::FuturesUnordered, Future};
+use futures::Future;
 use poirot_types::structured_trace::TxTrace;
 use reth_primitives::{BlockId, BlockNumberOrTag, Header, H256};
 use reth_provider::BlockIdReader;
 use reth_tracing::TracingClient;
-use tokio::{
-    sync::mpsc::UnboundedSender,
-    task::{JoinError, JoinHandle},
-};
+use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 use self::parser::TraceParser;
 use crate::{
@@ -26,10 +23,13 @@ use crate::{
 mod parser;
 mod utils;
 use poirot_metrics::{trace::types::TraceMetricEvent, PoirotMetricEvents};
-
+#[allow(dead_code)]
 pub(crate) const UNKNOWN: &str = "unknown";
+#[allow(dead_code)]
 pub(crate) const RECEIVE: &str = "receive";
+#[allow(dead_code)]
 pub(crate) const FALLBACK: &str = "fallback";
+
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 const CACHE_DIRECTORY: &str = "./abi_cache";
 
