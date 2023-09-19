@@ -6,7 +6,7 @@ use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, Parall
 use reth_primitives::{Address, Header, H256, U256};
 use serde::{Deserialize, Serialize};
 
-use crate::normalized_actions::{Actions, NormalizedAction};
+use crate::normalized_actions::NormalizedAction;
 
 pub struct TimeTree<V: NormalizedAction> {
     pub roots:            Vec<Root<V>>,
@@ -19,6 +19,10 @@ pub struct TimeTree<V: NormalizedAction> {
 impl<V: NormalizedAction> TimeTree<V> {
     pub fn new(header: Header, eth_prices: (Rational, Rational)) -> Self {
         Self { roots: Vec::with_capacity(150), header, eth_prices, avg_priority_fee: 0 }
+    }
+
+    pub fn get_root(&self, tx_hash: H256) -> Option<&Root<V>> {
+        self.roots.par_iter().find_any(|r| r.tx_hash == tx_hash)
     }
 
     pub fn get_gas_details(&self, hash: H256) -> Option<&GasDetails> {

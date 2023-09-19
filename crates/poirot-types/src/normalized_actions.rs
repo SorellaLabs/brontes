@@ -23,6 +23,21 @@ impl Actions {
         }
     }
 
+    pub fn get_too_address(&self) -> Address {
+        match self {
+            Actions::Swap(s) => s.pool,
+            Actions::Mint(m) => m.to,
+            Actions::Burn(b) => b.to,
+            Actions::Transfer(t) => t.to,
+            Actions::Unclassified(t, _) => match &t.action {
+                reth_rpc_types::trace::parity::Action::Call(c) => c.to,
+                reth_rpc_types::trace::parity::Action::Create(_) => Address::zero(),
+                reth_rpc_types::trace::parity::Action::Reward(_) => Address::zero(),
+                reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address
+            }
+        }
+    }
+
     pub fn is_swap(&self) -> bool {
         matches!(self, Actions::Swap(_))
     }
