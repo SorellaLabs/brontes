@@ -11,7 +11,7 @@ pub mod types;
 #[derive(Debug, Default, Clone)]
 pub struct DynamicContractMetrics {
     contracts: ContractMetrics,
-    functions: HashMap<String, ContractFunctionMetrics>,
+    functions: HashMap<String, ContractFunctionMetrics>
 }
 
 impl DynamicContractMetrics {
@@ -24,7 +24,7 @@ impl DynamicContractMetrics {
     /// [ContractFunctionMetrics]
     pub(crate) fn get_function_metrics(
         &mut self,
-        function_name: String,
+        function_name: String
     ) -> &mut ContractFunctionMetrics {
         self.functions
             .entry(function_name.clone())
@@ -36,7 +36,7 @@ impl DynamicContractMetrics {
     pub(crate) fn handle_event(&mut self, event: DynamicContractMetricEvent) {
         trace!(target: "tracing::metrics", ?event, "Metric event received");
         match event {
-            DynamicContractMetricEvent::ContractMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+            DynamicContractMetricEvent::ContractMetricRecieved(_) => panic!("NOT IMPLEMENTED YET")
         }
     }
 }
@@ -45,12 +45,12 @@ impl DynamicContractMetrics {
 #[metrics(scope = "contracts")]
 pub(crate) struct ContractMetrics {
     /// The number of times the contract has been called
-    pub(crate) times_called: Counter,
+    pub(crate) times_called: Counter
 }
 
 #[derive(Metrics, Clone)]
 #[metrics(scope = "contract_functions")]
 pub(crate) struct ContractFunctionMetrics {
     /// The number of times the function on the contract has been called
-    pub(crate) times_called: Counter,
+    pub(crate) times_called: Counter
 }
