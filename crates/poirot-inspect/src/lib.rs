@@ -54,7 +54,7 @@ pub trait Inspector: Send + Sync {
                 let adjusted_in = -swap.amount_in.to_scaled_rational(*decimals_in);
                 let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
 
-                match deltas.entry(swap.call_address) {
+                match deltas.entry(swap.from) {
                     Entry::Occupied(mut o) => {
                         let inner: &mut HashMap<Address, Rational> = o.get_mut();
 
