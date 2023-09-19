@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use hex_literal::hex;
 use poirot_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
-use poirot_labeller::Metadata;
+use poirot_database::Metadata;
 use poirot_types::{
     normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap},
     structured_trace::{TraceActions, TxTrace},
