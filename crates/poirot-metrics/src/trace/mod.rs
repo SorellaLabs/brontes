@@ -10,7 +10,7 @@ use super::TraceMetricEvent;
 
 #[derive(Debug, Default, Clone)]
 pub struct TraceMetrics {
-    txs: HashMap<String, TransactionTracingMetrics>,
+    txs: HashMap<String, TransactionTracingMetrics>
 }
 
 impl TraceMetrics {
@@ -18,7 +18,7 @@ impl TraceMetrics {
     #[allow(dead_code)]
     pub(crate) fn get_transaction_metrics(
         &mut self,
-        tx_hash: String,
+        tx_hash: String
     ) -> &mut TransactionTracingMetrics {
         self.txs.entry(tx_hash.clone()).or_insert_with(|| {
             TransactionTracingMetrics::new_with_labels(&[("transaction_tracing", tx_hash)])
@@ -30,7 +30,7 @@ impl TraceMetrics {
         match event {
             TraceMetricEvent::TraceMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
             TraceMetricEvent::TransactionMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
-            TraceMetricEvent::BlockMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+            TraceMetricEvent::BlockMetricRecieved(_) => panic!("NOT IMPLEMENTED YET")
         }
     }
 }
@@ -163,5 +163,5 @@ pub(crate) struct TransactionTracingMetrics {
     /// EthApi Execution Timed Out Error
     pub(crate) eth_api_execution_timed_out: Counter,
     /// EthApi Call Input Error
-    pub(crate) eth_api_call_input_error: Counter,
+    pub(crate) eth_api_call_input_error: Counter
 }
