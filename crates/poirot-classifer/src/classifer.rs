@@ -6,13 +6,13 @@ use poirot_labeller::Metadata;
 use poirot_types::{
     normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap},
     structured_trace::{TraceActions, TxTrace},
-    tree::{Node, Root, TimeTree}
+    tree::{Node, Root, TimeTree},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
 use reth_rpc_types::{
     trace::parity::{Action, TransactionTrace},
-    Log
+    Log,
 };
 
 use crate::IntoAction;
@@ -24,7 +24,7 @@ const TRANSFER_TOPIC: H256 =
 #[derive(Debug)]
 pub struct Classifier {
     known_dyn_protocols: HashMap<Address, (Address, Address)>,
-    static_protocols:    HashMap<[u8; 4], Box<dyn IntoAction>>
+    static_protocols:    HashMap<[u8; 4], Box<dyn IntoAction>>,
 }
 
 impl Classifier {
@@ -36,7 +36,7 @@ impl Classifier {
         &mut self,
         traces: Vec<TxTrace>,
         header: Header,
-        metadata: &Metadata
+        metadata: &Metadata,
     ) -> TimeTree<Actions> {
         let roots = traces
             .into_par_iter()
@@ -51,7 +51,7 @@ impl Classifier {
                     finalized: !classification.is_unclassified(),
                     subactions: vec![],
                     address,
-                    data: classification
+                    data: classification,
                 };
 
                 let mut root = Root {
@@ -63,8 +63,8 @@ impl Classifier {
                         gas_used:            trace.gas_used,
                         effective_gas_price: trace.effective_price,
                         priority_fee:        trace.effective_price
-                            - header.base_fee_per_gas.unwrap()
-                    }
+                            - header.base_fee_per_gas.unwrap(),
+                    },
                 };
 
                 for (index, trace) in trace.trace.into_iter().enumerate() {
@@ -79,7 +79,7 @@ impl Classifier {
                         finalized: !classification.is_unclassified(),
                         subactions: vec![],
                         address,
-                        data: classification
+                        data: classification,
                     };
 
                     root.insert(node.address, node);
@@ -93,7 +93,7 @@ impl Classifier {
             roots,
             header,
             eth_prices: metadata.eth_prices.clone(),
-            avg_priority_fee: 0
+            avg_priority_fee: 0,
         };
 
         self.try_classify_unknown(&mut tree);
@@ -116,7 +116,7 @@ impl Classifier {
                     })
                     .collect::<Vec<_>>()
             },
-            |node| (node.index, node.data.clone())
+            |node| (node.index, node.data.clone()),
         );
 
         // remove duplicate mints
@@ -137,7 +137,7 @@ impl Classifier {
                     })
                     .collect::<Vec<_>>()
             },
-            |node| (node.index, node.data.clone())
+            |node| (node.index, node.data.clone()),
         );
 
         tree.finalize_tree();
@@ -153,7 +153,7 @@ impl Classifier {
                 }
                 None
             }
-            _ => None
+            _ => None,
         }
     }
 
@@ -171,7 +171,7 @@ impl Classifier {
                 res,
                 return_bytes,
                 address,
-                logs
+                logs,
             )
         } else {
             let rem = logs
@@ -187,7 +187,7 @@ impl Classifier {
                         to,
                         from,
                         token: addr,
-                        amount: value
+                        amount: value,
                     })
                 }
             }
@@ -201,7 +201,7 @@ impl Classifier {
         &self,
         node: &mut Node<Actions>,
         token_0: Address,
-        token_1: Address
+        token_1: Address,
     ) -> Option<Actions> {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
@@ -238,7 +238,7 @@ impl Classifier {
                         index:     node.index,
                         from:      from0,
                         token:     vec![t0, t1],
-                        amount:    vec![value0, value1]
+                        amount:    vec![value0, value1],
                     }))
                 }
                 // mint
@@ -249,7 +249,7 @@ impl Classifier {
                         index:     node.index,
                         to:        to0,
                         token:     vec![t0, t1],
-                        amount:    vec![value0, value1]
+                        amount:    vec![value0, value1],
                     }))
                 }
             }
@@ -262,7 +262,7 @@ impl Classifier {
                     token_in:   t1,
                     token_out:  t0,
                     amount_in:  value1,
-                    amount_out: value0
+                    amount_out: value0,
                 }))
             } else {
                 return Some(Actions::Swap(NormalizedSwap {
@@ -272,7 +272,7 @@ impl Classifier {
                     token_in:   t0,
                     token_out:  t1,
                     amount_in:  value0,
-                    amount_out: value1
+                    amount_out: value1,
                 }))
             }
         }
@@ -286,7 +286,7 @@ impl Classifier {
                     index: node.index,
                     to,
                     token: vec![token],
-                    amount: vec![value]
+                    amount: vec![value],
                 }))
             } else {
                 return Some(Actions::Burn(NormalizedBurn {
@@ -295,7 +295,7 @@ impl Classifier {
                     index: node.index,
                     from,
                     token: vec![token],
-                    amount: vec![value]
+                    amount: vec![value],
                 }))
             }
         }
@@ -339,7 +339,7 @@ impl Classifier {
     /// tries to classify new exchanges
     fn try_clasify_exchange(
         &self,
-        node: &mut Node<Actions>
+        node: &mut Node<Actions>,
     ) -> Option<(Address, (Address, Address), Actions)> {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
@@ -384,7 +384,7 @@ impl Classifier {
                     token_in:   t1,
                     token_out:  t0,
                     amount_in:  value1,
-                    amount_out: value0
+                    amount_out: value0,
                 })
             } else {
                 Actions::Swap(NormalizedSwap {
@@ -394,7 +394,7 @@ impl Classifier {
                     token_in:   t0,
                     token_out:  t1,
                     amount_in:  value0,
-                    amount_out: value1
+                    amount_out: value1,
                 })
             };
             return Some((addr, (t0, t1), swap))
@@ -434,7 +434,7 @@ impl Classifier {
                     return Some((ex_addr, tokens))
                 }
                 None
-            }
+            },
         );
 
         new_classifed_exchanges.into_iter().for_each(|(k, v)| {

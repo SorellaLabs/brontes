@@ -1,25 +1,16 @@
 use std::{
     pin::Pin,
-    sync::Arc,
-    task::{Context, Poll}
+    task::{Context, Poll},
 };
 
-use futures::{
-    future::{join_all, JoinAll},
-    Future, FutureExt
-};
+use futures::{Future, FutureExt, StreamExt};
 use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::Parser;
-use poirot_inspect::{
-    daddy_inspector::{self, DaddyInspector},
-    ClassifiedMev, Inspector
-};
+use poirot_inspect::daddy_inspector::DaddyInspector;
 use poirot_labeller::{Labeller, Metadata};
 use poirot_types::{
-    classified_mev::{ClassifiedMev, MevBlock, MevResult, SpecificMev},
-    normalized_actions::Actions,
+    classified_mev::{ClassifiedMev, MevBlock, MevResult},
     structured_trace::TxTrace,
-    tree::TimeTree
 };
 use reth_primitives::Header;
 use tokio::task::JoinError;
@@ -31,8 +22,8 @@ type CollectionFut<'a> = Pin<
     Box<
         dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Metadata)>
             + Send
-            + 'a
-    >
+            + 'a,
+    >,
 >;
 
 pub struct Poirot<'a, const N: usize> {
@@ -43,7 +34,7 @@ pub struct Poirot<'a, const N: usize> {
     daddy_inspector: DaddyInspector<'a, N>,
 
     // pending future data
-    classifier_data: Option<CollectionFut<'a>>
+    classifier_data: Option<CollectionFut<'a>>,
 }
 
 impl<'a, const N: usize> Poirot<'a, N> {
@@ -52,7 +43,7 @@ impl<'a, const N: usize> Poirot<'a, N> {
         labeller: Labeller<'a>,
         classifier: Classifier,
         daddy_inspector: DaddyInspector<'a, N>,
-        init_block: u64
+        init_block: u64,
     ) -> Self {
         Self {
             parser,
@@ -60,7 +51,7 @@ impl<'a, const N: usize> Poirot<'a, N> {
             classifier,
             daddy_inspector,
             current_block: init_block,
-            classifier_data: None
+            classifier_data: None,
         }
     }
 

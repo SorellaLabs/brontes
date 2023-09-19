@@ -4,7 +4,7 @@ use tokio::{runtime::Runtime, task::JoinHandle};
 /// executes tasks on the runtime
 /// used for a thread pool for the simulator
 pub struct Executor {
-    pub runtime: Runtime
+    pub runtime: Runtime,
 }
 
 impl Executor {
@@ -20,7 +20,7 @@ impl Executor {
     pub fn spawn_result_task_as<F, R>(&self, fut: F, task_kind: TaskKind) -> JoinHandle<R>
     where
         F: Future<Output = R> + Send + 'static,
-        R: Send + 'static
+        R: Send + 'static,
     {
         let task = async move {
             pin_mut!(fut);
@@ -30,14 +30,14 @@ impl Executor {
         let handle = self.runtime.handle().clone();
         match task_kind {
             TaskKind::Default => handle.spawn(task),
-            TaskKind::Blocking => self.runtime.spawn_blocking(move || handle.block_on(task))
+            TaskKind::Blocking => self.runtime.spawn_blocking(move || handle.block_on(task)),
         }
     }
 
     /// Spawns a task depending on the given [TaskKind]
     pub fn spawn_task_as<F>(&self, fut: F, task_kind: TaskKind) -> JoinHandle<()>
     where
-        F: Future<Output = ()> + Send + 'static
+        F: Future<Output = ()> + Send + 'static,
     {
         let task = async move {
             pin_mut!(fut);
@@ -50,19 +50,19 @@ impl Executor {
     /// Spawns a future on the tokio runtime depending on the [TaskKind]
     fn spawn_on_rt<F>(&self, fut: F, task_kind: TaskKind) -> JoinHandle<()>
     where
-        F: Future<Output = ()> + Send + 'static
+        F: Future<Output = ()> + Send + 'static,
     {
         let handle = self.runtime.handle().clone();
         match task_kind {
             TaskKind::Default => handle.spawn(fut),
-            TaskKind::Blocking => self.runtime.spawn_blocking(move || handle.block_on(fut))
+            TaskKind::Blocking => self.runtime.spawn_blocking(move || handle.block_on(fut)),
         }
     }
 
     /// Spawns a future blocking tokio runtime
     pub fn block_on_rt<F>(&self, fut: F)
     where
-        F: Future<Output = ()> + Send + 'static
+        F: Future<Output = ()> + Send + 'static,
     {
         self.runtime.block_on(fut)
     }
@@ -71,5 +71,5 @@ impl Executor {
 /// specifies a blocking or non blocking task
 pub enum TaskKind {
     Default,
-    Blocking
+    Blocking,
 }

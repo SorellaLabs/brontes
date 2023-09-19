@@ -1,7 +1,7 @@
 use alloy_sol_types::{SolCall, SolEvent};
 use poirot_core::{
     StaticReturnBindings,
-    SushiSwap_V2::{burnCall, mintCall, swapCall, Burn, Mint, SushiSwap_V2Calls, Swap}
+    SushiSwap_V2::{burnCall, mintCall, swapCall, Burn, Mint, SushiSwap_V2Calls, Swap},
 };
 use poirot_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_primitives::{Address, Bytes, H160, U256};
@@ -23,7 +23,7 @@ impl IntoAction for V2SwapImpl {
         _data: StaticReturnBindings,
         _return_data: Bytes,
         address: Address,
-        logs: &Vec<Log>
+        logs: &Vec<Log>,
     ) -> Actions {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
 
@@ -40,7 +40,7 @@ impl IntoAction for V2SwapImpl {
                         token_in: token_1,
                         token_out: token_0,
                         amount_in: amount_1_in,
-                        amount_out: amount_0_out
+                        amount_out: amount_0_out,
                     })
                 } else {
                     return Actions::Swap(NormalizedSwap {
@@ -50,7 +50,7 @@ impl IntoAction for V2SwapImpl {
                         token_in: token_0,
                         token_out: token_1,
                         amount_in: amount_0_in,
-                        amount_out: amount_1_out
+                        amount_out: amount_1_out,
                     })
                 }
             }
@@ -72,7 +72,7 @@ impl IntoAction for V2MintImpl {
         data: StaticReturnBindings,
         _return_data: Bytes,
         address: Address,
-        logs: &Vec<Log>
+        logs: &Vec<Log>,
     ) -> Actions {
         let data = enum_unwrap!(data, SushiSwap_V2, mintCall);
         let to = H160(*data.to.0);
@@ -85,7 +85,7 @@ impl IntoAction for V2MintImpl {
                     index,
                     to,
                     token: vec![token_0, token_1],
-                    amount: vec![amount_0, amount_1]
+                    amount: vec![amount_0, amount_1],
                 })
             }
         }
@@ -106,7 +106,7 @@ impl IntoAction for V2BurnImpl {
         _data: StaticReturnBindings,
         _return_data: Bytes,
         address: Address,
-        logs: &Vec<Log>
+        logs: &Vec<Log>,
     ) -> Actions {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
         for log in logs {
@@ -117,7 +117,7 @@ impl IntoAction for V2BurnImpl {
                     index,
                     from: address,
                     token: vec![token_0, token_1],
-                    amount: vec![amount_0, amount_1]
+                    amount: vec![amount_0, amount_1],
                 })
             }
         }
