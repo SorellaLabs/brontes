@@ -20,7 +20,7 @@ pub struct Metadata {
     pub p2p_timestamp: u64,
     pub proposer_fee_recipient: Address,
     pub proposer_mev_reward: u64,
-    pub token_prices: HashMap<Address, (Rational, Rational)>,
+    pub token_prices: HashMap<String, (Rational, Rational)>,
     pub eth_prices: (Rational, Rational),
     pub mempool_flow: HashSet<TxHash>,
 }
@@ -33,7 +33,7 @@ impl Metadata {
         p2p_timestamp: u64,
         proposer_fee_recipient: Address,
         proposer_mev_reward: u64,
-        token_prices: HashMap<Address, (Rational, Rational)>,
+        token_prices: HashMap<String, (Rational, Rational)>,
         eth_prices: (Rational, Rational),
         mempool_flow: HashSet<TxHash>,
     ) -> Self {
