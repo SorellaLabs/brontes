@@ -42,7 +42,6 @@ type ComposeFunction = Option<
 /// everything is ordered properly and we have already composed lower level
 /// actions that could effect the higher level composing.
 macro_rules! mev_composability {
-
     ($($mev_type:ident => $($deps:ident),+;)+) => {
         lazy_static! {
         static ref MEV_FILTER: &'static [(
@@ -90,7 +89,7 @@ type InspectorFut<'a> =
 /// the results downcast using any in order to be able to serialize and
 /// impliment row trait due to the abosulte autism that the db library   
 /// requirements
-pub type DaddyInspectorResults = (MevBlock, HashMap<MevType, Vec<(ClassifiedMev, MevResult)>>);
+pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, MevResult)>);
 
 pub struct DaddyInspector<'a, const N: usize> {
     baby_inspectors:      &'a [&'a Box<dyn Inspector>; N],
@@ -248,7 +247,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             header,
             sorted_mev
                 .into_iter()
-                .map(|(k, v)| {
+                .flat_map(|(k, v)| {
                     let new_v = v
                         .into_iter()
                         .map(|(class, other)| {
@@ -274,15 +273,9 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                             (class, res)
                         })
                         .collect::<Vec<_>>();
-                    (k, new_v)
+                    new_v
                 })
-                .fold(
-                    HashMap::default(),
-                    |mut acc: HashMap<MevType, Vec<(ClassifiedMev, MevResult)>>, (mev_type, v)| {
-                        acc.entry(mev_type).or_default().extend(v);
-                        acc
-                    }
-                )
+                .collect::<Vec<_>>()
         )))
     }
 
@@ -336,7 +329,6 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
     fn compose_dep_filter(
         &mut self,
         parent_mev_type: &MevType,
-        // we know this has len 2
         composable_types: &[MevType],
         compose: &Box<
             dyn Fn(
@@ -355,19 +347,19 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         }
 
         let zero_txes = sorted_mev.remove(&composable_types[0]).unwrap();
-        let one_txes = sorted_mev.get(&composable_types[1]).unwrap();
+
         for (classified, mev_data) in zero_txes {
             let addresses = mev_data.mev_transaction_hashes();
 
-            if let Some((index, _)) =
-                one_txes
-                    .iter()
-                    .enumerate()
-                    .map(|(i, d)| (i, d))
-                    .find(|(_, (k, v))| {
-                        let o_addrs = v.mev_transaction_hashes();
-                        o_addrs == addresses || addresses.iter().any(|a| o_addrs.contains(a))
-                    })
+            if let Some((index, _)) = sorted_mev
+                .get(&composable_types[1])
+                .unwrap()
+                .iter()
+                .enumerate()
+                .find(|(_, (_, v))| {
+                    let o_addrs = v.mev_transaction_hashes();
+                    o_addrs == addresses || addresses.iter().any(|a| o_addrs.contains(a))
+                })
             {
                 // remove composed type
                 let (classifed_1, mev_data_1) = sorted_mev
