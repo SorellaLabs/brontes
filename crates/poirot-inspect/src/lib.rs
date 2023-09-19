@@ -9,7 +9,7 @@ use std::{
 };
 
 use malachite::Rational;
-use poirot_labeller::Metadata;
+use poirot_database::Metadata;
 use poirot_types::{
     classified_mev::{ClassifiedMev, SpecificMev},
     normalized_actions::Actions,
