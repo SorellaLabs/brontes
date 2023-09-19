@@ -1,20 +1,22 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use malachite::{
     num::{basic::traits::Zero, conversion::traits::RoundingFrom},
     rounding_modes::RoundingMode,
     Rational
 };
-use poirot_classifer::enum_unwrap;
 use poirot_labeller::Metadata;
 use poirot_types::{
-    classified_mev::SpecificMev,
+    classified_mev::{CexDex, MevType, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, TimeTree},
     ToScaledRational, TOKEN_TO_DECIMALS
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, H256, U256};
+use rayon::{
+    iter::{IntoParallelIterator, ParallelIterator},
+    prelude::IntoParallelRefIterator
+};
+use reth_primitives::{Address, H256};
 use tracing::error;
 
 use crate::{ClassifiedMev, Inspector};
@@ -25,12 +27,25 @@ impl CexDexInspector {
     fn process_swap(
         &self,
         hash: H256,
+        mev_contract: Address,
+        eoa: Address,
         metadata: Arc<Metadata>,
         gas_details: &GasDetails,
-        swaps: Vec<Actions>
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let (swap_data, (pre, post)) = swaps
+        swaps: Vec<Vec<Actions>>
+    ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
+        let deltas = self.calculate_swap_deltas(&swaps);
+
+        let mev_profit_collector = self
+            .get_best_usd_delta(
+                deltas.clone(),
+                metadata.clone(),
+                Box::new(|(appearance, _)| appearance)
+            )?
+            .0;
+
+        let (swap_data, (pre, post)): (Vec<NormalizedSwap>, _) = swaps
             .into_iter()
+            .flatten()
             .filter_map(|action| {
                 if let Actions::Swap(normalized_swap) = action {
                     let (pre, post) = self.get_cex_dex(&normalized_swap, metadata.as_ref());
@@ -41,31 +56,63 @@ impl CexDexInspector {
             })
             .unzip();
 
-        let profit_pre = self.arb_gas(pre, gas_details, metadata.eth_prices.0);
-        let profit_post = self.arb_gas(post, gas_details, metadata.eth_prices.1);
+        let profit_pre = self.arb_gas(pre, gas_details, &metadata.eth_prices.0)?;
+        let profit_post = self.arb_gas(post, gas_details, &metadata.eth_prices.1)?;
 
-        if profit_pre.is_some() || profit_post.is_some() {
-            let mev = Some(ClassifiedMev {
-                tx_hash:      vec![hash],
-                block_number: metadata.block_num,
-                mev_bot:      swap[0].call_address
-            });
-            return mev
-        }
-        None
+        let classified = ClassifiedMev {
+            mev_profit_collector,
+            tx_hash: hash,
+            mev_contract,
+            eoa,
+            block_number: metadata.block_num,
+            mev_type: MevType::CexDex,
+            submission_profit_usd: f64::rounding_from(profit_pre, RoundingMode::Nearest).0,
+            finalized_profit_usd: f64::rounding_from(profit_post, RoundingMode::Nearest).0,
+            submission_bribe_usd: f64::rounding_from(
+                Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
+                RoundingMode::Nearest
+            )
+            .0,
+            finalized_bribe_usd: f64::rounding_from(
+                Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
+                RoundingMode::Nearest
+            )
+            .0
+        };
+
+        let (dex_prices, cex_prices) = swap_data
+            .par_iter()
+            .filter_map(|swap| self.rational_dex_price(swap, &metadata))
+            .map(|(dex_price, _, cex1)| {
+                (
+                    f64::rounding_from(dex_price, RoundingMode::Nearest).0,
+                    f64::rounding_from(cex1, RoundingMode::Nearest).0
+                )
+            })
+            .unzip();
+
+        let cex_dex = CexDex {
+            tx_hash: hash,
+            gas_details: gas_details.clone(),
+            swaps: swap_data,
+            cex_prices,
+            dex_prices
+        };
+
+        Some((classified, Box::new(cex_dex)))
     }
 
     fn arb_gas(
         &self,
         arbs: Vec<Option<Rational>>,
         gas_details: &GasDetails,
-        eth_price: Rational
+        eth_price: &Rational
     ) -> Option<Rational> {
         Some(
             arbs.into_iter().flatten().sum::<Rational>()
                 - Rational::from(gas_details.gas_paid()) * eth_price
         )
-        .filter(|&p| p > Rational::ZERO)
+        .filter(|p| p > &Rational::ZERO)
     }
 
     pub fn get_cex_dex(
@@ -120,7 +167,11 @@ impl CexDexInspector {
 
         let centralized_prices = metadata.token_prices.get(&swap.token_out)?;
 
-        Some(((adjusted_out / adjusted_in), centralized_prices.0, centralized_prices.1))
+        Some((
+            (adjusted_out / adjusted_in),
+            centralized_prices.0.clone(),
+            centralized_prices.1.clone()
+        ))
     }
 }
 
@@ -130,7 +181,7 @@ impl Inspector for CexDexInspector {
         &self,
         tree: Arc<TimeTree<Actions>>,
         meta_data: Arc<Metadata>
-    ) -> Vec<ClassifiedMev> {
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let intersting_state =
             tree.inspect_all(|node| node.subactions.iter().any(|action| action.is_swap()));
 
@@ -139,8 +190,11 @@ impl Inspector for CexDexInspector {
             .filter_map(|(tx, nested_swaps)| {
                 let gas_details = tree.get_gas_details(tx)?;
                 // Flatten the nested Vec<Vec<V>> into a Vec<V>
-                let swaps = nested_swaps.into_iter().flatten().collect::<Vec<_>>();
-                self.process_swap(tx, meta_data.clone(), gas_details, swaps)
+                let swaps = nested_swaps.into_iter().collect::<Vec<_>>();
+                let root = tree.get_root(tx)?;
+                let eoa = root.head.address;
+                let mev_contract = root.head.data.get_too_address();
+                self.process_swap(tx, mev_contract, eoa, meta_data.clone(), gas_details, swaps)
             })
             .collect::<Vec<_>>()
     }
