@@ -25,17 +25,17 @@ pub struct MevBlock {
     /// Builder address (recipient of coinbase.transfers)
     pub builder_address: Address,
     pub builder_eth_profit: u64,
-    pub builder_submission_profit_usd: u64,
-    pub builder_finalized_profit_usd: u64,
+    pub builder_submission_profit_usd: f64,
+    pub builder_finalized_profit_usd: f64,
     /// Proposer address
     pub proposer_fee_recipient: Address,
     pub proposer_mev_reward: u64,
-    pub proposer_submission_mev_reward_usd: u64,
-    pub proposer_finalized_mev_reward_usd: u64,
+    pub proposer_submission_mev_reward_usd: f64,
+    pub proposer_finalized_mev_reward_usd: f64,
     // gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
-    pub cumulative_mev_submission_profit_usd: u64,
-    pub cumulative_mev_finalized_profit_usd: u64
+    pub cumulative_mev_submission_profit_usd: f64,
+    pub cumulative_mev_finalized_profit_usd: f64
 }
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone)]
