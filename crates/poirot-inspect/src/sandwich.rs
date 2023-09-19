@@ -184,7 +184,8 @@ impl SandwichInspector {
                 RoundingMode::Nearest
             )
             .0,
-            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest).0
+            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest)
+                .0
         };
 
         Some((classified_mev, sandwich))

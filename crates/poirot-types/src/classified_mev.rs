@@ -15,8 +15,8 @@ pub struct MevBlock {
     pub block_hash: H256,
     pub block_number: u64,
     pub mev_count: u64,
-    pub submission_eth_price: u64,
-    pub finalized_eth_price: u64,
+    pub submission_eth_price: f64,
+    pub finalized_eth_price: f64,
     /// Gas
     pub cumulative_gas_used: u64,
     pub cumulative_gas_paid: u64,
@@ -78,7 +78,10 @@ impl Row for MevType {
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
 pub trait SpecificMev: 'static {
+    fn into_any(self) -> Box<dyn Any>;
     fn mev_type(&self) -> MevType;
+    fn priority_fee_paid(&self) -> u64;
+    fn bribe(&self) -> u64;
     fn mev_transaction_hashes(&self) -> Vec<H256>;
 }
 
@@ -96,8 +99,8 @@ pub struct Sandwich {
 }
 
 pub fn compose_sandwich_jit(
-    sandwich: Box<dyn Any + 'static>,
-    jit: Box<dyn Any + 'static>,
+    sandwich: Box<dyn Any>,
+    jit: Box<dyn Any>,
     sandwich_classified: ClassifiedMev,
     jit_classified: ClassifiedMev
 ) -> (ClassifiedMev, Box<dyn SpecificMev>) {
@@ -137,8 +140,20 @@ pub fn compose_sandwich_jit(
 }
 
 impl SpecificMev for Sandwich {
+    fn into_any(self) -> Box<dyn Any> {
+        Box::new(self)
+    }
+
     fn mev_type(&self) -> MevType {
         MevType::Sandwich
+    }
+
+    fn bribe(&self) -> u64 {
+        todo!()
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        todo!()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -166,6 +181,18 @@ impl SpecificMev for JitLiquiditySandwich {
         MevType::JitSandwich
     }
 
+    fn into_any(self) -> Box<dyn Any> {
+        Box::new(self)
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        todo!()
+    }
+
+    fn bribe(&self) -> u64 {
+        todo!()
+    }
+
     fn mev_transaction_hashes(&self) -> Vec<H256> {
         vec![self.front_run, self.back_run]
     }
@@ -185,8 +212,20 @@ impl SpecificMev for CexDex {
         MevType::CexDex
     }
 
+    fn into_any(self) -> Box<dyn Any> {
+        Box::new(self)
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        todo!()
+    }
+
     fn mev_transaction_hashes(&self) -> Vec<H256> {
         vec![self.tx_hash]
+    }
+
+    fn bribe(&self) -> u64 {
+        todo!()
     }
 }
 
@@ -204,8 +243,20 @@ impl SpecificMev for Liquidation {
         MevType::Liquidation
     }
 
+    fn into_any(self) -> Box<dyn Any> {
+        Box::new(self)
+    }
+
     fn mev_transaction_hashes(&self) -> Vec<H256> {
         vec![self.liquidation_tx_hash]
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        todo!()
+    }
+
+    fn bribe(&self) -> u64 {
+        todo!()
     }
 }
 
@@ -229,5 +280,17 @@ impl SpecificMev for JitLiquidity {
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
         vec![self.mint_tx_hash, self.burn_tx_hash]
+    }
+
+    fn bribe(&self) -> u64 {
+        todo!()
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        todo!()
+    }
+
+    fn into_any(self) -> Box<dyn Any> {
+        Box::new(self)
     }
 }
