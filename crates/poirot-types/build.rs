@@ -5,16 +5,16 @@ use std::{
     hash::Hash,
     io::{BufWriter, Write},
     path::Path,
-    str::FromStr
 };
 
 use clickhouse::{Client, Row};
-use ethers_core::types::{Address, Chain, H160};
+use ethers_core::types::Address;
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
+#[allow(dead_code)]
 const TOKEN_QUERIES: &str = "SELECT toString(address),decimals FROM tokens";
 
 fn main() {
@@ -35,8 +35,8 @@ fn main() {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Row)]
 pub struct TokenDetails {
-    address:  String,
-    decimals: u8
+    address: String,
+    decimals: u8,
 }
 
 async fn build_token_details_map(file: &mut BufWriter<File>) {
@@ -74,19 +74,19 @@ pub enum Blockchain {
     Klaytn,
     Arbitrum,
     Avalanche,
-    Aurora
+    Aurora,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenList {
-    pub tokens: Vec<Token>
+    pub tokens: Vec<Token>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct Token {
     pub chain_addresses: HashMap<Blockchain, Vec<Address>>,
     /// e.g USDC, USDT, ETH, BTC
-    pub global_id:       String
+    pub global_id: String,
 }
 
 impl Hash for Token {
@@ -97,7 +97,7 @@ impl Hash for Token {
 
 fn build_asset_map(file: &mut BufWriter<File>) {
     let tokens: TokenList = serde_json::from_str(
-        &fs::read_to_string("../../ticker_address_mapping/assets.json").unwrap()
+        &fs::read_to_string("../../ticker_address_mapping/assets.json").unwrap(),
     )
     .unwrap();
 
@@ -119,6 +119,7 @@ fn build_asset_map(file: &mut BufWriter<File>) {
 }
 
 /// builds the clickhouse database client
+#[allow(dead_code)]
 fn build_db() -> Client {
     // clickhouse path
     let clickhouse_path = format!(
@@ -138,10 +139,11 @@ fn build_db() -> Client {
         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
         .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
         .with_database(
-            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env")
+            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
         )
 }
 
+#[allow(dead_code)]
 async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
 }

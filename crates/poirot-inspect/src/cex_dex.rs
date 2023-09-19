@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use malachite::{
     num::{basic::traits::Zero, conversion::traits::RoundingFrom},
     rounding_modes::RoundingMode,
-    Rational
+    Rational,
 };
 use poirot_classifer::enum_unwrap;
 use poirot_labeller::Metadata;
@@ -11,7 +11,7 @@ use poirot_types::{
     classified_mev::SpecificMev,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, TimeTree},
-    ToScaledRational, TOKEN_TO_DECIMALS
+    ToScaledRational, TOKEN_TO_DECIMALS,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, H256, U256};
@@ -27,7 +27,7 @@ impl CexDexInspector {
         hash: H256,
         metadata: Arc<Metadata>,
         gas_details: &GasDetails,
-        swaps: Vec<Actions>
+        swaps: Vec<Actions>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let (swap_data, (pre, post)) = swaps
             .into_iter()
@@ -46,11 +46,11 @@ impl CexDexInspector {
 
         if profit_pre.is_some() || profit_post.is_some() {
             let mev = Some(ClassifiedMev {
-                tx_hash:      vec![hash],
+                tx_hash: vec![hash],
                 block_number: metadata.block_num,
-                mev_bot:      swap[0].call_address
+                mev_bot: swap[0].call_address,
             });
-            return mev
+            return mev;
         }
         None
     }
@@ -59,11 +59,11 @@ impl CexDexInspector {
         &self,
         arbs: Vec<Option<Rational>>,
         gas_details: &GasDetails,
-        eth_price: Rational
+        eth_price: Rational,
     ) -> Option<Rational> {
         Some(
             arbs.into_iter().flatten().sum::<Rational>()
-                - Rational::from(gas_details.gas_paid()) * eth_price
+                - Rational::from(gas_details.gas_paid()) * eth_price,
         )
         .filter(|&p| p > Rational::ZERO)
     }
@@ -71,7 +71,7 @@ impl CexDexInspector {
     pub fn get_cex_dex(
         &self,
         swap: &NormalizedSwap,
-        metadata: &Metadata
+        metadata: &Metadata,
     ) -> (Option<Rational>, Option<Rational>) {
         self.rational_dex_price(&swap, metadata)
             .map(|(dex_price, cex_price1, cex_price2)| {
@@ -80,7 +80,7 @@ impl CexDexInspector {
 
                 (
                     Some(profit1).filter(|p| Rational::ZERO.lt(p)),
-                    Some(profit2).filter(|p| Rational::ZERO.lt(p))
+                    Some(profit2).filter(|p| Rational::ZERO.lt(p)),
                 )
             })
             .unwrap_or((None, None))
@@ -90,7 +90,7 @@ impl CexDexInspector {
         &self,
         swap: &NormalizedSwap,
         dex_price: &Rational,
-        cex_price: &Rational
+        cex_price: &Rational,
     ) -> Rational {
         // Calculate the price differences between DEX and CEX
         let delta_price = cex_price - dex_price;
@@ -102,7 +102,7 @@ impl CexDexInspector {
     pub fn rational_dex_price(
         &self,
         swap: &NormalizedSwap,
-        metadata: &Metadata
+        metadata: &Metadata,
     ) -> Option<(Rational, Rational, Rational)> {
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
@@ -129,8 +129,8 @@ impl Inspector for CexDexInspector {
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
-        meta_data: Arc<Metadata>
-    ) -> Vec<ClassifiedMev> {
+        meta_data: Arc<Metadata>,
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let intersting_state =
             tree.inspect_all(|node| node.subactions.iter().any(|action| action.is_swap()));
 

@@ -2,51 +2,51 @@ use std::{
     collections::HashSet,
     path::{Path, PathBuf},
     pin::Pin,
-    sync::Arc
+    sync::Arc,
 };
 
 use alloy_etherscan::Client;
 use ethers_core::types::Chain;
-use futures::{stream::FuturesUnordered, Future};
+use futures::Future;
 use poirot_types::structured_trace::TxTrace;
 use reth_primitives::{BlockId, BlockNumberOrTag, Header, H256};
 use reth_provider::BlockIdReader;
 use reth_tracing::TracingClient;
-use tokio::{
-    sync::mpsc::UnboundedSender,
-    task::{JoinError, JoinHandle}
-};
+use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 use self::parser::TraceParser;
 use crate::{
     executor::{Executor, TaskKind},
-    init_trace
+    init_trace,
 };
 
 mod parser;
 mod utils;
 use poirot_metrics::{trace::types::TraceMetricEvent, PoirotMetricEvents};
-
+#[allow(dead_code)]
 pub(crate) const UNKNOWN: &str = "unknown";
+#[allow(dead_code)]
 pub(crate) const RECEIVE: &str = "receive";
+#[allow(dead_code)]
 pub(crate) const FALLBACK: &str = "fallback";
+
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 const CACHE_DIRECTORY: &str = "./abi_cache";
 
 pub type ParserFuture = Pin<
-    Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>
+    Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
 >;
 
 pub struct Parser {
     executor: Executor,
-    parser:   Arc<TraceParser>
+    parser: Arc<TraceParser>,
 }
 
 impl Parser {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         etherscan_key: &str,
-        db_path: &str
+        db_path: &str,
     ) -> Self {
         let executor = Executor::new();
         let tracer =
@@ -56,7 +56,7 @@ impl Parser {
             Chain::Mainnet,
             etherscan_key,
             Some(PathBuf::from(CACHE_DIRECTORY)),
-            CACHE_TIMEOUT
+            CACHE_TIMEOUT,
         )
         .unwrap();
         let parser = TraceParser::new(etherscan_client, Arc::clone(&tracer), Arc::new(metrics_tx));
@@ -66,7 +66,7 @@ impl Parser {
 
     pub fn get_block_hash_for_number(
         &self,
-        block_num: u64
+        block_num: u64,
     ) -> reth_interfaces::Result<Option<H256>> {
         self.parser
             .tracer
@@ -80,7 +80,7 @@ impl Parser {
         let parser = self.parser.clone();
         Box::pin(self.executor.spawn_result_task_as(
             async move { parser.execute_block(block_num).await },
-            TaskKind::Default
+            TaskKind::Default,
         )) as ParserFuture
     }
 }
