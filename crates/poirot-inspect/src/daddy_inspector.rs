@@ -50,7 +50,11 @@ macro_rules! mev_composability {
                 ComposeFunction,
                 Vec<MevType>)] = {
             &*Box::leak(Box::new([
-                $((MevType::$mev_type, get_compose_fn(MevType::$mev_type), [$(MevType::$deps,)+].to_vec()),)+
+                $((
+                        MevType::$mev_type,
+                        get_compose_fn(MevType::$mev_type),
+                        [$(MevType::$deps,)+].to_vec()),
+                   )+
             ]))
         };
     }
