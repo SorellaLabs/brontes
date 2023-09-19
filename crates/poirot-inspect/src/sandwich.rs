@@ -25,7 +25,7 @@ impl Inspector for SandwichInspector {
         meta_data: Arc<Metadata>
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // lets grab the set of all possible sandwich txes
-        let mut iter = tree.roots.iter();
+        let iter = tree.roots.iter();
         if iter.len() < 3 {
             return vec![]
         }
@@ -40,14 +40,14 @@ impl Inspector for SandwichInspector {
                     v.insert(root.tx_hash);
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
-                Entry::Occupied(mut o) => {
+                Entry::Occupied(o) => {
                     let entry: H256 = o.remove();
                     if let Some(victims) = possible_victims.remove(&entry) {
                         set.push((
                             root.head.address,
                             entry,
                             root.tx_hash,
-                            root.head.address,
+                            root.head.data.get_too_address(),
                             victims
                         ));
                     }
@@ -107,7 +107,6 @@ impl Inspector for SandwichInspector {
                     victim_actions,
                     victim_gas
                 )
-                .map(|(k, v)| (k, Box::new(v) as Box<dyn SpecificMev>))
             })
             .collect::<Vec<_>>()
     }
@@ -126,7 +125,7 @@ impl SandwichInspector {
         victim_txes: Vec<H256>,
         victim_actions: Vec<Vec<NormalizedSwap>>,
         victim_gas: Vec<GasDetails>
-    ) -> Option<(ClassifiedMev, Sandwich)> {
+    ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.calculate_swap_deltas(&searcher_actions);
         let mut searcher_actions = searcher_actions
             .into_iter()
@@ -184,7 +183,7 @@ impl SandwichInspector {
             block_number: metadata.block_num,
             mev_type: MevType::Sandwich,
             submission_profit_usd: f64::rounding_from(
-                appearance.1 * &gas_used_usd_appearance,
+                appearance.1 - &gas_used_usd_appearance,
                 RoundingMode::Nearest
             )
             .0,
@@ -194,7 +193,7 @@ impl SandwichInspector {
             )
             .0,
             finalized_profit_usd: f64::rounding_from(
-                finalized.1 * &gas_used_usd_finalized,
+                finalized.1 - &gas_used_usd_finalized,
                 RoundingMode::Nearest
             )
             .0,
@@ -202,6 +201,6 @@ impl SandwichInspector {
                 .0
         };
 
-        Some((classified_mev, sandwich))
+        Some((classified_mev, Box::new(sandwich)))
     }
 }

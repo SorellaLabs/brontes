@@ -26,5 +26,6 @@ auto_impl = "1.1.0"
 serde_with = { version = "3.3.0", features = ["macros"] }
 
 strum = { version = "0.25.0", features = ["derive"] }
+lazy_static = "1.4.0"
 # numbers
 malachite.workspace = true

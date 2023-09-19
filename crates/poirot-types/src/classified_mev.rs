@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use clickhouse::Row;
-use reth_primitives::{Address, H256, U256};
+use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
@@ -78,7 +78,7 @@ impl Row for MevType {
 }
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
-pub trait SpecificMev: 'static {
+pub trait SpecificMev: Send + Sync + 'static {
     fn into_any(self) -> Box<dyn Any>;
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u64;
@@ -221,7 +221,7 @@ pub struct CexDex {
     pub swaps:       Vec<NormalizedSwap>,
     pub cex_prices:  Vec<f64>,
     pub dex_prices:  Vec<f64>,
-    pub gas_details: Vec<GasDetails>
+    pub gas_details: GasDetails
 }
 
 impl SpecificMev for CexDex {
@@ -234,7 +234,7 @@ impl SpecificMev for CexDex {
     }
 
     fn priority_fee_paid(&self) -> u64 {
-        self.gas_details.iter().map(|g| g.priority_fee).sum()
+        self.gas_details.priority_fee
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -243,10 +243,9 @@ impl SpecificMev for CexDex {
 
     fn bribe(&self) -> u64 {
         self.gas_details
-            .iter()
-            .filter_map(|g| g.coinbase_transfer)
-            .sum::<U256>()
-            .to::<u64>()
+            .coinbase_transfer
+            .map(|t| t.to())
+            .unwrap_or(0)
     }
 }
 

@@ -11,6 +11,7 @@ use futures::{
     future::{join_all, JoinAll},
     FutureExt, Stream
 };
+use lazy_static::lazy_static;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use poirot_labeller::Metadata;
 use poirot_types::{
@@ -37,19 +38,23 @@ pub struct BlockPreprocessing {
 macro_rules! mev_composability {
 
     ($($mev_type:ident => $($deps:ident),+ => $replace:expr;)+) => {
-        const MEV_FILTER: &'static [(
+        lazy_static! {
+        static ref MEV_FILTER: &'static [(
                 MevType,
-                Option<Box<dyn Fn(Box<dyn Any>, Box<dyn Any>, ClassifiedMev, ClassifiedMev) ->
-                (ClassifiedMev, Box<dyn SpecificMev>)>>,
-                &'static[MevType])] = &[
-            $((MevType::$mev_type, $replace, &[$(MevType::$deps,)+]),)+
-        ];
+                Option<Box<dyn Fn(Box<dyn Any + 'static>, Box<dyn Any + 'static>, ClassifiedMev, ClassifiedMev) ->
+                (ClassifiedMev, Box<dyn SpecificMev>) + Send + Sync>>,
+                &'static[MevType])] = {
+            &[
+                $((MevType::$mev_type, $replace, [$(MevType::$deps,)+].as_slice()),)+
+            ]
+        };
+    }
     };
 }
 
 mev_composability!(
     // reduce first
-    Sandwich => Backrun => None;
+    Sandwich => Backrun, Jit => None;
     // try compose
     JitSandwich => Sandwich, Jit => Some(Box::new(compose_sandwich_jit));
 );
@@ -70,7 +75,9 @@ pub struct DaddyInspector<'a, const N: usize> {
 
 impl<'a, const N: usize> DaddyInspector<'a, N> {
     pub fn new(baby_inspectors: &'a [&'a Box<dyn Inspector>; N]) -> Self {
+        let a = [1,2].as_slice();
         Self { baby_inspectors, inspectors_execution: None, pre_processing: None }
+
     }
 
     pub fn is_processing(&self) -> bool {
@@ -315,7 +322,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 Box<dyn Any>,
                 ClassifiedMev,
                 ClassifiedMev
-            ) -> (ClassifiedMev, Box<dyn SpecificMev>)
+            ) -> (ClassifiedMev, Box<dyn SpecificMev>) + Send +Sync
         >,
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
     ) {
@@ -323,8 +330,8 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             panic!("we only support sequential compatibility for our specific mev");
         }
 
-        let mut zero_txes = sorted_mev.remove(&composable_types[0]).unwrap();
-        let mut one_txes = sorted_mev.get(&composable_types[1]).unwrap();
+        let zero_txes = sorted_mev.remove(&composable_types[0]).unwrap();
+        let one_txes = sorted_mev.get(&composable_types[1]).unwrap();
         for (classified, mev_data) in zero_txes {
             let addresses = mev_data.mev_transaction_hashes();
 

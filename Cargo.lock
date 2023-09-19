@@ -4798,6 +4798,7 @@ dependencies = [
  "futures",
  "hyper",
  "hyper-tls",
+ "lazy_static",
  "malachite",
  "poirot-classifer",
  "poirot-labeller",
