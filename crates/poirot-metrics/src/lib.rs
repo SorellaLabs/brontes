@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     pin::Pin,
-    task::{ready, Context, Poll}
+    task::{ready, Context, Poll},
 };
 
 use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
@@ -20,7 +20,7 @@ pub enum PoirotMetricEvents {
     /// recorded a new trace event
     TraceMetricRecieved(TraceMetricEvent),
     /// recorded a new dynamic contract recording
-    DynamicContractMetricRecieved(DynamicContractMetricEvent)
+    DynamicContractMetricRecieved(DynamicContractMetricEvent),
 }
 
 /// Metrics routine that listens to new metric events on the `events_rx`
@@ -29,7 +29,7 @@ pub enum PoirotMetricEvents {
 pub struct PoirotMetricsListener {
     events_rx:        UnboundedReceiver<PoirotMetricEvents>,
     tx_metrics:       TraceMetrics,
-    contract_metrics: HashMap<String, DynamicContractMetrics>
+    contract_metrics: HashMap<String, DynamicContractMetrics>,
 }
 
 impl PoirotMetricsListener {
@@ -39,7 +39,7 @@ impl PoirotMetricsListener {
         Self {
             events_rx,
             tx_metrics: TraceMetrics::default(),
-            contract_metrics: HashMap::default()
+            contract_metrics: HashMap::default(),
         }
     }
 

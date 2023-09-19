@@ -6,7 +6,7 @@ use std::{
     borrow::Cow,
     io::Write,
     path::PathBuf,
-    time::{Duration, SystemTime, UNIX_EPOCH}
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use alloy_json_abi::JsonAbi;
@@ -14,7 +14,7 @@ use contract::ContractMetadata;
 use errors::EtherscanError;
 use ethers_core::{
     abi::Address,
-    types::{Chain, H256}
+    types::{Chain, H256},
 };
 use reqwest::{header, IntoUrl, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -46,7 +46,7 @@ pub struct Client {
     /// Etherscan base endpoint like <https://etherscan.io>
     etherscan_url:     Url,
     /// Path to where ABI files should be cached
-    cache:             Option<Cache>
+    cache:             Option<Cache>,
 }
 
 impl Client {
@@ -70,7 +70,7 @@ impl Client {
         chain: Chain,
         api_key: impl Into<String>,
         cache_root: Option<PathBuf>,
-        cache_ttl: Duration
+        cache_ttl: Duration,
     ) -> Result<Self> {
         let mut this = Self::new(chain, api_key)?;
         this.cache = cache_root.map(|root| Cache::new(root, cache_ttl));
@@ -112,7 +112,7 @@ impl Client {
             _ => chain
                 .etherscan_api_key_name()
                 .ok_or_else(|| EtherscanError::ChainNotSupported(chain))
-                .and_then(|key_name| std::env::var(key_name).map_err(Into::into))
+                .and_then(|key_name| std::env::var(key_name).map_err(Into::into)),
         }?;
         Self::new(chain, api_key)
     }
@@ -127,7 +127,7 @@ impl Client {
             Err(EtherscanError::EnvVarNotFound(_)) => {
                 Self::builder().chain(chain).and_then(|c| c.build())
             }
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
@@ -236,7 +236,7 @@ impl Client {
                 }
                 Err(EtherscanError::ErrorResponse { status, message, result })
             }
-            ResponseData::Success(res) => Ok(res)
+            ResponseData::Success(res) => Ok(res),
         }
     }
 
@@ -244,13 +244,13 @@ impl Client {
         &self,
         module: &'static str,
         action: &'static str,
-        other: T
+        other: T,
     ) -> Query<T> {
         Query {
             apikey: self.api_key.as_deref().map(Cow::Borrowed),
             module: Cow::Borrowed(module),
             action: Cow::Borrowed(action),
-            other
+            other,
         }
     }
 }
@@ -266,7 +266,7 @@ pub struct ClientBuilder {
     /// Etherscan base endpoint like <https://etherscan.io>
     etherscan_url:     Option<Url>,
     /// Path to where ABI files should be cached
-    cache:             Option<Cache>
+    cache:             Option<Cache>,
 }
 
 // === impl ClientBuilder ===
@@ -280,7 +280,7 @@ impl ClientBuilder {
     pub fn chain(self, chain: Chain) -> Result<Self> {
         fn urls(
             api: impl IntoUrl,
-            url: impl IntoUrl
+            url: impl IntoUrl,
         ) -> (reqwest::Result<Url>, reqwest::Result<Url>) {
             (api.into_url(), url.into_url())
         }
@@ -347,7 +347,7 @@ impl ClientBuilder {
                 .ok_or_else(|| EtherscanError::Builder("etherscan api url".to_string()))?,
             etherscan_url: etherscan_url
                 .ok_or_else(|| EtherscanError::Builder("etherscan url".to_string()))?,
-            cache
+            cache,
         };
         Ok(client)
     }
@@ -357,14 +357,14 @@ impl ClientBuilder {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct CacheEnvelope<T> {
     expiry: u64,
-    data:   T
+    data:   T,
 }
 
 /// Simple cache for etherscan requests
 #[derive(Clone, Debug)]
 struct Cache {
     root: PathBuf,
-    ttl:  Duration
+    ttl:  Duration,
 }
 
 impl Cache {
@@ -379,7 +379,7 @@ impl Cache {
     fn set_abi(
         &self,
         address: Address,
-        abi: Option<&JsonAbi>
+        abi: Option<&JsonAbi>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.set("abi", address, abi)?;
         Ok(())
@@ -392,7 +392,7 @@ impl Cache {
     fn set_source(
         &self,
         address: Address,
-        source: Option<&ContractMetadata>
+        source: Option<&ContractMetadata>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.set("sources", address, source)?;
         Ok(())
@@ -402,7 +402,7 @@ impl Cache {
         &self,
         prefix: &str,
         address: Address,
-        item: T
+        item: T,
     ) -> Result<(), EtherscanError> {
         let dir_path = self.root.join(prefix);
         std::fs::create_dir_all(&dir_path)?;
@@ -419,8 +419,8 @@ impl Cache {
                     .duration_since(UNIX_EPOCH)
                     .expect("system time is before unix epoch")
                     .as_secs(),
-                data:   item
-            }
+                data:   item,
+            },
         )?;
         writer.flush()?;
         Ok(())
@@ -453,14 +453,14 @@ impl Cache {
 pub struct Response<T> {
     pub status:  String,
     pub message: String,
-    pub result:  T
+    pub result:  T,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ResponseData<T> {
     Success(Response<T>),
-    Error { status: String, message: String, result: Option<String> }
+    Error { status: String, message: String, result: Option<String> },
 }
 
 /// The type that gets serialized as query
@@ -471,7 +471,7 @@ struct Query<'a, T: Serialize> {
     module: Cow<'a, str>,
     action: Cow<'a, str>,
     #[serde(flatten)]
-    other:  T
+    other:  T,
 }
 
 /// Ensures that the url is well formatted to be used by the Client's functions

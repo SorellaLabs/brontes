@@ -8,7 +8,7 @@ use crate::{Client, EtherscanError, Response, Result};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BlockNumberByTimestamp {
     pub timestamp:    u64,
-    pub block_number: BlockNumber
+    pub block_number: BlockNumber,
 }
 
 impl Client {
@@ -29,12 +29,12 @@ impl Client {
     pub async fn get_block_by_timestamp(
         &self,
         timestamp: u64,
-        closest: &str
+        closest: &str,
     ) -> Result<BlockNumberByTimestamp> {
         let query = self.create_query(
             "block",
             "getblocknobytime",
-            HashMap::from([("timestamp", timestamp.to_string()), ("closest", closest.to_string())])
+            HashMap::from([("timestamp", timestamp.to_string()), ("closest", closest.to_string())]),
         );
         let response: Response<String> = self.get_json(&query).await?;
 
@@ -42,9 +42,9 @@ impl Client {
             "0" => Err(EtherscanError::BlockNumberByTimestampFailed),
             "1" => Ok(BlockNumberByTimestamp {
                 timestamp,
-                block_number: response.result.parse::<BlockNumber>().unwrap()
+                block_number: response.result.parse::<BlockNumber>().unwrap(),
             }),
-            err => Err(EtherscanError::BadStatusCode(err.to_string()))
+            err => Err(EtherscanError::BadStatusCode(err.to_string())),
         }
     }
 }

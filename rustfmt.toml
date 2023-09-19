@@ -6,7 +6,6 @@ wrap_comments = true
 use_small_heuristics = "Max"
 use_field_init_shorthand = true
 trailing_semicolon = false
-trailing_comma = "Never"
 imports_granularity = "Crate"
 condense_wildcard_suffixes = true
 enum_discrim_align_threshold = 20

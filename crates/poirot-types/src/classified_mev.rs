@@ -7,7 +7,7 @@ use strum::EnumIter;
 
 use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    tree::GasDetails
+    tree::GasDetails,
 };
 
 #[derive(Debug, Serialize, Deserialize, Row)]
@@ -15,8 +15,8 @@ pub struct MevBlock {
     pub block_hash: H256,
     pub block_number: u64,
     pub mev_count: u64,
-    pub submission_eth_price: u64,
-    pub finalized_eth_price: u64,
+    pub submission_eth_price: f64,
+    pub finalized_eth_price: f64,
     /// Gas
     pub cumulative_gas_used: u64,
     pub cumulative_gas_paid: u64,
@@ -25,17 +25,17 @@ pub struct MevBlock {
     /// Builder address (recipient of coinbase.transfers)
     pub builder_address: Address,
     pub builder_eth_profit: u64,
-    pub builder_submission_profit_usd: u64,
-    pub builder_finalized_profit_usd: u64,
+    pub builder_submission_profit_usd: f64,
+    pub builder_finalized_profit_usd: f64,
     /// Proposer address
     pub proposer_fee_recipient: Address,
     pub proposer_mev_reward: u64,
-    pub proposer_submission_mev_reward_usd: u64,
-    pub proposer_finalized_mev_reward_usd: u64,
+    pub proposer_submission_mev_reward_usd: f64,
+    pub proposer_finalized_mev_reward_usd: f64,
     // gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
-    pub cumulative_mev_submission_profit_usd: u64,
-    pub cumulative_mev_finalized_profit_usd: u64
+    pub cumulative_mev_submission_profit_usd: f64,
+    pub cumulative_mev_finalized_profit_usd: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone)]
@@ -50,7 +50,7 @@ pub struct ClassifiedMev {
     pub submission_profit_usd: f64,
     pub finalized_profit_usd:  f64,
     pub submission_bribe_usd:  f64,
-    pub finalized_bribe_usd:   f64
+    pub finalized_bribe_usd:   f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
@@ -61,15 +61,16 @@ pub enum MevType {
     Jit,
     CexDex,
     Liquidation,
-    Unknown
+    Unknown,
 }
 
 pub enum MevResult {
     Sandwich(Sandwich),
+    Backrun(AtomicBackrun),
     Jit(JitLiquidity),
     JitSandwich(JitLiquiditySandwich),
     CexDex(CexDex),
-    Liquidation(Liquidation)
+    Liquidation(Liquidation),
 }
 
 impl Row for MevType {
@@ -77,8 +78,11 @@ impl Row for MevType {
 }
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
-pub trait SpecificMev: 'static {
+pub trait SpecificMev: Send + Sync + 'static {
+    fn into_any(self: Box<Self>) -> Box<dyn Any>;
     fn mev_type(&self) -> MevType;
+    fn priority_fee_paid(&self) -> u64;
+    fn bribe(&self) -> u64;
     fn mev_transaction_hashes(&self) -> Vec<H256>;
 }
 
@@ -92,14 +96,14 @@ pub struct Sandwich {
     pub victim_swaps:          Vec<Vec<NormalizedSwap>>,
     pub back_run:              H256,
     pub back_run_gas_details:  GasDetails,
-    pub back_run_swaps:        Vec<NormalizedSwap>
+    pub back_run_swaps:        Vec<NormalizedSwap>,
 }
 
 pub fn compose_sandwich_jit(
-    sandwich: Box<dyn Any + 'static>,
-    jit: Box<dyn Any + 'static>,
+    sandwich: Box<dyn Any>,
+    jit: Box<dyn Any>,
     sandwich_classified: ClassifiedMev,
-    jit_classified: ClassifiedMev
+    jit_classified: ClassifiedMev,
 ) -> (ClassifiedMev, Box<dyn SpecificMev>) {
     let sandwich: Sandwich = *sandwich.downcast().unwrap();
     let jit: JitLiquidity = *jit.downcast().unwrap();
@@ -115,7 +119,7 @@ pub fn compose_sandwich_jit(
         back_run_burns:        jit.jit_burns,
         back_run_swaps:        sandwich.back_run_swaps,
         victim_gas_details:    sandwich.victim_gas_details,
-        back_run_gas_details:  sandwich.back_run_gas_details
+        back_run_gas_details:  sandwich.back_run_gas_details,
     });
 
     let new_classifed = ClassifiedMev {
@@ -130,15 +134,35 @@ pub fn compose_sandwich_jit(
         submission_profit_usd: sandwich_classified.submission_profit_usd
             + jit_classified.submission_profit_usd,
         finalized_profit_usd:  sandwich_classified.finalized_profit_usd
-            + jit_classified.finalized_profit_usd
+            + jit_classified.finalized_profit_usd,
     };
 
     (new_classifed, jit_sand)
 }
 
 impl SpecificMev for Sandwich {
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
+
     fn mev_type(&self) -> MevType {
         MevType::Sandwich
+    }
+
+    fn bribe(&self) -> u64 {
+        self.front_run_gas_details
+            .coinbase_transfer
+            .map(|big| big.to::<u64>())
+            .unwrap_or(0)
+            + self
+                .back_run_gas_details
+                .coinbase_transfer
+                .map(|big| big.to::<u64>())
+                .unwrap_or(0)
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        self.front_run_gas_details.priority_fee + self.back_run_gas_details.priority_fee
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -158,12 +182,32 @@ pub struct JitLiquiditySandwich {
     pub back_run:              H256,
     pub back_run_gas_details:  GasDetails,
     pub back_run_burns:        Vec<NormalizedBurn>,
-    pub back_run_swaps:        Vec<NormalizedSwap>
+    pub back_run_swaps:        Vec<NormalizedSwap>,
 }
 
 impl SpecificMev for JitLiquiditySandwich {
     fn mev_type(&self) -> MevType {
         MevType::JitSandwich
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        self.front_run_gas_details.priority_fee + self.back_run_gas_details.priority_fee
+    }
+
+    fn bribe(&self) -> u64 {
+        self.front_run_gas_details
+            .coinbase_transfer
+            .map(|big| big.to::<u64>())
+            .unwrap_or(0)
+            + self
+                .back_run_gas_details
+                .coinbase_transfer
+                .map(|big| big.to::<u64>())
+                .unwrap_or(0)
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -177,7 +221,7 @@ pub struct CexDex {
     pub swaps:       Vec<NormalizedSwap>,
     pub cex_prices:  Vec<f64>,
     pub dex_prices:  Vec<f64>,
-    pub gas_details: Vec<GasDetails>
+    pub gas_details: GasDetails,
 }
 
 impl SpecificMev for CexDex {
@@ -185,8 +229,23 @@ impl SpecificMev for CexDex {
         MevType::CexDex
     }
 
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        self.gas_details.priority_fee
+    }
+
     fn mev_transaction_hashes(&self) -> Vec<H256> {
         vec![self.tx_hash]
+    }
+
+    fn bribe(&self) -> u64 {
+        self.gas_details
+            .coinbase_transfer
+            .map(|t| t.to())
+            .unwrap_or(0)
     }
 }
 
@@ -196,7 +255,7 @@ pub struct Liquidation {
     pub liquidation_tx_hash:     H256,
     pub liquidation_gas_details: GasDetails,
     pub liquidation_swaps:       Vec<NormalizedSwap>,
-    pub liquidation:             Vec<NormalizedLiquidation>
+    pub liquidation:             Vec<NormalizedLiquidation>,
 }
 
 impl SpecificMev for Liquidation {
@@ -204,8 +263,23 @@ impl SpecificMev for Liquidation {
         MevType::Liquidation
     }
 
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
+
     fn mev_transaction_hashes(&self) -> Vec<H256> {
         vec![self.liquidation_tx_hash]
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        self.liquidation_gas_details.priority_fee
+    }
+
+    fn bribe(&self) -> u64 {
+        self.liquidation_gas_details
+            .coinbase_transfer
+            .map(|u| u.to::<u64>())
+            .unwrap_or(0)
     }
 }
 
@@ -219,7 +293,7 @@ pub struct JitLiquidity {
     pub swaps:            Vec<NormalizedSwap>,
     pub burn_tx_hash:     H256,
     pub burn_gas_details: GasDetails,
-    pub jit_burns:        Vec<NormalizedBurn>
+    pub jit_burns:        Vec<NormalizedBurn>,
 }
 
 impl SpecificMev for JitLiquidity {
@@ -229,5 +303,57 @@ impl SpecificMev for JitLiquidity {
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
         vec![self.mint_tx_hash, self.burn_tx_hash]
+    }
+
+    fn bribe(&self) -> u64 {
+        self.mint_gas_details
+            .coinbase_transfer
+            .map(|u| u.to::<u64>())
+            .unwrap_or(0)
+            + self
+                .burn_gas_details
+                .coinbase_transfer
+                .map(|u| u.to::<u64>())
+                .unwrap_or(0)
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        self.mint_gas_details.priority_fee + self.burn_gas_details.priority_fee
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
+}
+
+#[derive(Debug, Serialize, Row, Clone)]
+pub struct AtomicBackrun {
+    pub tx_hash:     H256,
+    pub swaps:       Vec<NormalizedSwap>,
+    pub gas_details: GasDetails,
+}
+
+impl SpecificMev for AtomicBackrun {
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        self.gas_details.priority_fee
+    }
+
+    fn bribe(&self) -> u64 {
+        self.gas_details
+            .coinbase_transfer
+            .map(|u| u.to::<u64>())
+            .unwrap_or(0)
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<H256> {
+        vec![self.tx_hash]
+    }
+
+    fn mev_type(&self) -> MevType {
+        MevType::Backrun
     }
 }

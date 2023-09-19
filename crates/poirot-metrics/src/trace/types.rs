@@ -12,7 +12,7 @@ pub enum TraceMetricEvent {
     /// recorded a new tx trace
     TransactionMetricRecieved(TransactionStats),
     /// recorded a new individual tx trace
-    TraceMetricRecieved(TraceStats)
+    TraceMetricRecieved(TraceStats),
 }
 
 impl From<TraceMetricEvent> for PoirotMetricEvents {
@@ -25,7 +25,7 @@ impl From<TraceMetricEvent> for PoirotMetricEvents {
 pub struct BlockStats {
     pub block_num: u64,
     pub txs:       Vec<TransactionStats>,
-    pub err:       Option<TraceParseErrorKind>
+    pub err:       Option<TraceParseErrorKind>,
 }
 
 impl BlockStats {
@@ -48,7 +48,7 @@ pub struct TransactionStats {
     pub tx_hash:   H256,
     pub tx_idx:    u16,
     pub traces:    Vec<TraceStats>,
-    pub err:       Option<TraceParseErrorKind>
+    pub err:       Option<TraceParseErrorKind>,
 }
 
 impl TransactionStats {
@@ -56,7 +56,7 @@ impl TransactionStats {
         block_num: u64,
         tx_hash: H256,
         tx_idx: u16,
-        err: Option<TraceParseErrorKind>
+        err: Option<TraceParseErrorKind>,
     ) -> Self {
         Self { block_num, tx_hash, tx_idx, traces: Vec::new(), err }
     }
@@ -73,7 +73,7 @@ pub struct TraceStats {
     pub tx_hash:   H256,
     pub tx_idx:    u16,
     pub trace_idx: u16,
-    pub err:       Option<TraceParseErrorKind>
+    pub err:       Option<TraceParseErrorKind>,
 }
 
 impl TraceStats {
@@ -82,7 +82,7 @@ impl TraceStats {
         tx_hash: H256,
         tx_idx: u16,
         trace_idx: u16,
-        err: Option<TraceParseErrorKind>
+        err: Option<TraceParseErrorKind>,
     ) -> Self {
         Self { block_num, tx_hash, tx_idx, trace_idx, err }
     }
@@ -160,5 +160,5 @@ pub enum TraceParseErrorKind {
     EthApiInternalJsTracerError,
     EthApiUnknownSafeOrFinalizedBlock,
     EthApiExecutionTimedOut,
-    EthApiCallInputError
+    EthApiCallInputError,
 }
