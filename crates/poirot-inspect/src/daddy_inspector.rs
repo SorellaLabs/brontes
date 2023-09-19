@@ -188,7 +188,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
         let mut sorted_mev = baby_data
             .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
-            .collect::<Vec<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>>();
+            .collect::<HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>>();
 
         MEV_FILTER
             .iter()
