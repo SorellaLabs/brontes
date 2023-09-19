@@ -14,8 +14,7 @@ use futures::{
 use poirot_labeller::Metadata;
 use poirot_types::{
     classified_mev::{
-        compose_sandwich_jit, ClassifiedMev, JitLiquiditySandwich, Liquidation, MevBlock,
-        MevResult, MevType, SpecificMev
+        compose_sandwich_jit, ClassifiedMev, MevBlock, MevResult, MevType, SpecificMev
     },
     normalized_actions::Actions,
     tree::TimeTree
@@ -123,10 +122,10 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
         let builder_eth_profit = total_bribe + pre_processing.cumulative_gas_paid;
 
-        let mut mev_block = MevBlock {
+        MevBlock {
             block_hash: pre_processing.meta_data.block_hash.into(),
             block_number: pre_processing.meta_data.block_num,
-            mev_count: baby_data.count() as usize,
+            mev_count: baby_data.count() as u64,
             submission_eth_price: pre_processing.meta_data.eth_prices.0,
             finalized_eth_price: pre_processing.meta_data.eth_prices.1,
             cumulative_gas_used: pre_processing.cumulative_gas_used,
@@ -149,7 +148,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 * pre_processing.meta_data.eth_prices.0,
             cumulative_mev_finalized_profit_usd: cum_mev_priority_fee_paid
                 * pre_processing.meta_data.eth_prices.1
-        };
+        }
     }
 
     fn on_baby_resolution(
@@ -160,7 +159,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
         let mut sorted_mev = baby_data
             .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
-            .collect::<HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>>();
+            .collect::<Vec<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>>();
 
         MEV_FILTER
             .iter()
@@ -304,7 +303,12 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 sorted_mev
                     .entry(*parent_mev_type)
                     .or_default()
-                    .push(compose(mev_data, mev_data_1, classified, classifed_1));
+                    .push(compose(
+                        mev_data.into_any(),
+                        mev_data_1.into_any(),
+                        classified,
+                        classifed_1
+                    ));
             } else {
                 // if no prev match, then add back old type
                 sorted_mev
