@@ -11,6 +11,7 @@ use futures::{
     future::{join_all, JoinAll},
     FutureExt, Stream
 };
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use poirot_labeller::Metadata;
 use poirot_types::{
     classified_mev::{
@@ -126,28 +127,56 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             block_hash: pre_processing.meta_data.block_hash.into(),
             block_number: pre_processing.meta_data.block_num,
             mev_count: baby_data.count() as u64,
-            submission_eth_price: pre_processing.meta_data.eth_prices.0,
-            finalized_eth_price: pre_processing.meta_data.eth_prices.1,
+            submission_eth_price: f64::rounding_from(
+                pre_processing.meta_data.eth_prices.0,
+                RoundingMode::Nearest
+            )
+            .0,
+            finalized_eth_price: f64::rounding_from(
+                pre_processing.meta_data.eth_prices.1,
+                RoundingMode::Nearest
+            )
+            .0,
             cumulative_gas_used: pre_processing.cumulative_gas_used,
             cumulative_gas_paid: pre_processing.cumulative_gas_paid,
             total_bribe: baby_data.map(|(_, mev)| mev.bribe()).sum::<u64>(),
             cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
             builder_address: pre_processing.builder_address,
             builder_eth_profit,
-            builder_submission_profit_usd: builder_eth_profit
-                * pre_processing.meta_data.eth_prices.0,
-            builder_finalized_profit_usd: builder_eth_profit
-                * pre_processing.meta_data.eth_prices.1,
+            builder_submission_profit_usd: f64::rounding_from(
+                Rational::from(builder_eth_profit) * pre_processing.meta_data.eth_prices.0,
+                RoundingMode::Nearest
+            )
+            .0,
+            builder_finalized_profit_usd: f64::rounding_from(
+                Rational::from(builder_eth_profit) * pre_processing.meta_data.eth_prices.1,
+                RoundingMode::Nearest
+            )
+            .0,
             proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
             proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
-            proposer_submission_mev_reward_usd: pre_processing.meta_data.proposer_mev_reward
-                * pre_processing.meta_data.eth_prices.0,
-            proposer_finalized_mev_reward_usd: pre_processing.meta_data.proposer_mev_reward
-                * pre_processing.meta_data.eth_prices.1,
-            cumulative_mev_submission_profit_usd: cum_mev_priority_fee_paid
-                * pre_processing.meta_data.eth_prices.0,
-            cumulative_mev_finalized_profit_usd: cum_mev_priority_fee_paid
-                * pre_processing.meta_data.eth_prices.1
+            proposer_submission_mev_reward_usd: f64::rounding_from(
+                Rational::from(pre_processing.meta_data.proposer_mev_reward)
+                    * pre_processing.meta_data.eth_prices.0,
+                RoundingMode::Nearest
+            )
+            .0,
+            proposer_finalized_mev_reward_usd: f64::rounding_from(
+                Rational::from(pre_processing.meta_data.proposer_mev_reward)
+                    * pre_processing.meta_data.eth_prices.1,
+                RoundingMode::Nearest
+            )
+            .0,
+            cumulative_mev_submission_profit_usd: f64::rounding_from(
+                Rational::from(cum_mev_priority_fee_paid) * pre_processing.meta_data.eth_prices.0,
+                RoundingMode::Nearest
+            )
+            .0,
+            cumulative_mev_finalized_profit_usd: f64::rounding_from(
+                Rational::from(cum_mev_priority_fee_paid) * pre_processing.meta_data.eth_prices.1,
+                RoundingMode::Nearest
+            )
+            .0
         }
     }
 
