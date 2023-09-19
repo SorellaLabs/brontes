@@ -6,11 +6,12 @@ use std::{
 };
 
 use bin::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
-use colored::Colorize;
 use metrics_process::Collector;
 use poirot_classifer::Classifier;
-use poirot_core::{decoding::Parser, init_block};
-use poirot_inspect::{atomic_backrun::AtomicBackrunInspector, Inspector};
+use poirot_core::decoding::Parser;
+use poirot_inspect::{
+    atomic_backrun::AtomicBackrunInspector, daddy_inspector::DaddyInspector, Inspector,
+};
 use poirot_labeller::{database::Database, Labeller};
 use poirot_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use tokio::sync::mpsc::unbounded_channel;
@@ -20,7 +21,6 @@ use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter,
 fn main() {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .thread_stack_size(8 * 1024 * 1024)
         .build()
         .unwrap();
 
@@ -78,13 +78,16 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
     let dummy_inspector = Box::new(AtomicBackrunInspector {}) as Box<dyn Inspector>;
-    let inspectors = &[&dummy_inspector];
+    let baby_inspectors = &[&dummy_inspector];
+
+    let daddy_inspector = DaddyInspector::new(baby_inspectors);
+
     let db = Database::default();
     let poirot_labeller = Labeller::new(metrics_tx.clone(), &db);
     let parser = Parser::new(metrics_tx, &key, &db_path);
     let classifier = Classifier::new(HashMap::default());
 
-    Poirot::new(parser, poirot_labeller, classifier, inspectors, 69420).await;
+    Poirot::new(parser, poirot_labeller, classifier, daddy_inspector, 69420).await;
 
     // you have a intermediate parse function for the range of blocks you want to
     // parse it collects the aggregate stats of each block stats
