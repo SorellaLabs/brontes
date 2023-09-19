@@ -16,12 +16,6 @@ use self::types::DBTokenPrices;
 use super::Metadata;
 use crate::database::const_sql::*;
 
-const RELAYS_TABLE: &str = "relays";
-const MEMPOOL_TABLE: &str = "chainbound_mempool";
-const TARDIS_QUOTES_L2: &str = "tardis_l2";
-const TARDIS_QUOTES_QUOTES: &str = "tardis_quotes";
-const TARDIS_QUOTES_TRADES: &str = "tardis_trades";
-
 pub struct Database {
     client: ClickhouseClient,
 }

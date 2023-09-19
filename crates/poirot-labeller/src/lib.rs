@@ -52,6 +52,7 @@ impl Metadata {
 }
 pub struct Labeller<'a> {
     pub client:            &'a Database,
+    #[allow(dead_code)]
     pub(crate) metrics_tx: UnboundedSender<PoirotMetricEvents>,
 }
 

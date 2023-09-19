@@ -1,4 +1,4 @@
-use reth_primitives::{Address, Bytes, H256, U256};
+use reth_primitives::{Address, Bytes, H256};
 use reth_rpc_types::{
     trace::parity::{Action, TransactionTrace},
     Log,
