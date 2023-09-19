@@ -4,7 +4,7 @@ use std::{convert::Infallible, net::SocketAddr, sync::Arc};
 use eyre::WrapErr;
 use hyper::{
     service::{make_service_fn, service_fn},
-    Body, Request, Response, Server
+    Body, Request, Response, Server,
 };
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use metrics_util::layers::{PrefixLayer, Stack};
@@ -20,7 +20,7 @@ impl<T: Fn() + Send + Sync> Hook for T {}
 /// metrics that are not automatically updated.
 pub(crate) async fn initialize_with_hooks<F: Hook + 'static>(
     listen_addr: SocketAddr,
-    hooks: impl IntoIterator<Item = F>
+    hooks: impl IntoIterator<Item = F>,
 ) -> eyre::Result<()> {
     let recorder = PrometheusBuilder::new().build_recorder();
     let handle = recorder.handle();
@@ -45,7 +45,7 @@ pub(crate) async fn initialize_with_hooks<F: Hook + 'static>(
 async fn start_endpoint<F: Hook + 'static>(
     listen_addr: SocketAddr,
     handle: PrometheusHandle,
-    hook: Arc<F>
+    hook: Arc<F>,
 ) -> eyre::Result<()> {
     let make_svc = make_service_fn(move |_| {
         let handle = handle.clone();
@@ -71,7 +71,7 @@ async fn start_endpoint<F: Hook + 'static>(
 /// database and process metrics.
 pub async fn initialize(
     listen_addr: SocketAddr,
-    process: metrics_process::Collector
+    process: metrics_process::Collector,
 ) -> eyre::Result<()> {
     // Clone `process` to move it into the hook and use the original `process` for
     // describe below.

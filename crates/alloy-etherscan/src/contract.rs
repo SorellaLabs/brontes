@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::Path};
 use alloy_json_abi::JsonAbi;
 use ethers_core::{
     abi::{Address, RawAbi},
-    types::{serde_helpers::deserialize_stringified_u64, Bytes}
+    types::{serde_helpers::deserialize_stringified_u64, Bytes},
 };
 #[cfg(feature = "ethers-solc")]
 use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
@@ -14,19 +14,19 @@ use tracing::debug;
 use crate::{
     source_tree::{SourceTree, SourceTreeEntry},
     utils::{deserialize_address_opt, deserialize_source_code},
-    Client, EtherscanError, Response, Result
+    Client, EtherscanError, Response, Result,
 };
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub enum SourceCodeLanguage {
     #[default]
     Solidity,
-    Vyper
+    Vyper,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SourceCodeEntry {
-    pub content: String
+    pub content: String,
 }
 
 impl<T: Into<String>> From<T> for SourceCodeEntry {
@@ -52,10 +52,10 @@ pub enum SourceCodeMetadata {
         sources:  HashMap<String, SourceCodeEntry>,
         /// Compiler settings, None if the language is not Solidity.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        settings: Option<serde_json::Value>
+        settings: Option<serde_json::Value>,
     },
     /// Contains only the source code.
-    SourceCode(String)
+    SourceCode(String),
 }
 
 impl SourceCodeMetadata {
@@ -71,7 +71,7 @@ impl SourceCodeMetadata {
                 .map(|s| s.content.clone())
                 .collect::<Vec<_>>()
                 .join("\n"),
-            Self::SourceCode(s) => s.clone()
+            Self::SourceCode(s) => s.clone(),
         }
     }
 
@@ -79,7 +79,7 @@ impl SourceCodeMetadata {
         match self {
             Self::Metadata { language, .. } => language.clone(),
             Self::Sources(_) => None,
-            Self::SourceCode(_) => None
+            Self::SourceCode(_) => None,
         }
     }
 
@@ -87,7 +87,7 @@ impl SourceCodeMetadata {
         match self {
             Self::Metadata { sources, .. } => sources.clone(),
             Self::Sources(sources) => sources.clone(),
-            Self::SourceCode(s) => HashMap::from([("Contract".into(), s.into())])
+            Self::SourceCode(s) => HashMap::from([("Contract".into(), s.into())]),
         }
     }
 
@@ -102,10 +102,10 @@ impl SourceCodeMetadata {
                         Ok(Some(serde_json::from_value(value.to_owned())?))
                     }
                 }
-                None => Ok(None)
+                None => Ok(None),
             },
             Self::Sources(_) => Ok(None),
-            Self::SourceCode(_) => Ok(None)
+            Self::SourceCode(_) => Ok(None),
         }
     }
 
@@ -114,7 +114,7 @@ impl SourceCodeMetadata {
         match self {
             Self::Metadata { settings, .. } => settings.as_ref(),
             Self::Sources(_) => None,
-            Self::SourceCode(_) => None
+            Self::SourceCode(_) => None,
         }
     }
 }
@@ -174,7 +174,7 @@ pub struct Metadata {
     pub implementation: Option<Address>,
 
     /// The swarm source of the contract.
-    pub swarm_source: String
+    pub swarm_source: String,
 }
 
 impl Metadata {
@@ -221,7 +221,7 @@ impl Metadata {
                 v.parse()
                     .map_err(|_| EtherscanError::Unknown(format!("bad compiler version: {e}")))
             }
-            Ok(v) => Ok(v)
+            Ok(v) => Ok(v),
         }
     }
 
@@ -291,7 +291,7 @@ impl Metadata {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ContractMetadata {
-    pub items: Vec<Metadata>
+    pub items: Vec<Metadata>,
 }
 
 impl IntoIterator for ContractMetadata {
@@ -330,7 +330,7 @@ impl ContractMetadata {
                 .items
                 .iter()
                 .flat_map(|item| item.source_entries())
-                .collect()
+                .collect(),
         }
     }
 }
@@ -355,7 +355,7 @@ impl Client {
                 debug!(?address, "Cache hit for contract_abi");
                 return match src {
                     Some(src) => Ok(src),
-                    None => Err(EtherscanError::ContractCodeNotVerified(address))
+                    None => Err(EtherscanError::ContractCodeNotVerified(address)),
                 }
             } else {
                 debug!(?address, "Cache miss for contract_abi");
@@ -373,7 +373,7 @@ impl Client {
                 }
                 return Err(EtherscanError::EmptyResult {
                     message: resp.message,
-                    status:  resp.status
+                    status:  resp.status,
                 })
             }
         };
@@ -413,7 +413,7 @@ impl Client {
                 }
                 return Err(EtherscanError::EmptyResult {
                     message: resp.message,
-                    status:  resp.status
+                    status:  resp.status,
                 })
             }
         };
@@ -446,7 +446,7 @@ impl Client {
         // ABI.
         let implementation_address = match first_item.implementation {
             Some(impl_addr) => impl_addr,
-            None => return Err(EtherscanError::MissingImplementationAddress)
+            None => return Err(EtherscanError::MissingImplementationAddress),
         };
 
         // Get the ABI of the implementation contract.
@@ -472,7 +472,7 @@ impl Client {
                 debug!(?address, "Cache hit for contract_source_code with address");
                 return match src {
                     Some(src) => Ok(src),
-                    None => Err(EtherscanError::ContractCodeNotVerified(address))
+                    None => Err(EtherscanError::ContractCodeNotVerified(address)),
                 }
             } else {
                 debug!(?address, "Cache miss for contract_source_code with address");

@@ -7,7 +7,7 @@ use strum::EnumIter;
 
 use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    tree::GasDetails
+    tree::GasDetails,
 };
 
 #[derive(Debug, Serialize, Deserialize, Row)]
@@ -35,7 +35,7 @@ pub struct MevBlock {
     // gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
     pub cumulative_mev_submission_profit_usd: f64,
-    pub cumulative_mev_finalized_profit_usd: f64
+    pub cumulative_mev_finalized_profit_usd: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone)]
@@ -50,7 +50,7 @@ pub struct ClassifiedMev {
     pub submission_profit_usd: f64,
     pub finalized_profit_usd:  f64,
     pub submission_bribe_usd:  f64,
-    pub finalized_bribe_usd:   f64
+    pub finalized_bribe_usd:   f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
@@ -61,7 +61,7 @@ pub enum MevType {
     Jit,
     CexDex,
     Liquidation,
-    Unknown
+    Unknown,
 }
 
 pub enum MevResult {
@@ -70,7 +70,7 @@ pub enum MevResult {
     Jit(JitLiquidity),
     JitSandwich(JitLiquiditySandwich),
     CexDex(CexDex),
-    Liquidation(Liquidation)
+    Liquidation(Liquidation),
 }
 
 impl Row for MevType {
@@ -96,14 +96,14 @@ pub struct Sandwich {
     pub victim_swaps:          Vec<Vec<NormalizedSwap>>,
     pub back_run:              H256,
     pub back_run_gas_details:  GasDetails,
-    pub back_run_swaps:        Vec<NormalizedSwap>
+    pub back_run_swaps:        Vec<NormalizedSwap>,
 }
 
 pub fn compose_sandwich_jit(
     sandwich: Box<dyn Any>,
     jit: Box<dyn Any>,
     sandwich_classified: ClassifiedMev,
-    jit_classified: ClassifiedMev
+    jit_classified: ClassifiedMev,
 ) -> (ClassifiedMev, Box<dyn SpecificMev>) {
     let sandwich: Sandwich = *sandwich.downcast().unwrap();
     let jit: JitLiquidity = *jit.downcast().unwrap();
@@ -119,7 +119,7 @@ pub fn compose_sandwich_jit(
         back_run_burns:        jit.jit_burns,
         back_run_swaps:        sandwich.back_run_swaps,
         victim_gas_details:    sandwich.victim_gas_details,
-        back_run_gas_details:  sandwich.back_run_gas_details
+        back_run_gas_details:  sandwich.back_run_gas_details,
     });
 
     let new_classifed = ClassifiedMev {
@@ -134,7 +134,7 @@ pub fn compose_sandwich_jit(
         submission_profit_usd: sandwich_classified.submission_profit_usd
             + jit_classified.submission_profit_usd,
         finalized_profit_usd:  sandwich_classified.finalized_profit_usd
-            + jit_classified.finalized_profit_usd
+            + jit_classified.finalized_profit_usd,
     };
 
     (new_classifed, jit_sand)
@@ -182,7 +182,7 @@ pub struct JitLiquiditySandwich {
     pub back_run:              H256,
     pub back_run_gas_details:  GasDetails,
     pub back_run_burns:        Vec<NormalizedBurn>,
-    pub back_run_swaps:        Vec<NormalizedSwap>
+    pub back_run_swaps:        Vec<NormalizedSwap>,
 }
 
 impl SpecificMev for JitLiquiditySandwich {
@@ -221,7 +221,7 @@ pub struct CexDex {
     pub swaps:       Vec<NormalizedSwap>,
     pub cex_prices:  Vec<f64>,
     pub dex_prices:  Vec<f64>,
-    pub gas_details: GasDetails
+    pub gas_details: GasDetails,
 }
 
 impl SpecificMev for CexDex {
@@ -255,7 +255,7 @@ pub struct Liquidation {
     pub liquidation_tx_hash:     H256,
     pub liquidation_gas_details: GasDetails,
     pub liquidation_swaps:       Vec<NormalizedSwap>,
-    pub liquidation:             Vec<NormalizedLiquidation>
+    pub liquidation:             Vec<NormalizedLiquidation>,
 }
 
 impl SpecificMev for Liquidation {
@@ -293,7 +293,7 @@ pub struct JitLiquidity {
     pub swaps:            Vec<NormalizedSwap>,
     pub burn_tx_hash:     H256,
     pub burn_gas_details: GasDetails,
-    pub jit_burns:        Vec<NormalizedBurn>
+    pub jit_burns:        Vec<NormalizedBurn>,
 }
 
 impl SpecificMev for JitLiquidity {
@@ -330,7 +330,7 @@ impl SpecificMev for JitLiquidity {
 pub struct AtomicBackrun {
     pub tx_hash:     H256,
     pub swaps:       Vec<NormalizedSwap>,
-    pub gas_details: GasDetails
+    pub gas_details: GasDetails,
 }
 
 impl SpecificMev for AtomicBackrun {

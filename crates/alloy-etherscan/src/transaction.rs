@@ -8,12 +8,12 @@ use crate::{Client, EtherscanError, Response, Result};
 #[serde(rename_all = "camelCase")]
 struct ContractExecutionStatus {
     is_error:        String,
-    err_description: String
+    err_description: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 struct TransactionReceiptStatus {
-    status: String
+    status: String,
 }
 
 impl Client {
@@ -22,7 +22,7 @@ impl Client {
         let query = self.create_query(
             "transaction",
             "getstatus",
-            HashMap::from([("txhash", tx_hash.as_ref())])
+            HashMap::from([("txhash", tx_hash.as_ref())]),
         );
         let response: Response<ContractExecutionStatus> = self.get_json(&query).await?;
 
@@ -39,14 +39,14 @@ impl Client {
         let query = self.create_query(
             "transaction",
             "gettxreceiptstatus",
-            HashMap::from([("txhash", tx_hash.as_ref())])
+            HashMap::from([("txhash", tx_hash.as_ref())]),
         );
         let response: Response<TransactionReceiptStatus> = self.get_json(&query).await?;
 
         match response.result.status.as_str() {
             "0" => Err(EtherscanError::TransactionReceiptFailed),
             "1" => Ok(()),
-            err => Err(EtherscanError::BadStatusCode(err.to_string()))
+            err => Err(EtherscanError::BadStatusCode(err.to_string())),
         }
     }
 }

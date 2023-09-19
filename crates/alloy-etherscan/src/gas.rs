@@ -29,7 +29,7 @@ pub struct GasOracle {
     /// Gas Used Ratio
     #[serde(deserialize_with = "deserialize_f64_vec")]
     #[serde(rename = "gasUsedRatio")]
-    pub gas_used_ratio:     Vec<f64>
+    pub gas_used_ratio:     Vec<f64>,
 }
 
 // This function is used to deserialize a string or number into a U256 with an
@@ -37,20 +37,20 @@ pub struct GasOracle {
 // is a string, attempt to deser as first a decimal f64 then a decimal U256.
 fn deser_gwei_amount<'de, D>(deserializer: D) -> Result<U256, D::Error>
 where
-    D: Deserializer<'de>
+    D: Deserializer<'de>,
 {
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum StringOrInt {
         Number(u64),
-        String(String)
+        String(String),
     }
 
     match StringOrInt::deserialize(deserializer)? {
         StringOrInt::Number(i) => Ok(U256::from(i) * WEI_PER_GWEI),
         StringOrInt::String(s) => parse_units(s, "gwei")
             .map(Into::into)
-            .map_err(serde::de::Error::custom)
+            .map_err(serde::de::Error::custom),
     }
 }
 
@@ -58,24 +58,24 @@ fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Er
 where
     D: Deserializer<'de>,
     T: FromStr + serde::Deserialize<'de>,
-    <T as FromStr>::Err: std::fmt::Display
+    <T as FromStr>::Err: std::fmt::Display,
 {
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum StringOrInt<T> {
         String(String),
-        Number(T)
+        Number(T),
     }
 
     match StringOrInt::<T>::deserialize(deserializer)? {
         StringOrInt::String(s) => s.parse::<T>().map_err(serde::de::Error::custom),
-        StringOrInt::Number(i) => Ok(i)
+        StringOrInt::Number(i) => Ok(i),
     }
 }
 
 fn deserialize_f64_vec<'de, D>(deserializer: D) -> core::result::Result<Vec<f64>, D::Error>
 where
-    D: de::Deserializer<'de>
+    D: de::Deserializer<'de>,
 {
     let str_sequence = String::deserialize(deserializer)?;
     str_sequence
@@ -91,7 +91,7 @@ impl Client {
         let query = self.create_query(
             "gastracker",
             "gasestimate",
-            HashMap::from([("gasprice", gas_price.to_string())])
+            HashMap::from([("gasprice", gas_price.to_string())]),
         );
         let response: Response<String> = self.get_json(&query).await?;
 
