@@ -1,6 +1,6 @@
 use std::{
     pin::Pin,
-    task::{Context, Poll}
+    task::{Context, Poll},
 };
 
 use futures::{Future, FutureExt, StreamExt};
@@ -22,8 +22,8 @@ type CollectionFut<'a> = Pin<
     Box<
         dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Metadata)>
             + Send
-            + 'a
-    >
+            + 'a,
+    >,
 >;
 
 pub struct Poirot<'a, const N: usize> {
@@ -34,7 +34,7 @@ pub struct Poirot<'a, const N: usize> {
     daddy_inspector: DaddyInspector<'a, N>,
 
     // pending future data
-    classifier_data: Option<CollectionFut<'a>>
+    classifier_data: Option<CollectionFut<'a>>,
 }
 
 impl<'a, const N: usize> Poirot<'a, N> {
@@ -43,7 +43,7 @@ impl<'a, const N: usize> Poirot<'a, N> {
         labeller: Labeller<'a>,
         classifier: Classifier,
         daddy_inspector: DaddyInspector<'a, N>,
-        init_block: u64
+        init_block: u64,
     ) -> Self {
         Self {
             parser,
@@ -51,7 +51,7 @@ impl<'a, const N: usize> Poirot<'a, N> {
             classifier,
             daddy_inspector,
             current_block: init_block,
-            classifier_data: None
+            classifier_data: None,
         }
     }
 

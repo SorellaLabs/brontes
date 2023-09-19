@@ -13,7 +13,7 @@ pub struct TimeTree<V: NormalizedAction> {
     pub header:           Header,
     pub avg_priority_fee: u64,
     /// first is on block submission, second is when the block gets accepted
-    pub eth_prices:       (Rational, Rational)
+    pub eth_prices:       (Rational, Rational),
 }
 
 impl<V: NormalizedAction> TimeTree<V> {
@@ -60,7 +60,7 @@ impl<V: NormalizedAction> TimeTree<V> {
 
     pub fn inspect<F>(&self, hash: H256, call: F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool
+        F: Fn(&Node<V>) -> bool,
     {
         if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
             root.inspect(&call)
@@ -71,7 +71,7 @@ impl<V: NormalizedAction> TimeTree<V> {
 
     pub fn inspect_all<F>(&self, call: F) -> HashMap<H256, Vec<Vec<V>>>
     where
-        F: Fn(&Node<V>) -> bool + Send + Sync
+        F: Fn(&Node<V>) -> bool + Send + Sync,
     {
         self.roots
             .par_iter()
@@ -85,7 +85,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
     where
         T: Fn(Address, Vec<V>) -> bool + Sync,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         self.roots
             .par_iter_mut()
@@ -97,7 +97,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     where
         T: Fn(&Node<V>) -> R + Sync,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        F: Fn(&Node<V>) -> bool + Sync
+        F: Fn(&Node<V>) -> bool + Sync,
     {
         self.roots
             .par_iter_mut()
@@ -109,7 +109,7 @@ pub struct Root<V: NormalizedAction> {
     pub head:        Node<V>,
     pub tx_hash:     H256,
     pub private:     bool,
-    pub gas_details: GasDetails
+    pub gas_details: GasDetails,
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -119,7 +119,7 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool
+        F: Fn(&Node<V>) -> bool,
     {
         let mut result = Vec::new();
         self.head.inspect(&mut result, call);
@@ -131,7 +131,7 @@ impl<V: NormalizedAction> Root<V> {
     where
         T: Fn(&Node<V>) -> R,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
-        F: Fn(&Node<V>) -> bool
+        F: Fn(&Node<V>) -> bool,
     {
         let mut indexes = HashSet::new();
         self.head
@@ -144,7 +144,7 @@ impl<V: NormalizedAction> Root<V> {
     pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
     where
         T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         // bool is used for recursion
         let mut results = Vec::new();
@@ -163,7 +163,7 @@ pub struct GasDetails {
     pub coinbase_transfer:   Option<U256>,
     pub priority_fee:        u64,
     pub gas_used:            u64,
-    pub effective_gas_price: u64
+    pub effective_gas_price: u64,
 }
 
 impl GasDetails {
@@ -190,7 +190,7 @@ pub struct Node<V: NormalizedAction> {
     /// This only has values when the node is frozen
     pub subactions: Vec<V>,
     pub address:    Address,
-    pub data:       V
+    pub data:       V,
 }
 
 impl<V: NormalizedAction> Node<V> {
@@ -258,12 +258,12 @@ impl<V: NormalizedAction> Node<V> {
         indexes: &mut HashSet<u64>,
         find: &F,
         classify: &C,
-        info: &T
+        info: &T,
     ) -> bool
     where
         F: Fn(&Node<V>) -> bool,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
-        T: Fn(&Node<V>) -> R
+        T: Fn(&Node<V>) -> R,
     {
         // prev better
         if !find(self) {
@@ -287,7 +287,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn get_bounded_info<F, R>(&self, lower: u64, upper: u64, res: &mut Vec<R>, info_fn: &F)
     where
-        F: Fn(&Node<V>) -> R
+        F: Fn(&Node<V>) -> R,
     {
         if self.inner.is_empty() {
             return
@@ -369,7 +369,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
-        F: Fn(&Node<V>) -> bool
+        F: Fn(&Node<V>) -> bool,
     {
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
@@ -394,11 +394,11 @@ impl<V: NormalizedAction> Node<V> {
         &mut self,
         find: &T,
         call: &F,
-        result: &mut Vec<(Address, (Address, Address))>
+        result: &mut Vec<(Address, (Address, Address))>,
     ) -> bool
     where
         T: Fn(Address, Vec<V>) -> bool,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync
+        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         let works = find(self.address, self.get_all_sub_actions());
         if !works {

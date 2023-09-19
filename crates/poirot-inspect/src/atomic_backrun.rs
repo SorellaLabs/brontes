@@ -5,7 +5,7 @@ use poirot_labeller::Metadata;
 use poirot_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::Actions,
-    tree::{GasDetails, TimeTree}
+    tree::{GasDetails, TimeTree},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, H256};
@@ -23,20 +23,20 @@ impl AtomicBackrunInspector {
         mev_contract: Address,
         metadata: Arc<Metadata>,
         gas_details: GasDetails,
-        swaps: Vec<Vec<Actions>>
+        swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.calculate_swap_deltas(&swaps);
 
         let appearance = self.get_best_usd_delta(
             deltas.clone(),
             metadata.clone(),
-            Box::new(|(appearance, _)| appearance)
+            Box::new(|(appearance, _)| appearance),
         )?;
 
         let finalized = self.get_best_usd_delta(
             deltas,
             metadata.clone(),
-            Box::new(|(_, finalized)| finalized)
+            Box::new(|(_, finalized)| finalized),
         )?;
 
         if finalized.0 != appearance.0 {
@@ -47,7 +47,7 @@ impl AtomicBackrunInspector {
         let gas_used = gas_details.gas_paid();
         let (gas_used_usd_appearance, gas_used_usd_finalized) = (
             Rational::from(gas_used) * &metadata.eth_prices.0,
-            Rational::from(gas_used) * &metadata.eth_prices.1
+            Rational::from(gas_used) * &metadata.eth_prices.1,
         );
 
         let classified = ClassifiedMev {
@@ -59,21 +59,21 @@ impl AtomicBackrunInspector {
             eoa,
             submission_bribe_usd: f64::rounding_from(
                 &gas_used_usd_appearance,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             finalized_bribe_usd: f64::rounding_from(&gas_used_usd_finalized, RoundingMode::Nearest)
                 .0,
             finalized_profit_usd: f64::rounding_from(
                 finalized.1 - gas_used_usd_finalized,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             submission_profit_usd: f64::rounding_from(
                 appearance.1 - gas_used_usd_appearance,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
-            .0
+            .0,
         };
         let backrun = Box::new(AtomicBackrun {
             tx_hash,
@@ -85,7 +85,7 @@ impl AtomicBackrunInspector {
                         .filter_map(|a| if let Actions::Swap(s) = a { Some(s) } else { None })
                         .collect::<Vec<_>>()
                 })
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>(),
         });
         Some((classified, backrun))
     }
@@ -96,7 +96,7 @@ impl Inspector for AtomicBackrunInspector {
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
-        meta_data: Arc<Metadata>
+        meta_data: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let intersting_state = tree.inspect_all(|node| {
             node.subactions
@@ -116,7 +116,7 @@ impl Inspector for AtomicBackrunInspector {
                     root.head.data.get_too_address(),
                     meta_data.clone(),
                     gas_details,
-                    swaps
+                    swaps,
                 )
             })
             .collect::<Vec<_>>()
