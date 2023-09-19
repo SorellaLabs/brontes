@@ -8,7 +8,7 @@ use crate::PoirotMetricEvents;
 #[derive(Clone, Debug)]
 pub enum DynamicContractMetricEvent {
     /// recorded a new contract metric
-    ContractMetricRecieved(ContractMetric)
+    ContractMetricRecieved(ContractMetric),
 }
 
 impl DynamicContractMetricEvent {
@@ -30,7 +30,7 @@ impl From<DynamicContractMetricEvent> for PoirotMetricEvents {
 #[derive(Clone, Debug)]
 pub struct ContractMetric {
     pub address:         H160,
-    pub function_called: String
+    pub function_called: String,
 }
 
 impl ContractMetric {

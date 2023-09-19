@@ -3,7 +3,7 @@ use std::{
     fs::File,
     io::{BufWriter, Write},
     path::Path,
-    str::FromStr
+    str::FromStr,
 };
 
 use clickhouse::{Client, Row};
@@ -18,7 +18,7 @@ const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x)
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct DecodedTokens {
     address: String,
-    tokens:  Vec<String>
+    tokens:  Vec<String>,
 }
 
 fn main() {
@@ -75,7 +75,7 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
     for row in rows {
         phf_map.entry(
             H160::from_str(&row.address).unwrap().to_fixed_bytes(),
-            &to_string_vec(row.tokens)
+            &to_string_vec(row.tokens),
         );
     }
 
@@ -108,6 +108,6 @@ fn build_db() -> Client {
         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
         .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
         .with_database(
-            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env")
+            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
         )
 }

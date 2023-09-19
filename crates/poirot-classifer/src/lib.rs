@@ -22,6 +22,6 @@ pub trait IntoAction: Debug + Send + Sync {
         data: StaticReturnBindings,
         return_data: Bytes,
         address: Address,
-        logs: &Vec<Log>
+        logs: &Vec<Log>,
     ) -> Actions;
 }

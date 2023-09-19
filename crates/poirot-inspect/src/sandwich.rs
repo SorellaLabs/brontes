@@ -1,6 +1,6 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
-    sync::Arc
+    sync::Arc,
 };
 
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
@@ -8,7 +8,7 @@ use poirot_labeller::Metadata;
 use poirot_types::{
     classified_mev::{MevType, Sandwich, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
-    tree::{GasDetails, Node, TimeTree}
+    tree::{GasDetails, Node, TimeTree},
 };
 use reth_primitives::{Address, H256};
 use tracing::error;
@@ -22,7 +22,7 @@ impl Inspector for SandwichInspector {
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
-        meta_data: Arc<Metadata>
+        meta_data: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // lets grab the set of all possible sandwich txes
         let iter = tree.roots.iter();
@@ -48,7 +48,7 @@ impl Inspector for SandwichInspector {
                             entry,
                             root.tx_hash,
                             root.head.data.get_too_address(),
-                            victims
+                            victims,
                         ));
                     }
                 }
@@ -69,7 +69,7 @@ impl Inspector for SandwichInspector {
             .filter_map(|(eoa, tx0, tx1, mev_addr, victim)| {
                 let gas = [
                     tree.get_gas_details(tx0).cloned().unwrap(),
-                    tree.get_gas_details(tx1).cloned().unwrap()
+                    tree.get_gas_details(tx1).cloned().unwrap(),
                 ];
 
                 let victim_gas = victim
@@ -105,7 +105,7 @@ impl Inspector for SandwichInspector {
                     searcher_actions,
                     victim,
                     victim_actions,
-                    victim_gas
+                    victim_gas,
                 )
             })
             .collect::<Vec<_>>()
@@ -124,7 +124,7 @@ impl SandwichInspector {
         // victim
         victim_txes: Vec<H256>,
         victim_actions: Vec<Vec<NormalizedSwap>>,
-        victim_gas: Vec<GasDetails>
+        victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.calculate_swap_deltas(&searcher_actions);
         let mut searcher_actions = searcher_actions
@@ -140,7 +140,7 @@ impl SandwichInspector {
         let appearance_usd_deltas = self.get_best_usd_delta(
             deltas.clone(),
             metadata.clone(),
-            Box::new(|(appearance, _)| appearance)
+            Box::new(|(appearance, _)| appearance),
         );
 
         let finalized_usd_deltas =
@@ -160,7 +160,7 @@ impl SandwichInspector {
 
         let (gas_used_usd_appearance, gas_used_usd_finalized) = (
             Rational::from(gas_used) * &metadata.eth_prices.0,
-            Rational::from(gas_used) * &metadata.eth_prices.1
+            Rational::from(gas_used) * &metadata.eth_prices.1,
         );
 
         let sandwich = Sandwich {
@@ -172,7 +172,7 @@ impl SandwichInspector {
             victim_swaps:          victim_actions,
             back_run:              txes[1],
             back_run_gas_details:  searcher_gas_details[1],
-            back_run_swaps:        searcher_actions.remove(0)
+            back_run_swaps:        searcher_actions.remove(0),
         };
 
         let classified_mev = ClassifiedMev {
@@ -184,21 +184,21 @@ impl SandwichInspector {
             mev_type: MevType::Sandwich,
             submission_profit_usd: f64::rounding_from(
                 appearance.1 - &gas_used_usd_appearance,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             submission_bribe_usd: f64::rounding_from(
                 gas_used_usd_appearance,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             finalized_profit_usd: f64::rounding_from(
                 finalized.1 - &gas_used_usd_finalized,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest)
-                .0
+                .0,
         };
 
         Some((classified_mev, Box::new(sandwich)))

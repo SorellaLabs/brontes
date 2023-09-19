@@ -5,7 +5,7 @@ pub mod sandwich;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
-    sync::Arc
+    sync::Arc,
 };
 
 use malachite::Rational;
@@ -14,7 +14,7 @@ use poirot_types::{
     classified_mev::{ClassifiedMev, SpecificMev},
     normalized_actions::Actions,
     tree::TimeTree,
-    ToScaledRational, TOKEN_TO_DECIMALS
+    ToScaledRational, TOKEN_TO_DECIMALS,
 };
 use reth_primitives::Address;
 use tracing::error;
@@ -24,7 +24,7 @@ pub trait Inspector: Send + Sync {
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
-        metadata: Arc<Metadata>
+        metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)>;
 
     /// Calculates the swap deltas. if transfers are also passed in. we also
@@ -33,7 +33,7 @@ pub trait Inspector: Send + Sync {
     /// to the underlying swap. action otherwise you could get misreads
     fn calculate_swap_deltas(
         &self,
-        actions: &Vec<Vec<Actions>>
+        actions: &Vec<Vec<Actions>>,
     ) -> HashMap<Address, HashMap<Address, Rational>> {
         let mut transfers = Vec::new();
 
@@ -111,7 +111,7 @@ pub trait Inspector: Send + Sync {
         &self,
         deltas: HashMap<Address, HashMap<Address, Rational>>,
         metadata: Arc<Metadata>,
-        time_selector: Box<dyn Fn(&(Rational, Rational)) -> &Rational>
+        time_selector: Box<dyn Fn(&(Rational, Rational)) -> &Rational>,
     ) -> Option<(Address, Rational)> {
         deltas
             .clone()

@@ -13,7 +13,7 @@ pub fn init(layers: Vec<BoxedLayer<Registry>>) {
 pub fn stdout<S>(directive: impl Into<Directive>) -> BoxedLayer<S>
 where
     S: Subscriber,
-    for<'a> S: LookupSpan<'a>
+    for<'a> S: LookupSpan<'a>,
 {
     let filter = EnvFilter::builder()
         .with_default_directive(directive.into())

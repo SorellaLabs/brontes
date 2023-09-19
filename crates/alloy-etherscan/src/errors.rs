@@ -58,7 +58,7 @@ pub enum EtherscanError {
     #[error("Received `Page not found` response. API server is likely down")]
     PageNotFound,
     #[error("Cache failure")]
-    CacheError(#[from] Box<dyn std::error::Error>)
+    CacheError(#[from] Box<dyn std::error::Error>),
 }
 
 /// etherscan/polyscan is protected by cloudflare, which can lead to html responses like `Sorry, you have been blocked` See also <https://community.cloudflare.com/t/sorry-you-have-been-blocked/110790>

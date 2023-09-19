@@ -4,22 +4,22 @@ use std::{
     future::Future,
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll}
+    task::{Context, Poll},
 };
 
 use futures::{
     future::{join_all, JoinAll},
-    FutureExt, Stream
+    FutureExt, Stream,
 };
 use lazy_static::lazy_static;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use poirot_labeller::Metadata;
 use poirot_types::{
     classified_mev::{
-        compose_sandwich_jit, ClassifiedMev, MevBlock, MevResult, MevType, SpecificMev
+        compose_sandwich_jit, ClassifiedMev, MevBlock, MevResult, MevType, SpecificMev,
     },
     normalized_actions::Actions,
-    tree::TimeTree
+    tree::TimeTree,
 };
 use reth_primitives::Address;
 
@@ -31,11 +31,11 @@ type ComposeFunction = Option<
                 Box<dyn Any + 'static>,
                 Box<dyn Any + 'static>,
                 ClassifiedMev,
-                ClassifiedMev
+                ClassifiedMev,
             ) -> (ClassifiedMev, Box<dyn SpecificMev>)
             + Send
-            + Sync
-    >
+            + Sync,
+    >,
 >;
 
 /// we use this to define a filter that we can iterate over such that
@@ -72,7 +72,7 @@ mev_composability!(
 fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     match mev_type {
         MevType::JitSandwich => Some(Box::new(compose_sandwich_jit)),
-        _ => None
+        _ => None,
     }
 }
 
@@ -80,7 +80,7 @@ pub struct BlockPreprocessing {
     meta_data:           Arc<Metadata>,
     cumulative_gas_used: u64,
     cumulative_gas_paid: u64,
-    builder_address:     Address
+    builder_address:     Address,
 }
 
 type InspectorFut<'a> =
@@ -94,7 +94,7 @@ pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, MevResult)>);
 pub struct DaddyInspector<'a, const N: usize> {
     baby_inspectors:      &'a [&'a Box<dyn Inspector>; N],
     inspectors_execution: Option<InspectorFut<'a>>,
-    pre_processing:       Option<BlockPreprocessing>
+    pre_processing:       Option<BlockPreprocessing>,
 }
 
 impl<'a, const N: usize> DaddyInspector<'a, N> {
@@ -110,7 +110,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         self.inspectors_execution = Some(join_all(
             self.baby_inspectors
                 .iter()
-                .map(|inspector| inspector.process_tree(tree.clone(), meta_data.clone()))
+                .map(|inspector| inspector.process_tree(tree.clone(), meta_data.clone())),
         ) as InspectorFut<'a>);
 
         self.pre_process(tree, meta_data);
@@ -134,13 +134,13 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             meta_data,
             cumulative_gas_used,
             cumulative_gas_paid,
-            builder_address
+            builder_address,
         });
     }
 
     fn build_mev_header(
         &mut self,
-        baby_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>
+        baby_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> MevBlock {
         let pre_processing = self.pre_processing.take().unwrap();
         let cum_mev_priority_fee_paid = baby_data
@@ -158,12 +158,12 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             mev_count: baby_data.len() as u64,
             submission_eth_price: f64::rounding_from(
                 &pre_processing.meta_data.eth_prices.0,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             finalized_eth_price: f64::rounding_from(
                 &pre_processing.meta_data.eth_prices.1,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             cumulative_gas_used: pre_processing.cumulative_gas_used,
@@ -174,12 +174,12 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             builder_eth_profit,
             builder_submission_profit_usd: f64::rounding_from(
                 Rational::from(builder_eth_profit) * &pre_processing.meta_data.eth_prices.0,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             builder_finalized_profit_usd: f64::rounding_from(
                 Rational::from(builder_eth_profit) * &pre_processing.meta_data.eth_prices.1,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
@@ -187,31 +187,31 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             proposer_submission_mev_reward_usd: f64::rounding_from(
                 Rational::from(pre_processing.meta_data.proposer_mev_reward)
                     * &pre_processing.meta_data.eth_prices.0,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             proposer_finalized_mev_reward_usd: f64::rounding_from(
                 Rational::from(pre_processing.meta_data.proposer_mev_reward)
                     * &pre_processing.meta_data.eth_prices.1,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             cumulative_mev_submission_profit_usd: f64::rounding_from(
                 Rational::from(cum_mev_priority_fee_paid) * &pre_processing.meta_data.eth_prices.0,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
             .0,
             cumulative_mev_finalized_profit_usd: f64::rounding_from(
                 Rational::from(cum_mev_priority_fee_paid) * &pre_processing.meta_data.eth_prices.1,
-                RoundingMode::Nearest
+                RoundingMode::Nearest,
             )
-            .0
+            .0,
         }
     }
 
     fn on_baby_resolution(
         &mut self,
-        baby_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>
+        baby_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> Poll<Option<DaddyInspectorResults>> {
         let header = self.build_mev_header(&baby_data);
 
@@ -224,7 +224,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                  (mev_type, v)| {
                     acc.entry(mev_type).or_default().push(v);
                     acc
-                }
+                },
             );
 
         MEV_FILTER
@@ -235,7 +235,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                         head_mev_type,
                         dependencies,
                         compose_fn,
-                        &mut sorted_mev
+                        &mut sorted_mev,
                     );
                 } else {
                     self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
@@ -268,14 +268,14 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                                 MevType::Backrun => {
                                     MevResult::Backrun(*any_cast.downcast().unwrap())
                                 }
-                                _ => todo!("add other downcasts for different types")
+                                _ => todo!("add other downcasts for different types"),
                             };
                             (class, res)
                         })
                         .collect::<Vec<_>>();
                     new_v
                 })
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>(),
         )))
     }
 
@@ -283,7 +283,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         &mut self,
         head_mev_type: &MevType,
         deps: &[MevType],
-        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
+        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
     ) {
         let Some(head_mev) = sorted_mev.get(head_mev_type) else { return };
 
@@ -335,12 +335,12 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                     Box<dyn Any>,
                     Box<dyn Any>,
                     ClassifiedMev,
-                    ClassifiedMev
+                    ClassifiedMev,
                 ) -> (ClassifiedMev, Box<dyn SpecificMev>)
                 + Send
-                + Sync
+                + Sync,
         >,
-        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
+        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
     ) {
         if composable_types.len() != 2 {
             panic!("we only support sequential compatibility for our specific mev");
@@ -374,7 +374,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                         mev_data.into_any(),
                         mev_data_1.into_any(),
                         classified,
-                        classifed_1
+                        classifed_1,
                     ));
             } else {
                 // if no prev match, then add back old type
