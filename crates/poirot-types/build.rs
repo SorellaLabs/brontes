@@ -1,3 +1,5 @@
+#[cfg(feature = "server")]
+use std::str::FromStr;
 use std::{
     collections::HashMap,
     env,
@@ -9,6 +11,8 @@ use std::{
 
 use clickhouse::{Client, Row};
 use ethers_core::types::Address;
+#[cfg(feature = "server")]
+use ethers_core::types::H160;
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use strum::Display;
@@ -40,6 +44,7 @@ pub struct TokenDetails {
 }
 
 async fn build_token_details_map(file: &mut BufWriter<File>) {
+    #[allow(unused_mut)]
     let mut phf_map: phf_codegen::Map<[u8; 20]> = phf_codegen::Map::new();
     #[cfg(feature = "server")]
     {
