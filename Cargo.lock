@@ -4798,6 +4798,7 @@ dependencies = [
  "malachite",
  "poirot-core",
  "poirot-metrics",
+ "poirot-types",
  "reth-primitives 0.1.0-alpha.8 (git+https://github.com/paradigmxyz/reth?rev=0f14ec4)",
  "serde",
  "serde_json",

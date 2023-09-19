@@ -8,6 +8,7 @@ use std::{
 };
 
 use malachite::Rational;
+use poirot_types::classified_mev::{ClassifiedMev, MevBlock, MevResult};
 use reth_primitives::{Address, TxHash, U256};
 use serde::Deserialize;
 use sorella_db_clients::databases::clickhouse::{self, ClickhouseClient, Row};
@@ -62,6 +63,14 @@ impl Database {
         );
 
         metadata
+    }
+
+    pub async fn insert_classified_data(
+        &self,
+        block_details: MevBlock,
+        mev_details: Vec<(ClassifiedMev, MevResult)>,
+    ) {
+        todo!()
     }
 
     async fn get_private_flow(&self, block_num: u64, block_hash: U256) -> HashSet<TxHash> {

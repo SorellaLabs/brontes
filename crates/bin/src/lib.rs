@@ -4,10 +4,10 @@ use std::{
 };
 
 use futures::{Future, FutureExt, StreamExt};
-use poirot_classifer::classifer::Classifier;
+use poirot_classifier::Classifier;
 use poirot_core::decoding::Parser;
+use poirot_database::{database::Database, Metadata};
 use poirot_inspect::daddy_inspector::DaddyInspector;
-use poirot_labeller::{Labeller, Metadata};
 use poirot_types::{
     classified_mev::{ClassifiedMev, MevBlock, MevResult},
     structured_trace::TxTrace,
@@ -30,33 +30,38 @@ pub struct Poirot<'inspector, 'db, const N: usize> {
     current_block:   u64,
     parser:          Parser,
     classifier:      Classifier,
-    labeller:        Labeller<'db>,
+    database:        &'db Database,
     daddy_inspector: DaddyInspector<'inspector, N>,
 
     // pending future data
-    classifier_data: Option<CollectionFut<'db>>,
+    classifier_future: Option<CollectionFut<'db>>,
+    // pending insertion data
+    insertion_future:  Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'db>>>,
 }
 
 impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
     pub fn new(
         parser: Parser,
-        labeller: Labeller<'db>,
+        database: &'db Database,
         classifier: Classifier,
         daddy_inspector: DaddyInspector<'inspector, N>,
         init_block: u64,
     ) -> Self {
         Self {
             parser,
-            labeller,
+            database,
             classifier,
             daddy_inspector,
             current_block: init_block,
-            classifier_data: None,
+            classifier_future: None,
+            insertion_future: None,
         }
     }
 
     fn start_new_block(&self) -> bool {
-        self.classifier_data.is_none() && !self.daddy_inspector.is_processing()
+        self.classifier_future.is_none()
+            && !self.daddy_inspector.is_processing()
+            && self.insertion_future.is_none()
     }
 
     fn start_collection(&mut self) {
@@ -70,17 +75,18 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
         self.current_block += 1;
 
         let parser_fut = self.parser.execute(self.current_block);
-        let labeller_fut = self.labeller.get_metadata(self.current_block, hash.into());
+        let labeller_fut = self.database.get_metadata(self.current_block, hash.into());
 
-        self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
+        self.classifier_future = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
     }
 
-    fn on_inspectors_finish(&mut self, data: (MevBlock, Vec<(ClassifiedMev, MevResult)>)) {
-        todo!()
+    fn on_inspectors_finish(&mut self, results: (MevBlock, Vec<(ClassifiedMev, MevResult)>)) {
+        self.insertion_future =
+            Some(Box::pin(self.database.insert_classified_data(results.0, results.1)));
     }
 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
-        if let Some(mut collection_fut) = self.classifier_data.take() {
+        if let Some(mut collection_fut) = self.classifier_future.take() {
             match collection_fut.poll_unpin(cx) {
                 Poll::Ready((parser_data, labeller_data)) => {
                     let (traces, header) = parser_data.unwrap().unwrap();
@@ -89,7 +95,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
                         .on_new_tree(tree.into(), labeller_data.into());
                 }
                 Poll::Pending => {
-                    self.classifier_data = Some(collection_fut);
+                    self.classifier_future = Some(collection_fut);
                     return
                 }
             }
