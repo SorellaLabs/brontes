@@ -188,7 +188,14 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
         let mut sorted_mev = baby_data
             .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
-            .collect::<HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>>();
+            .fold(
+                HashMap::default(),
+                |mut acc: HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
+                 (mev_type, v)| {
+                    acc.entry(mev_type).or_default().push(v);
+                    acc
+                }
+            );
 
         MEV_FILTER
             .iter()
@@ -205,8 +212,9 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 }
             });
 
-        // downcast all of the sorted mev results
-        Poll::Ready(Some(
+        // downcast all of the sorted mev results. should cleanup
+        Poll::Ready(Some((
+            header,
             sorted_mev
                 .into_iter()
                 .map(|(k, v)| {
@@ -216,7 +224,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                             let mut a_ref = other.as_mut();
                             let any_cast = &mut a_ref as &mut dyn Any;
 
-                            match k {
+                            let res = match k {
                                 MevType::Jit => {
                                     MevResult::Jit(any_cast.downcast_mut().cloned().unwrap())
                                 }
@@ -233,13 +241,20 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                                     any_cast.downcast_mut().cloned().unwrap()
                                 ),
                                 _ => todo!("add other downcasts for different types")
-                            }
+                            };
+                            (class, res)
                         })
                         .collect::<Vec<_>>();
                     (k, new_v)
                 })
-                .collect()
-        ))
+                .fold(
+                    HashMap::default(),
+                    |mut acc: HashMap<MevType, Vec<(ClassifiedMev, MevResult)>>, (mev_type, v)| {
+                        acc.entry(mev_type).or_default().extend(v);
+                        acc
+                    }
+                )
+        )))
     }
 
     fn replace_dep_filter(
