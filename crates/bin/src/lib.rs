@@ -1,25 +1,16 @@
 use std::{
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll}
 };
 
-use futures::{
-    future::{join_all, JoinAll},
-    Future, FutureExt
-};
+use futures::{Future, FutureExt, StreamExt};
 use poirot_classifer::classifer::Classifier;
 use poirot_core::decoding::Parser;
-use poirot_inspect::{
-    daddy_inspector::{self, DaddyInspector},
-    ClassifiedMev, Inspector
-};
+use poirot_inspect::daddy_inspector::DaddyInspector;
 use poirot_labeller::{Labeller, Metadata};
 use poirot_types::{
-    classified_mev::{ClassifiedMev, MevBlock, MevResult, SpecificMev},
-    normalized_actions::Actions,
+    classified_mev::{ClassifiedMev, MevBlock, MevResult},
     structured_trace::TxTrace,
-    tree::TimeTree
 };
 use reth_primitives::Header;
 use tokio::task::JoinError;
