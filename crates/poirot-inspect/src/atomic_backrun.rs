@@ -34,7 +34,7 @@ impl AtomicBackrunInspector {
             self.get_best_usd_delta(deltas, metadata.clone(), Box::new(|(_, finalized)| finalized));
 
         if finalized_usd_deltas.is_none() || appearance_usd_deltas.is_none() {
-            return None
+            return
         }
         let (finalized, appearance) =
             (finalized_usd_deltas.unwrap(), appearance_usd_deltas.unwrap());
@@ -77,7 +77,7 @@ impl Inspector for AtomicBackrunInspector {
         &self,
         tree: Arc<TimeTree<Actions>>,
         meta_data: Arc<Metadata>
-    ) -> Vec<ClassifiedMev> {
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let intersting_state = tree.inspect_all(|node| {
             node.subactions
                 .iter()
