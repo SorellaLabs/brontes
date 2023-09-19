@@ -7,7 +7,7 @@ use super::{types::TraceParseErrorKind, TransactionTracingMetrics};
 #[allow(dead_code)]
 pub(crate) fn increment_error(
     tx_metric: &mut TransactionTracingMetrics,
-    error: TraceParseErrorKind
+    error: TraceParseErrorKind,
 ) {
     match error {
         TraceParseErrorKind::TracesMissingBlock => {

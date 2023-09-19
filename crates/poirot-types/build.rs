@@ -4,7 +4,7 @@ use std::{
     fs::{self, File},
     hash::Hash,
     io::{BufWriter, Write},
-    path::Path
+    path::Path,
 };
 
 use clickhouse::{Client, Row};
@@ -36,7 +36,7 @@ fn main() {
 #[derive(Debug, Serialize, Deserialize, Clone, Row)]
 pub struct TokenDetails {
     address:  String,
-    decimals: u8
+    decimals: u8,
 }
 
 async fn build_token_details_map(file: &mut BufWriter<File>) {
@@ -74,19 +74,19 @@ pub enum Blockchain {
     Klaytn,
     Arbitrum,
     Avalanche,
-    Aurora
+    Aurora,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenList {
-    pub tokens: Vec<Token>
+    pub tokens: Vec<Token>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct Token {
     pub chain_addresses: HashMap<Blockchain, Vec<Address>>,
     /// e.g USDC, USDT, ETH, BTC
-    pub global_id:       String
+    pub global_id:       String,
 }
 
 impl Hash for Token {
@@ -97,7 +97,7 @@ impl Hash for Token {
 
 fn build_asset_map(file: &mut BufWriter<File>) {
     let tokens: TokenList = serde_json::from_str(
-        &fs::read_to_string("../../ticker_address_mapping/assets.json").unwrap()
+        &fs::read_to_string("../../ticker_address_mapping/assets.json").unwrap(),
     )
     .unwrap();
 
@@ -139,7 +139,7 @@ fn build_db() -> Client {
         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
         .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
         .with_database(
-            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env")
+            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
         )
 }
 

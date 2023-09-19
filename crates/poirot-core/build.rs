@@ -3,7 +3,7 @@ use std::{
     fs::{self, File},
     io::{BufWriter, Write},
     path::{Path, PathBuf},
-    str::FromStr
+    str::FromStr,
 };
 
 use clickhouse::{Client, Row};
@@ -25,13 +25,13 @@ const PROTOCOL_ABIS: &str =
 #[derive(Debug, Serialize, Deserialize, Row)]
 struct AddressToProtocolMapping {
     protocol:  String,
-    addresses: Vec<String>
+    addresses: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone)]
 struct ProtocolAbis {
     protocol: String,
-    address:  String
+    address:  String,
 }
 
 fn main() {
@@ -61,7 +61,7 @@ async fn run() {
             .join(BINDINGS_PATH)
             .to_str()
             .unwrap(),
-        protocol_abis.clone()
+        protocol_abis.clone(),
     )
     .await;
     address_abi_mapping(protocol_address_map)
@@ -90,7 +90,7 @@ async fn generate(bindings_file_path: &str, addresses: Vec<ProtocolAbis>) {
         binding_enums.push(enum_binding_string(&protocol_addr.protocol, Some("_Enum")));
         return_binding_enums.push(enum_binding_string(
             &protocol_addr.protocol,
-            Some(&format!("::{}Calls", &protocol_addr.protocol))
+            Some(&format!("::{}Calls", &protocol_addr.protocol)),
         ));
         individual_sub_enums(&mut mod_enums, &protocol_addr.protocol);
         enum_impl_macro(&mut mod_enums, &protocol_addr.protocol);
@@ -162,7 +162,7 @@ fn bindings_try_decode_impl_init() -> Vec<String> {
     impl_str.push(
         " pub fn try_decode(&self, call_data: &[u8]) -> Result<StaticReturnBindings, \
          alloy_sol_types::Error> {"
-            .to_string()
+            .to_string(),
     );
     impl_str.push("     match self {".to_string());
     impl_str
@@ -205,7 +205,7 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
         for address in &map.addresses {
             phf_map.entry(
                 address,
-                &format!("StaticBindings::{}({}_Enum::None)", &map.protocol, &map.protocol)
+                &format!("StaticBindings::{}({}_Enum::None)", &map.protocol, &map.protocol),
             );
         }
     }
@@ -281,7 +281,7 @@ fn build_db() -> Client {
         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
         .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
         .with_database(
-            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env")
+            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
         )
 }
 
@@ -291,7 +291,7 @@ fn build_etherscan() -> alloy_etherscan::Client {
         Chain::Mainnet,
         env::var("ETHERSCAN_API_KEY").expect("ETHERSCAN_API_KEY not found in .env"),
         Some(PathBuf::from(CACHE_DIRECTORY)),
-        CACHE_TIMEOUT
+        CACHE_TIMEOUT,
     )
     .unwrap()
 }
