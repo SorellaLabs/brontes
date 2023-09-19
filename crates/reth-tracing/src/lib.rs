@@ -27,8 +27,7 @@ use reth_rpc::{
 use reth_tasks::TaskManager;
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
-    EthPooledTransaction, EthTransactionValidator, Pool, PoolTransaction, TransactionOrdering,
-    TransactionValidationTaskExecutor,
+    EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use tokio::runtime::Handle;
 
