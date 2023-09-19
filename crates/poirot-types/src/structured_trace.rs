@@ -1,7 +1,7 @@
-use reth_primitives::{Address, Bytes, H256, U256};
+use reth_primitives::{Address, Bytes, H256};
 use reth_rpc_types::{
     trace::parity::{Action, TransactionTrace},
-    Log
+    Log,
 };
 
 pub trait TraceActions {
@@ -16,7 +16,7 @@ impl TraceActions for TransactionTrace {
             Action::Call(call) => call.from,
             Action::Create(call) => call.from,
             Action::Reward(call) => call.author,
-            Action::Selfdestruct(call) => call.address
+            Action::Selfdestruct(call) => call.address,
         }
     }
 
@@ -24,7 +24,7 @@ impl TraceActions for TransactionTrace {
         match &self.action {
             Action::Call(call) => call.input.clone(),
             Action::Create(call) => call.init.clone(),
-            _ => Bytes::default()
+            _ => Bytes::default(),
         }
     }
 
@@ -32,7 +32,7 @@ impl TraceActions for TransactionTrace {
         let Some(res) = &self.result else { return Bytes::default() };
         match res {
             reth_rpc_types::trace::parity::TraceOutput::Call(bytes) => bytes.output.clone(),
-            _ => Bytes::default()
+            _ => Bytes::default(),
         }
     }
 }
@@ -41,12 +41,12 @@ impl TraceActions for TransactionTrace {
 // TODO: Parity traces seems to be a bit convulted in that respect see: https://ethereum.stackexchange.com/questions/31443/what-do-the-response-values-of-a-parity-trace-transaction-call-actually-repres
 #[derive(Debug, Clone)]
 pub struct TxTrace {
-    pub trace:           Vec<TransactionTrace>,
-    pub logs:            Vec<Log>,
-    pub tx_hash:         H256,
-    pub gas_used:        u64,
+    pub trace: Vec<TransactionTrace>,
+    pub logs: Vec<Log>,
+    pub tx_hash: H256,
+    pub gas_used: u64,
     pub effective_price: u64,
-    pub tx_index:        u64
+    pub tx_index: u64,
 }
 
 impl TxTrace {
@@ -56,7 +56,7 @@ impl TxTrace {
         logs: Vec<Log>,
         tx_index: u64,
         gas_used: u64,
-        effective_price: u64
+        effective_price: u64,
     ) -> Self {
         Self { trace, tx_hash, tx_index, logs, effective_price, gas_used }
     }

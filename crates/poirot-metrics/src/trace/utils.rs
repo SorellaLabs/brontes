@@ -4,9 +4,10 @@ use super::{types::TraceParseErrorKind, TransactionTracingMetrics};
 /// its a  1-1 defined mapping and im lazy and dont trust chatgpt. also kinda
 /// autistic how these don't  match
 /// computes error increment
+#[allow(dead_code)]
 pub(crate) fn increment_error(
     tx_metric: &mut TransactionTracingMetrics,
-    error: TraceParseErrorKind
+    error: TraceParseErrorKind,
 ) {
     match error {
         TraceParseErrorKind::TracesMissingBlock => {
