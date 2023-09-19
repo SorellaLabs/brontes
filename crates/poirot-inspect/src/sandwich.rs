@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap},
     sync::Arc
 };
 
@@ -42,13 +42,13 @@ impl Inspector for SandwichInspector {
                 }
                 Entry::Occupied(mut o) => {
                     let entry: H256 = o.remove();
-                    if let Some(victims) = possible_victims.remove(*o) {
-                        set.push((o, root.tx_hash, root.head.address, victims));
+                    if let Some(victims) = possible_victims.remove(&entry) {
+                        set.push((entry, root.tx_hash, root.head.address, victims));
                     }
                 }
             }
 
-            possible_victims.iter_mut().for_each(|_, v| {
+            possible_victims.iter_mut().for_each(|(_, v)| {
                 v.push(root.tx_hash);
             });
         }
@@ -65,13 +65,13 @@ impl Inspector for SandwichInspector {
 
                 let victim_gas = victim
                     .iter()
-                    .map(|victim| tree.get_gas_details(victim).cloned().unwrap())
+                    .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                     .collect::<Vec<_>>();
 
                 let victim_actions = victim
                     .iter()
                     .map(|victim| {
-                        tree.inspect(victim, search_fn.clone())
+                        tree.inspect(*victim, search_fn.clone())
                             .into_iter()
                             .flatten()
                             .map(|v| {
@@ -106,6 +106,7 @@ impl Inspector for SandwichInspector {
                     victim_actions,
                     victim_gas
                 )
+                .map(|(k, v)| (k, Box::new(v) as Box<dyn SpecificMev>))
             })
             .collect::<Vec<_>>()
     }
@@ -124,7 +125,12 @@ impl SandwichInspector {
         victim_actions: Vec<Vec<NormalizedSwap>>,
         victim_gas: Vec<GasDetails>
     ) -> Option<(ClassifiedMev, Sandwich)> {
-        let deltas = self.calculate_swap_deltas(&actions);
+        let deltas = self.calculate_swap_deltas(
+            &searcher_actions
+                .into_iter()
+                .map(|t| t.into_iter().map(|r| Actions::Swap(r)).collect::<Vec<_>>())
+                .collect::<Vec<Vec<_>>>()
+        );
 
         let appearance_usd_deltas = self.get_best_usd_delta(
             deltas.clone(),
@@ -154,38 +160,41 @@ impl SandwichInspector {
 
         let sandwich = Sandwich {
             front_run:             txes[0],
-            front_run_gas_details: gas_details[0],
+            front_run_gas_details: searcher_gas_details[0],
             front_run_swaps:       searcher_actions.remove(0),
             victim:                victim_txes,
             victim_gas_details:    victim_gas,
             victim_swaps:          victim_actions,
             back_run:              txes[1],
-            back_run_gas_details:  gas_details[1],
+            back_run_gas_details:  searcher_gas_details[1],
             back_run_swaps:        searcher_actions.remove(0)
         };
 
         let classified_mev = ClassifiedMev {
-            tx_hash: txes[0],
-            mev_bot: mev_addr,
-            block_number,
-            mev_type: MevType::Sandwich,
+            tx_hash:               txes[0],
+            mev_contract:          mev_addr,
+            block_number:          metadata.block_num,
+            mev_type:              MevType::Sandwich,
             submission_profit_usd: f64::rounding_from(
                 appearance.1 * &gas_used_usd_appearance,
                 RoundingMode::Nearest
             )
             .0,
-            submission_bribe_usd: f64::rounding_from(
+            submission_bribe_usd:  f64::rounding_from(
                 gas_used_usd_appearance,
                 RoundingMode::Nearest
             )
             .0,
-            finalized_profit_usd: f64::rounding_from(
+            finalized_profit_usd:  f64::rounding_from(
                 finalized.1 * &gas_used_usd_finalized,
                 RoundingMode::Nearest
             )
             .0,
-            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest)
-                .0
+            finalized_bribe_usd:   f64::rounding_from(
+                gas_used_usd_finalized,
+                RoundingMode::Nearest
+            )
+            .0
         };
 
         Some((classified_mev, sandwich))

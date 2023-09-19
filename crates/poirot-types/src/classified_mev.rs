@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use clickhouse::Row;
-use reth_primitives::{Address, H256};
+use reth_primitives::{Address, H256, U256};
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
@@ -66,6 +66,7 @@ pub enum MevType {
 
 pub enum MevResult {
     Sandwich(Sandwich),
+    Backrun(AtomicBackrun),
     Jit(JitLiquidity),
     JitSandwich(JitLiquiditySandwich),
     CexDex(CexDex),
@@ -149,11 +150,19 @@ impl SpecificMev for Sandwich {
     }
 
     fn bribe(&self) -> u64 {
-        todo!()
+        self.front_run_gas_details
+            .coinbase_transfer
+            .map(|big| big.to::<u64>())
+            .unwrap_or(0)
+            + self
+                .back_run_gas_details
+                .coinbase_transfer
+                .map(|big| big.to::<u64>())
+                .unwrap_or(0)
     }
 
     fn priority_fee_paid(&self) -> u64 {
-        todo!()
+        self.front_run_gas_details.priority_fee + self.back_run_gas_details.priority_fee
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -186,11 +195,19 @@ impl SpecificMev for JitLiquiditySandwich {
     }
 
     fn priority_fee_paid(&self) -> u64 {
-        todo!()
+        self.front_run_gas_details.priority_fee + self.back_run_gas_details.priority_fee
     }
 
     fn bribe(&self) -> u64 {
-        todo!()
+        self.front_run_gas_details
+            .coinbase_transfer
+            .map(|big| big.to::<u64>())
+            .unwrap_or(0)
+            + self
+                .back_run_gas_details
+                .coinbase_transfer
+                .map(|big| big.to::<u64>())
+                .unwrap_or(0)
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -217,7 +234,7 @@ impl SpecificMev for CexDex {
     }
 
     fn priority_fee_paid(&self) -> u64 {
-        todo!()
+        self.gas_details.iter().map(|g| g.priority_fee).sum()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -225,7 +242,11 @@ impl SpecificMev for CexDex {
     }
 
     fn bribe(&self) -> u64 {
-        todo!()
+        self.gas_details
+            .iter()
+            .filter_map(|g| g.coinbase_transfer)
+            .sum::<U256>()
+            .to::<u64>()
     }
 }
 
@@ -252,11 +273,14 @@ impl SpecificMev for Liquidation {
     }
 
     fn priority_fee_paid(&self) -> u64 {
-        todo!()
+        self.liquidation_gas_details.priority_fee
     }
 
     fn bribe(&self) -> u64 {
-        todo!()
+        self.liquidation_gas_details
+            .coinbase_transfer
+            .map(|u| u.to::<u64>())
+            .unwrap_or(0)
     }
 }
 
@@ -283,14 +307,54 @@ impl SpecificMev for JitLiquidity {
     }
 
     fn bribe(&self) -> u64 {
-        todo!()
+        self.mint_gas_details
+            .coinbase_transfer
+            .map(|u| u.to::<u64>())
+            .unwrap_or(0)
+            + self
+                .burn_gas_details
+                .coinbase_transfer
+                .map(|u| u.to::<u64>())
+                .unwrap_or(0)
     }
 
     fn priority_fee_paid(&self) -> u64 {
-        todo!()
+        self.mint_gas_details.priority_fee + self.burn_gas_details.priority_fee
     }
 
     fn into_any(self) -> Box<dyn Any> {
         Box::new(self)
+    }
+}
+
+#[derive(Debug, Serialize, Row, Clone)]
+pub struct AtomicBackrun {
+    pub tx_hash:     H256,
+    pub swaps:       Vec<NormalizedSwap>,
+    pub gas_details: GasDetails
+}
+
+impl SpecificMev for AtomicBackrun {
+    fn into_any(self) -> Box<dyn Any> {
+        Box::new(self)
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        self.gas_details.priority_fee
+    }
+
+    fn bribe(&self) -> u64 {
+        self.gas_details
+            .coinbase_transfer
+            .map(|u| u.to::<u64>())
+            .unwrap_or(0)
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<H256> {
+        vec![self.tx_hash]
+    }
+
+    fn mev_type(&self) -> MevType {
+        MevType::Backrun
     }
 }
