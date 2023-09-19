@@ -42,7 +42,7 @@ impl Inspector for SandwichInspector {
                 }
                 Entry::Occupied(mut o) => {
                     let entry: H256 = o.remove();
-                    if let Some(victims) = possible_victims.remove(o) {
+                    if let Some(victims) = possible_victims.remove(*o) {
                         set.push((o, root.tx_hash, root.head.address, victims));
                     }
                 }
@@ -142,7 +142,10 @@ impl SandwichInspector {
             return None
         }
 
-        let gas_used = gas_details.iter().map(|g| g.gas_paid()).sum::<u64>();
+        let gas_used = searcher_gas_details
+            .iter()
+            .map(|g| g.gas_paid())
+            .sum::<u64>();
 
         let (gas_used_usd_appearance, gas_used_usd_finalized) = (
             Rational::from(gas_used) * &metadata.eth_prices.0,
@@ -152,33 +155,36 @@ impl SandwichInspector {
         let sandwich = Sandwich {
             front_run:             txes[0],
             front_run_gas_details: gas_details[0],
-            front_run_swaps:       searcher_actions.remove(0)?,
+            front_run_swaps:       searcher_actions.remove(0),
             victim:                victim_txes,
             victim_gas_details:    victim_gas,
             victim_swaps:          victim_actions,
             back_run:              txes[1],
             back_run_gas_details:  gas_details[1],
-            back_run_swaps:        searcher_actions.remove(0)?
+            back_run_swaps:        searcher_actions.remove(0)
         };
 
         let classified_mev = ClassifiedMev {
-            tx_hash: txes.0,
+            tx_hash: txes[0],
             mev_bot: mev_addr,
             block_number,
             mev_type: MevType::Sandwich,
             submission_profit_usd: f64::rounding_from(
                 appearance.1 * &gas_used_usd_appearance,
                 RoundingMode::Nearest
-            ),
+            )
+            .0,
             submission_bribe_usd: f64::rounding_from(
                 gas_used_usd_appearance,
                 RoundingMode::Nearest
-            ),
+            )
+            .0,
             finalized_profit_usd: f64::rounding_from(
                 finalized.1 * &gas_used_usd_finalized,
                 RoundingMode::Nearest
-            ),
-            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest)
+            )
+            .0,
+            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest).0
         };
 
         Some((classified_mev, sandwich))
