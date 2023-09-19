@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
-use poirot_labeller::Metadata;
+use poirot_database::Metadata;
 use poirot_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::Actions,
