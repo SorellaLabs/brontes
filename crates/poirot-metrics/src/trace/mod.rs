@@ -15,6 +15,7 @@ pub struct TraceMetrics {
 
 impl TraceMetrics {
     /// Returns existing or initializes a new instance of [LiveRelayMetrics]
+    #[allow(dead_code)]
     pub(crate) fn get_transaction_metrics(
         &mut self,
         tx_hash: String,
@@ -33,7 +34,7 @@ impl TraceMetrics {
         }
     }
 }
-
+#[allow(dead_code)]
 #[derive(Metrics, Clone)]
 #[metrics(scope = "transaction_tracing")]
 pub(crate) struct TransactionTracingMetrics {

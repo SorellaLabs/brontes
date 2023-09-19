@@ -1,5 +1,4 @@
 use alloy_sol_types::{SolCall, SolEvent};
-use hex_literal::hex;
 use poirot_core::{
     StaticReturnBindings,
     SushiSwap_V2::{burnCall, mintCall, swapCall, Burn, Mint, SushiSwap_V2Calls, Swap},
