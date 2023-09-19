@@ -4,8 +4,8 @@ use poirot_core::StaticReturnBindings;
 use reth_primitives::{Address, Bytes, H160};
 use reth_rpc_types::Log;
 
-pub mod classifer;
-pub use classifer::*;
+pub mod classifier;
+pub use classifier::*;
 
 mod impls;
 pub use impls::*;

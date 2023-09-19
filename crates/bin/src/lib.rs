@@ -4,10 +4,10 @@ use std::{
 };
 
 use futures::{Future, FutureExt, StreamExt};
-use poirot_classifer::classifer::Classifier;
+use poirot_classifier::Classifier;
 use poirot_core::decoding::Parser;
+use poirot_database::{database::Database, Metadata};
 use poirot_inspect::daddy_inspector::DaddyInspector;
-use poirot_labeller::{Labeller, Metadata};
 use poirot_types::{
     classified_mev::{ClassifiedMev, MevBlock, MevResult},
     structured_trace::TxTrace,
@@ -30,7 +30,7 @@ pub struct Poirot<'inspector, 'db, const N: usize> {
     current_block:   u64,
     parser:          Parser,
     classifier:      Classifier,
-    labeller:        Labeller<'db>,
+    database:        &'db Database,
     daddy_inspector: DaddyInspector<'inspector, N>,
 
     // pending future data
@@ -40,14 +40,14 @@ pub struct Poirot<'inspector, 'db, const N: usize> {
 impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
     pub fn new(
         parser: Parser,
-        labeller: Labeller<'db>,
+        database: &'db Database,
         classifier: Classifier,
         daddy_inspector: DaddyInspector<'inspector, N>,
         init_block: u64,
     ) -> Self {
         Self {
             parser,
-            labeller,
+            database,
             classifier,
             daddy_inspector,
             current_block: init_block,
@@ -70,7 +70,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
         self.current_block += 1;
 
         let parser_fut = self.parser.execute(self.current_block);
-        let labeller_fut = self.labeller.get_metadata(self.current_block, hash.into());
+        let labeller_fut = self.database.get_metadata(self.current_block, hash.into());
 
         self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
     }

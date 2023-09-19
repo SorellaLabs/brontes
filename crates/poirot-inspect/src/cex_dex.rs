@@ -5,7 +5,7 @@ use malachite::{
     rounding_modes::RoundingMode,
     Rational,
 };
-use poirot_labeller::Metadata;
+use poirot_database::Metadata;
 use poirot_types::{
     classified_mev::{CexDex, MevType, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
