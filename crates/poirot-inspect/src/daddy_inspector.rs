@@ -13,7 +13,7 @@ use futures::{
 };
 use lazy_static::lazy_static;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
-use poirot_labeller::Metadata;
+use poirot_database::Metadata;
 use poirot_types::{
     classified_mev::{
         compose_sandwich_jit, ClassifiedMev, MevBlock, MevResult, MevType, SpecificMev,

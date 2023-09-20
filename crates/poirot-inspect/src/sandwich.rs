@@ -4,7 +4,7 @@ use std::{
 };
 
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
-use poirot_labeller::Metadata;
+use poirot_database::Metadata;
 use poirot_types::{
     classified_mev::{MevType, Sandwich, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
