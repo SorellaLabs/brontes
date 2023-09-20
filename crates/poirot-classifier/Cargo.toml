@@ -1,12 +1,12 @@
 [package]
-name = "poirot-classifer"
+name = "poirot-classifier"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-poirot-labeller.workspace = true
+poirot-database.workspace = true
 poirot-types.workspace = true
 alloy-dyn-abi.workspace = true
 alloy-sol-types.workspace = true
@@ -19,7 +19,6 @@ rayon.workspace = true
 
 malachite.workspace = true
 serde_json.workspace = true
-
 
 
 paste = "1.0.14"
