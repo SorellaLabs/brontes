@@ -104,6 +104,15 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
         if let Poll::Ready(Some(data)) = self.daddy_inspector.poll_next_unpin(cx) {
             self.on_inspectors_finish(data);
         }
+
+        if let Some(mut insertion_future) = self.insertion_future.take() {
+            match insertion_future.poll_unpin(cx) {
+                Poll::Ready(_) => {}
+                Poll::Pending => {
+                    self.insertion_future = Some(insertion_future);
+                }
+            }
+        }
     }
 }
 
