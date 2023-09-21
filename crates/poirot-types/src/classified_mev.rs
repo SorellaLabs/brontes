@@ -1,8 +1,8 @@
 use std::any::Any;
 
 use reth_primitives::{Address, H256};
-use serde::{de::Error, Deserialize, Serialize};
-use sorella_db_clients::clickhouse::*;
+use serde::{Deserialize, Serialize};
+use sorella_db_clients::databases::clickhouse::{self, InsertRow, Row};
 use strum::EnumIter;
 
 use crate::{
@@ -75,6 +75,12 @@ pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + 'stat
     fn priority_fee_paid(&self) -> u64;
     fn bribe(&self) -> u64;
     fn mev_transaction_hashes(&self) -> Vec<H256>;
+}
+
+impl InsertRow for Box<dyn SpecificMev> {
+    fn get_column_names(&self) -> &'static [&'static str] {
+        (**self).get_column_names()
+    }
 }
 
 impl serde::Serialize for dyn SpecificMev {

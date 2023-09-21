@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use clickhouse::{InsertRow, Row};
 use reth_primitives::{Address, U256};
 use reth_rpc_types::{trace::parity::TransactionTrace, Log};
 use serde::Serialize;
+use sorella_db_clients::databases::clickhouse::{self, InsertRow, Row};
 
 #[derive(Debug, Clone)]
 pub enum Actions {
