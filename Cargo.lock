@@ -4780,6 +4780,7 @@ dependencies = [
 name = "poirot-database"
 version = "0.1.0"
 dependencies = [
+ "dotenv",
  "futures",
  "hyper",
  "hyper-tls",
