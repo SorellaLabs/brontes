@@ -14,7 +14,7 @@ use ethers_core::types::Address;
 use ethers_core::types::H160;
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
-use sorella_db_clients::clickhouse::*;
+use sorella_db_clients::databases::clickhouse::{self, Client, Row};
 use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";

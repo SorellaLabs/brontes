@@ -10,7 +10,7 @@ use std::{
 use malachite::Rational;
 use poirot_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use reth_primitives::{Address, TxHash, U256};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sorella_db_clients::databases::clickhouse::{self, ClickhouseClient, Row};
 
 use self::types::DBTokenPrices;
@@ -70,8 +70,6 @@ impl Database {
         block_details: MevBlock,
         mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
-        let a = mev_details.first().unwrap();
-        self.client.insert_one(a.1, "");
         todo!()
     }
 
