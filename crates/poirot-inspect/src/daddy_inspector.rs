@@ -15,9 +15,7 @@ use lazy_static::lazy_static;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use poirot_database::Metadata;
 use poirot_types::{
-    classified_mev::{
-        compose_sandwich_jit, ClassifiedMev, MevBlock, MevResult, MevType, SpecificMev,
-    },
+    classified_mev::{compose_sandwich_jit, ClassifiedMev, MevBlock, MevType, SpecificMev},
     normalized_actions::Actions,
     tree::TimeTree,
 };
@@ -94,7 +92,7 @@ type InspectorFut<'a> =
 /// the results downcast using any in order to be able to serialize and
 /// impliment row trait due to the abosulte autism that the db library   
 /// requirements
-pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, MevResult)>);
+pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
 
 pub struct DaddyInspector<'a, const N: usize> {
     baby_inspectors: &'a [&'a Box<dyn Inspector>; N],
@@ -248,40 +246,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             });
 
         // downcast all of the sorted mev results. should cleanup
-        Poll::Ready(Some((
-            header,
-            sorted_mev
-                .into_iter()
-                .flat_map(|(k, v)| {
-                    let new_v = v
-                        .into_iter()
-                        .map(|(class, other)| {
-                            let any_cast = other.into_any();
-
-                            let res = match k {
-                                MevType::Jit => MevResult::Jit(*any_cast.downcast().unwrap()),
-                                MevType::CexDex => MevResult::CexDex(*any_cast.downcast().unwrap()),
-                                MevType::Sandwich => {
-                                    MevResult::Sandwich(*any_cast.downcast().unwrap())
-                                }
-                                MevType::JitSandwich => {
-                                    MevResult::JitSandwich(*any_cast.downcast().unwrap())
-                                }
-                                MevType::Liquidation => {
-                                    MevResult::Liquidation(*any_cast.downcast().unwrap())
-                                }
-                                MevType::Backrun => {
-                                    MevResult::Backrun(*any_cast.downcast().unwrap())
-                                }
-                                _ => todo!("add other downcasts for different types"),
-                            };
-                            (class, res)
-                        })
-                        .collect::<Vec<_>>();
-                    new_v
-                })
-                .collect::<Vec<_>>(),
-        )))
+        Poll::Ready(Some((header, sorted_mev.into_values().flatten().collect::<Vec<_>>())))
     }
 
     fn replace_dep_filter(

@@ -1,8 +1,8 @@
 use std::any::Any;
 
-use clickhouse::Row;
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
+use sorella_db_clients::databases::clickhouse::{self, InsertRow, Row};
 use strum::EnumIter;
 
 use crate::{
@@ -64,26 +64,32 @@ pub enum MevType {
     Unknown,
 }
 
-pub enum MevResult {
-    Sandwich(Sandwich),
-    Backrun(AtomicBackrun),
-    Jit(JitLiquidity),
-    JitSandwich(JitLiquiditySandwich),
-    CexDex(CexDex),
-    Liquidation(Liquidation),
-}
-
 impl Row for MevType {
     const COLUMN_NAMES: &'static [&'static str] = &["mev_type"];
 }
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
-pub trait SpecificMev: Send + Sync + 'static {
+pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + 'static {
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u64;
     fn bribe(&self) -> u64;
     fn mev_transaction_hashes(&self) -> Vec<H256>;
+}
+
+impl InsertRow for Box<dyn SpecificMev> {
+    fn get_column_names(&self) -> &'static [&'static str] {
+        (**self).get_column_names()
+    }
+}
+
+impl serde::Serialize for dyn SpecificMev {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        erased_serde::serialize(self, serializer)
+    }
 }
 
 #[derive(Debug, Serialize, Row, Clone)]

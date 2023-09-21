@@ -9,7 +9,7 @@ use poirot_core::decoding::Parser;
 use poirot_database::{database::Database, Metadata};
 use poirot_inspect::daddy_inspector::DaddyInspector;
 use poirot_types::{
-    classified_mev::{ClassifiedMev, MevBlock, MevResult},
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     structured_trace::TxTrace,
 };
 use reth_primitives::Header;
@@ -80,7 +80,10 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
         self.classifier_future = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
     }
 
-    fn on_inspectors_finish(&mut self, results: (MevBlock, Vec<(ClassifiedMev, MevResult)>)) {
+    fn on_inspectors_finish(
+        &mut self,
+        results: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>),
+    ) {
         self.insertion_future =
             Some(Box::pin(self.database.insert_classified_data(results.0, results.1)));
     }

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use clickhouse::Row;
 use reth_primitives::{Address, U256};
 use reth_rpc_types::{trace::parity::TransactionTrace, Log};
 use serde::Serialize;
+use sorella_db_clients::databases::clickhouse::{self, InsertRow, Row};
 
 #[derive(Debug, Clone)]
 pub enum Actions {
@@ -11,8 +11,34 @@ pub enum Actions {
     Transfer(NormalizedTransfer),
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
-
     Unclassified(TransactionTrace, Vec<Log>),
+}
+
+impl InsertRow for Actions {
+    fn get_column_names(&self) -> &'static [&'static str] {
+        match self {
+            Actions::Swap(_) => NormalizedSwap::COLUMN_NAMES,
+            Actions::Transfer(_) => NormalizedTransfer::COLUMN_NAMES,
+            Actions::Mint(_) => NormalizedMint::COLUMN_NAMES,
+            Actions::Burn(_) => NormalizedBurn::COLUMN_NAMES,
+            Actions::Unclassified(..) => panic!(),
+        }
+    }
+}
+
+impl Serialize for Actions {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Actions::Swap(s) => s.serialize(serializer),
+            Actions::Mint(m) => m.serialize(serializer),
+            Actions::Transfer(t) => t.serialize(serializer),
+            Actions::Burn(b) => b.serialize(serializer),
+            Actions::Unclassified(trace, log) => (trace, log).serialize(serializer),
+        }
+    }
 }
 
 impl Actions {
