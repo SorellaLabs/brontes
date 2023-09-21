@@ -7,7 +7,7 @@ FROM
     SELECT 
         max(bt.timestamp) as timestamp, 
         et.address as address, 
-        avg(round((bt.ask_price + bt.bid_price)/2, 6)) as price
+        round(avg(bt.ask_price + bt.bid_price)/2, 6) as price
     FROM 
         cex.binance_idv_symbol_tickers as bt
     INNER JOIN ethereum.tokens AS et 
@@ -23,7 +23,7 @@ FROM
     SELECT 
         max(bt.timestamp) as timestamp, 
         et.address as address, 
-        avg(round((bt.ask_price + bt.bid_price)/2, 6)) as price
+        round(avg(bt.ask_price + bt.bid_price)/2, 6) as price
     FROM 
         cex.binance_idv_symbol_tickers as bt
     INNER JOIN ethereum.tokens AS et 
@@ -36,3 +36,5 @@ FROM
     GROUP BY 
         address
 ) AS sub2 ON sub2.address = sub1.address
+
+
