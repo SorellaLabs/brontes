@@ -14,15 +14,15 @@ pub mod database;
 
 #[derive(Debug)]
 pub struct Metadata {
-    pub block_num:              u64,
-    pub block_hash:             U256,
-    pub relay_timestamp:        u64,
-    pub p2p_timestamp:          u64,
+    pub block_num: u64,
+    pub block_hash: U256,
+    pub relay_timestamp: u64,
+    pub p2p_timestamp: u64,
     pub proposer_fee_recipient: Address,
-    pub proposer_mev_reward:    u64,
-    pub token_prices:           HashMap<Address, (Rational, Rational)>,
-    pub eth_prices:             (Rational, Rational),
-    pub mempool_flow:           HashSet<TxHash>,
+    pub proposer_mev_reward: u64,
+    pub token_prices: HashMap<Address, (Rational, Rational)>,
+    pub eth_prices: (Rational, Rational),
+    pub mempool_flow: HashSet<TxHash>,
 }
 
 impl Metadata {
