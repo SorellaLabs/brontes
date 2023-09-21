@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use clickhouse::Row;
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
 use serde::{Deserialize, Serialize};
+use sorella_db_clients::databases::clickhouse::{self, Row};
 
 use crate::normalized_actions::NormalizedAction;
 
