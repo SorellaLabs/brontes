@@ -76,11 +76,16 @@ fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     }
 }
 
+// So for the master inspector we should get the address of the vertically integrated builders
+// and know searcher addresses so we can also see when they are unprofitable and also better account for
+// the profit given that they could be camouflaging thier trade by overbribing the builder given that
+// they are one and the same
+
 pub struct BlockPreprocessing {
-    meta_data:           Arc<Metadata>,
+    meta_data: Arc<Metadata>,
     cumulative_gas_used: u64,
     cumulative_gas_paid: u64,
-    builder_address:     Address,
+    builder_address: Address,
 }
 
 type InspectorFut<'a> =
@@ -92,9 +97,9 @@ type InspectorFut<'a> =
 pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, MevResult)>);
 
 pub struct DaddyInspector<'a, const N: usize> {
-    baby_inspectors:      &'a [&'a Box<dyn Inspector>; N],
+    baby_inspectors: &'a [&'a Box<dyn Inspector>; N],
     inspectors_execution: Option<InspectorFut<'a>>,
-    pre_processing:       Option<BlockPreprocessing>,
+    pre_processing: Option<BlockPreprocessing>,
 }
 
 impl<'a, const N: usize> DaddyInspector<'a, N> {
@@ -398,7 +403,7 @@ impl<const N: usize> Stream for DaddyInspector<'_, N> {
                     self.inspectors_execution = Some(calculations);
                     Poll::Pending
                 }
-            }
+            };
         }
         Poll::Pending
     }
