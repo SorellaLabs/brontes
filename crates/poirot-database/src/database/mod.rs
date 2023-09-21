@@ -1,6 +1,5 @@
 pub mod const_sql;
 pub mod errors;
-pub(crate) mod serialize;
 pub mod types;
 use std::{
     collections::{HashMap, HashSet},
@@ -99,10 +98,7 @@ impl Database {
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
-            .query_all_params::<u64, DBTokenPrices>(
-                PRICES,
-                vec![relay_time, relay_time, p2p_time, p2p_time],
-            )
+            .query_all_params::<u64, DBTokenPrices>(PRICES, vec![relay_time, p2p_time])
             .await
             .unwrap();
 
@@ -110,7 +106,7 @@ impl Database {
             .into_iter()
             .map(|row| {
                 (
-                    Address::from_str(&row.address).unwrap(),
+                    row.address,
                     (
                         Rational::try_from(row.price0).unwrap(),
                         Rational::try_from(row.price1).unwrap(),
@@ -127,7 +123,7 @@ impl Database {
 mod tests {
 
     use dotenv::dotenv;
-    use reth_primitives::H256;
+    use reth_primitives::{H160, H256};
 
     use super::*;
 
@@ -187,6 +183,40 @@ mod tests {
         HashSet::from_iter(set.into_iter())
     }
 
+    fn expected_relay_info() -> RelayInfo {
+        RelayInfo {
+            relay_time: 1695258707776,
+            p2p_time: 1695258708673,
+            proposer_addr: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
+            proposer_reward: 113949354337187568,
+        }
+    }
+
+    fn expected_metadata(cex_prices: HashMap<Address, (Rational, Rational)>) -> Metadata {
+        let mut cex_prices = cex_prices.clone();
+        let eth_prices = &cex_prices
+            .get(&H160::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
+            .unwrap()
+            .clone();
+
+        cex_prices
+            .remove(&H160::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
+            .unwrap();
+
+        Metadata {
+            block_num: BLOCK_NUMBER,
+            block_hash: H256::from_str(BLOCK_HASH).unwrap().into(),
+            relay_timestamp: 1695258707776,
+            p2p_timestamp: 1695258708673,
+            proposer_fee_recipient: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
+                .unwrap(),
+            proposer_mev_reward: 113949354337187568,
+            token_prices: cex_prices.clone(),
+            eth_prices: eth_prices.clone(),
+            mempool_flow: expected_private_flow(),
+        }
+    }
+
     #[tokio::test]
     async fn test_get_private_flow() {
         dotenv().ok();
@@ -199,5 +229,74 @@ mod tests {
             .await;
 
         assert_eq!(expected_private_flow, private_flow)
+    }
+
+    #[tokio::test]
+    async fn test_get_relay_info() {
+        dotenv().ok();
+
+        let db = Database::default();
+
+        let expected_relay_info = expected_relay_info();
+        let relay_info = db
+            .get_relay_info(BLOCK_NUMBER, H256::from_str(BLOCK_HASH).unwrap().into())
+            .await;
+
+        assert_eq!(expected_relay_info.relay_time, relay_info.relay_time);
+        assert_eq!(expected_relay_info.p2p_time, relay_info.p2p_time);
+        assert_eq!(expected_relay_info.proposer_addr, relay_info.proposer_addr);
+        assert_eq!(expected_relay_info.proposer_reward, relay_info.proposer_reward);
+    }
+
+    #[tokio::test]
+    async fn test_get_cex_prices() {
+        dotenv().ok();
+
+        let db = Database::default();
+
+        let cex_prices = db.get_cex_prices(1695258707776, 1695258708673).await;
+
+        let real_prices = cex_prices
+            .get(&H160::from_str("5264d134dbcccf7b159e201d4104010e48f7316b").unwrap())
+            .unwrap()
+            .clone();
+        let queried_prices =
+            (Rational::try_from(1616.955).unwrap(), Rational::try_from(1616.955).unwrap());
+        assert_eq!(real_prices, queried_prices);
+
+        let real_prices = cex_prices
+            .get(&H160::from_str("05f4a42e251f2d52b8ed15e9fedaacfcef1fad27").unwrap())
+            .unwrap()
+            .clone();
+        let queried_prices = (
+            Rational::try_from(0.016821999999999997).unwrap(),
+            Rational::try_from(0.016825).unwrap(),
+        );
+        assert_eq!(real_prices, queried_prices);
+
+        assert_eq!(cex_prices.len(), 561);
+    }
+
+    #[tokio::test]
+    async fn test_get_metadata() {
+        dotenv().ok();
+
+        let db = Database::default();
+
+        let cex_prices = db.get_cex_prices(1695258707776, 1695258708673).await;
+
+        let expected_metadata = expected_metadata(cex_prices);
+
+        let metadata = db
+            .get_metadata(BLOCK_NUMBER, H256::from_str(BLOCK_HASH).unwrap().into())
+            .await;
+
+        assert_eq!(metadata.block_num, expected_metadata.block_num);
+        assert_eq!(metadata.block_hash, expected_metadata.block_hash);
+        assert_eq!(metadata.relay_timestamp, expected_metadata.relay_timestamp);
+        assert_eq!(metadata.p2p_timestamp, expected_metadata.p2p_timestamp);
+        assert_eq!(metadata.proposer_fee_recipient, expected_metadata.proposer_fee_recipient);
+        assert_eq!(metadata.proposer_mev_reward, expected_metadata.proposer_mev_reward);
+        assert_eq!(metadata.mempool_flow, expected_metadata.mempool_flow);
     }
 }
