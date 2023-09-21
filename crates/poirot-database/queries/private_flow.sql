@@ -1,4 +1,4 @@
-SELECT tx_hash
+SELECT toString(tx_hash) as tx_hash
 FROM
 (
     SELECT arrayJoin(transaction_hashes) AS tx_hash
@@ -9,3 +9,5 @@ WHERE tx_hash NOT IN (
     SELECT tx_hash
     FROM ethereum.unique_mempool
 )
+
+
