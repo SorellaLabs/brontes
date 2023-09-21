@@ -1,8 +1,8 @@
 use std::any::Any;
 
-use clickhouse::{InsertRow, Primitive, Row};
 use reth_primitives::{Address, H256};
 use serde::{de::Error, Deserialize, Serialize};
+use sorella_db_clients::clickhouse::*;
 use strum::EnumIter;
 
 use crate::{

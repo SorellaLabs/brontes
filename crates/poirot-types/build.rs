@@ -9,12 +9,12 @@ use std::{
     path::Path,
 };
 
-use clickhouse::{Client, Row};
 use ethers_core::types::Address;
 #[cfg(feature = "server")]
 use ethers_core::types::H160;
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
+use sorella_db_clients::clickhouse::*;
 use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
