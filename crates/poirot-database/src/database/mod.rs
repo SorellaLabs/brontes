@@ -257,24 +257,22 @@ mod tests {
         let cex_prices = db.get_cex_prices(1695258707776, 1695258708673).await;
 
         let real_prices = cex_prices
-            .get(&H160::from_str("5264d134dbcccf7b159e201d4104010e48f7316b").unwrap())
+            .get(&H160::from_str("5cf04716ba20127f1e2297addcf4b5035000c9eb").unwrap())
             .unwrap()
             .clone();
         let queried_prices =
-            (Rational::try_from(1616.955).unwrap(), Rational::try_from(1616.955).unwrap());
+            (Rational::try_from(0.086237).unwrap(), Rational::try_from(0.086237).unwrap());
         assert_eq!(real_prices, queried_prices);
 
         let real_prices = cex_prices
-            .get(&H160::from_str("05f4a42e251f2d52b8ed15e9fedaacfcef1fad27").unwrap())
+            .get(&H160::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
             .unwrap()
             .clone();
-        let queried_prices = (
-            Rational::try_from(0.016821999999999997).unwrap(),
-            Rational::try_from(0.016825).unwrap(),
-        );
+        let queried_prices =
+            (Rational::try_from(1634.337859).unwrap(), Rational::try_from(1634.337786).unwrap());
         assert_eq!(real_prices, queried_prices);
 
-        assert_eq!(cex_prices.len(), 561);
+        assert_eq!(cex_prices.len(), 17);
     }
 
     #[tokio::test]
