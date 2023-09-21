@@ -1,4 +1,3 @@
-
 SELECT 
     sub1.address AS address,
     sub1.price AS relay_price,
@@ -37,4 +36,3 @@ FROM
     GROUP BY 
         address
 ) AS sub2 ON sub2.address = sub1.address
-

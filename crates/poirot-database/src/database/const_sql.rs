@@ -8,7 +8,10 @@ FROM
 WHERE tx_hash NOT IN (
     SELECT tx_hash
     FROM ethereum.unique_mempool
-)"#;
+)
+
+
+"#;
 
 pub const RELAY_P2P_TIMES: &str = r#"SELECT max(relays.timestamp) as relay_timestamp, max(cb.timestamp) as p2p_timestamp
 FROM ethereum.relays 
@@ -16,8 +19,7 @@ INNER JOIN ethereum.chainbound_block_observations_remote as cb
 ON ethereum.relays.block_number = cb.block_number
 WHERE  block_number = ? AND block_hash = ?"#;
 
-pub const PRICES: &str = r#"
-SELECT 
+pub const PRICES: &str = r#"SELECT 
     sub1.address AS address,
     sub1.price AS relay_price,
     sub2.price AS p2p_price
@@ -54,7 +56,5 @@ FROM
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
         address
-) AS sub2 ON sub2.address = sub1.address
-
-"#;
+) AS sub2 ON sub2.address = sub1.address"#;
 
