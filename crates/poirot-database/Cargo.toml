@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 reth-primitives.workspace = true
-sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients", branch = "main" }
+sorella-db-clients.workspace = true
 # serde
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
@@ -21,7 +21,6 @@ malachite.workspace = true
 hyper-tls = "0.5.0"
 poirot-core.workspace = true
 hyper.workspace = true
-# clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
 futures = "0.3.28"
 tokio.workspace = true
 poirot-metrics.workspace = true

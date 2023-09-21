@@ -13,8 +13,8 @@ tracing.workspace = true
 rayon.workspace = true
 malachite.workspace = true
 serde.workspace = true
+sorella-db-clients.workspace = true
 phf = { version = "0.11.1", default-features = false }
-clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
 strum = { version = "0.25.0", features = ["derive"] }
 auto_impl = "1.1.0"
 erased-serde = "0.3.31"
@@ -32,7 +32,7 @@ ethers-core.workspace = true
 phf = { version = "0.11.1", default-features = false }
 phf_codegen = "0.11.1"
 dotenv = "0.15.0"
-clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
+sorella-db-clients.workspace = true
 
 [features]
 server = []
