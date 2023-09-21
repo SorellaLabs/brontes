@@ -1163,7 +1163,7 @@ dependencies = [
 [[package]]
 name = "clickhouse"
 version = "0.11.5"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#8e1d77adfa79811980c9ac3860db02ece451bfd6"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#ee643653062b13377fbd6335ac87c253e906c66a"
 dependencies = [
  "bstr",
  "bytes",
@@ -1205,7 +1205,7 @@ dependencies = [
 [[package]]
 name = "clickhouse-derive"
 version = "0.1.1"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#8e1d77adfa79811980c9ac3860db02ece451bfd6"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#ee643653062b13377fbd6335ac87c253e906c66a"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
@@ -4792,6 +4792,7 @@ dependencies = [
 name = "poirot-database"
 version = "0.1.0"
 dependencies = [
+ "dotenv",
  "futures",
  "hyper",
  "hyper-tls",
@@ -7635,7 +7636,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-clients"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#bb0bcc4509ccf414a3ba71e0f31b12c1d688d79d"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#2a9237e1a8023d7529510157c08b88c74541f785"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7658,7 +7659,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#bb0bcc4509ccf414a3ba71e0f31b12c1d688d79d"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#2a9237e1a8023d7529510157c08b88c74541f785"
 dependencies = [
  "serde",
  "serde_json",
