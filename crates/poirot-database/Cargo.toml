@@ -25,3 +25,6 @@ futures = "0.3.28"
 tokio.workspace = true
 poirot-metrics.workspace = true
 poirot-types.workspace = true
+
+# misc
+dotenv.workspace = true
