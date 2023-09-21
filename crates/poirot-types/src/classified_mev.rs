@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use clickhouse::Row;
+use clickhouse::{InsertRow, Primitive, Row};
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
@@ -64,26 +64,40 @@ pub enum MevType {
     Unknown,
 }
 
-pub enum MevResult {
-    Sandwich(Sandwich),
-    Backrun(AtomicBackrun),
-    Jit(JitLiquidity),
-    JitSandwich(JitLiquiditySandwich),
-    CexDex(CexDex),
-    Liquidation(Liquidation),
-}
-
 impl Row for MevType {
     const COLUMN_NAMES: &'static [&'static str] = &["mev_type"];
 }
 
+// impl<T> Serialize for T
+// where
+//     T: ?Sized + serde::Serialize,
+// {
+//     fn erased_serialize(&self, serializer: &mut dyn Serializer) -> Result<Ok,
+// Error> {         self.serialize(serializer)
+//     }
+// }
 /// Because of annoying trait requirements. we do some degenerate shit here.
-pub trait SpecificMev: Send + Sync + 'static {
+pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + 'static {
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u64;
     fn bribe(&self) -> u64;
     fn mev_transaction_hashes(&self) -> Vec<H256>;
+}
+
+impl serde::Serialize for dyn SpecificMev {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut ser = <dyn erased_serde::Serializer>::erase(serializer);
+        let res = self
+            .erased_serialize(&mut ser).unwrap();
+        
+        
+
+        Ok(res)
+    }
 }
 
 #[derive(Debug, Serialize, Row, Clone)]
