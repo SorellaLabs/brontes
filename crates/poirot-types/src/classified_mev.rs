@@ -2,7 +2,7 @@ use std::any::Any;
 
 use clickhouse::{InsertRow, Primitive, Row};
 use reth_primitives::{Address, H256};
-use serde::{Deserialize, Serialize};
+use serde::{de::Error, Deserialize, Serialize};
 use strum::EnumIter;
 
 use crate::{
@@ -68,14 +68,6 @@ impl Row for MevType {
     const COLUMN_NAMES: &'static [&'static str] = &["mev_type"];
 }
 
-// impl<T> Serialize for T
-// where
-//     T: ?Sized + serde::Serialize,
-// {
-//     fn erased_serialize(&self, serializer: &mut dyn Serializer) -> Result<Ok,
-// Error> {         self.serialize(serializer)
-//     }
-// }
 /// Because of annoying trait requirements. we do some degenerate shit here.
 pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + 'static {
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
@@ -90,13 +82,7 @@ impl serde::Serialize for dyn SpecificMev {
     where
         S: serde::Serializer,
     {
-        let mut ser = <dyn erased_serde::Serializer>::erase(serializer);
-        let res = self
-            .erased_serialize(&mut ser).unwrap();
-        
-        
-
-        Ok(res)
+        erased_serde::serialize(self, serializer)
     }
 }
 
