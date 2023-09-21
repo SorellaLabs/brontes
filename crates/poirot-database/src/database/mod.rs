@@ -13,20 +13,12 @@ use reth_primitives::{Address, TxHash, U256};
 use serde::Deserialize;
 use sorella_db_clients::databases::clickhouse::{self, ClickhouseClient, Row};
 
-use self::types::DBTokenPrices;
+use self::types::{DBTokenPrices, RelayInfo};
 use super::Metadata;
 use crate::database::const_sql::*;
 
 pub struct Database {
     client: ClickhouseClient,
-}
-
-#[derive(Debug, Clone, Row, Deserialize)]
-pub struct RelayInfo {
-    pub relay_time:      u64,
-    pub p2p_time:        u64,
-    pub proposer_addr:   Address,
-    pub proposer_reward: u64,
 }
 
 impl Default for Database {
@@ -49,6 +41,8 @@ impl Database {
 
         // eth price is in cex_prices
         let eth_prices = Default::default();
+        // = cex_prices.get("ETH").unwrap();
+        // cex_prices.remove("ETH");
 
         let metadata = Metadata::new(
             block_num,
