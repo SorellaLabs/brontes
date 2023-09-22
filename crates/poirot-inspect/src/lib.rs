@@ -123,7 +123,7 @@ pub trait Inspector: Send + Sync {
             .map(|(caller, tokens)| {
                 let summed_value = tokens
                     .into_iter()
-                    .map(|(address, mut value)| {A
+                    .map(|(address, mut value)| {
                         if let Some(price) = metadata.token_prices.get(&address) {
                             value *= time_selector(price);
                         }
