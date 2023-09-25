@@ -1,7 +1,7 @@
 use alloy_sol_types::SolCall;
 use poirot_core::{
     StaticReturnBindings,
-    Uniswap_V3::{burnCall, mintCall, swapCall},
+    UniswapV3::{burnCall, mintCall, swapCall},
 };
 use poirot_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_primitives::{Address, Bytes, U256};
