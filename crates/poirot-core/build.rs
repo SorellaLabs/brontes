@@ -17,10 +17,10 @@ const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 const CACHE_DIRECTORY: &str = "../../abi_cache";
-const PROTOCOL_ADDRESSES: &str =
-    "SELECT protocol, groupArray(toString(address)) AS addresses FROM pools GROUP BY protocol";
+const PROTOCOL_ADDRESSES: &str = "SELECT protocol, groupArray(toString(address)) AS addresses \
+                                  FROM ethereum.pools GROUP BY protocol";
 const PROTOCOL_ABIS: &str =
-    "SELECT protocol, toString(any(address)) AS address FROM pools GROUP BY protocol";
+    "SELECT protocol, toString(any(address)) AS address FROM ethereum.pools GROUP BY protocol";
 
 #[derive(Debug, Serialize, Deserialize, Row)]
 struct AddressToProtocolMapping {
@@ -252,6 +252,10 @@ async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
 
 /// queries the db
 async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
+    db.query("OPTIMIZE TABLE ethereum.pools FINAL DEDUPLICATE BY *")
+        .execute()
+        .await
+        .unwrap();
     db.query(query).fetch_all::<T>().await.unwrap()
 }
 
