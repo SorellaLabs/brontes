@@ -18,7 +18,7 @@ const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x)
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct DecodedTokens {
     address: String,
-    tokens: Vec<String>,
+    tokens:  Vec<String>,
 }
 
 fn main() {

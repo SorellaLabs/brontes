@@ -101,16 +101,16 @@ pub trait Inspector: Send + Sync {
                 .collect::<Vec<_>>();
 
             if changed == false {
-                break;
+                break
             }
         }
         deltas
     }
     /// Given the deltas, metadata, and a time selector, returns the address
-    /// with the highest positive usd delta calculated using CEX prices. This is useful
-    /// in scenarios where we want to find the end address that collects the returns of
-    /// the underlying mev, which isn't always the address / contract that executed the
-    /// mev.S
+    /// with the highest positive usd delta calculated using CEX prices. This is
+    /// useful in scenarios where we want to find the end address that
+    /// collects the returns of the underlying mev, which isn't always the
+    /// address / contract that executed the mev.S
     fn get_best_usd_delta(
         &self,
         deltas: HashMap<Address, HashMap<Address, Rational>>,
@@ -134,11 +134,12 @@ pub trait Inspector: Send + Sync {
             })
             .max_by(|x, y| x.1.cmp(&y.1))
     }
-    //TODO: I was realising, we don't acc need this if we can have the db structs be generic over actions
-    //TODO: becauswe we are already querying the interesting state from the tree so we already know what the actions are and can easily classify them as such
-    //fn get_relevant_action<F, Action>(actions: Vec<Actions>, call: F) -> Option<Action>
-    // where
-     //   F: Fn(&Node<V>) -> bool + Send + Sync,
+    //TODO: I was realising, we don't acc need this if we can have the db structs
+    // be generic over actions TODO: becauswe we are already querying the
+    // interesting state from the tree so we already know what the actions are and
+    // can easily classify them as such fn get_relevant_action<F,
+    // Action>(actions: Vec<Actions>, call: F) -> Option<Action> where
+    //   F: Fn(&Node<V>) -> bool + Send + Sync,
 }
 
 fn apply_entry(token: Address, amount: Rational, token_map: &mut HashMap<Address, Rational>) {
