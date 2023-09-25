@@ -83,13 +83,9 @@ impl Inspector for SandwichInspector {
                         tree.inspect(*victim, search_fn.clone())
                             .into_iter()
                             .flatten()
-                            .map(|v| {
-                                let Actions::Swap(s) = v else { panic!() };
-                                s
-                            })
                             .collect::<Vec<_>>()
                     })
-                    .collect::<Vec<Vec<NormalizedSwap>>>();
+                    .collect::<Vec<Vec<Actions>>>();
 
                 let searcher_actions = vec![tx0, tx1]
                     .into_iter()
@@ -120,22 +116,13 @@ impl SandwichInspector {
         metadata: Arc<Metadata>,
         txes: [H256; 2],
         searcher_gas_details: [GasDetails; 2],
-        searcher_actions: Vec<Vec<Actions>>,
+        mut searcher_actions: Vec<Vec<Actions>>,
         // victim
         victim_txes: Vec<H256>,
-        victim_actions: Vec<Vec<NormalizedSwap>>,
+        mut victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.calculate_swap_deltas(&searcher_actions);
-        let mut searcher_actions = searcher_actions
-            .into_iter()
-            .map(|action| {
-                action
-                    .into_iter()
-                    .filter_map(|a| if let Actions::Swap(a) = a { Some(a) } else { None })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
 
         let appearance_usd_deltas = self.get_best_usd_delta(
             deltas.clone(),

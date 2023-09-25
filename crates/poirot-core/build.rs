@@ -17,21 +17,21 @@ const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 const CACHE_DIRECTORY: &str = "../../abi_cache";
-const PROTOCOL_ADDRESSES: &str =
-    "SELECT protocol, groupArray(toString(address)) AS addresses FROM ethereum.pools GROUP BY protocol";
+const PROTOCOL_ADDRESSES: &str = "SELECT protocol, groupArray(toString(address)) AS addresses \
+                                  FROM ethereum.pools GROUP BY protocol";
 const PROTOCOL_ABIS: &str =
     "SELECT protocol, toString(any(address)) AS address FROM ethereum.pools GROUP BY protocol";
 
 #[derive(Debug, Serialize, Deserialize, Row)]
 struct AddressToProtocolMapping {
-    protocol: String,
+    protocol:  String,
     addresses: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone)]
 struct ProtocolAbis {
     protocol: String,
-    address: String,
+    address:  String,
 }
 
 fn main() {
