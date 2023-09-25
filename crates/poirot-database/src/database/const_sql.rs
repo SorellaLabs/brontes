@@ -62,8 +62,5 @@ FROM
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
         address
-) AS sub2 ON sub2.address = sub1.address
-
-
-"#;
+) AS sub2 ON sub2.address = sub1.address"#;
 
