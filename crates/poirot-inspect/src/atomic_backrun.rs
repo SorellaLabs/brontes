@@ -78,14 +78,7 @@ impl AtomicBackrunInspector {
         let backrun = Box::new(AtomicBackrun {
             tx_hash,
             gas_details,
-            swaps: swaps
-                .into_par_iter()
-                .flat_map(|m| {
-                    m.into_par_iter()
-                        .filter_map(|a| if let Actions::Swap(s) = a { Some(s) } else { None })
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>(),
+            swaps: swaps.into_iter().flatten().collect::<Vec<_>>(),
         });
         Some((classified, backrun))
     }
