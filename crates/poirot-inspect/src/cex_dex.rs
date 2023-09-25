@@ -43,13 +43,13 @@ impl CexDexInspector {
             )?
             .0;
 
-        let (swap_data, (pre, post)): (Vec<NormalizedSwap>, _) = swaps
+        let (swap_data, (pre, post)): (Vec<Actions>, _) = swaps
             .into_iter()
             .flatten()
             .filter_map(|action| {
-                if let Actions::Swap(normalized_swap) = action {
-                    let (pre, post) = self.get_cex_dex(&normalized_swap, metadata.as_ref());
-                    Some((normalized_swap, (pre, post)))
+                if let Actions::Swap(ref normalized_swap) = action {
+                    let (pre, post) = self.get_cex_dex(normalized_swap, metadata.as_ref());
+                    Some((action, (pre, post)))
                 } else {
                     None
                 }
@@ -120,7 +120,7 @@ impl CexDexInspector {
         swap: &NormalizedSwap,
         metadata: &Metadata,
     ) -> (Option<Rational>, Option<Rational>) {
-        self.rational_dex_price(&swap, metadata)
+        self.rational_dex_price(&Actions::Swap(swap.clone()), metadata)
             .map(|(dex_price, cex_price1, cex_price2)| {
                 let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1);
                 let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2);
@@ -148,9 +148,11 @@ impl CexDexInspector {
 
     pub fn rational_dex_price(
         &self,
-        swap: &NormalizedSwap,
+        swap: &Actions,
         metadata: &Metadata,
     ) -> Option<(Rational, Rational, Rational)> {
+        let Actions::Swap(swap) = swap else { return None; };
+
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             return None
