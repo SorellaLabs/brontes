@@ -18,7 +18,7 @@ const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x)
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct DecodedTokens {
     address: String,
-    tokens:  Vec<String>,
+    tokens: Vec<String>,
 }
 
 fn main() {
@@ -45,6 +45,10 @@ fn main() {
 }
 
 async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
+    db.query("OPTIMIZE TABLE ethereum.pools FINAL DEDUPLICATE BY *")
+        .execute()
+        .await
+        .unwrap();
     db.query(query).fetch_all::<T>().await.unwrap()
 }
 
