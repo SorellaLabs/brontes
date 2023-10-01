@@ -19,6 +19,8 @@ reth-rpc-types.workspace = true
 rayon.workspace = true
 tracing.workspace = true
 futures.workspace = true
+tokio.workspace = true
+async-scoped = { version = "0.7.1", features = ["use-tokio"] }
 # error handling
 thiserror.workspace = true
 auto_impl = "1.1.0"

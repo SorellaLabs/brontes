@@ -468,6 +468,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-scoped"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e7a6a57c8aeb40da1ec037f5d455836852f7a57e69e1b1ad3d8f38ac1d6cadf"
+dependencies = [
+ "futures",
+ "pin-project",
+ "slab",
+ "tokio",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4801,6 +4813,7 @@ dependencies = [
 name = "poirot-inspect"
 version = "0.1.0"
 dependencies = [
+ "async-scoped",
  "async-trait",
  "auto_impl",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
@@ -4819,6 +4832,7 @@ dependencies = [
  "serde_with 3.3.0",
  "strum",
  "thiserror",
+ "tokio",
  "tracing",
 ]
 
