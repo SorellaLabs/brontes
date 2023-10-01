@@ -89,7 +89,7 @@ pub struct BlockPreprocessing {
 }
 
 type InspectorFut<'a> =
-    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + 'a>>;
 
 /// the results downcast using any in order to be able to serialize and
 /// impliment row trait due to the abosulte autism that the db library   
@@ -113,23 +113,20 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
     pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) {
         // This is only unsafe due to the fact that you can have missbehaviour where you
-        // drop this with incomplete futures. However because we call .collect()
-        // on scope this is totally safe
+        // drop this with incomplete futures
+        let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
+            unsafe { Scope::create() };
 
-        let fut = Box::pin(async {
-            let mut scope: TokioScope<'_, _> = unsafe { Scope::create() };
-            self.baby_inspectors.iter().for_each(|inspector| {
-                scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
-            });
+        self.baby_inspectors.iter().for_each(|inspector| {
+            scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
+        });
 
+        let fut = Box::pin(async move {
             scope
                 .collect()
+                .map(|r| r.into_iter().flatten().flatten().collect::<Vec<_>>())
                 .await
-                .into_iter()
-                .flatten()
-                .flatten()
-                .collect::<Vec<_>>()
-        }) as InspectorFut<'a>;
+        });
 
         self.inspectors_execution = Some(fut);
 
