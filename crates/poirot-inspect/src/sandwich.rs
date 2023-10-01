@@ -7,7 +7,7 @@ use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingM
 use poirot_database::Metadata;
 use poirot_types::{
     classified_mev::{MevType, Sandwich, SpecificMev},
-    normalized_actions::{Actions, NormalizedSwap},
+    normalized_actions::Actions,
     tree::{GasDetails, Node, TimeTree},
 };
 use reth_primitives::{Address, H256};
@@ -119,7 +119,7 @@ impl SandwichInspector {
         mut searcher_actions: Vec<Vec<Actions>>,
         // victim
         victim_txes: Vec<H256>,
-        mut victim_actions: Vec<Vec<Actions>>,
+        victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.calculate_swap_deltas(&searcher_actions);

@@ -139,7 +139,7 @@ checksum = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5"
 [[package]]
 name = "alloy-dyn-abi"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#6835eeff2a3f24b0c2369f10fae48caa660bd970"
+source = "git+https://github.com/alloy-rs/core#0c21fcc48eab0b52c20d3e98c739bac862aad8ff"
 dependencies = [
  "alloy-json-abi",
  "alloy-primitives",
@@ -177,7 +177,7 @@ dependencies = [
 [[package]]
 name = "alloy-json-abi"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#6835eeff2a3f24b0c2369f10fae48caa660bd970"
+source = "git+https://github.com/alloy-rs/core#0c21fcc48eab0b52c20d3e98c739bac862aad8ff"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-type-parser",
@@ -188,7 +188,7 @@ dependencies = [
 [[package]]
 name = "alloy-primitives"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#6835eeff2a3f24b0c2369f10fae48caa660bd970"
+source = "git+https://github.com/alloy-rs/core#0c21fcc48eab0b52c20d3e98c739bac862aad8ff"
 dependencies = [
  "alloy-rlp",
  "bytes",
@@ -218,7 +218,7 @@ dependencies = [
 [[package]]
 name = "alloy-sol-macro"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#6835eeff2a3f24b0c2369f10fae48caa660bd970"
+source = "git+https://github.com/alloy-rs/core#0c21fcc48eab0b52c20d3e98c739bac862aad8ff"
 dependencies = [
  "alloy-json-abi",
  "dunce",
@@ -235,12 +235,12 @@ dependencies = [
 [[package]]
 name = "alloy-sol-type-parser"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#6835eeff2a3f24b0c2369f10fae48caa660bd970"
+source = "git+https://github.com/alloy-rs/core#0c21fcc48eab0b52c20d3e98c739bac862aad8ff"
 
 [[package]]
 name = "alloy-sol-types"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#6835eeff2a3f24b0c2369f10fae48caa660bd970"
+source = "git+https://github.com/alloy-rs/core#0c21fcc48eab0b52c20d3e98c739bac862aad8ff"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-macro",
@@ -821,7 +821,7 @@ dependencies = [
 [[package]]
 name = "boa_ast"
 version = "0.17.0"
-source = "git+https://github.com/boa-dev/boa#986b048560f6f1a6f0fbe2724d3b7c59207e75b6"
+source = "git+https://github.com/boa-dev/boa#20971e4c63032c9d174ba4bda70d72cf4217570f"
 dependencies = [
  "bitflags 2.4.0",
  "boa_interner",
@@ -834,7 +834,7 @@ dependencies = [
 [[package]]
 name = "boa_engine"
 version = "0.17.0"
-source = "git+https://github.com/boa-dev/boa#986b048560f6f1a6f0fbe2724d3b7c59207e75b6"
+source = "git+https://github.com/boa-dev/boa#20971e4c63032c9d174ba4bda70d72cf4217570f"
 dependencies = [
  "bitflags 2.4.0",
  "boa_ast",
@@ -872,7 +872,7 @@ dependencies = [
 [[package]]
 name = "boa_gc"
 version = "0.17.0"
-source = "git+https://github.com/boa-dev/boa#986b048560f6f1a6f0fbe2724d3b7c59207e75b6"
+source = "git+https://github.com/boa-dev/boa#20971e4c63032c9d174ba4bda70d72cf4217570f"
 dependencies = [
  "boa_macros",
  "boa_profiler",
@@ -883,7 +883,7 @@ dependencies = [
 [[package]]
 name = "boa_icu_provider"
 version = "0.17.0"
-source = "git+https://github.com/boa-dev/boa#986b048560f6f1a6f0fbe2724d3b7c59207e75b6"
+source = "git+https://github.com/boa-dev/boa#20971e4c63032c9d174ba4bda70d72cf4217570f"
 dependencies = [
  "icu_collections",
  "icu_normalizer",
@@ -896,7 +896,7 @@ dependencies = [
 [[package]]
 name = "boa_interner"
 version = "0.17.0"
-source = "git+https://github.com/boa-dev/boa#986b048560f6f1a6f0fbe2724d3b7c59207e75b6"
+source = "git+https://github.com/boa-dev/boa#20971e4c63032c9d174ba4bda70d72cf4217570f"
 dependencies = [
  "boa_gc",
  "boa_macros",
@@ -911,7 +911,7 @@ dependencies = [
 [[package]]
 name = "boa_macros"
 version = "0.17.0"
-source = "git+https://github.com/boa-dev/boa#986b048560f6f1a6f0fbe2724d3b7c59207e75b6"
+source = "git+https://github.com/boa-dev/boa#20971e4c63032c9d174ba4bda70d72cf4217570f"
 dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
@@ -922,7 +922,7 @@ dependencies = [
 [[package]]
 name = "boa_parser"
 version = "0.17.0"
-source = "git+https://github.com/boa-dev/boa#986b048560f6f1a6f0fbe2724d3b7c59207e75b6"
+source = "git+https://github.com/boa-dev/boa#20971e4c63032c9d174ba4bda70d72cf4217570f"
 dependencies = [
  "bitflags 2.4.0",
  "boa_ast",
@@ -942,7 +942,7 @@ dependencies = [
 [[package]]
 name = "boa_profiler"
 version = "0.17.0"
-source = "git+https://github.com/boa-dev/boa#986b048560f6f1a6f0fbe2724d3b7c59207e75b6"
+source = "git+https://github.com/boa-dev/boa#20971e4c63032c9d174ba4bda70d72cf4217570f"
 
 [[package]]
 name = "brotli"
@@ -1358,9 +1358,9 @@ dependencies = [
 
 [[package]]
 name = "const-hex"
-version = "1.8.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08849ed393c907c90016652a01465a12d86361cd38ad2a7de026c56a520cc259"
+checksum = "aa72a10d0e914cad6bcad4e7409e68d230c1c2db67896e19a37f758b1fcbdab5"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -3841,9 +3841,9 @@ dependencies = [
 
 [[package]]
 name = "malachite"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9fa232412d927f518cd873073911726943f432bac1bbc1288316d240635dc51"
+checksum = "28b49fa1429e8ddea190176d32ef56d707a1a3472e7f0efe280cf1d1b9b23387"
 dependencies = [
  "malachite-base",
  "malachite-nz",
@@ -3852,9 +3852,9 @@ dependencies = [
 
 [[package]]
 name = "malachite-base"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "606a61b226dc58b8b283399b74754460433c193b193f26eaaad92f7966abd72b"
+checksum = "c9487916dcc94eb82e3ec6cd3299b6f5be5600477a97871d6450603471a22528"
 dependencies = [
  "getrandom 0.2.10",
  "itertools 0.11.0",
@@ -3866,9 +3866,9 @@ dependencies = [
 
 [[package]]
 name = "malachite-nz"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "863d06218c83cc2269c425186cc15094d6284b1333a1184d0890aecfddb8916b"
+checksum = "d344f97c02c628154e969ee64dd9a75ea4e6a57fb817edbe059068b49069153f"
 dependencies = [
  "embed-doc-image",
  "itertools 0.11.0",
@@ -3877,9 +3877,9 @@ dependencies = [
 
 [[package]]
 name = "malachite-q"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e9d3b8d07e463f4eb247259aa69a32b1cd05419a318ca63f9930d5a893cc69f"
+checksum = "4f1eab72c282314e08236b69ff6cf34dbe3958855316815b11d86e4bfd24cd59"
 dependencies = [
  "itertools 0.11.0",
  "malachite-base",
@@ -6999,7 +6999,7 @@ checksum = "cd8d6c9f025a446bc4d18ad9632e69aec8f287aa84499ee335599fabd20c3fd8"
 dependencies = [
  "log",
  "ring",
- "rustls-webpki 0.101.5",
+ "rustls-webpki 0.101.6",
  "sct",
 ]
 
@@ -7036,9 +7036,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.101.5"
+version = "0.101.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45a27e3b59326c16e23d30aeb7a36a24cc0d29e71d68ff611cdfb4a01d013bed"
+checksum = "3c7d5dece342910d9ba34d259310cae3e0154b873b35408b787b59bce53d34fe"
 dependencies = [
  "ring",
  "untrusted",
@@ -7432,9 +7432,9 @@ dependencies = [
 
 [[package]]
 name = "sha1"
-version = "0.10.5"
+version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f04293dc80c3993519f2d7f6f511707ee7094fe0c6d3406feb330cdb3540eba3"
+checksum = "e3bf829a2d51ab4a5ddf1352d8470c140cadc8301b2ae1789db023f01cedd6ba"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -7603,7 +7603,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-clients"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#c3b3d6069b01ea4320c2ff3f03986d0ca8d1e525"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#e152e3f52accaa4ba238e2c846073620bdd9d592"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7626,7 +7626,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#c3b3d6069b01ea4320c2ff3f03986d0ca8d1e525"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#e152e3f52accaa4ba238e2c846073620bdd9d592"
 dependencies = [
  "serde",
  "serde_json",
@@ -7823,7 +7823,7 @@ dependencies = [
 [[package]]
 name = "syn-solidity"
 version = "0.3.2"
-source = "git+https://github.com/alloy-rs/core#6835eeff2a3f24b0c2369f10fae48caa660bd970"
+source = "git+https://github.com/alloy-rs/core#0c21fcc48eab0b52c20d3e98c739bac862aad8ff"
 dependencies = [
  "paste",
  "proc-macro2 1.0.67",
