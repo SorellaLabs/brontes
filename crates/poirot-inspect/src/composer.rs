@@ -94,17 +94,18 @@ type InspectorFut<'a> =
 /// the results downcast using any in order to be able to serialize and
 /// impliment row trait due to the abosulte autism that the db library   
 /// requirements
-pub type DaddyInspectorResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
+pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
 
-pub struct DaddyInspector<'a, const N: usize> {
-    baby_inspectors:      &'a [&'a Box<dyn Inspector>; N],
+pub struct Composer<'a, const N: usize> {
+    orchestra: &'a [&'a Box<dyn Inspector>; N],
+
     inspectors_execution: Option<InspectorFut<'a>>,
     pre_processing:       Option<BlockPreprocessing>,
 }
 
-impl<'a, const N: usize> DaddyInspector<'a, N> {
-    pub fn new(baby_inspectors: &'a [&'a Box<dyn Inspector>; N]) -> Self {
-        Self { baby_inspectors, inspectors_execution: None, pre_processing: None }
+impl<'a, const N: usize> Composer<'a, N> {
+    pub fn new(orchestra: &'a [&'a Box<dyn Inspector>; N]) -> Self {
+        Self { orchestra, inspectors_execution: None, pre_processing: None }
     }
 
     pub fn is_processing(&self) -> bool {
@@ -117,7 +118,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
             unsafe { Scope::create() };
 
-        self.baby_inspectors.iter().for_each(|inspector| {
+        self.orchestra.iter().for_each(|inspector| {
             scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
         });
 
@@ -157,10 +158,10 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
 
     fn build_mev_header(
         &mut self,
-        baby_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+        orchestra_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> MevBlock {
         let pre_processing = self.pre_processing.take().unwrap();
-        let cum_mev_priority_fee_paid = baby_data
+        let cum_mev_priority_fee_paid = orchestra_data
             .iter()
             .map(|(_, mev)| mev.priority_fee_paid())
             .sum::<u64>();
@@ -172,7 +173,7 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         MevBlock {
             block_hash: pre_processing.meta_data.block_hash.into(),
             block_number: pre_processing.meta_data.block_num,
-            mev_count: baby_data.len() as u64,
+            mev_count: orchestra_data.len() as u64,
             submission_eth_price: f64::rounding_from(
                 &pre_processing.meta_data.eth_prices.0,
                 RoundingMode::Nearest,
@@ -185,7 +186,10 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
             .0,
             cumulative_gas_used: pre_processing.cumulative_gas_used,
             cumulative_gas_paid: pre_processing.cumulative_gas_paid,
-            total_bribe: baby_data.iter().map(|(_, mev)| mev.bribe()).sum::<u64>(),
+            total_bribe: orchestra_data
+                .iter()
+                .map(|(_, mev)| mev.bribe())
+                .sum::<u64>(),
             cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
             builder_address: pre_processing.builder_address,
             builder_eth_profit,
@@ -226,13 +230,13 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
         }
     }
 
-    fn on_baby_resolution(
+    fn on_orchestra_resolution(
         &mut self,
-        baby_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
-    ) -> Poll<Option<DaddyInspectorResults>> {
-        let header = self.build_mev_header(&baby_data);
+        orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+    ) -> Poll<Option<ComposerResults>> {
+        let header = self.build_mev_header(&orchestra_data);
 
-        let mut sorted_mev = baby_data
+        let mut sorted_mev = orchestra_data
             .into_iter()
             .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
             .fold(
@@ -371,13 +375,13 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
     }
 }
 
-impl<const N: usize> Stream for DaddyInspector<'_, N> {
-    type Item = DaddyInspectorResults;
+impl<const N: usize> Stream for Composer<'_, N> {
+    type Item = ComposerResults;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Some(mut calculations) = self.inspectors_execution.take() {
             return match calculations.poll_unpin(cx) {
-                Poll::Ready(data) => self.on_baby_resolution(data),
+                Poll::Ready(data) => self.on_orchestra_resolution(data),
                 Poll::Pending => {
                     self.inspectors_execution = Some(calculations);
                     Poll::Pending
