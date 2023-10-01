@@ -151,7 +151,7 @@ impl CexDexInspector {
         swap: &Actions,
         metadata: &Metadata,
     ) -> Option<(Rational, Rational, Rational)> {
-        let Actions::Swap(swap) = swap else { return None; };
+        let Actions::Swap(swap) = swap else { return None };
 
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");

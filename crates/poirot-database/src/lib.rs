@@ -50,3 +50,22 @@ impl Metadata {
         }
     }
 }
+pub struct Labeller<'a> {
+    pub client:            &'a Database,
+    #[allow(dead_code)]
+    pub(crate) metrics_tx: UnboundedSender<PoirotMetricEvents>,
+}
+
+impl<'a> Labeller<'a> {
+    pub fn new(metrics_tx: UnboundedSender<PoirotMetricEvents>, database: &'a Database) -> Self {
+        Self { client: database, metrics_tx }
+    }
+
+    pub fn get_metadata(
+        &self,
+        block_num: u64,
+        block_hash: U256,
+    ) -> Pin<Box<dyn Future<Output = Metadata> + Send + 'a>> {
+        Box::pin(self.client.get_metadata(block_num, block_hash))
+    }
+}
