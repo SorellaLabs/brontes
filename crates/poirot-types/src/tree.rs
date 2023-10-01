@@ -6,7 +6,7 @@ use reth_primitives::{Address, Header, H256, U256};
 use serde::{Deserialize, Serialize};
 use sorella_db_clients::databases::clickhouse::{self, Row};
 
-use crate::normalized_actions::NormalizedAction;
+use crate::normalized_actions::{Actions, NormalizedAction};
 
 pub struct TimeTree<V: NormalizedAction> {
     pub roots:            Vec<Root<V>>,
