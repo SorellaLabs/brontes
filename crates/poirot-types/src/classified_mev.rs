@@ -6,10 +6,7 @@ use sorella_db_clients::databases::clickhouse::{self, InsertRow, Row};
 use strum::EnumIter;
 
 use super::normalized_actions::Actions;
-use crate::{
-    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    tree::GasDetails,
-};
+use crate::tree::GasDetails;
 
 #[derive(Debug, Serialize, Deserialize, Row)]
 pub struct MevBlock {
