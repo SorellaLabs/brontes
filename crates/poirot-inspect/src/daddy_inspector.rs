@@ -112,12 +112,14 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
     }
 
     pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) {
-        let s_tree = tree.clone();
-        let s_meta = meta_data.clone();
+        // This is only unsafe due to the fact that you can have missbehaviour where you
+        // drop this with incomplete futures. However because we call .collect()
+        // on scope this is totally safe
+
         let fut = Box::pin(async {
-            let scope: TokioScope<'_, _> = unsafe { Scope::create() };
+            let mut scope: TokioScope<'_, _> = unsafe { Scope::create() };
             self.baby_inspectors.iter().for_each(|inspector| {
-                scope.spawn(inspector.process_tree(s_tree.clone(), s_meta.clone()))
+                scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
             });
 
             scope
@@ -127,7 +129,8 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
                 .flatten()
                 .flatten()
                 .collect::<Vec<_>>()
-        });
+        }) as InspectorFut<'a>;
+
         self.inspectors_execution = Some(fut);
 
         self.pre_process(tree, meta_data);
