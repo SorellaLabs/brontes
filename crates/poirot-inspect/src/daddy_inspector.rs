@@ -7,6 +7,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use async_scoped::{Scope, TokioScope};
 use futures::{
     future::{join_all, JoinAll},
     FutureExt, Stream,
@@ -88,7 +89,7 @@ pub struct BlockPreprocessing {
 }
 
 type InspectorFut<'a> =
-    JoinAll<Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>>;
+    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + 'a>>;
 
 /// the results downcast using any in order to be able to serialize and
 /// impliment row trait due to the abosulte autism that the db library   
@@ -111,11 +112,23 @@ impl<'a, const N: usize> DaddyInspector<'a, N> {
     }
 
     pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) {
-        self.inspectors_execution = Some(join_all(
-            self.baby_inspectors
-                .iter()
-                .map(|inspector| inspector.process_tree(tree.clone(), meta_data.clone())),
-        ) as InspectorFut<'a>);
+        // This is only unsafe due to the fact that you can have missbehaviour where you
+        // drop this with incomplete futures
+        let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
+            unsafe { Scope::create() };
+
+        self.baby_inspectors.iter().for_each(|inspector| {
+            scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
+        });
+
+        let fut = Box::pin(async move {
+            scope
+                .collect()
+                .map(|r| r.into_iter().flatten().flatten().collect::<Vec<_>>())
+                .await
+        });
+
+        self.inspectors_execution = Some(fut);
 
         self.pre_process(tree, meta_data);
     }
@@ -364,7 +377,7 @@ impl<const N: usize> Stream for DaddyInspector<'_, N> {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Some(mut calculations) = self.inspectors_execution.take() {
             return match calculations.poll_unpin(cx) {
-                Poll::Ready(data) => self.on_baby_resolution(data.into_iter().flatten().collect()),
+                Poll::Ready(data) => self.on_baby_resolution(data),
                 Poll::Pending => {
                     self.inspectors_execution = Some(calculations);
                     Poll::Pending
