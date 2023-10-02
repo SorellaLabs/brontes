@@ -21,6 +21,7 @@ tracing.workspace = true
 futures.workspace = true
 tokio.workspace = true
 async-scoped = { version = "0.7.1", features = ["use-tokio"] }
+itertools = "0.11.0"
 # error handling
 thiserror.workspace = true
 auto_impl = "1.1.0"
