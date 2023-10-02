@@ -30,9 +30,9 @@ impl Default for Database {
 }
 
 impl Database {
-    pub async fn get_metadata(&self, block_num: u64, block_hash: U256) -> Metadata {
-        let private_flow = self.get_private_flow(block_num, block_hash).await;
-        let relay_data = self.get_relay_info(block_num, block_hash).await;
+    pub async fn get_metadata(&self, block_num: u64) -> Metadata {
+        let private_flow = self.get_private_flow(block_num).await;
+        let relay_data = self.get_relay_info(block_num).await;
         let cex_prices = self
             .get_cex_prices(relay_data.relay_time, relay_data.p2p_time)
             .await;
@@ -44,7 +44,7 @@ impl Database {
 
         let metadata = Metadata::new(
             block_num,
-            block_hash,
+            relay_data.block_hash.into(),
             relay_data.relay_time,
             relay_data.p2p_time,
             relay_data.proposer_addr,
@@ -87,13 +87,10 @@ impl Database {
         .await;
     }
 
-    async fn get_private_flow(&self, block_num: u64, block_hash: U256) -> HashSet<TxHash> {
+    async fn get_private_flow(&self, block_num: u64) -> HashSet<TxHash> {
         let private_txs = self
             .client
-            .query_all_params::<String, String>(
-                PRIVATE_FLOW,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
-            )
+            .query_all_params::<String, String>(PRIVATE_FLOW, vec![block_num.to_string()])
             .await
             .unwrap();
 
@@ -103,12 +100,9 @@ impl Database {
             .collect::<HashSet<TxHash>>()
     }
 
-    async fn get_relay_info(&self, block_num: u64, block_hash: U256) -> RelayInfo {
+    async fn get_relay_info(&self, block_num: u64) -> RelayInfo {
         self.client
-            .query_one_params(
-                RELAY_P2P_TIMES,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
-            )
+            .query_one_params(RELAY_P2P_TIMES, vec![block_num.to_string()])
             .await
             .unwrap()
     }

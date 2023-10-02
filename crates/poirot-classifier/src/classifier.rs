@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use hex_literal::hex;
+use parking_lot::RwLock;
 use poirot_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 use poirot_database::Metadata;
 use poirot_types::{
@@ -22,18 +23,22 @@ const TRANSFER_TOPIC: H256 =
 
 /// goes through and classifies all exchanges
 #[derive(Debug)]
+// read write lock
 pub struct Classifier {
-    known_dyn_protocols: HashMap<Address, (Address, Address)>,
+    known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
     static_protocols:    HashMap<[u8; 4], Box<dyn IntoAction>>,
 }
 
 impl Classifier {
     pub fn new(known_protocols: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
-        Self { static_protocols: known_protocols, known_dyn_protocols: HashMap::default() }
+        Self {
+            static_protocols:    known_protocols,
+            known_dyn_protocols: RwLock::new(HashMap::default()),
+        }
     }
 
     pub fn build_tree(
-        &mut self,
+        &self,
         traces: Vec<TxTrace>,
         header: Header,
         metadata: &Metadata,
@@ -403,7 +408,10 @@ impl Classifier {
         None
     }
 
-    fn try_classify_unknown(&mut self, tree: &mut TimeTree<Actions>) {
+    fn try_classify_unknown(&self, tree: &mut TimeTree<Actions>) {
+        // Acquire the read lock once
+        let known_dyn_protocols_read = self.known_dyn_protocols.read();
+
         let new_classifed_exchanges = tree.dyn_classify(
             |address, sub_actions| {
                 // we can dyn classify this shit
@@ -411,7 +419,7 @@ impl Classifier {
                     // this is already classified
                     return false
                 }
-                if self.known_dyn_protocols.contains_key(&address) {
+                if known_dyn_protocols_read.contains_key(&address) {
                     return true
                 } else if self.is_possible_exchange(sub_actions) {
                     return true
@@ -420,8 +428,8 @@ impl Classifier {
                 false
             },
             |node| {
-                if self.known_dyn_protocols.contains_key(&node.address) {
-                    let (token_0, token_1) = self.known_dyn_protocols.get(&node.address).unwrap();
+                if known_dyn_protocols_read.contains_key(&node.address) {
+                    let (token_0, token_1) = known_dyn_protocols_read.get(&node.address).unwrap();
                     if let Some(res) = self.prove_dyn_action(node, *token_0, *token_1) {
                         // we have reduced the lower part of the tree. we can delete this now
                         node.inner.clear();
@@ -436,9 +444,14 @@ impl Classifier {
                 None
             },
         );
+        // Drop the read lock
+        drop(known_dyn_protocols_read);
 
-        new_classifed_exchanges.into_iter().for_each(|(k, v)| {
-            self.known_dyn_protocols.insert(k, v);
-        });
+        if !new_classifed_exchanges.is_empty() {
+            let mut known_dyn_protocols_write = self.known_dyn_protocols.write();
+            new_classifed_exchanges.into_iter().for_each(|(k, v)| {
+                known_dyn_protocols_write.insert(k, v);
+            });
+        };
     }
 }
