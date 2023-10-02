@@ -1067,6 +1067,7 @@ dependencies = [
  "alloy-json-abi",
  "alloy-primitives",
  "alloy-sol-types",
+ "async-trait",
  "brontes-metrics",
  "brontes-types",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
@@ -1075,6 +1076,7 @@ dependencies = [
  "env_logger",
  "ethers",
  "ethers-core",
+ "ethers-reth",
  "eyre",
  "futures",
  "hyper",
@@ -2729,7 +2731,7 @@ dependencies = [
 [[package]]
 name = "ethers-reth"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/ethers-reth#5408b41661da9d1299ac56d18c28b45102061bed"
+source = "git+https://github.com/SorellaLabs/ethers-reth.git#5408b41661da9d1299ac56d18c28b45102061bed"
 dependencies = [
  "async-trait",
  "c-kzg 0.1.0 (git+https://github.com/ethereum/c-kzg-4844?rev=f5f6f863d475847876a2bd5ee252058d37c3a15d)",
@@ -7126,7 +7128,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-clients"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#7bbee4f319fbbf19ca6197989351e4981211aaa6"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#bd36c8a808ad3c6ca8c1f3a766321fe14ddc47a0"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7141,6 +7143,7 @@ dependencies = [
  "reqwest",
  "reth-interfaces",
  "reth-primitives",
+ "reth-provider",
  "serde",
  "serde_json",
  "sorella-db-tracing",
@@ -7152,7 +7155,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#7bbee4f319fbbf19ca6197989351e4981211aaa6"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#bd36c8a808ad3c6ca8c1f3a766321fe14ddc47a0"
 dependencies = [
  "serde",
  "serde_json",
