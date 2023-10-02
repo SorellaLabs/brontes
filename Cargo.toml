@@ -15,12 +15,6 @@ members = [
 
 resolver = "2"
 
-
-[patch.crates-io]
-# patched for quantity U256 responses <https://github.com/recmo/uint/issues/224>
-revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
-revm-primitives = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
-
 [workspace.dependencies]
 sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients", branch = "main" }
 
