@@ -37,6 +37,7 @@ struct ProtocolAbis {
 fn main() {
     dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
+    println!("cargo:rerun-if-changed=./abis/");
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
