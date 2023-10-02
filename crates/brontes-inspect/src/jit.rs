@@ -4,14 +4,14 @@ use std::{
 };
 
 use async_trait::async_trait;
-use itertools::Itertools;
-use malachite::Rational;
-use poirot_types::{
-    classified_mev::JitLiquidity,
+use brontes_types::{
+    classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedTransfer},
     tree::GasDetails,
     ToScaledRational, TOKEN_TO_DECIMALS,
 };
+use itertools::Itertools;
+use malachite::Rational;
 use reth_primitives::{Address, H160, H256, U256};
 
 use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
@@ -173,27 +173,28 @@ impl JitInspector {
             metadata.clone(),
         );
 
-        // let classified = ClassifiedMev {
-        //     mev_profit_collector,
-        //     tx_hash: hash,
-        //     mev_contract,
-        //     eoa,
-        //     block_number: metadata.block_num,
-        //     mev_type: MevType::CexDex,
-        //     submission_profit_usd: f64::rounding_from(profit_pre,
-        // RoundingMode::Nearest).0,     finalized_profit_usd:
-        // f64::rounding_from(profit_post, RoundingMode::Nearest).0,
-        //     submission_bribe_usd: f64::rounding_from(
-        //         Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
-        //         RoundingMode::Nearest,
-        //     )
-        //     .0,
-        //     finalized_bribe_usd: f64::rounding_from(
-        //         Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
-        //         RoundingMode::Nearest,
-        //     )
-        //     .0,
-        // };
+        /* let classified = ClassifiedMev {
+            block_number: metadata.block_num,
+            tx_hash: txes[0],
+            eoa,
+            mev_contract: mev_addr,
+            mev_profit_collector: mev_addr,
+            mev_type: MevType::Jit,
+            // TODO: Will this wrong, I'm going to leave you to fix this mess
+
+            // submission_profit_usd: f64::rounding_from(profit_pre, RoundingMode::Nearest).0,
+            // finalized_profit_usd: f64::rounding_from(profit_post, RoundingMode::Nearest).0,
+            // submission_bribe_usd: f64::rounding_from(
+            //   Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
+            //   RoundingMode::Nearest,
+            // )
+            // .0,
+            // finalized_bribe_usd: f64::rounding_from(
+            //    Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
+            //    RoundingMode::Nearest,
+            // )
+            // .0,
+        }; */
 
         None
     }
