@@ -54,7 +54,7 @@ fn main() {
 async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     // parse cli
     let opt = Opts::parse();
-    let Commands::Poirot(command) = opt.sub;
+    let Commands::Brontes(command) = opt.sub;
 
     initalize_prometheus().await;
 

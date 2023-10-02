@@ -11,8 +11,8 @@ pub struct Opts {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Runs mev-poirot
-    Poirot(Cli),
+    /// Runs brontes
+    Brontes(Cli),
 }
 
 #[derive(Debug, Parser)]
