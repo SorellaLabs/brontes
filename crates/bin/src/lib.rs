@@ -7,7 +7,7 @@ use futures::{Future, FutureExt, StreamExt};
 use poirot_classifier::Classifier;
 use poirot_core::decoding::Parser;
 use poirot_database::{database::Database, Metadata};
-use poirot_inspect::daddy_inspector::DaddyInspector;
+use poirot_inspect::composer::Composer;
 use poirot_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     structured_trace::TxTrace,
@@ -28,11 +28,18 @@ type CollectionFut<'a> = Pin<
 
 pub struct Poirot<'inspector, 'db, const N: usize> {
     current_block: u64,
+<<<<<<< HEAD
     end_block: Option<u64>,
     parser: Parser,
     classifier: Classifier,
     database: &'db Database,
     daddy_inspector: DaddyInspector<'inspector, N>,
+=======
+    parser:        Parser,
+    classifier:    Classifier,
+    database:      &'db Database,
+    composer:      Composer<'inspector, N>,
+>>>>>>> 62fc500249aade60d64c9dc043022ae5dcd89442
 
     // pending future data
     classifier_future: Option<CollectionFut<'db>>,
@@ -45,7 +52,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
         parser: Parser,
         database: &'db Database,
         classifier: Classifier,
-        daddy_inspector: DaddyInspector<'inspector, N>,
+        composer: Composer<'inspector, N>,
         init_block: u64,
         end_block: Option<u64>,
     ) -> Self {
@@ -53,7 +60,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
             parser,
             database,
             classifier,
-            daddy_inspector,
+            composer,
             current_block: init_block,
             end_block,
             classifier_future: None,
@@ -63,7 +70,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
 
     fn start_new_block(&self) -> bool {
         self.classifier_future.is_none()
-            && !self.daddy_inspector.is_processing()
+            && !self.composer.is_processing()
             && self.insertion_future.is_none()
     }
 
@@ -97,8 +104,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
                 Poll::Ready((parser_data, labeller_data)) => {
                     let (traces, header) = parser_data.unwrap().unwrap();
                     let tree = self.classifier.build_tree(traces, header, &labeller_data);
-                    self.daddy_inspector
-                        .on_new_tree(tree.into(), labeller_data.into());
+                    self.composer.on_new_tree(tree.into(), labeller_data.into());
                 }
                 Poll::Pending => {
                     self.classifier_future = Some(collection_fut);
@@ -107,7 +113,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
             }
         }
 
-        if let Poll::Ready(Some(data)) = self.daddy_inspector.poll_next_unpin(cx) {
+        if let Poll::Ready(Some(data)) = self.composer.poll_next_unpin(cx) {
             self.on_inspectors_finish(data);
         }
 
