@@ -4807,6 +4807,7 @@ dependencies = [
  "sorella-db-clients",
  "thiserror",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
