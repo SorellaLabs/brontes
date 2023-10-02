@@ -4,8 +4,15 @@ use std::{
 };
 
 use async_trait::async_trait;
-use poirot_types::tree::GasDetails;
-use reth_primitives::{Address, H256};
+use itertools::Itertools;
+use malachite::Rational;
+use poirot_types::{
+    classified_mev::JitLiquidity,
+    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedTransfer},
+    tree::GasDetails,
+    ToScaledRational, TOKEN_TO_DECIMALS,
+};
+use reth_primitives::{Address, H160, H256, U256};
 
 use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
 
@@ -19,6 +26,7 @@ impl Inspector for JitInspector {
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let iter = tree.roots.iter();
+
         if iter.len() < 3 {
             return vec![]
         }
@@ -69,9 +77,7 @@ impl Inspector for JitInspector {
                     .iter()
                     .map(|victim| {
                         tree.inspect(*victim, |node| {
-                            node.subactions
-                                .iter()
-                                .any(|action| action.is_swap() || action.is_transfer())
+                            node.subactions.iter().any(|action| action.is_swap())
                         })
                         .into_iter()
                         .flatten()
@@ -120,6 +126,72 @@ impl JitInspector {
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
+        let (mints, burns, transfers): (
+            Vec<Option<NormalizedMint>>,
+            Vec<Option<NormalizedBurn>>,
+            Vec<Option<NormalizedTransfer>>,
+        ) = searcher_actions
+            .into_iter()
+            .flatten()
+            .map(|action| match action {
+                Actions::Burn(b) => (None, Some(b), None),
+                Actions::Mint(m) => (Some(m), None, None),
+                Actions::Transfer(t) => (None, None, Some(t)),
+
+                _ => unreachable!(),
+            })
+            .multiunzip();
+
+        let (mint_pre, mint_post) = self.get_total_pricing(
+            mints
+                .iter()
+                .flatten()
+                .map(|mint| (&mint.token, &mint.amount)),
+            metadata.clone(),
+        );
+        let (burn_pre, burn_post) = self.get_total_pricing(
+            burns
+                .iter()
+                .flatten()
+                .map(|burn| (&burn.token, &burn.amount)),
+            metadata.clone(),
+        );
+
         None
+    }
+
+    fn get_total_pricing<'a>(
+        &self,
+        iter: impl Iterator<Item = (&'a Vec<H160>, &'a Vec<U256>)>,
+        metadata: Arc<Metadata>,
+    ) -> (Rational, Rational) {
+        let (pre, post): (Vec<_>, Vec<_>) = iter
+            .map(|(token, amount)| {
+                (
+                    self.get_liquidity_price(metadata.clone(), token, amount, |(p, _)| p),
+                    self.get_liquidity_price(metadata.clone(), token, amount, |(_, p)| p),
+                )
+            })
+            .unzip();
+        (pre.into_iter().sum(), post.into_iter().sum())
+    }
+
+    fn get_liquidity_price(
+        &self,
+        metadata: Arc<Metadata>,
+        token: &Vec<H160>,
+        amount: &Vec<U256>,
+        is_pre: impl Fn(&(Rational, Rational)) -> &Rational,
+    ) -> Rational {
+        token
+            .iter()
+            .zip(amount.iter())
+            .filter_map(|(token, amount)| {
+                Some(
+                    is_pre(metadata.token_prices.get(&token)?)
+                        * amount.to_scaled_rational(*TOKEN_TO_DECIMALS.get(&token.0)?),
+                )
+            })
+            .sum::<Rational>()
     }
 }
