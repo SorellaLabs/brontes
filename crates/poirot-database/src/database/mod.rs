@@ -1,16 +1,19 @@
 pub mod const_sql;
 pub mod errors;
 pub mod types;
+
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
 };
 
+use futures::future::join_all;
 use malachite::Rational;
 use poirot_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use reth_primitives::{Address, TxHash, U256};
 use serde::Deserialize;
 use sorella_db_clients::databases::clickhouse::{self, ClickhouseClient, Row};
+use tracing::error;
 
 use self::types::{DBTokenPrices, RelayInfo};
 use super::Metadata;
@@ -26,10 +29,6 @@ impl Default for Database {
     }
 }
 
-/// DO ERROR HANDLING - ERROR TYPE 'DatabaseError'
-/// MAKE THIS ASYNC
-/// NEED TO FIX DESERIALIZATION -- IDK Y THIS IS TWEAKING WILL FIX
-/// NEED TO WRITE QUERY FOR ETH PRICE
 impl Database {
     pub async fn get_metadata(&self, block_num: u64, block_hash: U256) -> Metadata {
         let private_flow = self.get_private_flow(block_num, block_hash).await;
@@ -63,7 +62,29 @@ impl Database {
         block_details: MevBlock,
         mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
-        todo!()
+        // insert block
+        if let Err(e) = self
+            .client
+            .insert_one(block_details, "mev.mev_blocks")
+            .await
+        {
+            error!(?e, "failed to insert block details");
+        }
+
+        join_all(mev_details.into_iter().map(|(classified, specific)| async {
+            if let Err(e) = self
+                .client
+                .insert_one(classified, "mev.classified_mev")
+                .await
+            {
+                error!(?e, "failed to insert classified mev");
+            }
+            let table = format!("mev.{}", serde_json::to_string(&specific.mev_type()).unwrap());
+            if let Err(e) = self.client.insert_one(specific, &table).await {
+                error!(?e, "failed to insert specific mev");
+            }
+        }))
+        .await;
     }
 
     async fn get_private_flow(&self, block_num: u64, block_hash: U256) -> HashSet<TxHash> {
@@ -75,6 +96,7 @@ impl Database {
             )
             .await
             .unwrap();
+
         private_txs
             .into_iter()
             .map(|tx| TxHash::from_str(&tx).unwrap())
