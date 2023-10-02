@@ -28,9 +28,8 @@ impl IntoAction for V2SwapImpl {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
 
         for log in logs {
-            if let Ok(data) = Swap::decode_data(&log.data, true) {
-                let (amount_0_in, amount_1_in, amount_0_out, amount_1_out) = data;
-                let amount_0_in: U256 = amount_0_in;
+            if let Ok(data) = Swap::decode_log(log.topics.iter().map(|h| h.0), &log.data, true) {
+                let amount_0_in: U256 = data.amount0In;
 
                 if amount_0_in == U256::ZERO {
                     return Actions::Swap(NormalizedSwap {
@@ -39,8 +38,8 @@ impl IntoAction for V2SwapImpl {
                         from: address,
                         token_in: token_1,
                         token_out: token_0,
-                        amount_in: amount_1_in,
-                        amount_out: amount_0_out,
+                        amount_in: data.amount1In,
+                        amount_out: data.amount0Out,
                     })
                 } else {
                     return Actions::Swap(NormalizedSwap {
@@ -49,8 +48,8 @@ impl IntoAction for V2SwapImpl {
                         from: address,
                         token_in: token_0,
                         token_out: token_1,
-                        amount_in: amount_0_in,
-                        amount_out: amount_1_out,
+                        amount_in: data.amount0In,
+                        amount_out: data.amount1Out,
                     })
                 }
             }
@@ -78,14 +77,14 @@ impl IntoAction for V2MintImpl {
         let to = H160(*data.to.0);
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
         for log in logs {
-            if let Ok((amount_0, amount_1)) = Mint::decode_data(&log.data, true) {
+            if let Ok(res) = Mint::decode_log(log.topics.iter().map(|h| h.0), &log.data, true) {
                 return Actions::Mint(NormalizedMint {
                     recipient: address,
                     from: address,
                     index,
                     to,
                     token: vec![token_0, token_1],
-                    amount: vec![amount_0, amount_1],
+                    amount: vec![res.amount0, res.amount1],
                 })
             }
         }
@@ -110,14 +109,14 @@ impl IntoAction for V2BurnImpl {
     ) -> Actions {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
         for log in logs {
-            if let Ok((amount_0, amount_1)) = Burn::decode_data(&log.data, true) {
+            if let Ok(res) = Burn::decode_log(log.topics.iter().map(|h| h.0), &log.data, true) {
                 return Actions::Burn(NormalizedBurn {
                     recipient: address,
                     to: address,
                     index,
                     from: address,
                     token: vec![token_0, token_1],
-                    amount: vec![amount_0, amount_1],
+                    amount: vec![res.amount0, res.amount1],
                 })
             }
         }
