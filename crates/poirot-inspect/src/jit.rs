@@ -145,6 +145,7 @@ impl JitInspector {
         let mints = mints.into_iter().flatten().collect::<Vec<_>>();
         let burns = burns.into_iter().flatten().collect::<Vec<_>>();
 
+        // so bad need to make better
         let fee_collection_transfers = transfers
             .into_iter()
             .flatten()
@@ -171,6 +172,28 @@ impl JitInspector {
             burns.iter().map(|burn| (&burn.token, &burn.amount)),
             metadata.clone(),
         );
+
+        // let classified = ClassifiedMev {
+        //     mev_profit_collector,
+        //     tx_hash: hash,
+        //     mev_contract,
+        //     eoa,
+        //     block_number: metadata.block_num,
+        //     mev_type: MevType::CexDex,
+        //     submission_profit_usd: f64::rounding_from(profit_pre,
+        // RoundingMode::Nearest).0,     finalized_profit_usd:
+        // f64::rounding_from(profit_post, RoundingMode::Nearest).0,
+        //     submission_bribe_usd: f64::rounding_from(
+        //         Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
+        //         RoundingMode::Nearest,
+        //     )
+        //     .0,
+        //     finalized_bribe_usd: f64::rounding_from(
+        //         Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
+        //         RoundingMode::Nearest,
+        //     )
+        //     .0,
+        // };
 
         None
     }
