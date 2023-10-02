@@ -24,7 +24,7 @@ impl IntoAction for V3SwapImpl {
         address: Address,
         _logs: &Vec<Log>,
     ) -> Actions {
-        let return_data = swapCall::decode_returns(&mut return_data, true).unwrap();
+        let return_data = swapCall::abi_decode_returns(&mut return_data, true).unwrap();
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
@@ -71,7 +71,7 @@ impl IntoAction for V3BurnImpl {
         address: Address,
         _logs: &Vec<Log>,
     ) -> Actions {
-        let return_data = burnCall::decode_returns(&return_data, true).unwrap();
+        let return_data = burnCall::abi_decode_returns(&return_data, true).unwrap();
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();
@@ -102,7 +102,7 @@ impl IntoAction for V3MintImpl {
         address: Address,
         _logs: &Vec<Log>,
     ) -> Actions {
-        let return_data = mintCall::decode_returns(&return_data, true).unwrap();
+        let return_data = mintCall::abi_decode_returns(&return_data, true).unwrap();
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL.get(&*address).copied().unwrap();

@@ -1,14 +1,19 @@
-use std::Debug;
-
 use clap::{Args, Parser, Subcommand};
 use colored::Colorize;
 use indoc::indoc;
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
+pub struct Opts {
+    #[clap(subcommand)]
+    pub sub: Commands,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Runs mev-poirot
-    #[command(name = "poirot")]
-    poirot(Cli),
+    Poirot(Cli),
 }
 
 #[derive(Debug, Parser)]
@@ -39,5 +44,5 @@ pub fn print_banner() {
      *    ▀▀ff█▪▀▀▀f▀▀▀f.f▀ff.▀ffff▀█▄▀▪▀▀▀.▀ff▀f▀█▄▀▪f▀▀▀f
      */
     "#};
-    println!(format!("{}", banner.red().bold()));
+    println!("{}", format!("{}", banner.red().bold()));
 }
