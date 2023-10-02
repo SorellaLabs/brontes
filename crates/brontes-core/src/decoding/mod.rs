@@ -5,10 +5,12 @@ use std::{
     pin::Pin,
     sync::Arc,
 };
+use reth_provider::{ReceiptProvider,HeaderProvider};
+
 
 use alloy_etherscan::Client;
-use ethers::prelude::{Middleware, Provider};
 use brontes_types::structured_trace::TxTrace;
+use ethers::prelude::{Middleware, Provider};
 use ethers_core::types::Chain;
 use ethers_reth::type_conversions::{ToEthers, ToReth};
 use futures::Future;
@@ -71,7 +73,64 @@ pub trait TracingProvider: Send + Sync + 'static {
 }
 
 #[async_trait::async_trait]
-impl<T: Middleware + 'static> TracingProvider for T
+trait TracingP: Send + Sync + 'static {
+    async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>>;
+
+    async fn best_block_number(&self) -> reth_interfaces::RethResult<u64>;
+
+    async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+        trace_type: HashSet<TraceType>,
+    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError>;
+
+    async fn block_receipts(
+        &self,
+        number: BlockNumberOrTag,
+    ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>>;
+
+    async fn header_by_number(
+        &self,
+        number: BlockNumber,
+    ) -> reth_interfaces::RethResult<Option<Header>>;
+}
+
+#[async_trait::async_trait]
+impl TracingProvider for dyn TracingP {
+    async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>> {
+        self.block_hash_for_id(block_num).await
+    }
+
+    async fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
+        self.best_block_number().await
+    }
+
+    async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+        trace_type: HashSet<TraceType>,
+    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError> {
+        self.replay_block_transactions(block_id, trace_type).await
+    }
+
+    async fn block_receipts(
+        &self,
+        number: BlockNumberOrTag,
+    ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>> {
+        self.block_receipts(number).await
+    }
+
+    async fn header_by_number(
+        &self,
+        number: BlockNumber,
+    ) -> reth_interfaces::RethResult<Option<Header>> {
+        self.header_by_number(number).await
+    }
+
+}
+
+#[async_trait::async_trait]
+impl<T: Middleware + 'static> TracingP for T
 where
     RethError: From<<T as Middleware>::Error>,
     EthApiError: From<<T as Middleware>::Error>,
@@ -134,7 +193,46 @@ where
         &self,
         number: BlockNumber,
     ) -> reth_interfaces::RethResult<Option<Header>> {
-        let a = self.get_block(number).await?;
+        let a = self.get_block(number).await?.unwrap();
+        let mut header = Header::default();
+        header.base_fee_per_gas = a.base_fee_per_gas.map(|f| f.as_u64());
+
+        Ok(Some(header))
+    }
+}
+
+#[async_trait::async_trait]
+impl TracingProvider for TracingClient {
+    async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>> {
+        self.trace
+            .provider()
+            .block_hash_for_id(BlockId::Number(BlockNumberOrTag::Number(block_num)))
+    }
+
+    async fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
+        self.trace.provider().best_block_number()
+    }
+
+    async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+        trace_type: HashSet<TraceType>,
+    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError> {
+        self.trace.replay_block_transactions(block_id, trace_type).await
+    }
+
+    async fn block_receipts(
+        &self,
+        number: BlockNumberOrTag,
+    ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>> {
+        self.trace.provider().block_receipts(number)
+    }
+
+    async fn header_by_number(
+        &self,
+        number: BlockNumber,
+    ) -> reth_interfaces::RethResult<Option<Header>> {
+        self.trace.provider().header_by_number(number)
     }
 }
 
@@ -152,7 +250,6 @@ impl<T: TracingProvider> Parser<T> {
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         etherscan_key: &str,
         tracing: T,
-        db_path: &str,
     ) -> Self {
         let executor = Executor::new();
         // let tracer =
