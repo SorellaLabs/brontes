@@ -107,30 +107,5 @@ fn get_env_vars() -> Result<(String, String), Box<dyn Error>> {
         env::var("ETHERSCAN_API_KEY").map_err(|_| Box::new(std::env::VarError::NotPresent))?;
     info!("Found Etherscan API Key");
 
-<<<<<<< HEAD
     Ok((db_path, key))
-=======
-    let (metrics_tx, metrics_rx) = unbounded_channel();
-    let metrics_listener =
-        tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
-
-    let dummy_inspector = Box::new(AtomicBackrunInspector {}) as Box<dyn Inspector>;
-    let orchestra = &[&dummy_inspector];
-
-    let composer = Composer::new(orchestra);
-
-    let db = Database::default();
-    let parser = Parser::new(metrics_tx, &key, &db_path);
-    let classifier = Classifier::new(HashMap::default());
-
-    Poirot::new(parser, &db, classifier, composer, 69420).await;
-
-    // you have a intermediate parse function for the range of blocks you want to
-    // parse it collects the aggregate stats of each block stats
-    // the block stats collect the aggregate stats of each tx
-    // the tx stats collect the aggregate stats of each trace
-
-    metrics_listener.await?;
-    Ok(())
->>>>>>> 62fc500249aade60d64c9dc043022ae5dcd89442
 }
