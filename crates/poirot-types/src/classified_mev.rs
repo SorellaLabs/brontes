@@ -55,6 +55,7 @@ pub struct ClassifiedMev {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
 pub enum MevType {
     Sandwich,
     Backrun,
