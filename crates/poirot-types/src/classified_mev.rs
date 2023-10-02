@@ -66,7 +66,7 @@ pub enum MevType {
 }
 
 impl Row for MevType {
-    const COLUMN_NAMES: &'static [&'static str] = &["mev_type"];
+    const COLUMN_NAMES: &'static [&'static str] = &[];
 }
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
