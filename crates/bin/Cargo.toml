@@ -1,5 +1,5 @@
 [package]
-name = "mev-poirot"
+name = "brontes"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,12 +8,12 @@ edition = "2021"
 
 [dependencies]
 # poirot
-poirot-core.workspace = true
-poirot-inspect.workspace = true
-poirot-types.workspace = true
-poirot-classifier.workspace = true
-poirot-database.workspace = true
-poirot-metrics.workspace = true
+brontes-core.workspace = true
+brontes-inspect.workspace = true
+brontes-types.workspace = true
+brontes-classifier.workspace = true
+brontes-database.workspace = true
+brontes-metrics.workspace = true
 malachite.workspace = true
 
 # Async
@@ -67,4 +67,4 @@ metrics-process.workspace = true
 rayon.workspace = true
 
 [features]
-server = ["poirot-types/server", "poirot-classifier/server"]
+server = ["brontes-types/server", "brontes-classifier/server"]

@@ -3,11 +3,11 @@ use std::{
     task::{Context, Poll},
 };
 
+use brontes_classifier::Classifier;
+use brontes_core::decoding::Parser;
+use brontes_database::database::Database;
+use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, StreamExt};
-use poirot_classifier::Classifier;
-use poirot_core::decoding::Parser;
-use poirot_database::database::Database;
-use poirot_inspect::Inspector;
 
 mod block_inspector;
 use block_inspector::BlockInspector;
