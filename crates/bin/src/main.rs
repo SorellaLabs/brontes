@@ -5,10 +5,11 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
 };
 
-use bin::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
+use clap::Parser;
 use metrics_process::Collector;
+use mev_poirot::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use poirot_classifier::Classifier;
-use poirot_core::decoding::Parser;
+use poirot_core::decoding::Parser as DParser;
 use poirot_database::database::Database;
 use poirot_inspect::{atomic_backrun::AtomicBackrunInspector, composer::Composer, Inspector};
 use poirot_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
@@ -17,7 +18,7 @@ use tracing::{info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
 mod cli;
 
-use cli::{print_banner, Commands};
+use cli::{print_banner, Commands, Opts};
 
 fn main() {
     print_banner();
@@ -52,7 +53,8 @@ fn main() {
 
 async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     // parse cli
-    let opt = Commands::parse();
+    let opt = Opts::parse();
+    let Commands::Poirot(command) = opt.sub;
 
     initalize_prometheus().await;
 
@@ -67,10 +69,10 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let dummy_inspector = Box::new(AtomicBackrunInspector {}) as Box<dyn Inspector>;
     let baby_inspectors = &[&dummy_inspector];
 
-    let daddy_inspector = DaddyInspector::new(baby_inspectors);
+    let daddy_inspector = Composer::new(baby_inspectors);
 
     let db = Database::default();
-    let parser = Parser::new(metrics_tx, &etherscan_key, &db_path);
+    let parser = DParser::new(metrics_tx, &etherscan_key, &db_path);
     let classifier = Classifier::new(HashMap::default());
 
     Poirot::new(parser, &db, classifier, daddy_inspector, command.start_block, command.end_block)
@@ -107,5 +109,5 @@ fn get_env_vars() -> Result<(String, String), Box<dyn Error>> {
         env::var("ETHERSCAN_API_KEY").map_err(|_| Box::new(std::env::VarError::NotPresent))?;
     info!("Found Etherscan API Key");
 
-    Ok((db_path, key))
+    Ok((db_path, etherscan_key))
 }
