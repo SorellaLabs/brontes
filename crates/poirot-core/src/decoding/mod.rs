@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     collections::HashSet,
     path::{Path, PathBuf},
     pin::Pin,
@@ -8,9 +9,10 @@ use std::{
 use alloy_etherscan::Client;
 use ethers::prelude::{Middleware, Provider};
 use ethers_core::types::Chain;
+use ethers_reth::type_conversions::{ToEthers, ToReth};
 use futures::Future;
 use poirot_types::structured_trace::TxTrace;
-use reth_interfaces::RethResult;
+use reth_interfaces::{RethError, RethResult};
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
 use reth_provider::{BlockIdReader, BlockNumReader};
 use reth_rpc_types::trace::parity::TraceType;
@@ -48,6 +50,7 @@ use reth_rpc_types::{
 #[async_trait::async_trait]
 pub trait TracingProvider: Send + Sync + 'static {
     async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>>;
+
     async fn best_block_number(&self) -> reth_interfaces::RethResult<u64>;
 
     async fn replay_block_transactions(
@@ -68,19 +71,24 @@ pub trait TracingProvider: Send + Sync + 'static {
 }
 
 #[async_trait::async_trait]
-impl<T: Middleware + 'static> TracingProvider for T {
+impl<T: Middleware + 'static> TracingProvider for T
+where
+    RethError: From<<T as Middleware>::Error>,
+    EthApiError: From<<T as Middleware>::Error>,
+{
     async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>> {
         Ok(self
             .get_block(block_num)
-            .await
-            .unwrap()
-            .unwrap()
-            .hash
-            .map(|h| h.into()))
+            .await?
+            .map(|h| h.hash.map(|e| e.into()))
+            .flatten())
     }
 
     async fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
-        Ok(self.get_block_number().await.map(|r| r.as_u64()).unwrap())
+        self.get_block_number()
+            .await
+            .map(|r| r.as_u64())
+            .map_err(|e| e.into())
     }
 
     async fn replay_block_transactions(
@@ -88,15 +96,38 @@ impl<T: Middleware + 'static> TracingProvider for T {
         block_id: BlockId,
         trace_type: HashSet<TraceType>,
     ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError> {
-        self.trace_replay_block_transactions(blo, trace_type)
-        todo!()
+        let block_id = match block_id {
+            BlockId::Number(t) => t.as_number().unwrap(),
+            _ => return Err(EthApiError::PrevrandaoNotSet),
+        };
+        Ok(Some(
+            self.trace_replay_block_transactions(
+                block_id.into(),
+                trace_type
+                    .into_iter()
+                    .map(|i| i.into_ethers())
+                    .collect::<Vec<_>>(),
+            )
+            .await?
+            .into_iter()
+            .map(|m| m.into_reth())
+            .collect::<Vec<_>>(),
+        ))
     }
 
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
     ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>> {
-        todo!()
+        let number = number.as_number().unwrap();
+
+        Ok(Some(
+            self.get_block_receipts(number)
+                .await?
+                .into_iter()
+                .map(|t| t.into_reth())
+                .collect::<Vec<TransactionReceipt>>(),
+        ))
     }
 
     async fn header_by_number(

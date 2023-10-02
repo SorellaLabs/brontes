@@ -26,6 +26,7 @@ reth-tracing.workspace = true
 ruint = { workspace = true, features = ["primitive-types", "rlp"] }
 poirot-types.workspace = true
 poirot-metrics.workspace = true
+ethers-reth = { git = "https://github.com/SorellaLabs/ethers-reth.git" }
 
 # tracing
 tracing = "0.1.37"
