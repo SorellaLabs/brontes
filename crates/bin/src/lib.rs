@@ -25,6 +25,10 @@ type CollectionFut<'a> = Pin<
             + 'a,
     >,
 >;
+// you need to modify classifer to rw lock
+// composer created for each block
+// need to have a tracker of end block or tip block
+// need a concept of batch size
 
 pub struct Poirot<'inspector, 'db, const N: usize> {
     current_block: u64,
@@ -33,6 +37,18 @@ pub struct Poirot<'inspector, 'db, const N: usize> {
     classifier:    Classifier,
     database:      &'db Database,
     composer:      Composer<'inspector, N>,
+
+    // pending future data
+    classifier_future: Option<CollectionFut<'db>>,
+    // pending insertion data
+    insertion_future:  Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'db>>>,
+}
+
+pub struct BlockInspector<'inspector, 'db, const N: usize> {
+    parser:     &Parser,
+    classifier: Classifier,
+    database:   &'db Database,
+    composer:   Composer<'inspector, N>,
 
     // pending future data
     classifier_future: Option<CollectionFut<'db>>,
