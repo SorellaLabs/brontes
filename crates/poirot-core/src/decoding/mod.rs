@@ -67,7 +67,7 @@ impl Parser {
     pub fn get_block_hash_for_number(
         &self,
         block_num: u64,
-    ) -> reth_interfaces::Result<Option<H256>> {
+    ) -> reth_interfaces::RethResult<Option<H256>> {
         self.parser
             .tracer
             .trace
