@@ -33,24 +33,28 @@ pub(crate) const FALLBACK: &str = "fallback";
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 const CACHE_DIRECTORY: &str = "./abi_cache";
 
+pub trait TracingProvider {}
+
 pub type ParserFuture = Pin<
     Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
 >;
 
-pub struct Parser {
+pub struct Parser<T: TracingProvider> {
     executor: Executor,
-    parser:   Arc<TraceParser>,
+    parser:   Arc<TraceParser<T>>,
 }
 
-impl Parser {
+impl<T: TracingProvider> Parser<T> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         etherscan_key: &str,
+        tracing: T,
         db_path: &str,
     ) -> Self {
         let executor = Executor::new();
-        let tracer =
-            Arc::new(TracingClient::new(Path::new(db_path), executor.runtime.handle().clone()));
+        // let tracer =
+        //     Arc::new(TracingClient::new(Path::new(db_path),
+        // executor.runtime.handle().clone()));
 
         let etherscan_client = Client::new_cached(
             Chain::Mainnet,
@@ -59,7 +63,7 @@ impl Parser {
             CACHE_TIMEOUT,
         )
         .unwrap();
-        let parser = TraceParser::new(etherscan_client, Arc::clone(&tracer), Arc::new(metrics_tx));
+        let parser = TraceParser::new(etherscan_client, Arc::clone(tracing), Arc::new(metrics_tx));
 
         Self { executor, parser: Arc::new(parser) }
     }
