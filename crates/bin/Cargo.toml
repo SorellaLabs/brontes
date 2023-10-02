@@ -1,5 +1,5 @@
 [package]
-name = "bin"
+name = "brontes"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,12 +8,12 @@ edition = "2021"
 
 [dependencies]
 # poirot
-poirot-core.workspace = true
-poirot-inspect.workspace = true
-poirot-types.workspace = true
-poirot-classifer.workspace = true
-poirot-labeller.workspace = true
-poirot-metrics.workspace = true
+brontes-core.workspace = true
+brontes-inspect.workspace = true
+brontes-types.workspace = true
+brontes-classifier.workspace = true
+brontes-database.workspace = true
+brontes-metrics.workspace = true
 malachite.workspace = true
 
 # Async
@@ -56,11 +56,15 @@ eyre.workspace = true
 # http/rpc
 hyper.workspace = true
 
-
+# cli
+clap = { version = "4.4.6", features = ["derive"] }
+clap_complete = "4.4.3"
+# logging
+indoc = "2"
 # prometheus
 metrics-process.workspace = true
 
 rayon.workspace = true
 
 [features]
-server = ["poirot-types/server"]
+server = ["brontes-types/server", "brontes-classifier/server"]
