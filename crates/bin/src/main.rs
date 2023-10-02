@@ -70,6 +70,7 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let inspectors = &[&dummy_inspector];
 
     let db = Database::default();
+
     let parser = DParser::new(metrics_tx, &etherscan_key, &db_path);
     let classifier = Classifier::new(HashMap::default());
 

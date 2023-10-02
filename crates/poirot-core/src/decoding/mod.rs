@@ -6,6 +6,7 @@ use std::{
 };
 
 use alloy_etherscan::Client;
+use ethers::prelude::{Middleware, Provider};
 use ethers_core::types::Chain;
 use futures::Future;
 use poirot_types::structured_trace::TxTrace;
@@ -45,7 +46,7 @@ use reth_rpc_types::{
 };
 
 #[async_trait::async_trait]
-pub trait TracingProvider {
+pub trait TracingProvider: Send + Sync + 'static {
     async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>>;
     async fn best_block_number(&self) -> reth_interfaces::RethResult<u64>;
 
@@ -66,6 +67,46 @@ pub trait TracingProvider {
     ) -> reth_interfaces::RethResult<Option<Header>>;
 }
 
+#[async_trait::async_trait]
+impl<T: Middleware + 'static> TracingProvider for T {
+    async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>> {
+        Ok(self
+            .get_block(block_num)
+            .await
+            .unwrap()
+            .unwrap()
+            .hash
+            .map(|h| h.into()))
+    }
+
+    async fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
+        Ok(self.get_block_number().await.map(|r| r.as_u64()).unwrap())
+    }
+
+    async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+        trace_type: HashSet<TraceType>,
+    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError> {
+        self.trace_replay_block_transactions(blo, trace_type)
+        todo!()
+    }
+
+    async fn block_receipts(
+        &self,
+        number: BlockNumberOrTag,
+    ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>> {
+        todo!()
+    }
+
+    async fn header_by_number(
+        &self,
+        number: BlockNumber,
+    ) -> reth_interfaces::RethResult<Option<Header>> {
+        todo!()
+    }
+}
+
 pub type ParserFuture = Pin<
     Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
 >;
@@ -75,7 +116,7 @@ pub struct Parser<T: TracingProvider> {
     parser:   Arc<TraceParser<T>>,
 }
 
-impl<T: TracingProvider + Send + Sync> Parser<T> {
+impl<T: TracingProvider> Parser<T> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         etherscan_key: &str,
@@ -99,15 +140,15 @@ impl<T: TracingProvider + Send + Sync> Parser<T> {
         Self { executor, parser: Arc::new(parser) }
     }
 
-    pub fn get_block_hash_for_number(
+    pub async fn get_block_hash_for_number(
         &self,
         block_num: u64,
     ) -> reth_interfaces::RethResult<Option<H256>> {
-        self.parser.tracer.block_hash_for_id(block_num.into())
+        self.parser.tracer.block_hash_for_id(block_num.into()).await
     }
 
-    pub fn get_latest_block_number(&self) -> RethResult<BlockNumber> {
-        self.parser.tracer.best_block_number()
+    pub async fn get_latest_block_number(&self) -> RethResult<BlockNumber> {
+        self.parser.tracer.best_block_number().await
     }
 
     /// executes the tracing of a given block
