@@ -33,7 +33,6 @@ fn main() {
         let path = Path::new(&env::var("OUT_DIR").unwrap()).join(TOKEN_MAPPING_FILE);
         let mut file = BufWriter::new(File::create(&path).unwrap());
         build_token_details_map(&mut file).await;
-        build_asset_map(&mut file);
     });
 }
 
@@ -98,29 +97,6 @@ impl Hash for Token {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.global_id.hash(state)
     }
-}
-
-fn build_asset_map(file: &mut BufWriter<File>) {
-    let tokens: TokenList = serde_json::from_str(
-        &fs::read_to_string("../../ticker_address_mapping/assets.json").unwrap(),
-    )
-    .unwrap();
-
-    let mut phf_map = phf_codegen::Map::new();
-
-    for mut token in tokens.tokens {
-        let Some(eth_addrs) = token.chain_addresses.remove(&Blockchain::Ethereum) else { continue };
-        for addr in eth_addrs {
-            phf_map.entry(addr.0, &format!("\"{}\"", token.global_id));
-        }
-    }
-
-    writeln!(
-        file,
-        "pub static TOKEN_ADDRESS_TO_TICKER: phf::Map<[u8; 20], &'static str> = \n{};\n",
-        phf_map.build()
-    )
-    .unwrap();
 }
 
 /// builds the clickhouse database client

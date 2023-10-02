@@ -45,6 +45,7 @@ fn main() {
     runtime.block_on(run());
 }
 
+
 async fn run() {
     let clickhouse_client = build_db();
     let etherscan_client = build_etherscan();
