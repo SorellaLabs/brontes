@@ -1,7 +1,4 @@
-use std::fs;
-
 use clap::{Parser, Subcommand};
-use colored::Colorize;
 use indoc::indoc;
 
 #[derive(Parser, Debug)]
