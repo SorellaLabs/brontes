@@ -2500,7 +2500,7 @@ dependencies = [
 [[package]]
 name = "ethers-reth"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/ethers-reth#5408b41661da9d1299ac56d18c28b45102061bed"
+source = "git+https://github.com/SorellaLabs/ethers-reth.git#5408b41661da9d1299ac56d18c28b45102061bed"
 dependencies = [
  "async-trait",
  "c-kzg 0.1.0 (git+https://github.com/ethereum/c-kzg-4844?rev=f5f6f863d475847876a2bd5ee252058d37c3a15d)",
@@ -4933,6 +4933,7 @@ dependencies = [
  "env_logger",
  "ethers",
  "ethers-core",
+ "ethers-reth",
  "eyre",
  "futures",
  "hyper",
