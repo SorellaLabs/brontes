@@ -18,7 +18,6 @@ use reth_rpc_types::{
     },
     Log, TransactionReceipt,
 };
-use reth_tracing::TracingClient;
 
 use super::*;
 use crate::errors::TraceParseError;
@@ -71,7 +70,6 @@ impl<T: TracingProvider> TraceParser<T> {
 
         let parity_trace = self
             .tracer
-            .trace
             .replay_block_transactions(
                 BlockId::Number(BlockNumberOrTag::Number(block_num)),
                 trace_type,
@@ -101,7 +99,6 @@ impl<T: TracingProvider> TraceParser<T> {
     ) -> (Option<Vec<TransactionReceipt>>, BlockStats) {
         let tx_receipts = self
             .tracer
-            .api
             .block_receipts(BlockNumberOrTag::Number(block_num))
             .await;
         let mut stats = BlockStats::new(block_num, None);
@@ -155,9 +152,8 @@ impl<T: TracingProvider> TraceParser<T> {
             traces,
             stats,
             self.tracer
-                .trace
-                .provider()
                 .header_by_number(block_num)
+                .await
                 .unwrap()
                 .unwrap(),
         )
