@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
-use ethers::prelude::Middleware;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
     PoirotMetricEvents,
 };
+use ethers::prelude::Middleware;
 use futures::future::join_all;
 use reth_primitives::{Header, H256};
 use reth_provider::HeaderProvider;

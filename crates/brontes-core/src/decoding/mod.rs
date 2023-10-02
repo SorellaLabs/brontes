@@ -5,8 +5,6 @@ use std::{
     pin::Pin,
     sync::Arc,
 };
-use reth_provider::{ReceiptProvider,HeaderProvider};
-
 
 use alloy_etherscan::Client;
 use brontes_types::structured_trace::TxTrace;
@@ -16,7 +14,8 @@ use ethers_reth::type_conversions::{ToEthers, ToReth};
 use futures::Future;
 use reth_interfaces::{RethError, RethResult};
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
-use reth_provider::{BlockIdReader, BlockNumReader};
+use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider, ReceiptProvider};
+use reth_rpc_api::EthApiServer;
 use reth_rpc_types::trace::parity::TraceType;
 use reth_tracing::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
@@ -126,7 +125,6 @@ impl TracingProvider for dyn TracingP {
     ) -> reth_interfaces::RethResult<Option<Header>> {
         self.header_by_number(number).await
     }
-
 }
 
 #[async_trait::async_trait]
@@ -218,14 +216,16 @@ impl TracingProvider for TracingClient {
         block_id: BlockId,
         trace_type: HashSet<TraceType>,
     ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError> {
-        self.trace.replay_block_transactions(block_id, trace_type).await
+        self.trace
+            .replay_block_transactions(block_id, trace_type)
+            .await
     }
 
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
     ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>> {
-        self.trace.provider().block_receipts(number)
+        Ok(Some(self.api.block_receipts(number).await.unwrap().unwrap()))
     }
 
     async fn header_by_number(
