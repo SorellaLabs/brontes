@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
+use ethers::prelude::Middleware;
 use futures::future::join_all;
 use poirot_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
@@ -25,16 +26,16 @@ use crate::errors::TraceParseError;
 #[derive(Clone)]
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
-pub(crate) struct TraceParser {
+pub(crate) struct TraceParser<T: TracingProvider> {
     etherscan_client:      Client,
-    pub tracer:            Arc<TracingClient>,
+    pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl TraceParser {
+impl<T: TracingProvider> TraceParser<T> {
     pub fn new(
         etherscan_client: Client,
-        tracer: Arc<TracingClient>,
+        tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
         Self { etherscan_client, tracer, metrics_tx }
