@@ -12,6 +12,7 @@ use poirot_types::structured_trace::TxTrace;
 use reth_interfaces::RethResult;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
 use reth_provider::{BlockIdReader, BlockNumReader};
+use reth_rpc_types::trace::parity::TraceType;
 use reth_tracing::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
@@ -34,12 +35,35 @@ pub(crate) const FALLBACK: &str = "fallback";
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 const CACHE_DIRECTORY: &str = "./abi_cache";
 
+use reth_rpc::eth::error::EthApiError;
+use reth_rpc_types::{
+    trace::parity::{
+        Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
+        TransactionTrace,
+    },
+    Log, TransactionReceipt,
+};
+
 #[async_trait::async_trait]
 pub trait TracingProvider {
     async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>>;
     async fn best_block_number(&self) -> reth_interfaces::RethResult<u64>;
 
-    async fn replay_block_transactions(&self)
+    async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+        trace_type: HashSet<TraceType>,
+    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError>;
+
+    async fn block_receipts(
+        &self,
+        number: BlockNumberOrTag,
+    ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>>;
+
+    async fn header_by_number(
+        &self,
+        number: BlockNumber,
+    ) -> reth_interfaces::RethResult<Option<Header>>;
 }
 
 pub type ParserFuture = Pin<
