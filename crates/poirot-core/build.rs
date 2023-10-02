@@ -42,7 +42,24 @@ fn main() {
         .build()
         .unwrap();
 
+    #[cfg(feature = "server")]
     runtime.block_on(run());
+    #[cfg(not(feature = "server"))]
+    run_local()
+}
+
+fn run_local() {
+    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
+    let mut file = BufWriter::new(File::create(&path).unwrap());
+
+    let phf_map: phf_codegen::Map<&'static str> = phf_codegen::Map::new();
+    writeln!(&mut file, "pub enum StaticBindings {{}}").unwrap();
+    writeln!(
+        &mut file,
+        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<&'static str, StaticBindings> = \n{};\n",
+        phf_map.build()
+    )
+    .unwrap();
 }
 
 async fn run() {
