@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use colored::Colorize;
 use indoc::indoc;
 
@@ -24,6 +24,9 @@ pub struct Cli {
     /// Optional End Block, if omitted it will continue to run until killed
     #[arg(long, short)]
     pub end_block:    Option<u64>,
+    /// Max Block Queue size
+    #[arg(long, short, default_value = "1000")]
+    pub max_tasks:    usize,
     /// Flush Tardis data loaded into clickhouse upon termination
     #[arg(long, short, default_value = "false")]
     pub flush_tardis: bool,

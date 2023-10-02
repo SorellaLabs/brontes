@@ -38,7 +38,7 @@ impl Classifier {
     }
 
     pub fn build_tree(
-        &mut self,
+        &self,
         traces: Vec<TxTrace>,
         header: Header,
         metadata: &Metadata,
@@ -408,7 +408,7 @@ impl Classifier {
         None
     }
 
-    fn try_classify_unknown(&mut self, tree: &mut TimeTree<Actions>) {
+    fn try_classify_unknown(&self, tree: &mut TimeTree<Actions>) {
         // Acquire the read lock once
         let known_dyn_protocols_read = self.known_dyn_protocols.read();
 
