@@ -55,6 +55,7 @@ pub struct ClassifiedMev {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
 pub enum MevType {
     Sandwich,
     Backrun,
@@ -66,7 +67,7 @@ pub enum MevType {
 }
 
 impl Row for MevType {
-    const COLUMN_NAMES: &'static [&'static str] = &["mev_type"];
+    const COLUMN_NAMES: &'static [&'static str] = &[];
 }
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
