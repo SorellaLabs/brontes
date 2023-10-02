@@ -44,7 +44,7 @@ impl Database {
 
         let metadata = Metadata::new(
             block_num,
-            block_hash,
+            relay_data.block_hash.into(),
             relay_data.relay_time,
             relay_data.p2p_time,
             relay_data.proposer_addr,
@@ -90,10 +90,7 @@ impl Database {
     async fn get_private_flow(&self, block_num: u64) -> HashSet<TxHash> {
         let private_txs = self
             .client
-            .query_all_params::<String, String>(
-                PRIVATE_FLOW,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
-            )
+            .query_all_params::<String, String>(PRIVATE_FLOW, vec![block_num.to_string()])
             .await
             .unwrap();
 
@@ -105,10 +102,7 @@ impl Database {
 
     async fn get_relay_info(&self, block_num: u64) -> RelayInfo {
         self.client
-            .query_one_params(
-                RELAY_P2P_TIMES,
-                vec![block_num.to_string(), format!("{:#x}", block_hash)],
-            )
+            .query_one_params(RELAY_P2P_TIMES, vec![block_num.to_string()])
             .await
             .unwrap()
     }

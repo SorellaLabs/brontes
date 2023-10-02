@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::{
     collections::HashMap,
     env,
-    fs::{self, File},
+    fs::File,
     hash::Hash,
     io::{BufWriter, Write},
     path::Path,
@@ -11,8 +11,8 @@ use std::{
 
 use ethers_core::types::Address;
 #[cfg(feature = "server")]
-use ethers_core::types::H160;
 use hyper_tls::HttpsConnector;
+use reth_primitives::H160;
 use serde::{Deserialize, Serialize};
 use sorella_db_clients::databases::clickhouse::{self, Client, Row};
 use strum::Display;
