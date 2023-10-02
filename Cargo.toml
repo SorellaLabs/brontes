@@ -1,61 +1,62 @@
 [workspace]
 members = [
-  "crates/poirot-core",
+  "crates/brontes-core",
   "crates/bin",
   "crates/alloy-etherscan",
   "crates/reth-tracing",
-  "crates/poirot-inspect",
-  "crates/poirot-types",
-  "crates/poirot-classifer",
-  "crates/poirot-metrics",
+  "crates/brontes-inspect",
+  "crates/brontes-types",
+  "crates/brontes-classifier",
+  "crates/brontes-metrics",
   "crates/tracing",
-  "crates/poirot-labeller",
+  "crates/brontes-database",
 ]
 
 
 resolver = "2"
 
-
-[patch.crates-io]
-# patched for quantity U256 responses <https://github.com/recmo/uint/issues/224>
-revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
-revm-primitives = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
-
 [workspace.dependencies]
+sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients", branch = "main" }
 
 # Poirot
-poirot-core = { path = "./crates/poirot-core" }
-poirot-inspect = { path = "./crates/poirot-inspect" }
-poirot-types = { path = "./crates/poirot-types/" }
-poirot-classifer = { path = "./crates/poirot-classifer/" }
-poirot-metrics = { path = "./crates/poirot-metrics/" }
-poirot-labeller = { path = "./crates/poirot-labeller/" }
+brontes-core = { path = "./crates/brontes-core" }
+brontes-inspect = { path = "./crates/brontes-inspect" }
+brontes-types = { path = "./crates/brontes-types/" }
+brontes-classifier = { path = "./crates/brontes-classifier/" }
+brontes-metrics = { path = "./crates/brontes-metrics/" }
+brontes-database = { path = "./crates/brontes-database/" }
 reth-tracing = { path = "./crates/reth-tracing/" }
 
 # Ethers
-ethers-core = "=2.0.8"
-ethers = "=2.0.8"
+ethers-core = "2.0.10"
+ethers = "2.0.10"
 
 # Reth
-reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks" , rev="0f14ec4"}
-reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc" , rev="0f14ec4"}
-reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api" , rev="0f14ec4"}
-reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types" , rev="0f14ec4"}
-reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev="0f14ec4"}
-reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider" , rev="0f14ec4"}
-reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool" , rev="0f14ec4"}
-reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api" , rev="0f14ec4"}
-reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives" , rev="0f14ec4"}
-reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", features = ["test-utils"] , rev="0f14ec4"}
-reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree" , rev="0f14ec4"}
-reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus" , rev="0f14ec4"}
-reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev="0f14ec4"}
-reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", features = ["test-utils"] , rev="0f14ec4"}
-reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = ["test-utils"] , rev="0f14ec4"}
-reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev="0f14ec4"}
-reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev="0f14ec4"}
-reth-payload-builder ={ git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev="0f14ec4"}
-reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics",  rev="0f14ec4"}
+reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "1b16d80" }
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "1b16d80" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "1b16d80" }
+reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "1b16d80" }
+reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "1b16d80" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "1b16d80" }
+reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "1b16d80" }
+reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "1b16d80" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "1b16d80" }
+reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", features = [
+  "test-utils",
+], rev = "1b16d80" }
+reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "1b16d80" }
+reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "1b16d80" }
+reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "1b16d80" }
+reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", features = [
+  "test-utils",
+], rev = "1b16d80" }
+reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = [
+  "test-utils",
+], rev = "1b16d80" }
+reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "1b16d80" }
+reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "1b16d80" }
+reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "1b16d80" }
+reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "1b16d80" }
 
 
 # ruint
@@ -109,4 +110,4 @@ malachite = "0.4.0"
 c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
 hex-literal = "0.4.1"
 rayon = "1.7.0"
-
+dotenv = "0.15.0"

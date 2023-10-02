@@ -1,116 +1,95 @@
 use std::{
     pin::Pin,
-    sync::Arc,
-    task::{Context, Poll}
+    task::{Context, Poll},
 };
 
-use futures::{
-    future::{join_all, JoinAll},
-    Future, FutureExt
-};
-use poirot_classifer::classifer::Classifier;
-use poirot_core::decoding::Parser;
-use poirot_inspect::{
-    daddy_inspector::{self, DaddyInspector},
-    ClassifiedMev, Inspector
-};
-use poirot_labeller::{Labeller, Metadata};
-use poirot_types::{
-    classified_mev::{ClassifiedMev, MevBlock, MevResult, SpecificMev},
-    normalized_actions::Actions,
-    structured_trace::TxTrace,
-    tree::TimeTree
-};
-use reth_primitives::Header;
-use tokio::task::JoinError;
+use brontes_classifier::Classifier;
+use brontes_core::decoding::Parser;
+use brontes_database::database::Database;
+use brontes_inspect::Inspector;
+use futures::{stream::FuturesUnordered, Future, StreamExt};
+
+mod block_inspector;
+use block_inspector::BlockInspector;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-type CollectionFut<'a> = Pin<
-    Box<
-        dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Metadata)>
-            + Send
-            + 'a
-    >
->;
+// composer created for each block
+// need to have a tracker of end block or tip block
+// need a concept of batch size
 
-pub struct Poirot<'a, const N: usize> {
-    current_block:   u64,
-    parser:          Parser,
-    classifier:      Classifier,
-    labeller:        Labeller<'a>,
-    daddy_inspector: DaddyInspector<'a, N>,
-
-    // pending future data
-    classifier_data: Option<CollectionFut<'a>>
+pub struct Poirot<'inspector, const N: usize> {
+    current_block:    u64,
+    end_block:        Option<u64>,
+    chain_tip:        u64,
+    max_tasks:        usize,
+    parser:           &'inspector Parser,
+    classifier:       &'inspector Classifier,
+    inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
+    database:         &'inspector Database,
+    block_inspectors: FuturesUnordered<BlockInspector<'inspector, N>>,
 }
 
-impl<'a, const N: usize> Poirot<'a, N> {
+impl<'inspector, const N: usize> Poirot<'inspector, N> {
     pub fn new(
-        parser: Parser,
-        labeller: Labeller<'a>,
-        classifier: Classifier,
-        daddy_inspector: DaddyInspector<'a, N>,
-        init_block: u64
+        init_block: u64,
+        end_block: Option<u64>,
+        chain_tip: u64,
+        max_tasks: usize,
+        parser: &'inspector Parser,
+        database: &'inspector Database,
+        classifier: &'inspector Classifier,
+        inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {
         Self {
-            parser,
-            labeller,
-            classifier,
-            daddy_inspector,
             current_block: init_block,
-            classifier_data: None
+            end_block,
+            chain_tip,
+            max_tasks,
+            parser,
+            database,
+            classifier,
+            inspectors,
+            block_inspectors: FuturesUnordered::new(),
         }
     }
 
-    fn start_new_block(&self) -> bool {
-        self.classifier_data.is_none() && !self.daddy_inspector.is_processing()
-    }
-
-    fn start_collection(&mut self) {
-        let Ok(Some(hash)) = self
-            .parser
-            .get_block_hash_for_number(self.current_block + 1)
-        else {
-            // no new block ready
-            return
-        };
-        self.current_block += 1;
-
-        let parser_fut = self.parser.execute(self.current_block);
-        let labeller_fut = self.labeller.get_metadata(self.current_block, hash.into());
-
-        self.classifier_data = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
-    }
-
-    fn on_inspectors_finish(&mut self, data: (MevBlock, Vec<(ClassifiedMev, MevResult)>)) {
-        todo!()
-    }
-
-    fn progress_futures(&mut self, cx: &mut Context<'_>) {
-        if let Some(mut collection_fut) = self.classifier_data.take() {
-            match collection_fut.poll_unpin(cx) {
-                Poll::Ready((parser_data, labeller_data)) => {
-                    let (traces, header) = parser_data.unwrap().unwrap();
-                    let tree = self.classifier.build_tree(traces, header, &labeller_data);
-                    self.daddy_inspector
-                        .on_new_tree(tree.into(), labeller_data.into());
-                }
-                Poll::Pending => {
-                    self.classifier_data = Some(collection_fut);
-                    return
-                }
+    fn spawn_block_inspector(&mut self) {
+        if self.current_block > self.chain_tip {
+            if let Ok(chain_tip) = self.parser.get_latest_block_number() {
+                self.chain_tip = chain_tip;
+            } else {
+                // no new block ready
+                return
             }
         }
+        let inspector = BlockInspector::new(
+            self.parser,
+            self.database,
+            self.classifier,
+            self.inspectors,
+            self.current_block,
+        );
+        self.block_inspectors.push(inspector);
+    }
 
-        if let Poll::Ready(Some(data)) = self.daddy_inspector.poll_next_unpin(cx) {
-            self.on_inspectors_finish(data);
+    fn start_block_inspector(&mut self) -> bool {
+        // If we've reached the max number of tasks, we shouldn't spawn a new one
+        if self.block_inspectors.len() >= self.max_tasks {
+            return false
         }
+
+        self.current_block += 1;
+        true
+    }
+
+    fn progress_block_inspectors(&mut self, cx: &mut Context<'_>) {
+        while let Poll::Ready(Some(_)) = self.block_inspectors.poll_next_unpin(cx) {}
     }
 }
 
-impl<'a, const N: usize> Future for Poirot<'a, N> {
+impl<const N: usize> Future for Poirot<'_, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -130,11 +109,17 @@ impl<'a, const N: usize> Future for Poirot<'a, N> {
 
         let mut iters = 1024;
         loop {
-            if self.start_new_block() {
-                self.start_collection();
+            if let Some(end_block) = self.end_block {
+                if self.current_block > end_block {
+                    return Poll::Ready(())
+                }
             }
 
-            self.progress_futures(cx);
+            if self.start_block_inspector() {
+                self.spawn_block_inspector();
+            }
+
+            self.progress_block_inspectors(cx);
 
             iters -= 1;
             if iters == 0 {

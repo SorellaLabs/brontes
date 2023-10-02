@@ -1,6 +1,6 @@
 use std::{
     fs::create_dir_all,
-    path::{Component, Path, PathBuf}
+    path::{Component, Path, PathBuf},
 };
 
 use crate::Result;
@@ -8,12 +8,12 @@ use crate::Result;
 #[derive(Clone, Debug)]
 pub struct SourceTreeEntry {
     pub path:     PathBuf,
-    pub contents: String
+    pub contents: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct SourceTree {
-    pub entries: Vec<SourceTreeEntry>
+    pub entries: Vec<SourceTreeEntry>,
 }
 
 impl SourceTree {
@@ -66,13 +66,13 @@ mod tests {
             entries: vec![
                 SourceTreeEntry {
                     path:     PathBuf::from("a/a.sol"),
-                    contents: String::from("Test")
+                    contents: String::from("Test"),
                 },
                 SourceTreeEntry {
                     path:     PathBuf::from("b/b"),
-                    contents: String::from("Test 2")
+                    contents: String::from("Test 2"),
                 },
-            ]
+            ],
         };
         st.write_to(tempdir.path()).unwrap();
         let a_sol_path = PathBuf::new().join(&tempdir).join("a").join("a.sol");
@@ -90,17 +90,17 @@ mod tests {
             entries: vec![
                 SourceTreeEntry {
                     path:     PathBuf::from("../a/a.sol"),
-                    contents: String::from("Test")
+                    contents: String::from("Test"),
                 },
                 SourceTreeEntry {
                     path:     PathBuf::from("../b/../b.sol"),
-                    contents: String::from("Test 2")
+                    contents: String::from("Test 2"),
                 },
                 SourceTreeEntry {
                     path:     PathBuf::from("/c/c.sol"),
-                    contents: String::from("Test 3")
+                    contents: String::from("Test 3"),
                 },
-            ]
+            ],
         };
         st.write_to(tempdir.path()).unwrap();
         let written_paths = read_dir(tempdir.path()).unwrap();
