@@ -13,7 +13,7 @@ use reth_db::{
     DatabaseError,
 };
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::MAINNET;
+use reth_primitives::{PruneModes, MAINNET};
 use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::Factory;
 use reth_rpc::{
@@ -45,7 +45,7 @@ pub type RethTxPool = Pool<
 >;
 
 pub struct TracingClient {
-    pub api:   EthApi<Provider, RethTxPool, NoopNetwork>,
+    pub api: EthApi<Provider, RethTxPool, NoopNetwork>,
     pub trace: TraceApi<Provider, RethApi>,
 }
 
@@ -72,8 +72,13 @@ impl TracingClient {
             tokio::sync::broadcast::channel(tree_config.max_reorg_depth() as usize * 2);
 
         let blockchain_tree = ShareableBlockchainTree::new(
-            BlockchainTree::new(tree_externals, canon_state_notification_sender, tree_config)
-                .unwrap(),
+            BlockchainTree::new(
+                tree_externals,
+                canon_state_notification_sender,
+                tree_config,
+                Some(PruneModes::none()),
+            )
+            .unwrap(),
         );
 
         let provider = BlockchainProvider::new(
