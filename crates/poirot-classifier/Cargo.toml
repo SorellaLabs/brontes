@@ -24,6 +24,9 @@ serde_json.workspace = true
 paste = "1.0.14"
 phf = { version = "0.11", default-features = false }
 
+[features]
+server = []
+
 [build-dependencies]
 tokio.workspace = true
 clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
