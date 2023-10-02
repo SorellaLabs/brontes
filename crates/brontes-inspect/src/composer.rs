@@ -14,10 +14,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::TimeTree,
 };
-use futures::{
-    future::{join_all, JoinAll},
-    FutureExt, Stream,
-};
+use futures::{FutureExt, Stream};
 use lazy_static::lazy_static;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::Address;
