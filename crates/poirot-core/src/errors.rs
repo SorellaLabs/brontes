@@ -96,6 +96,7 @@ impl From<&TraceParseError> for TraceParseErrorKind {
                 EthApiError::InternalJsTracerError(_) => {
                     TraceParseErrorKind::EthApiInternalJsTracerError
                 }
+                _ => TraceParseErrorKind::EthApiInternalJsTracerError,
             },
             TraceParseError::EtherscanError(e) => match e.as_ref() {
                 EtherscanError::ChainNotSupported(_) => {
