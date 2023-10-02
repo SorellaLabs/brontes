@@ -10,7 +10,6 @@ use std::{
 };
 
 use ethers_core::types::Address;
-#[cfg(feature = "server")]
 use hyper_tls::HttpsConnector;
 use reth_primitives::H160;
 use serde::{Deserialize, Serialize};
