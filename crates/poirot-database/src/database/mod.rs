@@ -1,6 +1,7 @@
 pub mod const_sql;
 pub mod errors;
 pub mod types;
+
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
@@ -12,6 +13,7 @@ use poirot_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use reth_primitives::{Address, TxHash, U256};
 use serde::Deserialize;
 use sorella_db_clients::databases::clickhouse::{self, ClickhouseClient, Row};
+use tracing::error;
 
 use self::types::{DBTokenPrices, RelayInfo};
 use super::Metadata;
@@ -61,16 +63,27 @@ impl Database {
         mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
         // insert block
-        self.client
+        if let Err(e) = self
+            .client
             .insert_one(block_details, "mev.mev_blocks")
-            .await;
+            .await
+        {
+            error!(?e, "failed to insert block details");
+        }
 
-        join_all(
-            mev_details
-                .into_iter()
-                .map(|(classified, specific)| async {
-                }),
-        )
+        join_all(mev_details.into_iter().map(|(classified, specific)| async {
+            if let Err(e) = self
+                .client
+                .insert_one(classified, "mev.classified_mev")
+                .await
+            {
+                error!(?e, "failed to insert classified mev");
+            }
+            let table = format!("mev.{}", serde_json::to_string(&specific.mev_type()).unwrap());
+            if let Err(e) = self.client.insert_one(specific, &table).await {
+                error!(?e, "failed to insert specific mev");
+            }
+        }))
         .await;
     }
 
