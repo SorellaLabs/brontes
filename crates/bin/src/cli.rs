@@ -1,7 +1,8 @@
-use clap::{Args, Parser, Subcommand};
 use std::Debug;
-use indoc::indoc;
+
+use clap::{Args, Parser, Subcommand};
 use colored::Colorize;
+use indoc::indoc;
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
@@ -14,18 +15,18 @@ pub enum Commands {
 pub struct Cli {
     /// Start Block
     #[arg(long, short)]
-    pub start_block: u64,
+    pub start_block:  u64,
     /// Optional End Block, if omitted it will continue to run until killed
     #[arg(long, short)]
-    pub end_block: Option<u64>,
+    pub end_block:    Option<u64>,
     /// Flush Tardis data loaded into clickhouse upon termination
     #[arg(long, short, default_value = "false")]
     pub flush_tardis: bool,
-    /// Will run in test mode, benchmarking the perfomance of the inspectors against our latest best run
+    /// Will run in test mode, benchmarking the perfomance of the inspectors
+    /// against our latest best run
     #[arg(long, short, default_value = "false")]
-    pub test: bool,
+    pub test:         bool,
 }
-
 
 pub fn print_banner() {
     let banner = indoc! {
@@ -37,6 +38,6 @@ pub fn print_banner() {
      *    ██f██▌▐█▌▐█▄▄▌f███f▐█▪·•▐█▌.▐▌▐█▌▐█•█▌▐█▌.▐▌f▐█▌·
      *    ▀▀ff█▪▀▀▀f▀▀▀f.f▀ff.▀ffff▀█▄▀▪▀▀▀.▀ff▀f▀█▄▀▪f▀▀▀f
      */
-    "#}; 
+    "#};
     println!(format!("{}", banner.red().bold()));
 }
