@@ -1,0 +1,33 @@
+[package]
+name = "brontes-database"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+brontes-metrics.workspace = true
+brontes-types.workspace = true
+brontes-core.workspace = true
+
+reth-primitives.workspace = true
+sorella-db-clients.workspace = true
+# serde
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde_with = { version = "3.3.0", features = ["macros"] }
+
+# error handling
+thiserror.workspace = true
+
+# numbers
+malachite.workspace = true
+hyper-tls = "0.5.0"
+
+hyper.workspace = true
+futures = "0.3.28"
+tracing.workspace = true
+tokio.workspace = true
+
+# misc
+dotenv.workspace = true
