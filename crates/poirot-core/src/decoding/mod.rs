@@ -34,7 +34,13 @@ pub(crate) const FALLBACK: &str = "fallback";
 const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 const CACHE_DIRECTORY: &str = "./abi_cache";
 
-pub trait TracingProvider {}
+#[async_trait::async_trait]
+pub trait TracingProvider {
+    async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>>;
+    async fn best_block_number(&self) -> reth_interfaces::RethResult<u64>;
+
+    async fn replay_block_transactions(&self)
+}
 
 pub type ParserFuture = Pin<
     Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
@@ -45,7 +51,7 @@ pub struct Parser<T: TracingProvider> {
     parser:   Arc<TraceParser<T>>,
 }
 
-impl<T: TracingProvider> Parser<T> {
+impl<T: TracingProvider + Send + Sync> Parser<T> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         etherscan_key: &str,
@@ -64,7 +70,7 @@ impl<T: TracingProvider> Parser<T> {
             CACHE_TIMEOUT,
         )
         .unwrap();
-        let parser = TraceParser::new(etherscan_client, Arc::clone(tracing), Arc::new(metrics_tx));
+        let parser = TraceParser::new(etherscan_client, Arc::new(tracing), Arc::new(metrics_tx));
 
         Self { executor, parser: Arc::new(parser) }
     }
@@ -73,15 +79,11 @@ impl<T: TracingProvider> Parser<T> {
         &self,
         block_num: u64,
     ) -> reth_interfaces::RethResult<Option<H256>> {
-        self.parser
-            .tracer
-            .trace
-            .provider()
-            .block_hash_for_id(block_num.into())
+        self.parser.tracer.block_hash_for_id(block_num.into())
     }
 
     pub fn get_latest_block_number(&self) -> RethResult<BlockNumber> {
-        self.parser.tracer.trace.provider().best_block_number()
+        self.parser.tracer.best_block_number()
     }
 
     /// executes the tracing of a given block
