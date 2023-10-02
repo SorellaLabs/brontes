@@ -29,6 +29,7 @@ serde_json.workspace = true
 alloy-etherscan.workspace = true
 alloy-json-abi.workspace = true
 ethers-core.workspace = true
+reth-primitives.workspace = true
 phf = { version = "0.11.1", default-features = false }
 phf_codegen = "0.11.1"
 dotenv = "0.15.0"

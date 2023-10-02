@@ -9,8 +9,9 @@ use alloy_etherscan::Client;
 use ethers_core::types::Chain;
 use futures::Future;
 use poirot_types::structured_trace::TxTrace;
-use reth_primitives::{BlockId, BlockNumberOrTag, Header, H256};
-use reth_provider::BlockIdReader;
+use reth_interfaces::RethResult;
+use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
+use reth_provider::{BlockIdReader, BlockNumReader};
 use reth_tracing::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
@@ -77,6 +78,10 @@ impl<T: TracingProvider> Parser<T> {
             .trace
             .provider()
             .block_hash_for_id(block_num.into())
+    }
+
+    pub fn get_latest_block_number(&self) -> RethResult<BlockNumber> {
+        self.parser.tracer.trace.provider().best_block_number()
     }
 
     /// executes the tracing of a given block

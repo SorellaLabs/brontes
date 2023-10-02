@@ -1105,6 +1105,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "c-kzg"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac926d808fb72fe09ebf471a091d6d72918876ccf0b4989766093d2d0d24a0ef"
+dependencies = [
+ "bindgen 0.66.1",
+ "blst",
+ "cc",
+ "glob",
+ "hex",
+ "libc",
+]
+
+[[package]]
 name = "camino"
 version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4887,6 +4901,7 @@ dependencies = [
  "hyper",
  "hyper-tls",
  "malachite",
+ "parking_lot 0.12.1",
  "paste",
  "phf",
  "phf_codegen",
@@ -4944,7 +4959,7 @@ dependencies = [
  "reth-tasks",
  "reth-tracing",
  "reth-transaction-pool",
- "revm-primitives 1.1.2 (git+https://github.com/bluealloy/revm/?branch=release/v25)",
+ "revm-primitives 1.2.0",
  "ruint",
  "serde",
  "serde_json",
@@ -5604,7 +5619,7 @@ dependencies = [
  "codecs-derive",
  "proptest",
  "proptest-derive",
- "revm-primitives 1.1.2 (git+https://github.com/bluealloy/revm?rev=516f62cc)",
+ "revm-primitives 1.1.2",
 ]
 
 [[package]]
@@ -5747,7 +5762,7 @@ dependencies = [
  "reth-network-api",
  "reth-primitives",
  "reth-rpc-types",
- "revm-primitives 1.1.2 (git+https://github.com/bluealloy/revm?rev=516f62cc)",
+ "revm-primitives 1.1.2",
  "secp256k1",
  "thiserror",
  "tokio",
@@ -5878,7 +5893,7 @@ dependencies = [
  "reth-rpc-types",
  "reth-rpc-types-compat",
  "reth-transaction-pool",
- "revm-primitives 1.1.2 (git+https://github.com/bluealloy/revm?rev=516f62cc)",
+ "revm-primitives 1.1.2",
  "sha2",
  "thiserror",
  "tokio",
@@ -5912,7 +5927,7 @@ dependencies = [
  "reth-codecs",
  "reth-rlp",
  "reth-rlp-derive",
- "revm-primitives 1.1.2 (git+https://github.com/bluealloy/revm?rev=516f62cc)",
+ "revm-primitives 1.1.2",
  "ruint",
  "secp256k1",
  "serde",
@@ -6025,7 +6040,7 @@ dependencies = [
  "c-kzg 0.1.0 (git+https://github.com/ethereum/c-kzg-4844?rev=f5f6f863d475847876a2bd5ee252058d37c3a15d)",
  "ethereum-types",
  "reth-rlp-derive",
- "revm-primitives 1.1.2 (git+https://github.com/bluealloy/revm?rev=516f62cc)",
+ "revm-primitives 1.1.2",
  "smol_str",
 ]
 
@@ -6074,7 +6089,7 @@ dependencies = [
  "reth-tasks",
  "reth-transaction-pool",
  "revm",
- "revm-primitives 1.1.2 (git+https://github.com/bluealloy/revm?rev=516f62cc)",
+ "revm-primitives 1.1.2",
  "schnellru",
  "secp256k1",
  "serde",
@@ -6300,7 +6315,7 @@ source = "git+https://github.com/bluealloy/revm?rev=516f62cc#516f62ccc1c5f2a62e5
 dependencies = [
  "derive_more",
  "enumn",
- "revm-primitives 1.1.2 (git+https://github.com/bluealloy/revm?rev=516f62cc)",
+ "revm-primitives 1.1.2",
  "sha3",
 ]
 
@@ -6314,32 +6329,12 @@ dependencies = [
  "k256",
  "num",
  "once_cell",
- "revm-primitives 1.1.2 (git+https://github.com/bluealloy/revm?rev=516f62cc)",
+ "revm-primitives 1.1.2",
  "ripemd",
  "secp256k1",
  "sha2",
  "sha3",
  "substrate-bn",
-]
-
-[[package]]
-name = "revm-primitives"
-version = "1.1.2"
-source = "git+https://github.com/bluealloy/revm/?branch=release/v25#6084e0fa2d457931cd8c9d29934bca0812b5b8d6"
-dependencies = [
- "auto_impl",
- "bitvec",
- "bytes",
- "derive_more",
- "enumn",
- "fixed-hash",
- "hashbrown 0.13.2",
- "hex",
- "hex-literal",
- "primitive-types",
- "rlp",
- "ruint",
- "sha3",
 ]
 
 [[package]]
@@ -6366,6 +6361,30 @@ dependencies = [
  "rlp",
  "ruint",
  "serde",
+ "sha3",
+]
+
+[[package]]
+name = "revm-primitives"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b63c77c2dc1ff8b5de7d33085ac8836f36f6cc9ba0f8d086f2d9ecee7852dafc"
+dependencies = [
+ "auto_impl",
+ "bitflags 2.4.0",
+ "bitvec",
+ "bytes",
+ "c-kzg 0.1.1",
+ "derive_more",
+ "enumn",
+ "fixed-hash",
+ "hashbrown 0.14.1",
+ "hex",
+ "hex-literal",
+ "once_cell",
+ "primitive-types",
+ "rlp",
+ "ruint",
  "sha3",
 ]
 
@@ -7107,7 +7126,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-clients"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#748d1edb2b6597cf414ca57659a1c076fb4940ab"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#7bbee4f319fbbf19ca6197989351e4981211aaa6"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7133,7 +7152,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#748d1edb2b6597cf414ca57659a1c076fb4940ab"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#7bbee4f319fbbf19ca6197989351e4981211aaa6"
 dependencies = [
  "serde",
  "serde_json",
@@ -8629,8 +8648,3 @@ dependencies = [
  "libc",
  "pkg-config",
 ]
-
-[[patch.unused]]
-name = "revm"
-version = "3.3.0"
-source = "git+https://github.com/bluealloy/revm/?branch=release/v25#6084e0fa2d457931cd8c9d29934bca0812b5b8d6"

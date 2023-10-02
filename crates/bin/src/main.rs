@@ -11,7 +11,7 @@ use mev_poirot::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use poirot_classifier::Classifier;
 use poirot_core::decoding::Parser as DParser;
 use poirot_database::database::Database;
-use poirot_inspect::{atomic_backrun::AtomicBackrunInspector, composer::Composer, Inspector};
+use poirot_inspect::{atomic_backrun::AtomicBackrunInspector, Inspector};
 use poirot_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{info, Level};
@@ -67,16 +67,25 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
     let dummy_inspector = Box::new(AtomicBackrunInspector {}) as Box<dyn Inspector>;
-    let baby_inspectors = &[&dummy_inspector];
-
-    let daddy_inspector = Composer::new(baby_inspectors);
+    let inspectors = &[&dummy_inspector];
 
     let db = Database::default();
     let parser = DParser::new(metrics_tx, &etherscan_key, &db_path);
     let classifier = Classifier::new(HashMap::default());
 
-    Poirot::new(parser, &db, classifier, daddy_inspector, command.start_block, command.end_block)
-        .await;
+    let chain_tip = parser.get_latest_block_number().unwrap();
+
+    Poirot::new(
+        command.start_block,
+        command.end_block,
+        chain_tip,
+        command.max_tasks,
+        &parser,
+        &db,
+        &classifier,
+        inspectors,
+    )
+    .await;
 
     // you have a intermediate parse function for the range of blocks you want to
     // parse it collects the aggregate stats of each block stats
