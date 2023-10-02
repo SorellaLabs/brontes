@@ -27,16 +27,17 @@ type CollectionFut<'a> = Pin<
 >;
 
 pub struct Poirot<'inspector, 'db, const N: usize> {
-    current_block:   u64,
-    parser:          Parser,
-    classifier:      Classifier,
-    database:        &'db Database,
+    current_block: u64,
+    end_block: Option<u64>,
+    parser: Parser,
+    classifier: Classifier,
+    database: &'db Database,
     daddy_inspector: DaddyInspector<'inspector, N>,
 
     // pending future data
     classifier_future: Option<CollectionFut<'db>>,
     // pending insertion data
-    insertion_future:  Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'db>>>,
+    insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'db>>>,
 }
 
 impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
@@ -46,6 +47,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
         classifier: Classifier,
         daddy_inspector: DaddyInspector<'inspector, N>,
         init_block: u64,
+        end_block: Option<u64>,
     ) -> Self {
         Self {
             parser,
@@ -53,6 +55,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
             classifier,
             daddy_inspector,
             current_block: init_block,
+            end_block,
             classifier_future: None,
             insertion_future: None,
         }
@@ -70,7 +73,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
             .get_block_hash_for_number(self.current_block + 1)
         else {
             // no new block ready
-            return
+            return;
         };
         self.current_block += 1;
 
@@ -99,7 +102,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
                 }
                 Poll::Pending => {
                     self.classifier_future = Some(collection_fut);
-                    return
+                    return;
                 }
             }
         }
@@ -139,6 +142,12 @@ impl<const N: usize> Future for Poirot<'_, '_, N> {
 
         let mut iters = 1024;
         loop {
+            if let Some(end_block) = self.end_block {
+                if self.current_block > end_block {
+                    return Poll::Ready(());
+                }
+            }
+
             if self.start_new_block() {
                 self.start_collection();
             }
@@ -148,7 +157,7 @@ impl<const N: usize> Future for Poirot<'_, '_, N> {
             iters -= 1;
             if iters == 0 {
                 cx.waker().wake_by_ref();
-                break
+                break;
             }
         }
 
