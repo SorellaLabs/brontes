@@ -164,26 +164,33 @@ impl Classifier {
         }
     }
 
+    /// TODO: Bro Will this is a cluster fuck I started fixing it so you would
+    /// use the to address instead of the from because you did some weird
+    /// shit whee you are intermingling the log way of decoding and the
+    /// underlying calldata decode way so its really strange. This and the
+    /// degenerate StaticBinding have to reworked tmrw
     fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>, index: u64) -> Actions {
-        let address = trace.get_from_addr();
+        let from_address = trace.get_from_addr();
+        let target_address = trace.get_to_address();
 
-        if let Some(mapping) = PROTOCOL_ADDRESS_MAPPING.get(format!("{address}").as_str()) {
+        if let Some(binding) = PROTOCOL_ADDRESS_MAPPING.get(format!("{target_address}").as_str()) {
             let calldata = trace.get_calldata();
             let return_bytes = trace.get_return_calldata();
             let sig = &calldata[0..4];
-            let res: StaticReturnBindings = mapping.try_decode(&calldata).unwrap();
+            let res: StaticReturnBindings = binding.try_decode(&calldata).unwrap();
 
             return self.static_protocols.get(sig).unwrap().decode_trace_data(
                 index,
                 res,
                 return_bytes,
-                address,
+                from_address,
+                target_address,
                 logs,
             )
         } else {
             let rem = logs
                 .iter()
-                .filter(|log| log.address == address)
+                .filter(|log| log.address == from_address)
                 .cloned()
                 .collect::<Vec<Log>>();
 

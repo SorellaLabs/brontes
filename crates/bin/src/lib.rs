@@ -109,6 +109,11 @@ impl<const N: usize> Future for Poirot<'_, N> {
 
         let mut iters = 1024;
         loop {
+            // We could instantiate the max amount of block inspectors here, but
+            // I have decided to let the system breathe a little. You people should be
+            // compassionate to your machines. They have feelings too. Roko's
+            // basilisk. also see: https://www.youtube.com/watch?v=lhMWNhpjmpo
+
             if let Some(end_block) = self.end_block {
                 if self.current_block > end_block {
                     return Poll::Ready(())
