@@ -28,23 +28,16 @@ type CollectionFut<'a> = Pin<
 
 pub struct Poirot<'inspector, 'db, const N: usize> {
     current_block: u64,
-<<<<<<< HEAD
-    end_block: Option<u64>,
-    parser: Parser,
-    classifier: Classifier,
-    database: &'db Database,
-    daddy_inspector: DaddyInspector<'inspector, N>,
-=======
+    end_block:     Option<u64>,
     parser:        Parser,
     classifier:    Classifier,
     database:      &'db Database,
     composer:      Composer<'inspector, N>,
->>>>>>> 62fc500249aade60d64c9dc043022ae5dcd89442
 
     // pending future data
     classifier_future: Option<CollectionFut<'db>>,
     // pending insertion data
-    insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'db>>>,
+    insertion_future:  Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'db>>>,
 }
 
 impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
@@ -80,7 +73,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
             .get_block_hash_for_number(self.current_block + 1)
         else {
             // no new block ready
-            return;
+            return
         };
         self.current_block += 1;
 
@@ -108,7 +101,7 @@ impl<'inspector, 'db, const N: usize> Poirot<'inspector, 'db, N> {
                 }
                 Poll::Pending => {
                     self.classifier_future = Some(collection_fut);
-                    return;
+                    return
                 }
             }
         }
@@ -150,7 +143,7 @@ impl<const N: usize> Future for Poirot<'_, '_, N> {
         loop {
             if let Some(end_block) = self.end_block {
                 if self.current_block > end_block {
-                    return Poll::Ready(());
+                    return Poll::Ready(())
                 }
             }
 
@@ -163,7 +156,7 @@ impl<const N: usize> Future for Poirot<'_, '_, N> {
             iters -= 1;
             if iters == 0 {
                 cx.waker().wake_by_ref();
-                break;
+                break
             }
         }
 

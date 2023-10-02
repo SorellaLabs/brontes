@@ -67,4 +67,4 @@ metrics-process.workspace = true
 rayon.workspace = true
 
 [features]
-server = ["poirot-types/server", "poirot-core/server", "poirot-classifier/server"]
+server = ["poirot-types/server", "poirot-classifier/server"]
