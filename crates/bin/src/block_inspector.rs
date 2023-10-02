@@ -4,7 +4,7 @@ use std::{
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::decoding::Parser;
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{database::Database, Metadata};
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_types::{
@@ -23,9 +23,9 @@ type CollectionFut<'a> = Pin<
     >,
 >;
 
-pub struct BlockInspector<'inspector, const N: usize> {
+pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
     block_number:      u64,
-    parser:            &'inspector Parser,
+    parser:            &'inspector Parser<T>,
     classifier:        &'inspector Classifier,
     database:          &'inspector Database,
     composer:          Composer<'inspector, N>,
@@ -35,9 +35,9 @@ pub struct BlockInspector<'inspector, const N: usize> {
     insertion_future:  Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
-impl<'inspector, const N: usize> BlockInspector<'inspector, N> {
+impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, N, T> {
     pub fn new(
-        parser: &'inspector Parser,
+        parser: &'inspector Parser<T>,
         database: &'inspector Database,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
@@ -99,7 +99,7 @@ impl<'inspector, const N: usize> BlockInspector<'inspector, N> {
     }
 }
 
-impl<const N: usize> Future for BlockInspector<'_, N> {
+impl<const N: usize, T: TracingProvider> Future for BlockInspector<'_, N, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

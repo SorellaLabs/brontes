@@ -71,10 +71,12 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let db = Database::default();
 
-    let parser = DParser::new(metrics_tx, &etherscan_key, &db_path);
+    let tracer = TracingClient::new(Path::new(db_path), executor.runtime.handle().clone());
+
+    let parser = DParser::new(metrics_tx, &etherscan_key, &tracer);
     let classifier = Classifier::new(HashMap::default());
 
-    let chain_tip = parser.get_latest_block_number().unwrap();
+    let chain_tip = parser.get_latest_block_number().await.unwrap();
 
     Poirot::new(
         command.start_block,
