@@ -120,7 +120,7 @@ impl JitInspector {
         metadata: Arc<Metadata>,
         txes: [H256; 2],
         searcher_gas_details: [GasDetails; 2],
-        mut searcher_actions: Vec<Vec<Actions>>,
+        searcher_actions: Vec<Vec<Actions>>,
         // victim
         victim_txes: Vec<H256>,
         victim_actions: Vec<Vec<Actions>>,
@@ -142,22 +142,50 @@ impl JitInspector {
             })
             .multiunzip();
 
+        let mints = mints.into_iter().flatten().collect::<Vec<_>>();
+        let burns = burns.into_iter().flatten().collect::<Vec<_>>();
+
+        let fee_collection_transfers = transfers
+            .into_iter()
+            .flatten()
+            .filter(|transfer| {
+                mints
+                    .iter()
+                    .find(|m| m.token.contains(&transfer.token) && m.to == transfer.from)
+                    .is_some()
+                    || burns
+                        .iter()
+                        .find(|b| b.token.contains(&transfer.token) && b.from == transfer.from)
+                        .is_some()
+            })
+            .collect::<Vec<_>>();
+
+        let (jit_fee_pre, jit_fee_post) =
+            self.get_transfer_price(fee_collection_transfers, metadata.clone());
+
         let (mint_pre, mint_post) = self.get_total_pricing(
-            mints
-                .iter()
-                .flatten()
-                .map(|mint| (&mint.token, &mint.amount)),
+            mints.iter().map(|mint| (&mint.token, &mint.amount)),
             metadata.clone(),
         );
         let (burn_pre, burn_post) = self.get_total_pricing(
-            burns
-                .iter()
-                .flatten()
-                .map(|burn| (&burn.token, &burn.amount)),
+            burns.iter().map(|burn| (&burn.token, &burn.amount)),
             metadata.clone(),
         );
 
         None
+    }
+
+    fn get_transfer_price(
+        &self,
+        transfers: Vec<NormalizedTransfer>,
+        metadata: Arc<Metadata>,
+    ) -> (Rational, Rational) {
+        let (tokens, amount) = transfers.into_iter().map(|t| (t.token, t.amount)).unzip();
+
+        (
+            self.get_liquidity_price(metadata.clone(), &tokens, &amount, |(p, _)| p),
+            self.get_liquidity_price(metadata.clone(), &tokens, &amount, |(_, p)| p),
+        )
     }
 
     fn get_total_pricing<'a>(
