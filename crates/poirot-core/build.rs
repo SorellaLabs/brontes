@@ -171,7 +171,7 @@ fn bindings_try_decode_impl_init() -> Vec<String> {
 /// implements try_decode() for the StaticBindings Enum
 fn bindings_try_row(protocol_name: &str) -> String {
     format!(
-        "       StaticBindings::{}(val) => \
+        "       StaticBindings::{}(_) => \
          Ok(StaticReturnBindings::{}({}_Enum::try_decode(call_data)?)),",
         protocol_name, protocol_name, protocol_name
     )
