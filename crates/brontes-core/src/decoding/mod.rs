@@ -134,7 +134,7 @@ where
         &self,
         number: BlockNumber,
     ) -> reth_interfaces::RethResult<Option<Header>> {
-        todo!()
+        let a = self.get_block(number).await?;
     }
 }
 
