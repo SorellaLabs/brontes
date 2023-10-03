@@ -17,7 +17,7 @@ use reth_rpc_types::{
 };
 
 use super::*;
-use crate::errors::TraceParseError;
+use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
 
 #[derive(Clone)]
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
@@ -181,9 +181,11 @@ impl<T: TracingProvider> TraceParser<T> {
         };
 
         let len = tx_trace.len();
-        for (idx, trace) in tx_trace.into_iter().enumerate() {
+        let linked_trace = link_vm_to_trace(vm, tx_trace);
+
+        for (idx, trace) in linked_trace.into_iter().enumerate() {
             let abi_trace = self
-                .update_abi_cache(trace.clone(), block_num, tx_hash)
+                .update_abi_cache(trace.trace.clone(), block_num, tx_hash)
                 .await;
             let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
             if let Err(e) = abi_trace {
