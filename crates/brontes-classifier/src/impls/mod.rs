@@ -39,7 +39,8 @@ macro_rules! action_impl_all {
                 index: u64,
                 data: StaticReturnBindings,
                 return_data: Bytes,
-                address: Address,
+                from_address: Address,
+                target_address: Address,
                 logs: &Vec<Log>,
             ) -> Actions {
                 let call_data = enum_unwrap!(data, $exchange_mod, $call_type);
@@ -52,7 +53,14 @@ macro_rules! action_impl_all {
                     .remove(0);
 
                 let return_data = $call_type::abi_decode_returns(&return_data, true).unwrap();
-                Actions::$impl_type($fn(index, address, call_data, return_data, log_data))
+                Actions::$impl_type($fn(
+                    index,
+                    from_address,
+                    target_address,
+                    call_data,
+                    return_data,
+                    log_data,
+                ))
             }
         }
     };
@@ -81,12 +89,19 @@ macro_rules! action_impl_calldata {
                 index: u64,
                 data: StaticReturnBindings,
                 return_data: Bytes,
-                address: Address,
-                logs: &Vec<Log>,
+                from_address: Address,
+                target_address: Address,
+                _logs: &Vec<Log>,
             ) -> Actions {
-                let call_data = enum_unwrap!(data, $exchange_mod, $call_type);
+                let call_data = enum_unwrap!(data, $exchange_mod, $call_type).clone();
                 let return_data = $call_type::abi_decode_returns(&return_data, true).unwrap();
-                Actions::$impl_type($fn(index, address, call_data, return_data))
+                Actions::$impl_type($fn(
+                    index,
+                    from_address,
+                    target_address,
+                    call_data,
+                    return_data,
+                ))
             }
         }
     };
@@ -114,7 +129,8 @@ macro_rules! action_impl_log {
                 index: u64,
                 data: StaticReturnBindings,
                 return_data: Bytes,
-                address: Address,
+                from_address: Address,
+                target_address: Address,
                 logs: &Vec<Log>,
             ) -> Actions {
                 let log_data = logs
@@ -125,7 +141,7 @@ macro_rules! action_impl_log {
                     .collect::<Vec<_>>()
                     .remove(0);
                 let return_data = $call_type::abi_decode_returns(&return_data, true).unwrap();
-                Actions::$impl_type($fn(index, address, log_data, return_data))
+                Actions::$impl_type($fn(index, from_address, target_address, log_data, return_data))
             }
         }
     };
@@ -153,11 +169,12 @@ macro_rules! action_impl_return {
                 index: u64,
                 _data: StaticReturnBindings,
                 return_data: Bytes,
-                address: Address,
+                from_address: Address,
+                target_address: Address,
                 _logs: &Vec<Log>,
             ) -> Actions {
                 let return_data = $call_type::abi_decode_returns(&return_data, true).unwrap();
-                Actions::$impl_type($fn(index, address, return_data))
+                Actions::$impl_type($fn(index, from_address, target_address, return_data))
             }
         }
     };
@@ -187,7 +204,8 @@ macro_rules! action_impl_all_no_return {
                 index: u64,
                 data: StaticReturnBindings,
                 return_data: Bytes,
-                address: Address,
+                from_address: Address,
+                target_address: Address,
                 logs: &Vec<Log>,
             ) -> Actions {
                 let call_data = enum_unwrap!(data, $exchange_mod, $call_type);
@@ -199,7 +217,7 @@ macro_rules! action_impl_all_no_return {
                     .collect::<Vec<_>>()
                     .remove(0);
 
-                Actions::$impl_type($fn(index, address, call_data, log_data))
+                Actions::$impl_type($fn(index, from_address, target_address, call_data, log_data))
             }
         }
     };
@@ -228,11 +246,12 @@ macro_rules! action_impl_calldata_no_return {
                 index: u64,
                 data: StaticReturnBindings,
                 return_data: Bytes,
-                address: Address,
+                from_address: Address,
+                target_address: Address,
                 logs: &Vec<Log>,
             ) -> Actions {
                 let call_data = enum_unwrap!(data, $exchange_mod, $call_type);
-                Actions::$impl_type($fn(index, address, call_data))
+                Actions::$impl_type($fn(index, from_address, target_address, call_data))
             }
         }
     };
@@ -260,7 +279,8 @@ macro_rules! action_impl_log_no_return {
                 index: u64,
                 _data: StaticReturnBindings,
                 _return_data: Bytes,
-                address: Address,
+                from_address: Address,
+                target_address: Address,
                 logs: &Vec<Log>,
             ) -> Actions {
                 let log_data = logs
@@ -270,7 +290,7 @@ macro_rules! action_impl_log_no_return {
                     })
                     .collect::<Vec<_>>()
                     .remove(0);
-                Actions::$impl_type($fn(index, address, log_data))
+                Actions::$impl_type($fn(index, from_address, target_address, log_data))
             }
         }
     };

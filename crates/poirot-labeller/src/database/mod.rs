@@ -2,6 +2,7 @@ pub mod const_sql;
 pub mod errors;
 pub(crate) mod serialize;
 pub mod types;
+
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
