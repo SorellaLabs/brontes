@@ -56,10 +56,23 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
     }
 
     fn spawn_block_inspector(&mut self) {
+        #[cfg(feature = "server")]
         if self.current_block > self.chain_tip {
-            if let Ok(chain_tip) =
-                tokio::runtime::Handle::current().block_on(self.parser.get_latest_block_number())
-            {
+            if let Ok(chain_tip) = self.parser.get_latest_block_number() {
+                self.chain_tip = chain_tip;
+            } else {
+                // no new block ready
+                return
+            }
+        }
+
+        #[cfg(not(feature = "server"))]
+        if self.current_block > self.chain_tip {
+            if let Ok(chain_tip) = tokio::task::block_in_place(|| {
+                // This will now run the future to completion on the current thread
+                // without blocking the entire runtime
+                futures::executor::block_on(self.parser.get_latest_block_number())
+            }) {
                 self.chain_tip = chain_tip;
             } else {
                 // no new block ready
