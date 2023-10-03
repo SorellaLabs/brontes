@@ -132,6 +132,7 @@ impl<T: TracingProvider> TraceParser<T> {
                     self.parse_transaction(
                         transaction_traces,
                         vm_traces,
+                        receipt.logs,
                         block_num,
                         tx_hash,
                         receipt.transaction_index.try_into().unwrap(),
@@ -164,6 +165,7 @@ impl<T: TracingProvider> TraceParser<T> {
         &self,
         tx_trace: Vec<TransactionTrace>,
         vm: VmTrace,
+        logs: Vec<Log>,
         block_num: u64,
         tx_hash: H256,
         tx_idx: u64,
@@ -181,7 +183,7 @@ impl<T: TracingProvider> TraceParser<T> {
         };
 
         let len = tx_trace.len();
-        let linked_trace = link_vm_to_trace(vm, tx_trace);
+        let linked_trace = link_vm_to_trace(vm, tx_trace, logs);
 
         for (idx, trace) in linked_trace.into_iter().enumerate() {
             let abi_trace = self
