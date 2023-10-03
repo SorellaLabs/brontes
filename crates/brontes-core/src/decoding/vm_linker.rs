@@ -5,7 +5,16 @@ use reth_rpc_types::{
     trace::parity::{TransactionTrace, VmInstruction, VmTrace},
     Log,
 };
-use revm_primitives::keccak256;
+
+pub fn link_vm_to_trace(
+    vm: VmTrace,
+    mut tx_trace: Vec<TransactionTrace>,
+) -> Vec<TransactionTraceWithLogs> {
+    let mut res = Vec::new();
+    recursive_parsing(&mut res, vm, &mut tx_trace);
+
+    res
+}
 
 /// all type of log setups
 /// Log0 { offset: Bytes, size: Bytes },
@@ -16,13 +25,13 @@ use revm_primitives::keccak256;
 /// H256, topic4: H256 },
 fn try_parse(
     push_stack: &mut Vec<U256>,
-    instruction: VmInstruction,
+    instruction: &mut VmInstruction,
     current_address: Address,
 ) -> Option<Log> {
     // NOTE: this might be Log0 instead but we go with this code
-    match instruction.op?.as_str() {
+    match instruction.op.take()?.as_str() {
         "A0" => {
-            let delta = instruction.ex?.mem?;
+            let delta = instruction.ex.as_mut()?.mem.take()?;
             let bytes = delta.data;
 
             Some(Log {
@@ -38,7 +47,7 @@ fn try_parse(
             })
         }
         "A1" => {
-            let delta = instruction.ex?.mem?;
+            let delta = instruction.ex.as_mut()?.mem.take()?;
             let bytes = delta.data;
             let topic0 = push_stack.remove(0);
             Some(Log {
@@ -54,7 +63,7 @@ fn try_parse(
             })
         }
         "A2" => {
-            let delta = instruction.ex?.mem?;
+            let delta = instruction.ex.as_mut()?.mem.take()?;
             let bytes = delta.data;
             let topic1 = push_stack.remove(0);
             let topic2 = push_stack.remove(1);
@@ -72,7 +81,7 @@ fn try_parse(
             })
         }
         "A3" => {
-            let delta = instruction.ex?.mem?;
+            let delta = instruction.ex.as_mut()?.mem.take()?;
             let bytes = delta.data;
             let topic1 = push_stack.remove(0);
             let topic2 = push_stack.remove(1);
@@ -91,7 +100,7 @@ fn try_parse(
             })
         }
         "A4" => {
-            let delta = instruction.ex?.mem?;
+            let delta = instruction.ex.as_mut()?.mem.take()?;
             let bytes = delta.data;
             let topic1 = push_stack.remove(0);
             let topic2 = push_stack.remove(1);
@@ -116,40 +125,31 @@ fn try_parse(
     None
 }
 
-pub fn link_vm_to_trace(
-    vm: VmTrace,
-    mut tx_trace: Vec<TransactionTrace>,
-) -> Vec<TransactionTraceWithLogs> {
-    let mut res = Vec::new();
-    recursive_parsing(&mut res, vm, &mut tx_trace);
-
-    res
-}
-
 fn recursive_parsing(
     current_traces: &mut Vec<TransactionTraceWithLogs>,
     vm: VmTrace,
     tx_trace: &mut Vec<TransactionTrace>,
 ) {
     let scoped_trace = tx_trace.remove(0);
+    // NOTE: this doesn't work
     let mut only_push_stack = Vec::new();
 
     let logs = vm
         .ops
         .into_iter()
         .zip(vec![&scoped_trace].into_iter().cycle())
-        .filter_map(|(instruction, trace)| {
-            let addr = match trace.action {
+        .filter_map(|(mut instruction, trace)| {
+            let addr = match &trace.action {
                 reth_rpc_types::trace::parity::Action::Call(c) => c.to,
                 _ => return None,
             };
 
-            if let Some(sub) = instruction.sub {
+            if let Some(sub) = instruction.sub.take() {
                 recursive_parsing(current_traces, sub, tx_trace)
             }
 
-            let res = try_parse(&mut only_push_stack, instruction, addr);
-            if let Some(ref ex) = instruction.ex {
+            let res = try_parse(&mut only_push_stack, &mut instruction, addr);
+            if let Some(ex) = instruction.ex.take() {
                 only_push_stack.extend(ex.push);
             }
 
