@@ -2,7 +2,10 @@ use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
 use alloy_etherscan::Client;
 use brontes_types::structured_trace::TxTrace;
-use ethers::prelude::{Middleware, Provider};
+use ethers::{
+    prelude::{Http, JsonRpcClient, Middleware, Provider, ProviderError},
+    providers::JsonRpcError,
+};
 use ethers_core::types::Chain;
 use ethers_reth::type_conversions::{ToEthers, ToReth};
 use futures::Future;
@@ -41,6 +44,10 @@ use reth_rpc_types::{trace::parity::TraceResultsWithTransactionHash, Transaction
 pub trait TracingProvider: Send + Sync + 'static {
     async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>>;
 
+    #[cfg(feature = "server")]
+    fn best_block_number(&self) -> reth_interfaces::RethResult<u64>;
+
+    #[cfg(not(feature = "server"))]
     async fn best_block_number(&self) -> reth_interfaces::RethResult<u64>;
 
     async fn replay_block_transactions(
@@ -61,80 +68,25 @@ pub trait TracingProvider: Send + Sync + 'static {
 }
 
 #[async_trait::async_trait]
-trait TracingP: Send + Sync + 'static {
-    async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>>;
-
-    async fn best_block_number(&self) -> reth_interfaces::RethResult<u64>;
-
-    async fn replay_block_transactions(
-        &self,
-        block_id: BlockId,
-        trace_type: HashSet<TraceType>,
-    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError>;
-
-    async fn block_receipts(
-        &self,
-        number: BlockNumberOrTag,
-    ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>>;
-
-    async fn header_by_number(
-        &self,
-        number: BlockNumber,
-    ) -> reth_interfaces::RethResult<Option<Header>>;
-}
-
-#[async_trait::async_trait]
-impl TracingProvider for dyn TracingP {
+impl TracingProvider for Provider<Http> {
     async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>> {
-        self.block_hash_for_id(block_num).await
+        self.get_block(block_num)
+            .await
+            .map(|h| h.map(|e| e.into_reth().inner.header.hash.take().unwrap()))
+            .map_err(|e| RethError::Custom(format!("{}", e)))
     }
 
-    async fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
-        self.best_block_number().await
-    }
-
-    async fn replay_block_transactions(
-        &self,
-        block_id: BlockId,
-        trace_type: HashSet<TraceType>,
-    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError> {
-        self.replay_block_transactions(block_id, trace_type).await
-    }
-
-    async fn block_receipts(
-        &self,
-        number: BlockNumberOrTag,
-    ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>> {
-        self.block_receipts(number).await
-    }
-
-    async fn header_by_number(
-        &self,
-        number: BlockNumber,
-    ) -> reth_interfaces::RethResult<Option<Header>> {
-        self.header_by_number(number).await
-    }
-}
-
-#[async_trait::async_trait]
-impl<T: Middleware + 'static> TracingP for T
-where
-    RethError: From<<T as Middleware>::Error>,
-    EthApiError: From<<T as Middleware>::Error>,
-{
-    async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>> {
-        Ok(self
-            .get_block(block_num)
-            .await?
-            .map(|h| h.hash.map(|e| e.into()))
-            .flatten())
-    }
-
+    #[cfg(not(feature = "server"))]
     async fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
         self.get_block_number()
             .await
             .map(|r| r.as_u64())
-            .map_err(|e| e.into())
+            .map_err(|e| RethError::Custom(format!("{}", e)))
+    }
+
+    #[cfg(feature = "server")]
+    fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
+        self.trace.provider().best_block_number()
     }
 
     async fn replay_block_transactions(
@@ -154,7 +106,8 @@ where
                     .map(|i| i.into_ethers())
                     .collect::<Vec<_>>(),
             )
-            .await?
+            .await
+            .unwrap()
             .into_iter()
             .map(|m| m.into_reth())
             .collect::<Vec<_>>(),
@@ -165,26 +118,33 @@ where
         &self,
         number: BlockNumberOrTag,
     ) -> reth_interfaces::RethResult<Option<Vec<TransactionReceipt>>> {
-        let number = number.as_number().unwrap();
-
-        Ok(Some(
-            self.get_block_receipts(number)
-                .await?
-                .into_iter()
-                .map(|t| t.into_reth())
-                .collect::<Vec<TransactionReceipt>>(),
-        ))
+        self.get_block_receipts(number.as_number().unwrap())
+            .await
+            .map(|receipts| {
+                Some(
+                    receipts
+                        .into_iter()
+                        .map(|t| t.into_reth())
+                        .collect::<Vec<TransactionReceipt>>(),
+                )
+            })
+            .map_err(|e| RethError::Custom(format!("{}", e)))
     }
 
     async fn header_by_number(
         &self,
         number: BlockNumber,
     ) -> reth_interfaces::RethResult<Option<Header>> {
-        let a = self.get_block(number).await?.unwrap();
-        let mut header = Header::default();
-        header.base_fee_per_gas = a.base_fee_per_gas.map(|f| f.as_u64());
-
-        Ok(Some(header))
+        self.get_block(number)
+            .await
+            .map(|opt_block| {
+                opt_block.map(|a| {
+                    let mut header = Header::default();
+                    header.base_fee_per_gas = a.base_fee_per_gas.map(|f| f.as_u64());
+                    header
+                })
+            })
+            .map_err(|e| RethError::Custom(format!("{}", e)))
     }
 }
 
@@ -196,6 +156,12 @@ impl TracingProvider for TracingClient {
             .block_hash_for_id(BlockId::Number(BlockNumberOrTag::Number(block_num)))
     }
 
+    #[cfg(feature = "server")]
+    fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
+        self.trace.provider().best_block_number()
+    }
+
+    #[cfg(not(feature = "server"))]
     async fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
         self.trace.provider().best_block_number()
     }
@@ -257,15 +223,21 @@ impl<T: TracingProvider> Parser<T> {
         Self { executor, parser: Arc::new(parser) }
     }
 
+    #[cfg(not(feature = "server"))]
+    pub async fn get_latest_block_number(&self) -> reth_interfaces::RethResult<u64> {
+        self.parser.tracer.best_block_number().await
+    }
+
+    #[cfg(feature = "server")]
+    pub fn get_latest_block_number(&self) -> reth_interfaces::RethResult<u64> {
+        self.parser.tracer.best_block_number()
+    }
+
     pub async fn get_block_hash_for_number(
         &self,
         block_num: u64,
     ) -> reth_interfaces::RethResult<Option<H256>> {
         self.parser.tracer.block_hash_for_id(block_num.into()).await
-    }
-
-    pub async fn get_latest_block_number(&self) -> RethResult<BlockNumber> {
-        self.parser.tracer.best_block_number().await
     }
 
     /// executes the tracing of a given block
