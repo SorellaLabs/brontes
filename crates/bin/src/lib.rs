@@ -57,13 +57,16 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
 
     fn spawn_block_inspector(&mut self) {
         if self.current_block > self.chain_tip {
-            if let Ok(chain_tip) = self.parser.get_latest_block_number() {
+            if let Ok(chain_tip) =
+                tokio::runtime::Handle::current().block_on(self.parser.get_latest_block_number())
+            {
                 self.chain_tip = chain_tip;
             } else {
                 // no new block ready
                 return
             }
         }
+
         let inspector = BlockInspector::new(
             self.parser,
             self.database,

@@ -91,9 +91,9 @@ macro_rules! action_impl_calldata {
                 return_data: Bytes,
                 from_address: Address,
                 target_address: Address,
-                logs: &Vec<Log>,
+                _logs: &Vec<Log>,
             ) -> Actions {
-                let call_data = enum_unwrap!(data, $exchange_mod, $call_type);
+                let call_data = enum_unwrap!(data, $exchange_mod, $call_type).clone();
                 let return_data = $call_type::abi_decode_returns(&return_data, true).unwrap();
                 Actions::$impl_type($fn(
                     index,
