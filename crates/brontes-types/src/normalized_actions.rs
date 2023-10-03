@@ -11,6 +11,7 @@ pub enum Actions {
     Transfer(NormalizedTransfer),
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
+    Collect(NormalizedCollect),
     Unclassified(TransactionTrace, Vec<Log>),
 }
 
@@ -21,6 +22,7 @@ impl InsertRow for Actions {
             Actions::Transfer(_) => NormalizedTransfer::COLUMN_NAMES,
             Actions::Mint(_) => NormalizedMint::COLUMN_NAMES,
             Actions::Burn(_) => NormalizedBurn::COLUMN_NAMES,
+            Actions::Collect(_) => NormalizedCollect::COLUMN_NAMES,
             Actions::Unclassified(..) => panic!(),
         }
     }
@@ -36,6 +38,7 @@ impl Serialize for Actions {
             Actions::Mint(m) => m.serialize(serializer),
             Actions::Transfer(t) => t.serialize(serializer),
             Actions::Burn(b) => b.serialize(serializer),
+            Actions::Collect(c) => c.serialize(serializer),
             Actions::Unclassified(trace, log) => (trace, log).serialize(serializer),
         }
     }
@@ -55,6 +58,7 @@ impl Actions {
             Actions::Mint(m) => m.to,
             Actions::Burn(b) => b.to,
             Actions::Transfer(t) => t.to,
+            Actions::Collect(c) => c.to,
             Actions::Unclassified(t, _) => match &t.action {
                 reth_rpc_types::trace::parity::Action::Call(c) => c.to,
                 reth_rpc_types::trace::parity::Action::Create(_) => Address::zero(),
@@ -78,6 +82,10 @@ impl Actions {
 
     pub fn is_transfer(&self) -> bool {
         matches!(self, Actions::Transfer(_))
+    }
+
+    pub fn is_collect(&self) -> bool {
+        matches!(self, Actions::Collect(_))
     }
 
     pub fn is_unclassified(&self) -> bool {
@@ -120,6 +128,16 @@ pub struct NormalizedBurn {
     pub index:     u64,
     pub from:      Address,
     pub to:        Address,
+    pub recipient: Address,
+    pub token:     Vec<Address>,
+    pub amount:    Vec<U256>,
+}
+
+#[derive(Debug, Clone, Serialize, Row)]
+pub struct NormalizedCollect {
+    pub index:     u64,
+    pub to:        Address,
+    pub from:      Address,
     pub recipient: Address,
     pub token:     Vec<Address>,
     pub amount:    Vec<U256>,
