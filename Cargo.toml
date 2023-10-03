@@ -10,7 +10,6 @@ members = [
   "crates/brontes-metrics",
   "crates/tracing",
   "crates/brontes-database",
-  "crates/brontes-macros",
 ]
 
 
