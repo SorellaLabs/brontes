@@ -11,13 +11,13 @@ use reth_primitives::{Header, H256};
 use reth_rpc_types::{
     trace::parity::{
         Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
-        TraceType, TransactionTrace,
+        TraceType, TransactionTrace, VmTrace,
     },
     Log, TransactionReceipt,
 };
 
 use super::*;
-use crate::errors::TraceParseError;
+use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
 
 #[derive(Clone)]
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
@@ -64,6 +64,7 @@ impl<T: TracingProvider> TraceParser<T> {
     ) -> (Option<Vec<TraceResultsWithTransactionHash>>, BlockStats) {
         let mut trace_type = HashSet::new();
         trace_type.insert(TraceType::Trace);
+        trace_type.insert(TraceType::VmTrace);
 
         let parity_trace = self
             .tracer
@@ -124,11 +125,14 @@ impl<T: TracingProvider> TraceParser<T> {
             join_all(block_trace.into_iter().zip(block_receipts.into_iter()).map(
                 |(trace, receipt)| async move {
                     let transaction_traces = trace.full_trace.trace;
+                    let vm_traces = trace.full_trace.vm_trace.unwrap();
+
                     let tx_hash = trace.transaction_hash;
 
                     self.parse_transaction(
                         transaction_traces,
-                        receipt.logs.clone(),
+                        vm_traces,
+                        receipt.logs,
                         block_num,
                         tx_hash,
                         receipt.transaction_index.try_into().unwrap(),
@@ -160,6 +164,7 @@ impl<T: TracingProvider> TraceParser<T> {
     async fn parse_transaction(
         &self,
         tx_trace: Vec<TransactionTrace>,
+        vm: VmTrace,
         logs: Vec<Log>,
         block_num: u64,
         tx_hash: H256,
@@ -178,9 +183,11 @@ impl<T: TracingProvider> TraceParser<T> {
         };
 
         let len = tx_trace.len();
-        for (idx, trace) in tx_trace.into_iter().enumerate() {
+        let linked_trace = link_vm_to_trace(vm, tx_trace, logs);
+
+        for (idx, trace) in linked_trace.into_iter().enumerate() {
             let abi_trace = self
-                .update_abi_cache(trace.clone(), block_num, tx_hash)
+                .update_abi_cache(trace.trace.clone(), block_num, tx_hash)
                 .await;
             let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
             if let Err(e) = abi_trace {
@@ -193,7 +200,7 @@ impl<T: TracingProvider> TraceParser<T> {
         }
 
         stats.trace();
-        (TxTrace::new(traces, tx_hash, logs, tx_idx, gas_used, effective_gas_price), stats)
+        (TxTrace::new(traces, tx_hash, tx_idx, gas_used, effective_gas_price), stats)
     }
 
     /// pushes each trace to parser_fut
