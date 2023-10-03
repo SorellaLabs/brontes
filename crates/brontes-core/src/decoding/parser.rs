@@ -11,7 +11,7 @@ use reth_primitives::{Header, H256};
 use reth_rpc_types::{
     trace::parity::{
         Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
-        TraceType, TransactionTrace,
+        TraceType, TransactionTrace, VmTrace,
     },
     Log, TransactionReceipt,
 };
@@ -125,11 +125,13 @@ impl<T: TracingProvider> TraceParser<T> {
             join_all(block_trace.into_iter().zip(block_receipts.into_iter()).map(
                 |(trace, receipt)| async move {
                     let transaction_traces = trace.full_trace.trace;
+                    let vm_traces = trace.full_trace.vm_trace.unwrap();
+
                     let tx_hash = trace.transaction_hash;
 
                     self.parse_transaction(
                         transaction_traces,
-                        receipt.logs.clone(),
+                        vm_traces,
                         block_num,
                         tx_hash,
                         receipt.transaction_index.try_into().unwrap(),
@@ -161,7 +163,7 @@ impl<T: TracingProvider> TraceParser<T> {
     async fn parse_transaction(
         &self,
         tx_trace: Vec<TransactionTrace>,
-        logs: Vec<Log>,
+        vm: VmTrace,
         block_num: u64,
         tx_hash: H256,
         tx_idx: u64,
@@ -194,7 +196,7 @@ impl<T: TracingProvider> TraceParser<T> {
         }
 
         stats.trace();
-        (TxTrace::new(traces, tx_hash, logs, tx_idx, gas_used, effective_gas_price), stats)
+        (TxTrace::new(traces, tx_hash, tx_idx, gas_used, effective_gas_price), stats)
     }
 
     /// pushes each trace to parser_fut
