@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse::Parse, ExprClosure, Ident, LitBool, Token};
+use syn::{parenthesized, parse::Parse, token::Paren, ExprClosure, Ident, LitBool, Token};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
@@ -26,11 +26,10 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let mut has_calldata = false;
     let mut option_parsing = Vec::new();
 
-    if exchange_mod_name.starts_with("Some") {
+    if !exchange_mod_name.to_string().eq("None") {
         has_calldata = true;
-        let module_name = &exchange_mod_name[4..exchange_mod_name.len() - 1];
         option_parsing.push(quote!(
-                let call_data = enum_unwrap!(data, #module_name, #call_type);
+                let call_data = enum_unwrap!(data, #exchange_mod_name, #call_type);
         ));
     }
 
@@ -51,42 +50,42 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let fn_call = match (has_calldata, give_logs.value, give_returns.value) {
         (true, true, true) => {
             quote!(
-            #call_function(index, from_address, target_address, call_data, return_data, log_data)
+            (#call_function)(index, from_address, target_address, call_data, return_data, log_data)
             )
         }
         (true, true, false) => {
             quote!(
-                #call_function(index, from_address, target_address, call_data, log_data)
+                (#call_function)(index, from_address, target_address, call_data, log_data)
             )
         }
         (true, false, true) => {
             quote!(
-                #call_function(index, from_address, target_address, call_data, return_data)
+                (#call_function)(index, from_address, target_address, call_data, return_data)
             )
         }
         (true, false, false) => {
             quote!(
-                #call_function(index, from_address, target_address, call_data)
+                (#call_function)(index, from_address, target_address, call_data)
             )
         }
         (false, true, true) => {
             quote!(
-                #call_function(index, from_address, target_address, return_data, log_data)
+                (#call_function)(index, from_address, target_address, return_data, log_data)
             )
         }
         (false, false, true) => {
             quote!(
-                #call_function(index, from_address, target_address, return_data)
+                (#call_function)(index, from_address, target_address, return_data)
             )
         }
         (false, true, false) => {
             quote!(
-                #call_function(index, from_address, target_address, log_data)
+                (#call_function)(index, from_address, target_address, log_data)
             )
         }
         (false, false, false) => {
             quote!(
-                #call_function(index, from_address, target_address)
+                (#call_function)(index, from_address, target_address)
             )
         }
     };
@@ -97,7 +96,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
         impl IntoAction for #exchange_name {
             fn get_signature(&self) -> [u8; 4] {
-                $call_type::SELECTOR
+                #call_type::SELECTOR
             }
 
             #[allow(unused)]
@@ -125,7 +124,7 @@ struct MacroParse {
     call_type:     Ident,
 
     /// needed if we decide to decode call data
-    exchange_mod_name: String,
+    exchange_mod_name: Ident,
     /// wether we want logs or not
     give_logs:         LitBool,
     /// wether we want return data or not
@@ -143,7 +142,14 @@ impl Parse for MacroParse {
         input.parse::<Token![,]>()?;
         let call_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let exchange_mod_name: Ident = input.parse()?;
+        let mut exchange_mod_name: Ident = input.parse()?;
+
+        if input.peek(Paren) {
+            let content;
+            parenthesized!(content in input);
+            exchange_mod_name = content.parse()?;
+        }
+
         input.parse::<Token![,]>()?;
         let give_logs: LitBool = input.parse()?;
         input.parse::<Token![,]>()?;
@@ -169,7 +175,7 @@ impl Parse for MacroParse {
             call_type,
             action_type,
             exchange_name,
-            exchange_mod_name: exchange_mod_name.to_string(),
+            exchange_mod_name,
         })
     }
 }

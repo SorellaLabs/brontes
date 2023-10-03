@@ -3,16 +3,20 @@ use brontes_core::{
     StaticReturnBindings,
     SushiSwap_V2::{burnCall, mintCall, swapCall, Burn, Mint, Swap},
 };
+use brontes_macros::action_impl;
 use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_primitives::{Address, Bytes, H160, U256};
 use reth_rpc_types::Log;
 
-use crate::{action_impl_log_no_return, IntoAction, ADDRESS_TO_TOKENS_2_POOL};
+use crate::{IntoAction, ADDRESS_TO_TOKENS_2_POOL};
 
-action_impl_log_no_return!(
+action_impl!(
     V2SwapImpl,
     Swap,
     swapCall,
+    None,
+    true,
+    false,
     |index, from_address: H160, target_address: H160, data: Swap| {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
             .get(&*from_address)
@@ -42,11 +46,15 @@ action_impl_log_no_return!(
         }
     }
 );
+// action_impl_log_no_return!(V2SwapImpl, Swap, swapCall,);
 
-action_impl_log_no_return!(
+action_impl!(
     V2MintImpl,
     Mint,
     mintCall,
+    None,
+    true,
+    false,
     |index, from_address: H160, target_address: H160, data: Mint| {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
             .get(&*target_address)
@@ -64,10 +72,13 @@ action_impl_log_no_return!(
     }
 );
 
-action_impl_log_no_return!(
+action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
+    None,
+    true,
+    false,
     |index, from_address: H160, target_address: H160, res: Burn| {
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
             .get(&*target_address)
