@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
 use reth_primitives::{Address, U256};
-use reth_rpc_types::{trace::parity::TransactionTrace, Log};
+use reth_rpc_types::Log;
 use serde::Serialize;
 use sorella_db_clients::databases::clickhouse::{self, InsertRow, Row};
+
+use crate::structured_trace::TransactionTraceWithLogs;
 
 #[derive(Debug, Clone)]
 pub enum Actions {
@@ -12,7 +14,7 @@ pub enum Actions {
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
     Collect(NormalizedCollect),
-    Unclassified(TransactionTrace, Vec<Log>),
+    Unclassified(TransactionTraceWithLogs, Vec<Log>),
 }
 
 impl InsertRow for Actions {
@@ -59,7 +61,7 @@ impl Actions {
             Actions::Burn(b) => b.to,
             Actions::Transfer(t) => t.to,
             Actions::Collect(c) => c.to,
-            Actions::Unclassified(t, _) => match &t.action {
+            Actions::Unclassified(t, _) => match &t.trace.action {
                 reth_rpc_types::trace::parity::Action::Call(c) => c.to,
                 reth_rpc_types::trace::parity::Action::Create(_) => Address::zero(),
                 reth_rpc_types::trace::parity::Action::Reward(_) => Address::zero(),

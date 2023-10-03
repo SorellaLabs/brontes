@@ -75,7 +75,7 @@ impl Classifier {
 
                 for (index, trace) in trace.trace.into_iter().enumerate() {
                     root.gas_details.coinbase_transfer =
-                        self.get_coinbase_transfer(header.beneficiary, &trace.action);
+                        self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let address = trace.get_from_addr();
                     let classification = self.classify_node(trace, (index + 1) as u64);
