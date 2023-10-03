@@ -2,8 +2,8 @@ use alloy_sol_types::SolCall;
 use brontes_core::{
     StaticReturnBindings,
     UniswapV3::{
-        burnCall, burnReturn, collectCall, mintCall, mintReturn, swapCall, swapReturn,
-        UniswapV3Calls,
+        burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
+        swapReturn, UniswapV3Calls,
     },
 };
 use brontes_types::normalized_actions::{
@@ -12,7 +12,9 @@ use brontes_types::normalized_actions::{
 use reth_primitives::{Address, Bytes, H160, U256};
 use reth_rpc_types::Log;
 
-use crate::{action_impl_return, IntoAction, ADDRESS_TO_TOKENS_2_POOL};
+use crate::{
+    action_impl_calldata, action_impl_return, enum_unwrap, IntoAction, ADDRESS_TO_TOKENS_2_POOL,
+};
 
 action_impl_return!(
     V3SwapImpl,
@@ -96,6 +98,24 @@ action_impl_return!(
             to: target_address,
             token: vec![token0, token1],
             amount: vec![token_0_delta, token_1_delta],
+        }
+    }
+);
+
+action_impl_calldata!(
+    V3CollectImpl,
+    Collect,
+    collectCall,
+    UniswapV3,
+    |index, from_addr: H160, to_addr: H160, call_data: collectCall, return_data: collectReturn| {
+        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL.get(&*to_addr).copied().unwrap();
+        NormalizedCollect {
+            index,
+            from: from_addr,
+            recipient: from_addr,
+            to: to_addr,
+            token: vec![token0, token1],
+            amount: vec![U256::from(return_data.amount0), U256::from(return_data.amount1)],
         }
     }
 );
