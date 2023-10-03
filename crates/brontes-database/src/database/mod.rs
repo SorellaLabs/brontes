@@ -11,8 +11,7 @@ use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use futures::future::join_all;
 use malachite::Rational;
 use reth_primitives::{Address, TxHash, U256};
-use serde::Deserialize;
-use sorella_db_clients::databases::clickhouse::{self, ClickhouseClient, Row};
+use sorella_db_clients::databases::clickhouse::{self, ClickhouseClient};
 use tracing::error;
 
 use self::types::{DBTokenPrices, RelayInfo};

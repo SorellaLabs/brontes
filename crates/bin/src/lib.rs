@@ -57,13 +57,16 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
 
     fn spawn_block_inspector(&mut self) {
         if self.current_block > self.chain_tip {
-            if let Ok(chain_tip) = self.parser.get_latest_block_number() {
+            if let Ok(chain_tip) =
+                tokio::runtime::Handle::current().block_on(self.parser.get_latest_block_number())
+            {
                 self.chain_tip = chain_tip;
             } else {
                 // no new block ready
                 return
             }
         }
+
         let inspector = BlockInspector::new(
             self.parser,
             self.database,
@@ -109,6 +112,11 @@ impl<const N: usize, T: TracingProvider> Future for Poirot<'_, N, T> {
 
         let mut iters = 1024;
         loop {
+            // We could instantiate the max amount of block inspectors here, but
+            // I have decided to let the system breathe a little. You people should be
+            // compassionate to your machines. They have feelings too. Roko's
+            // basilisk. also see: https://www.youtube.com/watch?v=lhMWNhpjmpo
+
             if let Some(end_block) = self.end_block {
                 if self.current_block > end_block {
                     return Poll::Ready(())

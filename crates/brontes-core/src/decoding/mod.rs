@@ -1,10 +1,4 @@
-use std::{
-    any::Any,
-    collections::HashSet,
-    path::{Path, PathBuf},
-    pin::Pin,
-    sync::Arc,
-};
+use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
 use alloy_etherscan::Client;
 use brontes_types::structured_trace::TxTrace;
@@ -40,15 +34,10 @@ const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000
 const CACHE_DIRECTORY: &str = "./abi_cache";
 
 use reth_rpc::eth::error::EthApiError;
-use reth_rpc_types::{
-    trace::parity::{
-        Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
-        TransactionTrace,
-    },
-    Log, TransactionReceipt,
-};
+use reth_rpc_types::{trace::parity::TraceResultsWithTransactionHash, TransactionReceipt};
 
 #[async_trait::async_trait]
+#[auto_impl::auto_impl(&, Arc)]
 pub trait TracingProvider: Send + Sync + 'static {
     async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>>;
 
