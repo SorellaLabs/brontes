@@ -6,20 +6,22 @@ use brontes_core::{
         swapReturn, UniswapV3Calls,
     },
 };
+use brontes_macros::action_impl;
 use brontes_types::normalized_actions::{
     Actions, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
 use reth_primitives::{Address, Bytes, H160, U256};
 use reth_rpc_types::Log;
 
-use crate::{
-    action_impl_calldata, action_impl_return, enum_unwrap, IntoAction, ADDRESS_TO_TOKENS_2_POOL,
-};
+use crate::{enum_unwrap, IntoAction, ADDRESS_TO_TOKENS_2_POOL};
 
-action_impl_return!(
+action_impl!(
     V3SwapImpl,
     Swap,
     swapCall,
+    None,
+    false,
+    true,
     |index, from_address: H160, target_address: H160, return_data: swapReturn| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
@@ -55,10 +57,13 @@ action_impl_return!(
     }
 );
 
-action_impl_return!(
+action_impl!(
     V3BurnImpl,
     Burn,
     burnCall,
+    None,
+    false,
+    true,
     |index, from_address: H160, target_address: H160, return_data: burnReturn| {
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
@@ -78,10 +83,13 @@ action_impl_return!(
     }
 );
 
-action_impl_return!(
+action_impl!(
     V3MintImpl,
     Mint,
     mintCall,
+    None,
+    false,
+    true,
     |index, from_address: H160, target_address: H160, return_data: mintReturn| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
@@ -102,12 +110,18 @@ action_impl_return!(
     }
 );
 
-action_impl_calldata!(
+action_impl!(
     V3CollectImpl,
     Collect,
     collectCall,
-    UniswapV3Calls,
-    |index, from_addr: H160, to_addr: H160, _call_data: collectCall, return_data: collectReturn| {
+    Some(UniswapV3Calls),
+    false,
+    true,
+    |index,
+     from_addr: H160,
+     to_addr: H160,
+     _call_data: &collectCall,
+     return_data: collectReturn| {
         let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL.get(&*to_addr).copied().unwrap();
         NormalizedCollect {
             index,
