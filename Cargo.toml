@@ -10,6 +10,7 @@ members = [
   "crates/brontes-metrics",
   "crates/tracing",
   "crates/brontes-database",
+  "crates/brontes-macros",
 ]
 
 
@@ -111,3 +112,4 @@ c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
 hex-literal = "0.4.1"
 rayon = "1.7.0"
 dotenv = "0.15.0"
+
