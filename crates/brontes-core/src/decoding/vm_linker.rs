@@ -1,9 +1,11 @@
+use alloy_primitives::U256;
 use brontes_types::structured_trace::TransactionTraceWithLogs;
 use reth_primitives::{Address, Bytes, H256};
 use reth_rpc_types::{
     trace::parity::{TransactionTrace, VmInstruction, VmTrace},
     Log,
 };
+use revm_primitives::keccak256;
 
 /// all type of log setups
 /// Log0 { offset: Bytes, size: Bytes },
@@ -13,7 +15,7 @@ use reth_rpc_types::{
 /// }, Log4 { offset: Bytes, size: Bytes, topic1: H256, topic2: H256, topic3:
 /// H256, topic4: H256 },
 fn try_parse(
-    mut prev_stack: Vec<H256>,
+    push_stack: &mut Vec<U256>,
     instruction: VmInstruction,
     current_address: Address,
 ) -> Option<Log> {
@@ -38,11 +40,11 @@ fn try_parse(
         "A1" => {
             let delta = instruction.ex?.mem?;
             let bytes = delta.data;
-            let topic0 = prev_stack.remove(0);
+            let topic0 = push_stack.remove(0);
             Some(Log {
                 address:           current_address,
                 data:              bytes,
-                topics:            vec![topic0],
+                topics:            vec![topic0.into()],
                 removed:           false,
                 log_index:         None,
                 block_hash:        None,
@@ -54,13 +56,13 @@ fn try_parse(
         "A2" => {
             let delta = instruction.ex?.mem?;
             let bytes = delta.data;
-            let topic1 = prev_stack.remove(0);
-            let topic2 = prev_stack.remove(1);
+            let topic1 = push_stack.remove(0);
+            let topic2 = push_stack.remove(1);
 
             Some(Log {
                 address:           current_address,
                 data:              bytes,
-                topics:            vec![topic1, topic2],
+                topics:            vec![topic1.into(), topic2.into()],
                 removed:           false,
                 log_index:         None,
                 block_hash:        None,
@@ -72,14 +74,14 @@ fn try_parse(
         "A3" => {
             let delta = instruction.ex?.mem?;
             let bytes = delta.data;
-            let topic1 = prev_stack.remove(0);
-            let topic2 = prev_stack.remove(1);
-            let topic3 = prev_stack.remove(2);
+            let topic1 = push_stack.remove(0);
+            let topic2 = push_stack.remove(1);
+            let topic3 = push_stack.remove(2);
 
             Some(Log {
                 address:           current_address,
                 data:              bytes,
-                topics:            vec![topic1, topic2, topic3],
+                topics:            vec![topic1.into(), topic2.into(), topic3.into()],
                 removed:           false,
                 log_index:         None,
                 block_hash:        None,
@@ -91,15 +93,15 @@ fn try_parse(
         "A4" => {
             let delta = instruction.ex?.mem?;
             let bytes = delta.data;
-            let topic1 = prev_stack.remove(0);
-            let topic2 = prev_stack.remove(1);
-            let topic3 = prev_stack.remove(2);
-            let topic4 = prev_stack.remove(3);
+            let topic1 = push_stack.remove(0);
+            let topic2 = push_stack.remove(1);
+            let topic3 = push_stack.remove(2);
+            let topic4 = push_stack.remove(3);
 
             Some(Log {
                 address:           current_address,
                 data:              bytes,
-                topics:            vec![topic1, topic2, topic3, topic4],
+                topics:            vec![topic1.into(), topic2.into(), topic3.into(), topic4.into()],
                 removed:           false,
                 log_index:         None,
                 block_hash:        None,
@@ -130,7 +132,8 @@ fn recursive_parsing(
     tx_trace: &mut Vec<TransactionTrace>,
 ) {
     let scoped_trace = tx_trace.remove(0);
-    let mut last_stack = vec![];
+    let mut only_push_stack = Vec::new();
+
     let logs = vm
         .ops
         .into_iter()
@@ -145,8 +148,12 @@ fn recursive_parsing(
                 recursive_parsing(current_traces, sub, tx_trace)
             }
 
-            let res = try_parse(last_stack, instruction, addr);
-            last_stack = instruction.ex?
+            let res = try_parse(&mut only_push_stack, instruction, addr);
+            if let Some(ref ex) = instruction.ex {
+                only_push_stack.extend(ex.push);
+            }
+
+            res
         })
         .collect::<Vec<Log>>();
 
