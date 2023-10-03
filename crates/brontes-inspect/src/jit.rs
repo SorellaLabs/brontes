@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
-    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedTransfer},
+    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     tree::GasDetails,
     ToScaledRational, TOKEN_TO_DECIMALS,
 };
@@ -62,7 +62,7 @@ impl Inspector for JitInspector {
                     .flat_map(|tx| {
                         tree.inspect(tx, |node| {
                             node.subactions.iter().any(|action| {
-                                action.is_mint() || action.is_burn() || action.is_transfer()
+                                action.is_mint() || action.is_burn() || action.is_collect()
                             })
                         })
                     })
@@ -98,10 +98,10 @@ impl JitInspector {
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: GasDetails,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let (mints, burns, transfers): (
+        let (mints, burns, collect): (
             Vec<Option<NormalizedMint>>,
             Vec<Option<NormalizedBurn>>,
-            Vec<Option<NormalizedTransfer>>,
+            Vec<Option<NormalizedCollect>>,
         ) = searcher_actions
             .clone()
             .into_iter()
@@ -109,7 +109,7 @@ impl JitInspector {
             .map(|action| match action {
                 Actions::Burn(b) => (None, Some(b), None),
                 Actions::Mint(m) => (Some(m), None, None),
-                Actions::Transfer(t) => (None, None, Some(t)),
+                Actions::Collect(c) => (None, None, Some(c)),
 
                 _ => unreachable!(),
             })
@@ -118,24 +118,9 @@ impl JitInspector {
         let mints = mints.into_iter().flatten().collect::<Vec<_>>();
         let burns = burns.into_iter().flatten().collect::<Vec<_>>();
 
-        // so bad need to make better
-        let fee_collection_transfers = transfers
-            .into_iter()
-            .flatten()
-            .filter(|transfer| {
-                mints
-                    .iter()
-                    .find(|m| m.token.contains(&transfer.token) && m.to == transfer.from)
-                    .is_some()
-                    || burns
-                        .iter()
-                        .find(|b| b.token.contains(&transfer.token) && b.from == transfer.from)
-                        .is_some()
-            })
-            .collect::<Vec<_>>();
+        let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
 
-        let (jit_fee_pre, jit_fee_post) =
-            self.get_transfer_price(fee_collection_transfers, metadata.clone());
+        let (jit_fee_pre, jit_fee_post) = self.get_collect_amount(fee_collect, metadata.clone());
 
         let (mint_pre, mint_post) = self.get_total_pricing(
             mints.iter().map(|mint| (&mint.token, &mint.amount)),
@@ -189,12 +174,16 @@ impl JitInspector {
         (&price.eth_prices.0 * &bribe, &price.eth_prices.1 * bribe)
     }
 
-    fn get_transfer_price(
+    fn get_collect_amount(
         &self,
-        transfers: Vec<NormalizedTransfer>,
+        collect: Vec<NormalizedCollect>,
         metadata: Arc<Metadata>,
     ) -> (Rational, Rational) {
-        let (tokens, amount) = transfers.into_iter().map(|t| (t.token, t.amount)).unzip();
+        let (tokens, amount): (Vec<Vec<_>>, Vec<Vec<_>>) =
+            collect.into_iter().map(|t| (t.token, t.amount)).unzip();
+
+        let tokens = tokens.into_iter().flatten().collect::<Vec<_>>();
+        let amount = amount.into_iter().flatten().collect::<Vec<_>>();
 
         (
             self.get_liquidity_price(metadata.clone(), &tokens, &amount, |(p, _)| p),
