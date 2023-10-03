@@ -23,7 +23,7 @@ pub struct Poirot<'inspector, const N: usize, T: TracingProvider> {
     current_block:    u64,
     end_block:        Option<u64>,
     chain_tip:        u64,
-    max_tasks:        usize,
+    max_tasks:        u64,
     parser:           &'inspector Parser<T>,
     classifier:       &'inspector Classifier,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
@@ -36,13 +36,13 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
         init_block: u64,
         end_block: Option<u64>,
         chain_tip: u64,
-        max_tasks: usize,
+        max_tasks: u64,
         parser: &'inspector Parser<T>,
         database: &'inspector Database,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {
-        Self {
+        let mut poirot = Self {
             current_block: init_block,
             end_block,
             chain_tip,
@@ -52,12 +52,39 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
             classifier,
             inspectors,
             block_inspectors: FuturesUnordered::new(),
+        };
+
+        let max_blocks = match end_block {
+            Some(end_block) => end_block.min(init_block + max_tasks),
+            None => init_block + max_tasks,
+        };
+
+        for _ in init_block..max_blocks {
+            poirot.spawn_block_inspector();
         }
+        poirot
     }
 
     fn spawn_block_inspector(&mut self) {
+        let inspector = BlockInspector::new(
+            self.parser,
+            self.database,
+            self.classifier,
+            self.inspectors,
+            self.current_block,
+        );
+        self.current_block += 1;
+        self.block_inspectors.push(inspector);
+    }
+
+    fn start_block_inspector(&mut self) -> bool {
+        // If we've reached the max number of tasks, we shouldn't spawn a new one
+        if self.block_inspectors.len() > self.max_tasks as usize {
+            return false
+        }
+
         #[cfg(feature = "server")]
-        if self.current_block > self.chain_tip {
+        if self.current_block >= self.chain_tip {
             if let Ok(chain_tip) = self.parser.get_latest_block_number() {
                 self.chain_tip = chain_tip;
             } else {
@@ -67,7 +94,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
         }
 
         #[cfg(not(feature = "server"))]
-        if self.current_block > self.chain_tip {
+        if self.current_block >= self.chain_tip {
             if let Ok(chain_tip) = tokio::task::block_in_place(|| {
                 // This will now run the future to completion on the current thread
                 // without blocking the entire runtime
@@ -76,27 +103,10 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
                 self.chain_tip = chain_tip;
             } else {
                 // no new block ready
-                return
+                return false
             }
         }
 
-        let inspector = BlockInspector::new(
-            self.parser,
-            self.database,
-            self.classifier,
-            self.inspectors,
-            self.current_block,
-        );
-        self.block_inspectors.push(inspector);
-    }
-
-    fn start_block_inspector(&mut self) -> bool {
-        // If we've reached the max number of tasks, we shouldn't spawn a new one
-        if self.block_inspectors.len() >= self.max_tasks {
-            return false
-        }
-
-        self.current_block += 1;
         true
     }
 
@@ -125,14 +135,11 @@ impl<const N: usize, T: TracingProvider> Future for Poirot<'_, N, T> {
 
         let mut iters = 1024;
         loop {
-            // We could instantiate the max amount of block inspectors here, but
-            // I have decided to let the system breathe a little. You people should be
-            // compassionate to your machines. They have feelings too. Roko's
-            // basilisk. also see: https://www.youtube.com/watch?v=lhMWNhpjmpo
-
             if let Some(end_block) = self.end_block {
                 if self.current_block > end_block {
-                    return Poll::Ready(())
+                    if self.block_inspectors.is_empty() && self.current_block > end_block {
+                        return Poll::Ready(())
+                    }
                 }
             }
 
