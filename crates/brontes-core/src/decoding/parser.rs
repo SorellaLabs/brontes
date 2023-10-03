@@ -6,6 +6,7 @@ use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
     PoirotMetricEvents,
 };
+use ethers::prelude::Middleware;
 use futures::future::join_all;
 use reth_primitives::{Header, H256};
 use reth_provider::HeaderProvider;
@@ -17,7 +18,6 @@ use reth_rpc_types::{
     },
     Log, TransactionReceipt,
 };
-use reth_tracing::TracingClient;
 
 use super::*;
 use crate::errors::TraceParseError;
@@ -25,16 +25,16 @@ use crate::errors::TraceParseError;
 #[derive(Clone)]
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
-pub(crate) struct TraceParser {
+pub(crate) struct TraceParser<T: TracingProvider> {
     etherscan_client:      Client,
-    pub tracer:            Arc<TracingClient>,
+    pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl TraceParser {
+impl<T: TracingProvider> TraceParser<T> {
     pub fn new(
         etherscan_client: Client,
-        tracer: Arc<TracingClient>,
+        tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
         Self { etherscan_client, tracer, metrics_tx }
@@ -70,7 +70,6 @@ impl TraceParser {
 
         let parity_trace = self
             .tracer
-            .trace
             .replay_block_transactions(
                 BlockId::Number(BlockNumberOrTag::Number(block_num)),
                 trace_type,
@@ -100,7 +99,6 @@ impl TraceParser {
     ) -> (Option<Vec<TransactionReceipt>>, BlockStats) {
         let tx_receipts = self
             .tracer
-            .api
             .block_receipts(BlockNumberOrTag::Number(block_num))
             .await;
         let mut stats = BlockStats::new(block_num, None);
@@ -154,9 +152,8 @@ impl TraceParser {
             traces,
             stats,
             self.tracer
-                .trace
-                .provider()
                 .header_by_number(block_num)
+                .await
                 .unwrap()
                 .unwrap(),
         )
