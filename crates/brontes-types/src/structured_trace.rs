@@ -48,9 +48,14 @@ impl TraceActions for TransactionTrace {
 }
 
 #[derive(Debug, Clone)]
+pub struct TransactionTraceWithLogs {
+    pub trace: TransactionTrace,
+    pub logs:  Vec<Log>,
+}
+
+#[derive(Debug, Clone)]
 pub struct TxTrace {
-    pub trace:           Vec<TransactionTrace>,
-    pub logs:            Vec<Log>,
+    pub trace:           Vec<TransactionTraceWithLogs>,
     pub tx_hash:         H256,
     pub gas_used:        u64,
     pub effective_price: u64,
@@ -59,13 +64,12 @@ pub struct TxTrace {
 
 impl TxTrace {
     pub fn new(
-        trace: Vec<TransactionTrace>,
+        trace: Vec<TransactionTraceWithLogs>,
         tx_hash: H256,
-        logs: Vec<Log>,
         tx_index: u64,
         gas_used: u64,
         effective_price: u64,
     ) -> Self {
-        Self { trace, tx_hash, tx_index, logs, effective_price, gas_used }
+        Self { trace, tx_hash, tx_index, effective_price, gas_used }
     }
 }
