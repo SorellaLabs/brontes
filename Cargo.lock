@@ -1037,6 +1037,7 @@ dependencies = [
  "alloy-sol-types",
  "brontes-core",
  "brontes-database",
+ "brontes-macros",
  "brontes-types",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
  "dotenv",
@@ -1160,6 +1161,15 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "brontes-macros"
+version = "0.1.0"
+dependencies = [
+ "paste",
+ "quote",
+ "syn 2.0.37",
 ]
 
 [[package]]
