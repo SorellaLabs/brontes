@@ -1161,6 +1161,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "brontes-macros"
+version = "0.1.0"
+dependencies = [
+ "paste",
+ "quote",
+ "syn 2.0.37",
+]
+
+[[package]]
 name = "brontes-metrics"
 version = "0.1.0"
 dependencies = [
