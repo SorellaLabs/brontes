@@ -64,6 +64,7 @@ impl<T: TracingProvider> TraceParser<T> {
     ) -> (Option<Vec<TraceResultsWithTransactionHash>>, BlockStats) {
         let mut trace_type = HashSet::new();
         trace_type.insert(TraceType::Trace);
+        trace_type.insert(TraceType::VmTrace);
 
         let parity_trace = self
             .tracer
