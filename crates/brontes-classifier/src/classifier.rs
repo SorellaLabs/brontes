@@ -6,7 +6,7 @@ use brontes_types::{
     normalized_actions::{
         Actions, NormalizedBurn, NormalizedMint, NormalizedSwap, NormalizedTransfer,
     },
-    structured_trace::{TraceActions, TxTrace},
+    structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
 };
 use hex_literal::hex;
@@ -48,9 +48,8 @@ impl Classifier {
         let roots = traces
             .into_par_iter()
             .map(|mut trace| {
-                let logs = &trace.logs;
                 let address = trace.trace[0].get_from_addr();
-                let classification = self.classify_node(trace.trace.remove(0), logs, 0);
+                let classification = self.classify_node(trace.trace.remove(0), 0);
 
                 let node = Node {
                     inner: vec![],
@@ -76,10 +75,10 @@ impl Classifier {
 
                 for (index, trace) in trace.trace.into_iter().enumerate() {
                     root.gas_details.coinbase_transfer =
-                        self.get_coinbase_transfer(header.beneficiary, &trace.action);
+                        self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let address = trace.get_from_addr();
-                    let classification = self.classify_node(trace, logs, (index + 1) as u64);
+                    let classification = self.classify_node(trace, (index + 1) as u64);
                     let node = Node {
                         index: (index + 1) as u64,
                         inner: vec![],
@@ -164,7 +163,7 @@ impl Classifier {
         }
     }
 
-    fn classify_node(&self, trace: TransactionTrace, logs: &Vec<Log>, index: u64) -> Actions {
+    fn classify_node(&self, trace: TransactionTraceWithLogs, index: u64) -> Actions {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
@@ -180,10 +179,11 @@ impl Classifier {
                 return_bytes,
                 from_address,
                 target_address,
-                logs,
+                &trace.logs,
             )
         } else {
-            let rem = logs
+            let rem = trace
+                .logs
                 .iter()
                 .filter(|log| log.address == from_address)
                 .cloned()

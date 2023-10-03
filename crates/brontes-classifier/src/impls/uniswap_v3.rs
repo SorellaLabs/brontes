@@ -3,7 +3,7 @@ use brontes_core::{
     StaticReturnBindings,
     UniswapV3::{
         burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
-        swapReturn, UniswapV3Calls,
+        swapReturn, UniswapV3Calls, UniswapV3Events,
     },
 };
 use brontes_macros::action_impl;
