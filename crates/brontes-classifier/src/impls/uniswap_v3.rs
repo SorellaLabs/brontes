@@ -106,8 +106,8 @@ action_impl_calldata!(
     V3CollectImpl,
     Collect,
     collectCall,
-    UniswapV3,
-    |index, from_addr: H160, to_addr: H160, call_data: collectCall, return_data: collectReturn| {
+    UniswapV3Calls,
+    |index, from_addr: H160, to_addr: H160, _call_data: collectCall, return_data: collectReturn| {
         let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL.get(&*to_addr).copied().unwrap();
         NormalizedCollect {
             index,

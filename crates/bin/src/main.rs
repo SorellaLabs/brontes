@@ -3,6 +3,7 @@ use std::{
     env,
     error::Error,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
 };
 
 use brontes::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
@@ -13,6 +14,7 @@ use brontes_inspect::{atomic_backrun::AtomicBackrunInspector, Inspector};
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
 use metrics_process::Collector;
+use reth_tracing::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
@@ -51,7 +53,7 @@ fn main() {
     }
 }
 
-async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
+async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     // parse cli
     let opt = Opts::parse();
     let Commands::Brontes(command) = opt.sub;
@@ -71,9 +73,9 @@ async fn run(_handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let db = Database::default();
 
-    let tracer = TracingClient::new(Path::new(db_path), executor.runtime.handle().clone());
+    let tracer = TracingClient::new(Path::new(&db_path), handle.clone());
 
-    let parser = DParser::new(metrics_tx, &etherscan_key, &tracer);
+    let parser = DParser::new(metrics_tx, &etherscan_key, tracer);
     let classifier = Classifier::new(HashMap::default());
 
     let chain_tip = parser.get_latest_block_number().await.unwrap();
