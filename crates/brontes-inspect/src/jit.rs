@@ -11,7 +11,7 @@ use brontes_types::{
     ToScaledRational, TOKEN_TO_DECIMALS,
 };
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::{Address, H160, H256, U256};
 
 use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
@@ -31,35 +31,23 @@ impl Inspector for JitInspector {
             return vec![]
         }
 
-        // could tech be more than one victim but unlikely
-        let mut set = Vec::new();
-        let mut pairs = HashMap::new();
-        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
-
-        for root in iter {
-            match pairs.entry(root.head.address) {
-                Entry::Vacant(v) => {
-                    v.insert(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
+        let set = iter
+            .into_iter()
+            .tuple_windows::<(_, _, _)>()
+            .filter_map(|(t1, t2, t3)| {
+                if t1.head.address == t3.head.address {
+                    Some((
+                        t1.head.address,
+                        t1.tx_hash,
+                        t3.tx_hash,
+                        t1.head.data.get_too_address(),
+                        t2.tx_hash,
+                    ))
+                } else {
+                    None
                 }
-                Entry::Occupied(o) => {
-                    let entry: H256 = o.remove();
-                    if let Some(victims) = possible_victims.remove(&entry) {
-                        set.push((
-                            root.head.address,
-                            entry,
-                            root.tx_hash,
-                            root.head.data.get_too_address(),
-                            victims,
-                        ));
-                    }
-                }
-            }
-
-            possible_victims.iter_mut().for_each(|(_, v)| {
-                v.push(root.tx_hash);
-            });
-        }
+            })
+            .collect::<Vec<_>>();
 
         set.into_iter()
             .filter_map(|(eoa, tx0, tx1, mev_addr, victim)| {
@@ -68,22 +56,9 @@ impl Inspector for JitInspector {
                     tree.get_gas_details(tx1).cloned().unwrap(),
                 ];
 
-                let victim_gas = victim
-                    .iter()
-                    .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
-                    .collect::<Vec<_>>();
-
-                let victim_actions = victim
-                    .iter()
-                    .map(|victim| {
-                        tree.inspect(*victim, |node| {
-                            node.subactions.iter().any(|action| action.is_swap())
-                        })
-                        .into_iter()
-                        .flatten()
-                        .collect::<Vec<_>>()
-                    })
-                    .collect::<Vec<Vec<Actions>>>();
+                let victim_gas = tree.get_gas_details(victim).unwrap().clone();
+                let victim_actions = tree
+                    .inspect(victim, |node| node.subactions.iter().any(|action| action.is_swap()));
 
                 let searcher_actions = vec![tx0, tx1]
                     .into_iter()
@@ -122,15 +97,16 @@ impl JitInspector {
         searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,
         // victim
-        victim_txes: Vec<H256>,
+        victim_tx: H256,
         victim_actions: Vec<Vec<Actions>>,
-        victim_gas: Vec<GasDetails>,
+        victim_gas: GasDetails,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let (mints, burns, transfers): (
             Vec<Option<NormalizedMint>>,
             Vec<Option<NormalizedBurn>>,
             Vec<Option<NormalizedTransfer>>,
         ) = searcher_actions
+            .clone()
             .into_iter()
             .flatten()
             .map(|action| match action {
@@ -173,30 +149,47 @@ impl JitInspector {
             metadata.clone(),
         );
 
-        /* let classified = ClassifiedMev {
+        let (pre_bribe, post_bribe) = self.get_bribes(metadata.clone(), searcher_gas_details);
+
+        let pre_profit = jit_fee_pre + burn_pre - mint_pre - &pre_bribe;
+        let post_profit = jit_fee_post + burn_post - mint_post - &post_bribe;
+
+        let classified = ClassifiedMev {
             block_number: metadata.block_num,
             tx_hash: txes[0],
             eoa,
             mev_contract: mev_addr,
             mev_profit_collector: mev_addr,
             mev_type: MevType::Jit,
-            // TODO: Will this wrong, I'm going to leave you to fix this mess
+            submission_profit_usd: f64::rounding_from(pre_profit, RoundingMode::Nearest).0,
+            finalized_profit_usd: f64::rounding_from(post_profit, RoundingMode::Nearest).0,
+            submission_bribe_usd: f64::rounding_from(pre_bribe, RoundingMode::Nearest).0,
+            finalized_bribe_usd: f64::rounding_from(post_bribe, RoundingMode::Nearest).0,
+        };
 
-            // submission_profit_usd: f64::rounding_from(profit_pre, RoundingMode::Nearest).0,
-            // finalized_profit_usd: f64::rounding_from(profit_post, RoundingMode::Nearest).0,
-            // submission_bribe_usd: f64::rounding_from(
-            //   Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
-            //   RoundingMode::Nearest,
-            // )
-            // .0,
-            // finalized_bribe_usd: f64::rounding_from(
-            //    Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
-            //    RoundingMode::Nearest,
-            // )
-            // .0,
-        }; */
+        let jit_details = JitLiquidity {
+            swaps:            victim_actions.into_iter().flatten().collect::<Vec<_>>(),
+            jit_mints:        mints.into_iter().map(Actions::Mint).collect::<Vec<_>>(),
+            jit_burns:        burns.into_iter().map(Actions::Burn).collect::<Vec<_>>(),
+            mint_tx_hash:     txes[0],
+            swap_tx_hash:     victim_tx,
+            burn_tx_hash:     txes[1],
+            mint_gas_details: searcher_gas_details[0],
+            burn_gas_details: searcher_gas_details[1],
+            swap_gas_details: victim_gas,
+        };
 
-        None
+        Some((classified, Box::new(jit_details)))
+    }
+
+    fn get_bribes(&self, price: Arc<Metadata>, gas: [GasDetails; 2]) -> (Rational, Rational) {
+        let bribe: Rational = gas
+            .into_iter()
+            .map(|gas| gas.gas_paid())
+            .sum::<u64>()
+            .into();
+
+        (&price.eth_prices.0 * &bribe, &price.eth_prices.1 * bribe)
     }
 
     fn get_transfer_price(
