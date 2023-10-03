@@ -24,7 +24,6 @@ macro_rules! action_impl_all {
      $impl_type:ident,
      $call_type:ident,
      $exchange_mod:ident,
-     $event_struct:ident,
      $fn:expr
      ) => {
         #[derive(Debug, Default)]
@@ -47,12 +46,10 @@ macro_rules! action_impl_all {
                 let log_data = logs
                     .into_iter()
                     .filter_map(|log| {
-                        $event_struct::decode_log(log.topics.iter().map(|h| h.0), &log.data, true)
-                            .ok()
+                        $impl_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, true).ok()
                     })
                     .collect::<Vec<_>>()
-                    .first()
-                    .unwrap();
+                    .remove(0);
 
                 let return_data = $call_type::abi_decode_returns(&return_data, true).unwrap();
                 Actions::$impl_type($fn(index, address, call_data, return_data, log_data))
@@ -102,7 +99,6 @@ macro_rules! action_impl_log {
         $exchange:ident,
         $impl_type:ident,
         $call_type:ident,
-        $event_struct:ident,
         $fn:expr
         ) => {
         #[derive(Debug, Default)]
@@ -124,14 +120,44 @@ macro_rules! action_impl_log {
                 let log_data = logs
                     .into_iter()
                     .filter_map(|log| {
-                        $event_struct::decode_log(log.topics.iter().map(|h| h.0), &log.data, true)
-                            .ok()
+                        $impl_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, true).ok()
                     })
                     .collect::<Vec<_>>()
-                    .first()
-                    .unwrap();
+                    .remove(0);
                 let return_data = $call_type::abi_decode_returns(&return_data, true).unwrap();
                 Actions::$impl_type($fn(index, address, log_data, return_data))
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! action_impl_return {
+    // log
+    (
+        $exchange:ident,
+        $impl_type:ident,
+        $call_type:ident,
+        $fn:expr
+        ) => {
+        #[derive(Debug, Default)]
+        pub struct $exchange;
+
+        impl IntoAction for $exchange {
+            fn get_signature(&self) -> [u8; 4] {
+                $call_type::SELECTOR
+            }
+
+            fn decode_trace_data(
+                &self,
+                index: u64,
+                _data: StaticReturnBindings,
+                return_data: Bytes,
+                address: Address,
+                _logs: &Vec<Log>,
+            ) -> Actions {
+                let return_data = $call_type::abi_decode_returns(&return_data, true).unwrap();
+                Actions::$impl_type($fn(index, address, return_data))
             }
         }
     };
@@ -146,7 +172,6 @@ macro_rules! action_impl_all_no_return {
      $impl_type:ident,
      $call_type:ident,
      $exchange_mod:ident,
-     $event_struct:ident,
      $fn:expr
      ) => {
         #[derive(Debug, Default)]
@@ -169,12 +194,10 @@ macro_rules! action_impl_all_no_return {
                 let log_data = logs
                     .into_iter()
                     .filter_map(|log| {
-                        $event_struct::decode_log(log.topics.iter().map(|h| h.0), &log.data, true)
-                            .ok()
+                        $impl_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, true).ok()
                     })
                     .collect::<Vec<_>>()
-                    .first()
-                    .unwrap();
+                    .remove(0);
 
                 Actions::$impl_type($fn(index, address, call_data, log_data))
             }
@@ -222,7 +245,6 @@ macro_rules! action_impl_log_no_return {
         $exchange:ident,
         $impl_type:ident,
         $call_type:ident,
-        $event_struct:ident,
         $fn:expr
         ) => {
         #[derive(Debug, Default)]
@@ -236,20 +258,18 @@ macro_rules! action_impl_log_no_return {
             fn decode_trace_data(
                 &self,
                 index: u64,
-                data: StaticReturnBindings,
-                return_data: Bytes,
+                _data: StaticReturnBindings,
+                _return_data: Bytes,
                 address: Address,
                 logs: &Vec<Log>,
             ) -> Actions {
                 let log_data = logs
                     .into_iter()
                     .filter_map(|log| {
-                        $event_struct::decode_log(log.topics.iter().map(|h| h.0), &log.data, true)
-                            .ok()
+                        $impl_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, true).ok()
                     })
                     .collect::<Vec<_>>()
-                    .first()
-                    .unwrap();
+                    .remove(0);
                 Actions::$impl_type($fn(index, address, log_data))
             }
         }
