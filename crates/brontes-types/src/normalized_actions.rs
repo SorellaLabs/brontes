@@ -96,6 +96,15 @@ impl Actions {
 }
 
 #[derive(Debug, Serialize, Clone, Row)]
+pub struct NormalizedFlashLoan {
+    pub index:    u64,
+    pub from:     Address,
+    pub pool:     Address,
+    pub token:    Address,
+    pub fee_paid: Address,
+}
+
+#[derive(Debug, Serialize, Clone, Row)]
 pub struct NormalizedSwap {
     pub index:      u64,
     pub from:       Address,
