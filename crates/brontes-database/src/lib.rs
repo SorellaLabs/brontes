@@ -1,14 +1,7 @@
-use std::{
-    collections::{HashMap, HashSet},
-    future::Future,
-    pin::Pin,
-};
+use std::collections::{HashMap, HashSet};
 
-use brontes_metrics::PoirotMetricEvents;
-use database::Database;
 use malachite::Rational;
 use reth_primitives::{Address, TxHash, U256};
-use tokio::sync::mpsc::UnboundedSender;
 
 pub mod database;
 
