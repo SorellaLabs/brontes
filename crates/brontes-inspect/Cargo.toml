@@ -34,3 +34,6 @@ strum = { version = "0.25.0", features = ["derive"] }
 lazy_static = "1.4.0"
 # numbers
 malachite.workspace = true
+
+[features]
+test_run = ["brontes-database/test_run"]
