@@ -91,7 +91,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let metrics_listener =
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
-    let dummy_inspector = Box::new(AtomicBackrunInspector {}) as Box<dyn Inspector>;
+    let dummy_inspector = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
     let inspectors = &[&dummy_inspector];
 
     let db = Database::default();
