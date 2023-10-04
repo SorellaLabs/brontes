@@ -1123,7 +1123,6 @@ dependencies = [
  "brontes-core",
  "brontes-metrics",
  "brontes-types",
- "cfg-if",
  "dotenv",
  "futures",
  "hyper",
