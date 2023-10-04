@@ -12,6 +12,9 @@ use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(feature = "test_run")]
+const TEST_CONFIG: &str = "../../test_config.toml";
+
 const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
@@ -34,6 +37,16 @@ struct ProtocolAbis {
     address:  String,
 }
 
+#[cfg(feature = "test_run")]
+#[derive(Debug, Serialize, Deserialize)]
+struct TestConfig {
+    start_block:        u64,
+    end_block:          u64,
+    reth_database_path: String,
+    clickhouse_url:     String,
+    clickhouse_port:    u64,
+}
+
 fn main() {
     dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
@@ -47,6 +60,13 @@ fn main() {
 
 async fn run() {
     let clickhouse_client = build_db();
+    #[cfg(feature = "test_run")]
+    let addresses = {
+        let config = toml::from_str(&std::fs::read_to_string(TEST_CONFIG).unwrap());
+        Some(get_all_touched_addresses(config))
+    };
+    #[cfg(not(feature = "test_run"))]
+    let addresses = None;
     let etherscan_client = build_etherscan();
 
     let protocol_abis = query_db::<ProtocolAbis>(&clickhouse_client, PROTOCOL_ABIS).await;
@@ -65,6 +85,34 @@ async fn run() {
     )
     .await;
     address_abi_mapping(protocol_address_map)
+}
+
+// #[cfg(feature = "test_run")]
+async fn get_all_touched_addresses(config: TestConfig) -> Vec<Address> {
+    let tracer =
+        TracingClient::new(Path::new(config.reth_database_path), tokio::runtime::Handle::current());
+
+    let mut trace_type = HashSet::new();
+    trace_type.insert(TraceType::Trace);
+    trace_type.insert(TraceType::VmTrace);
+
+    join_all(
+        (config.start_block..config.end_block)
+            .into_iter()
+            .map(|block| async {
+                let parity_trace = self
+                    .tracer
+                    .replay_block_transactions(
+                        BlockId::Number(BlockNumberOrTag::Number(block_num)),
+                        trace_type,
+                    )
+                    .await
+                    .unwrap()
+                    .unwrap();
+                // TODO
+            }),
+    )
+    .await
 }
 
 //
