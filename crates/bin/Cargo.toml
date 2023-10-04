@@ -70,4 +70,4 @@ cfg-if = "1.0.0"
 
 [features]
 server = ["brontes-types/server", "brontes-classifier/server"]
-test_run = ["brontes-core/test_run"]
+test_run = ["brontes-core/test_run", "brontes-database/test_run"]
