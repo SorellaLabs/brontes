@@ -31,3 +31,6 @@ tokio.workspace = true
 
 # misc
 dotenv.workspace = true
+
+[features]
+test_run = []
