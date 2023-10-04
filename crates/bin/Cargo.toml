@@ -15,6 +15,7 @@ brontes-classifier.workspace = true
 brontes-database.workspace = true
 brontes-metrics.workspace = true
 malachite.workspace = true
+toml = "0.8.2"
 
 # Async
 tokio = { workspace = true, features = ["full", "tracing"] }
@@ -68,3 +69,4 @@ rayon.workspace = true
 
 [features]
 server = ["brontes-types/server", "brontes-classifier/server"]
+test_run = ["brontes-core/test_run"]

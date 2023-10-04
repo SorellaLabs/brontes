@@ -1,0 +1,6 @@
+[test_config]
+start_block = 0
+end_block = 0
+reth_database_path = ""
+clickhouse_url = ""
+clickhouse_port = 6969
