@@ -42,14 +42,11 @@ struct ProtocolAbis {
     address:  String,
 }
 
-// #[cfg(feature = "test_run")]
+#[cfg(feature = "test_run")]
 #[derive(Debug, Serialize, Deserialize)]
 struct TestConfig {
-    start_block:        u64,
-    end_block:          u64,
-    reth_database_path: String,
-    clickhouse_url:     String,
-    clickhouse_port:    u64,
+    start_block: u64,
+    end_block:   u64,
 }
 
 fn main() {
