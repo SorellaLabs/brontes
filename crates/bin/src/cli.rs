@@ -25,7 +25,7 @@ pub struct Cli {
     pub end_block:    Option<u64>,
     /// Max Block Queue size
     #[arg(long, short, default_value = "1000")]
-    pub max_tasks:    usize,
+    pub max_tasks:    u64,
     /// Flush Tardis data loaded into clickhouse upon termination
     #[arg(long, short, default_value = "false")]
     pub flush_tardis: bool,
