@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     env,
     fs::{self, File},
     io::{BufWriter, Write},
@@ -8,7 +9,11 @@ use std::{
 
 use clickhouse::{Client, Row};
 use ethers_core::types::{Chain, H160};
+use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
+use reth_primitives::{Address, BlockId, BlockNumberOrTag};
+use reth_rpc_types::trace::parity::TraceType;
+use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -37,7 +42,7 @@ struct ProtocolAbis {
     address:  String,
 }
 
-#[cfg(feature = "test_run")]
+// #[cfg(feature = "test_run")]
 #[derive(Debug, Serialize, Deserialize)]
 struct TestConfig {
     start_block:        u64,
@@ -66,7 +71,7 @@ async fn run() {
         Some(get_all_touched_addresses(config))
     };
     #[cfg(not(feature = "test_run"))]
-    let addresses = None;
+    let addresses: Option<Vec<Address>> = None;
     let etherscan_client = build_etherscan();
 
     let protocol_abis = query_db::<ProtocolAbis>(&clickhouse_client, PROTOCOL_ABIS).await;
@@ -87,10 +92,12 @@ async fn run() {
     address_abi_mapping(protocol_address_map)
 }
 
-// #[cfg(feature = "test_run")]
+#[cfg(feature = "test_run")]
 async fn get_all_touched_addresses(config: TestConfig) -> Vec<Address> {
-    let tracer =
-        TracingClient::new(Path::new(config.reth_database_path), tokio::runtime::Handle::current());
+    let tracer = TracingClient::new(
+        Path::new(&config.reth_database_path),
+        tokio::runtime::Handle::current(),
+    );
 
     let mut trace_type = HashSet::new();
     trace_type.insert(TraceType::Trace);
@@ -99,20 +106,36 @@ async fn get_all_touched_addresses(config: TestConfig) -> Vec<Address> {
     join_all(
         (config.start_block..config.end_block)
             .into_iter()
-            .map(|block| async {
-                let parity_trace = self
-                    .tracer
+            .map(|block_num| {
+                tracer
+                    .trace
                     .replay_block_transactions(
                         BlockId::Number(BlockNumberOrTag::Number(block_num)),
-                        trace_type,
+                        trace_type.clone(),
                     )
-                    .await
-                    .unwrap()
-                    .unwrap();
-                // TODO
+                    .map(|trace| {
+                        trace.unwrap().unwrap().into_iter().flat_map(|trace| {
+                            trace
+                                .full_trace
+                                .trace
+                                .into_iter()
+                                .filter_map(|call_frame| match call_frame.action {
+                                    reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
+                                    reth_rpc_types::trace::parity::Action::Create(_)
+                                    | reth_rpc_types::trace::parity::Action::Reward(_) => None,
+                                    reth_rpc_types::trace::parity::Action::Selfdestruct(s) => {
+                                        Some(s.address)
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                        })
+                    })
             }),
     )
     .await
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
 }
 
 //
