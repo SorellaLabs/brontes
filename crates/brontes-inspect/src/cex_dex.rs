@@ -5,13 +5,9 @@ use brontes_types::{
     classified_mev::{CexDex, MevType, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, TimeTree},
-    ToScaledRational, TOKEN_TO_DECIMALS,
+    ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
 };
-use malachite::{
-    num::{basic::traits::Zero, conversion::traits::RoundingFrom},
-    rounding_modes::RoundingMode,
-    Rational,
-};
+use malachite::{num::basic::traits::Zero, Rational};
 use rayon::{
     iter::{IntoParallelIterator, ParallelIterator},
     prelude::IntoParallelRefIterator,
@@ -19,9 +15,12 @@ use rayon::{
 use reth_primitives::{Address, H256};
 use tracing::error;
 
-use crate::{ClassifiedMev, Inspector};
+use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
-pub struct CexDexInspector;
+#[derive(Default)]
+pub struct CexDexInspector {
+    inner: SharedInspectorUtils,
+}
 
 impl CexDexInspector {
     fn process_swap(
@@ -33,9 +32,10 @@ impl CexDexInspector {
         gas_details: &GasDetails,
         swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.calculate_swap_deltas(&swaps);
+        let deltas = self.inner.calculate_swap_deltas(&swaps);
 
         let mev_profit_collector = self
+            .inner
             .get_best_usd_delta(
                 deltas.clone(),
                 metadata.clone(),
@@ -58,6 +58,7 @@ impl CexDexInspector {
 
         let profit_pre = self.arb_gas(pre, gas_details, &metadata.eth_prices.0)?;
         let profit_post = self.arb_gas(post, gas_details, &metadata.eth_prices.1)?;
+        let (gas_sub, gas_finalized) = metadata.get_gas_price_usd(gas_details.gas_paid());
 
         let classified = ClassifiedMev {
             mev_profit_collector,
@@ -66,29 +67,16 @@ impl CexDexInspector {
             eoa,
             block_number: metadata.block_num,
             mev_type: MevType::CexDex,
-            submission_profit_usd: f64::rounding_from(profit_pre, RoundingMode::Nearest).0,
-            finalized_profit_usd: f64::rounding_from(profit_post, RoundingMode::Nearest).0,
-            submission_bribe_usd: f64::rounding_from(
-                Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
-                RoundingMode::Nearest,
-            )
-            .0,
-            finalized_bribe_usd: f64::rounding_from(
-                Rational::from(gas_details.gas_paid()) * &metadata.eth_prices.1,
-                RoundingMode::Nearest,
-            )
-            .0,
+            submission_profit_usd: profit_pre.to_float(),
+            finalized_profit_usd: profit_post.to_float(),
+            submission_bribe_usd: gas_sub.to_float(),
+            finalized_bribe_usd: gas_finalized.to_float(),
         };
 
         let (dex_prices, cex_prices) = swap_data
             .par_iter()
             .filter_map(|swap| self.rational_dex_price(swap, &metadata))
-            .map(|(dex_price, _, cex1)| {
-                (
-                    f64::rounding_from(dex_price, RoundingMode::Nearest).0,
-                    f64::rounding_from(cex1, RoundingMode::Nearest).0,
-                )
-            })
+            .map(|(dex_price, _, cex1)| (dex_price.to_float(), cex1.to_float()))
             .unzip();
 
         let cex_dex = CexDex {

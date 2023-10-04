@@ -8,14 +8,18 @@ use brontes_types::{
     classified_mev::{MevType, Sandwich, SpecificMev},
     normalized_actions::Actions,
     tree::{GasDetails, Node, TimeTree},
+    ToFloatNearest,
 };
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::{Address, H256};
 use tracing::error;
 
-use crate::{ClassifiedMev, Inspector};
+use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
-pub struct SandwichInspector;
+#[derive(Default)]
+pub struct SandwichInspector {
+    inner: SharedInspectorUtils,
+}
 
 #[async_trait::async_trait]
 impl Inspector for SandwichInspector {
@@ -122,16 +126,19 @@ impl SandwichInspector {
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.calculate_swap_deltas(&searcher_actions);
+        let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
 
-        let appearance_usd_deltas = self.get_best_usd_delta(
+        let appearance_usd_deltas = self.inner.get_best_usd_delta(
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
         );
 
-        let finalized_usd_deltas =
-            self.get_best_usd_delta(deltas, metadata.clone(), Box::new(|(_, finalized)| finalized));
+        let finalized_usd_deltas = self.inner.get_best_usd_delta(
+            deltas,
+            metadata.clone(),
+            Box::new(|(_, finalized)| finalized),
+        );
 
         let (finalized, appearance) = (finalized_usd_deltas?, appearance_usd_deltas?);
 
@@ -145,10 +152,8 @@ impl SandwichInspector {
             .map(|g| g.gas_paid())
             .sum::<u64>();
 
-        let (gas_used_usd_appearance, gas_used_usd_finalized) = (
-            Rational::from(gas_used) * &metadata.eth_prices.0,
-            Rational::from(gas_used) * &metadata.eth_prices.1,
-        );
+        let (gas_used_usd_appearance, gas_used_usd_finalized) =
+            metadata.get_gas_price_usd(gas_used);
 
         let sandwich = Sandwich {
             front_run:             txes[0],
@@ -169,23 +174,10 @@ impl SandwichInspector {
             mev_contract: mev_addr,
             block_number: metadata.block_num,
             mev_type: MevType::Sandwich,
-            submission_profit_usd: f64::rounding_from(
-                appearance.1 - &gas_used_usd_appearance,
-                RoundingMode::Nearest,
-            )
-            .0,
-            submission_bribe_usd: f64::rounding_from(
-                gas_used_usd_appearance,
-                RoundingMode::Nearest,
-            )
-            .0,
-            finalized_profit_usd: f64::rounding_from(
-                finalized.1 - &gas_used_usd_finalized,
-                RoundingMode::Nearest,
-            )
-            .0,
-            finalized_bribe_usd: f64::rounding_from(gas_used_usd_finalized, RoundingMode::Nearest)
-                .0,
+            submission_profit_usd: (appearance.1 - &gas_used_usd_appearance).to_float(),
+            submission_bribe_usd: gas_used_usd_appearance.to_float(),
+            finalized_profit_usd: (finalized.1 - &gas_used_usd_finalized).to_float(),
+            finalized_bribe_usd: gas_used_usd_finalized.to_float(),
         };
 
         Some((classified_mev, Box::new(sandwich)))

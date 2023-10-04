@@ -43,3 +43,11 @@ impl Metadata {
         }
     }
 }
+
+impl Metadata {
+    pub fn get_gas_price_usd(&self, gas_used: u64) -> (Rational, Rational) {
+        let gas_used_rational = Rational::from(gas_used);
+
+        (&self.eth_prices.0 * &gas_used_rational, &self.eth_prices.1 * gas_used_rational)
+    }
+}
