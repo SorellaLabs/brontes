@@ -27,6 +27,8 @@ phf = { version = "0.11", default-features = false }
 # macro
 brontes-macros = { path = "../brontes-macros/" }
 
+itertools = "0.11.0"
+
 [features]
 server = []
 test_run = ["brontes-database/test_run"]
