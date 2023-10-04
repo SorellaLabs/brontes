@@ -17,9 +17,6 @@ use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[cfg(feature = "test_run")]
-const TEST_CONFIG: &str = "../../test_config.toml";
-
 const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
@@ -42,13 +39,6 @@ struct ProtocolAbis {
     address:  String,
 }
 
-#[cfg(feature = "test_run")]
-#[derive(Debug, Serialize, Deserialize)]
-struct TestConfig {
-    start_block: u64,
-    end_block:   u64,
-}
-
 fn main() {
     dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
@@ -64,13 +54,19 @@ async fn run() {
     let clickhouse_client = build_db();
     #[cfg(feature = "test_run")]
     let addresses = {
-        let config = toml::from_str(&std::fs::read_to_string(TEST_CONFIG).unwrap());
-        Some(get_all_touched_addresses(config))
+        let start_block = env::var("START_BLOCK").expect("START_BLOCK not found in env");
+        let end_block = env::var("END_BLOCK").expect("END_BLOCK not found in env");
+
+        Some(get_all_touched_addresses(
+            u64::from_str_radix(&start_block, 10),
+            u64::from_str_radix(&end_block, 10),
+        ))
     };
     #[cfg(not(feature = "test_run"))]
     let addresses: Option<Vec<Address>> = None;
-    let etherscan_client = build_etherscan();
+    // TODO: once we normalize db. we just toss in the possible addresses
 
+    let etherscan_client = build_etherscan();
     let protocol_abis = query_db::<ProtocolAbis>(&clickhouse_client, PROTOCOL_ABIS).await;
 
     write_all_abis(etherscan_client, protocol_abis.clone()).await;
@@ -90,7 +86,7 @@ async fn run() {
 }
 
 #[cfg(feature = "test_run")]
-async fn get_all_touched_addresses(config: TestConfig) -> Vec<Address> {
+async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> Vec<Address> {
     let tracer = TracingClient::new(
         Path::new(&config.reth_database_path),
         tokio::runtime::Handle::current(),
