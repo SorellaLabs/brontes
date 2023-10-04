@@ -22,16 +22,6 @@ mod cli;
 
 use cli::{print_banner, Commands, Opts};
 
-#[cfg(feature = "test_run")]
-const TEST_CONFIG: &str = "../../test_config.toml";
-
-#[cfg(feature = "test_run")]
-#[derive(Debug, Serialize, Deserialize)]
-struct TestConfig {
-    start_block: u64,
-    end_block:   u64,
-}
-
 fn main() {
     print_banner();
 
@@ -68,13 +58,27 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let opt = Opts::parse();
     let Commands::Brontes(command) = opt.sub;
 
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "test_run")] {
-            let config: TestConfig = toml::from_str(&std::fs::read_to_string(TEST_CONFIG).unwrap());
-            assert_eq!(config.start_block, command.start_block, "Test mode start needs to be same as specified in config to work properly");
-            assert!(command.end_block.is_some(), "running in test mode. need end block")
-            assert_eq!(config.end_block.unwrap(), command.end_block, "Test mode end needs to be the same as specified in config to work properly");
-        }
+    #[cfg(feature = "test_run")]
+    {
+        let start_block = u64::from_str_radix(
+            &env::var("START_BLOCK").expect("START_BLOCK not found in env"),
+            10,
+        )
+        .expect("expected number for start block");
+
+        let end_block =
+            u64::from_str_radix(&env::var("END_BLOCK").expect("END_BLOCK not found in env"), 10)
+                .expect("expected number for end block");
+
+        assert_eq!(
+            start_block, command.start_block,
+            "Test mode start needs to be same as specified in config to work properly"
+        );
+        assert!(command.end_block.is_some(), "running in test mode. need end block");
+        assert_eq!(
+            end_block, command.end_block,
+            "Test mode end needs to be the same as specified in config to work properly"
+        );
     }
 
     initalize_prometheus().await;
