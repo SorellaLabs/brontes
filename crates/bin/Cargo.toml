@@ -66,6 +66,7 @@ indoc = "2"
 metrics-process.workspace = true
 
 rayon.workspace = true
+cfg-if = "1.0.0"
 
 [features]
 server = ["brontes-types/server", "brontes-classifier/server"]
