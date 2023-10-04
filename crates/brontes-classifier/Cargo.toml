@@ -29,6 +29,7 @@ brontes-macros = { path = "../brontes-macros/" }
 
 [features]
 server = []
+test_run = ["brontes-database/test_run"]
 
 [build-dependencies]
 tokio.workspace = true
