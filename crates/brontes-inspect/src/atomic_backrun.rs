@@ -5,15 +5,18 @@ use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::Actions,
     tree::{GasDetails, TimeTree},
+    ToFloatNearest,
 };
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, H256};
 use tracing::error;
 
-use crate::{ClassifiedMev, Inspector, SpecificMev};
+use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
-pub struct AtomicBackrunInspector;
+#[derive(Default)]
+pub struct AtomicBackrunInspector {
+    inner: SharedInspectorUtils,
+}
 
 impl AtomicBackrunInspector {
     fn process_swaps(
@@ -25,15 +28,15 @@ impl AtomicBackrunInspector {
         gas_details: GasDetails,
         swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.calculate_swap_deltas(&swaps);
+        let deltas = self.inner.calculate_swap_deltas(&swaps);
 
-        let appearance = self.get_best_usd_delta(
+        let appearance = self.inner.get_best_usd_delta(
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
         )?;
 
-        let finalized = self.get_best_usd_delta(
+        let finalized = self.inner.get_best_usd_delta(
             deltas,
             metadata.clone(),
             Box::new(|(_, finalized)| finalized),
@@ -45,10 +48,8 @@ impl AtomicBackrunInspector {
         }
 
         let gas_used = gas_details.gas_paid();
-        let (gas_used_usd_appearance, gas_used_usd_finalized) = (
-            Rational::from(gas_used) * &metadata.eth_prices.0,
-            Rational::from(gas_used) * &metadata.eth_prices.1,
-        );
+        let (gas_used_usd_appearance, gas_used_usd_finalized) =
+            metadata.get_gas_price_usd(gas_used);
 
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,
@@ -57,23 +58,10 @@ impl AtomicBackrunInspector {
             block_number: metadata.block_num,
             mev_profit_collector: finalized.0,
             eoa,
-            submission_bribe_usd: f64::rounding_from(
-                &gas_used_usd_appearance,
-                RoundingMode::Nearest,
-            )
-            .0,
-            finalized_bribe_usd: f64::rounding_from(&gas_used_usd_finalized, RoundingMode::Nearest)
-                .0,
-            finalized_profit_usd: f64::rounding_from(
-                finalized.1 - gas_used_usd_finalized,
-                RoundingMode::Nearest,
-            )
-            .0,
-            submission_profit_usd: f64::rounding_from(
-                appearance.1 - gas_used_usd_appearance,
-                RoundingMode::Nearest,
-            )
-            .0,
+            submission_bribe_usd: gas_used_usd_appearance.clone().to_float(),
+            finalized_bribe_usd: gas_used_usd_finalized.clone().to_float(),
+            finalized_profit_usd: (finalized.1 - gas_used_usd_finalized).to_float(),
+            submission_profit_usd: (appearance.1 - gas_used_usd_appearance).to_float(),
         };
         let backrun = Box::new(AtomicBackrun {
             tx_hash,

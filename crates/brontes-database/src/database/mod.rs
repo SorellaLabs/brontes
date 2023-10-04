@@ -18,6 +18,11 @@ use self::types::{DBTokenPrices, RelayInfo};
 use super::Metadata;
 use crate::database::const_sql::*;
 
+#[cfg(not(feature = "test_run"))]
+const INSERT_DATABASE: &'static str = "mev";
+#[cfg(feature = "test_run")]
+const INSERT_DATABASE: &'static str = "mev_test";
+
 pub struct Database {
     client: ClickhouseClient,
 }
@@ -61,10 +66,9 @@ impl Database {
         block_details: MevBlock,
         mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
-        // insert block
         if let Err(e) = self
             .client
-            .insert_one(block_details, "mev.mev_blocks")
+            .insert_one(block_details, &format!("{INSERT_DATABASE}.mev_blocks)"))
             .await
         {
             error!(?e, "failed to insert block details");
@@ -73,12 +77,15 @@ impl Database {
         join_all(mev_details.into_iter().map(|(classified, specific)| async {
             if let Err(e) = self
                 .client
-                .insert_one(classified, "mev.classified_mev")
+                .insert_one(classified, &format!("{INSERT_DATABASE}.classified_mev)"))
                 .await
             {
                 error!(?e, "failed to insert classified mev");
             }
-            let table = format!("mev.{}", serde_json::to_string(&specific.mev_type()).unwrap());
+            let table = format!(
+                "{INSERT_DATABASE}.{}",
+                serde_json::to_string(&specific.mev_type()).unwrap()
+            );
             if let Err(e) = self.client.insert_one(specific, &table).await {
                 error!(?e, "failed to insert specific mev");
             }
@@ -301,7 +308,7 @@ mod tests {
         let expected_metadata = expected_metadata(cex_prices);
 
         let metadata = db
-            .get_metadata(BLOCK_NUMBER, H256::from_str(BLOCK_HASH).unwrap().into())
+            .get_metadata(BLOCK_NUMBER)
             .await;
 
         assert_eq!(metadata.block_num, expected_metadata.block_num);

@@ -58,6 +58,29 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let opt = Opts::parse();
     let Commands::Brontes(command) = opt.sub;
 
+    #[cfg(feature = "test_run")]
+    {
+        let start_block = u64::from_str_radix(
+            &env::var("START_BLOCK").expect("START_BLOCK not found in env"),
+            10,
+        )
+        .expect("expected number for start block");
+
+        let end_block =
+            u64::from_str_radix(&env::var("END_BLOCK").expect("END_BLOCK not found in env"), 10)
+                .expect("expected number for end block");
+
+        assert_eq!(
+            start_block, command.start_block,
+            "Test mode start needs to be same as specified in config to work properly"
+        );
+        assert!(command.end_block.is_some(), "running in test mode. need end block");
+        assert_eq!(
+            end_block, command.end_block,
+            "Test mode end needs to be the same as specified in config to work properly"
+        );
+    }
+
     initalize_prometheus().await;
 
     // Fetch required environment variables.
@@ -68,7 +91,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let metrics_listener =
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
-    let dummy_inspector = Box::new(AtomicBackrunInspector {}) as Box<dyn Inspector>;
+    let dummy_inspector = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
     let inspectors = &[&dummy_inspector];
 
     let db = Database::default();
