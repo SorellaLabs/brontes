@@ -113,10 +113,7 @@ impl CexDexInspector {
                 let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1);
                 let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2);
 
-                (
-                    Some(profit1).filter(|p| Rational::ZERO.lt(p)),
-                    Some(profit2).filter(|p| Rational::ZERO.lt(p)),
-                )
+                (profit1.filter(|p| Rational::ZERO.lt(p)), profit2.filter(|p| Rational::ZERO.lt(p)))
             })
             .unwrap_or((None, None))
     }
@@ -126,12 +123,17 @@ impl CexDexInspector {
         swap: &NormalizedSwap,
         dex_price: &Rational,
         cex_price: &Rational,
-    ) -> Rational {
+    ) -> Option<Rational> {
         // Calculate the price differences between DEX and CEX
         let delta_price = cex_price - dex_price;
 
         // Calculate the potential profit
-        delta_price * swap.amount_in.to_scaled_rational(18)
+        let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
+            error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            return None
+        };
+
+        Some(delta_price * swap.amount_in.to_scaled_rational(*decimals_in))
     }
 
     pub fn rational_dex_price(
@@ -155,12 +157,13 @@ impl CexDexInspector {
         let adjusted_in = swap.amount_in.to_scaled_rational(*decimals_in);
         let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
 
-        let centralized_prices = metadata.token_prices.get(&swap.token_out)?;
+        let centralized_prices_out = metadata.token_prices.get(&swap.token_out)?;
+        let centralized_prices_in = metadata.token_prices.get(&swap.token_in)?;
 
         Some((
             (adjusted_out / adjusted_in),
-            centralized_prices.0.clone(),
-            centralized_prices.1.clone(),
+            &centralized_prices_out.0 / &centralized_prices_in.0,
+            &centralized_prices_out.1 / &centralized_prices_in.1,
         ))
     }
 }
