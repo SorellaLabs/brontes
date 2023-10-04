@@ -57,9 +57,7 @@ fn recursive_parsing(
                 recursive_parsing(current_traces, sub, tx_trace, logs)
             }
 
-            let res = try_parse(instruction, addr, logs);
-
-            res
+            try_parse(instruction, addr, logs)
         })
         .collect::<Vec<Log>>();
 
