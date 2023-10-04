@@ -1,14 +1,7 @@
-use std::{
-    collections::{HashMap, HashSet},
-    future::Future,
-    pin::Pin,
-};
+use std::collections::{HashMap, HashSet};
 
-use brontes_metrics::PoirotMetricEvents;
-use database::Database;
 use malachite::Rational;
 use reth_primitives::{Address, TxHash, U256};
-use tokio::sync::mpsc::UnboundedSender;
 
 pub mod database;
 
@@ -48,5 +41,13 @@ impl Metadata {
             proposer_mev_reward,
             mempool_flow,
         }
+    }
+}
+
+impl Metadata {
+    pub fn get_gas_price_usd(&self, gas_used: u64) -> (Rational, Rational) {
+        let gas_used_rational = Rational::from(gas_used);
+
+        (&self.eth_prices.0 * &gas_used_rational, &self.eth_prices.1 * gas_used_rational)
     }
 }

@@ -11,7 +11,7 @@ use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     structured_trace::TxTrace,
 };
-use futures::{Future, FutureExt, StreamExt};
+use futures::{join, Future, FutureExt, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
 
@@ -58,7 +58,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let parser_fut = self.parser.execute(self.block_number);
         let labeller_fut = self.database.get_metadata(self.block_number);
 
-        self.classifier_future = Some(Box::pin(async { (parser_fut.await, labeller_fut.await) }));
+        self.classifier_future = Some(Box::pin(async { join!(parser_fut, labeller_fut) }));
     }
 
     fn on_inspectors_finish(

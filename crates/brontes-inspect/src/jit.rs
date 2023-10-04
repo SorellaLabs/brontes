@@ -5,14 +5,15 @@ use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     tree::GasDetails,
-    ToScaledRational, TOKEN_TO_DECIMALS,
+    ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
 };
 use itertools::Itertools;
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
+use malachite::Rational;
 use reth_primitives::{Address, H160, H256, U256};
 
 use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
 
+#[derive(Default)]
 pub struct JitInspector;
 
 #[async_trait]
@@ -143,10 +144,10 @@ impl JitInspector {
             mev_contract: mev_addr,
             mev_profit_collector: mev_addr,
             mev_type: MevType::Jit,
-            submission_profit_usd: f64::rounding_from(pre_profit, RoundingMode::Nearest).0,
-            finalized_profit_usd: f64::rounding_from(post_profit, RoundingMode::Nearest).0,
-            submission_bribe_usd: f64::rounding_from(pre_bribe, RoundingMode::Nearest).0,
-            finalized_bribe_usd: f64::rounding_from(post_bribe, RoundingMode::Nearest).0,
+            submission_profit_usd: pre_profit.to_float(),
+            finalized_profit_usd: post_profit.to_float(),
+            submission_bribe_usd: pre_bribe.to_float(),
+            finalized_bribe_usd: post_bribe.to_float(),
         };
 
         let jit_details = JitLiquidity {
@@ -165,13 +166,9 @@ impl JitInspector {
     }
 
     fn get_bribes(&self, price: Arc<Metadata>, gas: [GasDetails; 2]) -> (Rational, Rational) {
-        let bribe: Rational = gas
-            .into_iter()
-            .map(|gas| gas.gas_paid())
-            .sum::<u64>()
-            .into();
+        let bribe = gas.into_iter().map(|gas| gas.gas_paid()).sum::<u64>();
 
-        (&price.eth_prices.0 * &bribe, &price.eth_prices.1 * bribe)
+        price.get_gas_price_usd(bribe)
     }
 
     fn get_collect_amount(
