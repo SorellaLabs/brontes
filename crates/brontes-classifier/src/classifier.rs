@@ -28,6 +28,7 @@ const TRANSFER_TOPIC: H256 =
 // read write lock
 pub struct Classifier {
     known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
+    // todo: Change to protocol => hashed_bytecode => signature => classifier
     static_protocols:    HashMap<[u8; 4], Box<dyn IntoAction>>,
 }
 
@@ -103,7 +104,7 @@ impl Classifier {
         };
 
         self.try_classify_unknown_exchanges(&mut tree);
-        self.try_classify_flashloans(&mut tree);
+        // self.try_classify_flashloans(&mut tree);
 
         // remove duplicate swaps
         tree.remove_duplicate_data(
@@ -402,19 +403,32 @@ impl Classifier {
                 return false
             }
 
-            // lets make sure that we have the underlying to and from addresses in our subtree,
-            // if not, we can early return and avoid beefy calc
-            let sub = node.all_sub_addresses();
-            if sub.contains(x)
+            // if we don't have this shit then we can quick return and do less calcs
+            if !has_proper_payment_scheme.iter().any(|(to, from)| {
+                let sub = node.all_sub_addresses();
+                sub.contains(to) && sub.contains(from)
+            }) {
+                return false
+            }
 
+            // lets make sure that we have the underlying to and from addresses in our
+            // subtree, if not, we can early return and avoid beefy calc
 
             // lets now verify this sandwich property
+            has_proper_payment_scheme.into_iter().any(|(to, from)| {
+                // inspect lower to see if we get this based shit_
+                let mut _t = Vec::new();
+                node.inspect(&mut _t, &|node| {
+                    if node.address == to {
+                        // node.
+                    }
+                })
+            });
+
             let paths = node
                 .tree_right_path()
                 .windows(3)
-                .any(|[addr0, addr1, addr2]| {
-
-                });
+                .any(|[addr0, addr1, addr2]| {});
 
             //
 
