@@ -14,3 +14,36 @@ macro_rules! enum_unwrap {
         }
     }};
 }
+
+// pub trait ActionCollection {
+//     fn dispatch(
+//         &self,
+//         sig: [u8; 4],
+//         index: u64,
+//         data: StaticReturnBindings,
+//         return_data: Bytes,
+//         from_address: Address,
+//         target_address: Address,
+//         logs: &Vec<Log>,
+//     ) -> Actions;
+// }
+#[macro_export]
+macro_rules! varient_dispatch {
+    ($struct_name:ident, $($name:ident),*) => {
+        #[derive(default)]
+        pub struct $struct_name {}
+
+        impl ActionCollection for $struct_name {
+            //     fn dispatch(
+            //         &self,
+            //         sig: [u8; 4],
+            //         index: u64,
+            //         data: StaticReturnBindings,
+            //         return_data: Bytes,
+            //         from_address: Address,
+            //         target_address: Address,
+            //         logs: &Vec<Log>,
+            //     ) -> Actions;
+        }
+    };
+}
