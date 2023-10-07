@@ -353,87 +353,88 @@ impl Classifier {
     /// 3) when this callscope exits, there is a transfer of the value or more
     /// to the inital call address
     fn try_classify_flashloans(&self, tree: &mut TimeTree<Actions>) {
-        // lets check and grab all instances such that there is a transfer of a token
-        // from and to the same address where the to transfer has equal or more
-        // value
-        tree.inspect_all(|node| {
-            let mut transfers = HashMap::new();
-
-            node.get_all_sub_actions().into_iter().for_each(|action| {
-                if let Actions::Transfer(t) = action {
-                    match transfers.entry(t.token) {
-                        Entry::Vacant(v) => {
-                            v.insert(vec![(t.to, t.from, t.amount)]);
-                        }
-                        Entry::Occupied(mut o) => {
-                            o.get_mut().push((t.to, t.from, t.amount));
-                        }
-                    }
-                }
-            });
-
-            // checks for same address transfer and also verifies that mor
-            let has_proper_payment_scheme = transfers
-                .values()
-                .into_iter()
-                .filter_map(|v| {
-                    let (to, from, amount) = v.into_iter().multiunzip();
-                    // this is so bad but so tired and wanna get this done. def need to fix
-                    for i in 0..to.len() {
-                        for j in 0..to.len() {
-                            if i == j {
-                                continue
-                            }
-
-                            // we check both directions to minimize loops
-                            if to[i] == from[j]
-                                && to[j] == from[i]
-                                && (i > j && amount[i] >= amount[j])
-                                || (i < j && amount[i] <= amount[j])
-                            {
-                                return Some((to, from))
-                            }
-                        }
-                    }
-                    None
-                })
-                .collect::<Vec<_>>();
-
-            if has_proper_payment_scheme.is_empty() {
-                return false
-            }
-
-            // if we don't have this shit then we can quick return and do less calcs
-            if !has_proper_payment_scheme.iter().any(|(to, from)| {
-                let sub = node.all_sub_addresses();
-                sub.contains(to) && sub.contains(from)
-            }) {
-                return false
-            }
-
-            // lets make sure that we have the underlying to and from addresses in our
-            // subtree, if not, we can early return and avoid beefy calc
-
-            // lets now verify this sandwich property
-            has_proper_payment_scheme.into_iter().any(|(to, from)| {
-                // inspect lower to see if we get this based shit_
-                let mut _t = Vec::new();
-                node.inspect(&mut _t, &|node| {
-                    if node.address == to {
-                        // node.
-                    }
-                })
-            });
-
-            let paths = node
-                .tree_right_path()
-                .windows(3)
-                .any(|[addr0, addr1, addr2]| {});
-
-            //
-
-            false
-        });
+        // lets check and grab all instances such that there is a transfer of a
+        // token from and to the same address where the to transfer has
+        // equal or more value
+        // tree.inspect_all(|node| {
+        //     let mut transfers = HashMap::new();
+        //
+        //     node.get_all_sub_actions().into_iter().for_each(|action| {
+        //         if let Actions::Transfer(t) = action {
+        //             match transfers.entry(t.token) {
+        //                 Entry::Vacant(v) => {
+        //                     v.insert(vec![(t.to, t.from, t.amount)]);
+        //                 }
+        //                 Entry::Occupied(mut o) => {
+        //                     o.get_mut().push((t.to, t.from, t.amount));
+        //                 }
+        //             }
+        //         }
+        //     });
+        //
+        //     // checks for same address transfer and also verifies that mor
+        //     let has_proper_payment_scheme = transfers
+        //         .values()
+        //         .into_iter()
+        //         .filter_map(|v| {
+        //             let (to, from, amount) = v.into_iter().multiunzip();
+        //             // this is so bad but so tired and wanna get this done.
+        // def need to fix             for i in 0..to.len() {
+        //                 for j in 0..to.len() {
+        //                     if i == j {
+        //                         continue
+        //                     }
+        //
+        //                     // we check both directions to minimize loops
+        //                     if to[i] == from[j]
+        //                         && to[j] == from[i]
+        //                         && (i > j && amount[i] >= amount[j])
+        //                         || (i < j && amount[i] <= amount[j])
+        //                     {
+        //                         return Some((to, from))
+        //                     }
+        //                 }
+        //             }
+        //             None
+        //         })
+        //         .collect::<Vec<_>>();
+        //
+        //     if has_proper_payment_scheme.is_empty() {
+        //         return false
+        //     }
+        //
+        //     // if we don't have this shit then we can quick return and do
+        // less calcs     if !has_proper_payment_scheme.iter().any(|(to,
+        // from)| {         let sub = node.all_sub_addresses();
+        //         sub.contains(to) && sub.contains(from)
+        //     }) {
+        //         return false
+        //     }
+        //
+        //     // lets make sure that we have the underlying to and from
+        // addresses in our     // subtree, if not, we can early return
+        // and avoid beefy calc
+        //
+        //     // lets now verify this sandwich property
+        //     has_proper_payment_scheme.into_iter().any(|(to, from)| {
+        //         // inspect lower to see if we get this based shit_
+        //         let mut _t = Vec::new();
+        //         node.inspect(&mut _t, &|node| {
+        //             if node.address == to {
+        //                 // node.
+        //             }
+        //         })
+        //     });
+        //
+        //     let paths = node
+        //         .tree_right_path()
+        //         .windows(3)
+        //         .any(|[addr0, addr1, addr2]| {});
+        //
+        //     //
+        //
+        //     false
+        // });
     }
 
     /// tries to classify new exchanges
