@@ -22,7 +22,7 @@ const BINDINGS_PATH: &str = "bindings.rs";
 
 const DATA_QUERY: &str = r#"
 SELECT
-    arrayMap(x -> toString(x), groupArray(ca.)) AS addresses,
+    arrayMap(x -> toString(x), groupArray(ca.address)) AS addresses,
     c.abi AS abi ,
     c.classifier_name AS classifier_name
 FROM ethereum.addresses AS ca
