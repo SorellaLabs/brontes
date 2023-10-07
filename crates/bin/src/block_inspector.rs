@@ -14,6 +14,7 @@ use brontes_types::{
 use futures::{join, Future, FutureExt, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
+use tracing::info;
 
 type CollectionFut<'a> = Pin<
     Box<
@@ -55,6 +56,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
     }
 
     fn start_collection(&mut self) {
+        info!(block_number = self.block_number, "starting collection of data");
         let parser_fut = self.parser.execute(self.block_number);
         let labeller_fut = self.database.get_metadata(self.block_number);
 
@@ -65,6 +67,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         &mut self,
         results: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>),
     ) {
+        info!(block_number = self.block_number, "inserting the collected results");
         self.insertion_future =
             Some(Box::pin(self.database.insert_classified_data(results.0, results.1)));
     }
@@ -84,8 +87,10 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
             }
         }
 
-        if let Poll::Ready(Some(data)) = self.composer.poll_next_unpin(cx) {
-            self.on_inspectors_finish(data);
+        if !self.composer.is_finished() {
+            if let Poll::Ready(Some(data)) = self.composer.poll_next_unpin(cx) {
+                self.on_inspectors_finish(data);
+            }
         }
 
         if let Some(mut insertion_future) = self.insertion_future.take() {
@@ -105,7 +110,10 @@ impl<const N: usize, T: TracingProvider> Future for BlockInspector<'_, N, T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // If the classifier_future is None (not started yet), start the collection
         // phase
-        if self.classifier_future.is_none() && self.insertion_future.is_none() {
+        if self.classifier_future.is_none()
+            && !self.composer.is_processing()
+            && self.insertion_future.is_none()
+        {
             self.start_collection();
         }
 
@@ -113,7 +121,10 @@ impl<const N: usize, T: TracingProvider> Future for BlockInspector<'_, N, T> {
 
         // Decide when to finish the BlockInspector's future.
         // Finish when both classifier and insertion futures are done.
-        if self.classifier_future.is_none() && self.insertion_future.is_none() {
+        if self.classifier_future.is_none()
+            && !self.composer.is_processing()
+            && self.insertion_future.is_none()
+        {
             Poll::Ready(())
         } else {
             Poll::Pending
