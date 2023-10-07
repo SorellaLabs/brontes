@@ -22,7 +22,7 @@ const BINDINGS_PATH: &str = "bindings.rs";
 
 const DATA_QUERY: &str = r#"
 SELECT
-    arrayMap(x -> toString(x), groupArray(ca.address)) AS addresses,
+    arrayMap(x -> toString(x), groupArray(ca.)) AS addresses,
     c.abi AS abi ,
     c.classifier_name AS classifier_name
 FROM ethereum.addresses AS ca
@@ -156,6 +156,10 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
     let mut bindings_impl_try_decode = bindings_try_decode_impl_init();
 
     for protocol_addr in addresses {
+        if protocol_addr.classifier_name.is_empty() {
+            protocol_addr.classifier_name = protocol_addr.addresses.first().cloned().unwrap();
+        }
+
         let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.classifier_name, ".json");
         addr_bindings.push(binding_string(&abi_file_path, &protocol_addr.classifier_name));
 
@@ -277,6 +281,10 @@ fn address_abi_mapping(mapping: Vec<ProtocolDetails>) {
 
     let mut phf_map = phf_codegen::Map::new();
     for map in mapping {
+        if map.classifier_name.is_empty() {
+            map.classifier_name = map.addresses.first().cloned().unwrap();
+        }
+
         for address in map.addresses {
             phf_map.entry(
                 H160::from_str(&address).unwrap().0,
