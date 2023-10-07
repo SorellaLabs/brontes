@@ -133,3 +133,5 @@ action_impl!(
         }
     }
 );
+
+action_dispatch!(UniswapV3, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);
