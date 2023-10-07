@@ -25,13 +25,25 @@ const PROTOCOL_ADDRESSES: &str = "SELECT protocol, groupArray(toString(address))
 const PROTOCOL_ABIS: &str =
     "SELECT protocol, toString(any(address)) AS address FROM ethereum.pools GROUP BY protocol";
 
-// TODO(Joe): build script to pull this data
+const DATA_QUERY: &str = r#"
+SELECT
+    groupArray(ca.address),
+    c.abi,
+    c.classifier_name
+FROM ethereum.addresses AS ca
+LEFT JOIN ethereum.contracts AS c ON ca.hashed_bytecode = c.hashed_bytecode
+GROUP BY
+    ca.hashed_bytecode,
+    c.abi,
+    c.classifier_name
+HAVING hashed_bytecode != 'NULL';
+"#;
+
 #[derive(Debug, Serialize, Deserialize, Row, Clone)]
-struct ProtocolAbiDetails {
-    address:       String,
-    abi:           String,
-    // this is the og name of the protocol
-    protocol_name: String,
+struct ProtocolDetails {
+    pub addresses:       Vec<String>,
+    pub abi:             String,
+    pub classifier_name: String,
 }
 
 fn main() {
@@ -61,7 +73,7 @@ async fn run() {
     let addresses: Option<Vec<Address>> = None;
     // TODO: once we normalize db. we just toss in the possible addresses
 
-    let protocol_abis = query_db::<ProtocolAbiDetails>(&clickhouse_client, PROTOCOL_ABIS).await;
+    let protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, PROTOCOL_ABIS).await;
 
     write_all_abis(&protocol_abis).await;
 
@@ -129,7 +141,7 @@ async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> Vec<Addr
 //
 
 /// generates all bindings and enums for them and writes them to a file
-async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolAbiDetails>) {
+async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
     let mut file = write_file(bindings_file_path, true);
 
     let mut addr_bindings = Vec::new();
@@ -239,8 +251,8 @@ fn bindings_try_row(protocol_name: &str) -> String {
 //
 
 /// writes the provider json abis to files given the protocol name
-async fn write_all_abis(addresses: &Vec<ProtocolAbiDetails>) {
-    for protocol_addr in addresses {
+async fn write_all_abis(protos: &Vec<ProtocolDetails>) {
+    for protocol_addr in protos{
         let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol_name, ".json");
         let mut file = write_file(&abi_file_path, true);
         file.write_all(
