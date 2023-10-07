@@ -307,9 +307,7 @@ mod tests {
 
         let expected_metadata = expected_metadata(cex_prices);
 
-        let metadata = db
-            .get_metadata(BLOCK_NUMBER)
-            .await;
+        let metadata = db.get_metadata(BLOCK_NUMBER).await;
 
         assert_eq!(metadata.block_num, expected_metadata.block_num);
         assert_eq!(metadata.block_hash, expected_metadata.block_hash);

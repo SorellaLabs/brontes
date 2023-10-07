@@ -1,9 +1,8 @@
 use std::{
-    collections::HashSet,
     env,
     fs::{self, File},
     io::{BufWriter, Write},
-    path::{Path, PathBuf},
+    path::Path,
     str::FromStr,
 };
 
@@ -20,29 +19,32 @@ use serde_json::Value;
 const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
-const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
-const CACHE_DIRECTORY: &str = "../../abi_cache";
-const PROTOCOL_ADDRESSES: &str = "SELECT protocol, groupArray(toString(address)) AS addresses \
-                                  FROM ethereum.pools GROUP BY protocol";
-const PROTOCOL_ABIS: &str =
-    "SELECT protocol, toString(any(address)) AS address FROM ethereum.pools GROUP BY protocol";
 
-#[derive(Debug, Serialize, Deserialize, Row)]
-struct AddressToProtocolMapping {
-    protocol:  String,
-    addresses: Vec<String>,
-}
+const DATA_QUERY: &str = r#"
+SELECT
+    arrayMap(x -> toString(x), groupArray(ca.)) AS addresses,
+    c.abi AS abi ,
+    c.classifier_name AS classifier_name
+FROM ethereum.addresses AS ca
+LEFT JOIN ethereum.contracts AS c ON ca.hashed_bytecode = c.hashed_bytecode
+GROUP BY
+    ca.hashed_bytecode,
+    c.abi,
+    c.classifier_name
+HAVING hashed_bytecode != 'NULL'
+"#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone)]
-struct ProtocolAbis {
-    protocol: String,
-    address:  String,
+struct ProtocolDetails {
+    pub addresses:       Vec<String>,
+    pub abi:             String,
+    pub classifier_name: String,
 }
 
 fn main() {
     dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
-    let runtime = tokio::runtime::Builder::new_current_thread()
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap();
@@ -57,36 +59,42 @@ async fn run() {
         let start_block = env::var("START_BLOCK").expect("START_BLOCK not found in env");
         let end_block = env::var("END_BLOCK").expect("END_BLOCK not found in env");
 
-        Some(get_all_touched_addresses(
+        get_all_touched_addresses(
             u64::from_str_radix(&start_block, 10),
             u64::from_str_radix(&end_block, 10),
-        ))
+        )
     };
     #[cfg(not(feature = "test_run"))]
-    let addresses: Option<Vec<Address>> = None;
     // TODO: once we normalize db. we just toss in the possible addresses
+    let protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await;
 
-    let etherscan_client = build_etherscan();
-    let protocol_abis = query_db::<ProtocolAbis>(&clickhouse_client, PROTOCOL_ABIS).await;
+    #[cfg(feature = "test_run")]
+    protocol_abis.retain(|row| {
+        row.addresses = row
+            .addresses
+            .into_iter()
+            .filter(|addr| addresses.contains(H160::from_str(&addr).unwrap()))
+            .collect::<Vec<_>>();
+        !row.addresses.is_empty() || !row.classifier_name.is_empty()
+    });
 
-    write_all_abis(etherscan_client, protocol_abis.clone()).await;
-
-    let protocol_address_map =
-        query_db::<AddressToProtocolMapping>(&clickhouse_client, PROTOCOL_ADDRESSES).await;
+    write_all_abis(&protocol_abis).await;
 
     generate(
         Path::new(&env::var("OUT_DIR").unwrap())
             .join(BINDINGS_PATH)
             .to_str()
             .unwrap(),
-        protocol_abis.clone(),
+        &protocol_abis,
     )
     .await;
-    address_abi_mapping(protocol_address_map)
+    address_abi_mapping(protocol_abis)
 }
 
 #[cfg(feature = "test_run")]
-async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> Vec<Address> {
+async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<Address> {
+    use std::collections::HashSet;
+
     let tracer = TracingClient::new(
         Path::new(&config.reth_database_path),
         tokio::runtime::Handle::current(),
@@ -128,7 +136,7 @@ async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> Vec<Addr
     .await
     .into_iter()
     .flatten()
-    .collect::<Vec<_>>()
+    .collect::<HashSet<_>>()
 }
 
 //
@@ -138,7 +146,7 @@ async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> Vec<Addr
 //
 
 /// generates all bindings and enums for them and writes them to a file
-async fn generate(bindings_file_path: &str, addresses: Vec<ProtocolAbis>) {
+async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
     let mut file = write_file(bindings_file_path, true);
 
     let mut addr_bindings = Vec::new();
@@ -148,17 +156,23 @@ async fn generate(bindings_file_path: &str, addresses: Vec<ProtocolAbis>) {
     let mut bindings_impl_try_decode = bindings_try_decode_impl_init();
 
     for protocol_addr in addresses {
-        let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
-        addr_bindings.push(binding_string(&abi_file_path, &protocol_addr.protocol));
+        let name = if protocol_addr.classifier_name.is_empty() {
+            protocol_addr.addresses.first().unwrap()
+        } else {
+            &protocol_addr.classifier_name
+        };
 
-        binding_enums.push(enum_binding_string(&protocol_addr.protocol, Some("_Enum")));
+        let abi_file_path = get_file_path(ABI_DIRECTORY, name, ".json");
+        addr_bindings.push(binding_string(&abi_file_path, name));
+
+        binding_enums.push(enum_binding_string(name, Some("_Enum")));
         return_binding_enums.push(enum_binding_string(
-            &protocol_addr.protocol,
-            Some(&format!("::{}Calls", &protocol_addr.protocol)),
+            &protocol_addr.classifier_name,
+            Some(&format!("::{}Calls", name)),
         ));
-        individual_sub_enums(&mut mod_enums, &protocol_addr.protocol);
-        enum_impl_macro(&mut mod_enums, &protocol_addr.protocol);
-        bindings_impl_try_decode.push(bindings_try_row(&protocol_addr.protocol));
+        individual_sub_enums(&mut mod_enums, name);
+        enum_impl_macro(&mut mod_enums, name);
+        bindings_impl_try_decode.push(bindings_try_row(name));
     }
 
     binding_enums.push("}".to_string());
@@ -248,35 +262,52 @@ fn bindings_try_row(protocol_name: &str) -> String {
 //
 
 /// writes the provider json abis to files given the protocol name
-async fn write_all_abis(client: alloy_etherscan::Client, addresses: Vec<ProtocolAbis>) {
-    for protocol_addr in addresses {
-        let abi = get_abi(client.clone(), &protocol_addr.address).await;
-        let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.protocol, ".json");
+async fn write_all_abis(protos: &Vec<ProtocolDetails>) {
+    for protocol_addr in protos {
+        let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.classifier_name, ".json");
         let mut file = write_file(&abi_file_path, true);
-        file.write_all(serde_json::to_string(&abi).unwrap().as_bytes())
-            .unwrap();
+        file.write_all(
+            serde_json::to_string(&protocol_addr.abi)
+                .unwrap()
+                .as_bytes(),
+        )
+        .unwrap();
     }
 }
 
 /// creates a mapping of each address to an abi binding
-fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
+fn address_abi_mapping(mapping: Vec<ProtocolDetails>) {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
-    //file.write_all("use crate::bindings::*;\n\n".as_bytes()).unwrap();
 
     let mut phf_map = phf_codegen::Map::new();
-    for map in &mapping {
-        for address in &map.addresses {
-            phf_map.entry(
-                address,
-                &format!("StaticBindings::{}({}_Enum::None)", &map.protocol, &map.protocol),
-            );
+    for map in mapping {
+        if map.classifier_name.is_empty() {
+            let name = map.addresses.first().unwrap().clone();
+            for address in map.addresses {
+                phf_map.entry(
+                    H160::from_str(&address).unwrap().0,
+                    &format!("(None, StaticBindings::{}({}_Enum::None))", name, name),
+                );
+            }
+        } else {
+            for address in map.addresses {
+                let name = &map.classifier_name;
+                phf_map.entry(
+                    H160::from_str(&address).unwrap().0,
+                    &format!(
+                        "(Some({}::default()), StaticBindings::{}({}_Enum::None))",
+                        name, name, name
+                    ),
+                );
+            }
         }
     }
 
     writeln!(
         &mut file,
-        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<&'static str, StaticBindings> = \n{};\n",
+        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<[u8; 20], (Option<Box<dyn \
+         ActionCollection>>,StaticBindings)> = \n{};\n",
         phf_map.build()
     )
     .unwrap();
@@ -305,21 +336,13 @@ fn address_abi_mapping(mapping: Vec<AddressToProtocolMapping>) {
 // 14. dYdX
 // 15. Ambient
 
-/// gets the abis (as a serde 'Value') for the given addresses from etherscan
-async fn get_abi(client: alloy_etherscan::Client, address: &str) -> Value {
-    let raw = client
-        .raw_contract(H160::from_str(address).unwrap())
-        .await
-        .unwrap();
-    serde_json::from_str(&raw).unwrap()
-}
-
 /// queries the db
 async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
     db.query("OPTIMIZE TABLE ethereum.pools FINAL DEDUPLICATE BY *")
         .execute()
         .await
         .unwrap();
+
     db.query(query).fetch_all::<T>().await.unwrap()
 }
 
@@ -351,17 +374,6 @@ fn build_db() -> Client {
         .with_database(
             env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
         )
-}
-
-/// builds the etherscan client
-fn build_etherscan() -> alloy_etherscan::Client {
-    alloy_etherscan::Client::new_cached(
-        Chain::Mainnet,
-        env::var("ETHERSCAN_API_KEY").expect("ETHERSCAN_API_KEY not found in .env"),
-        Some(PathBuf::from(CACHE_DIRECTORY)),
-        CACHE_TIMEOUT,
-    )
-    .unwrap()
 }
 
 //
