@@ -35,7 +35,7 @@ GROUP BY
 HAVING hashed_bytecode != 'NULL'
 "#;
 
-#[derive(Debug, Serialize, Deserialize, Row, Clone)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 struct ProtocolDetails {
     pub addresses:       Vec<String>,
     pub abi:             String,
@@ -61,12 +61,16 @@ async fn run() {
         let end_block = env::var("END_BLOCK").expect("END_BLOCK not found in env");
 
         get_all_touched_addresses(
-            u64::from_str_radix(&start_block, 10),
-            u64::from_str_radix(&end_block, 10),
+            u64::from_str_radix(&start_block, 10).unwrap(),
+            u64::from_str_radix(&end_block, 10).unwrap(),
         )
     };
 
+    #[cfg(feature = "server")]
     let protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await;
+    #[cfg(not(feature = "server"))]
+    let protocol_abis = vec![ProtocolDetails::default()];
+
 
     // suboptimal, lets just filter in query
     #[cfg(feature = "test_run")]
