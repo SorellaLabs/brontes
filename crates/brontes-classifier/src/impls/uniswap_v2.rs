@@ -3,7 +3,7 @@ use brontes_core::{
     StaticReturnBindings,
     SushiSwap_V2::{burnCall, mintCall, swapCall, Burn, Mint, Swap},
 };
-use brontes_macros::action_impl;
+use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_primitives::{Address, Bytes, H160, U256};
 use reth_rpc_types::Log;
@@ -95,3 +95,5 @@ action_impl!(
         }
     }
 );
+
+action_dispatch!(UniswapV2, V2SwapImpl, V2BurnImpl, V2MintImpl);
