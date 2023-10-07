@@ -69,7 +69,11 @@ rayon.workspace = true
 cfg-if = "1.0.0"
 
 [features]
-server = ["brontes-types/server", "brontes-classifier/server"]
+server = [
+  "brontes-types/server",
+  "brontes-classifier/server",
+  "brontes-core/server",
+]
 
 test_run = [
   "brontes-core/test_run",
