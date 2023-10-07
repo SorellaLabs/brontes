@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     env,
     fs::{self, File},
     io::{BufWriter, Write},
@@ -64,10 +65,10 @@ async fn run() {
             u64::from_str_radix(&end_block, 10),
         )
     };
-    #[cfg(not(feature = "test_run"))]
-    // TODO: once we normalize db. we just toss in the possible addresses
+
     let protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await;
 
+    // suboptimal, lets just filter in query
     #[cfg(feature = "test_run")]
     protocol_abis.retain(|row| {
         row.addresses = row
@@ -93,8 +94,6 @@ async fn run() {
 
 #[cfg(feature = "test_run")]
 async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<Address> {
-    use std::collections::HashSet;
-
     let tracer = TracingClient::new(
         Path::new(&config.reth_database_path),
         tokio::runtime::Handle::current(),
