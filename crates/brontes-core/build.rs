@@ -287,10 +287,7 @@ fn address_abi_mapping(mapping: Vec<ProtocolDetails>) {
             for address in map.addresses {
                 phf_map.entry(
                     H160::from_str(&address).unwrap().0,
-                    &format!(
-                        "(Some({}::default()), StaticBindings::{}({}_Enum::None))",
-                        name, name, name
-                    ),
+                    &format!("(None, StaticBindings::{}({}_Enum::None))", name, name),
                 );
             }
         } else {
