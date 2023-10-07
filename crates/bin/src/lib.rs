@@ -8,6 +8,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::database::Database;
 use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, StreamExt};
+use tracing::info;
 
 mod block_inspector;
 use block_inspector::BlockInspector;
@@ -73,6 +74,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
             self.inspectors,
             self.current_block,
         );
+        info!(block_number = self.current_block, "started new block inspector");
         self.current_block += 1;
         self.block_inspectors.push(inspector);
     }
@@ -132,7 +134,6 @@ impl<const N: usize, T: TracingProvider> Future for Poirot<'_, N, T> {
         // not starve other tasks for too long. If the budget is exhausted we
         // manually yield back control to the (coop) scheduler. This manual yield point should prevent situations where polling appears to be frozen. See also <https://tokio.rs/blog/2020-04-preemption>
         // And tokio's docs on cooperative scheduling <https://docs.rs/tokio/latest/tokio/task/#cooperative-scheduling>
-
         let mut iters = 1024;
         loop {
             if let Some(end_block) = self.end_block {

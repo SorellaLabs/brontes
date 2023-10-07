@@ -94,22 +94,32 @@ type InspectorFut<'a> =
 pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
 
 pub struct Composer<'a, const N: usize> {
-    orchestra: &'a [&'a Box<dyn Inspector>; N],
-
+    orchestra:            &'a [&'a Box<dyn Inspector>; N],
     inspectors_execution: Option<InspectorFut<'a>>,
     pre_processing:       Option<BlockPreprocessing>,
+    // this is terroristic and need to prob rewrite most of this. however
+    // we will leave it for now so we can get to testing
+    is_finished:          bool,
 }
 
 impl<'a, const N: usize> Composer<'a, N> {
     pub fn new(orchestra: &'a [&'a Box<dyn Inspector>; N]) -> Self {
-        Self { orchestra, inspectors_execution: None, pre_processing: None }
+        Self { orchestra, inspectors_execution: None, pre_processing: None, is_finished: false }
     }
 
     pub fn is_processing(&self) -> bool {
         self.inspectors_execution.is_some()
     }
 
-    pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) {
+    pub fn is_finished(&self) -> bool {
+        return self.is_finished
+    }
+
+    pub fn on_new_tree(
+        &mut self,
+        tree: Arc<TimeTree<Actions>>,
+        meta_data: Arc<Metadata>,
+    ) -> ComposerResults {
         // This is only unsafe due to the fact that you can have missbehaviour where you
         // drop this with incomplete futures
         let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
@@ -230,7 +240,8 @@ impl<'a, const N: usize> Composer<'a, N> {
     fn on_orchestra_resolution(
         &mut self,
         orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
-    ) -> Poll<Option<ComposerResults>> {
+    ) -> Poll<ComposerResults> {
+        info!("starting to compose classified mev");
         let header = self.build_mev_header(&orchestra_data);
 
         let mut sorted_mev = orchestra_data
@@ -260,8 +271,10 @@ impl<'a, const N: usize> Composer<'a, N> {
                 }
             });
 
+        self.is_finished = true;
+
         // downcast all of the sorted mev results. should cleanup
-        Poll::Ready(Some((header, sorted_mev.into_values().flatten().collect::<Vec<_>>())))
+        Poll::Ready((header, sorted_mev.into_values().flatten().collect::<Vec<_>>()))
     }
 
     fn replace_dep_filter(
@@ -372,10 +385,10 @@ impl<'a, const N: usize> Composer<'a, N> {
     }
 }
 
-impl<const N: usize> Stream for Composer<'_, N> {
-    type Item = ComposerResults;
+impl<const N: usize> Future for Composer<'_, N> {
+    type Output = ComposerResults;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Some(mut calculations) = self.inspectors_execution.take() {
             return match calculations.poll_unpin(cx) {
                 Poll::Ready(data) => self.on_orchestra_resolution(data),
