@@ -86,6 +86,7 @@ toml = "0.8.2"
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 futures = "0.3.28"
+itertools = "0.11.0"
 
 [features]
 test_run = []

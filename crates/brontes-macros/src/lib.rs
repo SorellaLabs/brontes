@@ -1,6 +1,8 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parenthesized, parse::Parse, token::Paren, ExprClosure, Ident, LitBool, Token};
+use syn::{
+    parenthesized, parse::Parse, token::Paren, DeriveInput, ExprClosure, Ident, LitBool, Token,
+};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
@@ -177,5 +179,84 @@ impl Parse for MacroParse {
             exchange_name,
             exchange_mod_name,
         })
+    }
+}
+
+#[proc_macro]
+pub fn action_dispatch(input: TokenStream) -> TokenStream {
+    let ActionDispatch { struct_name, rest } = syn::parse2(input.into()).unwrap();
+
+    if rest.is_empty() {
+        panic!("need more than one entry");
+    }
+
+    let (mut i, name): (Vec<usize>, Vec<Ident>) = rest.into_iter().enumerate().unzip();
+    i.remove(0);
+
+    quote!(
+        #[derive(default)]
+        pub struct #struct_name(#(#name)*);
+
+        impl ActionCollection for #struct_name {
+            fn dispatch(
+                &self,
+                sig: [u8; 4],
+                index: u64,
+                data: StaticReturnBindings,
+                return_data: Bytes,
+                from_address: Address,
+                target_address: Address,
+                logs: &Vec<Log>,
+            ) -> Option<Actions> {
+                if sig == self.0.get_sig() {
+                    Some(
+                        self.0.decode_trace_data(
+                            index,
+                            data,
+                            return_data,
+                            from_address,
+                            target_address
+                            )
+                        )
+                }
+
+                #( else if sig == self.#i.get_sig()
+                    Some(
+                        self.#i.decode_trace_data(
+                            index,
+                            data,
+                            return_data,
+                            from_address,
+                            target_address
+                            )
+                        )
+                )*
+
+                None
+            }
+        }
+    )
+    .into()
+
+    // ""
+}
+
+struct ActionDispatch {
+    // required for all
+    struct_name: Ident,
+    rest:        Vec<Ident>,
+}
+impl Parse for ActionDispatch {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let struct_name: Ident = input.parse()?;
+        let mut rest = Vec::new();
+        while input.parse::<Token![,]>().is_ok() {
+            rest.push(input.parse::<Ident>()?);
+        }
+        if !input.is_empty() {
+            panic!("no")
+        }
+
+        Ok(Self { rest, struct_name })
     }
 }

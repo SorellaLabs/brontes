@@ -6,7 +6,7 @@ use reth_primitives::{Address, Header, H256, U256};
 use serde::{Deserialize, Serialize};
 use sorella_db_clients::databases::clickhouse::{self, Row};
 
-use crate::normalized_actions::{Actions, NormalizedAction};
+use crate::normalized_actions::NormalizedAction;
 
 pub struct TimeTree<V: NormalizedAction> {
     pub roots:            Vec<Root<V>>,
@@ -233,6 +233,17 @@ impl<V: NormalizedAction> Node<V> {
                 .flat_map(|inner| inner.get_all_sub_actions())
                 .collect()
         }
+    }
+
+    pub fn tree_right_path(&self) -> Vec<Address> {
+        self.inner
+            .last()
+            .map(|last| {
+                let mut last = last.tree_right_path();
+                last.push(self.address);
+                last
+            })
+            .unwrap_or(vec![self.address])
     }
 
     pub fn all_sub_addresses(&self) -> Vec<Address> {
