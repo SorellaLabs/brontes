@@ -8,10 +8,10 @@ use std::{
 };
 
 use clickhouse::{Client, Row};
-use ethers_core::types::{Chain, H160};
+use ethers_core::types::Chain;
 use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
-use reth_primitives::{Address, BlockId, BlockNumberOrTag};
+use reth_primitives::{Address, BlockId, BlockNumberOrTag, H160};
 use reth_rpc_types::trace::parity::TraceType;
 use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
@@ -64,23 +64,23 @@ async fn run() {
             u64::from_str_radix(&start_block, 10).unwrap(),
             u64::from_str_radix(&end_block, 10).unwrap(),
         )
+        .await
     };
 
     #[cfg(feature = "server")]
-    let protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await;
+    let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await;
     #[cfg(not(feature = "server"))]
-    let protocol_abis = vec![ProtocolDetails::default()];
-
+    let mut protocol_abis = vec![ProtocolDetails::default()];
 
     // suboptimal, lets just filter in query
     #[cfg(feature = "test_run")]
     protocol_abis.retain(|row| {
-        row.addresses = row
+        let new_row = row
             .addresses
-            .into_iter()
-            .filter(|addr| addresses.contains(H160::from_str(&addr).unwrap()))
+            .iter()
+            .filter(|addr| addresses.contains(&H160::from_str(addr).unwrap()))
             .collect::<Vec<_>>();
-        !row.addresses.is_empty() || !row.classifier_name.is_empty()
+        !new_row.is_empty() || !row.classifier_name.is_empty()
     });
 
     write_all_abis(&protocol_abis).await;
@@ -98,44 +98,38 @@ async fn run() {
 
 #[cfg(feature = "test_run")]
 async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<Address> {
-    let tracer = TracingClient::new(
-        Path::new(&config.reth_database_path),
-        tokio::runtime::Handle::current(),
-    );
+    let db_path = env::var("DB_PATH").expect("START_BLOCK not found in env");
+    let tracer = TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current());
 
     let mut trace_type = HashSet::new();
     trace_type.insert(TraceType::Trace);
     trace_type.insert(TraceType::VmTrace);
 
-    join_all(
-        (config.start_block..config.end_block)
-            .into_iter()
-            .map(|block_num| {
-                tracer
-                    .trace
-                    .replay_block_transactions(
-                        BlockId::Number(BlockNumberOrTag::Number(block_num)),
-                        trace_type.clone(),
-                    )
-                    .map(|trace| {
-                        trace.unwrap().unwrap().into_iter().flat_map(|trace| {
-                            trace
-                                .full_trace
-                                .trace
-                                .into_iter()
-                                .filter_map(|call_frame| match call_frame.action {
-                                    reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
-                                    reth_rpc_types::trace::parity::Action::Create(_)
-                                    | reth_rpc_types::trace::parity::Action::Reward(_) => None,
-                                    reth_rpc_types::trace::parity::Action::Selfdestruct(s) => {
-                                        Some(s.address)
-                                    }
-                                })
-                                .collect::<Vec<_>>()
+    join_all((start_block..end_block).into_iter().map(|block_num| {
+        tracer
+            .trace
+            .replay_block_transactions(
+                BlockId::Number(BlockNumberOrTag::Number(block_num)),
+                trace_type.clone(),
+            )
+            .map(|trace| {
+                trace.unwrap().unwrap().into_iter().flat_map(|trace| {
+                    trace
+                        .full_trace
+                        .trace
+                        .into_iter()
+                        .filter_map(|call_frame| match call_frame.action {
+                            reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
+                            reth_rpc_types::trace::parity::Action::Create(_)
+                            | reth_rpc_types::trace::parity::Action::Reward(_) => None,
+                            reth_rpc_types::trace::parity::Action::Selfdestruct(s) => {
+                                Some(s.address)
+                            }
                         })
-                    })
-            }),
-    )
+                        .collect::<Vec<_>>()
+                })
+            })
+    }))
     .await
     .into_iter()
     .flatten()
