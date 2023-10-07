@@ -156,21 +156,23 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
     let mut bindings_impl_try_decode = bindings_try_decode_impl_init();
 
     for protocol_addr in addresses {
-        if protocol_addr.classifier_name.is_empty() {
-            protocol_addr.classifier_name = protocol_addr.addresses.first().cloned().unwrap();
-        }
+        let name = if protocol_addr.classifier_name.is_empty() {
+            protocol_addr.addresses.first().unwrap()
+        } else {
+            &protocol_addr.classifier_name
+        };
 
-        let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.classifier_name, ".json");
-        addr_bindings.push(binding_string(&abi_file_path, &protocol_addr.classifier_name));
+        let abi_file_path = get_file_path(ABI_DIRECTORY, name, ".json");
+        addr_bindings.push(binding_string(&abi_file_path, name));
 
-        binding_enums.push(enum_binding_string(&protocol_addr.classifier_name, Some("_Enum")));
+        binding_enums.push(enum_binding_string(name, Some("_Enum")));
         return_binding_enums.push(enum_binding_string(
             &protocol_addr.classifier_name,
-            Some(&format!("::{}Calls", &protocol_addr.classifier_name)),
+            Some(&format!("::{}Calls", name)),
         ));
-        individual_sub_enums(&mut mod_enums, &protocol_addr.classifier_name);
-        enum_impl_macro(&mut mod_enums, &protocol_addr.classifier_name);
-        bindings_impl_try_decode.push(bindings_try_row(&protocol_addr.classifier_name));
+        individual_sub_enums(&mut mod_enums, name);
+        enum_impl_macro(&mut mod_enums, name);
+        bindings_impl_try_decode.push(bindings_try_row(name));
     }
 
     binding_enums.push("}".to_string());
@@ -277,29 +279,38 @@ async fn write_all_abis(protos: &Vec<ProtocolDetails>) {
 fn address_abi_mapping(mapping: Vec<ProtocolDetails>) {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
-    //file.write_all("use crate::bindings::*;\n\n".as_bytes()).unwrap();
 
     let mut phf_map = phf_codegen::Map::new();
     for map in mapping {
         if map.classifier_name.is_empty() {
-            map.classifier_name = map.addresses.first().cloned().unwrap();
-        }
-
-        for address in map.addresses {
-            phf_map.entry(
-                H160::from_str(&address).unwrap().0,
-                &format!(
-                    "({}::default(), StaticBindings::{}({}_Enum::None))",
-                    &map.classifier_name, &map.classifier_name, &map.classifier_name
-                ),
-            );
+            let name = map.addresses.first().unwrap().clone();
+            for address in map.addresses {
+                phf_map.entry(
+                    H160::from_str(&address).unwrap().0,
+                    &format!(
+                        "(Some({}::default()), StaticBindings::{}({}_Enum::None))",
+                        name, name, name
+                    ),
+                );
+            }
+        } else {
+            for address in map.addresses {
+                let name = &map.classifier_name;
+                phf_map.entry(
+                    H160::from_str(&address).unwrap().0,
+                    &format!(
+                        "(Some({}::default()), StaticBindings::{}({}_Enum::None))",
+                        name, name, name
+                    ),
+                );
+            }
         }
     }
 
     writeln!(
         &mut file,
-        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<[u8; 20], (Box<dyn \
-         ActionCollection>,StaticBindings)> = \n{};\n",
+        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<[u8; 20], (Option<Box<dyn \
+         ActionCollection>>,StaticBindings)> = \n{};\n",
         phf_map.build()
     )
     .unwrap();
