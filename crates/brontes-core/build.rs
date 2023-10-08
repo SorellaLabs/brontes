@@ -94,7 +94,7 @@ async fn run() {
         #[cfg(feature = "test_run")]
         clickhouse_client
             .query(DATA_QUERY_FILTER)
-            .bind(addresses)
+            .bind(addresses.clone())
             .fetch_all()
             .await
             .unwrap()
