@@ -105,7 +105,7 @@ async fn run() {
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = vec![ProtocolDetails::default()];
 
-    println!("{:?}", protocol_abis);
+    panic!("{:?}", protocol_abis);
 
     write_all_abis(&protocol_abis).await;
 
