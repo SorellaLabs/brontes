@@ -82,15 +82,25 @@ async fn run() {
             u64::from_str_radix(&start_block, 10).unwrap(),
             u64::from_str_radix(&end_block, 10).unwrap(),
         )
-        .await.into_iter().map(|addr| addr.to_string().to_lowercase()).collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .map(|addr| addr.to_string().to_lowercase())
+        .collect::<Vec<_>>()
     };
 
     #[cfg(feature = "server")]
     let mut protocol_abis = {
         #[cfg(not(feature = "test_run"))]
-         query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
+        {
+            query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
+        }
         #[cfg(feature = "test_run")]
-        clickhouse_client.query(DATA_QUERY_FILTER).bind(addresses).fetch_all().await.unwrap()
+        clickhouse_client
+            .query(DATA_QUERY_FILTER)
+            .bind(addresses)
+            .fetch_all()
+            .await
+            .unwrap()
     };
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = vec![ProtocolDetails::default()];
