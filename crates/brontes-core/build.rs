@@ -58,9 +58,6 @@ struct ProtocolDetails {
 
 fn main() {
     dotenv::dotenv().ok();
-    for (key, value) in env::vars() {
-        println!("{}: {}", key, value);
-    }
 
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -105,7 +102,8 @@ async fn run() {
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = vec![ProtocolDetails::default()];
 
-    panic!("{:?}", protocol_abis);
+    #[cfg(feature = "test_run")]
+    panic!("{:?}, {:?}", protocol_abis, addresses);
 
     write_all_abis(&protocol_abis).await;
 
