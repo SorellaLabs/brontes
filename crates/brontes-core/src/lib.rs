@@ -14,6 +14,19 @@ pub trait TryDecodeSol {
     fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error>;
 }
 
+pub trait ActionCollection {
+    fn dispatch(
+        &self,
+        sig: [u8; 4],
+        index: u64,
+        data: StaticReturnBindings,
+        return_data: Bytes,
+        from_address: Address,
+        target_address: Address,
+        logs: &Vec<Log>,
+    ) -> Actions;
+}
+
 /// implements the above trait for decoding on the different binding enums
 #[macro_export]
 macro_rules! impl_decode_sol {
