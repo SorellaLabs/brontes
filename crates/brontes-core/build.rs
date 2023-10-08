@@ -128,7 +128,7 @@ async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<
     let range = (start_block..end_block).into_iter().collect::<Vec<_>>();
     let mut res = HashSet::new();
 
-    for chunk in range.as_slice().chunks(50) {
+    for chunk in range.as_slice().chunks(20) {
         res.extend(
             join_all(chunk.into_iter().map(|block_num| {
                 tracer
