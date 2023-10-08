@@ -64,11 +64,11 @@ ruint = "1.9.0"
 
 # Alloy
 alloy-etherscan = { path = "./crates/alloy-etherscan" }
-alloy-sol-types = { git = "https://github.com/alloy-rs/core", package = "alloy-sol-types" }
-alloy-primitives = { git = "https://github.com/alloy-rs/core", package = "alloy-primitives" }
-alloy-json-abi = { git = "https://github.com/alloy-rs/core", package = "alloy-json-abi" }
-alloy-sol-macro = { git = "https://github.com/alloy-rs/core", package = "alloy-sol-macro" }
-alloy-dyn-abi = { git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi" }
+alloy-sol-types = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-sol-types" }
+alloy-primitives = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-primitives" }
+alloy-json-abi = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-json-abi" }
+alloy-sol-macro = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-sol-macro" }
+alloy-dyn-abi = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-dyn-abi" }
 
 # Async
 tokio = "1.13.0"
