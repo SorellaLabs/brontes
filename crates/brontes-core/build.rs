@@ -160,6 +160,7 @@ async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<
             .flatten()
             .collect::<HashSet<_>>(),
         );
+        panic!("did a loop");
     }
 
     res
