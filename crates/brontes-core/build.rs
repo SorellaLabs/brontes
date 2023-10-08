@@ -304,7 +304,7 @@ fn address_abi_mapping(mapping: Vec<ProtocolDetails>) {
     let mut phf_map = phf_codegen::Map::new();
     for map in mapping {
         if map.classifier_name.is_empty() {
-            let name = map.addresses.first().unwrap().clone();
+            let name = &map.addresses.first().unwrap().clone()[2..];
             for address in map.addresses {
                 phf_map.entry(
                     H160::from_str(&address).unwrap().0,
