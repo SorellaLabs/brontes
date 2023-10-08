@@ -173,10 +173,15 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
 
     for protocol_addr in addresses {
         let name = if protocol_addr.classifier_name.is_empty() {
-            protocol_addr.addresses.first().unwrap()
+            protocol_addr
+                .addresses
+                .first()
+                .map(|string| string[2..].to_string().to_uppercase())
+                .unwrap()
         } else {
-            &protocol_addr.classifier_name
+            protocol_addr.classifier_name.clone()
         };
+        let name = &name;
 
         let abi_file_path = get_file_path(ABI_DIRECTORY, name, ".json");
         addr_bindings.push(binding_string(&abi_file_path, name));
