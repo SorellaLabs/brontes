@@ -14,7 +14,7 @@ pub trait TryDecodeSol {
     fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error>;
 }
 
-pub trait ActionCollection {
+pub trait ActionCollection: Sync + Send{
     fn dispatch(
         &self,
         sig: [u8; 4],
