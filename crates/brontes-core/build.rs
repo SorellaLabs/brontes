@@ -59,7 +59,6 @@ struct ProtocolDetails {
 fn main() {
     dotenv::dotenv().ok();
 
-    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
