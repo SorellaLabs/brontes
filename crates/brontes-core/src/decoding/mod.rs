@@ -87,7 +87,7 @@ impl TracingProvider for Provider<Http> {
 
     #[cfg(feature = "server")]
     fn best_block_number(&self) -> reth_interfaces::RethResult<u64> {
-        self.trace.provider().best_block_number()
+        unreachable!()
     }
 
     async fn replay_block_transactions(
