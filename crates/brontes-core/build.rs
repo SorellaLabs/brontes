@@ -84,8 +84,6 @@ async fn run() {
         .collect::<Vec<_>>()
     };
 
-    #[cfg(feature = "test_run")]
-    panic!("{:?}", addresses.clone());
 
 
     #[cfg(feature = "server")]
