@@ -1,15 +1,14 @@
 [package]
 name = "alloy-etherscan"
 authors = [
-    "Matthias Seitz <matthias.seitz@outlook.de>",
-    "Georgios Konstantopoulos <me@gakonst.com>",
+  "Matthias Seitz <matthias.seitz@outlook.de>",
+  "Georgios Konstantopoulos <me@gakonst.com>",
 ]
 readme = "README.md"
 description = "Bindings for the etherscan.io web API"
 keywords = ["crypto", "ethers", "ethereum", "web3", "etherscan"]
 version = "0.1.0"
 edition = "2021"
-
 
 
 [package.metadata.docs.rs]
@@ -20,16 +19,18 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-core = { version = "2.0.7"}
-ethers-solc = { version = "2.0.7", optional = true}
+ethers-core = { version = "2.0.7" }
+ethers-solc = { version = "2.0.7", optional = true }
 
-alloy-sol-types = {git = "https://github.com/alloy-rs/core", package = "alloy-sol-types", features = ["json"]}
-alloy-primitives = {git = "https://github.com/alloy-rs/core", package = "alloy-primitives"}
-alloy-json-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-json-abi"}
-alloy-dyn-abi = {git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi"}
+alloy-sol-types = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-sol-types", features = [
+  "json",
+] }
+alloy-primitives = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-primitives" }
+alloy-json-abi = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-json-abi" }
+alloy-dyn-abi = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-dyn-abi" }
 
 reqwest = { version = "0.11.18", features = ["json"] }
-serde =  { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 thiserror = "1.0"
@@ -37,9 +38,11 @@ semver = "1.0"
 
 #tracing
 tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3.17", default-features = false, features = [
+  "env-filter",
+  "fmt",
+] }
 console-subscriber = "0.1.5"
-
 
 
 [dev-dependencies]
