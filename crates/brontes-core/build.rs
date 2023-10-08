@@ -84,8 +84,6 @@ async fn run() {
         .collect::<Vec<_>>()
     };
 
-
-
     #[cfg(feature = "server")]
     let mut protocol_abis = {
         #[cfg(not(feature = "test_run"))]
@@ -125,35 +123,44 @@ async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<
     trace_type.insert(TraceType::Trace);
     trace_type.insert(TraceType::VmTrace);
 
-    join_all((start_block..end_block).into_iter().map(|block_num| {
-        tracer
-            .trace
-            .replay_block_transactions(
-                BlockId::Number(BlockNumberOrTag::Number(block_num)),
-                trace_type.clone(),
-            )
-            .map(|trace| {
-                trace.unwrap().unwrap().into_iter().flat_map(|trace| {
-                    trace
-                        .full_trace
-                        .trace
-                        .into_iter()
-                        .filter_map(|call_frame| match call_frame.action {
-                            reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
-                            reth_rpc_types::trace::parity::Action::Create(_)
-                            | reth_rpc_types::trace::parity::Action::Reward(_) => None,
-                            reth_rpc_types::trace::parity::Action::Selfdestruct(s) => {
-                                Some(s.address)
-                            }
+    let range = (start_block..end_block).into_iter().collect::<Vec<_>>();
+    let mut res = HashSet::new();
+
+    for chunk in range.as_slice().chunks(50) {
+        res.extend(
+            join_all(chunk.into_iter().map(|block_num| {
+                tracer
+                    .trace
+                    .replay_block_transactions(
+                        BlockId::Number(BlockNumberOrTag::Number(*block_num)),
+                        trace_type.clone(),
+                    )
+                    .map(|trace| {
+                        trace.unwrap().unwrap().into_iter().flat_map(|trace| {
+                            trace
+                                .full_trace
+                                .trace
+                                .into_iter()
+                                .filter_map(|call_frame| match call_frame.action {
+                                    reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
+                                    reth_rpc_types::trace::parity::Action::Create(_)
+                                    | reth_rpc_types::trace::parity::Action::Reward(_) => None,
+                                    reth_rpc_types::trace::parity::Action::Selfdestruct(s) => {
+                                        Some(s.address)
+                                    }
+                                })
+                                .collect::<HashSet<_>>()
                         })
-                        .collect::<Vec<_>>()
-                })
-            })
-    }))
-    .await
-    .into_iter()
-    .flatten()
-    .collect::<HashSet<_>>()
+                    })
+            }))
+            .await
+            .into_iter()
+            .flatten()
+            .collect::<HashSet<_>>(),
+        );
+    }
+
+    res
 }
 
 //
