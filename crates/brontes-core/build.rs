@@ -32,7 +32,21 @@ GROUP BY
     ca.hashed_bytecode,
     c.abi,
     c.classifier_name
-HAVING hashed_bytecode != 'NULL'
+HAVING hashed_bytecode != 'NULL' 
+"#;
+
+const DATA_QUERY_FILTER: &str = r#"
+SELECT
+    arrayMap(x -> toString(x), groupArray(ca.address)) AS addresses,
+    c.abi AS abi ,
+    c.classifier_name AS classifier_name
+FROM ethereum.addresses AS ca
+LEFT JOIN ethereum.contracts AS c ON ca.hashed_bytecode = c.hashed_bytecode
+GROUP BY
+    ca.hashed_bytecode,
+    c.abi,
+    c.classifier_name
+HAVING hashed_bytecode != 'NULL' AND hasAny(addresses, ?) OR c.classifier_name != ''
 "#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
@@ -68,24 +82,18 @@ async fn run() {
             u64::from_str_radix(&start_block, 10).unwrap(),
             u64::from_str_radix(&end_block, 10).unwrap(),
         )
-        .await
+        .await.into_iter().map(|addr| addr.to_string().to_lowercase()).collect::<Vec<_>>()
     };
 
     #[cfg(feature = "server")]
-    let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await;
+    let mut protocol_abis = {
+        #[cfg(not(feature = "test_run"))]
+         query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
+        #[cfg(feature = "test_run")]
+        clickhouse_client.query(DATA_QUERY_FILTER).bind(addresses).fetch_all().await.unwrap()
+    };
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = vec![ProtocolDetails::default()];
-
-    // suboptimal, lets just filter in query
-    #[cfg(feature = "test_run")]
-    protocol_abis.retain(|row| {
-        let new_row = row
-            .addresses
-            .iter()
-            .filter(|addr| addresses.contains(&H160::from_str(addr).unwrap()))
-            .collect::<Vec<_>>();
-        !new_row.is_empty() || !row.classifier_name.is_empty()
-    });
 
     write_all_abis(&protocol_abis).await;
 
