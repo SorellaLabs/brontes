@@ -30,7 +30,7 @@ pub trait ActionCollection: Sync + Send {
 /// implements the above trait for decoding on the different binding enums
 #[macro_export]
 macro_rules! impl_decode_sol {
-    ($enum_name:ident, $inner_type:path ) => {
+    ($enum_name:ident, $inner_type:path) => {
         impl TryDecodeSol for $enum_name {
             type DecodingType = $inner_type;
 

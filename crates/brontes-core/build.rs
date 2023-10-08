@@ -218,7 +218,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
 fn init_enum(name: &str) -> Vec<String> {
     let mut bindings = Vec::new();
     bindings.push("\n#[allow(non_camel_case_types)]".to_string());
-    bindings.push(format!("#[repr(u16)]\n pub enum {} {{", name));
+    bindings.push(format!("#[repr(u32)]\n pub enum {} {{", name));
 
     bindings
 }
