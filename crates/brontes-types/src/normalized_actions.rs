@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use reth_primitives::{Address, U256};
 use reth_rpc_types::Log;
 use serde::Serialize;
-use sorella_db_clients::databases::clickhouse::{self, InsertRow, Row};
+use sorella_db_databases::clickhouse::{self, InsertRow, Row};
 
 use crate::structured_trace::TransactionTraceWithLogs;
 

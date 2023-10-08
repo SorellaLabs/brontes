@@ -11,7 +11,7 @@ brontes-types.workspace = true
 brontes-core.workspace = true
 
 reth-primitives.workspace = true
-sorella-db-clients.workspace = true
+sorella-db-databases.workspace = true
 # serde
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

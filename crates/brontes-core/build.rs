@@ -187,10 +187,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
         addr_bindings.push(binding_string(&abi_file_path, name));
 
         binding_enums.push(enum_binding_string(name, Some("_Enum")));
-        return_binding_enums.push(enum_binding_string(
-            &name,
-            Some(&format!("::{}Calls", name)),
-        ));
+        return_binding_enums.push(enum_binding_string(&name, Some(&format!("::{}Calls", name))));
         individual_sub_enums(&mut mod_enums, name);
         enum_impl_macro(&mut mod_enums, name);
         bindings_impl_try_decode.push(bindings_try_row(name));
