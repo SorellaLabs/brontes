@@ -81,7 +81,7 @@ async fn run() {
         )
         .await
         .into_iter()
-        .map(|addr| format!("{:#x}",addr.to_string()).to_lowercase())
+        .map(|addr| format!("{:?}", addr).to_lowercase())
         .collect::<Vec<_>>()
     };
 
