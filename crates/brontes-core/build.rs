@@ -102,7 +102,7 @@ async fn run() {
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = vec![ProtocolDetails::default()];
 
-    write_all_abis(&protocol_abis).await;
+    write_all_abis(&protocol_abis);
 
     generate(
         Path::new(&env::var("OUT_DIR").unwrap())
@@ -176,7 +176,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
             protocol_addr
                 .addresses
                 .first()
-                .map(|string| string[2..].to_string().to_uppercase())
+                .map(|string| "Contract".to_string() + string)
                 .unwrap()
         } else {
             protocol_addr.classifier_name.clone()
@@ -283,9 +283,19 @@ fn bindings_try_row(protocol_name: &str) -> String {
 //
 
 /// writes the provider json abis to files given the protocol name
-async fn write_all_abis(protos: &Vec<ProtocolDetails>) {
+fn write_all_abis(protos: &Vec<ProtocolDetails>) {
     for protocol_addr in protos {
-        let abi_file_path = get_file_path(ABI_DIRECTORY, &protocol_addr.classifier_name, ".json");
+        let name = if protocol_addr.classifier_name.is_empty() {
+            protocol_addr
+                .addresses
+                .first()
+                .map(|string| "Contract".to_string() + string)
+                .unwrap()
+        } else {
+            protocol_addr.classifier_name.clone()
+        };
+
+        let abi_file_path = get_file_path(ABI_DIRECTORY, &name, ".json");
         let mut file = write_file(&abi_file_path, true);
         file.write_all(
             serde_json::to_string(&protocol_addr.abi)
@@ -304,7 +314,7 @@ fn address_abi_mapping(mapping: Vec<ProtocolDetails>) {
     let mut phf_map = phf_codegen::Map::new();
     for map in mapping {
         if map.classifier_name.is_empty() {
-            let name = &map.addresses.first().unwrap().clone()[2..];
+            let name = "Contract".to_string() + map.addresses.first().unwrap();
             for address in map.addresses {
                 phf_map.entry(
                     H160::from_str(&address).unwrap().0,
