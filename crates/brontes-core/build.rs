@@ -123,7 +123,7 @@ async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<
     let mut res = HashSet::new();
 
     for chunk in range.as_slice().chunks(10) {
-        res.extend(get_addresses_for_chunk(&tracer, chunk).await)
+        res.extend(get_addresses_for_chunk(&tracer, chunk).await);
             panic!("shit");
     }
 
