@@ -188,7 +188,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
 
         binding_enums.push(enum_binding_string(name, Some("_Enum")));
         return_binding_enums.push(enum_binding_string(
-            &protocol_addr.classifier_name,
+            &name,
             Some(&format!("::{}Calls", name)),
         ));
         individual_sub_enums(&mut mod_enums, name);
