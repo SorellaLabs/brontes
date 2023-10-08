@@ -16,7 +16,7 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients", branch = "main" }
+sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", branch = "main" }
 
 # Poirot
 brontes-core = { path = "./crates/brontes-core" }

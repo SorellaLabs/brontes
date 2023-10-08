@@ -14,7 +14,7 @@ use hyper_tls::HttpsConnector;
 #[cfg(feature = "server")]
 use reth_primitives::H160;
 use serde::{Deserialize, Serialize};
-use sorella_db_clients::databases::clickhouse::{self, Client, Row};
+use sorella_db_databases::clickhouse::{Client, Row};
 use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
