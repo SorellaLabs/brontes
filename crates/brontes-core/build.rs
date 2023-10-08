@@ -102,9 +102,6 @@ async fn run() {
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = vec![ProtocolDetails::default()];
 
-    #[cfg(feature = "test_run")]
-    panic!("{:?}, {:?}", protocol_abis, addresses);
-
     write_all_abis(&protocol_abis).await;
 
     generate(
