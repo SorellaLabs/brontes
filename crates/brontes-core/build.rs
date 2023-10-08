@@ -298,7 +298,7 @@ fn write_all_abis(protos: &Vec<ProtocolDetails>) {
         let abi_file_path = get_file_path(ABI_DIRECTORY, &name, ".json");
         let mut file = write_file(&abi_file_path, true);
         file.write_all(
-            serde_json::to_string(&protocol_addr.abi[1..protocol_addr.abi.len() - 2])
+            serde_json::to_string(&serde_json::to_value(&protocol_addr.abi).unwrap())
                 .unwrap()
                 .as_bytes(),
         )
