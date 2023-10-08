@@ -1,8 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parenthesized, parse::Parse, token::Paren, DeriveInput, ExprClosure, Ident, LitBool, Token,
-};
+use syn::{parenthesized, parse::Parse, token::Paren, ExprClosure, Ident, LitBool, Token};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
@@ -195,7 +193,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
 
     quote!(
         #[derive(default)]
-        pub struct #struct_name(#(#name)*);
+        pub struct #struct_name(#(#name,)*);
 
         impl ActionCollection for #struct_name {
             fn dispatch(
@@ -220,7 +218,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                         )
                 }
 
-                #( else if sig == self.#i.get_sig()
+                #( else if sig == self.#i.get_sig() {
                     Some(
                         self.#i.decode_trace_data(
                             index,
@@ -230,6 +228,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             target_address
                             )
                         )
+                    }
                 )*
 
                 None
@@ -237,8 +236,6 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
         }
     )
     .into()
-
-    // ""
 }
 
 struct ActionDispatch {
