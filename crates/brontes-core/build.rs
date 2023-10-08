@@ -424,7 +424,7 @@ fn write_file(file_path: &str, create: bool) -> File {
     }
 
     fs::OpenOptions::new()
-        .append(true)
+        .write(true)
         .read(true)
         .open(file_path)
         .expect("could not open file")
