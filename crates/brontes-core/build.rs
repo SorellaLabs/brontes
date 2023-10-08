@@ -84,6 +84,10 @@ async fn run() {
         .collect::<Vec<_>>()
     };
 
+    #[cfg(feature = "test_run")]
+    panic!("{:?}", addresses.clone());
+
+
     #[cfg(feature = "server")]
     let mut protocol_abis = {
         #[cfg(not(feature = "test_run"))]
