@@ -4,6 +4,9 @@ pub mod executor;
 pub mod macros;
 
 use alloy_sol_types::{sol, SolInterface};
+use brontes_types::normalized_actions::Actions;
+use reth_primitives::{Address, Bytes, H160, U256};
+use reth_rpc_types::Log;
 
 include!(concat!(env!("OUT_DIR"), "/protocol_addr_set.rs"));
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
