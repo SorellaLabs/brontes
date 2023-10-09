@@ -7,10 +7,12 @@ use std::{
     str::FromStr,
 };
 
+use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
 use ethers_core::types::Chain;
 use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth_primitives::{Address, BlockId, BlockNumberOrTag, H160};
 use reth_rpc_types::trace::parity::TraceType;
 use reth_tracing::TracingClient;
@@ -101,6 +103,12 @@ async fn run() {
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = vec![ProtocolDetails::default()];
 
+    let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
+        .into_par_iter()
+        .map(|contract| (JsonAbi::from_json_str(&contract.abi).unwrap(), contract))
+        .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
+        .collect::<Vec<_>>();
+
     write_all_abis(&protocol_abis);
 
     generate(
@@ -173,7 +181,7 @@ async fn get_addresses_for_chunk(client: &TracingClient, chunk: &[u64]) -> HashS
 //
 
 /// generates all bindings and enums for them and writes them to a file
-async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
+async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bool, bool)>) {
     let mut file = write_file(bindings_file_path, true);
 
     let mut addr_bindings = Vec::new();
@@ -182,7 +190,11 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
     let mut mod_enums = Vec::new();
     let mut bindings_impl_try_decode = bindings_try_decode_impl_init();
 
-    for protocol_addr in addresses {
+    for (protocol_addr, has_functions, _has_events) in addresses {
+        if !has_functions {
+            continue
+        }
+
         let name = if protocol_addr.classifier_name.is_empty() {
             protocol_addr
                 .addresses
@@ -291,8 +303,12 @@ fn bindings_try_row(protocol_name: &str) -> String {
 //
 
 /// writes the provider json abis to files given the protocol name
-fn write_all_abis(protos: &Vec<ProtocolDetails>) {
-    for protocol_addr in protos {
+fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
+    for (protocol_addr, has_functions, _) in protos {
+        if !has_functions {
+            continue
+        }
+
         let name = if protocol_addr.classifier_name.is_empty() {
             protocol_addr
                 .addresses
@@ -312,12 +328,16 @@ fn write_all_abis(protos: &Vec<ProtocolDetails>) {
 }
 
 /// creates a mapping of each address to an abi binding
-fn address_abi_mapping(mapping: Vec<ProtocolDetails>) {
+fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
     let mut phf_map = phf_codegen::Map::new();
-    for map in mapping {
+    for (map, has_functions, _) in mapping {
+        if !has_functions {
+            continue
+        }
+
         if map.classifier_name.is_empty() {
             let name = "Contract".to_string() + map.addresses.first().unwrap();
             for address in map.addresses {
