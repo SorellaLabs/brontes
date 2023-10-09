@@ -1121,6 +1121,7 @@ dependencies = [
  "log",
  "phf",
  "phf_codegen",
+ "rayon",
  "reqwest",
  "reth-beacon-consensus",
  "reth-blockchain-tree",
