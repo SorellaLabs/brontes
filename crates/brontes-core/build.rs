@@ -52,8 +52,8 @@ HAVING hashed_bytecode != 'NULL' AND hasAny(addresses, ?) OR c.classifier_name !
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 struct ProtocolDetails {
     pub addresses:       Vec<String>,
-    pub abi:             Option<String>,
-    pub classifier_name: Option<String>,
+    pub abi:             String,
+    pub classifier_name: String,
 }
 
 fn main() {
@@ -183,14 +183,14 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<ProtocolDetails>) {
     let mut bindings_impl_try_decode = bindings_try_decode_impl_init();
 
     for protocol_addr in addresses {
-        let name = if protocol_addr.classifier_name.is_none() {
+        let name = if protocol_addr.classifier_name.is_empty() {
             protocol_addr
                 .addresses
                 .first()
                 .map(|string| "Contract".to_string() + string)
                 .unwrap()
         } else {
-            protocol_addr.classifier_name.as_ref().unwrap().clone()
+            protocol_addr.classifier_name.clone()
         };
         let name = &name;
 
@@ -293,22 +293,19 @@ fn bindings_try_row(protocol_name: &str) -> String {
 /// writes the provider json abis to files given the protocol name
 fn write_all_abis(protos: &Vec<ProtocolDetails>) {
     for protocol_addr in protos {
-        if protocol_addr.abi.is_none() {
-            continue
-        }
-        let name = if protocol_addr.classifier_name.is_none() {
+        let name = if protocol_addr.classifier_name.is_empty() {
             protocol_addr
                 .addresses
                 .first()
                 .map(|string| "Contract".to_string() + string)
                 .unwrap()
         } else {
-            protocol_addr.classifier_name.as_ref().unwrap().clone()
+            protocol_addr.classifier_name.clone()
         };
 
         let abi_file_path = get_file_path(ABI_DIRECTORY, &name, ".json");
         let mut file = write_file(&abi_file_path, true);
-        let decoded: Value = serde_json::from_str(protocol_addr.abi.as_ref().unwrap()).unwrap();
+        let decoded: Value = serde_json::from_str(&protocol_addr.abi).unwrap();
         file.write_all(&serde_json::to_vec_pretty(&decoded).unwrap())
             .unwrap();
     }
@@ -321,7 +318,7 @@ fn address_abi_mapping(mapping: Vec<ProtocolDetails>) {
 
     let mut phf_map = phf_codegen::Map::new();
     for map in mapping {
-        if map.classifier_name.is_none() {
+        if map.classifier_name.is_empty() {
             let name = "Contract".to_string() + map.addresses.first().unwrap();
             for address in map.addresses {
                 phf_map.entry(
@@ -331,7 +328,7 @@ fn address_abi_mapping(mapping: Vec<ProtocolDetails>) {
             }
         } else {
             for address in map.addresses {
-                let name = map.classifier_name.as_ref().unwrap();
+                let name = &map.classifier_name;
                 phf_map.entry(
                     H160::from_str(&address).unwrap().0,
                     &format!(
