@@ -105,7 +105,7 @@ async fn run() {
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
-        .map(|contract| (JsonAbi::from_json_str(&contract.abi).unwrap(), contract))
+        .map(|contract: ProtocolDetails| (JsonAbi::from_json_str(&contract.abi).unwrap(), contract))
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
 
