@@ -91,7 +91,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
                 self.chain_tip = chain_tip;
             } else {
                 // no new block ready
-                return
+                return false
             }
         }
 
