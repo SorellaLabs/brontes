@@ -88,7 +88,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         }
 
         if !self.composer.is_finished() {
-            if let Poll::Ready(Some(data)) = self.composer.poll_unpin(cx) {
+            if let Poll::Ready(data) = self.composer.poll_unpin(cx) {
                 self.on_inspectors_finish(data);
             }
         }
