@@ -1,0 +1,404 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_governance",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "contract ITornadoInstance",
+        "name": "instance",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum InstanceRegistry.InstanceState",
+        "name": "state",
+        "type": "uint8"
+      }
+    ],
+    "name": "InstanceStateUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "tornadoRouter",
+        "type": "address"
+      }
+    ],
+    "name": "RouterRegistered",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "domains",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "bulkResolve",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "result",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllInstanceAddresses",
+    "outputs": [
+      {
+        "internalType": "contract ITornadoInstance[]",
+        "name": "result",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllInstances",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract ITornadoInstance",
+            "name": "addr",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "isERC20",
+                "type": "bool"
+              },
+              {
+                "internalType": "contract IERC20",
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "internalType": "enum InstanceRegistry.InstanceState",
+                "name": "state",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint24",
+                "name": "uniswapPoolSwappingFee",
+                "type": "uint24"
+              },
+              {
+                "internalType": "uint32",
+                "name": "protocolFeePercentage",
+                "type": "uint32"
+              }
+            ],
+            "internalType": "struct InstanceRegistry.Instance",
+            "name": "instance",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct InstanceRegistry.Tornado[]",
+        "name": "result",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ITornadoInstance",
+        "name": "instance",
+        "type": "address"
+      }
+    ],
+    "name": "getPoolToken",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "governance",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract ITornadoInstance",
+            "name": "addr",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "isERC20",
+                "type": "bool"
+              },
+              {
+                "internalType": "contract IERC20",
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "internalType": "enum InstanceRegistry.InstanceState",
+                "name": "state",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint24",
+                "name": "uniswapPoolSwappingFee",
+                "type": "uint24"
+              },
+              {
+                "internalType": "uint32",
+                "name": "protocolFeePercentage",
+                "type": "uint32"
+              }
+            ],
+            "internalType": "struct InstanceRegistry.Instance",
+            "name": "instance",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct InstanceRegistry.Tornado[]",
+        "name": "_instances",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_router",
+        "type": "bytes32"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "instanceIds",
+    "outputs": [
+      {
+        "internalType": "contract ITornadoInstance",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ITornadoInstance",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "instances",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "isERC20",
+        "type": "bool"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "enum InstanceRegistry.InstanceState",
+        "name": "state",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint24",
+        "name": "uniswapPoolSwappingFee",
+        "type": "uint24"
+      },
+      {
+        "internalType": "uint32",
+        "name": "protocolFeePercentage",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_instanceId",
+        "type": "uint256"
+      }
+    ],
+    "name": "removeInstance",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "node",
+        "type": "bytes32"
+      }
+    ],
+    "name": "resolve",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "router",
+    "outputs": [
+      {
+        "internalType": "contract TornadoRouter",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ITornadoInstance",
+        "name": "instance",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "newFee",
+        "type": "uint32"
+      }
+    ],
+    "name": "setProtocolFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "routerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setTornadoRouter",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract ITornadoInstance",
+            "name": "addr",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "isERC20",
+                "type": "bool"
+              },
+              {
+                "internalType": "contract IERC20",
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "internalType": "enum InstanceRegistry.InstanceState",
+                "name": "state",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint24",
+                "name": "uniswapPoolSwappingFee",
+                "type": "uint24"
+              },
+              {
+                "internalType": "uint32",
+                "name": "protocolFeePercentage",
+                "type": "uint32"
+              }
+            ],
+            "internalType": "struct InstanceRegistry.Instance",
+            "name": "instance",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct InstanceRegistry.Tornado",
+        "name": "_tornado",
+        "type": "tuple"
+      }
+    ],
+    "name": "updateInstance",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

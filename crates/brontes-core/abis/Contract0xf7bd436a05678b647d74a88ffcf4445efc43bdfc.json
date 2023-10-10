@@ -1,0 +1,422 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "upgradeParameters",
+        "type": "bytes"
+      }
+    ],
+    "name": "upgrade",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "_recursiveInput",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "_proof",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint8[]",
+        "name": "_vkIndexes",
+        "type": "uint8[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "_individualVksInputs",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[16]",
+        "name": "_subproofsLimbs",
+        "type": "uint256[16]"
+      }
+    ],
+    "name": "verifyAggregatedBlockProof",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_rootHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "_accountId",
+        "type": "uint32"
+      },
+      {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "_tokenId",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint128",
+        "name": "_amount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint32",
+        "name": "_nftCreatorAccountId",
+        "type": "uint32"
+      },
+      {
+        "internalType": "address",
+        "name": "_nftCreatorAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "_nftSerialId",
+        "type": "uint32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_nftContentHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "_proof",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "verifyExitProof",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "public_inputs",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "serialized_proof",
+        "type": "uint256[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "domain_size",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "num_inputs",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.Fr",
+            "name": "omega",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "X",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "Y",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.G1Point[7]",
+            "name": "gate_setup_commitments",
+            "type": "tuple[7]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "X",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "Y",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.G1Point[2]",
+            "name": "gate_selector_commitments",
+            "type": "tuple[2]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "X",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "Y",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.G1Point[4]",
+            "name": "copy_permutation_commitments",
+            "type": "tuple[4]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.Fr[3]",
+            "name": "copy_permutation_non_residues",
+            "type": "tuple[3]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256[2]",
+                "name": "X",
+                "type": "uint256[2]"
+              },
+              {
+                "internalType": "uint256[2]",
+                "name": "Y",
+                "type": "uint256[2]"
+              }
+            ],
+            "internalType": "struct PairingsBn254.G2Point",
+            "name": "g2_x",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct Plonk4VerifierWithAccessToDNext.VerificationKey",
+        "name": "vk",
+        "type": "tuple"
+      }
+    ],
+    "name": "verify_serialized_proof",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "public_inputs",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "serialized_proof",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "recursive_vks_root",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "max_valid_index",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8[]",
+        "name": "recursive_vks_indexes",
+        "type": "uint8[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "individual_vks_inputs",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[16]",
+        "name": "subproofs_limbs",
+        "type": "uint256[16]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "domain_size",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "num_inputs",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.Fr",
+            "name": "omega",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "X",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "Y",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.G1Point[7]",
+            "name": "gate_setup_commitments",
+            "type": "tuple[7]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "X",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "Y",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.G1Point[2]",
+            "name": "gate_selector_commitments",
+            "type": "tuple[2]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "X",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "Y",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.G1Point[4]",
+            "name": "copy_permutation_commitments",
+            "type": "tuple[4]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct PairingsBn254.Fr[3]",
+            "name": "copy_permutation_non_residues",
+            "type": "tuple[3]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256[2]",
+                "name": "X",
+                "type": "uint256[2]"
+              },
+              {
+                "internalType": "uint256[2]",
+                "name": "Y",
+                "type": "uint256[2]"
+              }
+            ],
+            "internalType": "struct PairingsBn254.G2Point",
+            "name": "g2_x",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct Plonk4VerifierWithAccessToDNext.VerificationKey",
+        "name": "vk",
+        "type": "tuple"
+      }
+    ],
+    "name": "verify_serialized_proof_with_recursion",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
