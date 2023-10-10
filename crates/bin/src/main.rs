@@ -76,7 +76,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         );
         assert!(command.end_block.is_some(), "running in test mode. need end block");
         assert_eq!(
-            end_block, command.end_block.copied().unwrap(),
+            end_block, *command.end_block.as_ref().unwrap(),
             "Test mode end needs to be the same as specified in config to work properly"
         );
     }
