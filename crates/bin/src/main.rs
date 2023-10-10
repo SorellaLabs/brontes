@@ -76,7 +76,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         );
         assert!(command.end_block.is_some(), "running in test mode. need end block");
         assert_eq!(
-            end_block, command.end_block,
+            end_block, command.end_block.copied().unwrap(),
             "Test mode end needs to be the same as specified in config to work properly"
         );
     }
@@ -101,7 +101,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let parser = DParser::new(metrics_tx, &etherscan_key, tracer);
     let classifier = Classifier::new(HashMap::default());
 
-    let chain_tip = parser.get_latest_block_number().await.unwrap();
+    let chain_tip = parser.get_latest_block_number().unwrap();
 
     Poirot::new(
         command.start_block,
