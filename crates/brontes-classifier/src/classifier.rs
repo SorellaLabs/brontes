@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use brontes_core::{StaticReturnBindings};
+use brontes_core::StaticReturnBindings;
 use brontes_database::Metadata;
 use brontes_types::{
     normalized_actions::{
@@ -505,9 +505,9 @@ impl Classifier {
         None
     }
 
-    fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
-        tree.remove_duplicate_data(find, classify, info)
-    }
+    // fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
+    //     tree.remove_duplicate_data(find, classify, info)
+    // }
 
     fn try_classify_unknown_exchanges(&self, tree: &mut TimeTree<Actions>) {
         // Acquire the read lock once
@@ -516,10 +516,10 @@ impl Classifier {
         let new_classifed_exchanges = tree.dyn_classify(
             |address, sub_actions| {
                 // we can dyn classify this shit
-                if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
-                    // this is already classified
-                    return false
-                }
+                // if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
+                //     // this is already classified
+                //     return false
+                // }
                 if known_dyn_protocols_read.contains_key(&address) {
                     return true
                 } else if self.is_possible_exchange(sub_actions) {
