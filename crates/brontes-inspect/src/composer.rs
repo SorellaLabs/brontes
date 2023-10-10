@@ -6,7 +6,6 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tracing::info;
 
 use async_scoped::{Scope, TokioScope};
 use brontes_database::Metadata;
@@ -19,6 +18,7 @@ use futures::{FutureExt, Stream};
 use lazy_static::lazy_static;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::Address;
+use tracing::info;
 
 use crate::Inspector;
 
@@ -116,11 +116,7 @@ impl<'a, const N: usize> Composer<'a, N> {
         return self.is_finished
     }
 
-    pub fn on_new_tree(
-        &mut self,
-        tree: Arc<TimeTree<Actions>>,
-        meta_data: Arc<Metadata>,
-    ) -> ComposerResults {
+    pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) {
         // This is only unsafe due to the fact that you can have missbehaviour where you
         // drop this with incomplete futures
         let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
