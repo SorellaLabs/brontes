@@ -111,3 +111,12 @@ c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
 hex-literal = "0.4.1"
 rayon = "1.7.0"
 dotenv = "0.15.0"
+
+[profile.dev]
+opt-level = 0           # No optimizations
+debug = true            # Generate debug information
+rpath = false           # Don't set the rpath in executables
+lto = false             # No link-time optimization
+debug-assertions = true # Enable assertions in debug mode
+codegen-units = 16      # Increase parallel code generation units for faster compiles
+incremental = true      # Enable incremental compilation
