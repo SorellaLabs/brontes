@@ -119,7 +119,7 @@ async fn run() {
         &protocol_abis,
     )
     .await;
-    address_abi_mapping(protocol_abis)
+    // address_abi_mapping(protocol_abis)
 }
 
 #[cfg(feature = "test_run")]
