@@ -1,0 +1,1371 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "router",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "exchange",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "erc721Delegate",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "erc1155Delegate",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidParams",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "Unauthorized",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsuccessfulCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsuccessfulFill",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsuccessfulPayment",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "WrongParams",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "CallExecuted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "ERC1155_DELEGATE",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ERC721_DELEGATE",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "EXCHANGE",
+    "outputs": [
+      {
+        "internalType": "contract IX2Y2",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "salt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "network",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "intent",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "delegateType",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "contract IERC20",
+                "name": "currency",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "dataMask",
+                "type": "bytes"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "price",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "data",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct IX2Y2.OrderItem[]",
+                "name": "items",
+                "type": "tuple[]"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "r",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "s",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint8",
+                "name": "v",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "signVersion",
+                "type": "uint8"
+              }
+            ],
+            "internalType": "struct IX2Y2.Order[]",
+            "name": "orders",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum IX2Y2.Op",
+                "name": "op",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "orderIdx",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "itemIdx",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "price",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "itemHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "executionDelegate",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "dataReplacement",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "bidIncentivePct",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aucMinIncrementPct",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aucIncDurationSecs",
+                "type": "uint256"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "percentage",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "to",
+                    "type": "address"
+                  }
+                ],
+                "internalType": "struct IX2Y2.Fee[]",
+                "name": "fees",
+                "type": "tuple[]"
+              }
+            ],
+            "internalType": "struct IX2Y2.SettleDetail[]",
+            "name": "details",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "salt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountToEth",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountToWeth",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+              },
+              {
+                "internalType": "bool",
+                "name": "canFail",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct IX2Y2.SettleShared",
+            "name": "shared",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct IX2Y2.RunInput",
+        "name": "input",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "fillTo",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "refundTo",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "revertIfIncomplete",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.OfferParams",
+        "name": "params",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.Fee[]",
+        "name": "fees",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "acceptERC1155Offer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "salt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "network",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "intent",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "delegateType",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "contract IERC20",
+                "name": "currency",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "dataMask",
+                "type": "bytes"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "price",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "data",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct IX2Y2.OrderItem[]",
+                "name": "items",
+                "type": "tuple[]"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "r",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "s",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint8",
+                "name": "v",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "signVersion",
+                "type": "uint8"
+              }
+            ],
+            "internalType": "struct IX2Y2.Order[]",
+            "name": "orders",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum IX2Y2.Op",
+                "name": "op",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "orderIdx",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "itemIdx",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "price",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "itemHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "executionDelegate",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "dataReplacement",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "bidIncentivePct",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aucMinIncrementPct",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aucIncDurationSecs",
+                "type": "uint256"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "percentage",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "to",
+                    "type": "address"
+                  }
+                ],
+                "internalType": "struct IX2Y2.Fee[]",
+                "name": "fees",
+                "type": "tuple[]"
+              }
+            ],
+            "internalType": "struct IX2Y2.SettleDetail[]",
+            "name": "details",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "salt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountToEth",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountToWeth",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+              },
+              {
+                "internalType": "bool",
+                "name": "canFail",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct IX2Y2.SettleShared",
+            "name": "shared",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct IX2Y2.RunInput",
+        "name": "input",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "fillTo",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "refundTo",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "revertIfIncomplete",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.OfferParams",
+        "name": "params",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.Fee[]",
+        "name": "fees",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "acceptERC721Offer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "salt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "network",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "intent",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "delegateType",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "contract IERC20",
+                "name": "currency",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "dataMask",
+                "type": "bytes"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "price",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "data",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct IX2Y2.OrderItem[]",
+                "name": "items",
+                "type": "tuple[]"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "r",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "s",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint8",
+                "name": "v",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "signVersion",
+                "type": "uint8"
+              }
+            ],
+            "internalType": "struct IX2Y2.Order[]",
+            "name": "orders",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum IX2Y2.Op",
+                "name": "op",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "orderIdx",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "itemIdx",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "price",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "itemHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "executionDelegate",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "dataReplacement",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "bidIncentivePct",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aucMinIncrementPct",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aucIncDurationSecs",
+                "type": "uint256"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "percentage",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "to",
+                    "type": "address"
+                  }
+                ],
+                "internalType": "struct IX2Y2.Fee[]",
+                "name": "fees",
+                "type": "tuple[]"
+              }
+            ],
+            "internalType": "struct IX2Y2.SettleDetail[]",
+            "name": "details",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "salt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountToEth",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountToWeth",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+              },
+              {
+                "internalType": "bool",
+                "name": "canFail",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct IX2Y2.SettleShared",
+            "name": "shared",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct IX2Y2.RunInput",
+        "name": "input",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "fillTo",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "refundTo",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "revertIfIncomplete",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.ETHListingParams",
+        "name": "params",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.Fee[]",
+        "name": "fees",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "acceptETHListing",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "salt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "network",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "intent",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "delegateType",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "contract IERC20",
+                "name": "currency",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "dataMask",
+                "type": "bytes"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "price",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "data",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct IX2Y2.OrderItem[]",
+                "name": "items",
+                "type": "tuple[]"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "r",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "s",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint8",
+                "name": "v",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "signVersion",
+                "type": "uint8"
+              }
+            ],
+            "internalType": "struct IX2Y2.Order[]",
+            "name": "orders",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum IX2Y2.Op",
+                "name": "op",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "orderIdx",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "itemIdx",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "price",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "itemHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "executionDelegate",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "dataReplacement",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "bidIncentivePct",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aucMinIncrementPct",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aucIncDurationSecs",
+                "type": "uint256"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "percentage",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "to",
+                    "type": "address"
+                  }
+                ],
+                "internalType": "struct IX2Y2.Fee[]",
+                "name": "fees",
+                "type": "tuple[]"
+              }
+            ],
+            "internalType": "struct IX2Y2.SettleDetail[]",
+            "name": "details",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "salt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountToEth",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountToWeth",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+              },
+              {
+                "internalType": "bool",
+                "name": "canFail",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct IX2Y2.SettleShared",
+            "name": "shared",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct IX2Y2.RunInput[]",
+        "name": "inputs",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "fillTo",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "refundTo",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "revertIfIncomplete",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.ETHListingParams",
+        "name": "params",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.Fee[]",
+        "name": "fees",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "acceptETHListings",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "claimOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "targets",
+        "type": "address[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "data",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "values",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "makeCalls",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "onERC1155Received",
+    "outputs": [
+      {
+        "internalType": "bytes4",
+        "name": "",
+        "type": "bytes4"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "onERC721Received",
+    "outputs": [
+      {
+        "internalType": "bytes4",
+        "name": "",
+        "type": "bytes4"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pendingOwner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "router",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "stateMutability": "payable",
+    "type": "receive"
+  }
+]
