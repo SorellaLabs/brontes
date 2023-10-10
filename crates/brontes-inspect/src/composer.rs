@@ -6,6 +6,7 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
+use tracing::info;
 
 use async_scoped::{Scope, TokioScope};
 use brontes_database::Metadata;
