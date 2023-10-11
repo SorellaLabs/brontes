@@ -51,6 +51,20 @@ GROUP BY
 HAVING hashed_bytecode != 'NULL' AND hasAny(addresses, ?) OR c.classifier_name != ''
 "#;
 
+const LOCAL_QUERY: &str = r#"
+SELECT
+    arrayMap(x -> toString(x), groupArray(toString(ca.address))) AS addresses,
+    c.abi AS abi ,
+    c.classifier_name AS classifier_name
+FROM ethereum.addresses AS ca
+LEFT JOIN ethereum.contracts AS c ON ca.hashed_bytecode = c.hashed_bytecode
+GROUP BY
+    ca.hashed_bytecode,
+    c.abi,
+    c.classifier_name
+HAVING c.classifier_name != ''
+"#;
+
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 struct ProtocolDetails {
     pub addresses:       Vec<String>,
@@ -101,7 +115,7 @@ async fn run() {
             .unwrap()
     };
     #[cfg(not(feature = "server"))]
-    let mut protocol_abis = vec![ProtocolDetails::default()];
+    let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, LOCAL_QUERY).await;
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
