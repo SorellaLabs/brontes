@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use brontes_core::StaticReturnBindings;
+use brontes_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 use brontes_database::Metadata;
 use brontes_types::{
     normalized_actions::{
