@@ -109,17 +109,17 @@ async fn run() {
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
 
-    write_all_abis(&protocol_abis);
-
-    generate(
-        Path::new(&env::var("OUT_DIR").unwrap())
-            .join(BINDINGS_PATH)
-            .to_str()
-            .unwrap(),
-        &protocol_abis,
-    )
-    .await;
-    // address_abi_mapping(protocol_abis)
+    // write_all_abis(&protocol_abis);
+    //
+    // generate(
+    //     Path::new(&env::var("OUT_DIR").unwrap())
+    //         .join(BINDINGS_PATH)
+    //         .to_str()
+    //         .unwrap(),
+    //     &protocol_abis,
+    // )
+    // .await;
+    address_abi_mapping(protocol_abis)
 }
 
 #[cfg(feature = "test_run")]
