@@ -330,6 +330,7 @@ fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
 
 /// creates a mapping of each address to an abi binding
 fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
+    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
     let mut phf_map = phf_codegen::Map::new();
@@ -345,7 +346,8 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
                 "static {}: (Option<Box<dyn ActionCollection>>,StaticBindings) =(None, \
                  StaticBindings::{}({}_Enum::None));",
                 name, name, name
-            );
+            )
+            .unwrap();
 
             for address in map.addresses {
                 phf_map.entry(H160::from_str(&address).unwrap().0, &format!("&{}", name));
@@ -357,7 +359,8 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
                 "static {}: (Option<Box<dyn ActionCollection>>,StaticBindings) = \
                  (Some({}::default()), StaticBindings::{}({}_Enum::None));",
                 name, name, name, name
-            );
+            )
+            .unwrap();
 
             for address in map.addresses {
                 phf_map.entry(H160::from_str(&address).unwrap().0, &format!("&{}", name));
