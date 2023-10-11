@@ -119,6 +119,7 @@ async fn run() {
     //     &protocol_abis,
     // )
     // .await;
+    panic!("{:?}", protocol_abis);
     address_abi_mapping(protocol_abis)
 }
 
