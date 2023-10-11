@@ -14,7 +14,7 @@ use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth_primitives::{Address, BlockId, BlockNumberOrTag, H160};
-use reth_rpc_types::trace::parity::TraceType;
+use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
 use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -105,6 +105,7 @@ async fn run() {
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
+        .filter(|contract: &ProtocolDetails| !contract.abi.is_empty())
         .map(|contract: ProtocolDetails| (JsonAbi::from_json_str(&contract.abi).unwrap(), contract))
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
@@ -151,28 +152,32 @@ async fn get_addresses_for_chunk(client: &TracingClient, chunk: &[u64]) -> HashS
                 BlockId::Number(BlockNumberOrTag::Number(*block_num)),
                 trace_type.clone(),
             )
-            .map(|trace| {
-                trace.unwrap().unwrap().into_iter().flat_map(|trace| {
-                    trace
-                        .full_trace
-                        .trace
-                        .into_iter()
-                        .filter_map(|call_frame| match call_frame.action {
-                            reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
-                            reth_rpc_types::trace::parity::Action::Create(_)
-                            | reth_rpc_types::trace::parity::Action::Reward(_) => None,
-                            reth_rpc_types::trace::parity::Action::Selfdestruct(s) => {
-                                Some(s.address)
-                            }
-                        })
-                        .collect::<HashSet<_>>()
-                })
-            })
+            .map(|trace| expand_trace(trace.unwrap().unwrap()))
     }))
     .await
     .into_iter()
     .flatten()
     .collect::<HashSet<_>>()
+}
+
+#[cfg(feature = "test_run")]
+fn expand_trace(trace: Vec<TraceResultsWithTransactionHash>) -> HashSet<Address> {
+    trace
+        .into_iter()
+        .flat_map(|trace| {
+            trace
+                .full_trace
+                .trace
+                .into_iter()
+                .filter_map(|call_frame| match call_frame.action {
+                    reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
+                    reth_rpc_types::trace::parity::Action::Create(_)
+                    | reth_rpc_types::trace::parity::Action::Reward(_) => None,
+                    reth_rpc_types::trace::parity::Action::Selfdestruct(s) => Some(s.address),
+                })
+                .collect::<HashSet<_>>()
+        })
+        .collect::<HashSet<_>>()
 }
 
 //
@@ -186,8 +191,8 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
     let mut file = write_file(bindings_file_path, true);
 
     let mut addr_bindings = Vec::new();
-    let mut binding_enums = init_enum("StaticBindings");
-    let mut return_binding_enums = init_enum("StaticReturnBindings");
+    let mut binding_enums = init_enum("StaticBindings", addresses.is_empty());
+    let mut return_binding_enums = init_enum("StaticReturnBindings", addresses.is_empty());
     let mut mod_enums = Vec::new();
     let mut bindings_impl_try_decode = bindings_try_decode_impl_init();
 
@@ -212,7 +217,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
 
         binding_enums.push(enum_binding_string(name, Some("_Enum")));
         return_binding_enums.push(enum_binding_string(&name, Some(&format!("::{}Calls", name))));
-        individual_sub_enums(&mut mod_enums, name);
+        individual_sub_enums(&mut mod_enums, name, addresses.is_empty());
         enum_impl_macro(&mut mod_enums, name);
         bindings_impl_try_decode.push(bindings_try_row(name));
     }
@@ -236,10 +241,14 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
 }
 
 /// generates the bindings for the given abis
-fn init_enum(name: &str) -> Vec<String> {
+fn init_enum(name: &str, is_empty: bool) -> Vec<String> {
     let mut bindings = Vec::new();
     bindings.push("\n#[allow(non_camel_case_types)]".to_string());
-    bindings.push(format!("#[repr(u32)]\n pub enum {} {{", name));
+    if is_empty {
+        bindings.push(format!("#[repr(u32)]\n pub enum {} {{", name));
+    } else {
+        bindings.push(format!("pub enum {} {{", name));
+    }
 
     bindings
 }
@@ -257,10 +266,10 @@ fn enum_binding_string(protocol_name: &str, other: Option<&str>) -> String {
 }
 
 /// generates the mapping of function selector to decodable type
-fn individual_sub_enums(mod_enum: &mut Vec<String>, protocol_name: &str) {
+fn individual_sub_enums(mod_enum: &mut Vec<String>, protocol_name: &str, is_empty: bool) {
     let mut enum_protocol_name = protocol_name.to_string();
     enum_protocol_name.push_str("_Enum");
-    mod_enum.extend(init_enum(&enum_protocol_name));
+    mod_enum.extend(init_enum(&enum_protocol_name, is_empty));
     mod_enum.push(" None".to_string());
     mod_enum.push("}".to_string());
 }
