@@ -1,7 +1,7 @@
 use reth_primitives::{H160, H256};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
-use sorella_db_clients::databases::{clickhouse, clickhouse::Row};
+use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct TokenPriceTime {

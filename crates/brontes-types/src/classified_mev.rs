@@ -2,7 +2,7 @@ use std::any::Any;
 
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
-use sorella_db_clients::databases::clickhouse::{self, InsertRow, Row};
+use sorella_db_databases::clickhouse::{self, InsertRow, Row};
 use strum::EnumIter;
 
 use super::normalized_actions::Actions;

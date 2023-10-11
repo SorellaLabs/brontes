@@ -16,7 +16,7 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-sorella-db-clients = { git = "https://github.com/SorellaLabs/Database", package = "sorella-db-clients", branch = "main" }
+sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", branch = "main" }
 
 # Poirot
 brontes-core = { path = "./crates/brontes-core" }
@@ -64,11 +64,11 @@ ruint = "1.9.0"
 
 # Alloy
 alloy-etherscan = { path = "./crates/alloy-etherscan" }
-alloy-sol-types = { git = "https://github.com/alloy-rs/core", package = "alloy-sol-types" }
-alloy-primitives = { git = "https://github.com/alloy-rs/core", package = "alloy-primitives" }
-alloy-json-abi = { git = "https://github.com/alloy-rs/core", package = "alloy-json-abi" }
-alloy-sol-macro = { git = "https://github.com/alloy-rs/core", package = "alloy-sol-macro" }
-alloy-dyn-abi = { git = "https://github.com/alloy-rs/core", package = "alloy-dyn-abi" }
+alloy-sol-types = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-sol-types" }
+alloy-primitives = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-primitives" }
+alloy-json-abi = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-json-abi" }
+alloy-sol-macro = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-sol-macro" }
+alloy-dyn-abi = { git = "https://github.com/Will-Smith11/alloy-core.git", package = "alloy-dyn-abi" }
 
 # Async
 tokio = "1.13.0"
@@ -111,3 +111,12 @@ c-kzg = { git = "https://github.com/ethereum/c-kzg-4844" }
 hex-literal = "0.4.1"
 rayon = "1.7.0"
 dotenv = "0.15.0"
+
+[profile.dev]
+opt-level = 0           # No optimizations
+debug = true            # Generate debug information
+rpath = false           # Don't set the rpath in executables
+lto = false             # No link-time optimization
+debug-assertions = true # Enable assertions in debug mode
+codegen-units = 16      # Increase parallel code generation units for faster compiles
+incremental = true      # Enable incremental compilation

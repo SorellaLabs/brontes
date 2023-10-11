@@ -1,8 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parenthesized, parse::Parse, token::Paren, DeriveInput, ExprClosure, Ident, LitBool, Token,
-};
+use syn::{parenthesized, parse::Parse, token::Paren, ExprClosure, Ident, LitBool, Token};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
@@ -194,8 +192,8 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
     i.remove(0);
 
     quote!(
-        #[derive(default)]
-        pub struct #struct_name(#(#name)*);
+        #[derive(Default)]
+        pub struct #struct_name(#(#name,)*);
 
         impl ActionCollection for #struct_name {
             fn dispatch(
@@ -208,28 +206,31 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: Address,
                 logs: &Vec<Log>,
             ) -> Option<Actions> {
-                if sig == self.0.get_sig() {
-                    Some(
+                if sig == self.0.get_signature() {
+                    return Some(
                         self.0.decode_trace_data(
                             index,
                             data,
                             return_data,
                             from_address,
-                            target_address
+                            target_address,
+                            logs,
                             )
                         )
                 }
 
-                #( else if sig == self.#i.get_sig()
-                    Some(
+                #( else if sig == self.#i.get_signature() {
+                    return Some(
                         self.#i.decode_trace_data(
                             index,
                             data,
                             return_data,
                             from_address,
-                            target_address
+                            target_address,
+                            logs,
                             )
                         )
+                    }
                 )*
 
                 None
@@ -237,8 +238,6 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
         }
     )
     .into()
-
-    // ""
 }
 
 struct ActionDispatch {
@@ -254,7 +253,7 @@ impl Parse for ActionDispatch {
             rest.push(input.parse::<Ident>()?);
         }
         if !input.is_empty() {
-            panic!("no")
+            panic!("unkown characters")
         }
 
         Ok(Self { rest, struct_name })
