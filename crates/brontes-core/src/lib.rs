@@ -27,7 +27,7 @@ pub trait ActionCollection: Sync + Send {
         from_address: Address,
         target_address: Address,
         logs: &Vec<Log>,
-    ) -> Actions;
+    ) -> Option<Actions>;
 }
 
 /// implements the above trait for decoding on the different binding enums

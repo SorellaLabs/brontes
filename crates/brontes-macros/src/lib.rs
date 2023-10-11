@@ -207,25 +207,27 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 logs: &Vec<Log>,
             ) -> Option<Actions> {
                 if sig == self.0.get_signature() {
-                    Some(
+                    return Some(
                         self.0.decode_trace_data(
                             index,
                             data,
                             return_data,
                             from_address,
-                            target_address
+                            target_address,
+                            logs,
                             )
                         )
                 }
 
                 #( else if sig == self.#i.get_signature() {
-                    Some(
+                    return Some(
                         self.#i.decode_trace_data(
                             index,
                             data,
                             return_data,
                             from_address,
-                            target_address
+                            target_address,
+                            logs,
                             )
                         )
                     }
@@ -251,7 +253,7 @@ impl Parse for ActionDispatch {
             rest.push(input.parse::<Ident>()?);
         }
         if !input.is_empty() {
-            panic!("no")
+            panic!("unkown characters")
         }
 
         Ok(Self { rest, struct_name })
