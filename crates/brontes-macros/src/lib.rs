@@ -192,7 +192,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
     i.remove(0);
 
     quote!(
-        #[derive(default)]
+        #[derive(Default)]
         pub struct #struct_name(#(#name,)*);
 
         impl ActionCollection for #struct_name {
@@ -206,7 +206,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: Address,
                 logs: &Vec<Log>,
             ) -> Option<Actions> {
-                if sig == self.0.get_sig() {
+                if sig == self.0.get_signature() {
                     Some(
                         self.0.decode_trace_data(
                             index,
@@ -218,7 +218,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                         )
                 }
 
-                #( else if sig == self.#i.get_sig() {
+                #( else if sig == self.#i.get_signature() {
                     Some(
                         self.#i.decode_trace_data(
                             index,
