@@ -160,7 +160,6 @@ async fn get_addresses_for_chunk(client: &TracingClient, chunk: &[u64]) -> HashS
     .collect::<HashSet<_>>()
 }
 
-#[cfg(feature = "test_run")]
 fn expand_trace(trace: Vec<TraceResultsWithTransactionHash>) -> HashSet<Address> {
     trace
         .into_iter()
@@ -224,7 +223,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
 
     binding_enums.push("}".to_string());
     return_binding_enums.push("}".to_string());
-    bindings_impl_try_decode.push("     }".to_string());
+    bindings_impl_try_decode.push(r#"_=> panic!("no binding match found")}"#.to_string());
     bindings_impl_try_decode.push(" }".to_string());
     bindings_impl_try_decode.push("}".to_string());
 
@@ -245,9 +244,9 @@ fn init_enum(name: &str, is_empty: bool) -> Vec<String> {
     let mut bindings = Vec::new();
     bindings.push("\n#[allow(non_camel_case_types)]".to_string());
     if is_empty {
-        bindings.push(format!("#[repr(u32)]\n pub enum {} {{", name));
-    } else {
         bindings.push(format!("pub enum {} {{", name));
+    } else {
+        bindings.push(format!("#[repr(u32)]\n pub enum {} {{", name));
     }
 
     bindings
