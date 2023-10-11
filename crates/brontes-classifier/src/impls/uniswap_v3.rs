@@ -1,5 +1,5 @@
 use alloy_sol_types::SolCall;
-use brontes_core::{
+use crate::{
     StaticReturnBindings,
     UniswapV3::{
         burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,

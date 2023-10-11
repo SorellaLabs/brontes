@@ -1,5 +1,5 @@
 use alloy_sol_types::{SolCall, SolEvent};
-use brontes_core::{
+use crate::{
     StaticReturnBindings,
     SushiSwap_V2::{burnCall, mintCall, swapCall, Burn, Mint, Swap},
 };
