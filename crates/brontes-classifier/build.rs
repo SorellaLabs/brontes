@@ -450,7 +450,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             writeln!(
                 &mut file,
                 "static {}: (Option<Box<dyn ActionCollection>>,StaticBindings) = \
-                 (Some({}::default()), StaticBindings::{}({}_Enum::None));",
+                 (Some(Box::new({}::default())), StaticBindings::{}({}_Enum::None));",
                 name.to_uppercase(),
                 classified_name,
                 name,
