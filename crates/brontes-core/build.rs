@@ -345,12 +345,17 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
                 &mut file,
                 "static {}: (Option<Box<dyn ActionCollection>>,StaticBindings) =(None, \
                  StaticBindings::{}({}_Enum::None));",
-                name, name, name
+                name.to_uppercase(),
+                name,
+                name
             )
             .unwrap();
 
             for address in map.addresses {
-                phf_map.entry(H160::from_str(&address).unwrap().0, &format!("&{}", name));
+                phf_map.entry(
+                    H160::from_str(&address).unwrap().0,
+                    &format!("&{}", name.to_uppercase()),
+                );
             }
         } else {
             let name = &map.classifier_name;
@@ -358,12 +363,18 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
                 &mut file,
                 "static {}: (Option<Box<dyn ActionCollection>>,StaticBindings) = \
                  (Some({}::default()), StaticBindings::{}({}_Enum::None));",
-                name, name, name, name
+                name.to_uppercase(),
+                name,
+                name,
+                name
             )
             .unwrap();
 
             for address in map.addresses {
-                phf_map.entry(H160::from_str(&address).unwrap().0, &format!("&{}", name));
+                phf_map.entry(
+                    H160::from_str(&address).unwrap().0,
+                    &format!("&{}", name.to_uppercase()),
+                );
             }
         }
     }
