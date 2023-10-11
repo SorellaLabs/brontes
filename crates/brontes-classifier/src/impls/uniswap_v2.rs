@@ -96,4 +96,4 @@ action_impl!(
     }
 );
 
-action_dispatch!(UniswapV2, V2SwapImpl, V2BurnImpl, V2MintImpl);
+action_dispatch!(UniswapV2Classifier, V2SwapImpl, V2BurnImpl, V2MintImpl);

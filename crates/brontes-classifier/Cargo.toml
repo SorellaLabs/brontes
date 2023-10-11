@@ -30,8 +30,8 @@ brontes-macros = { path = "../brontes-macros/" }
 itertools = "0.11.0"
 
 [features]
+test_run = ["brontes-database/test_run", "server"]
 server = []
-test_run = ["brontes-database/test_run"]
 
 [build-dependencies]
 tokio.workspace = true
@@ -41,8 +41,16 @@ hyper-tls = "0.5.0"
 serde.workspace = true
 serde_json.workspace = true
 alloy-etherscan.workspace = true
-alloy-json-abi.workspace = true
 ethers-core.workspace = true
 phf = { version = "0.11.1", default-features = false }
 phf_codegen = "0.11.1"
 dotenv = "0.15.0"
+reth-tracing.workspace = true
+rayon = "1.7.0"
+alloy-json-abi = { workspace = true, features = ["serde_json"] }
+toml = "0.8.2"
+reth-rpc-types.workspace = true
+reth-primitives.workspace = true
+futures = "0.3.28"
+itertools = "0.11.0"
+
