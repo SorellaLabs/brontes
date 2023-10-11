@@ -1074,6 +1074,7 @@ dependencies = [
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
  "dotenv",
  "ethers-core",
+ "futures",
  "hex-literal",
  "hyper",
  "hyper-tls",
@@ -1086,9 +1087,11 @@ dependencies = [
  "rayon",
  "reth-primitives",
  "reth-rpc-types",
+ "reth-tracing",
  "serde",
  "serde_json",
  "tokio",
+ "toml 0.8.2",
  "tracing",
 ]
 
