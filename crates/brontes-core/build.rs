@@ -109,16 +109,17 @@ async fn run() {
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
 
-    // write_all_abis(&protocol_abis);
-    //
-    // generate(
-    //     Path::new(&env::var("OUT_DIR").unwrap())
-    //         .join(BINDINGS_PATH)
-    //         .to_str()
-    //         .unwrap(),
-    //     &protocol_abis,
-    // )
-    // .await;
+    write_all_abis(&protocol_abis);
+
+    generate(
+        Path::new(&env::var("OUT_DIR").unwrap())
+            .join(BINDINGS_PATH)
+            .to_str()
+            .unwrap(),
+        &protocol_abis,
+    )
+    .await;
+
     address_abi_mapping(protocol_abis)
 }
 
@@ -329,7 +330,6 @@ fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
 
 /// creates a mapping of each address to an abi binding
 fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
-    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
     let mut phf_map = phf_codegen::Map::new();
@@ -340,29 +340,34 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
 
         if map.classifier_name.is_empty() {
             let name = "Contract".to_string() + map.addresses.first().unwrap();
+            writeln!(
+                &mut file,
+                "static {}: (Option<Box<dyn ActionCollection>>,StaticBindings) =(None, \
+                 StaticBindings::{}({}_Enum::None));",
+                name, name, name
+            );
+
             for address in map.addresses {
-                phf_map.entry(
-                    H160::from_str(&address).unwrap().0,
-                    &format!("(None, StaticBindings::{}({}_Enum::None))", name, name),
-                );
+                phf_map.entry(H160::from_str(&address).unwrap().0, &format!("&{}", name));
             }
         } else {
+            let name = &map.classifier_name;
+            writeln!(
+                &mut file,
+                "static {}: (Option<Box<dyn ActionCollection>>,StaticBindings) = \
+                 (Some({}::default()), StaticBindings::{}({}_Enum::None));",
+                name, name, name, name
+            );
+
             for address in map.addresses {
-                let name = &map.classifier_name;
-                phf_map.entry(
-                    H160::from_str(&address).unwrap().0,
-                    &format!(
-                        "(Some({}::default()), StaticBindings::{}({}_Enum::None))",
-                        name, name, name
-                    ),
-                );
+                phf_map.entry(H160::from_str(&address).unwrap().0, &format!("&{}", name));
             }
         }
     }
 
     writeln!(
         &mut file,
-        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<[u8; 20], (Option<Box<dyn \
+        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<[u8; 20], &'static (Option<Box<dyn \
          ActionCollection>>,StaticBindings)> = \n{};\n",
         phf_map.build()
     )
