@@ -1,5 +1,5 @@
 use alloy_sol_types::{SolCall, SolEvent};
-use brontes_core::{
+use crate::{
     StaticReturnBindings,
     SushiSwap_V2::{burnCall, mintCall, swapCall, Burn, Mint, Swap},
 };
@@ -8,7 +8,7 @@ use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint,
 use reth_primitives::{Address, Bytes, H160, U256};
 use reth_rpc_types::Log;
 
-use crate::{IntoAction, ADDRESS_TO_TOKENS_2_POOL};
+use crate::{ActionCollection, IntoAction, ADDRESS_TO_TOKENS_2_POOL};
 
 action_impl!(
     V2SwapImpl,
@@ -96,4 +96,4 @@ action_impl!(
     }
 );
 
-action_dispatch!(UniswapV2, V2SwapImpl, V2BurnImpl, V2MintImpl);
+action_dispatch!(UniswapV2Classifier, V2SwapImpl, V2BurnImpl, V2MintImpl);

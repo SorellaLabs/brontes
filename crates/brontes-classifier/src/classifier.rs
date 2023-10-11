@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use brontes_core::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
+use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 use brontes_database::Metadata;
 use brontes_types::{
     normalized_actions::{
@@ -169,42 +169,43 @@ impl Classifier {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        if let Some(binding) = PROTOCOL_ADDRESS_MAPPING.get(format!("{target_address}").as_str()) {
-            let calldata = trace.get_calldata();
-            let return_bytes = trace.get_return_calldata();
-            let sig = &calldata[0..4];
-            let res: StaticReturnBindings = binding.try_decode(&calldata).unwrap();
+        // if let Some(binding) =
+        // PROTOCOL_ADDRESS_MAPPING.get(format!("{target_address}").as_str()) {
+        //     let calldata = trace.get_calldata();
+        //     let return_bytes = trace.get_return_calldata();
+        //     let sig = &calldata[0..4];
+        //     let res: StaticReturnBindings = binding.try_decode(&calldata).unwrap();
+        //
+        //     return self.static_protocols.get(sig).unwrap().decode_trace_data(
+        //         index,
+        //         res,
+        //         return_bytes,
+        //         from_address,
+        //         target_address,
+        //         &trace.logs,
+        //     )
+        // } else {
+        let rem = trace
+            .logs
+            .iter()
+            .filter(|log| log.address == from_address)
+            .cloned()
+            .collect::<Vec<Log>>();
 
-            return self.static_protocols.get(sig).unwrap().decode_trace_data(
-                index,
-                res,
-                return_bytes,
-                from_address,
-                target_address,
-                &trace.logs,
-            )
-        } else {
-            let rem = trace
-                .logs
-                .iter()
-                .filter(|log| log.address == from_address)
-                .cloned()
-                .collect::<Vec<Log>>();
-
-            if rem.len() == 1 {
-                if let Some((addr, from, to, value)) = self.decode_transfer(&rem[0]) {
-                    return Actions::Transfer(NormalizedTransfer {
-                        index,
-                        to,
-                        from,
-                        token: addr,
-                        amount: value,
-                    })
-                }
+        if rem.len() == 1 {
+            if let Some((addr, from, to, value)) = self.decode_transfer(&rem[0]) {
+                return Actions::Transfer(NormalizedTransfer {
+                    index,
+                    to,
+                    from,
+                    token: addr,
+                    amount: value,
+                })
             }
-
-            Actions::Unclassified(trace, rem)
         }
+
+        Actions::Unclassified(trace, rem)
+        // }
     }
 
     /// tries to prove dyn mint, dyn burn and dyn swap.
@@ -504,9 +505,9 @@ impl Classifier {
         None
     }
 
-    fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
-        tree.remove_duplicate_data(find, classify, info)
-    }
+    // fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
+    //     tree.remove_duplicate_data(find, classify, info)
+    // }
 
     fn try_classify_unknown_exchanges(&self, tree: &mut TimeTree<Actions>) {
         // Acquire the read lock once
@@ -515,7 +516,7 @@ impl Classifier {
         let new_classifed_exchanges = tree.dyn_classify(
             |address, sub_actions| {
                 // we can dyn classify this shit
-                if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
+                if PROTOCOL_ADDRESS_MAPPING.contains_key(&address.0) {
                     // this is already classified
                     return false
                 }
