@@ -516,7 +516,7 @@ impl Classifier {
         let new_classifed_exchanges = tree.dyn_classify(
             |address, sub_actions| {
                 // we can dyn classify this shit
-                if PROTOCOL_ADDRESS_MAPPING.contains_key(format!("{address}").as_str()) {
+                if PROTOCOL_ADDRESS_MAPPING.contains_key(&address.0) {
                     // this is already classified
                     return false
                 }
