@@ -24,6 +24,7 @@ use cli::{print_banner, Commands, Opts};
 
 fn main() {
     print_banner();
+    dotenv::dotenv().ok();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
