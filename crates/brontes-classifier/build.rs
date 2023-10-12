@@ -30,14 +30,14 @@ const BINDINGS_PATH: &str = "bindings.rs";
 const DATA_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.con AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
 GROUP BY c.abi, c.classifier_name
 "#;
 
 const DATA_QUERY_FILTER: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.con AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' OR c.classifier_name != ''
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' OR c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
 HAVING hasAny(addresses, ?)
 "#;
@@ -45,7 +45,7 @@ HAVING hasAny(addresses, ?)
 const LOCAL_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.con AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
 "#;
 
