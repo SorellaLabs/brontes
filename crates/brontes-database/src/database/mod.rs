@@ -207,10 +207,11 @@ mod tests {
 
     fn expected_relay_info() -> RelayInfo {
         RelayInfo {
-            relay_time:      1695258707776,
+            relay_time:      1695258707683,
             p2p_time:        1695258708673,
             proposer_addr:   H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
             proposer_reward: 113949354337187568,
+            block_hash:      H256::from_str(BLOCK_HASH).unwrap().into(),
         }
     }
 
@@ -228,7 +229,7 @@ mod tests {
         Metadata {
             block_num:              BLOCK_NUMBER,
             block_hash:             H256::from_str(BLOCK_HASH).unwrap().into(),
-            relay_timestamp:        1695258707776,
+            relay_timestamp:        1695258707683,
             p2p_timestamp:          1695258708673,
             proposer_fee_recipient: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
@@ -246,9 +247,7 @@ mod tests {
         let db = Database::default();
 
         let expected_private_flow = expected_private_flow();
-        let private_flow = db
-            .get_private_flow(BLOCK_NUMBER, H256::from_str(BLOCK_HASH).unwrap().into())
-            .await;
+        let private_flow = db.get_private_flow(BLOCK_NUMBER).await;
 
         assert_eq!(expected_private_flow, private_flow)
     }
@@ -260,9 +259,7 @@ mod tests {
         let db = Database::default();
 
         let expected_relay_info = expected_relay_info();
-        let relay_info = db
-            .get_relay_info(BLOCK_NUMBER, H256::from_str(BLOCK_HASH).unwrap().into())
-            .await;
+        let relay_info = db.get_relay_info(BLOCK_NUMBER).await;
 
         assert_eq!(expected_relay_info.relay_time, relay_info.relay_time);
         assert_eq!(expected_relay_info.p2p_time, relay_info.p2p_time);
@@ -276,7 +273,7 @@ mod tests {
 
         let db = Database::default();
 
-        let cex_prices = db.get_cex_prices(1695258707776, 1695258708673).await;
+        let cex_prices = db.get_cex_prices(1695258707683, 1695258708673).await;
 
         let real_prices = cex_prices
             .get(&H160::from_str("5cf04716ba20127f1e2297addcf4b5035000c9eb").unwrap())
@@ -303,7 +300,7 @@ mod tests {
 
         let db = Database::default();
 
-        let cex_prices = db.get_cex_prices(1695258707776, 1695258708673).await;
+        let cex_prices = db.get_cex_prices(1695258707683, 1695258708673).await;
 
         let expected_metadata = expected_metadata(cex_prices);
 
