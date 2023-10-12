@@ -81,7 +81,9 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
 
     fn start_block_inspector(&mut self) -> bool {
         // If we've reached the max number of tasks, we shouldn't spawn a new one
-        if self.block_inspectors.len() > self.max_tasks as usize && Some(self.current_block + self.max_tasks) < self.end_block{
+        if self.block_inspectors.len() > self.max_tasks as usize
+            && Some(self.current_block + self.max_tasks) < self.end_block
+        {
             return false
         }
 
