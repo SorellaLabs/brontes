@@ -1,9 +1,8 @@
 use std::fmt::Debug;
 
+use once_cell::sync::Lazy;
 use reth_primitives::{Address, Bytes, H160};
 use reth_rpc_types::Log;
-use lazy_static::lazy_static;
-
 
 pub mod classifier;
 pub use classifier::*;

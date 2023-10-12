@@ -102,7 +102,10 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let parser = DParser::new(metrics_tx, &etherscan_key, tracer);
     let classifier = Classifier::new(HashMap::default());
 
+    #[cfg(feature = "server")]
     let chain_tip = parser.get_latest_block_number().unwrap();
+    #[cfg(not(feature = "server"))]
+    let chain_tip = parser.get_latest_block_number().await.unwrap();
 
     Poirot::new(
         command.start_block,
