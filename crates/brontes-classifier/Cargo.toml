@@ -17,6 +17,7 @@ reth-primitives.workspace = true
 tracing.workspace = true
 hex-literal.workspace = true
 rayon.workspace = true
+lazy_static = "1.4.0"
 
 malachite.workspace = true
 serde_json.workspace = true
