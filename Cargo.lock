@@ -1029,6 +1029,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "colored",
+ "dotenv",
  "env_logger",
  "eyre",
  "futures",
