@@ -17,6 +17,8 @@ reth-primitives.workspace = true
 tracing.workspace = true
 hex-literal.workspace = true
 rayon.workspace = true
+lazy_static = "1.4.0"
+once_cell = "1.18.0"
 
 malachite.workspace = true
 serde_json.workspace = true
@@ -53,4 +55,3 @@ reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 futures = "0.3.28"
 itertools = "0.11.0"
-
