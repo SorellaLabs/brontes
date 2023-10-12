@@ -409,8 +409,12 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             let name = "Contract".to_string() + map.addresses.first().unwrap();
             writeln!(
                 &mut file,
-                "static {}: (Option<Box<dyn ActionCollection>>,StaticBindings) =(None, \
-                 StaticBindings::{}({}_Enum::None));",
+                "
+                lazy_static! {{
+                static ref {}: (Option<Box<dyn ActionCollection>>,StaticBindings) = {{(None, \
+                 StaticBindings::{}({}_Enum::None))}};
+                }}
+                ",
                 name.to_uppercase(),
                 name,
                 name
@@ -428,8 +432,10 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             let classified_name = map.classifier_name.clone() + "Classifier";
             writeln!(
                 &mut file,
-                "static {}: (Option<Box<dyn ActionCollection>>,StaticBindings) = \
-                 (Some(Box::new({}::default())), StaticBindings::{}({}_Enum::None));",
+                "
+                lazy_static! {{
+                static ref {}: (Option<Box<dyn ActionCollection>>,StaticBindings) = {{ \
+                 (Some(Box::new({}::default())), StaticBindings::{}({}_Enum::None)) }}; }}",
                 name.to_uppercase(),
                 classified_name,
                 name,
