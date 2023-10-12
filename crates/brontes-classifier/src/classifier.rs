@@ -27,16 +27,11 @@ const TRANSFER_TOPIC: H256 =
 // read write lock
 pub struct Classifier {
     known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
-    // todo: Change to protocol => hashed_bytecode => signature => classifier
-    static_protocols:    HashMap<[u8; 4], Box<dyn IntoAction>>,
 }
 
 impl Classifier {
-    pub fn new(known_protocols: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
-        Self {
-            static_protocols:    known_protocols,
-            known_dyn_protocols: RwLock::new(HashMap::default()),
-        }
+    pub fn new() -> Self {
+        Self { known_dyn_protocols: RwLock::new(HashMap::default()) }
     }
 
     pub fn build_tree(
