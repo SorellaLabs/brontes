@@ -1,6 +1,5 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 use brontes_database::Metadata;
 use brontes_types::{
     normalized_actions::{
@@ -18,7 +17,7 @@ use reth_rpc_types::{
     Log,
 };
 
-use crate::IntoAction;
+use crate::{IntoAction, StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
