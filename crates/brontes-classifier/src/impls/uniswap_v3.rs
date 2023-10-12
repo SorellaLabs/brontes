@@ -1,11 +1,4 @@
 use alloy_sol_types::SolCall;
-use crate::{
-    StaticReturnBindings,
-    UniswapV3::{
-        burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
-        swapReturn, UniswapV3Calls, UniswapV3Events,
-    },
-};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{
     Actions, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
@@ -13,7 +6,14 @@ use brontes_types::normalized_actions::{
 use reth_primitives::{Address, Bytes, H160, U256};
 use reth_rpc_types::Log;
 
-use crate::{enum_unwrap, ActionCollection, IntoAction, ADDRESS_TO_TOKENS_2_POOL};
+use crate::{
+    enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
+    UniswapV3::{
+        burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
+        swapReturn, UniswapV3Calls, UniswapV3Events,
+    },
+    ADDRESS_TO_TOKENS_2_POOL,
+};
 
 action_impl!(
     V3SwapImpl,
