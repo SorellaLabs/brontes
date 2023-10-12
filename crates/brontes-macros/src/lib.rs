@@ -198,7 +198,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
         impl ActionCollection for #struct_name {
             fn dispatch(
                 &self,
-                sig: [u8; 4],
+                sig: &[u8],
                 index: u64,
                 data: StaticReturnBindings,
                 return_data: Bytes,
@@ -206,7 +206,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: Address,
                 logs: &Vec<Log>,
             ) -> Option<Actions> {
-                if sig == self.0.get_signature() {
+                if sig == &self.0.get_signature() {
                     return Some(
                         self.0.decode_trace_data(
                             index,
@@ -219,7 +219,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                         )
                 }
 
-                #( else if sig == self.#i.get_signature() {
+                #( else if sig == &self.#i.get_signature() {
                     return Some(
                         self.#i.decode_trace_data(
                             index,

@@ -164,13 +164,13 @@ impl Classifier {
         let target_address = trace.get_to_address();
 
         if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0) {
-            if let Some(classifier) = protocol.0 {
+            if let Some(classifier) = &protocol.0 {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
                 let sig = &calldata[0..4];
                 let res: StaticReturnBindings = protocol.1.try_decode(&calldata).unwrap();
 
-                return classifier.dispatch(
+                if let Some(res) = classifier.dispatch(
                     sig,
                     index,
                     res,
@@ -178,7 +178,9 @@ impl Classifier {
                     from_address,
                     target_address,
                     &trace.logs,
-                )
+                ) {
+                    return res
+                }
             }
         }
 

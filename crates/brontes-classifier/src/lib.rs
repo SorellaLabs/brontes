@@ -25,7 +25,7 @@ pub trait TryDecodeSol {
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
         &self,
-        sig: [u8; 4],
+        sig: &[u8],
         index: u64,
         data: StaticReturnBindings,
         return_data: Bytes,
