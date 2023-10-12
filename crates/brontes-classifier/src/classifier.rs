@@ -163,6 +163,7 @@ impl Classifier {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
+        if let Some(a) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0) {}
         // if let Some(binding) =
         // PROTOCOL_ADDRESS_MAPPING.get(format!("{target_address}").as_str()) {
         //     let calldata = trace.get_calldata();

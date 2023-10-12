@@ -44,11 +44,6 @@ fn recursive_parsing(
         .into_iter()
         .zip(vec![&scoped_trace].into_iter().cycle())
         .filter_map(|(mut instruction, trace)| {
-            let addr = match &trace.action {
-                reth_rpc_types::trace::parity::Action::Call(c) => c.to,
-                _ => return None,
-            };
-
             if let Some(sub) = instruction.sub.take() {
                 recursive_parsing(current_traces, sub, tx_trace, logs)
             }
