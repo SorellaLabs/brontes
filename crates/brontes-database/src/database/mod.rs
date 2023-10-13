@@ -120,7 +120,10 @@ impl Database {
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
-            .query_all_params::<u64, DBTokenPrices>(PRICES, vec![relay_time, p2p_time])
+            .query_all_params::<u64, DBTokenPrices>(
+                PRICES,
+                vec![relay_time, relay_time, p2p_time, p2p_time],
+            )
             .await
             .unwrap();
 
