@@ -60,5 +60,5 @@ pub trait IntoAction: Debug + Send + Sync {
         from_address: Address,
         target_address: Address,
         logs: &Vec<Log>,
-    ) -> Actions;
+    ) -> Option<Actions>;
 }
