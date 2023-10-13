@@ -9,6 +9,10 @@ WHERE tx_hash NOT IN (
     SELECT tx_hash
     FROM ethereum.unique_mempool
 )
+
+
+
+
 "#;
 
 pub const RELAY_P2P_TIMES: &str = r#"SELECT
@@ -41,7 +45,7 @@ FROM
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
         (
-            (bt.timestamp < ?)
+            (bt.timestamp < ?) AND (bt.timestamp > 100000)
         )
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
@@ -57,14 +61,12 @@ FROM
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
         (
-            (bt.timestamp < ?)
+            (bt.timestamp < ?) AND (bt.timestamp > 100000)
         )
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
         address
 ) AS sub2 ON sub2.address = sub1.address
-
-
 
 "#;
 
