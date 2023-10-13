@@ -47,7 +47,6 @@ impl Classifier {
                 if trace.trace.is_empty() {
                     return None
                 }
-                info!(?trace, "building out trace for transaction");
 
                 let address = trace.trace[0].get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), 0);
