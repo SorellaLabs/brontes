@@ -211,17 +211,15 @@ impl<V: NormalizedAction> Node<V> {
             return
         }
 
-        if address == self.address {
-            let mut cur_stack = self.current_call_stack();
-            cur_stack.pop();
-            if !cur_stack.contains(&address) {
-                self.inner.push(n);
-                return
-            }
+        let mut cur_stack = self.current_call_stack();
+        cur_stack.pop();
+        if !cur_stack.contains(&address) {
+            self.inner.push(n);
+            return
+        } else {
+            let last = self.inner.last_mut().expect("building tree went wrong");
+            last.insert(address, n);
         }
-
-        let last = self.inner.last_mut().expect("building tree went wrong");
-        last.insert(address, n)
     }
 
     pub fn get_all_sub_actions(&self) -> Vec<V> {
