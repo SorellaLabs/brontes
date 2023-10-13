@@ -22,7 +22,7 @@ action_impl!(
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied()?;
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
-            return Ok(NormalizedSwap {
+            return Some(NormalizedSwap {
                 pool: target_address,
                 index,
                 from: from_address,
@@ -32,7 +32,7 @@ action_impl!(
                 amount_out: data.amount0Out,
             })
         } else {
-            return Ok(NormalizedSwap {
+            return Some(NormalizedSwap {
                 index,
                 pool: target_address,
                 from: from_address,
@@ -55,7 +55,7 @@ action_impl!(
     |index, from_address: H160, target_address: H160, data: Option<Mint>| {
         let data = data?;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address).copied()?;
-        Ok(NormalizedMint {
+        Some(NormalizedMint {
             recipient: from_address,
             from: from_address,
             index,
@@ -78,7 +78,7 @@ action_impl!(
         let res = res?;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address).copied()?;
 
-        Ok(NormalizedBurn {
+        Some(NormalizedBurn {
             recipient: from_address,
             to: target_address,
             index,
