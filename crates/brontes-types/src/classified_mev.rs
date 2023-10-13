@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, fmt::Debug};
 
 use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
@@ -68,7 +68,7 @@ impl Row for MevType {
 }
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
-pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + 'static {
+pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static {
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u64;
