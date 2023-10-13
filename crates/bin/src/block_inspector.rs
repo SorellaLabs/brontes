@@ -67,7 +67,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         &mut self,
         results: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>),
     ) {
-        info!(block_number = self.block_number, "inserting the collected results");
+        info!(block_number = self.block_number, results=?results, "inserting the collected results");
         self.insertion_future =
             Some(Box::pin(self.database.insert_classified_data(results.0, results.1)));
     }
