@@ -38,7 +38,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
             let log_data = logs.into_iter().filter_map(|log| {
                 #action_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, true).ok()
             }).collect::<Vec<_>>();
-            let log_data = Some(log_data).filter(|data| data.is_empty()).map(|mut l| l.remove(0));
+            let log_data = Some(log_data).filter(|data| !data.is_empty()).map(|mut l| l.remove(0));
         ));
     }
 
