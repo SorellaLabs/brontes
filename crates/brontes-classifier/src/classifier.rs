@@ -16,6 +16,7 @@ use reth_rpc_types::{
     trace::parity::{Action, TransactionTrace},
     Log,
 };
+use tracing::info;
 
 use crate::{IntoAction, StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
@@ -42,7 +43,12 @@ impl Classifier {
     ) -> TimeTree<Actions> {
         let roots = traces
             .into_par_iter()
-            .map(|mut trace| {
+            .filter_map(|mut trace| {
+                if trace.trace.is_empty() {
+                    return None
+                }
+                info!(?trace, "building out trace for transaction");
+
                 let address = trace.trace[0].get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
@@ -86,7 +92,7 @@ impl Classifier {
                     root.insert(node.address, node);
                 }
 
-                root
+                Some(root)
             })
             .collect::<Vec<Root<Actions>>>();
 
