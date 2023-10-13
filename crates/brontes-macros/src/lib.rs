@@ -111,7 +111,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                 logs: &Vec<Log>,
             ) -> Option<Actions> {
                 #(#option_parsing)*
-                Actions::#action_type(#fn_call)
+                Some(Actions::#action_type(#fn_call?))
             }
         }
     }
