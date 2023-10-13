@@ -37,7 +37,8 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         option_parsing.push(quote!(
             let log_data = logs.into_iter().filter_map(|log| {
                 #action_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, true).ok()
-            }).collect::<Vec<_>>().remove(0);
+            }).collect::<Vec<_>>();
+            let log_data = Some(log_data).filter(|data| data.is_empty()).map(|l| l.remove(0));
         ));
     }
 
@@ -108,7 +109,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                 from_address: Address,
                 target_address: Address,
                 logs: &Vec<Log>,
-            ) -> Actions {
+            ) -> Option<Actions> {
                 #(#option_parsing)*
                 Actions::#action_type(#fn_call)
             }
@@ -206,8 +207,8 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: Address,
                 logs: &Vec<Log>,
             ) -> Option<Actions> {
-                if sig == &self.0.get_signature() {
-                    return Some(
+                if sig == self.0.get_signature() {
+                    return
                         self.0.decode_trace_data(
                             index,
                             data,
@@ -216,19 +217,16 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             target_address,
                             logs,
                             )
-                        )
                 }
 
-                #( else if sig == &self.#i.get_signature() {
-                    return Some(
-                        self.#i.decode_trace_data(
+                #( else if sig == self.#i.get_signature() {
+                        return self.#i.decode_trace_data(
                             index,
                             data,
                             return_data,
                             from_address,
                             target_address,
                             logs,
-                            )
                         )
                     }
                 )*
