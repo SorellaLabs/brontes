@@ -27,11 +27,11 @@ impl TraceMetrics {
 
     pub(crate) fn handle_event(&mut self, event: TraceMetricEvent) {
         trace!(target: "tracing::metrics", ?event, "Metric event received");
-        match event {
-            TraceMetricEvent::TraceMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
-            TraceMetricEvent::TransactionMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
-            TraceMetricEvent::BlockMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
-        }
+        // match event {
+        //     TraceMetricEvent::TraceMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+        //     TraceMetricEvent::TransactionMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+        //     TraceMetricEvent::BlockMetricRecieved(_) => panic!("NOT IMPLEMENTED YET"),
+        // }
     }
 }
 #[allow(dead_code)]

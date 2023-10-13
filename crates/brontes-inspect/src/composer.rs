@@ -341,7 +341,7 @@ impl<'a, const N: usize> Composer<'a, N> {
             panic!("we only support sequential compatibility for our specific mev");
         }
 
-        let zero_txes = sorted_mev.remove(&composable_types[0]).unwrap();
+        let Some(zero_txes) = sorted_mev.remove(&composable_types[0]) else { return };
 
         for (classified, mev_data) in zero_txes {
             let addresses = mev_data.mev_transaction_hashes();

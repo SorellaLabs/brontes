@@ -139,7 +139,7 @@ checksum = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5"
 [[package]]
 name = "alloy-dyn-abi"
 version = "0.4.2"
-source = "git+https://github.com/Will-Smith11/alloy-core.git#7ea92c9c2ed18848fd7b752d03a3876c1dca956e"
+source = "git+https://github.com/Will-Smith11/alloy-core.git#1d6218598f2373531ced6dc05c0db72832d33cb9"
 dependencies = [
  "alloy-json-abi",
  "alloy-primitives 0.4.2 (git+https://github.com/Will-Smith11/alloy-core.git)",
@@ -177,7 +177,7 @@ dependencies = [
 [[package]]
 name = "alloy-json-abi"
 version = "0.4.2"
-source = "git+https://github.com/Will-Smith11/alloy-core.git#7ea92c9c2ed18848fd7b752d03a3876c1dca956e"
+source = "git+https://github.com/Will-Smith11/alloy-core.git#1d6218598f2373531ced6dc05c0db72832d33cb9"
 dependencies = [
  "alloy-primitives 0.4.2 (git+https://github.com/Will-Smith11/alloy-core.git)",
  "alloy-sol-type-parser",
@@ -205,7 +205,7 @@ dependencies = [
 [[package]]
 name = "alloy-primitives"
 version = "0.4.2"
-source = "git+https://github.com/Will-Smith11/alloy-core.git#7ea92c9c2ed18848fd7b752d03a3876c1dca956e"
+source = "git+https://github.com/Will-Smith11/alloy-core.git#1d6218598f2373531ced6dc05c0db72832d33cb9"
 dependencies = [
  "alloy-rlp",
  "bytes",
@@ -247,7 +247,7 @@ dependencies = [
 [[package]]
 name = "alloy-sol-macro"
 version = "0.4.2"
-source = "git+https://github.com/Will-Smith11/alloy-core.git#7ea92c9c2ed18848fd7b752d03a3876c1dca956e"
+source = "git+https://github.com/Will-Smith11/alloy-core.git#1d6218598f2373531ced6dc05c0db72832d33cb9"
 dependencies = [
  "alloy-json-abi",
  "const-hex",
@@ -265,7 +265,7 @@ dependencies = [
 [[package]]
 name = "alloy-sol-type-parser"
 version = "0.4.2"
-source = "git+https://github.com/Will-Smith11/alloy-core.git#7ea92c9c2ed18848fd7b752d03a3876c1dca956e"
+source = "git+https://github.com/Will-Smith11/alloy-core.git#1d6218598f2373531ced6dc05c0db72832d33cb9"
 dependencies = [
  "winnow",
 ]
@@ -273,7 +273,7 @@ dependencies = [
 [[package]]
 name = "alloy-sol-types"
 version = "0.4.2"
-source = "git+https://github.com/Will-Smith11/alloy-core.git#7ea92c9c2ed18848fd7b752d03a3876c1dca956e"
+source = "git+https://github.com/Will-Smith11/alloy-core.git#1d6218598f2373531ced6dc05c0db72832d33cb9"
 dependencies = [
  "alloy-primitives 0.4.2 (git+https://github.com/Will-Smith11/alloy-core.git)",
  "alloy-sol-macro",
@@ -366,9 +366,9 @@ dependencies = [
 
 [[package]]
 name = "arbitrary"
-version = "1.3.0"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2d098ff73c1ca148721f37baad5ea6a465a13f9573aba8641fbbbae8164a54e"
+checksum = "a2e1373abdaa212b704512ec2bd8b26bd0b7d5c3f70117411a5d9a451383c859"
 dependencies = [
  "derive_arbitrary",
 ]
@@ -1029,6 +1029,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "colored",
+ "dotenv",
  "env_logger",
  "eyre",
  "futures",
@@ -1378,7 +1379,7 @@ dependencies = [
 [[package]]
 name = "c-kzg"
 version = "0.1.0"
-source = "git+https://github.com/ethereum/c-kzg-4844#a1d03803059471948e518820afa8518643e1b638"
+source = "git+https://github.com/ethereum/c-kzg-4844#f3fffecd1ce7e8b6620cd5bac50c660efc20e48c"
 dependencies = [
  "bindgen 0.66.1",
  "blst",
@@ -3855,7 +3856,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb0889898416213fab133e1d33a0e5858a48177452750691bde3666d0fdbaf8b"
 dependencies = [
  "hermit-abi",
- "rustix 0.38.18",
+ "rustix 0.38.19",
  "windows-sys 0.48.0",
 ]
 
@@ -3885,9 +3886,9 @@ checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
 name = "jobserver"
-version = "0.1.26"
+version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "936cfd212a0155903bcbc060e316fb6cc7cbf2e1907329391ebadc1fe0ce77c2"
+checksum = "8c37f63953c4c63420ed5fd3d6d398c719489b9f872b9fa683262f8edd363c7d"
 dependencies = [
  "libc",
 ]
@@ -4282,9 +4283,9 @@ dependencies = [
 
 [[package]]
 name = "malachite"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28b49fa1429e8ddea190176d32ef56d707a1a3472e7f0efe280cf1d1b9b23387"
+checksum = "dc457359d445f8f8ad6baf2d14bdc5251e85576ccd34af816b34b797e3e91c25"
 dependencies = [
  "malachite-base",
  "malachite-nz",
@@ -4482,7 +4483,7 @@ dependencies = [
  "indexmap 1.9.3",
  "metrics 0.20.1",
  "num_cpus",
- "ordered-float 2.10.0",
+ "ordered-float 2.10.1",
  "parking_lot 0.12.1",
  "portable-atomic 0.3.20",
  "quanta 0.10.1",
@@ -4503,7 +4504,7 @@ dependencies = [
  "indexmap 1.9.3",
  "metrics 0.21.1",
  "num_cpus",
- "ordered-float 3.9.1",
+ "ordered-float 3.9.2",
  "quanta 0.11.1",
  "radix_trie",
  "sketches-ddsketch",
@@ -4872,18 +4873,18 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "ordered-float"
-version = "2.10.0"
+version = "2.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7940cf2ca942593318d07fcf2596cdca60a85c9e7fab408a5e21a4f9dcd40d87"
+checksum = "68f19d67e5a2795c94e73e0bb1cc1a7edeb2e28efd39e2e1c9b7a40c1108b11c"
 dependencies = [
  "num-traits",
 ]
 
 [[package]]
 name = "ordered-float"
-version = "3.9.1"
+version = "3.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a54938017eacd63036332b4ae5c8a49fc8c0c1d6d629893057e4f13609edd06"
+checksum = "f1e1c390732d15f1d48471625cd92d154e66db2c56645e29a9cd26f4699f72dc"
 dependencies = [
  "num-traits",
 ]
@@ -5274,9 +5275,9 @@ dependencies = [
 
 [[package]]
 name = "primitive-types"
-version = "0.12.1"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f3486ccba82358b11a77516035647c34ba167dfa53312630de83b12bd4f3d66"
+checksum = "0b34d9fd68ae0b74a41b21c03c2f62847aa0ffea044eee893b4c140b37e244e2"
 dependencies = [
  "fixed-hash",
  "impl-codec",
@@ -5339,7 +5340,7 @@ dependencies = [
  "byteorder",
  "hex",
  "lazy_static",
- "rustix 0.36.15",
+ "rustix 0.36.16",
 ]
 
 [[package]]
@@ -5636,7 +5637,7 @@ dependencies = [
  "aho-corasick 1.1.2",
  "memchr",
  "regex-automata 0.4.1",
- "regex-syntax 0.8.0",
+ "regex-syntax 0.8.1",
 ]
 
 [[package]]
@@ -5656,7 +5657,7 @@ checksum = "465c6fc0621e4abc4187a2bda0937bfd4f722c2730b29562e19689ea796c9a4b"
 dependencies = [
  "aho-corasick 1.1.2",
  "memchr",
- "regex-syntax 0.8.0",
+ "regex-syntax 0.8.1",
 ]
 
 [[package]]
@@ -5673,9 +5674,9 @@ checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 
 [[package]]
 name = "regex-syntax"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3cbb081b9784b07cceb8824c8583f86db4814d172ab043f3c23f7dc600bf83d"
+checksum = "56d84fdd47036b038fc80dd333d10b6aab10d5d31f4a366e20014def75328d33"
 
 [[package]]
 name = "regress"
@@ -6687,9 +6688,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.36.15"
+version = "0.36.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c37f1bd5ef1b5422177b7646cba67430579cfe2ace80f284fee876bca52ad941"
+checksum = "6da3636faa25820d8648e0e31c5d519bbb01f72fdf57131f0f5f7da5fed36eab"
 dependencies = [
  "bitflags 1.3.2",
  "errno 0.3.5",
@@ -6701,9 +6702,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.18"
+version = "0.38.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a74ee2d7c2581cd139b42447d7d9389b889bdaad3a73f1ebb16f2a3237bb19c"
+checksum = "745ecfa778e66b2b63c88a61cb36e0eea109e803b0b86bf9879fbc77c70e86ed"
 dependencies = [
  "bitflags 2.4.0",
  "errno 0.3.5",
@@ -7286,7 +7287,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#01b430668432933a066d9463a0c8e736c739b3cc"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c26b7d6ae9e57e29e04b0aee1e77dca66fd3d811"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7309,7 +7310,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#01b430668432933a066d9463a0c8e736c739b3cc"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c26b7d6ae9e57e29e04b0aee1e77dca66fd3d811"
 dependencies = [
  "eyre",
  "hyper",
@@ -7324,7 +7325,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#01b430668432933a066d9463a0c8e736c739b3cc"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c26b7d6ae9e57e29e04b0aee1e77dca66fd3d811"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -7336,10 +7337,11 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#01b430668432933a066d9463a0c8e736c739b3cc"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c26b7d6ae9e57e29e04b0aee1e77dca66fd3d811"
 dependencies = [
  "serde",
  "serde_json",
+ "thiserror",
  "tracing",
  "tracing-appender",
  "tracing-journald",
@@ -7522,7 +7524,7 @@ dependencies = [
 [[package]]
 name = "syn-solidity"
 version = "0.4.2"
-source = "git+https://github.com/Will-Smith11/alloy-core.git#7ea92c9c2ed18848fd7b752d03a3876c1dca956e"
+source = "git+https://github.com/Will-Smith11/alloy-core.git#1d6218598f2373531ced6dc05c0db72832d33cb9"
 dependencies = [
  "paste",
  "proc-macro2",
@@ -7584,7 +7586,7 @@ dependencies = [
  "cfg-if",
  "fastrand",
  "redox_syscall 0.3.5",
- "rustix 0.38.18",
+ "rustix 0.38.19",
  "windows-sys 0.48.0",
 ]
 
@@ -8448,7 +8450,7 @@ dependencies = [
  "either",
  "home",
  "once_cell",
- "rustix 0.38.18",
+ "rustix 0.38.19",
 ]
 
 [[package]]
@@ -8876,11 +8878,10 @@ dependencies = [
 
 [[package]]
 name = "zstd-sys"
-version = "2.0.8+zstd.1.5.5"
+version = "2.0.9+zstd.1.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5556e6ee25d32df2586c098bbfa278803692a20d0ab9565e049480d52707ec8c"
+checksum = "9e16efa8a874a0481a574084d34cc26fdb3b99627480f785888deb6386506656"
 dependencies = [
  "cc",
- "libc",
  "pkg-config",
 ]

@@ -23,11 +23,7 @@ pub fn link_vm_to_trace(
 /// Log3 { offset: Bytes, size: Bytes, topic1: H256, topic2: H256, topic3: H256
 /// }, Log4 { offset: Bytes, size: Bytes, topic1: H256, topic2: H256, topic3:
 /// H256, topic4: H256 },
-fn try_parse(
-    mut instruction: VmInstruction,
-    current_address: Address,
-    logs: &mut Vec<Log>,
-) -> Option<Log> {
+fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log> {
     // NOTE: this might be Log0 instead but we go with this code
     match instruction.op.take()?.as_str() {
         "A0" | "A1" | "A2" | "A3" | "A4" => Some(logs.remove(0)),
@@ -48,16 +44,11 @@ fn recursive_parsing(
         .into_iter()
         .zip(vec![&scoped_trace].into_iter().cycle())
         .filter_map(|(mut instruction, trace)| {
-            let addr = match &trace.action {
-                reth_rpc_types::trace::parity::Action::Call(c) => c.to,
-                _ => return None,
-            };
-
             if let Some(sub) = instruction.sub.take() {
                 recursive_parsing(current_traces, sub, tx_trace, logs)
             }
 
-            try_parse(instruction, addr, logs)
+            try_parse(instruction, logs)
         })
         .collect::<Vec<Log>>();
 

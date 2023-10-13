@@ -30,21 +30,22 @@ const BINDINGS_PATH: &str = "bindings.rs";
 const DATA_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.con AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
 GROUP BY c.abi, c.classifier_name
 "#;
 
 const DATA_QUERY_FILTER: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.con AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' AND hasAny(addresses, ?) OR c.classifier_name != ''
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' 
 GROUP BY c.abi, c.classifier_name
+HAVING hasAny(addresses, ?) OR classifier_name != ''
 "#;
 
 const LOCAL_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.con AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
 "#;
 
@@ -52,7 +53,7 @@ GROUP BY c.abi, c.classifier_name
 struct ProtocolDetails {
     pub addresses:       Vec<String>,
     pub abi:             String,
-    pub classifier_name: String,
+    pub classifier_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Row)]
@@ -258,14 +259,14 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
             continue
         }
 
-        let name = if protocol_addr.classifier_name.is_empty() {
+        let name = if protocol_addr.classifier_name.is_none() {
             protocol_addr
                 .addresses
                 .first()
                 .map(|string| "Contract".to_string() + string)
                 .unwrap()
         } else {
-            protocol_addr.classifier_name.clone()
+            protocol_addr.classifier_name.as_ref().unwrap().clone()
         };
         let name = &name;
 
@@ -376,14 +377,14 @@ fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
             continue
         }
 
-        let name = if protocol_addr.classifier_name.is_empty() {
+        let name = if protocol_addr.classifier_name.is_none() {
             protocol_addr
                 .addresses
                 .first()
                 .map(|string| "Contract".to_string() + string)
                 .unwrap()
         } else {
-            protocol_addr.classifier_name.clone()
+            protocol_addr.classifier_name.as_ref().unwrap().clone()
         };
 
         let abi_file_path = get_file_path(ABI_DIRECTORY, &name, ".json");
@@ -405,7 +406,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             continue
         }
 
-        if map.classifier_name.is_empty() {
+        if map.classifier_name.is_none() {
             let name = "Contract".to_string() + map.addresses.first().unwrap();
             writeln!(
                 &mut file,
@@ -426,8 +427,8 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
                 );
             }
         } else {
-            let name = &map.classifier_name;
-            let classified_name = map.classifier_name.clone() + "Classifier";
+            let name = &map.classifier_name.as_ref().unwrap().clone();
+            let classified_name = map.classifier_name.as_ref().unwrap().clone() + "Classifier";
             writeln!(
                 &mut file,
                 "static {}: Lazy<(Option<Box<dyn ActionCollection>>,StaticBindings)> = \
