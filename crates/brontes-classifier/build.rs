@@ -419,6 +419,8 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
+    let mut used_addresses = HashSet::new();
+
     let mut phf_map = phf_codegen::Map::new();
     for (map, has_functions, _) in mapping {
         if !has_functions {
@@ -440,6 +442,10 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             .unwrap();
 
             for address in map.addresses {
+                if !used_addresses.insert(address.clone()) {
+                    continue
+                }
+
                 phf_map.entry(
                     H160::from_str(&address).unwrap().0,
                     &format!("&{}", name.to_uppercase()),
@@ -460,6 +466,10 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             .unwrap();
 
             for address in map.addresses {
+                if !used_addresses.insert(address.clone()) {
+                    continue
+                }
+
                 phf_map.entry(
                     H160::from_str(&address).unwrap().0,
                     &format!("&{}", name.to_uppercase()),
