@@ -132,7 +132,7 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 async fn run_classifier_mapping() {
     let clickhouse_client = build_db();
     clickhouse_client
-        .query("OPTIMIZE TABLE ethereum.addresses DEDUPLICATE")
+        .query("OPTIMIZE TABLE ethereum.addresses FINAL DEDUPLICATE")
         .execute()
         .await
         .unwrap();
