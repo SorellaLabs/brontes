@@ -176,7 +176,7 @@ async fn run_classifier_mapping() {
         .filter(|contract: &ProtocolDetails| contract.abi.is_some())
         .map(|contract: ProtocolDetails| {
             (
-                JsonAbi::from_json_str(&contract.abi)
+                JsonAbi::from_json_str(contract.abi.as_ref().unwrap())
                     .inspect_err(|e| println!("{:?}, {:#?}", e, contract.addresses))
                     .unwrap(),
                 contract,
