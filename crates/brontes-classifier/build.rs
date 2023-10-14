@@ -32,6 +32,7 @@ SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.
 FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
 GROUP BY c.abi, c.classifier_name
+HAVING abi IS NOT NULL
 "#;
 
 const DATA_QUERY_FILTER: &str = r#"
@@ -39,7 +40,7 @@ SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.
 FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' 
 GROUP BY c.abi, c.classifier_name
-HAVING hasAny(addresses, ?) OR classifier_name != ''
+HAVING hasAny(addresses, ?) OR classifier_name != '' AND abi IS NOT NULL
 "#;
 
 const LOCAL_QUERY: &str = r#"
@@ -47,12 +48,13 @@ SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.
 FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
+HAVING abi IS NOT NULL
 "#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 struct ProtocolDetails {
     pub addresses:       Vec<String>,
-    pub abi:             String,
+    pub abi:             Option<String>,
     pub classifier_name: Option<String>,
 }
 
@@ -164,8 +166,10 @@ async fn run_classifier_mapping() {
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
-        .filter(|contract: &ProtocolDetails| !contract.abi.is_empty())
-        .map(|contract: ProtocolDetails| (JsonAbi::from_json_str(&contract.abi).unwrap(), contract))
+        .filter(|contract: &ProtocolDetails| contract.abi.is_some())
+        .map(|contract: ProtocolDetails| {
+            (JsonAbi::from_json_str(contract.abi.as_ref().unwrap()).unwrap(), contract)
+        })
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
 
@@ -389,7 +393,7 @@ fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
 
         let abi_file_path = get_file_path(ABI_DIRECTORY, &name, ".json");
         let mut file = write_file(&abi_file_path, true);
-        let decoded: Value = serde_json::from_str(&protocol_addr.abi).unwrap();
+        let decoded: Value = serde_json::from_str(protocol_addr.abi.as_ref().unwrap()).unwrap();
         file.write_all(&serde_json::to_vec_pretty(&decoded).unwrap())
             .unwrap();
     }
