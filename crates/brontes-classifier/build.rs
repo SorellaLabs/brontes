@@ -219,7 +219,7 @@ async fn get_addresses_for_chunk(client: &TracingClient, chunk: &[u64]) -> HashS
     trace_type.insert(TraceType::Trace);
     trace_type.insert(TraceType::VmTrace);
 
-    join_all(chunk.into_iter().map(|block_num| {
+    let res = join_all(chunk.into_iter().map(|block_num| {
         client
             .trace
             .replay_block_transactions(
@@ -231,7 +231,10 @@ async fn get_addresses_for_chunk(client: &TracingClient, chunk: &[u64]) -> HashS
     .await
     .into_iter()
     .flatten()
-    .collect::<HashSet<_>>()
+    .collect::<HashSet<_>>();
+    println!("got addresses for chunk");
+
+    res
 }
 
 fn expand_trace(trace: Vec<TraceResultsWithTransactionHash>) -> HashSet<Address> {
@@ -254,6 +257,7 @@ fn expand_trace(trace: Vec<TraceResultsWithTransactionHash>) -> HashSet<Address>
 
     result.shrink_to_fit();
     println!("{}", result.len());
+
     result
 }
 
