@@ -199,8 +199,9 @@ async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<
     let range = (start_block..end_block).into_iter().collect::<Vec<_>>();
     let mut res = HashSet::new();
 
-    for chunk in range.as_slice().chunks(10) {
+    for chunk in range.as_slice().chunks(5) {
         res.extend(get_addresses_for_chunk(&tracer, chunk).await);
+        res.shrink_to_fit();
     }
 
     res
@@ -228,13 +229,13 @@ async fn get_addresses_for_chunk(client: &TracingClient, chunk: &[u64]) -> HashS
 }
 
 fn expand_trace(trace: Vec<TraceResultsWithTransactionHash>) -> HashSet<Address> {
-    trace
-        .into_iter()
+    let mut result = trace
+        .into_par_iter()
         .flat_map(|trace| {
             trace
                 .full_trace
                 .trace
-                .into_iter()
+                .into_par_iter()
                 .filter_map(|call_frame| match call_frame.action {
                     reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
                     reth_rpc_types::trace::parity::Action::Create(_)
@@ -243,7 +244,11 @@ fn expand_trace(trace: Vec<TraceResultsWithTransactionHash>) -> HashSet<Address>
                 })
                 .collect::<HashSet<_>>()
         })
-        .collect::<HashSet<_>>()
+        .collect::<HashSet<_>>();
+
+    result.shrink_to_fit();
+    println!("{}", result.len());
+    result
 }
 
 //
