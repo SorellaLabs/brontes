@@ -14,7 +14,9 @@ do
   echo "Running block $OUR_START_BLOCK to $OUR_END_BLOCK"
   export START_BLOCK=$OUR_START_BLOCK
   export END_BLOCK=$OUR_END_BLOCK
-  cargo build --features test_run,server 2> (($OUR_END_BLOCK + .txt))
+  
+  OUT_FILE="$OUR_END_BLOCK.txt"
+  cargo build --features test_run,server 2> $OUT_FILE
 done 
 
 
