@@ -1,7 +1,10 @@
 #!/bin/sh
 MAX_BLOCK=18351854
 OUR_START_BLOCK=$START_BLOCK
-OUR_END_BLOCK=(($START_BLOCK + 1))
+OUR_END_BLOCK=$(($START_BLOCK + 1))
+
+echo "our start block is $OUR_START_BLOCK"
+echo "our end block is $OUR_END_BLOCK"
 
 while [ $OUR_END_BLOCK -le $MAX_BLOCK ] 
 do
