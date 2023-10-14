@@ -1,3 +1,4 @@
+#![feature(result_option_inspect)]
 use std::{
     collections::HashSet,
     env,
@@ -165,7 +166,14 @@ async fn run_classifier_mapping() {
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
         .filter(|contract: &ProtocolDetails| !contract.abi.is_empty())
-        .map(|contract: ProtocolDetails| (JsonAbi::from_json_str(&contract.abi).unwrap(), contract))
+        .map(|contract: ProtocolDetails| {
+            (
+                JsonAbi::from_json_str(&contract.abi)
+                    .inspect_err(|e| println!("{:?}", e))
+                    .unwrap(),
+                contract,
+            )
+        })
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
 
