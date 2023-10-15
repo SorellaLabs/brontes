@@ -41,7 +41,7 @@ SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.
 FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' 
 GROUP BY c.abi, c.classifier_name
-HAVING hasAny(addresses, ?) OR classifier_name != '' AND abi IS NOT NULL
+HAVING abi IS NOT NULL AND hasAny(addresses, ?) OR classifier_name != '' 
 "#;
 
 const LOCAL_QUERY: &str = r#"
