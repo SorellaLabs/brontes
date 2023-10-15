@@ -66,7 +66,7 @@ pub struct DecodedTokens {
 }
 
 fn main() {
-    dotenv::dotenv().ok();
+    // dotenv::dotenv().ok();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
