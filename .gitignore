@@ -21,3 +21,5 @@ target/
 crates/tracing/src/main.rs
 
 .DS_Store
+
+**/const_sql.rs
