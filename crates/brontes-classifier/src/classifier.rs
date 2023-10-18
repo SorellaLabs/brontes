@@ -16,6 +16,7 @@ use reth_rpc_types::{
     trace::parity::{Action, TransactionTrace},
     Log,
 };
+use tracing::info;
 
 use crate::{IntoAction, StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
@@ -27,16 +28,11 @@ const TRANSFER_TOPIC: H256 =
 // read write lock
 pub struct Classifier {
     known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
-    // todo: Change to protocol => hashed_bytecode => signature => classifier
-    static_protocols:    HashMap<[u8; 4], Box<dyn IntoAction>>,
 }
 
 impl Classifier {
-    pub fn new(known_protocols: HashMap<[u8; 4], Box<dyn IntoAction>>) -> Self {
-        Self {
-            static_protocols:    known_protocols,
-            known_dyn_protocols: RwLock::new(HashMap::default()),
-        }
+    pub fn new() -> Self {
+        Self { known_dyn_protocols: RwLock::new(HashMap::default()) }
     }
 
     pub fn build_tree(
@@ -47,7 +43,11 @@ impl Classifier {
     ) -> TimeTree<Actions> {
         let roots = traces
             .into_par_iter()
-            .map(|mut trace| {
+            .filter_map(|mut trace| {
+                if trace.trace.is_empty() {
+                    return None
+                }
+
                 let address = trace.trace[0].get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
@@ -91,7 +91,7 @@ impl Classifier {
                     root.insert(node.address, node);
                 }
 
-                root
+                Some(root)
             })
             .collect::<Vec<Root<Actions>>>();
 
@@ -168,22 +168,27 @@ impl Classifier {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        // if let Some(binding) =
-        // PROTOCOL_ADDRESS_MAPPING.get(format!("{target_address}").as_str()) {
-        //     let calldata = trace.get_calldata();
-        //     let return_bytes = trace.get_return_calldata();
-        //     let sig = &calldata[0..4];
-        //     let res: StaticReturnBindings = binding.try_decode(&calldata).unwrap();
-        //
-        //     return self.static_protocols.get(sig).unwrap().decode_trace_data(
-        //         index,
-        //         res,
-        //         return_bytes,
-        //         from_address,
-        //         target_address,
-        //         &trace.logs,
-        //     )
-        // } else {
+        if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0) {
+            if let Some(classifier) = &protocol.0 {
+                let calldata = trace.get_calldata();
+                let return_bytes = trace.get_return_calldata();
+                let sig = &calldata[0..4];
+                let res: StaticReturnBindings = protocol.1.try_decode(&calldata).unwrap();
+
+                if let Some(res) = classifier.dispatch(
+                    sig,
+                    index,
+                    res,
+                    return_bytes,
+                    from_address,
+                    target_address,
+                    &trace.logs,
+                ) {
+                    return res
+                }
+            }
+        }
+
         let rem = trace
             .logs
             .iter()

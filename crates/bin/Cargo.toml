@@ -53,6 +53,7 @@ colored.workspace = true
 
 # misc
 eyre.workspace = true
+dotenv = "0.15.0"
 
 # http/rpc
 hyper.workspace = true

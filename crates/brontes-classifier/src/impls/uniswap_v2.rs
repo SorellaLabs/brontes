@@ -17,14 +17,12 @@ action_impl!(
     None,
     true,
     false,
-    |index, from_address: H160, target_address: H160, data: Swap| {
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*from_address)
-            .copied()
-            .unwrap();
+    |index, from_address: H160, target_address: H160, data: Option<Swap>| {
+        let data = data?;
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied()?;
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
-            return NormalizedSwap {
+            return Some(NormalizedSwap {
                 pool: target_address,
                 index,
                 from: from_address,
@@ -32,9 +30,9 @@ action_impl!(
                 token_out: token_0,
                 amount_in: data.amount1In,
                 amount_out: data.amount0Out,
-            }
+            })
         } else {
-            return NormalizedSwap {
+            return Some(NormalizedSwap {
                 index,
                 pool: target_address,
                 from: from_address,
@@ -42,11 +40,10 @@ action_impl!(
                 token_out: token_1,
                 amount_in: data.amount0In,
                 amount_out: data.amount1Out,
-            }
+            })
         }
     }
 );
-// action_impl_log_no_return!(V2SwapImpl, Swap, swapCall,);
 
 action_impl!(
     V2MintImpl,
@@ -55,12 +52,10 @@ action_impl!(
     None,
     true,
     false,
-    |index, from_address: H160, target_address: H160, data: Mint| {
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address)
-            .copied()
-            .unwrap();
-        NormalizedMint {
+    |index, from_address: H160, target_address: H160, data: Option<Mint>| {
+        let data = data?;
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address).copied()?;
+        Some(NormalizedMint {
             recipient: from_address,
             from: from_address,
             index,
@@ -68,7 +63,7 @@ action_impl!(
             to: H160(data.sender.0 .0),
             token: vec![token_0, token_1],
             amount: vec![data.amount0, data.amount1],
-        }
+        })
     }
 );
 
@@ -79,20 +74,18 @@ action_impl!(
     None,
     true,
     false,
-    |index, from_address: H160, target_address: H160, res: Burn| {
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address)
-            .copied()
-            .unwrap();
+    |index, from_address: H160, target_address: H160, res: Option<Burn>| {
+        let res = res?;
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address).copied()?;
 
-        NormalizedBurn {
+        Some(NormalizedBurn {
             recipient: from_address,
             to: target_address,
             index,
             from: from_address,
             token: vec![token_0, token_1],
             amount: vec![res.amount0, res.amount1],
-        }
+        })
     }
 );
 
