@@ -69,4 +69,3 @@ INNER JOIN ethereum.blocks AS blocks ON blocks.block_hash = relays.block_hash
 WHERE (relays.block_number = ?) AND blocks.valid = 1
 
 "#;
-
