@@ -1,17 +1,17 @@
 on:
   push:
     branches:
-      - main
+    - main
   pull_request:
 
 name: CI
 
 jobs:
-  tests-stable:
-
-    name: Tests (Stable)
+  print_repo_name:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-      - run: echo "REPO NAME: ${{ github.repository }}"
+      - name: Check out code
+        uses: actions/checkout@v2
+      
+      - name: Echo repository name
+        run: echo "Repository name is ${{ github.repository }}"
