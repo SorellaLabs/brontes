@@ -126,6 +126,6 @@ fn build_db() -> Client {
 }
 
 #[allow(dead_code)]
-async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
+async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
 }
