@@ -79,7 +79,7 @@ async fn build_address_to_token_map() {
     #[cfg(feature = "server")]
     {
         let client = build_db();
-
+        optimize_db(&client).await;
         for i in 2..4 {
             let res =
                 query_db::<DecodedTokens>(&client, &(TOKEN_QUERIES.to_string() + &i.to_string()))
@@ -129,6 +129,7 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 
 async fn run_classifier_mapping() {
     let clickhouse_client = build_db();
+    optimize_db(&clickhouse_client).await;
     #[cfg(feature = "test_run")]
     let addresses = {
         let start_block = env::var("START_BLOCK").expect("START_BLOCK not found in env");
@@ -509,11 +510,19 @@ fn write_file(file_path: &str, create: bool) -> File {
 }
 
 async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
-    db.query("OPTIMIZE TABLE ethereum.pools FINAL DEDUPLICATE BY *")
+    db.query(query).fetch_all::<T>().await.unwrap()
+}
+
+async fn optimize_db(db: &Client) {
+    db.query("OPTIMIZE TABLE ethereum.contracts FINAL DEDUPLICATE")
         .execute()
         .await
         .unwrap();
-    db.query(query).fetch_all::<T>().await.unwrap()
+
+    db.query("OPTIMIZE TABLE ethereum.addresses FINAL DEDUPLICATE")
+        .execute()
+        .await
+        .unwrap();
 }
 
 fn to_string_vec(tokens: Vec<String>) -> String {
