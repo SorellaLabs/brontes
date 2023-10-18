@@ -133,11 +133,7 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 
 async fn run_classifier_mapping() {
     let clickhouse_client = build_db();
-    clickhouse_client
-        .query("OPTIMIZE TABLE ethereum.addresses FINAL DEDUPLICATE")
-        .execute()
-        .await
-        .unwrap();
+    optimize_db(&clickhouse_client).await;
 
     #[cfg(feature = "test_run")]
     let addresses = {
@@ -544,7 +540,7 @@ fn write_file(file_path: &str, create: bool) -> File {
         .expect("could not open file")
 }
 
-async fn query_db<T: Row + for<'a> Deserialize<'a>>(db: &Client, query: &str) -> Vec<T> {
+async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
 }
 
