@@ -1,3 +1,4 @@
+#![feature(result_option_inspect)]
 use std::{
     collections::HashSet,
     env,
@@ -20,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const TOKEN_MAPPING: &str = "token_mappings.rs";
-const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x),tokens) AS \
+const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x), tokens) AS \
                              tokens FROM pools WHERE length(tokens) = ";
 
 const ABI_DIRECTORY: &str = "./abis/";
@@ -30,21 +31,22 @@ const BINDINGS_PATH: &str = "bindings.rs";
 const DATA_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.con AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
 GROUP BY c.abi, c.classifier_name
 "#;
 
 const DATA_QUERY_FILTER: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.con AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' AND hasAny(addresses, ?) OR c.classifier_name != ''
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' 
 GROUP BY c.abi, c.classifier_name
+HAVING hasAny(addresses, ?) OR classifier_name != ''
 "#;
 
 const LOCAL_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.con AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
 "#;
 
@@ -52,7 +54,7 @@ GROUP BY c.abi, c.classifier_name
 struct ProtocolDetails {
     pub addresses:       Vec<String>,
     pub abi:             String,
-    pub classifier_name: String,
+    pub classifier_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Row)]
@@ -129,7 +131,12 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 
 async fn run_classifier_mapping() {
     let clickhouse_client = build_db();
-    optimize_db(&clickhouse_client).await;
+    clickhouse_client
+        .query("OPTIMIZE TABLE ethereum.addresses FINAL DEDUPLICATE")
+        .execute()
+        .await
+        .unwrap();
+
     #[cfg(feature = "test_run")]
     let addresses = {
         let start_block = env::var("START_BLOCK").expect("START_BLOCK not found in env");
@@ -142,7 +149,7 @@ async fn run_classifier_mapping() {
         .await
         .into_iter()
         .map(|addr| format!("{:?}", addr).to_lowercase())
-        .collect::<Vec<_>>()
+        .collect::<HashSet<_>>()
     };
 
     #[cfg(feature = "server")]
@@ -165,7 +172,14 @@ async fn run_classifier_mapping() {
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
         .filter(|contract: &ProtocolDetails| !contract.abi.is_empty())
-        .map(|contract: ProtocolDetails| (JsonAbi::from_json_str(&contract.abi).unwrap(), contract))
+        .map(|contract: ProtocolDetails| {
+            (
+                JsonAbi::from_json_str(&contract.abi)
+                    .inspect_err(|e| println!("{:?}, {:#?}", e, contract.addresses))
+                    .unwrap(),
+                contract,
+            )
+        })
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
 
@@ -191,8 +205,9 @@ async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<
     let range = (start_block..end_block).into_iter().collect::<Vec<_>>();
     let mut res = HashSet::new();
 
-    for chunk in range.as_slice().chunks(10) {
+    for chunk in range.as_slice().chunks(5) {
         res.extend(get_addresses_for_chunk(&tracer, chunk).await);
+        res.shrink_to_fit();
     }
 
     res
@@ -204,7 +219,7 @@ async fn get_addresses_for_chunk(client: &TracingClient, chunk: &[u64]) -> HashS
     trace_type.insert(TraceType::Trace);
     trace_type.insert(TraceType::VmTrace);
 
-    join_all(chunk.into_iter().map(|block_num| {
+    let res = join_all(chunk.into_iter().map(|block_num| {
         client
             .trace
             .replay_block_transactions(
@@ -216,17 +231,20 @@ async fn get_addresses_for_chunk(client: &TracingClient, chunk: &[u64]) -> HashS
     .await
     .into_iter()
     .flatten()
-    .collect::<HashSet<_>>()
+    .collect::<HashSet<_>>();
+    println!("got addresses for chunk");
+
+    res
 }
 
 fn expand_trace(trace: Vec<TraceResultsWithTransactionHash>) -> HashSet<Address> {
-    trace
-        .into_iter()
+    let mut result = trace
+        .into_par_iter()
         .flat_map(|trace| {
             trace
                 .full_trace
                 .trace
-                .into_iter()
+                .into_par_iter()
                 .filter_map(|call_frame| match call_frame.action {
                     reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
                     reth_rpc_types::trace::parity::Action::Create(_)
@@ -235,7 +253,12 @@ fn expand_trace(trace: Vec<TraceResultsWithTransactionHash>) -> HashSet<Address>
                 })
                 .collect::<HashSet<_>>()
         })
-        .collect::<HashSet<_>>()
+        .collect::<HashSet<_>>();
+
+    result.shrink_to_fit();
+    println!("{}", result.len());
+
+    result
 }
 
 //
@@ -259,14 +282,14 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
             continue
         }
 
-        let name = if protocol_addr.classifier_name.is_empty() {
+        let name = if protocol_addr.classifier_name.is_none() {
             protocol_addr
                 .addresses
                 .first()
                 .map(|string| "Contract".to_string() + string)
                 .unwrap()
         } else {
-            protocol_addr.classifier_name.clone()
+            protocol_addr.classifier_name.as_ref().unwrap().clone()
         };
         let name = &name;
 
@@ -377,14 +400,14 @@ fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
             continue
         }
 
-        let name = if protocol_addr.classifier_name.is_empty() {
+        let name = if protocol_addr.classifier_name.is_none() {
             protocol_addr
                 .addresses
                 .first()
                 .map(|string| "Contract".to_string() + string)
                 .unwrap()
         } else {
-            protocol_addr.classifier_name.clone()
+            protocol_addr.classifier_name.as_ref().unwrap().clone()
         };
 
         let abi_file_path = get_file_path(ABI_DIRECTORY, &name, ".json");
@@ -400,13 +423,15 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
+    let mut used_addresses = HashSet::new();
+
     let mut phf_map = phf_codegen::Map::new();
     for (map, has_functions, _) in mapping {
         if !has_functions {
             continue
         }
 
-        if map.classifier_name.is_empty() {
+        if map.classifier_name.is_none() {
             let name = "Contract".to_string() + map.addresses.first().unwrap();
             writeln!(
                 &mut file,
@@ -421,14 +446,18 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             .unwrap();
 
             for address in map.addresses {
+                if !used_addresses.insert(address.clone()) {
+                    continue
+                }
+
                 phf_map.entry(
                     H160::from_str(&address).unwrap().0,
                     &format!("&{}", name.to_uppercase()),
                 );
             }
         } else {
-            let name = &map.classifier_name;
-            let classified_name = map.classifier_name.clone() + "Classifier";
+            let name = &map.classifier_name.as_ref().unwrap().clone();
+            let classified_name = map.classifier_name.as_ref().unwrap().clone() + "Classifier";
             writeln!(
                 &mut file,
                 "static {}: Lazy<(Option<Box<dyn ActionCollection>>,StaticBindings)> = \
@@ -441,6 +470,10 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             .unwrap();
 
             for address in map.addresses {
+                if !used_addresses.insert(address.clone()) {
+                    continue
+                }
+
                 phf_map.entry(
                     H160::from_str(&address).unwrap().0,
                     &format!("&{}", name.to_uppercase()),
