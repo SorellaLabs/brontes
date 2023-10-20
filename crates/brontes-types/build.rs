@@ -19,7 +19,7 @@ use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
 #[allow(dead_code)]
-const TOKEN_QUERIES: &str = "SELECT toString(address),decimals FROM tokens";
+const TOKEN_QUERIES: &str = "SELECT toString(address), decimals FROM tokens";
 
 fn main() {
     dotenv::dotenv().ok();
@@ -29,7 +29,6 @@ fn main() {
         .build()
         .unwrap();
 
-    #[cfg(not(feature = "tests"))]
     runtime.block_on(async move {
         let path = Path::new(&env::var("OUT_DIR").unwrap()).join(TOKEN_MAPPING_FILE);
         let mut file = BufWriter::new(File::create(&path).unwrap());
