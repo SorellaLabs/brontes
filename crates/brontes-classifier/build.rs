@@ -45,7 +45,7 @@ HAVING abi IS NOT NULL AND hasAny(addresses, ?) OR classifier_name != ''
 "#;
 
 const LOCAL_QUERY: &str = r#"
-SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
+SELECT arrayMap(x -> toString(x), groupArray(distinct(a.address))) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
@@ -65,17 +65,14 @@ pub struct DecodedTokens {
     tokens:  Vec<String>,
 }
 
-#[cfg(not(feature = "tests"))]
 fn main() {
-    // dotenv::dotenv().ok();
+    //dotenv::dotenv().ok();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap();
 
-    #[cfg(not(feature = "tests"))]
     runtime.block_on(build_address_to_token_map());
-    #[cfg(not(feature = "tests"))]
     runtime.block_on(run_classifier_mapping());
 }
 
@@ -86,7 +83,6 @@ async fn build_address_to_token_map() {
     #[cfg(feature = "server")]
     {
         let client = build_db();
-        optimize_db(&client).await;
         for i in 2..4 {
             let res =
                 query_db::<DecodedTokens>(&client, &(TOKEN_QUERIES.to_string() + &i.to_string()))
@@ -136,7 +132,6 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 
 async fn run_classifier_mapping() {
     let clickhouse_client = build_db();
-    optimize_db(&clickhouse_client).await;
 
     #[cfg(feature = "test_run")]
     let addresses = {
@@ -545,18 +540,6 @@ fn write_file(file_path: &str, create: bool) -> File {
 
 async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
-}
-
-async fn optimize_db(db: &Client) {
-    db.query("OPTIMIZE TABLE ethereum.contracts FINAL DEDUPLICATE")
-        .execute()
-        .await
-        .unwrap();
-
-    db.query("OPTIMIZE TABLE ethereum.addresses FINAL DEDUPLICATE")
-        .execute()
-        .await
-        .unwrap();
 }
 
 fn to_string_vec(tokens: Vec<String>) -> String {
