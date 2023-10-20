@@ -1,3 +1,5 @@
+#![deny(unused_imports)]
+
 pub mod atomic_backrun;
 pub mod cex_dex;
 pub mod composer;
