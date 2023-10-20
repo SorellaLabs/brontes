@@ -11,7 +11,7 @@ use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     structured_trace::TxTrace,
 };
-use futures::{join, Future, FutureExt, StreamExt};
+use futures::{join, Future, FutureExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
 use tracing::info;
