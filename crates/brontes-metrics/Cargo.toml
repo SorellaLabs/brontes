@@ -31,3 +31,6 @@ eyre.workspace = true
 
 # http/rpc
 hyper.workspace = true
+
+[features]
+tests = []
