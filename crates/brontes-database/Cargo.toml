@@ -6,28 +6,36 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-brontes-metrics.workspace = true
+# brontes
 brontes-types.workspace = true
-brontes-core.workspace = true
 
+# reth
 reth-primitives.workspace = true
+
+# sorella-db
 sorella-db-databases.workspace = true
+
 # serde
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde_with = { version = "3.3.0", features = ["macros"] }
+serde_with = { workspace = true, features = ["macros"] }
 
 # error handling
 thiserror.workspace = true
 
 # numbers
 malachite.workspace = true
-hyper-tls = "0.5.0"
 
+# web
+hyper-tls.workspace = true
 hyper.workspace = true
-futures = "0.3.28"
-tracing.workspace = true
+
+# async
+futures.workspace = true
 tokio.workspace = true
+
+# tracing
+tracing.workspace = true
 
 # misc
 dotenv.workspace = true
