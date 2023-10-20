@@ -10,10 +10,22 @@ use std::{
 
 use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
+#[cfg(feature = "server")]
+use ethers_core::types::Chain;
+#[cfg(feature = "server")]
+use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
+#[cfg(feature = "server")]
+use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, H160};
+#[cfg(feature = "server")]
+use reth_primitives::{BlockId, BlockNumberOrTag};
 use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
+#[cfg(feature = "server")]
+use reth_rpc_types::trace::parity::TraceType;
+#[cfg(feature = "server")]
+use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
