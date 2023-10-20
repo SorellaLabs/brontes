@@ -23,7 +23,7 @@ erased-serde = "0.3.31"
 strum = { version = "0.25.0", features = ["derive"] }
 tokio.workspace = true
 hyper.workspace = true
-hyper-tls = "0.5.0"
+hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 alloy-etherscan.workspace = true
