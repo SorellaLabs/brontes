@@ -10,7 +10,7 @@ use reth_rpc_types::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::decoding::vm_linker::link_vm_to_trace;
+use crate::decoding::{parser::test_utils::init_trace_parser, vm_linker::link_vm_to_trace};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 struct TestTransactionTraceWithLogs {
