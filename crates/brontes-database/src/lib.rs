@@ -1,5 +1,3 @@
-#![deny(unused_imports)]
-
 use std::collections::{HashMap, HashSet};
 
 use malachite::Rational;

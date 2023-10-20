@@ -1,5 +1,3 @@
-#![deny(unused_imports)]
-
 use malachite::{
     num::{arithmetic::traits::Pow, conversion::traits::RoundingFrom},
     rounding_modes::RoundingMode,

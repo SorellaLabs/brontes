@@ -1,5 +1,3 @@
-#![deny(unused_imports)]
-
 use std::{
     pin::Pin,
     task::{Context, Poll},
