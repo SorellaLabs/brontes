@@ -73,7 +73,9 @@ fn main() {
         .build()
         .unwrap();
 
+    #[cfg(not(feature = "tests"))]
     runtime.block_on(build_address_to_token_map());
+    #[cfg(not(feature = "tests"))]
     runtime.block_on(run_classifier_mapping());
 }
 
