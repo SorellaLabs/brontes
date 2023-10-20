@@ -10,7 +10,6 @@ proc-macro = true
 
 [dependencies]
 syn = "2.0.37"
-paste = "1.0.14"
 quote = "1.0.33"
 
 

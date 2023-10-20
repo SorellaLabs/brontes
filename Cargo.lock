@@ -126,7 +126,7 @@ name = "alloy-etherscan"
 version = "0.1.0"
 dependencies = [
  "alloy-json-abi",
- "alloy-primitives 0.4.2 (git+https://github.com/SorellaLabs/alloy-core.git)",
+ "alloy-primitives",
  "ethers-core",
  "ethers-solc",
  "reqwest",
@@ -144,27 +144,10 @@ name = "alloy-json-abi"
 version = "0.4.2"
 source = "git+https://github.com/SorellaLabs/alloy-core.git#03b7a396d23f31edeb1e820df16b5cf180ade408"
 dependencies = [
- "alloy-primitives 0.4.2 (git+https://github.com/SorellaLabs/alloy-core.git)",
+ "alloy-primitives",
  "alloy-sol-type-parser",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "alloy-primitives"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0628ec0ba5b98b3370bb6be17b12f23bfce8ee4ad83823325a20546d9b03b78"
-dependencies = [
- "alloy-rlp",
- "bytes",
- "cfg-if",
- "const-hex",
- "derive_more",
- "hex-literal",
- "itoa",
- "ruint",
- "tiny-keccak",
 ]
 
 [[package]]
@@ -192,21 +175,9 @@ version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc0fac0fc16baf1f63f78b47c3d24718f3619b0714076f6a02957d808d52cbef"
 dependencies = [
- "alloy-rlp-derive",
  "arrayvec",
  "bytes",
  "smol_str",
-]
-
-[[package]]
-name = "alloy-rlp-derive"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0391754c09fab4eae3404d19d0d297aa1c670c1775ab51d8a5312afeca23157"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.38",
 ]
 
 [[package]]
@@ -241,7 +212,7 @@ name = "alloy-sol-types"
 version = "0.4.2"
 source = "git+https://github.com/SorellaLabs/alloy-core.git#03b7a396d23f31edeb1e820df16b5cf180ade408"
 dependencies = [
- "alloy-primitives 0.4.2 (git+https://github.com/SorellaLabs/alloy-core.git)",
+ "alloy-primitives",
  "alloy-sol-macro",
  "const-hex",
  "serde",
@@ -957,15 +928,12 @@ dependencies = [
 name = "brontes-classifier"
 version = "0.1.0"
 dependencies = [
- "alloy-etherscan",
  "alloy-json-abi",
  "alloy-sol-types",
- "brontes-core",
  "brontes-database",
  "brontes-macros",
  "brontes-types",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
- "dotenv",
  "ethers-core",
  "futures",
  "hex-literal",
@@ -986,7 +954,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "toml 0.8.2",
  "tracing",
 ]
 
@@ -996,7 +963,7 @@ version = "0.1.0"
 dependencies = [
  "alloy-etherscan",
  "alloy-json-abi",
- "alloy-primitives 0.4.2 (git+https://github.com/SorellaLabs/alloy-core.git)",
+ "alloy-primitives",
  "alloy-sol-types",
  "async-trait",
  "auto_impl",
@@ -1034,7 +1001,6 @@ dependencies = [
  "reth-tasks",
  "reth-tracing",
  "reth-transaction-pool",
- "revm-primitives 1.3.0",
  "ruint",
  "serde",
  "serde_json",
@@ -1095,7 +1061,6 @@ dependencies = [
 name = "brontes-macros"
 version = "0.1.0"
 dependencies = [
- "paste",
  "quote",
  "syn 2.0.38",
 ]
@@ -1241,20 +1206,6 @@ dependencies = [
 name = "c-kzg"
 version = "0.1.0"
 source = "git+https://github.com/ethereum/c-kzg-4844#d637761a2ece4f13dbcffcae09253408e430a6e1"
-dependencies = [
- "bindgen 0.66.1",
- "blst",
- "cc",
- "glob",
- "hex",
- "libc",
-]
-
-[[package]]
-name = "c-kzg"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac926d808fb72fe09ebf471a091d6d72918876ccf0b4989766093d2d0d24a0ef"
 dependencies = [
  "bindgen 0.66.1",
  "blst",
@@ -5328,7 +5279,7 @@ dependencies = [
  "codecs-derive",
  "proptest",
  "proptest-derive",
- "revm-primitives 1.1.2",
+ "revm-primitives",
 ]
 
 [[package]]
@@ -5471,7 +5422,7 @@ dependencies = [
  "reth-network-api",
  "reth-primitives",
  "reth-rpc-types",
- "revm-primitives 1.1.2",
+ "revm-primitives",
  "secp256k1",
  "thiserror",
  "tokio",
@@ -5582,7 +5533,7 @@ dependencies = [
  "reth-rpc-types",
  "reth-rpc-types-compat",
  "reth-transaction-pool",
- "revm-primitives 1.1.2",
+ "revm-primitives",
  "sha2",
  "thiserror",
  "tokio",
@@ -5616,7 +5567,7 @@ dependencies = [
  "reth-codecs",
  "reth-rlp",
  "reth-rlp-derive",
- "revm-primitives 1.1.2",
+ "revm-primitives",
  "ruint",
  "secp256k1",
  "serde",
@@ -5729,7 +5680,7 @@ dependencies = [
  "c-kzg 0.1.0 (git+https://github.com/ethereum/c-kzg-4844?rev=f5f6f863d475847876a2bd5ee252058d37c3a15d)",
  "ethereum-types",
  "reth-rlp-derive",
- "revm-primitives 1.1.2",
+ "revm-primitives",
  "smol_str",
 ]
 
@@ -5778,7 +5729,7 @@ dependencies = [
  "reth-tasks",
  "reth-transaction-pool",
  "revm",
- "revm-primitives 1.1.2",
+ "revm-primitives",
  "schnellru",
  "secp256k1",
  "serde",
@@ -5974,7 +5925,7 @@ source = "git+https://github.com/bluealloy/revm?rev=516f62cc#516f62ccc1c5f2a62e5
 dependencies = [
  "derive_more",
  "enumn",
- "revm-primitives 1.1.2",
+ "revm-primitives",
  "sha3",
 ]
 
@@ -5988,7 +5939,7 @@ dependencies = [
  "k256",
  "num",
  "once_cell",
- "revm-primitives 1.1.2",
+ "revm-primitives",
  "ripemd",
  "secp256k1",
  "sha2",
@@ -6021,24 +5972,6 @@ dependencies = [
  "ruint",
  "serde",
  "sha3",
-]
-
-[[package]]
-name = "revm-primitives"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51187b852d9e458816a2e19c81f1dd6c924077e1a8fccd16e4f044f865f299d7"
-dependencies = [
- "alloy-primitives 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "alloy-rlp",
- "auto_impl",
- "bitflags 2.4.1",
- "bitvec",
- "c-kzg 0.1.1",
- "enumn",
- "hashbrown 0.14.1",
- "hex",
- "once_cell",
 ]
 
 [[package]]
