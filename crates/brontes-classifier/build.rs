@@ -65,6 +65,7 @@ pub struct DecodedTokens {
     tokens:  Vec<String>,
 }
 
+#[cfg(not(feature = "tests"))]
 fn main() {
     // dotenv::dotenv().ok();
     let runtime = tokio::runtime::Builder::new_current_thread()
