@@ -10,13 +10,10 @@ use std::{
 
 use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
-use ethers_core::types::Chain;
-use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use reth_primitives::{Address, BlockId, BlockNumberOrTag, H160};
-use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
-use reth_tracing::TracingClient;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reth_primitives::{Address, H160};
+use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

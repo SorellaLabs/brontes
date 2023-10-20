@@ -9,7 +9,6 @@ edition = "2021"
 # brontes
 brontes-database.workspace = true
 brontes-types.workspace = true
-brontes-core.workspace = true
 brontes-macros.workspace = true
 
 # alloy
@@ -47,11 +46,9 @@ hyper.workspace = true
 hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-alloy-etherscan.workspace = true
 ethers-core.workspace = true
 phf = { workspace = true, default-features = false }
 phf_codegen.workspace = true
-dotenv.workspace = true
 reth-tracing.workspace = true
 rayon.workspace = true
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
@@ -59,4 +56,3 @@ reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 futures.workspace = true
 itertools.workspace = true
-toml.workspace = true
