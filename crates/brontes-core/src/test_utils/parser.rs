@@ -1,17 +1,13 @@
 use std::fs;
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
-use futures::future::join_all;
 use reth_primitives::H256;
-use reth_revm::tracing::parity::populate_account_balance_nonce_diffs;
 use reth_rpc_types::{
-    trace::parity::{TraceResults, TransactionTrace, VmTrace},
+    trace::parity::{TraceResults, TransactionTrace},
     Log, TransactionReceipt,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-
-use crate::decoding::{parser::test_utils::init_trace_parser, vm_linker::link_vm_to_trace};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 struct TestTransactionTraceWithLogs {
