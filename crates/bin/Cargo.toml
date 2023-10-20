@@ -73,7 +73,7 @@ metrics-process.workspace = true
 server = [
   "brontes-types/server",
   "brontes-classifier/server",
-  "brontes-core/server",
+  "brontes-core/server"
 ]
 
 test_run = [
