@@ -25,7 +25,6 @@ futures.workspace = true
 reth-tasks.workspace = true
 reth-rpc.workspace = true
 reth-rpc-api.workspace = true
-reth-rpc-builder.workspace = true
 reth-rpc-types.workspace = true
 reth-provider.workspace = true
 reth-transaction-pool.workspace = true
@@ -42,7 +41,6 @@ alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types = { workspace = true, features = ["json"] }
 
 # logging
-env_logger.workspace = true
 log.workspace = true
 
 # tracing
@@ -53,21 +51,23 @@ colored.workspace = true
 
 # misc
 eyre.workspace = true
-dotenv = "0.15.0"
+dotenv.workspace = true
 
 # http/rpc
 hyper.workspace = true
 
 # cli
 clap = { version = "4.4.6", features = ["derive"] }
-clap_complete = "4.4.3"
+
 # logging
 indoc = "2"
+rayon.workspace = true
+cfg-if = "1.0.0"
+
 # prometheus
 metrics-process.workspace = true
 
-rayon.workspace = true
-cfg-if = "1.0.0"
+
 
 [features]
 server = [
