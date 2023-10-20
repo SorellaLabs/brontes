@@ -37,3 +37,4 @@ sorella-db-databases.workspace = true
 
 [features]
 server = []
+tests = []

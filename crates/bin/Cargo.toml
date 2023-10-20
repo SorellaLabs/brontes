@@ -82,3 +82,10 @@ test_run = [
   "brontes-classifier/test_run",
   "brontes-inspect/test_run",
 ]
+
+tests = [
+  "brontes-core/tests",
+  "brontes-database/tests",
+  "brontes-classifier/tests",
+  "brontes-inspect/tests",
+]
