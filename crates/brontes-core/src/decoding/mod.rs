@@ -23,9 +23,9 @@ use crate::{
     init_trace,
 };
 
-mod parser;
+pub(crate) mod parser;
 mod utils;
-mod vm_linker;
+pub(crate) mod vm_linker;
 use brontes_metrics::{trace::types::TraceMetricEvent, PoirotMetricEvents};
 #[allow(dead_code)]
 pub(crate) const UNKNOWN: &str = "unknown";
@@ -34,8 +34,8 @@ pub(crate) const RECEIVE: &str = "receive";
 #[allow(dead_code)]
 pub(crate) const FALLBACK: &str = "fallback";
 
-const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
-const CACHE_DIRECTORY: &str = "./abi_cache";
+pub(crate) const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
+pub(crate) const CACHE_DIRECTORY: &str = "./abi_cache";
 
 use reth_rpc::eth::error::EthApiError;
 use reth_rpc_types::{trace::parity::TraceResultsWithTransactionHash, TransactionReceipt};
