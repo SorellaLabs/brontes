@@ -13,6 +13,9 @@ pub fn link_vm_to_trace(
     let mut res = Vec::new();
     recursive_parsing(&mut res, vm, &mut tx_trace, &mut logs);
 
+    for r in &res {
+        //println!("{:?}, {}", r.trace.trace_address, !r.logs.is_empty())
+    }
     res
 }
 
@@ -24,9 +27,8 @@ pub fn link_vm_to_trace(
 /// }, Log4 { offset: Bytes, size: Bytes, topic1: H256, topic2: H256, topic3:
 /// H256, topic4: H256 },
 fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log> {
-    // NOTE: this might be Log0 instead but we go with this code
     match instruction.op.take()?.as_str() {
-        "A0" | "A1" | "A2" | "A3" | "A4" => Some(logs.remove(0)),
+        "LOG0" | "LOG1" | "LOG2" | "LOG3" | "LOG4" => Some(logs.remove(0)),
         _ => None,
     }
 }

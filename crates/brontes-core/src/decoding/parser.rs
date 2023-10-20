@@ -90,7 +90,7 @@ impl<T: TracingProvider> TraceParser<T> {
         (trace, stats)
     }
 
-    /// gets the transaction $receipts for a block   
+    /// gets the transaction $receipts for a block
     pub(crate) async fn get_receipts(
         &self,
         block_num: u64,
@@ -257,5 +257,40 @@ impl<T: TracingProvider> TraceParser<T> {
             .await?;
 
         Ok(())
+    }
+}
+
+pub(crate) mod test_utils {
+    use std::{
+        env,
+        path::{Path, PathBuf},
+        sync::Arc,
+    };
+
+    use alloy_etherscan::Client;
+    use ethers_core::types::Chain;
+    use reth_tracing::TracingClient;
+    use tokio::{runtime::Handle, sync::mpsc::unbounded_channel};
+
+    use super::TraceParser;
+    use crate::decoding::{CACHE_DIRECTORY, CACHE_TIMEOUT};
+
+    pub(crate) fn init_trace_parser(handle: Handle) -> TraceParser<TracingClient> {
+        let etherscan_key = env::var("ETHERSCAN_API_KEY").expect("No ETHERSCAN_API_KEY in .env");
+        let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+
+        let (metrics_tx, _) = unbounded_channel();
+
+        let etherscan_client = Client::new_cached(
+            Chain::Mainnet,
+            etherscan_key,
+            Some(PathBuf::from(CACHE_DIRECTORY)),
+            CACHE_TIMEOUT,
+        )
+        .unwrap();
+
+        let tracer = TracingClient::new(Path::new(&db_path), handle.clone());
+
+        TraceParser::new(etherscan_client, Arc::new(tracer), Arc::new(metrics_tx))
     }
 }
