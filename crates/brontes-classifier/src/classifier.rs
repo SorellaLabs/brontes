@@ -524,9 +524,9 @@ impl Classifier {
                     // this is already classified
                     return false
                 }
-                if known_dyn_protocols_read.contains_key(&address) {
-                    return true
-                } else if self.is_possible_exchange(sub_actions) {
+                if known_dyn_protocols_read.contains_key(&address)
+                    || self.is_possible_exchange(sub_actions)
+                {
                     return true
                 }
 

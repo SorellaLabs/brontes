@@ -10,7 +10,6 @@ use brontes_types::{
     tree::{GasDetails, Node, TimeTree},
     ToFloatNearest,
 };
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::{Address, H256};
 use tracing::error;
 
