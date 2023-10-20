@@ -6,32 +6,43 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-alloy-dyn-abi.workspace = true
+# reth 
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
+
+# tracing
 tracing.workspace = true
+
+# async
 rayon.workspace = true
+
+# numbers
 malachite.workspace = true
+
+# serde
 serde.workspace = true
-sorella-db-databases.workspace = true
-phf = { version = "0.11.1", default-features = false }
-strum = { version = "0.25.0", features = ["derive"] }
-auto_impl = "1.1.0"
 erased-serde = "0.3.31"
 
+# database
+sorella-db-databases.workspace = true
+
+# misc
+phf = { workspace = true, default-features = false }
+strum = { workspace = true, features = ["derive"] }
+auto_impl.workspace = true
+
+
 [build-dependencies]
-strum = { version = "0.25.0", features = ["derive"] }
+strum = { workspace = true, features = ["derive"] }
 tokio.workspace = true
 hyper.workspace = true
 hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-alloy-etherscan.workspace = true
-alloy-json-abi.workspace = true
 ethers-core.workspace = true
 reth-primitives.workspace = true
-phf = { version = "0.11.1", default-features = false }
-phf_codegen = "0.11.1"
+phf = { workspace = true, default-features = false }
+phf_codegen.workspace = true
 dotenv.workspace = true
 sorella-db-databases.workspace = true
 

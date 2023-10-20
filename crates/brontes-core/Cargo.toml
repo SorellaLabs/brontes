@@ -10,7 +10,6 @@ edition = "2021"
 reth-tasks.workspace = true
 reth-rpc.workspace = true
 reth-rpc-api.workspace = true
-reth-rpc-builder.workspace = true
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 reth-provider.workspace = true
@@ -26,68 +25,71 @@ reth-tracing.workspace = true
 ruint = { workspace = true, features = ["primitive-types", "rlp"] }
 brontes-types.workspace = true
 brontes-metrics.workspace = true
-ethers-reth = { git = "https://github.com/SorellaLabs/ethers-reth.git" }
-auto_impl = "1.1.0"
 
-# tracing
-tracing = "0.1.37"
-
-# Async
-tokio = { version = "1.28.2", features = ["full", "tracing"] }
-lazy_static = "1.4.0"
-futures = "0.3.28"
+# async
+tokio = { workspace = true, features = ["full", "tracing"] }
+futures.workspace = true
 async-trait.workspace = true
 
-# Alloy
+# alloy
 alloy-sol-types.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
-alloy-dyn-abi.workspace = true
 alloy-etherscan.workspace = true
 
-
-# Ethers
+# ethers
 ethers-core.workspace = true
 ethers.workspace = true
+ethers-reth.workspace = true
 
 # Revm
-revm-primitives = "1.1.2"
+revm-primitives.workspace = true
 
 # Serde 
 serde.workspace = true
 serde_json.workspace = true
 
 # error handling
-eyre = "0.6.8"
-colored = "2.0"
-thiserror = "1.0.44"
-# env 
-dotenv = "0.15.0"
-reqwest = { version = "0.11.18", features = ["json"] }
-log = "0.4.18"
-env_logger = "0.10.0"
-phf = { version = "0.11", default-features = false }
+eyre.workspace = true
+thiserror.workspace = true
+
+# web
+reqwest = { workspace = true, features = ["json"] }
+
+# logs
+log.workspace = true
+
+# tracing
+tracing = "0.1.37"
+colored.workspace = true
+
+# misc
+phf = { workspace = true, default-features = false }
+lazy_static.workspace = true
+auto_impl.workspace = true
+
+
 
 [build-dependencies]
 tokio.workspace = true
 reth-tracing.workspace = true
-clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
+clickhouse.workspace = true
 hyper.workspace = true
-hyper-tls = "0.5.0"
+hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 alloy-etherscan.workspace = true
-rayon = "1.7.0"
+rayon.workspace = true
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
 ethers-core.workspace = true
-phf = { version = "0.11.1", default-features = false }
-phf_codegen = "0.11.1"
-dotenv = "0.15.0"
+phf = { workspace = true, default-features = false }
+phf_codegen.workspace = true
+dotenv.workspace = true
 toml = "0.8.2"
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
-futures = "0.3.28"
-itertools = "0.11.0"
+futures.workspace = true
+itertools.workspace = true
 
 [features]
 test_run = ["server"]

@@ -19,37 +19,27 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-core = { version = "2.0.7" }
-ethers-solc = { version = "2.0.7", optional = true }
+ethers-core.workspace = true
+ethers-solc = { workspace = true, optional = true }
 
-alloy-sol-types = { workspace = true, package = "alloy-sol-types", features = ["json"] }
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
-alloy-dyn-abi.workspace = true
 
-reqwest = { version = "0.11.18", features = ["json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 
-thiserror = "1.0"
-semver = "1.0"
+thiserror.workspace = true
+semver.workspace = true
 
 #tracing
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", default-features = false, features = [
-  "env-filter",
-  "fmt",
-] }
-console-subscriber = "0.1.5"
+tracing.workspace = true
 
 
 [dev-dependencies]
-ethers-solc = "2.0.7"
-
+ethers-solc.workspace = true
 tempfile = "3.5"
-tokio = { version = "1.28", features = ["macros", "rt-multi-thread", "time"] }
-serial_test = "2.0.0"
-tracing-subscriber = { version = "0.3.17", features = ["env-filter", "fmt"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 
 [features]
 default = ["rustls"]
