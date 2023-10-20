@@ -1,3 +1,5 @@
+#![deny(unused_imports)]
+
 pub mod decoding;
 pub mod errors;
 pub mod executor;

@@ -1,3 +1,5 @@
+#![deny(unused_imports)]
+
 use std::{fmt::Debug, path::Path, sync::Arc};
 
 use eyre::Context;

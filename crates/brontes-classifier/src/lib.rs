@@ -1,3 +1,5 @@
+#![deny(unused_imports)]
+
 use std::fmt::Debug;
 
 use once_cell::sync::Lazy;

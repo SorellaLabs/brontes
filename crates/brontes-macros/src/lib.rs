@@ -1,3 +1,5 @@
+#![deny(unused_imports)]
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parenthesized, parse::Parse, token::Paren, ExprClosure, Ident, LitBool, Token};

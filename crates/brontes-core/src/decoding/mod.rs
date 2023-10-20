@@ -2,16 +2,13 @@ use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
 use alloy_etherscan::Client;
 use brontes_types::structured_trace::TxTrace;
-use ethers::{
-    prelude::{Http, JsonRpcClient, Middleware, Provider, ProviderError},
-    providers::JsonRpcError,
-};
+use ethers::prelude::{Http, Middleware, Provider};
 use ethers_core::types::Chain;
 use ethers_reth::type_conversions::{ToEthers, ToReth};
 use futures::Future;
-use reth_interfaces::{RethError, RethResult};
+use reth_interfaces::RethError;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
-use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider, ReceiptProvider};
+use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::trace::parity::TraceType;
 use reth_tracing::TracingClient;
