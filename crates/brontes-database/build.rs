@@ -7,6 +7,7 @@ use std::{
 /// sql file directory
 const SQL_FILE_DIRECTORY: &str = "./queries/";
 
+#[cfg(not(feature = "tests"))]
 fn main() {
     write_sql();
     println!("cargo:rerun-if-changed=./queries/");

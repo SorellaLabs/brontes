@@ -21,6 +21,7 @@ const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
 #[allow(dead_code)]
 const TOKEN_QUERIES: &str = "SELECT toString(address),decimals FROM tokens";
 
+#[cfg(not(feature = "tests"))]
 fn main() {
     dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
