@@ -1,5 +1,5 @@
 #![doc = include_str!("../README.md")]
-#![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
+#![deny(unsafe_code, rustdoc::broken_intra_doc_links, unused_imports)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 use std::{

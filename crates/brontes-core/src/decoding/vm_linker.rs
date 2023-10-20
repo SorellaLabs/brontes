@@ -1,5 +1,4 @@
 use brontes_types::structured_trace::TransactionTraceWithLogs;
-use reth_primitives::Address;
 use reth_rpc_types::{
     trace::parity::{TransactionTrace, VmInstruction, VmTrace},
     Log,
