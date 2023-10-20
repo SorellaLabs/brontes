@@ -3,5 +3,5 @@ pub mod errors;
 pub mod executor;
 pub mod macros;
 
-#[cfg(test)]
+#[cfg(feature = "tests")]
 pub mod test_utils;
