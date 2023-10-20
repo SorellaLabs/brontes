@@ -1,29 +1,17 @@
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Arc,
-};
+use std::fs;
 
-use alloy_etherscan::Client;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
-use ethers_core::types::Chain;
 use futures::future::join_all;
 use reth_primitives::H256;
 use reth_revm::tracing::parity::populate_account_balance_nonce_diffs;
 use reth_rpc_types::{
-    trace::parity::{TraceResults, TraceResultsWithTransactionHash, TransactionTrace, VmTrace},
+    trace::parity::{TraceResults, TransactionTrace, VmTrace},
     Log, TransactionReceipt,
 };
-use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use tokio::{runtime::Handle, sync::mpsc::unbounded_channel};
+use serde_json::json;
 
-use crate::decoding::{
-    parser::test_utils::init_trace_parser, vm_linker::link_vm_to_trace, CACHE_DIRECTORY,
-    CACHE_TIMEOUT,
-};
+use crate::decoding::{parser::test_utils::init_trace_parser, vm_linker::link_vm_to_trace};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 struct TestTransactionTraceWithLogs {
