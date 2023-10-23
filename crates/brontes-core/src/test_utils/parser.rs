@@ -1,6 +1,7 @@
 use std::fs;
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
+use dotenv::dotenv;
 use futures::future::join_all;
 use reth_primitives::H256;
 use reth_rpc_types::{
@@ -115,6 +116,8 @@ async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
 
 #[tokio::test]
 async fn test_execute_block() {
+    dotenv().ok();
+
     let tracer = init_trace_parser(tokio::runtime::Handle::current().clone());
 
     let block_1 = tracer.execute_block(17000000).await;
