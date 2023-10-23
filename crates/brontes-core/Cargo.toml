@@ -64,6 +64,7 @@ colored.workspace = true
 phf = { workspace = true, default-features = false }
 lazy_static.workspace = true
 auto_impl.workspace = true
+dotenv.workspace = true
 
 
 
@@ -92,3 +93,4 @@ itertools.workspace = true
 test_run = ["server"]
 tests = []
 server = []
+
