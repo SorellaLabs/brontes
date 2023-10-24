@@ -184,7 +184,7 @@ impl<T: TracingProvider> TraceParser<T> {
 
         let len = tx_trace.len();
 
-        println!("{:?}", tx_hash);
+        //println!("{:?}", tx_hash);
         let linked_trace = link_vm_to_trace(vm, tx_trace, logs);
 
         for (idx, trace) in linked_trace.into_iter().enumerate() {
