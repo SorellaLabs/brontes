@@ -10,6 +10,8 @@ pub fn link_vm_to_trace(
     mut logs: Vec<Log>,
 ) -> Vec<TransactionTraceWithLogs> {
     let mut res = Vec::new();
+    println!("tx_trace: {}\nlogs: {}", tx_trace.len(), logs.len());
+
     recursive_parsing(&mut res, vm, &mut tx_trace, &mut logs);
 
     for r in &res {
