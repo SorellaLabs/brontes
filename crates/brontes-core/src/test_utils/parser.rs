@@ -10,6 +10,7 @@ use reth_rpc_types::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::sync::mpsc::unbounded_channel;
 
 use crate::decoding::{parser::test_utils::init_trace_parser, vm_linker::link_vm_to_trace};
 
@@ -118,7 +119,9 @@ async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
 async fn test_execute_block() {
     dotenv().ok();
 
-    let tracer = init_trace_parser(tokio::runtime::Handle::current().clone());
+    let (tx, rx) = unbounded_channel();
+
+    let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
 
     let block_1 = tracer.execute_block(17000000).await;
     assert!(block_1.is_some());
