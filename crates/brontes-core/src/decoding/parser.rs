@@ -281,7 +281,7 @@ pub(crate) mod test_utils {
         let etherscan_key = env::var("ETHERSCAN_API_KEY").expect("No ETHERSCAN_API_KEY in .env");
         let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
-        let (metrics_tx, _) = unbounded_channel();
+        let (metrics_tx, mut metrics_rx) = unbounded_channel();
 
         let etherscan_client = Client::new_cached(
             Chain::Mainnet,
@@ -292,6 +292,8 @@ pub(crate) mod test_utils {
         .unwrap();
 
         let tracer = TracingClient::new(Path::new(&db_path), handle.clone());
+
+        std::thread::spawn(|| async move { while let Some(v) = metrics_rx.recv().await {} });
 
         TraceParser::new(etherscan_client, Arc::new(tracer), Arc::new(metrics_tx))
     }
