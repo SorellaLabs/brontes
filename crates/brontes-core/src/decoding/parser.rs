@@ -293,7 +293,11 @@ pub(crate) mod test_utils {
 
         let tracer = TracingClient::new(Path::new(&db_path), handle.clone());
 
-        std::thread::spawn(|| async move { while let Some(v) = metrics_rx.recv().await {} });
+        std::thread::spawn(|| async move {
+            while let Some(v) = metrics_rx.recv().await {
+                drop(v)
+            }
+        });
 
         TraceParser::new(etherscan_client, Arc::new(tracer), Arc::new(metrics_tx))
     }
