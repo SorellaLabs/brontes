@@ -69,7 +69,7 @@ async fn get_full_tx_trace(tx_hash: H256) -> TraceResults {
         "id": 1,
         "jsonrpc": "2.0",
         "method": "trace_replayTransaction",
-        "params": [&format!("{:#x}", &tx_hash), ["trace"]]
+        "params": [&format!("{:#x}", &tx_hash), ["trace", "vmTrace"]]
     });
 
     let client = reqwest::Client::new();
