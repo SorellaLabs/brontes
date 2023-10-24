@@ -136,7 +136,7 @@ async fn test_execute_block() {
                 let full_trace = get_full_tx_trace(t.tx_hash.clone()).await;
                 let receipt = get_tx_reciept(t.tx_hash.clone()).await;
 
-                println!("logs: {:?}", receipt.logs);
+                println!("trace: {:?}", t.tx_hash);
                 let traces_with_logs =
                     link_vm_to_trace(full_trace.vm_trace.unwrap(), full_trace.trace, receipt.logs);
 
