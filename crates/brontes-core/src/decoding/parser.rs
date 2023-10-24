@@ -270,18 +270,24 @@ pub(crate) mod test_utils {
     };
 
     use alloy_etherscan::Client;
+    use brontes_metrics::PoirotMetricEvents;
     use ethers_core::types::Chain;
+    use reth_blockchain_tree::metrics;
     use reth_tracing::TracingClient;
-    use tokio::{runtime::Handle, sync::mpsc::unbounded_channel};
+    use tokio::{
+        runtime::Handle,
+        sync::mpsc::{unbounded_channel, UnboundedSender},
+    };
 
     use super::TraceParser;
     use crate::decoding::{CACHE_DIRECTORY, CACHE_TIMEOUT};
 
-    pub(crate) fn init_trace_parser(handle: Handle) -> TraceParser<TracingClient> {
+    pub(crate) fn init_trace_parser(
+        handle: Handle,
+        metrics_tx: UnboundedSender<PoirotMetricEvents>,
+    ) -> TraceParser<TracingClient> {
         let etherscan_key = env::var("ETHERSCAN_API_KEY").expect("No ETHERSCAN_API_KEY in .env");
         let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-
-        let (metrics_tx, mut metrics_rx) = unbounded_channel();
 
         let etherscan_client = Client::new_cached(
             Chain::Mainnet,
@@ -292,12 +298,6 @@ pub(crate) mod test_utils {
         .unwrap();
 
         let tracer = TracingClient::new(Path::new(&db_path), handle.clone());
-
-        std::thread::spawn(|| async move {
-            while let Some(v) = metrics_rx.recv().await {
-                drop(v)
-            }
-        });
 
         TraceParser::new(etherscan_client, Arc::new(tracer), Arc::new(metrics_tx))
     }
