@@ -22,6 +22,8 @@ malachite.workspace = true
 # serde
 serde.workspace = true
 erased-serde = "0.3.31"
+serde_with.workspace = true
+serde_repr.workspace = true
 
 # database
 sorella-db-databases.workspace = true
@@ -45,6 +47,10 @@ phf = { workspace = true, default-features = false }
 phf_codegen.workspace = true
 dotenv.workspace = true
 sorella-db-databases.workspace = true
+
+[dev-dependencies]
+dotenv.workspace = true
+tokio.workspace = true
 
 [features]
 server = []

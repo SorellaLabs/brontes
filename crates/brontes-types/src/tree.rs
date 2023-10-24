@@ -158,9 +158,9 @@ impl<V: NormalizedAction> Root<V> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Row)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
 pub struct GasDetails {
-    pub coinbase_transfer:   Option<U256>,
+    pub coinbase_transfer:   Option<u128>,
     pub priority_fee:        u64,
     pub gas_used:            u64,
     pub effective_gas_price: u64,
@@ -171,7 +171,7 @@ impl GasDetails {
         let mut gas = self.gas_used * self.effective_gas_price;
 
         if let Some(coinbase) = self.coinbase_transfer {
-            gas += coinbase.to::<u64>();
+            gas += coinbase as u64
         }
 
         gas
