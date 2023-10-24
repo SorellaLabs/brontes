@@ -153,6 +153,10 @@ async fn test_execute_block() {
     )
     .await;
 
+    let t1 = txs[0].clone();
+    let t2 = traces[0].clone().into();
+    assert_eq!(t1, t2);
+
     assert_eq!(txs, traces.into_iter().map(|t| t.into()).collect::<Vec<_>>())
 }
 
