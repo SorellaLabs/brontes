@@ -1,9 +1,8 @@
-use reth_primitives::{Address, H256};
 use sorella_db_databases::{ClickhouseClient, *};
 
 use crate::classified_mev::{
     AtomicBackrun, CexDex, ClassifiedMev, JitLiquidity, JitLiquiditySandwich, Liquidation,
-    MevBlock, MevType,
+    MevBlock, Sandwich,
 };
 
 fn spawn_db() -> ClickhouseClient {
@@ -13,27 +12,7 @@ fn spawn_db() -> ClickhouseClient {
 
 #[tokio::test]
 async fn test_db_mev_block() {
-    let test_block = MevBlock {
-        block_hash: H256::from_slice(&[0xab; 32]),
-        block_number: 12345678,
-        mev_count: 10,
-        submission_eth_price: 2500.5,
-        finalized_eth_price: 2600.0,
-        cumulative_gas_used: 1_000_000,
-        cumulative_gas_paid: 800_000,
-        total_bribe: 2_000,
-        cumulative_mev_priority_fee_paid: 500_000,
-        builder_address: Address::from_slice(&[0xcd; 20]),
-        builder_eth_profit: 100,
-        builder_submission_profit_usd: 100.0,
-        builder_finalized_profit_usd: 105.0,
-        proposer_fee_recipient: Address::from_slice(&[0xef; 20]),
-        proposer_mev_reward: 599,
-        proposer_submission_profit_usd: 50.0,
-        proposer_finalized_profit_usd: 55.0,
-        cumulative_mev_submission_profit_usd: 150.0,
-        cumulative_mev_finalized_profit_usd: 160.0,
-    };
+    let test_block = MevBlock::default();
 
     let db = spawn_db();
 
@@ -51,18 +30,7 @@ async fn test_db_mev_block() {
 
 #[tokio::test]
 async fn test_db_classified_mev() {
-    let test_mev = ClassifiedMev {
-        block_number:          12345678,
-        tx_hash:               H256::from_slice(&[0xab; 32]),
-        eoa:                   Address::from_slice(&[0xcd; 20]),
-        mev_contract:          Address::from_slice(&[0xef; 20]),
-        mev_profit_collector:  Address::from_slice(&[0x01; 20]),
-        mev_type:              MevType::sandwich,
-        submission_profit_usd: 100.0,
-        finalized_profit_usd:  105.0,
-        submission_bribe_usd:  50.0,
-        finalized_bribe_usd:   55.0,
-    };
+    let test_mev = ClassifiedMev::default();
 
     let db = spawn_db();
 
@@ -80,28 +48,18 @@ async fn test_db_classified_mev() {
 
 #[tokio::test]
 async fn test_db_sandwhich() {
-    let test_mev = ClassifiedMev {
-        block_number:          12345678,
-        tx_hash:               H256::from_slice(&[0xab; 32]),
-        eoa:                   Address::from_slice(&[0xcd; 20]),
-        mev_contract:          Address::from_slice(&[0xef; 20]),
-        mev_profit_collector:  Address::from_slice(&[0x01; 20]),
-        mev_type:              MevType::sandwich,
-        submission_profit_usd: 100.0,
-        finalized_profit_usd:  105.0,
-        submission_bribe_usd:  50.0,
-        finalized_bribe_usd:   55.0,
-    };
+    let test_mev = Sandwich::default();
 
     let db = spawn_db();
 
-    db.insert_one(test_mev.clone(), CLASSIFIED_MEV_TABLE)
+    db.insert_one(test_mev.clone(), SANWHICH_TABLE)
         .await
         .unwrap();
 
     db.execute(&format!(
-        "DELETE FROM {CLASSIFIED_MEV_TABLE} where tx_hash = '{:?}' and block_number = {}",
-        test_mev.tx_hash, test_mev.block_number
+        "DELETE FROM {SANWHICH_TABLE} where front_run_tx_hash = '{:?}' and backrun_tx_hash = 
+         '{:?}'",
+        test_mev.frontrun_tx_hash, test_mev.backrun_tx_hash
     ))
     .await
     .unwrap();

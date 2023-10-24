@@ -1,4 +1,4 @@
-use std::{any::Any, fmt::Debug};
+use std::{any::Any, default, fmt::Debug};
 
 use reth_primitives::{Address, H256};
 use serde::{self, Deserialize, Serialize};
@@ -14,7 +14,7 @@ use super::normalized_actions::Actions;
 use crate::tree::GasDetails;
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone)]
+#[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct MevBlock {
     #[serde_as(as = "FixedString")]
     pub block_hash: H256,
@@ -46,7 +46,7 @@ pub struct MevBlock {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone)]
+#[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct ClassifiedMev {
     // can be multiple for sandwich
     pub block_number:          u64,
@@ -65,7 +65,7 @@ pub struct ClassifiedMev {
     pub finalized_bribe_usd:   f64,
 }
 
-#[derive(Debug, Serialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
+#[derive(Debug, Serialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy, Default)]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
 pub enum MevType {
@@ -75,6 +75,7 @@ pub enum MevType {
     jit          = 2,
     cex_dex      = 0,
     liquidation  = 4,
+    #[default]
     unknown      = 6,
 }
 
@@ -126,15 +127,16 @@ impl From<JitKind> for SwapKind {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone)]
+#[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct Sandwich {
     #[serde_as(as = "FixedString")]
+    #[serde(rename = "front_run_tx_hash")]
     pub frontrun_tx_hash: H256,
     #[serde_as(as = "FixedString")]
     pub backrun_tx_hash: H256,
     #[serde_as(as = "Vec<FixedString>")]
     pub victim_tx_hashes: Vec<H256>,
-    #[serde(rename = "swaps.kinds")]
+    #[serde(rename = "swaps.kind")]
     pub swaps_kinds: Vec<SwapKind>,
     #[serde(rename = "swaps.tx_num")]
     pub swaps_tx_num: Vec<u8>,
