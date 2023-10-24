@@ -31,7 +31,13 @@ pub fn link_vm_to_trace(
 /// H256, topic4: H256 },
 fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log> {
     match instruction.op.take()?.as_str() {
-        "LOG0" | "LOG1" | "LOG2" | "LOG3" | "LOG4" => Some(logs.remove(0)),
+        "LOG0" | "LOG1" | "LOG2" | "LOG3" | "LOG4" => {
+            if logs.len() == 0 {
+                return None
+            } else {
+                Some(logs.remove(0))
+            }
+        }
         _ => None,
     }
 }
