@@ -192,6 +192,7 @@ impl<T: TracingProvider> TraceParser<T> {
                 .update_abi_cache(trace.trace.clone(), block_num, tx_hash)
                 .await;
             let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
+            println!("is err: {:?}", &abi_trace);
             if let Err(e) = abi_trace {
                 stat.err = Some(Into::<TraceParseErrorKind>::into(&e));
             } else {
