@@ -122,6 +122,7 @@ async fn test_execute_block() {
 
     let block_1 = tracer.execute_block(17000000).await;
     assert!(block_1.is_some());
+    println!("assert made");
 
     let traces = block_1.unwrap().0;
     assert_eq!(traces.len(), 676);
