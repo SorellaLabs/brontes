@@ -119,7 +119,7 @@ async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
 async fn test_execute_block() {
     dotenv().ok();
 
-    let (tx, _) = unbounded_channel();
+    let (tx, _rx) = unbounded_channel();
 
     let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
 
