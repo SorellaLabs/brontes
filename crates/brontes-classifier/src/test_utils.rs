@@ -84,8 +84,7 @@ pub async fn build_raw_test_tree(
         })
         .collect::<Vec<Root<Actions>>>();
 
-    let mut tree =
-        TimeTree { roots, header, eth_prices: metadata.eth_prices.clone(), avg_priority_fee: 0 };
+    TimeTree { roots, header, eth_prices: metadata.eth_prices.clone(), avg_priority_fee: 0 }
 }
 
 fn classify_node(trace: TransactionTraceWithLogs, index: u64) -> Actions {
