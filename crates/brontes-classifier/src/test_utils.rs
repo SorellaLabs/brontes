@@ -67,7 +67,7 @@ pub async fn build_raw_test_tree(
 
                 let address = trace.get_to_address();
                 let from_addr = trace.get_from_addr();
-                let classification = classify_node(trace, (index + 1) as u64);
+                let classification = classify_node(trace.clone(), (index + 1) as u64);
                 let node = Node {
                     index: (index + 1) as u64,
                     inner: vec![],
