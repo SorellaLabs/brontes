@@ -120,7 +120,7 @@ pub struct Sandwich {
     #[serde(with = "gas_details_tuple")]
     pub frontrun_gas_details: GasDetails,
     #[serde(rename = "frontrun_swaps.index")]
-    pub frontrun_swaps_index: Vec<u16>,
+    pub frontrun_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "frontrun_swaps.from")]
     pub frontrun_swaps_from: Vec<Address>,
@@ -143,7 +143,7 @@ pub struct Sandwich {
     #[serde(rename = "victim_swaps.tx_hash")]
     pub victim_swaps_tx_hash: Vec<H256>,
     #[serde(rename = "victim_swaps.index")]
-    pub victim_swaps_index: Vec<u16>,
+    pub victim_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "victim_swaps.from")]
     pub victim_swaps_from: Vec<Address>,
@@ -173,7 +173,7 @@ pub struct Sandwich {
     #[serde(with = "gas_details_tuple")]
     pub backrun_gas_details: GasDetails,
     #[serde(rename = "backrun_swaps.index")]
-    pub backrun_swaps_index: Vec<u16>,
+    pub backrun_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "backrun_swaps.from")]
     pub backrun_swaps_from: Vec<Address>,
@@ -296,7 +296,7 @@ pub struct JitLiquiditySandwich {
     #[serde(with = "gas_details_tuple")]
     pub frontrun_gas_details: GasDetails,
     #[serde(rename = "frontrun_swaps.index")]
-    pub frontrun_swaps_index: Vec<u16>,
+    pub frontrun_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "frontrun_swaps.from")]
     pub frontrun_swaps_from: Vec<Address>,
@@ -314,7 +314,7 @@ pub struct JitLiquiditySandwich {
     #[serde(rename = "frontrun_swaps.amount_out")]
     pub frontrun_swaps_amount_out: Vec<u64>,
     #[serde(rename = "frontrun_mints.index")]
-    pub frontrun_mints_index: Vec<u16>,
+    pub frontrun_mints_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "frontrun_mints.from")]
     pub frontrun_mints_from: Vec<Address>,
@@ -336,7 +336,7 @@ pub struct JitLiquiditySandwich {
     #[serde(rename = "victim_swaps.tx_hash")]
     pub victim_swaps_tx_hash: Vec<H256>,
     #[serde(rename = "victim_swaps.index")]
-    pub victim_swaps_index: Vec<u16>,
+    pub victim_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "victim_swaps.from")]
     pub victim_swaps_from: Vec<Address>,
@@ -366,7 +366,7 @@ pub struct JitLiquiditySandwich {
     #[serde(with = "gas_details_tuple")]
     pub backrun_gas_details: GasDetails,
     #[serde(rename = "backrun_swaps.index")]
-    pub backrun_swaps_index: Vec<u16>,
+    pub backrun_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "backrun_swaps.from")]
     pub backrun_swaps_from: Vec<Address>,
@@ -384,7 +384,7 @@ pub struct JitLiquiditySandwich {
     #[serde(rename = "backrun_swaps.amount_out")]
     pub backrun_swaps_amount_out: Vec<u64>,
     #[serde(rename = "backrun_burns.index")]
-    pub backrun_burns_index: Vec<u16>,
+    pub backrun_burns_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "backrun_burns.from")]
     pub backrun_burns_from: Vec<Address>,
@@ -440,7 +440,7 @@ pub struct CexDex {
     #[serde_as(as = "FixedString")]
     pub tx_hash:          H256,
     #[serde(rename = "swaps.index")]
-    pub swaps_index:      Vec<u16>,
+    pub swaps_index:      Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "swaps.from")]
     pub swaps_from:       Vec<Address>,
@@ -498,7 +498,7 @@ pub struct Liquidation {
     #[serde_as(as = "FixedString")]
     pub trigger: H256,
     #[serde(rename = "liquidation_swaps.index")]
-    pub liquidation_swaps_index: Vec<u16>,
+    pub liquidation_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "liquidation_swaps.from")]
     pub liquidation_swaps_from: Vec<Address>,
@@ -516,7 +516,7 @@ pub struct Liquidation {
     #[serde(rename = "liquidation_swaps.amount_out")]
     pub liquidation_swaps_amount_out: Vec<u128>,
     #[serde(rename = "liquidations.index")]
-    pub liquidations_index: Vec<u16>,
+    pub liquidations_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "liquidations.liquidator")]
     pub liquidations_liquidator: Vec<Address>,
@@ -564,7 +564,7 @@ pub struct JitLiquidity {
     #[serde(with = "gas_details_tuple")]
     pub mint_gas_details:    GasDetails,
     #[serde(rename = "jit_mints.index")]
-    pub jit_mints_index:     Vec<u16>,
+    pub jit_mints_index:     Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "jit_mints.from")]
     pub jit_mints_from:      Vec<Address>,
@@ -585,7 +585,7 @@ pub struct JitLiquidity {
     #[serde(with = "gas_details_tuple")]
     pub swap_gas_details:    GasDetails,
     #[serde(rename = "swaps.index")]
-    pub swaps_index:         Vec<u16>,
+    pub swaps_index:         Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "swaps.from")]
     pub swaps_from:          Vec<Address>,
@@ -607,7 +607,7 @@ pub struct JitLiquidity {
     #[serde(with = "gas_details_tuple")]
     pub burn_gas_details:    GasDetails,
     #[serde(rename = "jit_burns.index")]
-    pub jit_burns_index:     Vec<u16>,
+    pub jit_burns_index:     Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "jit_burns.from")]
     pub jit_burns_from:      Vec<Address>,
@@ -654,7 +654,7 @@ pub struct AtomicBackrun {
     #[serde_as(as = "FixedString")]
     pub tx_hash:          H256,
     #[serde(rename = "swaps.index")]
-    pub swaps_index:      Vec<u16>,
+    pub swaps_index:      Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "swaps.from")]
     pub swaps_from:       Vec<Address>,
