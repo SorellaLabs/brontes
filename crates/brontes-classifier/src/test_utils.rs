@@ -27,16 +27,16 @@ pub async fn build_raw_test_tree(
     db: Database,
 ) -> TimeTree<Actions> {
     let (traces, header, metadata) = get_traces_with_meta(tracer, db).await;
-    let roots = traces[..1]
-        .to_owned()
+    let roots = traces[..1.clone()]
         .into_par_iter()
         .filter_map(|mut trace| {
             if trace.trace.is_empty() {
                 return None
             }
 
-            let address = trace.trace[0].get_from_addr();
-            let classification = classify_node(trace.trace.remove(0), 0);
+            let root_trace = trace.trace[0];
+            let address = root_trace.get_from_addr();
+            let classification = self.classify_node(trace.trace.remove(0), 0);
 
             let node = Node {
                 inner: vec![],
@@ -45,6 +45,7 @@ pub async fn build_raw_test_tree(
                 subactions: vec![],
                 address,
                 data: classification,
+                trace_address: root_trace.trace.trace_address,
             };
 
             let mut root = Root {
@@ -61,10 +62,11 @@ pub async fn build_raw_test_tree(
 
             for (index, trace) in trace.trace.into_iter().enumerate() {
                 root.gas_details.coinbase_transfer =
-                    get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                    self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
-                let address = trace.get_from_addr();
-                let classification = classify_node(trace, (index + 1) as u64);
+                let address = trace.get_to_address();
+                let from_addr = trace.get_from_addr();
+                let classification = self.classify_node(trace, (index + 1) as u64);
                 let node = Node {
                     index: (index + 1) as u64,
                     inner: vec![],
@@ -72,16 +74,18 @@ pub async fn build_raw_test_tree(
                     subactions: vec![],
                     address,
                     data: classification,
+                    trace_address: trace.trace.trace_address,
                 };
 
-                root.insert(node.address, node);
+                root.insert(from_addr, node);
             }
 
             Some(root)
         })
         .collect::<Vec<Root<Actions>>>();
 
-    TimeTree { roots, header, eth_prices: metadata.eth_prices.clone(), avg_priority_fee: 0 }
+    let mut tree =
+        TimeTree { roots, header, eth_prices: metadata.eth_prices.clone(), avg_priority_fee: 0 };
 }
 
 fn classify_node(trace: TransactionTraceWithLogs, index: u64) -> Actions {
