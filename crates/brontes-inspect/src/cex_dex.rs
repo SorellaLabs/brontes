@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::Metadata;
 use brontes_types::{
-    classified_mev::{CexDex, MevType, SpecificMev},
+    classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, TimeTree},
     ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
@@ -44,6 +44,7 @@ impl CexDexInspector {
             .0;
 
         let (swap_data, (pre, post)): (Vec<Actions>, _) = swaps
+            .clone()
             .into_iter()
             .flatten()
             .filter_map(|action| {
@@ -73,18 +74,57 @@ impl CexDexInspector {
             finalized_bribe_usd: gas_finalized.to_float(),
         };
 
-        let (dex_prices, cex_prices) = swap_data
+        let prices = swap_data
             .par_iter()
             .filter_map(|swap| self.rational_dex_price(swap, &metadata))
             .map(|(dex_price, _, cex1)| (dex_price.to_float(), cex1.to_float()))
-            .unzip();
+            .collect::<Vec<_>>();
+
+        let flat_swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
 
         let cex_dex = CexDex {
-            tx_hash: hash,
-            gas_details: gas_details.clone(),
-            swaps: swap_data,
-            cex_prices,
-            dex_prices,
+            tx_hash:          hash,
+            gas_details:      gas_details.clone(),
+            swaps_index:      flat_swaps
+                .iter()
+                .map(|s| s.clone().force_swap().index)
+                .collect::<Vec<_>>(),
+            swaps_from:       flat_swaps
+                .iter()
+                .map(|s| s.clone().force_swap().from)
+                .collect::<Vec<_>>(),
+            swaps_pool:       flat_swaps
+                .iter()
+                .map(|s| s.clone().force_swap().pool)
+                .collect::<Vec<_>>(),
+            swaps_token_in:   flat_swaps
+                .iter()
+                .map(|s| s.clone().force_swap().token_in)
+                .collect::<Vec<_>>(),
+            swaps_token_out:  flat_swaps
+                .iter()
+                .map(|s| s.clone().force_swap().token_out)
+                .collect::<Vec<_>>(),
+            swaps_amount_in:  flat_swaps
+                .iter()
+                .map(|s| s.clone().force_swap().amount_in.to())
+                .collect::<Vec<_>>(),
+            swaps_amount_out: flat_swaps
+                .iter()
+                .map(|s| s.clone().force_swap().amount_out.to())
+                .collect::<Vec<_>>(),
+            prices_kind:      prices
+                .iter()
+                .flat_map(|_| vec![PriceKind::Dex, PriceKind::Cex])
+                .collect(),
+            prices_address:   flat_swaps
+                .iter()
+                .flat_map(|s| vec![s.clone().force_swap().token_in].repeat(2))
+                .collect(),
+            prices_price:     prices
+                .iter()
+                .flat_map(|(dex, cex)| vec![*dex, *cex])
+                .collect(),
         };
 
         Some((classified, Box::new(cex_dex)))
