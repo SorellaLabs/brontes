@@ -28,6 +28,7 @@ pub async fn build_raw_test_tree(
 ) -> TimeTree<Actions> {
     let (traces, header, metadata) = get_traces_with_meta(tracer, db).await;
     let roots = traces[..1]
+        .to_owned()
         .into_par_iter()
         .filter_map(|mut trace| {
             if trace.trace.is_empty() {
