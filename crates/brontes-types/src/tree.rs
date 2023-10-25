@@ -215,14 +215,17 @@ impl<V: NormalizedAction> Node<V> {
             return
         }
 
-        let mut cur_stack = self.current_call_stack();
+        let cur_stack = self.current_call_stack();
         println!("address: {:?}\n cs: {:?}\n", n.address, cur_stack);
         if !cur_stack.contains(&address) {
             self.inner.push(n);
             return
         } else {
-            let last = self.inner.last_mut().expect("building tree went wrong");
-            last.insert(address, n);
+            if let Some(last) = self.inner.last_mut() {
+                last.insert(address, n);
+            } else {
+                self.inner.push(n);
+            }
         }
     }
 
