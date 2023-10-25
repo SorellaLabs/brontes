@@ -5,6 +5,7 @@ use brontes_types::test_utils::print_tree_as_json;
 use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::test]
+#[serial]
 async fn test_sum() {
     dotenv::dotenv().ok();
 

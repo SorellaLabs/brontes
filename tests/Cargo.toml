@@ -35,3 +35,4 @@ serde_json.workspace = true
 
 # misc
 dotenv.workspace = true
+serial = "0.4.0"
