@@ -5,9 +5,7 @@ pub fn print_tree_as_json(tree: &TimeTree<Actions>) {
     println!("{}", serialized_tree);
 }
 
-pub async fn write_tree_as_json(tree: &TimeTree<Actions>) {
+pub async fn write_tree_as_json(tree: &TimeTree<Actions>, path: &str) {
     let serialized_tree = serde_json::to_string_pretty(tree).unwrap();
-    tokio::fs::write("tree.json", serialized_tree)
-        .await
-        .unwrap();
+    tokio::fs::write(path, serialized_tree).await.unwrap();
 }
