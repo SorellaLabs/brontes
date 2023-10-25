@@ -16,5 +16,6 @@ async fn test_sum() {
     let db = Database::default();
 
     let tree = build_raw_test_tree(tracer, db).await;
+
     print_tree_as_json(&tree);
 }
