@@ -425,12 +425,13 @@ impl SpecificMev for JitLiquiditySandwich {
     }
 }
 
-#[derive(Debug, Serialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
+#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
+#[serde(rename_all = "lowercase")]
 pub enum PriceKind {
-    cex = 0,
-    dex = 1,
+    Cex = 0,
+    Dex = 1,
 }
 
 #[serde_as]
@@ -460,8 +461,9 @@ pub struct CexDex {
     pub gas_details:      GasDetails,
     #[serde(rename = "prices.kind")]
     pub prices_kind:      Vec<PriceKind>,
-    #[serde(rename = "prices.symbol")]
-    pub prices_symbol:    Vec<String>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "prices.address")]
+    pub prices_address:   Vec<Address>,
     #[serde(rename = "prices.price")]
     pub prices_price:     Vec<f64>,
 }
@@ -718,7 +720,7 @@ mod gas_details_tuple {
     where
         D: Deserializer<'de>,
     {
-        let tuple = <(u128, u64, u64, u64)>::deserialize(deserializer)?;
+        let tuple = <(u64, u64, u64, u64)>::deserialize(deserializer)?;
         Ok(GasDetails {
             coinbase_transfer:   Some(tuple.0),
             priority_fee:        tuple.1,

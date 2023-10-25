@@ -47,6 +47,13 @@ impl Serialize for Actions {
 }
 
 impl Actions {
+    pub fn force_swap(self) -> NormalizedSwap {
+        match self {
+            Actions::Swap(s) => s,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn get_logs(&self) -> Vec<Log> {
         match self {
             Self::Unclassified(_, log) => log.clone(),
@@ -97,7 +104,7 @@ impl Actions {
 
 #[derive(Debug, Serialize, Clone, Row)]
 pub struct NormalizedFlashLoan {
-    pub index:    u64,
+    pub index:    u16,
     pub from:     Address,
     pub pool:     Address,
     pub token:    Address,
@@ -106,7 +113,7 @@ pub struct NormalizedFlashLoan {
 
 #[derive(Debug, Serialize, Clone, Row)]
 pub struct NormalizedSwap {
-    pub index:      u64,
+    pub index:      u16,
     pub from:       Address,
     pub pool:       Address,
     pub token_in:   Address,
@@ -117,7 +124,7 @@ pub struct NormalizedSwap {
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedTransfer {
-    pub index:  u64,
+    pub index:  u16,
     pub to:     Address,
     pub from:   Address,
     pub token:  Address,
@@ -126,7 +133,7 @@ pub struct NormalizedTransfer {
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedMint {
-    pub index:     u64,
+    pub index:     u16,
     pub from:      Address,
     pub to:        Address,
     pub recipient: Address,
@@ -136,7 +143,7 @@ pub struct NormalizedMint {
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedBurn {
-    pub index:     u64,
+    pub index:     u16,
     pub from:      Address,
     pub to:        Address,
     pub recipient: Address,
@@ -146,7 +153,7 @@ pub struct NormalizedBurn {
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedCollect {
-    pub index:     u64,
+    pub index:     u16,
     pub to:        Address,
     pub from:      Address,
     pub recipient: Address,
@@ -156,7 +163,7 @@ pub struct NormalizedCollect {
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedLiquidation {
-    pub index:      u64,
+    pub index:      u16,
     pub liquidator: Address,
     pub liquidatee: Address,
     pub token:      Address,
@@ -166,7 +173,7 @@ pub struct NormalizedLiquidation {
 
 #[derive(Debug, Clone, Serialize, Row)]
 pub struct NormalizedLoan {
-    pub index:        u64,
+    pub index:        u16,
     pub lender:       Address,
     pub borrower:     Address,
     pub loaned_token: Address,
@@ -177,7 +184,7 @@ pub struct NormalizedLoan {
 #[derive(Debug, Clone, Serialize, Row)]
 
 pub struct NormalizedRepayment {
-    pub index:            u64,
+    pub index:            u16,
     pub lender:           Address,
     pub borrower:         Address,
     pub repayed_token:    Address,

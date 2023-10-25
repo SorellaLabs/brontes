@@ -63,10 +63,40 @@ impl AtomicBackrunInspector {
             finalized_profit_usd: (finalized.1 - gas_used_usd_finalized).to_float(),
             submission_profit_usd: (appearance.1 - gas_used_usd_appearance).to_float(),
         };
+
+        let swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
+
         let backrun = Box::new(AtomicBackrun {
             tx_hash,
             gas_details,
-            swaps: swaps.into_iter().flatten().collect::<Vec<_>>(),
+            swaps_index: swaps
+                .iter()
+                .map(|s| s.clone().force_swap().index)
+                .collect::<Vec<_>>(),
+            swaps_from: swaps
+                .iter()
+                .map(|s| s.clone().force_swap().from)
+                .collect::<Vec<_>>(),
+            swaps_pool: swaps
+                .iter()
+                .map(|s| s.clone().force_swap().pool)
+                .collect::<Vec<_>>(),
+            swaps_token_in: swaps
+                .iter()
+                .map(|s| s.clone().force_swap().token_in)
+                .collect::<Vec<_>>(),
+            swaps_token_out: swaps
+                .iter()
+                .map(|s| s.clone().force_swap().token_out)
+                .collect::<Vec<_>>(),
+            swaps_amount_in: swaps
+                .iter()
+                .map(|s| s.clone().force_swap().amount_in.to())
+                .collect::<Vec<_>>(),
+            swaps_amount_out: swaps
+                .iter()
+                .map(|s| s.clone().force_swap().amount_out.to())
+                .collect::<Vec<_>>(),
         });
         Some((classified, backrun))
     }

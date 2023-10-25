@@ -163,7 +163,7 @@ impl<V: NormalizedAction> Root<V> {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
 pub struct GasDetails {
-    pub coinbase_transfer:   Option<u128>,
+    pub coinbase_transfer:   Option<u64>,
     pub priority_fee:        u64,
     pub gas_used:            u64,
     pub effective_gas_price: u64,

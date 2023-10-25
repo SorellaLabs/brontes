@@ -150,16 +150,44 @@ impl JitInspector {
             finalized_bribe_usd: post_bribe.to_float(),
         };
 
+        let swaps = victim_actions
+            .into_iter()
+            .flatten()
+            .map(|s| s.force_swap())
+            .collect::<Vec<_>>();
+
         let jit_details = JitLiquidity {
-            swaps:            victim_actions.into_iter().flatten().collect::<Vec<_>>(),
-            jit_mints:        mints.into_iter().map(Actions::Mint).collect::<Vec<_>>(),
-            jit_burns:        burns.into_iter().map(Actions::Burn).collect::<Vec<_>>(),
-            mint_tx_hash:     txes[0],
-            swap_tx_hash:     victim_tx,
-            burn_tx_hash:     txes[1],
-            mint_gas_details: searcher_gas_details[0],
-            burn_gas_details: searcher_gas_details[1],
-            swap_gas_details: victim_gas,
+            mint_tx_hash:        txes[0],
+            mint_gas_details:    searcher_gas_details[0],
+            jit_mints_index:     mints.iter().map(|m| m.index).collect(),
+            jit_mints_from:      mints.iter().map(|m| m.from).collect(),
+            jit_mints_to:        mints.iter().map(|m| m.to).collect(),
+            jit_mints_recipient: mints.iter().map(|m| m.recipient).collect(),
+            jit_mints_token:     mints.iter().map(|m| m.token.clone()).collect(),
+            jit_mints_amount:    mints
+                .iter()
+                .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
+                .collect(),
+            swap_tx_hash:        victim_tx,
+            swap_gas_details:    victim_gas,
+            swaps_index:         swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            swaps_from:          swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            swaps_pool:          swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            swaps_token_in:      swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
+            swaps_token_out:     swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
+            swaps_amount_in:     swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
+            swaps_amount_out:    swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
+            burn_tx_hash:        txes[1],
+            burn_gas_details:    searcher_gas_details[1],
+            jit_burns_index:     burns.iter().map(|m| m.index).collect(),
+            jit_burns_from:      burns.iter().map(|m| m.from).collect(),
+            jit_burns_to:        burns.iter().map(|m| m.to).collect(),
+            jit_burns_recipient: burns.iter().map(|m| m.recipient).collect(),
+            jit_burns_token:     burns.iter().map(|m| m.token.clone()).collect(),
+            jit_burns_amount:    burns
+                .iter()
+                .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
+                .collect(),
         };
 
         Some((classified, Box::new(jit_details)))
