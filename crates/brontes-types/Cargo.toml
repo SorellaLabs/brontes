@@ -15,6 +15,7 @@ tracing.workspace = true
 
 # async
 rayon.workspace = true
+tokio = { workspace = true, features = ["full"], optional = true }
 
 # numbers
 malachite = { workspace = true, features = ["enable_serde"] }
@@ -56,4 +57,4 @@ tokio.workspace = true
 [features]
 default = []
 server = []
-tests = []
+tests = ["tokio/full"]
