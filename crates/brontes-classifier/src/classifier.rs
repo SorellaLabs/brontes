@@ -44,7 +44,8 @@ impl Classifier {
                     return None
                 }
 
-                let address = trace.trace[0].get_from_addr();
+                let root_trace = trace.trace[0];
+                let address = root_trace.get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
                 let node = Node {
@@ -54,6 +55,7 @@ impl Classifier {
                     subactions: vec![],
                     address,
                     data: classification,
+                    trace_address: root_trace.trace.trace_address,
                 };
 
                 let mut root = Root {
@@ -83,6 +85,7 @@ impl Classifier {
                         subactions: vec![],
                         address,
                         data: classification,
+                        trace_address: trace.trace.trace_address,
                     };
 
                     root.insert(from_addr, node);

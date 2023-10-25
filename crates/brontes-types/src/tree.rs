@@ -192,9 +192,10 @@ pub struct Node<V: NormalizedAction> {
     pub index:     u64,
 
     /// This only has values when the node is frozen
-    pub subactions: Vec<V>,
-    pub address:    Address,
-    pub data:       V,
+    pub subactions:    Vec<V>,
+    pub trace_address: Vec<usize>,
+    pub address:       Address,
+    pub data:          V,
 }
 
 impl<V: NormalizedAction> Node<V> {
