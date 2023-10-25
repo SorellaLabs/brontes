@@ -73,7 +73,7 @@ impl Classifier {
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
-                    let address = trace.get_from_addr();
+                    let address = trace.get_to_address();
                     let classification = self.classify_node(trace, (index + 1) as u64);
                     let node = Node {
                         index: (index + 1) as u64,
@@ -84,7 +84,7 @@ impl Classifier {
                         data: classification,
                     };
 
-                    root.insert(node.address, node);
+                    root.insert(trace.get_from_addr(), node);
                 }
 
                 Some(root)
@@ -316,10 +316,10 @@ impl Classifier {
     }
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
-        if log.topics.get(0).eq(&Some(&TRANSFER_TOPIC)) {
-            let from = Address::from_slice(&log.data[11..31]);
-            let to = Address::from_slice(&log.data[41..63]);
-            let data = U256::try_from_be_slice(&log.data[64..]).unwrap();
+        if log.topics.get(0) == Some(&TRANSFER_TOPIC.into()) {
+            let from = Address::from_slice(&log.topics[1][..20]);
+            let to = Address::from_slice(&log.topics[2][..20]);
+            let data = U256::try_from_be_slice(&log.data[..]).unwrap();
             return Some((log.address, from, to, data))
         }
 
