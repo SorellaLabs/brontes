@@ -27,7 +27,8 @@ pub async fn build_raw_test_tree(
     db: Database,
 ) -> TimeTree<Actions> {
     let (traces, header, metadata) = get_traces_with_meta(tracer, db).await;
-    let roots = traces[..1.clone()]
+    let roots = traces[..1]
+        .to_owned()
         .into_par_iter()
         .filter_map(|mut trace| {
             if trace.trace.is_empty() {
@@ -36,7 +37,7 @@ pub async fn build_raw_test_tree(
 
             let root_trace = trace.trace[0];
             let address = root_trace.get_from_addr();
-            let classification = classify_node(trace.trace.remove(0), 0);
+            let classification = self.classify_node(trace.trace.remove(0), 0);
 
             let node = Node {
                 inner: vec![],
