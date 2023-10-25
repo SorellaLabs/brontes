@@ -131,8 +131,8 @@ fn classify_node(trace: TransactionTraceWithLogs, index: u64) -> Actions {
 }
 
 fn decode_transfer(log: &Log) -> Option<(Address, Address, Address, U256)> {
-    println!("{:?}", log);
     if log.topics.get(0) == Some(&TRANSFER_TOPIC.into()) {
+        println!("{:?}", log);
         let from = Address::from_slice(&log.data[11..31]);
         let to = Address::from_slice(&log.data[41..63]);
         let data = U256::try_from_be_slice(&log.data[64..]).unwrap();
