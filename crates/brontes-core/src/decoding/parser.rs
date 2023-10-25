@@ -184,7 +184,8 @@ impl<T: TracingProvider> TraceParser<T> {
 
         let len = tx_trace.len();
 
-        let linked_trace = link_vm_to_trace(vm, tx_trace, logs);
+        let mut linked_trace = link_vm_to_trace(vm, tx_trace, logs);
+        linked_trace.sort_by_key(|item| item.trace_idx);
 
         for (idx, trace) in linked_trace.into_iter().enumerate() {
             let abi_trace = self

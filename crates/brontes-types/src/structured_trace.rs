@@ -50,8 +50,9 @@ impl TraceActions for TransactionTraceWithLogs {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionTraceWithLogs {
-    pub trace: TransactionTrace,
-    pub logs:  Vec<Log>,
+    pub trace:     TransactionTrace,
+    pub logs:      Vec<Log>,
+    pub trace_idx: u64,
 }
 
 #[derive(Debug, Clone)]
