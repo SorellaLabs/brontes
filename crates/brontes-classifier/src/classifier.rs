@@ -44,7 +44,7 @@ impl Classifier {
                     return None
                 }
 
-                let root_trace = trace.trace[0];
+                let root_trace = trace.trace[0].clone();
                 let address = root_trace.get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
@@ -77,7 +77,7 @@ impl Classifier {
 
                     let address = trace.get_to_address();
                     let from_addr = trace.get_from_addr();
-                    let classification = self.classify_node(trace, (index + 1) as u64);
+                    let classification = self.classify_node(trace.clone(), (index + 1) as u64);
                     let node = Node {
                         index: (index + 1) as u64,
                         inner: vec![],
