@@ -35,7 +35,7 @@ pub async fn build_raw_test_tree(
                 return None
             }
 
-            let root_trace = trace.trace[0];
+            let root_trace = trace.trace[0].clone();
             let address = root_trace.get_from_addr();
             let classification = classify_node(trace.trace.remove(0), 0);
 
