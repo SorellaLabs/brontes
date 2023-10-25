@@ -75,20 +75,19 @@ impl Classifier {
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
-                    let address = trace.get_to_address();
                     let from_addr = trace.get_from_addr();
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
                     let node = Node {
-                        index: (index + 1) as u64,
-                        inner: vec![],
-                        finalized: !classification.is_unclassified(),
-                        subactions: vec![],
-                        address,
-                        data: classification,
+                        index:         (index + 1) as u64,
+                        inner:         vec![],
+                        finalized:     !classification.is_unclassified(),
+                        subactions:    vec![],
+                        address:       from_addr,
+                        data:          classification,
                         trace_address: trace.trace.trace_address,
                     };
 
-                    root.insert(from_addr, node);
+                    root.insert(node);
                 }
 
                 Some(root)
