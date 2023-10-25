@@ -147,7 +147,3 @@ lto = false             # No link-time optimization
 debug-assertions = true # Enable assertions in debug mode
 codegen-units = 16      # Increase parallel code generation units for faster compiles
 incremental = true      # Enable incremental compilation
-unused-imports = "deny"
-
-[profile.release]
-unused-imports = "deny"
