@@ -4,10 +4,12 @@ use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::normalized_actions::NormalizedAction;
 
+#[derive(Serialize)]
 pub struct TimeTree<V: NormalizedAction> {
     pub roots:            Vec<Root<V>>,
     pub header:           Header,
@@ -105,6 +107,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 }
 
+#[derive(Serialize)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node<V>,
     pub tx_hash:     H256,
@@ -182,6 +185,7 @@ impl GasDetails {
     }
 }
 
+#[derive(Serialize)]
 pub struct Node<V: NormalizedAction> {
     pub inner:     Vec<Node<V>>,
     pub finalized: bool,

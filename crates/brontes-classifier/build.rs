@@ -59,6 +59,7 @@ FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
+LIMIT 1
 "#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
@@ -75,7 +76,7 @@ pub struct DecodedTokens {
 }
 
 fn main() {
-    //dotenv::dotenv().ok();
+    dotenv::dotenv().ok();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -498,6 +499,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
 
 /// builds the clickhouse database client
 fn build_db() -> Client {
+    dotenv::dotenv().ok();
     // clickhouse path
     let clickhouse_path = format!(
         "{}:{}",

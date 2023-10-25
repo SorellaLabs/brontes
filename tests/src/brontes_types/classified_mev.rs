@@ -1,6 +1,6 @@
 use sorella_db_databases::{ClickhouseClient, *};
 
-use crate::classified_mev::{
+use brontes_types::classified_mev::{
     AtomicBackrun, CexDex, ClassifiedMev, JitLiquidity, JitLiquiditySandwich, Liquidation,
     MevBlock, Sandwich,
 };
@@ -52,12 +52,12 @@ async fn test_db_sandwhich() {
 
     let db = spawn_db();
 
-    db.insert_one(test_mev.clone(), SANWHICH_TABLE)
+    db.insert_one(test_mev.clone(), SANDWICH_TABLE)
         .await
         .unwrap();
 
     db.execute(&format!(
-        "DELETE FROM {SANWHICH_TABLE} where front_run_tx_hash = '{:?}' and backrun_tx_hash = 
+        "DELETE FROM {SANDWICH_TABLE} where frontrun_tx_hash = '{:?}' and backrun_tx_hash = 
          '{:?}'",
         test_mev.frontrun_tx_hash, test_mev.backrun_tx_hash
     ))
@@ -71,14 +71,14 @@ async fn test_db_jit_sandwhich() {
 
     let db = spawn_db();
 
-    db.insert_one(test_mev.clone(), JIT_SANDWHICH_TABLE)
+    db.insert_one(test_mev.clone(), JIT_SANDWICH_TABLE)
         .await
         .unwrap();
 
     db.execute(&format!(
-        "DELETE FROM {JIT_SANDWHICH_TABLE} where frontrun_tx_hash = '{:?}' and burn_tx_hash = \
+        "DELETE FROM {JIT_SANDWICH_TABLE} where frontrun_tx_hash = '{:?}' and backrun_tx_hash = 
          '{:?}'",
-        test_mev.frontrun_tx_hash, test_mev.burn_tx_hash
+        test_mev.frontrun_tx_hash, test_mev.backrun_tx_hash
     ))
     .await
     .unwrap();

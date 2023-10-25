@@ -17,10 +17,11 @@ tracing.workspace = true
 rayon.workspace = true
 
 # numbers
-malachite.workspace = true
+malachite = { workspace = true, features = ["enable_serde"] }
 
 # serde
-serde.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 erased-serde = "0.3.31"
 serde_with.workspace = true
 serde_repr.workspace = true
@@ -29,7 +30,7 @@ serde_repr.workspace = true
 sorella-db-databases.workspace = true
 
 # misc
-phf = { workspace = true, default-features = false }
+phf.workspace = true
 strum = { workspace = true, features = ["derive"] }
 auto_impl.workspace = true
 
@@ -43,7 +44,7 @@ serde.workspace = true
 serde_json.workspace = true
 ethers-core.workspace = true
 reth-primitives.workspace = true
-phf = { workspace = true, default-features = false }
+phf.workspace = true
 phf_codegen.workspace = true
 dotenv.workspace = true
 sorella-db-databases.workspace = true
@@ -53,5 +54,6 @@ dotenv.workspace = true
 tokio.workspace = true
 
 [features]
+default = []
 server = []
 tests = []
