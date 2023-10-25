@@ -10,7 +10,16 @@ pub fn link_vm_to_trace(
     mut logs: Vec<Log>,
 ) -> Vec<TransactionTraceWithLogs> {
     let mut res = Vec::new();
-    recursive_parsing(&mut res, vm, &mut tx_trace, &mut logs);
+    recursive_parsing(
+        &mut res,
+        vm,
+        &mut tx_trace
+            .into_iter()
+            .enumerate()
+            .map(|ti| ti)
+            .collect::<Vec<_>>(),
+        &mut logs,
+    );
 
     res
 }
@@ -38,10 +47,10 @@ fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log>
 fn recursive_parsing(
     current_traces: &mut Vec<TransactionTraceWithLogs>,
     vm: VmTrace,
-    tx_trace: &mut Vec<TransactionTrace>,
+    tx_trace: &mut Vec<(usize, TransactionTrace)>,
     logs: &mut Vec<Log>,
 ) {
-    let scoped_trace = tx_trace.remove(0);
+    let (idx, scoped_trace) = tx_trace.remove(0);
 
     let logs = vm
         .ops
@@ -56,5 +65,9 @@ fn recursive_parsing(
         })
         .collect::<Vec<Log>>();
 
-    current_traces.push(TransactionTraceWithLogs { trace: scoped_trace, logs })
+    current_traces.push(TransactionTraceWithLogs {
+        trace: scoped_trace,
+        logs,
+        trace_idx: idx as u64,
+    })
 }
