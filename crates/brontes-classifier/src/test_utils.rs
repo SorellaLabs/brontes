@@ -16,19 +16,18 @@ use reth_primitives::{Address, Header, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 use reth_tracing::TracingClient;
 
-const BLOCK_NUMBER: u64 = 18180900;
 use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 pub async fn build_raw_test_tree(
-    tracer: TraceParser<TracingClient>,
+    tracer: &TraceParser<TracingClient>,
     db: Database,
+    block_number: u64,
 ) -> TimeTree<Actions> {
-    let (traces, header, metadata) = get_traces_with_meta(tracer, db).await;
-    let roots = traces[..1]
-        .to_owned()
+    let (traces, header, metadata) = get_traces_with_meta(tracer, db, block_number).await;
+    let roots = traces
         .into_par_iter()
         .filter_map(|mut trace| {
             if trace.trace.is_empty() {
@@ -65,20 +64,19 @@ pub async fn build_raw_test_tree(
                 root.gas_details.coinbase_transfer =
                     get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
-                let address = trace.get_to_address();
                 let from_addr = trace.get_from_addr();
                 let classification = classify_node(trace.clone(), (index + 1) as u64);
                 let node = Node {
-                    index: (index + 1) as u64,
-                    inner: vec![],
-                    finalized: !classification.is_unclassified(),
-                    subactions: vec![],
-                    address,
-                    data: classification,
+                    index:         (index + 1) as u64,
+                    inner:         vec![],
+                    finalized:     !classification.is_unclassified(),
+                    subactions:    vec![],
+                    address:       from_addr,
+                    data:          classification,
                     trace_address: trace.trace.trace_address,
                 };
 
-                root.insert(from_addr, node);
+                root.insert(node);
             }
 
             Some(root)
@@ -150,11 +148,12 @@ fn decode_transfer(log: &Log) -> Option<(Address, Address, Address, U256)> {
 }
 
 async fn get_traces_with_meta(
-    tracer: TraceParser<TracingClient>,
+    tracer: &TraceParser<TracingClient>,
     db: Database,
+    block_number: u64,
 ) -> (Vec<TxTrace>, Header, Metadata) {
-    let (traces, header) = tracer.execute_block(BLOCK_NUMBER).await.unwrap();
-    let metadata = db.get_metadata(BLOCK_NUMBER).await;
+    let (traces, header) = tracer.execute_block(block_number).await.unwrap();
+    let metadata = db.get_metadata(block_number).await;
     (traces, header, metadata)
 }
 
