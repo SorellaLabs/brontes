@@ -102,7 +102,6 @@ async fn build_address_to_token_map() {
     }
 }
 
-#[cfg(feature = "server")]
 fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<File>) {
     let mut phf_map = phf_codegen::Map::new();
 
