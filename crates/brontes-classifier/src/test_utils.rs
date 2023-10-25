@@ -22,7 +22,7 @@ use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
-pub async fn build_test_tree(
+pub async fn build_raw_test_tree(
     tracer: TraceParser<TracingClient>,
     db: Database,
 ) -> TimeTree<Actions> {
