@@ -36,7 +36,7 @@ pub async fn build_raw_test_tree(
 
             let root_trace = trace.trace[0];
             let address = root_trace.get_from_addr();
-            let classification = self.classify_node(trace.trace.remove(0), 0);
+            let classification = classify_node(trace.trace.remove(0), 0);
 
             let node = Node {
                 inner: vec![],
@@ -62,11 +62,11 @@ pub async fn build_raw_test_tree(
 
             for (index, trace) in trace.trace.into_iter().enumerate() {
                 root.gas_details.coinbase_transfer =
-                    self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                    get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                 let address = trace.get_to_address();
                 let from_addr = trace.get_from_addr();
-                let classification = self.classify_node(trace, (index + 1) as u64);
+                let classification = classify_node(trace, (index + 1) as u64);
                 let node = Node {
                     index: (index + 1) as u64,
                     inner: vec![],
