@@ -90,7 +90,6 @@ async fn build_address_to_token_map() {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(TOKEN_MAPPING);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
-    #[cfg(feature = "server")]
     {
         let client = build_db();
         for i in 2..4 {
@@ -99,22 +98,6 @@ async fn build_address_to_token_map() {
                     .await;
 
             build_token_map(i, res, &mut file)
-        }
-    }
-
-    #[cfg(not(feature = "server"))]
-    {
-        for i in 2..4 {
-            let phf_map: phf_codegen::Map<[u8; 20]> = phf_codegen::Map::new();
-
-            writeln!(
-                &mut file,
-                "pub static ADDRESS_TO_TOKENS_{}_POOL: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
-                i,
-                i,
-                phf_map.build()
-            )
-            .unwrap();
         }
     }
 }
