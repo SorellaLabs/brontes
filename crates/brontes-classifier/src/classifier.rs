@@ -148,11 +148,11 @@ impl Classifier {
         tree
     }
 
-    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<U256> {
+    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u128> {
         match action {
             Action::Call(action) => {
                 if action.to == builder {
-                    return Some(action.value)
+                    return Some(action.value.to())
                 }
                 None
             }

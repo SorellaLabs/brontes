@@ -1,5 +1,6 @@
 use std::fs;
 
+use brontes_core::{decoding::vm_linker::link_vm_to_trace, test_utils::*};
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use dotenv::dotenv;
 use futures::future::join_all;
@@ -11,109 +12,6 @@ use reth_rpc_types::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::mpsc::unbounded_channel;
-
-use crate::decoding::{parser::test_utils::init_trace_parser, vm_linker::link_vm_to_trace};
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-struct TestTransactionTraceWithLogs {
-    trace: TransactionTrace,
-    logs:  Vec<Log>,
-}
-
-impl From<TransactionTraceWithLogs> for TestTransactionTraceWithLogs {
-    fn from(value: TransactionTraceWithLogs) -> Self {
-        Self { trace: value.trace, logs: value.logs }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct TestTxTrace {
-    trace:           Vec<TestTransactionTraceWithLogs>,
-    tx_hash:         H256,
-    gas_used:        u64,
-    effective_price: u64,
-    tx_index:        u64,
-}
-
-impl From<TxTrace> for TestTxTrace {
-    fn from(value: TxTrace) -> Self {
-        Self {
-            trace:           value.trace.into_iter().map(|v| v.into()).collect(),
-            tx_hash:         value.tx_hash,
-            gas_used:        value.gas_used,
-            effective_price: value.effective_price,
-            tx_index:        value.tx_index,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-struct TestTraceResults {
-    jsonrpc: String,
-    result:  TraceResults,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-struct TestTransactionReceipt {
-    jsonrpc: String,
-    result:  TransactionReceipt,
-}
-
-async fn get_full_tx_trace(tx_hash: H256) -> TraceResults {
-    let url = "https://reth.sorella-beechit.com:8489";
-    let headers = reqwest::header::HeaderMap::from_iter(
-        vec![(reqwest::header::CONTENT_TYPE, "application/json".parse().unwrap())].into_iter(),
-    );
-
-    let payload = json!({
-        "id": 1,
-        "jsonrpc": "2.0",
-        "method": "trace_replayTransaction",
-        "params": [&format!("{:#x}", &tx_hash), ["trace", "vmTrace"]]
-    });
-
-    let client = reqwest::Client::new();
-    let response: TestTraceResults = client
-        .post(url)
-        .headers(headers)
-        .json(&payload)
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    response.result
-}
-
-async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
-    let url = "https://reth.sorella-beechit.com:8489";
-    let headers = reqwest::header::HeaderMap::from_iter(
-        vec![(reqwest::header::CONTENT_TYPE, "application/json".parse().unwrap())].into_iter(),
-    );
-
-    let payload = json!({
-        "id": 1,
-        "jsonrpc": "2.0",
-        "method": "eth_getTransactionReceipt",
-        "params": [&format!("{:#x}", &tx_hash)]
-    });
-
-    let client = reqwest::Client::new();
-    let response: TestTransactionReceipt = client
-        .post(url)
-        .headers(headers)
-        .json(&payload)
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    response.result
-}
 
 #[tokio::test]
 async fn test_execute_block() {

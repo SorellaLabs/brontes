@@ -20,9 +20,9 @@ use crate::{
     init_trace,
 };
 
-pub(crate) mod parser;
+pub mod parser;
 mod utils;
-pub(crate) mod vm_linker;
+pub mod vm_linker;
 use brontes_metrics::{trace::types::TraceMetricEvent, PoirotMetricEvents};
 #[allow(dead_code)]
 pub(crate) const UNKNOWN: &str = "unknown";

@@ -61,7 +61,7 @@ tracing = "0.1.37"
 colored.workspace = true
 
 # misc
-phf = { workspace = true, default-features = false }
+phf.workspace = true
 lazy_static.workspace = true
 auto_impl.workspace = true
 dotenv.workspace = true
@@ -80,7 +80,7 @@ alloy-etherscan.workspace = true
 rayon.workspace = true
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
 ethers-core.workspace = true
-phf = { workspace = true, default-features = false }
+phf.workspace = true
 phf_codegen.workspace = true
 dotenv.workspace = true
 toml = "0.8.2"
@@ -90,6 +90,7 @@ futures.workspace = true
 itertools.workspace = true
 
 [features]
+default = []
 test_run = ["server"]
 tests = []
 server = []

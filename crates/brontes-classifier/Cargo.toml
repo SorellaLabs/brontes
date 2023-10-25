@@ -13,6 +13,7 @@ brontes-macros.workspace = true
 
 # alloy
 alloy-sol-types.workspace = true
+alloy-sol-macro = { workspace = true, features = ["json"] }
 
 # reth
 reth-rpc-types.workspace = true
@@ -21,23 +22,29 @@ reth-primitives.workspace = true
 # tracing
 tracing.workspace = true
 
+# misc
 hex-literal.workspace = true
 rayon.workspace = true
 lazy_static.workspace = true
 once_cell.workspace = true
-
 malachite.workspace = true
 serde_json.workspace = true
-
 parking_lot.workspace = true
 paste = "1.0.14"
-phf = { workspace = true, default-features = false }
+phf.workspace = true
 itertools.workspace = true
 
+# tests feature (unique)
+reth-tracing = { workspace = true, optional = true }
+brontes-core = { workspace = true, optional = true }
+
+
 [features]
+default = []
 test_run = ["brontes-database/test_run", "server"]
-tests = []
+tests = ["reth-tracing", "brontes-core"]
 server = []
+
 
 [build-dependencies]
 tokio.workspace = true
@@ -47,12 +54,13 @@ hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 ethers-core.workspace = true
-phf = { workspace = true, default-features = false }
+phf.workspace = true
 phf_codegen.workspace = true
-reth-tracing.workspace = true
 rayon.workspace = true
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 futures.workspace = true
 itertools.workspace = true
+dotenv.workspace = true
+reth-tracing.workspace = true
