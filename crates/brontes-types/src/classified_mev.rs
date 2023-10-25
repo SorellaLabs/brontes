@@ -1,7 +1,7 @@
 use std::{any::Any, default, fmt::Debug};
 
 use reth_primitives::{Address, H256};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 use sorella_db_databases::{
@@ -65,18 +65,23 @@ pub struct ClassifiedMev {
     pub finalized_bribe_usd:   f64,
 }
 
-#[derive(Debug, Serialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy, Default)]
+#[derive(
+    Debug, Serialize_repr, Deserialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy, Default,
+)]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
+#[serde(rename_all = "lowercase")]
 pub enum MevType {
-    sandwich     = 1,
-    backrun      = 5,
-    jit_sandwich = 3,
-    jit          = 2,
-    cex_dex      = 0,
-    liquidation  = 4,
+    Sandwich    = 1,
+    Backrun     = 5,
+    #[serde(rename = "jit_sandwich")]
+    JitSandwich = 3,
+    Jit         = 2,
+    #[serde(rename = "cex_dex")]
+    CexDex      = 0,
+    Liquidation = 4,
     #[default]
-    unknown      = 6,
+    Unknown     = 6,
 }
 
 impl Row for MevType {
@@ -107,67 +112,84 @@ impl serde::Serialize for dyn SpecificMev {
     }
 }
 
-#[derive(Debug, Serialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-pub enum SwapKind {
-    frontrun = 0,
-    backrun  = 1,
-    victim   = 2,
-}
-
-impl From<JitKind> for SwapKind {
-    fn from(value: JitKind) -> Self {
-        match value {
-            JitKind::mint => SwapKind::frontrun,
-            JitKind::burn => SwapKind::backrun,
-            JitKind::swap => SwapKind::frontrun,
-        }
-    }
-}
-
 #[serde_as]
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct Sandwich {
     #[serde_as(as = "FixedString")]
-    #[serde(rename = "front_run_tx_hash")]
     pub frontrun_tx_hash: H256,
-    #[serde_as(as = "FixedString")]
-    pub backrun_tx_hash: H256,
+    #[serde(with = "gas_details_tuple")]
+    pub frontrun_gas_details: GasDetails,
+    #[serde(rename = "frontrun_swaps.index")]
+    pub frontrun_swaps_index: Vec<u16>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_swaps.from")]
+    pub frontrun_swaps_from: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_swaps.pool")]
+    pub frontrun_swaps_pool: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_swaps.token_in")]
+    pub frontrun_swaps_token_in: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_swaps.token_out")]
+    pub frontrun_swaps_token_out: Vec<Address>,
+    #[serde(rename = "frontrun_swaps.amount_in")]
+    pub frontrun_swaps_amount_in: Vec<u64>,
+    #[serde(rename = "frontrun_swaps.amount_out")]
+    pub frontrun_swaps_amount_out: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
     pub victim_tx_hashes: Vec<H256>,
-    #[serde(rename = "swaps.kind")]
-    pub swaps_kinds: Vec<SwapKind>,
-    #[serde(rename = "swaps.tx_num")]
-    pub swaps_tx_num: Vec<u8>,
-    #[serde(rename = "swaps.index")]
-    pub swaps_index: Vec<u16>,
-    #[serde(rename = "swaps.from")]
-    pub swaps_from: Vec<Address>,
-    #[serde(rename = "swaps.pool")]
-    pub swaps_pool: Vec<Address>,
     #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.token_in")]
-    pub swaps_token_in: Vec<Address>,
+    #[serde(rename = "victim_swaps.tx_hash")]
+    pub victim_swaps_tx_hash: Vec<H256>,
+    #[serde(rename = "victim_swaps.index")]
+    pub victim_swaps_index: Vec<u16>,
     #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.token_out")]
-    pub swaps_token_out: Vec<Address>,
-    #[serde(rename = "swaps.amount_in")]
-    pub swaps_amount_in: Vec<u64>,
-    #[serde(rename = "swaps.amount_out")]
-    pub swaps_amount_out: Vec<u64>,
-    #[serde(rename = "gas_details.kind")]
-    pub gas_details_kind: Vec<SwapKind>,
-    #[serde(rename = "gas_details.tx_num")]
-    pub gas_details_tx_num: Vec<u8>,
-    #[serde(rename = "gas_details.coinbase_transfer")]
-    pub gas_details_coinbase_transfer: Vec<Option<u64>>,
-    #[serde(rename = "gas_details.priority_fee")]
-    pub gas_details_priority_fee: Vec<u64>,
-    #[serde(rename = "gas_details.gas_used")]
-    pub gas_details_gas_used: Vec<u64>,
-    #[serde(rename = "gas_details.effective_gas_price")]
-    pub gas_details_effective_gas_price: Vec<u64>,
+    #[serde(rename = "victim_swaps.from")]
+    pub victim_swaps_from: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "victim_swaps.pool")]
+    pub victim_swaps_pool: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "victim_swaps.token_in")]
+    pub victim_swaps_token_in: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "victim_swaps.token_out")]
+    pub victim_swaps_token_out: Vec<Address>,
+    #[serde(rename = "victim_swaps.amount_in")]
+    pub victim_swaps_amount_in: Vec<u64>,
+    #[serde(rename = "victim_swaps.amount_out")]
+    pub victim_swaps_amount_out: Vec<u64>,
+    #[serde(rename = "victim_gas_details.coinbase_transfer")]
+    pub victim_gas_details_coinbase_transfer: Vec<Option<u64>>,
+    #[serde(rename = "victim_gas_details.priority_fee")]
+    pub victim_gas_details_priority_fee: Vec<u64>,
+    #[serde(rename = "victim_gas_details.gas_used")]
+    pub victim_gas_details_gas_used: Vec<u64>,
+    #[serde(rename = "victim_gas_details.effective_gas_price")]
+    pub victim_gas_details_effective_gas_price: Vec<u64>,
+    #[serde_as(as = "FixedString")]
+    pub backrun_tx_hash: H256,
+    #[serde(with = "gas_details_tuple")]
+    pub backrun_gas_details: GasDetails,
+    #[serde(rename = "backrun_swaps.index")]
+    pub backrun_swaps_index: Vec<u16>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_swaps.from")]
+    pub backrun_swaps_from: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_swaps.pool")]
+    pub backrun_swaps_pool: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_swaps.token_in")]
+    pub backrun_swaps_token_in: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_swaps.token_out")]
+    pub backrun_swaps_token_out: Vec<Address>,
+    #[serde(rename = "backrun_swaps.amount_in")]
+    pub backrun_swaps_amount_in: Vec<u64>,
+    #[serde(rename = "backrun_swaps.amount_out")]
+    pub backrun_swaps_amount_out: Vec<u64>,
 }
 
 pub fn compose_sandwich_jit(
@@ -179,71 +201,55 @@ pub fn compose_sandwich_jit(
     let sandwich: Sandwich = *sandwich.downcast().unwrap();
     let jit: JitLiquidity = *jit.downcast().unwrap();
 
-    let mut gas_details_kinds = sandwich.gas_details_kind;
-    jit.gas_details_kind
-        .iter()
-        .for_each(|t| gas_details_kinds.push((*t).into()));
-
-    let mut gas_details_tx_num = sandwich.gas_details_tx_num;
-    let mut i = 2;
-    while i > 0 {
-        gas_details_tx_num.push(gas_details_tx_num.last().unwrap() + 1);
-        i -= 1;
-    }
-
-    let mut gas_details_coinbase_transfer = sandwich.gas_details_coinbase_transfer;
-    jit.gas_details_coinbase_transfer
-        .iter()
-        .for_each(|t| gas_details_coinbase_transfer.push(*t));
-
-    let mut gas_details_priority_fee = sandwich.gas_details_priority_fee;
-    jit.gas_details_priority_fee
-        .iter()
-        .for_each(|t| gas_details_priority_fee.push(*t));
-
-    let mut gas_details_gas_used = sandwich.gas_details_gas_used;
-    jit.gas_details_gas_used
-        .iter()
-        .for_each(|t| gas_details_gas_used.push(*t));
-
-    let mut gas_details_effective_gas_price = sandwich.gas_details_effective_gas_price;
-    jit.gas_details_effective_gas_price
-        .iter()
-        .for_each(|t| gas_details_effective_gas_price.push(*t));
-
     let jit_sand = Box::new(JitLiquiditySandwich {
         frontrun_tx_hash: sandwich.frontrun_tx_hash,
-        swap_tx_hash: jit.swap_tx_hash,
-        burn_tx_hash: jit.burn_tx_hash,
-        backrun_tx_hash: sandwich.backrun_tx_hash,
+        frontrun_gas_details: sandwich.frontrun_gas_details,
+        frontrun_swaps_index: sandwich.frontrun_swaps_index,
+        frontrun_swaps_from: sandwich.frontrun_swaps_from,
+        frontrun_swaps_pool: sandwich.frontrun_swaps_pool,
+        frontrun_swaps_token_in: sandwich.frontrun_swaps_token_in,
+        frontrun_swaps_token_out: sandwich.frontrun_swaps_token_out,
+        frontrun_swaps_amount_in: sandwich.frontrun_swaps_amount_in,
+        frontrun_swaps_amount_out: sandwich.frontrun_swaps_amount_out,
+        frontrun_mints_index: jit.jit_mints_index,
+        frontrun_mints_from: jit.jit_mints_from,
+        frontrun_mints_to: jit.jit_mints_to,
+        frontrun_mints_recipient: jit.jit_mints_recipient,
+        frontrun_mints_token: jit.jit_mints_token,
+        frontrun_mints_amount: jit.jit_mints_amount,
         victim_tx_hashes: sandwich.victim_tx_hashes,
-        mints_burns_kind: jit.mints_burns_kind,
-        mints_burns_index: jit.mints_burns_index,
-        mints_burns_from: jit.mints_burns_from,
-        mints_burns_to: jit.mints_burns_to,
-        mints_burns_recipient: jit.mints_burns_recipient,
-        mints_burns_tokens: jit.mints_burns_tokens,
-        mints_burns_amounts: jit.mints_burns_amounts,
-        swaps_kind: sandwich.swaps_kinds,
-        swaps_tx_num: sandwich.swaps_tx_num,
-        swaps_index: sandwich.swaps_index,
-        swaps_from: sandwich.swaps_from,
-        swaps_pool: sandwich.swaps_pool,
-        swaps_token_in: sandwich.swaps_token_in,
-        swaps_token_out: sandwich.swaps_token_out,
-        swaps_amount_in: sandwich.swaps_amount_in,
-        swaps_amount_out: sandwich.swaps_amount_out,
-        gas_details_kind: gas_details_kinds,
-        gas_details_tx_num,
-        gas_details_coinbase_transfer,
-        gas_details_priority_fee,
-        gas_details_gas_used,
-        gas_details_effective_gas_price,
+        victim_swaps_tx_hash: sandwich.victim_swaps_tx_hash,
+        victim_swaps_index: sandwich.victim_swaps_index,
+        victim_swaps_from: sandwich.victim_swaps_from,
+        victim_swaps_pool: sandwich.victim_swaps_pool,
+        victim_swaps_token_in: sandwich.victim_swaps_token_in,
+        victim_swaps_token_out: sandwich.victim_swaps_token_out,
+        victim_swaps_amount_in: sandwich.victim_swaps_amount_in,
+        victim_swaps_amount_out: sandwich.victim_swaps_amount_out,
+        victim_gas_details_coinbase_transfer: sandwich.victim_gas_details_coinbase_transfer,
+        victim_gas_details_priority_fee: sandwich.victim_gas_details_priority_fee,
+        victim_gas_details_gas_used: sandwich.victim_gas_details_gas_used,
+        victim_gas_details_effective_gas_price: sandwich.victim_gas_details_effective_gas_price,
+        backrun_tx_hash: sandwich.backrun_tx_hash,
+        backrun_gas_details: sandwich.backrun_gas_details,
+        backrun_swaps_index: sandwich.backrun_swaps_index,
+        backrun_swaps_from: sandwich.backrun_swaps_from,
+        backrun_swaps_pool: sandwich.backrun_swaps_pool,
+        backrun_swaps_token_in: sandwich.backrun_swaps_token_in,
+        backrun_swaps_token_out: sandwich.backrun_swaps_token_out,
+        backrun_swaps_amount_in: sandwich.backrun_swaps_amount_in,
+        backrun_swaps_amount_out: sandwich.backrun_swaps_amount_out,
+        backrun_burns_index: jit.jit_burns_index,
+        backrun_burns_from: jit.jit_burns_from,
+        backrun_burns_to: jit.jit_burns_to,
+        backrun_burns_recipient: jit.jit_burns_recipient,
+        backrun_burns_token: jit.jit_burns_token,
+        backrun_burns_amount: jit.jit_burns_amount,
     });
 
     let new_classifed = ClassifiedMev {
         tx_hash:               sandwich.frontrun_tx_hash,
-        mev_type:              MevType::jit_sandwich,
+        mev_type:              MevType::JitSandwich,
         block_number:          sandwich_classified.block_number,
         eoa:                   jit_classified.eoa,
         mev_contract:          sandwich_classified.mev_contract,
@@ -265,47 +271,16 @@ impl SpecificMev for Sandwich {
     }
 
     fn mev_type(&self) -> MevType {
-        MevType::sandwich
+        MevType::Sandwich
     }
 
     fn priority_fee_paid(&self) -> u64 {
-        let gas_details = self
-            .gas_details_kind
-            .iter()
-            .zip(self.gas_details_priority_fee.clone())
-            .collect::<Vec<_>>();
-
-        let mut priority_fee = 0;
-
-        gas_details
-            .into_iter()
-            .for_each(|(det_type, det_amt)| match det_type {
-                SwapKind::frontrun => priority_fee += det_amt,
-                SwapKind::backrun => priority_fee += det_amt,
-                _ => (),
-            });
-
-        priority_fee
+        self.frontrun_gas_details.priority_fee + self.backrun_gas_details.priority_fee
     }
 
     fn bribe(&self) -> u64 {
-        let gas_details = self
-            .gas_details_kind
-            .iter()
-            .zip(self.gas_details_coinbase_transfer.clone())
-            .collect::<Vec<_>>();
-
-        let mut bribe = 0;
-
-        gas_details
-            .into_iter()
-            .for_each(|(det_type, det_amt)| match det_type {
-                SwapKind::frontrun => bribe += det_amt.unwrap_or(0),
-                SwapKind::backrun => bribe += det_amt.unwrap_or(0),
-                _ => (),
-            });
-
-        bribe
+        (self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
+            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)) as u64
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -313,84 +288,123 @@ impl SpecificMev for Sandwich {
     }
 }
 
-#[derive(Debug, Serialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-pub enum MintBurnKind {
-    frontrun = 0,
-    backrun  = 1,
-}
-
 #[serde_as]
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct JitLiquiditySandwich {
     #[serde_as(as = "FixedString")]
     pub frontrun_tx_hash: H256,
-    #[serde_as(as = "FixedString")]
-    pub swap_tx_hash: H256,
-    #[serde_as(as = "FixedString")]
-    pub burn_tx_hash: H256,
-    #[serde_as(as = "FixedString")]
-    pub backrun_tx_hash: H256,
+    #[serde(with = "gas_details_tuple")]
+    pub frontrun_gas_details: GasDetails,
+    #[serde(rename = "frontrun_swaps.index")]
+    pub frontrun_swaps_index: Vec<u16>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_swaps.from")]
+    pub frontrun_swaps_from: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_swaps.pool")]
+    pub frontrun_swaps_pool: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_swaps.token_in")]
+    pub frontrun_swaps_token_in: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_swaps.token_out")]
+    pub frontrun_swaps_token_out: Vec<Address>,
+    #[serde(rename = "frontrun_swaps.amount_in")]
+    pub frontrun_swaps_amount_in: Vec<u64>,
+    #[serde(rename = "frontrun_swaps.amount_out")]
+    pub frontrun_swaps_amount_out: Vec<u64>,
+    #[serde(rename = "frontrun_mints.index")]
+    pub frontrun_mints_index: Vec<u16>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_mints.from")]
+    pub frontrun_mints_from: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_mints.to")]
+    pub frontrun_mints_to: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_mints.recipient")]
+    pub frontrun_mints_recipient: Vec<Address>,
+    #[serde_as(as = "Vec<Vec<FixedString>>")]
+    #[serde(rename = "frontrun_mints.token")]
+    pub frontrun_mints_token: Vec<Vec<Address>>,
+    #[serde_as(as = "Vec<Vec<FixedString>>")]
+    #[serde(rename = "frontrun_mints.amount")]
+    pub frontrun_mints_amount: Vec<Vec<u64>>,
     #[serde_as(as = "Vec<FixedString>")]
     pub victim_tx_hashes: Vec<H256>,
-    #[serde(rename = "mints_burns.kind")]
-    pub mints_burns_kind: Vec<MintBurnKind>,
-    #[serde(rename = "mints_burns.index")]
-    pub mints_burns_index: Vec<u16>,
     #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "mints_burns.from")]
-    pub mints_burns_from: Vec<Address>,
+    #[serde(rename = "victim_swaps.tx_hash")]
+    pub victim_swaps_tx_hash: Vec<H256>,
+    #[serde(rename = "victim_swaps.index")]
+    pub victim_swaps_index: Vec<u16>,
     #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "mints_burns.to")]
-    pub mints_burns_to: Vec<Address>,
+    #[serde(rename = "victim_swaps.from")]
+    pub victim_swaps_from: Vec<Address>,
     #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "mints_burns.recipient")]
-    pub mints_burns_recipient: Vec<Address>,
+    #[serde(rename = "victim_swaps.pool")]
+    pub victim_swaps_pool: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "victim_swaps.token_in")]
+    pub victim_swaps_token_in: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "victim_swaps.token_out")]
+    pub victim_swaps_token_out: Vec<Address>,
+    #[serde(rename = "victim_swaps.amount_in")]
+    pub victim_swaps_amount_in: Vec<u64>,
+    #[serde(rename = "victim_swaps.amount_out")]
+    pub victim_swaps_amount_out: Vec<u64>,
+    #[serde(rename = "victim_gas_details.coinbase_transfer")]
+    pub victim_gas_details_coinbase_transfer: Vec<Option<u64>>,
+    #[serde(rename = "victim_gas_details.priority_fee")]
+    pub victim_gas_details_priority_fee: Vec<u64>,
+    #[serde(rename = "victim_gas_details.gas_used")]
+    pub victim_gas_details_gas_used: Vec<u64>,
+    #[serde(rename = "victim_gas_details.effective_gas_price")]
+    pub victim_gas_details_effective_gas_price: Vec<u64>,
+    #[serde_as(as = "FixedString")]
+    pub backrun_tx_hash: H256,
+    #[serde(with = "gas_details_tuple")]
+    pub backrun_gas_details: GasDetails,
+    #[serde(rename = "backrun_swaps.index")]
+    pub backrun_swaps_index: Vec<u16>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_swaps.from")]
+    pub backrun_swaps_from: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_swaps.pool")]
+    pub backrun_swaps_pool: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_swaps.token_in")]
+    pub backrun_swaps_token_in: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_swaps.token_out")]
+    pub backrun_swaps_token_out: Vec<Address>,
+    #[serde(rename = "backrun_swaps.amount_in")]
+    pub backrun_swaps_amount_in: Vec<u64>,
+    #[serde(rename = "backrun_swaps.amount_out")]
+    pub backrun_swaps_amount_out: Vec<u64>,
+    #[serde(rename = "backrun_burns.index")]
+    pub backrun_burns_index: Vec<u16>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_burns.from")]
+    pub backrun_burns_from: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_burns.to")]
+    pub backrun_burns_to: Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "backrun_burns.recipient")]
+    pub backrun_burns_recipient: Vec<Address>,
     #[serde_as(as = "Vec<Vec<FixedString>>")]
-    #[serde(rename = "mints_burns.tokens")]
-    pub mints_burns_tokens: Vec<Vec<Address>>,
-    #[serde(rename = "mints_burns.amounts")]
-    pub mints_burns_amounts: Vec<Vec<u64>>,
-    #[serde(rename = "swaps.kind")]
-    pub swaps_kind: Vec<SwapKind>,
-    #[serde(rename = "swaps.tx_num")]
-    pub swaps_tx_num: Vec<u8>,
-    #[serde(rename = "swaps.index")]
-    pub swaps_index: Vec<u16>,
-    #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.from")]
-    pub swaps_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.pool")]
-    pub swaps_pool: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.token_in")]
-    pub swaps_token_in: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.token_out")]
-    pub swaps_token_out: Vec<Address>,
-    #[serde(rename = "swaps.amount_in")]
-    pub swaps_amount_in: Vec<u64>,
-    #[serde(rename = "swaps.amount_out")]
-    pub swaps_amount_out: Vec<u64>,
-    #[serde(rename = "gas_details.kind")]
-    pub gas_details_kind: Vec<SwapKind>,
-    #[serde(rename = "gas_details.tx_num")]
-    pub gas_details_tx_num: Vec<u8>,
-    #[serde(rename = "gas_details.coinbase_transfer")]
-    pub gas_details_coinbase_transfer: Vec<Option<u64>>,
-    #[serde(rename = "gas_details.priority_fee")]
-    pub gas_details_priority_fee: Vec<u64>,
-    #[serde(rename = "gas_details.gas_used")]
-    pub gas_details_gas_used: Vec<u64>,
-    #[serde(rename = "gas_details.effective_gas_price")]
-    pub gas_details_effective_gas_price: Vec<u64>,
+    #[serde(rename = "backrun_burns.token")]
+    pub backrun_burns_token: Vec<Vec<Address>>,
+    #[serde_as(as = "Vec<Vec<FixedString>>")]
+    #[serde(rename = "backrun_burns.amount")]
+    pub backrun_burns_amount: Vec<Vec<u64>>,
 }
 
 impl SpecificMev for JitLiquiditySandwich {
     fn mev_type(&self) -> MevType {
-        MevType::jit_sandwich
+        MevType::JitSandwich
     }
 
     fn into_any(self: Box<Self>) -> Box<dyn Any> {
@@ -398,43 +412,12 @@ impl SpecificMev for JitLiquiditySandwich {
     }
 
     fn priority_fee_paid(&self) -> u64 {
-        let gas_details = self
-            .gas_details_kind
-            .iter()
-            .zip(self.gas_details_priority_fee.clone())
-            .collect::<Vec<_>>();
-
-        let mut priority_fee = 0;
-
-        gas_details
-            .into_iter()
-            .for_each(|(det_type, det_amt)| match det_type {
-                SwapKind::frontrun => priority_fee += det_amt,
-                SwapKind::backrun => priority_fee += det_amt,
-                _ => (),
-            });
-
-        priority_fee
+        self.frontrun_gas_details.priority_fee + self.backrun_gas_details.priority_fee
     }
 
     fn bribe(&self) -> u64 {
-        let gas_details = self
-            .gas_details_kind
-            .iter()
-            .zip(self.gas_details_coinbase_transfer.clone())
-            .collect::<Vec<_>>();
-
-        let mut bribe = 0;
-
-        gas_details
-            .into_iter()
-            .for_each(|(det_type, det_amt)| match det_type {
-                SwapKind::frontrun => bribe += det_amt.unwrap_or(0),
-                SwapKind::backrun => bribe += det_amt.unwrap_or(0),
-                _ => (),
-            });
-
-        bribe
+        (self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
+            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)) as u64
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -485,7 +468,7 @@ pub struct CexDex {
 
 impl SpecificMev for CexDex {
     fn mev_type(&self) -> MevType {
-        MevType::cex_dex
+        MevType::CexDex
     }
 
     fn into_any(self: Box<Self>) -> Box<dyn Any> {
@@ -551,7 +534,7 @@ pub struct Liquidation {
 
 impl SpecificMev for Liquidation {
     fn mev_type(&self) -> MevType {
-        MevType::liquidation
+        MevType::Liquidation
     }
 
     fn into_any(self: Box<Self>) -> Box<dyn Any> {
@@ -571,75 +554,78 @@ impl SpecificMev for Liquidation {
     }
 }
 
-#[derive(Debug, Serialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-pub enum JitKind {
-    mint = 0,
-    burn = 1,
-    swap = 2,
-}
-
 #[serde_as]
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct JitLiquidity {
     #[serde_as(as = "FixedString")]
-    pub mint_tx_hash: H256,
+    pub mint_tx_hash:        H256,
+    #[serde(with = "gas_details_tuple")]
+    pub mint_gas_details:    GasDetails,
+    #[serde(rename = "jit_mints.index")]
+    pub jit_mints_index:     Vec<u16>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "jit_mints.from")]
+    pub jit_mints_from:      Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "jit_mints.to")]
+    pub jit_mints_to:        Vec<Address>,
+    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "jit_mints.recipient")]
+    pub jit_mints_recipient: Vec<Address>,
+    #[serde_as(as = "Vec<Vec<FixedString>>")]
+    #[serde(rename = "jit_mints.token")]
+    pub jit_mints_token:     Vec<Vec<Address>>,
+    #[serde_as(as = "Vec<Vec<FixedString>>")]
+    #[serde(rename = "jit_mints.amount")]
+    pub jit_mints_amount:    Vec<Vec<u64>>,
     #[serde_as(as = "FixedString")]
-    pub swap_tx_hash: H256,
-    #[serde_as(as = "FixedString")]
-    pub burn_tx_hash: H256,
+    pub swap_tx_hash:        H256,
+    #[serde(with = "gas_details_tuple")]
+    pub swap_gas_details:    GasDetails,
     #[serde(rename = "swaps.index")]
-    pub swaps_index: Vec<u16>,
+    pub swaps_index:         Vec<u16>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "swaps.from")]
-    pub swaps_from: Vec<Address>,
+    pub swaps_from:          Vec<Address>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "swaps.pool")]
-    pub swaps_pool: Vec<Address>,
+    pub swaps_pool:          Vec<Address>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "swaps.token_in")]
-    pub swaps_token_in: Vec<Address>,
+    pub swaps_token_in:      Vec<Address>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "swaps.token_out")]
-    pub swaps_token_out: Vec<Address>,
+    pub swaps_token_out:     Vec<Address>,
     #[serde(rename = "swaps.amount_in")]
-    pub swaps_amount_in: Vec<u64>,
+    pub swaps_amount_in:     Vec<u64>,
     #[serde(rename = "swaps.amount_out")]
-    pub swaps_amount_out: Vec<u64>,
-    #[serde(rename = "mints_burns.kind")]
-    pub mints_burns_kind: Vec<MintBurnKind>,
-    #[serde(rename = "mints_burns.index")]
-    pub mints_burns_index: Vec<u16>,
+    pub swaps_amount_out:    Vec<u64>,
+    #[serde_as(as = "FixedString")]
+    pub burn_tx_hash:        H256,
+    #[serde(with = "gas_details_tuple")]
+    pub burn_gas_details:    GasDetails,
+    #[serde(rename = "jit_burns.index")]
+    pub jit_burns_index:     Vec<u16>,
     #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "mints_burns.from")]
-    pub mints_burns_from: Vec<Address>,
+    #[serde(rename = "jit_burns.from")]
+    pub jit_burns_from:      Vec<Address>,
     #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "mints_burns.to")]
-    pub mints_burns_to: Vec<Address>,
+    #[serde(rename = "jit_burns.to")]
+    pub jit_burns_to:        Vec<Address>,
     #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "mints_burns.recipient")]
-    pub mints_burns_recipient: Vec<Address>,
+    #[serde(rename = "jit_burns.recipient")]
+    pub jit_burns_recipient: Vec<Address>,
     #[serde_as(as = "Vec<Vec<FixedString>>")]
-    #[serde(rename = "mints_burns.token")]
-    pub mints_burns_tokens: Vec<Vec<Address>>,
-    #[serde(rename = "mints_burns.amount")]
-    pub mints_burns_amounts: Vec<Vec<u64>>,
-    #[serde(rename = "gas_details.kind")]
-    pub gas_details_kind: Vec<JitKind>,
-    #[serde(rename = "gas_details.coinbase_transfer")]
-    pub gas_details_coinbase_transfer: Vec<Option<u64>>,
-    #[serde(rename = "gas_details.priority_fee")]
-    pub gas_details_priority_fee: Vec<u64>,
-    #[serde(rename = "gas_details.gas_used")]
-    pub gas_details_gas_used: Vec<u64>,
-    #[serde(rename = "gas_details.effective_gas_price")]
-    pub gas_details_effective_gas_price: Vec<u64>,
+    #[serde(rename = "jit_burns.token")]
+    pub jit_burns_token:     Vec<Vec<Address>>,
+    #[serde_as(as = "Vec<Vec<FixedString>>")]
+    #[serde(rename = "jit_burns.amount")]
+    pub jit_burns_amount:    Vec<Vec<u64>>,
 }
 
 impl SpecificMev for JitLiquidity {
     fn mev_type(&self) -> MevType {
-        MevType::jit
+        MevType::Jit
     }
 
     fn mev_transaction_hashes(&self) -> Vec<H256> {
@@ -647,43 +633,12 @@ impl SpecificMev for JitLiquidity {
     }
 
     fn bribe(&self) -> u64 {
-        let gas_details = self
-            .gas_details_kind
-            .iter()
-            .zip(self.gas_details_coinbase_transfer.clone())
-            .collect::<Vec<_>>();
-
-        let mut bribe = 0;
-
-        gas_details
-            .into_iter()
-            .for_each(|(det_type, det_amt)| match det_type {
-                JitKind::mint => bribe += det_amt.unwrap_or(0),
-                JitKind::burn => bribe += det_amt.unwrap_or(0),
-                _ => (),
-            });
-
-        bribe
+        (self.mint_gas_details.coinbase_transfer.unwrap_or(0)
+            + self.burn_gas_details.coinbase_transfer.unwrap_or(0)) as u64
     }
 
     fn priority_fee_paid(&self) -> u64 {
-        let gas_details = self
-            .gas_details_kind
-            .iter()
-            .zip(self.gas_details_priority_fee.clone())
-            .collect::<Vec<_>>();
-
-        let mut priority_fee = 0;
-
-        gas_details
-            .into_iter()
-            .for_each(|(det_type, det_amt)| match det_type {
-                JitKind::mint => priority_fee += det_amt,
-                JitKind::burn => priority_fee += det_amt,
-                _ => (),
-            });
-
-        priority_fee
+        self.mint_gas_details.priority_fee + self.burn_gas_details.priority_fee
     }
 
     fn into_any(self: Box<Self>) -> Box<dyn Any> {
@@ -736,7 +691,7 @@ impl SpecificMev for AtomicBackrun {
     }
 
     fn mev_type(&self) -> MevType {
-        MevType::backrun
+        MevType::Backrun
     }
 }
 

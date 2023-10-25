@@ -11,6 +11,7 @@ members = [
   "crates/tracing",
   "crates/brontes-database",
   "crates/brontes-macros",
+  "tests"
 ]
 
 resolver = "2"
