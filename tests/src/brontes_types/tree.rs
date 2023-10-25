@@ -17,5 +17,5 @@ async fn test_sum() {
 
     let tree = build_raw_test_tree(tracer, db).await;
 
-    write_tree_as_json(&tree).await;
+    write_tree_as_json(&tree, "src/brontes_types/tree.json").await;
 }
