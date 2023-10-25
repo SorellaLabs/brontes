@@ -217,7 +217,6 @@ impl<V: NormalizedAction> Node<V> {
 
         let mut cur_stack = self.current_call_stack();
         println!("address: {:?}\n cs: {:?}\n", n.address, cur_stack);
-        cur_stack.pop();
         if !cur_stack.contains(&address) {
             self.inner.push(n);
             return
