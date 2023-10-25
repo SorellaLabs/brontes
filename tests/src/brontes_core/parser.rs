@@ -11,6 +11,7 @@ use reth_rpc_types::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use serial_test::serial;
 use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::test]
