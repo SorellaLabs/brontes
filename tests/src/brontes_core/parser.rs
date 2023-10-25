@@ -14,6 +14,7 @@ use serde_json::json;
 use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::test]
+#[serial]
 async fn test_execute_block() {
     dotenv().ok();
 
