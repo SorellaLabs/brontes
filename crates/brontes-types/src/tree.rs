@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Index,
+};
 
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -216,6 +219,10 @@ impl<V: NormalizedAction> Node<V> {
             return
         }
 
+        let trace_addr = n.trace_address.clone();
+        self.get_all_inner_nodes(n, trace_addr);
+
+        /*
         let cur_stack = self.current_call_stack();
         println!("address: {:?}\n cs: {:?}\n", n.address, cur_stack);
         if !cur_stack.contains(&address) {
@@ -227,6 +234,15 @@ impl<V: NormalizedAction> Node<V> {
             } else {
                 self.inner.push(n);
             }
+        }*/
+    }
+
+    pub fn get_all_inner_nodes(&mut self, n: Node<V>, mut trace_addr: Vec<usize>) {
+        if trace_addr.len() == 1 {
+            self.inner.push(n);
+        } else {
+            let inner = self.inner.get_mut(trace_addr.remove(0)).unwrap();
+            inner.get_all_inner_nodes(n, trace_addr)
         }
     }
 
