@@ -58,7 +58,7 @@ fn test_link_vm_to_trace() {
     // Load the trace and receipt from the JSON files
     let trace_json: TestTraceResults = serde_json::from_str(
         &fs::read_to_string(
-            "src/test_utils/0x380e6cda70b04f647a40c07e71a154e9af94facb13dc5f49c2556497ec34d6f0/\
+            "src/brontes_core/0x380e6cda70b04f647a40c07e71a154e9af94facb13dc5f49c2556497ec34d6f0/\
              trace.json",
         )
         .unwrap(),
@@ -66,7 +66,7 @@ fn test_link_vm_to_trace() {
     .unwrap();
     let receipt_json: TestTransactionReceipt = serde_json::from_str(
         &fs::read_to_string(
-            "src/test_utils/0x380e6cda70b04f647a40c07e71a154e9af94facb13dc5f49c2556497ec34d6f0/\
+            "src/brontes_core/0x380e6cda70b04f647a40c07e71a154e9af94facb13dc5f49c2556497ec34d6f0/\
              receipt.json",
         )
         .unwrap(),
