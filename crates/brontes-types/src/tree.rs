@@ -52,11 +52,11 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.roots.iter_mut().for_each(|root| root.finalize());
     }
 
-    pub fn insert_node(&mut self, from: Address, node: Node<V>) {
+    pub fn insert_node(&mut self, node: Node<V>) {
         self.roots
             .last_mut()
             .expect("no root_nodes inserted")
-            .insert(from, node);
+            .insert(node);
     }
 
     pub fn get_hashes(&self) -> Vec<H256> {
@@ -119,8 +119,8 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
-    pub fn insert(&mut self, from: Address, node: Node<V>) {
-        self.head.insert(from, node)
+    pub fn insert(&mut self, node: Node<V>) {
+        self.head.insert(node)
     }
 
     pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
@@ -214,27 +214,13 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     /// The address here is the from address for the trace
-    pub fn insert(&mut self, address: Address, n: Node<V>) {
+    pub fn insert(&mut self, n: Node<V>) {
         if self.finalized {
             return
         }
 
         let trace_addr = n.trace_address.clone();
         self.get_all_inner_nodes(n, trace_addr);
-
-        /*
-        let cur_stack = self.current_call_stack();
-        println!("address: {:?}\n cs: {:?}\n", n.address, cur_stack);
-        if !cur_stack.contains(&address) {
-            self.inner.push(n);
-            return
-        } else {
-            if let Some(last) = self.inner.last_mut() {
-                last.insert(address, n);
-            } else {
-                self.inner.push(n);
-            }
-        }*/
     }
 
     pub fn get_all_inner_nodes(&mut self, n: Node<V>, mut trace_addr: Vec<usize>) {
