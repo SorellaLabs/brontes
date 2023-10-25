@@ -137,7 +137,7 @@ fn decode_transfer(log: &Log) -> Option<(Address, Address, Address, U256)> {
         //let to = Address::from_slice(&log.data[41..63]); // hmmm
         let from = Address::from_slice(&log.topics[1][..20]);
         let to = Address::from_slice(&log.topics[2][..20]);
-        let data = U256::try_from_be_slice(&log.data[64..]).unwrap();
+        let data = U256::try_from_be_slice(&log.data[..]).unwrap();
         return Some((log.address, from, to, data))
     }
 
