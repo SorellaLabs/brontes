@@ -33,6 +33,7 @@ const TOKEN_MAPPING: &str = "token_mappings.rs";
 const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x), tokens) AS 
                              tokens FROM pools WHERE length(tokens) = ";
 
+const FAILED_ABI_FILE: &str = "../../failed_abis.txt";
 const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
@@ -64,7 +65,7 @@ LIMIT 1
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 struct ProtocolDetails {
-    pub addresses:       Vec<String>,
+    pub addresses:       HashSet<String>,
     pub abi:             Option<String>,
     pub classifier_name: Option<String>,
 }
@@ -157,9 +158,13 @@ async fn run_classifier_mapping() {
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, LOCAL_QUERY).await;
 
+    let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
+
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
-        .filter(|contract: &ProtocolDetails| contract.abi.is_some())
+        .filter(|contract: &ProtocolDetails| {
+            contract.abi.is_some() && !failed_abi_addresses.is_subset(&contract.addresses)
+        })
         .map(|contract: ProtocolDetails| {
             (
                 JsonAbi::from_json_str(contract.abi.as_ref().unwrap())
@@ -529,6 +534,12 @@ fn write_file(file_path: &str, create: bool) -> File {
         .read(true)
         .open(file_path)
         .expect("could not open file")
+}
+
+fn parse_filtered_addresses(file: &str) -> HashSet<String> {
+    std::fs::read_to_string(file)
+        .map(|data| data.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_default()
 }
 
 async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
