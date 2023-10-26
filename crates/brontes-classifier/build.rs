@@ -65,7 +65,7 @@ LIMIT 1
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 struct ProtocolDetails {
-    pub addresses:       HashSet<String>,
+    pub addresses:       Vec<String>,
     pub abi:             Option<String>,
     pub classifier_name: Option<String>,
 }
@@ -163,7 +163,10 @@ async fn run_classifier_mapping() {
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
         .filter(|contract: &ProtocolDetails| {
-            contract.abi.is_some() && !failed_abi_addresses.is_subset(&contract.addresses)
+            let addrs = contract.addresses.clone().into_iter().collect();
+
+            contract.abi.is_some()
+                && !failed_abi_addresses.is_subset(&addrs)
         })
         .map(|contract: ProtocolDetails| {
             (
