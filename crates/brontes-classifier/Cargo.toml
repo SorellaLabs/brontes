@@ -6,52 +6,61 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# brontes
 brontes-database.workspace = true
 brontes-types.workspace = true
-brontes-core.workspace = true
+brontes-macros.workspace = true
 
-alloy-dyn-abi.workspace = true
+# alloy
 alloy-sol-types.workspace = true
+alloy-sol-macro = { workspace = true, features = ["json"] }
+
+# reth
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
+
+# tracing
 tracing.workspace = true
+
+# misc
 hex-literal.workspace = true
 rayon.workspace = true
-lazy_static = "1.4.0"
-once_cell = "1.18.0"
-
+lazy_static.workspace = true
+once_cell.workspace = true
 malachite.workspace = true
 serde_json.workspace = true
-
-parking_lot = "0.12.1"
+parking_lot.workspace = true
 paste = "1.0.14"
-phf = { version = "0.11", default-features = false }
-# macro
-brontes-macros = { path = "../brontes-macros/" }
+phf.workspace = true
+itertools.workspace = true
 
-itertools = "0.11.0"
+# tests feature (unique)
+reth-tracing = { workspace = true, optional = true }
+brontes-core = { workspace = true, optional = true }
+
 
 [features]
+default = []
 test_run = ["brontes-database/test_run", "server"]
+tests = ["reth-tracing", "brontes-core"]
 server = []
+
 
 [build-dependencies]
 tokio.workspace = true
-clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
+clickhouse.workspace = true
 hyper.workspace = true
-hyper-tls = "0.5.0"
+hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-alloy-etherscan.workspace = true
 ethers-core.workspace = true
-phf = { version = "0.11.1", default-features = false }
-phf_codegen = "0.11.1"
-dotenv = "0.15.0"
-reth-tracing.workspace = true
-rayon = "1.7.0"
+phf.workspace = true
+phf_codegen.workspace = true
+rayon.workspace = true
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
-toml = "0.8.2"
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
-futures = "0.3.28"
-itertools = "0.11.0"
+futures.workspace = true
+itertools.workspace = true
+dotenv.workspace = true
+reth-tracing.workspace = true

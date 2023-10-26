@@ -6,7 +6,7 @@ use reth_rpc_types::Log;
 
 use crate::{
     ActionCollection, IntoAction, StaticReturnBindings,
-    SushiSwapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap},
+    UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap},
     ADDRESS_TO_TOKENS_2_POOL,
 };
 

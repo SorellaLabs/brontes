@@ -7,6 +7,9 @@ use reth_rpc_types::Log;
 pub mod classifier;
 pub use classifier::*;
 
+#[cfg(feature = "tests")]
+pub mod test_utils;
+
 mod impls;
 use alloy_sol_types::{sol, SolInterface};
 use brontes_types::normalized_actions::Actions;

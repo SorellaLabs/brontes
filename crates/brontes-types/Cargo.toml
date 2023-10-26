@@ -6,34 +6,55 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-alloy-dyn-abi.workspace = true
+# reth 
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
+
+# tracing
 tracing.workspace = true
+
+# async
 rayon.workspace = true
-malachite.workspace = true
-serde.workspace = true
-sorella-db-databases.workspace = true
-phf = { version = "0.11.1", default-features = false }
-strum = { version = "0.25.0", features = ["derive"] }
-auto_impl = "1.1.0"
+tokio = { workspace = true, features = ["full"], optional = true }
+
+# numbers
+malachite = { workspace = true, features = ["enable_serde"] }
+
+# serde
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 erased-serde = "0.3.31"
+serde_with.workspace = true
+serde_repr.workspace = true
+
+# database
+sorella-db-databases.workspace = true
+
+# misc
+phf.workspace = true
+strum = { workspace = true, features = ["derive"] }
+auto_impl.workspace = true
+
 
 [build-dependencies]
-strum = { version = "0.25.0", features = ["derive"] }
+strum = { workspace = true, features = ["derive"] }
 tokio.workspace = true
 hyper.workspace = true
 hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-alloy-etherscan.workspace = true
-alloy-json-abi.workspace = true
 ethers-core.workspace = true
 reth-primitives.workspace = true
-phf = { version = "0.11.1", default-features = false }
-phf_codegen = "0.11.1"
+phf.workspace = true
+phf_codegen.workspace = true
 dotenv.workspace = true
 sorella-db-databases.workspace = true
 
+[dev-dependencies]
+dotenv.workspace = true
+tokio.workspace = true
+
 [features]
+default = []
 server = []
+tests = ["tokio/full"]

@@ -19,10 +19,10 @@ use reth_rpc_types::{
 use super::*;
 use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
 
-#[derive(Clone)]
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
-pub(crate) struct TraceParser<T: TracingProvider> {
+#[derive(Clone)]
+pub struct TraceParser<T: TracingProvider> {
     etherscan_client:      Client,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
@@ -90,7 +90,7 @@ impl<T: TracingProvider> TraceParser<T> {
         (trace, stats)
     }
 
-    /// gets the transaction $receipts for a block   
+    /// gets the transaction $receipts for a block
     pub(crate) async fn get_receipts(
         &self,
         block_num: u64,
@@ -183,7 +183,9 @@ impl<T: TracingProvider> TraceParser<T> {
         };
 
         let len = tx_trace.len();
-        let linked_trace = link_vm_to_trace(vm, tx_trace, logs);
+
+        let mut linked_trace = link_vm_to_trace(vm, tx_trace, logs);
+        linked_trace.sort_by_key(|item| item.trace_idx);
 
         for (idx, trace) in linked_trace.into_iter().enumerate() {
             let abi_trace = self
@@ -192,9 +194,8 @@ impl<T: TracingProvider> TraceParser<T> {
             let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
             if let Err(e) = abi_trace {
                 stat.err = Some(Into::<TraceParseErrorKind>::into(&e));
-            } else {
-                traces.push(trace);
             }
+            traces.push(trace);
             stat.trace(len);
             stats.traces.push(stat);
         }

@@ -1,5 +1,4 @@
 use brontes_types::structured_trace::TransactionTraceWithLogs;
-use reth_primitives::Address;
 use reth_rpc_types::{
     trace::parity::{TransactionTrace, VmInstruction, VmTrace},
     Log,
@@ -11,7 +10,16 @@ pub fn link_vm_to_trace(
     mut logs: Vec<Log>,
 ) -> Vec<TransactionTraceWithLogs> {
     let mut res = Vec::new();
-    recursive_parsing(&mut res, vm, &mut tx_trace, &mut logs);
+    recursive_parsing(
+        &mut res,
+        vm,
+        &mut tx_trace
+            .into_iter()
+            .enumerate()
+            .map(|ti| ti)
+            .collect::<Vec<_>>(),
+        &mut logs,
+    );
 
     res
 }
@@ -24,9 +32,14 @@ pub fn link_vm_to_trace(
 /// }, Log4 { offset: Bytes, size: Bytes, topic1: H256, topic2: H256, topic3:
 /// H256, topic4: H256 },
 fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log> {
-    // NOTE: this might be Log0 instead but we go with this code
     match instruction.op.take()?.as_str() {
-        "A0" | "A1" | "A2" | "A3" | "A4" => Some(logs.remove(0)),
+        "LOG0" | "LOG1" | "LOG2" | "LOG3" | "LOG4" => {
+            if logs.len() == 0 {
+                return None
+            } else {
+                Some(logs.remove(0))
+            }
+        }
         _ => None,
     }
 }
@@ -34,10 +47,10 @@ fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log>
 fn recursive_parsing(
     current_traces: &mut Vec<TransactionTraceWithLogs>,
     vm: VmTrace,
-    tx_trace: &mut Vec<TransactionTrace>,
+    tx_trace: &mut Vec<(usize, TransactionTrace)>,
     logs: &mut Vec<Log>,
 ) {
-    let scoped_trace = tx_trace.remove(0);
+    let (idx, scoped_trace) = tx_trace.remove(0);
 
     let logs = vm
         .ops
@@ -52,5 +65,9 @@ fn recursive_parsing(
         })
         .collect::<Vec<Log>>();
 
-    current_traces.push(TransactionTraceWithLogs { trace: scoped_trace, logs })
+    current_traces.push(TransactionTraceWithLogs {
+        trace: scoped_trace,
+        logs,
+        trace_idx: idx as u64,
+    })
 }
