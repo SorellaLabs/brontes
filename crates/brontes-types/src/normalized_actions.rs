@@ -47,6 +47,13 @@ impl Serialize for Actions {
 }
 
 impl Actions {
+    pub fn force_swap(self) -> NormalizedSwap {
+        match self {
+            Actions::Swap(s) => s,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn get_logs(&self) -> Vec<Log> {
         match self {
             Self::Unclassified(_, log) => log.clone(),

@@ -1,0 +1,39 @@
+[package]
+name = "tests"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# brontes
+brontes-core = { workspace = true, features = ["tests"] }
+# brontes-inspect = { workspace = true, features = ["tests"] }
+brontes-types = { workspace = true, features = ["tests"] }
+brontes-classifier = { workspace = true, features = ["tests"] }
+brontes-metrics.workspace = true
+brontes-database = { workspace = true, features = ["tests"] }
+# brontes-macros = { workspace = true, features = ["tests"] }
+
+# sorella db
+sorella-db-databases.workspace = true
+
+# reth
+reth-rpc-types.workspace = true
+reth-rpc.workspace = true
+reth-primitives.workspace = true
+
+# tracing
+reth-tracing.workspace = true
+
+# async
+tokio.workspace = true
+futures.workspace = true
+
+# serde
+serde.workspace = true
+serde_json.workspace = true
+
+# misc
+dotenv.workspace = true
+serial_test = "2.0.0"

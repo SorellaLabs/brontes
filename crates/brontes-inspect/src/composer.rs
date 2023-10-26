@@ -14,7 +14,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::TimeTree,
 };
-use futures::{FutureExt, Stream};
+use futures::FutureExt;
 use lazy_static::lazy_static;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::Address;
@@ -209,13 +209,13 @@ impl<'a, const N: usize> Composer<'a, N> {
             .0,
             proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
             proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
-            proposer_submission_mev_reward_usd: f64::rounding_from(
+            proposer_submission_profit_usd: f64::rounding_from(
                 Rational::from(pre_processing.meta_data.proposer_mev_reward)
                     * &pre_processing.meta_data.eth_prices.0,
                 RoundingMode::Nearest,
             )
             .0,
-            proposer_finalized_mev_reward_usd: f64::rounding_from(
+            proposer_finalized_profit_usd: f64::rounding_from(
                 Rational::from(pre_processing.meta_data.proposer_mev_reward)
                     * &pre_processing.meta_data.eth_prices.1,
                 RoundingMode::Nearest,

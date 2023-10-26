@@ -10,7 +10,7 @@ use crate::{
     enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
     UniswapV3::{
         burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
-        swapReturn, UniswapV3Calls, UniswapV3Events,
+        swapReturn, UniswapV3Calls,
     },
     ADDRESS_TO_TOKENS_2_POOL,
 };
