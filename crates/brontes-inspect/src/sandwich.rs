@@ -10,7 +10,7 @@ use brontes_types::{
     tree::{GasDetails, Node, TimeTree},
     ToFloatNearest,
 };
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
+use itertools::Itertools;
 use reth_primitives::{Address, H256};
 use tracing::error;
 
@@ -155,16 +155,131 @@ impl SandwichInspector {
         let (gas_used_usd_appearance, gas_used_usd_finalized) =
             metadata.get_gas_price_usd(gas_used);
 
+        let frontrun_swaps = searcher_actions
+            .remove(0)
+            .into_iter()
+            .map(|s| s.force_swap())
+            .collect_vec();
+        let backrun_swaps = searcher_actions
+            .remove(searcher_actions.len() - 1)
+            .into_iter()
+            .map(|s| s.force_swap())
+            .collect_vec();
+
         let sandwich = Sandwich {
-            front_run:             txes[0],
-            front_run_gas_details: searcher_gas_details[0],
-            front_run_swaps:       searcher_actions.remove(0),
-            victim:                victim_txes,
-            victim_gas_details:    victim_gas,
-            victim_swaps:          victim_actions,
-            back_run:              txes[1],
-            back_run_gas_details:  searcher_gas_details[1],
-            back_run_swaps:        searcher_actions.remove(0),
+            frontrun_tx_hash:          txes[0],
+            frontrun_gas_details:      searcher_gas_details[0],
+            frontrun_swaps_index:      frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            frontrun_swaps_from:       frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            frontrun_swaps_pool:       frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            frontrun_swaps_token_in:   frontrun_swaps
+                .iter()
+                .map(|s| s.token_in)
+                .collect::<Vec<_>>(),
+            frontrun_swaps_token_out:  frontrun_swaps
+                .iter()
+                .map(|s| s.token_out)
+                .collect::<Vec<_>>(),
+            frontrun_swaps_amount_in:  frontrun_swaps
+                .iter()
+                .map(|s| s.amount_in.to())
+                .collect::<Vec<_>>(),
+            frontrun_swaps_amount_out: frontrun_swaps
+                .iter()
+                .map(|s| s.amount_out.to())
+                .collect::<Vec<_>>(),
+
+            victim_tx_hashes:        victim_txes.clone(),
+            victim_swaps_tx_hash:    victim_txes
+                .iter()
+                .enumerate()
+                .flat_map(|(idx, tx)| vec![*tx].repeat(searcher_actions[idx].len()))
+                .collect_vec(),
+            victim_swaps_index:      searcher_actions
+                .iter()
+                .flat_map(|swap| {
+                    swap.into_iter()
+                        .map(|s| s.clone().force_swap().index)
+                        .collect_vec()
+                })
+                .collect(),
+            victim_swaps_from:       searcher_actions
+                .iter()
+                .flat_map(|swap| {
+                    swap.into_iter()
+                        .map(|s| s.clone().force_swap().from)
+                        .collect_vec()
+                })
+                .collect(),
+            victim_swaps_pool:       searcher_actions
+                .iter()
+                .flat_map(|swap| {
+                    swap.into_iter()
+                        .map(|s| s.clone().force_swap().pool)
+                        .collect_vec()
+                })
+                .collect(),
+            victim_swaps_token_in:   searcher_actions
+                .iter()
+                .flat_map(|swap| {
+                    swap.into_iter()
+                        .map(|s| s.clone().force_swap().token_in)
+                        .collect_vec()
+                })
+                .collect(),
+            victim_swaps_token_out:  searcher_actions
+                .iter()
+                .flat_map(|swap| {
+                    swap.into_iter()
+                        .map(|s| s.clone().force_swap().token_out)
+                        .collect_vec()
+                })
+                .collect(),
+            victim_swaps_amount_in:  searcher_actions
+                .iter()
+                .flat_map(|swap| {
+                    swap.into_iter()
+                        .map(|s| s.clone().force_swap().amount_in.to())
+                        .collect_vec()
+                })
+                .collect(),
+            victim_swaps_amount_out: searcher_actions
+                .iter()
+                .flat_map(|swap| {
+                    swap.into_iter()
+                        .map(|s| s.clone().force_swap().amount_out.to())
+                        .collect_vec()
+                })
+                .collect(),
+
+            victim_gas_details_coinbase_transfer: victim_gas
+                .iter()
+                .map(|g| g.coinbase_transfer)
+                .collect(),
+            victim_gas_details_priority_fee: victim_gas.iter().map(|g| g.priority_fee).collect(),
+            victim_gas_details_gas_used: victim_gas.iter().map(|g| g.gas_used).collect(),
+            victim_gas_details_effective_gas_price: victim_gas
+                .iter()
+                .map(|g| g.effective_gas_price)
+                .collect(),
+            backrun_tx_hash: txes[1],
+            backrun_gas_details: searcher_gas_details[1],
+            backrun_swaps_index: backrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            backrun_swaps_from: backrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            backrun_swaps_pool: backrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            backrun_swaps_token_in: backrun_swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
+            backrun_swaps_token_out: backrun_swaps
+                .iter()
+                .map(|s| s.token_out)
+                .collect::<Vec<_>>(),
+            backrun_swaps_amount_in: backrun_swaps
+                .iter()
+                .map(|s| s.amount_in.to())
+                .collect::<Vec<_>>(),
+            backrun_swaps_amount_out: backrun_swaps
+                .iter()
+                .map(|s| s.amount_out.to())
+                .collect::<Vec<_>>(),
         };
 
         let classified_mev = ClassifiedMev {

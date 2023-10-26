@@ -10,12 +10,11 @@ edition = "2021"
 # poirot
 
 # async
-tokio = { version = "1.28.2", features = ["full", "tracing"] }
-futures = "0.3.28"
+tokio = { workspace = true, features = ["full", "tracing"] }
+futures.workspace = true
 
 # tracing
 tracing.workspace = true
-reth-tracing.workspace = true
 reth-metrics.workspace = true
 reth-primitives.workspace = true
 colored.workspace = true
@@ -24,10 +23,13 @@ colored.workspace = true
 metrics-exporter-prometheus.workspace = true
 metrics-util.workspace = true
 metrics-process.workspace = true
-metrics = "0.21.1"
+metrics.workspace = true
 
 # errors
 eyre.workspace = true
 
 # http/rpc
 hyper.workspace = true
+
+[features]
+tests = []

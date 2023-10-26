@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use brontes_database::Metadata;
 use brontes_types::{
@@ -12,13 +12,9 @@ use hex_literal::hex;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
-use reth_rpc_types::{
-    trace::parity::{Action, TransactionTrace},
-    Log,
-};
-use tracing::info;
+use reth_rpc_types::{trace::parity::Action, Log};
 
-use crate::{IntoAction, StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
+use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -48,7 +44,8 @@ impl Classifier {
                     return None
                 }
 
-                let address = trace.trace[0].get_from_addr();
+                let root_trace = trace.trace[0].clone();
+                let address = root_trace.get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
                 let node = Node {
@@ -58,6 +55,7 @@ impl Classifier {
                     subactions: vec![],
                     address,
                     data: classification,
+                    trace_address: root_trace.trace.trace_address,
                 };
 
                 let mut root = Root {
@@ -77,18 +75,19 @@ impl Classifier {
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
-                    let address = trace.get_from_addr();
-                    let classification = self.classify_node(trace, (index + 1) as u64);
+                    let from_addr = trace.get_from_addr();
+                    let classification = self.classify_node(trace.clone(), (index + 1) as u64);
                     let node = Node {
-                        index: (index + 1) as u64,
-                        inner: vec![],
-                        finalized: !classification.is_unclassified(),
-                        subactions: vec![],
-                        address,
-                        data: classification,
+                        index:         (index + 1) as u64,
+                        inner:         vec![],
+                        finalized:     !classification.is_unclassified(),
+                        subactions:    vec![],
+                        address:       from_addr,
+                        data:          classification,
+                        trace_address: trace.trace.trace_address,
                     };
 
-                    root.insert(node.address, node);
+                    root.insert(node);
                 }
 
                 Some(root)
@@ -152,11 +151,11 @@ impl Classifier {
         tree
     }
 
-    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<U256> {
+    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u64> {
         match action {
             Action::Call(action) => {
                 if action.to == builder {
-                    return Some(action.value)
+                    return Some(action.value.to())
                 }
                 None
             }
@@ -320,10 +319,10 @@ impl Classifier {
     }
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
-        if log.topics.get(0).eq(&Some(&TRANSFER_TOPIC)) {
-            let from = Address::from_slice(&log.data[11..31]);
-            let to = Address::from_slice(&log.data[41..63]);
-            let data = U256::try_from_be_slice(&log.data[64..]).unwrap();
+        if log.topics.get(0) == Some(&TRANSFER_TOPIC.into()) {
+            let from = Address::from_slice(&log.topics[1][..20]);
+            let to = Address::from_slice(&log.topics[2][..20]);
+            let data = U256::try_from_be_slice(&log.data[..]).unwrap();
             return Some((log.address, from, to, data))
         }
 
@@ -524,9 +523,9 @@ impl Classifier {
                     // this is already classified
                     return false
                 }
-                if known_dyn_protocols_read.contains_key(&address) {
-                    return true
-                } else if self.is_possible_exchange(sub_actions) {
+                if known_dyn_protocols_read.contains_key(&address)
+                    || self.is_possible_exchange(sub_actions)
+                {
                     return true
                 }
 

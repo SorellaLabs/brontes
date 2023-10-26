@@ -10,20 +10,30 @@ use std::{
 
 use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
+#[cfg(feature = "server")]
 use ethers_core::types::Chain;
+#[cfg(feature = "server")]
 use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use reth_primitives::{Address, BlockId, BlockNumberOrTag, H160};
-use reth_rpc_types::trace::parity::{TraceResultsWithTransactionHash, TraceType};
+#[cfg(feature = "server")]
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reth_primitives::{Address, H160};
+#[cfg(feature = "server")]
+use reth_primitives::{BlockId, BlockNumberOrTag};
+use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
+#[cfg(feature = "server")]
+use reth_rpc_types::trace::parity::TraceType;
+#[cfg(feature = "server")]
 use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const TOKEN_MAPPING: &str = "token_mappings.rs";
-const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x), tokens) AS \
+const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x), tokens) AS 
                              tokens FROM pools WHERE length(tokens) = ";
 
+const FAILED_ABI_FILE: &str = "../../failed_abis.txt";
 const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
@@ -45,16 +55,17 @@ HAVING abi IS NOT NULL AND hasAny(addresses, ?) OR classifier_name != ''
 "#;
 
 const LOCAL_QUERY: &str = r#"
-SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
+SELECT arrayMap(x -> toString(x), groupArray(distinct(a.address))) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
+LIMIT 1
 "#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 struct ProtocolDetails {
-    pub addresses:       Vec<String>,
+    pub addresses:       HashSet<String>,
     pub abi:             Option<String>,
     pub classifier_name: Option<String>,
 }
@@ -66,7 +77,7 @@ pub struct DecodedTokens {
 }
 
 fn main() {
-    // dotenv::dotenv().ok();
+    dotenv::dotenv().ok();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -80,10 +91,8 @@ async fn build_address_to_token_map() {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(TOKEN_MAPPING);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
-    #[cfg(feature = "server")]
     {
         let client = build_db();
-        optimize_db(&client).await;
         for i in 2..4 {
             let res =
                 query_db::<DecodedTokens>(&client, &(TOKEN_QUERIES.to_string() + &i.to_string()))
@@ -92,25 +101,8 @@ async fn build_address_to_token_map() {
             build_token_map(i, res, &mut file)
         }
     }
-
-    #[cfg(not(feature = "server"))]
-    {
-        for i in 2..4 {
-            let phf_map: phf_codegen::Map<[u8; 20]> = phf_codegen::Map::new();
-
-            writeln!(
-                &mut file,
-                "pub static ADDRESS_TO_TOKENS_{}_POOL: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
-                i,
-                i,
-                phf_map.build()
-            )
-            .unwrap();
-        }
-    }
 }
 
-#[cfg(feature = "server")]
 fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<File>) {
     let mut phf_map = phf_codegen::Map::new();
 
@@ -133,7 +125,6 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 
 async fn run_classifier_mapping() {
     let clickhouse_client = build_db();
-    optimize_db(&clickhouse_client).await;
 
     #[cfg(feature = "test_run")]
     let addresses = {
@@ -167,9 +158,13 @@ async fn run_classifier_mapping() {
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, LOCAL_QUERY).await;
 
+    let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
+
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
-        .filter(|contract: &ProtocolDetails| contract.abi.is_some())
+        .filter(|contract: &ProtocolDetails| {
+            contract.abi.is_some() && !failed_abi_addresses.is_subset(&contract.addresses)
+        })
         .map(|contract: ProtocolDetails| {
             (
                 JsonAbi::from_json_str(contract.abi.as_ref().unwrap())
@@ -491,6 +486,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
 
 /// builds the clickhouse database client
 fn build_db() -> Client {
+    dotenv::dotenv().ok();
     // clickhouse path
     let clickhouse_path = format!(
         "{}:{}",
@@ -540,20 +536,14 @@ fn write_file(file_path: &str, create: bool) -> File {
         .expect("could not open file")
 }
 
-async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
-    db.query(query).fetch_all::<T>().await.unwrap()
+fn parse_filtered_addresses(file: &str) -> HashSet<String> {
+    std::fs::read_to_string(file)
+        .map(|data| data.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_default()
 }
 
-async fn optimize_db(db: &Client) {
-    db.query("OPTIMIZE TABLE ethereum.contracts FINAL DEDUPLICATE")
-        .execute()
-        .await
-        .unwrap();
-
-    db.query("OPTIMIZE TABLE ethereum.addresses FINAL DEDUPLICATE")
-        .execute()
-        .await
-        .unwrap();
+async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
+    db.query(query).fetch_all::<T>().await.unwrap()
 }
 
 fn to_string_vec(tokens: Vec<String>) -> String {

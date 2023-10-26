@@ -1,13 +1,18 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Index,
+};
 
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::normalized_actions::NormalizedAction;
 
+#[derive(Serialize)]
 pub struct TimeTree<V: NormalizedAction> {
     pub roots:            Vec<Root<V>>,
     pub header:           Header,
@@ -47,11 +52,11 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.roots.iter_mut().for_each(|root| root.finalize());
     }
 
-    pub fn insert_node(&mut self, from: Address, node: Node<V>) {
+    pub fn insert_node(&mut self, node: Node<V>) {
         self.roots
             .last_mut()
             .expect("no root_nodes inserted")
-            .insert(from, node);
+            .insert(node);
     }
 
     pub fn get_hashes(&self) -> Vec<H256> {
@@ -105,6 +110,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 }
 
+#[derive(Serialize)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node<V>,
     pub tx_hash:     H256,
@@ -113,8 +119,8 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
-    pub fn insert(&mut self, from: Address, node: Node<V>) {
-        self.head.insert(from, node)
+    pub fn insert(&mut self, node: Node<V>) {
+        self.head.insert(node)
     }
 
     pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
@@ -158,9 +164,9 @@ impl<V: NormalizedAction> Root<V> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Row)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
 pub struct GasDetails {
-    pub coinbase_transfer:   Option<U256>,
+    pub coinbase_transfer:   Option<u64>,
     pub priority_fee:        u64,
     pub gas_used:            u64,
     pub effective_gas_price: u64,
@@ -171,7 +177,7 @@ impl GasDetails {
         let mut gas = self.gas_used * self.effective_gas_price;
 
         if let Some(coinbase) = self.coinbase_transfer {
-            gas += coinbase.to::<u64>();
+            gas += coinbase as u64
         }
 
         gas
@@ -182,15 +188,17 @@ impl GasDetails {
     }
 }
 
+#[derive(Serialize)]
 pub struct Node<V: NormalizedAction> {
     pub inner:     Vec<Node<V>>,
     pub finalized: bool,
     pub index:     u64,
 
     /// This only has values when the node is frozen
-    pub subactions: Vec<V>,
-    pub address:    Address,
-    pub data:       V,
+    pub subactions:    Vec<V>,
+    pub trace_address: Vec<usize>,
+    pub address:       Address,
+    pub data:          V,
 }
 
 impl<V: NormalizedAction> Node<V> {
@@ -206,19 +214,21 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     /// The address here is the from address for the trace
-    pub fn insert(&mut self, address: Address, n: Node<V>) {
+    pub fn insert(&mut self, n: Node<V>) {
         if self.finalized {
             return
         }
 
-        let mut cur_stack = self.current_call_stack();
-        cur_stack.pop();
-        if !cur_stack.contains(&address) {
+        let trace_addr = n.trace_address.clone();
+        self.get_all_inner_nodes(n, trace_addr);
+    }
+
+    pub fn get_all_inner_nodes(&mut self, n: Node<V>, mut trace_addr: Vec<usize>) {
+        if trace_addr.len() == 1 {
             self.inner.push(n);
-            return
         } else {
-            let last = self.inner.last_mut().expect("building tree went wrong");
-            last.insert(address, n);
+            let inner = self.inner.get_mut(trace_addr.remove(0)).unwrap();
+            inner.get_all_inner_nodes(n, trace_addr)
         }
     }
 

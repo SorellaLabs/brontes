@@ -2,16 +2,13 @@ use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
 use alloy_etherscan::Client;
 use brontes_types::structured_trace::TxTrace;
-use ethers::{
-    prelude::{Http, JsonRpcClient, Middleware, Provider, ProviderError},
-    providers::JsonRpcError,
-};
+use ethers::prelude::{Http, Middleware, Provider};
 use ethers_core::types::Chain;
 use ethers_reth::type_conversions::{ToEthers, ToReth};
 use futures::Future;
-use reth_interfaces::{RethError, RethResult};
+use reth_interfaces::RethError;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
-use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider, ReceiptProvider};
+use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::trace::parity::TraceType;
 use reth_tracing::TracingClient;
@@ -23,9 +20,9 @@ use crate::{
     init_trace,
 };
 
-mod parser;
+pub mod parser;
 mod utils;
-mod vm_linker;
+pub mod vm_linker;
 use brontes_metrics::{trace::types::TraceMetricEvent, PoirotMetricEvents};
 #[allow(dead_code)]
 pub(crate) const UNKNOWN: &str = "unknown";
@@ -34,8 +31,8 @@ pub(crate) const RECEIVE: &str = "receive";
 #[allow(dead_code)]
 pub(crate) const FALLBACK: &str = "fallback";
 
-const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
-const CACHE_DIRECTORY: &str = "./abi_cache";
+pub(crate) const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
+pub(crate) const CACHE_DIRECTORY: &str = "./abi_cache";
 
 use reth_rpc::eth::error::EthApiError;
 use reth_rpc_types::{trace::parity::TraceResultsWithTransactionHash, TransactionReceipt};

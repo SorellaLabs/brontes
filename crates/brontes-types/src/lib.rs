@@ -10,6 +10,9 @@ pub mod normalized_actions;
 pub mod structured_trace;
 pub mod tree;
 
+#[cfg(feature = "tests")]
+pub mod test_utils;
+
 include!(concat!(env!("OUT_DIR"), "/token_mapping.rs"));
 
 pub trait ToScaledRational {
