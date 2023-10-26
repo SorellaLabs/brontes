@@ -1,9 +1,8 @@
-use sorella_db_databases::{ClickhouseClient, *};
-
 use brontes_types::classified_mev::{
     AtomicBackrun, CexDex, ClassifiedMev, JitLiquidity, JitLiquiditySandwich, Liquidation,
     MevBlock, Sandwich,
 };
+use sorella_db_databases::{ClickhouseClient, *};
 
 fn spawn_db() -> ClickhouseClient {
     dotenv::dotenv().ok();
