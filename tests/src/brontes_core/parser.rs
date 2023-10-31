@@ -59,7 +59,7 @@ async fn test_execute_block() {
     for (trace, test_trace) in txs.into_iter().zip(traces) {
         assert_eq!(trace.tx_hash, test_trace.tx_hash);
         for inner_trace in test_trace.trace {
-            assert!(trace.trace.contains(&inner_trace));
+            assert!(trace.trace.contains(&inner_trace.into()));
         }
     }
 }
