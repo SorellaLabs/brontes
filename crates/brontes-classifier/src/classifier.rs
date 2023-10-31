@@ -23,7 +23,7 @@ const TRANSFER_TOPIC: H256 =
 #[derive(Debug)]
 // read write lock
 pub struct Classifier {
-    known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
+    pub known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
 }
 
 impl Classifier {
@@ -331,7 +331,7 @@ impl Classifier {
 
     /// checks to see if we have a direct to <> from mapping for underlying
     /// transfers
-    fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
+    pub(crate) fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
         let mut to_address = HashSet::new();
         let mut from_address = HashSet::new();
 
@@ -352,7 +352,7 @@ impl Classifier {
     }
 
     /// tries to classify new exchanges
-    fn try_clasify_exchange(
+    pub(crate) fn try_clasify_exchange(
         &self,
         node: &mut Node<Actions>,
     ) -> Option<(Address, (Address, Address), Actions)> {
