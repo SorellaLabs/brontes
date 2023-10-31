@@ -60,7 +60,7 @@ FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
-LIMIT 1
+LIMIT 1000
 "#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
@@ -78,6 +78,7 @@ pub struct DecodedTokens {
 
 fn main() {
     dotenv::dotenv().ok();
+    let k = env::var("OUT_DIR").unwrap();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -165,8 +166,7 @@ async fn run_classifier_mapping() {
         .filter(|contract: &ProtocolDetails| {
             let addrs = contract.addresses.clone().into_iter().collect();
 
-            contract.abi.is_some()
-                && !failed_abi_addresses.is_subset(&addrs)
+            contract.abi.is_some() && !failed_abi_addresses.is_subset(&addrs)
         })
         .map(|contract: ProtocolDetails| {
             (
