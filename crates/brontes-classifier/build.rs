@@ -78,7 +78,7 @@ pub struct DecodedTokens {
 
 fn main() {
     dotenv::dotenv().ok();
-    //let k = env::var("ABI_BUILD_DIR").unwrap();
+    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
