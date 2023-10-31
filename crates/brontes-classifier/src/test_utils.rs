@@ -167,10 +167,17 @@ fn get_coinbase_transfer(builder: Address, action: &Action) -> Option<u64> {
 }
 
 pub fn helper_prove_dyn_action(
-    classifier: Classifier,
+    classifier: &Classifier,
     node: &mut Node<Actions>,
     token_0: Address,
     token_1: Address,
 ) -> Option<Actions> {
     classifier.prove_dyn_action(node, token_0, token_1)
+}
+
+pub fn helper_try_classify_unknown_exchanges(
+    classifier: &Classifier,
+    tree: &mut TimeTree<Actions>,
+) {
+    classifier.try_classify_unknown_exchanges(tree)
 }

@@ -1,13 +1,9 @@
 use std::{collections::HashMap, str::FromStr};
 
-use brontes_classifier::{
-    test_utils::{
-        build_raw_test_tree, get_traces_with_meta, helper_decode_transfer, helper_prove_dyn_action,
-    },
-    Classifier,
-};
+use brontes_classifier::{test_utils::*, Classifier};
 use brontes_core::test_utils::init_trace_parser;
 use brontes_database::database::Database;
+use brontes_types::{test_utils::print_tree_as_json, tree::TimeTree};
 use reth_primitives::{H160, H256};
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -49,8 +45,10 @@ async fn test_try_classify_unknown_exchanges() {
 
     let token_mapping = token_mapping();
 
-    let mut tree = build_raw_test_tree(&tracer, db, UNIT_TESTS_BLOCK_NUMBER).await;
-    let root = &mut tree
+    let tree = build_raw_test_tree(&tracer, db, UNIT_TESTS_BLOCK_NUMBER).await;
+    print_tree_as_json(&tree);
+
+    let root = tree
         .roots
         .into_iter()
         .filter(|r| {
@@ -60,39 +58,20 @@ async fn test_try_classify_unknown_exchanges() {
                 )
                 .unwrap()
         })
-        .collect::<Vec<_>>()[0];
-    let node = &root.head;
-    println!("Address: {:?}\n", &root.tx_hash);
-
-    let (token_0, token_1) = token_mapping
-        .get(&H160::from_str("0xF7d31825946e7fD99eF07212d34B9Dad84C396b7").unwrap())
-        .unwrap();
-
-    let addr = node.address;
-    let subactions = node.get_all_sub_actions();
-    let logs = subactions
-        .iter()
-        .flat_map(|i| i.get_logs())
         .collect::<Vec<_>>();
 
-    println!("{:?}\n", &logs);
+    let mut test_tree = TimeTree {
+        roots:            root,
+        header:           tree.header,
+        eth_prices:       tree.eth_prices,
+        avg_priority_fee: tree.avg_priority_fee,
+    };
 
-    let mut transfer_data = Vec::new();
+    print_tree_as_json(&test_tree);
+    println!("\n\n\n\n");
 
-    // index all transfers. due to tree this should only be two transactions
-    for log in logs {
-        if let Some((token, from, to, value)) = helper_decode_transfer(&log) {
-            // if tokens don't overlap and to & from don't overlap
-            if (token_0 != &token && token_1 != &token) || (from != addr && to != addr) {
-                continue
-            }
+    helper_try_classify_unknown_exchanges(&classifier, &mut test_tree);
 
-            transfer_data.push((token, from, to, value));
-        }
-    }
-
-    println!("{:?}", &transfer_data);
-
-    //let res = helper_prove_dyn_action(classifier, node, *token_0, *token_1);
-    //println!("{:?}", res);
+    print_tree_as_json(&test_tree);
+    println!("\n\n\n\n");
 }
