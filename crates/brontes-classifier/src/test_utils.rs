@@ -181,3 +181,41 @@ pub fn helper_try_classify_unknown_exchanges(
 ) {
     classifier.try_classify_unknown_exchanges(tree)
 }
+
+pub fn helper_try_classify_unknown_exchanges2(classifier: &Classifier, tree: TimeTree<Actions>) {
+    let known_dyn_protocols_read = classifier.known_dyn_protocols.read();
+
+    let mut root = &mut tree.roots.first().unwrap();
+    root.dyn_classify(
+        &|address, sub_actions| {
+            // we can dyn classify this shit
+            if PROTOCOL_ADDRESS_MAPPING.contains_key(&address.0) {
+                // this is already classified
+                return false
+            }
+            if known_dyn_protocols_read.contains_key(&address)
+                || classifier.is_possible_exchange(sub_actions)
+            {
+                return true
+            }
+
+            false
+        },
+        &|node| {
+            if known_dyn_protocols_read.contains_key(&node.address) {
+                let (token_0, token_1) = known_dyn_protocols_read.get(&node.address).unwrap();
+                if let Some(res) = classifier.prove_dyn_action(node, *token_0, *token_1) {
+                    // we have reduced the lower part of the tree. we can delete this now
+                    node.inner.clear();
+                    node.data = res;
+                }
+            } else if let Some((ex_addr, tokens, action)) = classifier.try_clasify_exchange(node) {
+                node.inner.clear();
+                node.data = action;
+
+                return Some((ex_addr, tokens))
+            }
+            None
+        },
+    );
+}
