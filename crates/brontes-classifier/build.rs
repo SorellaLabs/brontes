@@ -60,7 +60,6 @@ FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
-LIMIT 100
 "#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
