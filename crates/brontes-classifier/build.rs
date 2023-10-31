@@ -1,4 +1,4 @@
-#![feature(result_option_inspect)]
+//#![feature(result_option_inspect)]
 use std::{
     collections::HashSet,
     env,
@@ -64,15 +64,15 @@ HAVING abi IS NOT NULL
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 struct ProtocolDetails {
-    pub addresses:       Vec<String>,
-    pub abi:             Option<String>,
+    pub addresses: Vec<String>,
+    pub abi: Option<String>,
     pub classifier_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct DecodedTokens {
     address: String,
-    tokens:  Vec<String>,
+    tokens: Vec<String>,
 }
 
 fn main() {
@@ -280,7 +280,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
 
     for (protocol_addr, has_functions, _has_events) in addresses {
         if !has_functions {
-            continue
+            continue;
         }
 
         let name = if protocol_addr.classifier_name.is_none() {
@@ -398,7 +398,7 @@ fn bindings_try_row(protocol_name: &str) -> String {
 fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
     for (protocol_addr, has_functions, _) in protos {
         if !has_functions {
-            continue
+            continue;
         }
 
         let name = if protocol_addr.classifier_name.is_none() {
@@ -429,7 +429,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
     let mut phf_map = phf_codegen::Map::new();
     for (map, has_functions, _) in mapping {
         if !has_functions {
-            continue
+            continue;
         }
 
         if map.classifier_name.is_none() {
@@ -448,7 +448,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
 
             for address in map.addresses {
                 if !used_addresses.insert(address.clone()) {
-                    continue
+                    continue;
                 }
 
                 phf_map.entry(
@@ -472,7 +472,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
 
             for address in map.addresses {
                 if !used_addresses.insert(address.clone()) {
-                    continue
+                    continue;
                 }
 
                 phf_map.entry(
