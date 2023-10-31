@@ -15,6 +15,7 @@ use ethers_core::types::Chain;
 #[cfg(feature = "server")]
 use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
+use itertools::Itertools;
 #[cfg(feature = "server")]
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -148,12 +149,22 @@ async fn run_classifier_mapping() {
             query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
         }
         #[cfg(feature = "test_run")]
-        clickhouse_client
-            .query(DATA_QUERY_FILTER)
-            .bind(addresses.clone())
-            .fetch_all()
-            .await
-            .unwrap()
+        {
+            let chunks = addresses.clone().into_iter().chunks(100);
+
+            let mut all_dqf: Vec<ProtocolDetails> = Vec::new();
+            for chunk in &chunks {
+                let r = clickhouse_client
+                    .query(DATA_QUERY_FILTER)
+                    .bind(chunk.collect::<Vec<_>>().clone())
+                    .fetch_all::<ProtocolDetails>()
+                    .await
+                    .unwrap();
+                all_dqf.extend(r);
+            }
+
+            all_dqf
+        }
     };
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, LOCAL_QUERY).await;
