@@ -422,7 +422,7 @@ impl Classifier {
     //     tree.remove_duplicate_data(find, classify, info)
     // }
 
-    fn try_classify_unknown_exchanges(&self, tree: &mut TimeTree<Actions>) {
+    pub(crate) fn try_classify_unknown_exchanges(&self, tree: &mut TimeTree<Actions>) {
         // Acquire the read lock once
         let known_dyn_protocols_read = self.known_dyn_protocols.read();
 
