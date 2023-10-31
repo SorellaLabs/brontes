@@ -182,10 +182,13 @@ pub fn helper_try_classify_unknown_exchanges(
     classifier.try_classify_unknown_exchanges(tree)
 }
 
-pub fn helper_try_classify_unknown_exchanges2(classifier: &Classifier, tree: TimeTree<Actions>) {
+pub fn helper_try_classify_unknown_exchanges2(
+    classifier: &Classifier,
+    tree: &mut TimeTree<Actions>,
+) {
     let known_dyn_protocols_read = classifier.known_dyn_protocols.read();
 
-    let mut root = &mut tree.roots.first().unwrap();
+    let mut root = &mut tree.roots[0];
     root.dyn_classify(
         &|address, sub_actions| {
             // we can dyn classify this shit

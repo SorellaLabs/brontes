@@ -70,7 +70,7 @@ async fn test_try_classify_unknown_exchanges() {
     print_tree_as_json(&test_tree);
     println!("\n\n\n\n");
 
-    helper_try_classify_unknown_exchanges2(&classifier, test_tree);
+    helper_try_classify_unknown_exchanges2(&classifier, &mut test_tree);
 
     let actions = test_tree.inspect_all(|node| !node.data.is_unclassified());
     println!("{:?}", actions);
