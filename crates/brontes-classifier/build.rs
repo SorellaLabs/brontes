@@ -78,8 +78,8 @@ pub struct DecodedTokens {
 
 fn main() {
     dotenv::dotenv().ok();
-    let k = env::var("OUT_DIR").unwrap();
-    let runtime = tokio::runtime::Builder::new_current_thread()
+    //let k = env::var("ABI_BUILD_DIR").unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap();
@@ -89,7 +89,7 @@ fn main() {
 }
 
 async fn build_address_to_token_map() {
-    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(TOKEN_MAPPING);
+    let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(TOKEN_MAPPING);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
     {
@@ -98,6 +98,8 @@ async fn build_address_to_token_map() {
             let res =
                 query_db::<DecodedTokens>(&client, &(TOKEN_QUERIES.to_string() + &i.to_string()))
                     .await;
+
+            println!("{:?}", res);
 
             build_token_map(i, res, &mut file)
         }
@@ -182,7 +184,7 @@ async fn run_classifier_mapping() {
     write_all_abis(&protocol_abis);
 
     generate(
-        Path::new(&env::var("OUT_DIR").unwrap())
+        Path::new(&env::var("ABI_BUILD_DIR").unwrap())
             .join(BINDINGS_PATH)
             .to_str()
             .unwrap(),
@@ -416,7 +418,7 @@ fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
 
 /// creates a mapping of each address to an abi binding
 fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
-    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
+    let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
     let mut used_addresses = HashSet::new();
