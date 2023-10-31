@@ -30,7 +30,7 @@ fn main() {
         .unwrap();
 
     runtime.block_on(async move {
-        let path = Path::new(&env::var("OUT_DIR").unwrap()).join(TOKEN_MAPPING_FILE);
+        let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(TOKEN_MAPPING_FILE);
         let mut file = BufWriter::new(File::create(&path).unwrap());
         build_token_details_map(&mut file).await;
     });
