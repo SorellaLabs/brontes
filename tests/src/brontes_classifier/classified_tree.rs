@@ -50,7 +50,17 @@ async fn test_try_classify_unknown_exchanges() {
     let token_mapping = token_mapping();
 
     let mut tree = build_raw_test_tree(&tracer, db, UNIT_TESTS_BLOCK_NUMBER).await;
-    let root = &mut tree.roots.drain(7..8).collect::<Vec<_>>()[0];
+    let root = &mut tree
+        .roots
+        .into_iter()
+        .filter(|r| {
+            r.tx_hash
+                == H256::from_str(
+                    "0x89828843c77b22dc3da366241e5ed4a4ab6310288ad6572c1fb607d9abbf2654",
+                )
+                .unwrap()
+        })
+        .collect::<Vec<_>>()[0];
     let node = &root.head;
     println!("Address: {:?}\n", &root.tx_hash);
 
