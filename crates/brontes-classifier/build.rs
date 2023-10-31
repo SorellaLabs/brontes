@@ -60,7 +60,7 @@ FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
 GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
-LIMIT 1000
+LIMIT 100
 "#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
@@ -98,8 +98,6 @@ async fn build_address_to_token_map() {
             let res =
                 query_db::<DecodedTokens>(&client, &(TOKEN_QUERIES.to_string() + &i.to_string()))
                     .await;
-
-            println!("{:?}", res);
 
             build_token_map(i, res, &mut file)
         }
@@ -160,15 +158,21 @@ async fn run_classifier_mapping() {
     };
     #[cfg(not(feature = "server"))]
     let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, LOCAL_QUERY).await;
-
+    // write_test(protocol_abis.clone());
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
+
+    // write_test(failed_abi_addresses.clone());
+    // write_test('\n');
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
         .filter(|contract: &ProtocolDetails| {
-            let addrs = contract.addresses.clone().into_iter().collect();
-
-            contract.abi.is_some() && !failed_abi_addresses.is_subset(&addrs)
+            let addrs: HashSet<String> = contract.addresses.clone().into_iter().collect();
+            // write_test(addrs.clone());
+            // write_test(contract.abi.is_some());
+            // write_test(!failed_abi_addresses.is_subset(&addrs));
+            contract.abi.is_some()
+                && (!failed_abi_addresses.is_subset(&addrs) || failed_abi_addresses.is_empty())
         })
         .map(|contract: ProtocolDetails| {
             (
@@ -570,4 +574,16 @@ fn to_string_vec(tokens: Vec<String>) -> String {
     res += "]";
 
     res
+}
+
+fn write_test<T: std::fmt::Debug>(thing: T) {
+    let file_path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join("test_write.txt");
+
+    let mut file = fs::OpenOptions::new()
+        .append(true)
+        .read(true)
+        .open(&file_path)
+        .expect("could not open file");
+
+    file.write_all(format!("{:?}\n", thing).as_bytes()).unwrap(); // Added a newline for formatting
 }
