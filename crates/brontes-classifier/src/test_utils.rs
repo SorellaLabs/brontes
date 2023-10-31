@@ -119,7 +119,7 @@ fn classify_node(trace: TransactionTraceWithLogs, index: u64) -> Actions {
         .collect::<Vec<Log>>();
 
     if rem.len() == 1 {
-        if let Some((addr, from, to, value)) = decode_transfer(&rem[0]) {
+        if let Some((addr, from, to, value)) = helper_decode_transfer(&rem[0]) {
             return Actions::Transfer(NormalizedTransfer {
                 index,
                 to,
@@ -133,7 +133,7 @@ fn classify_node(trace: TransactionTraceWithLogs, index: u64) -> Actions {
     Actions::Unclassified(trace, rem)
 }
 
-fn decode_transfer(log: &Log) -> Option<(Address, Address, Address, U256)> {
+pub fn helper_decode_transfer(log: &Log) -> Option<(Address, Address, Address, U256)> {
     if log.topics.get(0) == Some(&TRANSFER_TOPIC.into()) {
         let from = Address::from_slice(&log.topics[1][..20]);
         let to = Address::from_slice(&log.topics[2][..20]);

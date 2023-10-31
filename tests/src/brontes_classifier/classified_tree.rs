@@ -1,7 +1,9 @@
 use std::{collections::HashMap, str::FromStr};
 
 use brontes_classifier::{
-    test_utils::{build_raw_test_tree, get_traces_with_meta, helper_prove_dyn_action},
+    test_utils::{
+        build_raw_test_tree, get_traces_with_meta, helper_decode_transfer, helper_prove_dyn_action,
+    },
     Classifier,
 };
 use brontes_core::test_utils::init_trace_parser;
@@ -54,6 +56,31 @@ async fn test_try_classify_unknown_exchanges() {
         .get(&H160::from_str("0xF7d31825946e7fD99eF07212d34B9Dad84C396b7").unwrap())
         .unwrap();
 
-    let res = helper_prove_dyn_action(classifier, node, *token_0, *token_1);
-    println!("{:?}", res);
+    let addr = node.address;
+    let subactions = node.get_all_sub_actions();
+    let logs = subactions
+        .iter()
+        .flat_map(|i| i.get_logs())
+        .collect::<Vec<_>>();
+
+    println!("{:?}\n", &logs);
+
+    let mut transfer_data = Vec::new();
+
+    // index all transfers. due to tree this should only be two transactions
+    for log in logs {
+        if let Some((token, from, to, value)) = helper_decode_transfer(&log) {
+            // if tokens don't overlap and to & from don't overlap
+            if (token_0 != &token && token_1 != &token) || (from != addr && to != addr) {
+                continue
+            }
+
+            transfer_data.push((token, from, to, value));
+        }
+    }
+
+    println!("{:?}", &transfer_data);
+
+    //let res = helper_prove_dyn_action(classifier, node, *token_0, *token_1);
+    //println!("{:?}", res);
 }
