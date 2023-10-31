@@ -28,3 +28,5 @@ crates/tracing/src/main.rs
 
 abi_builds/**.rs
 abi_builds/**.txt
+
+t.json
