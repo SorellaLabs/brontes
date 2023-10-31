@@ -16,7 +16,7 @@ use reth_primitives::{Address, Header, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 use reth_tracing::TracingClient;
 
-use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
+use crate::{Classifier, StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -135,9 +135,6 @@ fn classify_node(trace: TransactionTraceWithLogs, index: u64) -> Actions {
 
 fn decode_transfer(log: &Log) -> Option<(Address, Address, Address, U256)> {
     if log.topics.get(0) == Some(&TRANSFER_TOPIC.into()) {
-        //let from = Address::from_slice(&log.data[11..31]); // hmmm
-        //let to = Address::from_slice(&log.data[41..63]); // hmmm
-        //let data = U256::try_from_be_slice(&log.data[64..]).unwrap(); // hmmm
         let from = Address::from_slice(&log.topics[1][..20]);
         let to = Address::from_slice(&log.topics[2][..20]);
         let data = U256::try_from_be_slice(&log.data[..]).unwrap();
@@ -147,7 +144,7 @@ fn decode_transfer(log: &Log) -> Option<(Address, Address, Address, U256)> {
     None
 }
 
-async fn get_traces_with_meta(
+pub async fn get_traces_with_meta(
     tracer: &TraceParser<TracingClient>,
     db: Database,
     block_number: u64,
@@ -167,4 +164,13 @@ fn get_coinbase_transfer(builder: Address, action: &Action) -> Option<u64> {
         }
         _ => None,
     }
+}
+
+pub fn helper_prove_dyn_action(
+    classifier: Classifier,
+    node: &mut Node<Actions>,
+    token_0: Address,
+    token_1: Address,
+) -> Option<Actions> {
+    classifier.prove_dyn_action(node, token_0, token_1)
 }
