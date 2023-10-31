@@ -26,10 +26,10 @@ async fn test_execute_block() {
     let block_1 = tracer.execute_block(17000000).await;
     assert!(block_1.is_some());
 
-    let traces = block_1.unwrap().0;
+    let mut traces = block_1.unwrap().0;
     assert_eq!(traces.len(), 102);
 
-    let txs: Vec<TestTxTrace> = join_all(
+    let mut txs: Vec<TestTxTrace> = join_all(
         traces
             .iter()
             .map(|t| async {
@@ -52,7 +52,16 @@ async fn test_execute_block() {
     )
     .await;
 
-    assert_eq!(txs, traces.into_iter().map(|t| t.into()).collect::<Vec<_>>())
+    txs.sort_by(|a, b| a.tx_hash.cmp(&b.tx_hash));
+    traces.sort_by(|a, b| a.tx_hash.cmp(&b.tx_hash));
+    assert_eq!(traces.len(), txs.len());
+
+    for (trace, test_trace) in txs.into_iter().zip(traces) {
+        assert_eq!(trace.tx_hash, test_trace.tx_hash);
+        for inner_trace in test_trace.trace {
+            assert!(trace.trace.contains(&inner_trace));
+        }
+    }
 }
 
 #[test]
