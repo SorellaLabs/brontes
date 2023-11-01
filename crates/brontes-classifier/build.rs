@@ -165,8 +165,10 @@ async fn run_classifier_mapping() {
 
             all_dqf
                 .into_iter()
+                .map(|x| x)
                 .collect::<HashSet<_>>()
                 .into_iter()
+                .map(|x| x)
                 .collect::<Vec<_>>();
         }
     };
@@ -179,7 +181,7 @@ async fn run_classifier_mapping() {
     // write_test('\n');
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
-        .into_iter()
+        .into_par_iter()
         .filter(|contract: &ProtocolDetails| {
             let addrs: HashSet<String> = contract.addresses.clone().into_iter().collect();
             // write_test(addrs.clone());
