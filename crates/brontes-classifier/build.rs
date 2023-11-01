@@ -151,33 +151,18 @@ async fn run_classifier_mapping() {
     };
 
     #[cfg(feature = "server")]
-    let mut protocol_abis = {
+    let mut protocol_abis: Vec<ProtocolDetails> = {
         #[cfg(not(feature = "test_run"))]
         {
             query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
         }
         #[cfg(feature = "test_run")]
         {
-            let chunks = addresses.clone().into_iter().chunks(100);
-
-            let mut all_dqf: Vec<ProtocolDetails> = Vec::new();
-            for chunk in &chunks {
-                let r = clickhouse_client
-                    .query(DATA_QUERY_FILTER)
-                    .bind(chunk.collect::<Vec<_>>().clone())
-                    .fetch_all::<ProtocolDetails>()
-                    .await
-                    .unwrap();
-                all_dqf.extend(r);
-            }
-
-            all_dqf
-                .into_iter()
-                .map(|x| x)
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .map(|x| x)
-                .collect::<Vec<_>>()
+            clickhouse_client
+                .query(DATA_QUERY_FILTER)
+                .fetch_all::<ProtocolDetails>()
+                .await
+                .unwrap()
         }
     };
     #[cfg(not(feature = "server"))]
