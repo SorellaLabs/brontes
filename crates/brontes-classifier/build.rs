@@ -30,7 +30,7 @@ use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-const TOKEN_MAPPING: &str = "token_mappings.rs";
+const TOKEN_MAPPING: &str = "token_to_addresses.rs";
 const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x), tokens) AS 
                              tokens FROM pools WHERE length(tokens) = ";
 
