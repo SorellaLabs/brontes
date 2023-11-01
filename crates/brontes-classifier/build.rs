@@ -47,12 +47,20 @@ GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
 "#;
 
+/*
 const DATA_QUERY_FILTER: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' 
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
 GROUP BY c.abi, c.classifier_name
-HAVING abi IS NOT NULL AND hasAny(addresses, ?) OR classifier_name != '' 
+HAVING abi IS NOT NULL AND hasAny(addresses, ?) OR classifier_name != ''
+"#;*/
+
+const DATA_QUERY_FILTER: &str = r#"
+SELECT * FROM brontes.protocol_details
+    groupArray(addresses) as addresses, abi, classifier_name
+    FROM brontes.protocol_details
+    GROUP BY abi, classifier_name
 "#;
 
 const LOCAL_QUERY: &str = r#"
