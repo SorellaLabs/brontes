@@ -57,10 +57,10 @@ HAVING abi IS NOT NULL AND hasAny(addresses, ?) OR classifier_name != ''
 "#;*/
 
 const DATA_QUERY_FILTER: &str = r#"
-SELECT * FROM brontes.protocol_details
-    groupArray(addresses) as addresses, abi, classifier_name
-    FROM brontes.protocol_details
-    GROUP BY abi, classifier_name
+SELECT 
+	groupArray(addresses) as addresses, abi, classifier_name
+FROM brontes.protocol_details
+GROUP BY abi, classifier_name
 "#;
 
 const LOCAL_QUERY: &str = r#"
