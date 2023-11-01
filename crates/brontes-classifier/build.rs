@@ -152,7 +152,7 @@ async fn run_classifier_mapping() {
         {
             let chunks = addresses.clone().into_iter().chunks(100);
 
-            let mut all_dqf: Vec<ProtocolDetails> = Vec::new();
+            let mut all_dqf: HashSet<ProtocolDetails> = HashSet::new();
             for chunk in &chunks {
                 let r = clickhouse_client
                     .query(DATA_QUERY_FILTER)
@@ -163,7 +163,7 @@ async fn run_classifier_mapping() {
                 all_dqf.extend(r);
             }
 
-            all_dqf
+            all_dqf.into_iter().collect::<Vec<_>>()
         }
     };
     #[cfg(not(feature = "server"))]
