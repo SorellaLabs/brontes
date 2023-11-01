@@ -63,7 +63,7 @@ GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
 "#;
 
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default, PartialEq, Eq, Hash)]
 struct ProtocolDetails {
     pub addresses: Vec<String>,
     pub abi: Option<String>,
@@ -152,7 +152,7 @@ async fn run_classifier_mapping() {
         {
             let chunks = addresses.clone().into_iter().chunks(100);
 
-            let mut all_dqf: HashSet<ProtocolDetails> = HashSet::new();
+            let mut all_dqf: Vec<ProtocolDetails> = Vec::new();
             for chunk in &chunks {
                 let r = clickhouse_client
                     .query(DATA_QUERY_FILTER)
@@ -163,7 +163,11 @@ async fn run_classifier_mapping() {
                 all_dqf.extend(r);
             }
 
-            all_dqf.into_iter().collect::<Vec<_>>()
+            all_dqf
+                .into_iter()
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>();
         }
     };
     #[cfg(not(feature = "server"))]
