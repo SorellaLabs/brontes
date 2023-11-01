@@ -183,16 +183,14 @@ async fn run_classifier_mapping() {
             contract.abi.is_some()
                 && (!failed_abi_addresses.is_subset(&addrs) || failed_abi_addresses.is_empty())
         })
-        .map(|contract: ProtocolDetails| {
-            (
-                match JsonAbi::from_json_str(contract.abi.as_ref().unwrap()) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        panic!("{:?}, {:#?}", e, contract.addresses);
-                    }
-                },
-                contract,
-            )
+        .filter_map(|contract: ProtocolDetails| {
+            match JsonAbi::from_json_str(contract.abi.as_ref().unwrap()) {
+                Ok(c) => Some((c, contract)),
+                Err(e) => {
+                    println!("{:?}, {:#?}", e, contract.addresses);
+                    None
+                }
+            }
         })
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
