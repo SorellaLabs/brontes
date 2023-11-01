@@ -179,7 +179,7 @@ async fn run_classifier_mapping() {
     // write_test('\n');
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
-        .into_par_iter()
+        .into_iter()
         .filter(|contract: &ProtocolDetails| {
             let addrs: HashSet<String> = contract.addresses.clone().into_iter().collect();
             // write_test(addrs.clone());
