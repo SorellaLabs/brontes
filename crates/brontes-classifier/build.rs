@@ -169,7 +169,7 @@ async fn run_classifier_mapping() {
                 .collect::<HashSet<_>>()
                 .into_iter()
                 .map(|x| x)
-                .collect::<Vec<_>>();
+                .collect::<Vec<_>>()
         }
     };
     #[cfg(not(feature = "server"))]
