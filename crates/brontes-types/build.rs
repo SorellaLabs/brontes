@@ -23,7 +23,7 @@ const TOKEN_QUERIES: &str = "SELECT toString(address), decimals FROM tokens";
 
 fn main() {
     dotenv::dotenv().ok();
-    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
+    //println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
