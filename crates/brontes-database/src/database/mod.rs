@@ -11,7 +11,10 @@ use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use futures::future::join_all;
 use malachite::Rational;
 use reth_primitives::{Address, TxHash};
-use sorella_db_databases::clickhouse::ClickhouseClient;
+use sorella_db_databases::{
+    clickhouse::ClickhouseClient, BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE,
+    JIT_SANDWICH_TABLE, JIT_TABLE, LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
+};
 use tracing::error;
 
 use self::types::{DBTokenPrices, DBTokenPricesDB, RelayInfo};
@@ -66,9 +69,10 @@ impl Database {
         block_details: MevBlock,
         mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
+        println!("{:?}", block_details);
         if let Err(e) = self
             .client
-            .insert_one(block_details, &format!("{INSERT_DATABASE}.mev_blocks)"))
+            .insert_one(block_details, MEV_BLOCKS_TABLE)
             .await
         {
             error!(?e, "failed to insert block details");
@@ -77,15 +81,12 @@ impl Database {
         join_all(mev_details.into_iter().map(|(classified, specific)| async {
             if let Err(e) = self
                 .client
-                .insert_one(classified, &format!("{INSERT_DATABASE}.classified_mev)"))
+                .insert_one(classified, CLASSIFIED_MEV_TABLE)
                 .await
             {
                 error!(?e, "failed to insert classified mev");
             }
-            let table = format!(
-                "{INSERT_DATABASE}.{}",
-                serde_json::to_string(&specific.mev_type()).unwrap()
-            );
+            let table = mev_table_type(&specific);
             if let Err(e) = self.client.insert_one(specific, &table).await {
                 error!(?e, "failed to insert specific mev");
             }
@@ -150,6 +151,19 @@ impl Database {
 
         token_prices
     }
+}
+
+fn mev_table_type(mev: &Box<dyn SpecificMev>) -> String {
+    match mev.mev_type() {
+        brontes_types::classified_mev::MevType::Sandwich => SANDWICH_TABLE,
+        brontes_types::classified_mev::MevType::Backrun => BACKRUN_TABLE,
+        brontes_types::classified_mev::MevType::JitSandwich => JIT_SANDWICH_TABLE,
+        brontes_types::classified_mev::MevType::Jit => JIT_TABLE,
+        brontes_types::classified_mev::MevType::CexDex => CEX_DEX_TABLE,
+        brontes_types::classified_mev::MevType::Liquidation => LIQUIDATIONS_TABLE,
+        brontes_types::classified_mev::MevType::Unknown => "",
+    }
+    .to_string()
 }
 
 #[cfg(test)]
