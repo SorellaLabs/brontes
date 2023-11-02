@@ -113,7 +113,10 @@ impl Database {
             .query_one_params(RELAY_P2P_TIMES, vec![block_num])
             .await
             .unwrap();
-        println!("RELAY info immediate after query: {:?}", val);
+        println!(
+            "RELAY info immediate after query: {:?}\nBlock Number: {}\nQuery: {:?}",
+            val, block_num, RELAY_P2P_TIMES
+        );
         val.into()
     }
 
