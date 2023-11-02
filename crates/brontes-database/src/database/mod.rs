@@ -96,7 +96,7 @@ impl Database {
     async fn get_private_flow(&self, block_num: u64) -> HashSet<TxHash> {
         let private_txs = self
             .client
-            .query_all_params::<String, String>(PRIVATE_FLOW, vec![block_num.to_string()])
+            .query_all_params::<u64, String>(PRIVATE_FLOW, vec![block_num])
             .await
             .unwrap();
 
@@ -110,9 +110,10 @@ impl Database {
         println!("{:?}", block_num);
         let val: RelayInfoDB = self
             .client
-            .query_one_params(RELAY_P2P_TIMES, vec![block_num.to_string()])
+            .query_one_params(RELAY_P2P_TIMES, vec![block_num])
             .await
             .unwrap();
+        println!("{:?}", val);
         val.into()
     }
 
