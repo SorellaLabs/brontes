@@ -9,3 +9,6 @@ INNER JOIN ethereum.blocks AS blocks ON blocks.block_hash = relays.block_hash
 INNER JOIN ethereum.block_observations AS cb
 ON ethereum.relays.block_number = cb.block_number 
 WHERE (relays.block_number = ?) AND blocks.valid = 1
+
+
+
