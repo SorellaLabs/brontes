@@ -65,7 +65,7 @@ pub struct RelayInfo {
 
 impl From<RelayInfoDB> for RelayInfo {
     fn from(value: RelayInfoDB) -> Self {
-        println!("{:?}", value);
+        println!("RELAY info calling into: {:?}", value);
         RelayInfo {
             block_hash: H256::from_str(&value.block_hash).unwrap(),
             relay_time: value.relay_time,
