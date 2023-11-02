@@ -14,9 +14,9 @@ use reth_primitives::{Address, TxHash};
 use sorella_db_databases::clickhouse::ClickhouseClient;
 use tracing::error;
 
-use self::types::{DBTokenPrices, RelayInfo};
+use self::types::{DBTokenPrices, DBTokenPricesDB, RelayInfo};
 use super::Metadata;
-use crate::database::const_sql::*;
+use crate::database::{const_sql::*, types::RelayInfoDB};
 
 #[cfg(not(feature = "test_run"))]
 const INSERT_DATABASE: &'static str = "mev";
@@ -108,10 +108,12 @@ impl Database {
 
     async fn get_relay_info(&self, block_num: u64) -> RelayInfo {
         println!("{:?}", block_num);
-        self.client
+        let val: RelayInfoDB = self
+            .client
             .query_one_params(RELAY_P2P_TIMES, vec![block_num.to_string()])
             .await
-            .unwrap()
+            .unwrap();
+        val.into()
     }
 
     async fn get_cex_prices(
@@ -121,7 +123,7 @@ impl Database {
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
-            .query_all_params::<u64, DBTokenPrices>(
+            .query_all_params::<u64, DBTokenPricesDB>(
                 PRICES,
                 vec![relay_time, relay_time, p2p_time, p2p_time],
             )
@@ -130,7 +132,8 @@ impl Database {
 
         let token_prices = prices
             .into_iter()
-            .map(|row| {
+            .map(|r| {
+                let row: DBTokenPrices = r.into();
                 (
                     row.address,
                     (
