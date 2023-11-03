@@ -37,7 +37,7 @@ async fn test_classified_tree() {
     let classifier = Classifier::new();
 
     let (traces, header, metadata) =
-        get_traces_with_meta(&tracer, db, UNIT_TESTS_BLOCK_NUMBER).await;
+        get_traces_with_meta(&tracer, &db, UNIT_TESTS_BLOCK_NUMBER).await;
 
     let tree = classifier.build_tree(traces, header, &metadata);
 }
@@ -86,6 +86,7 @@ async fn test_try_classify_unknown_exchanges() {
     //println!("\n\n\n\n");
 }
 
+#[tokio::test]
 async fn test_classify_node() {
     dotenv::dotenv().ok();
 
