@@ -79,7 +79,7 @@ GROUP BY abi, classifier_name
 const LOCAL_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name IS NOT NULL
 GROUP BY c.abi, c.classifier_name
 "#;
 
@@ -193,8 +193,8 @@ async fn run_classifier_mapping() {
             .open(file_path)
             .expect("could not open file");
 
-        let str = serde_json::to_string(protocol_abis.clone()).unwrap();
-        file.write_all(str).unwrap();
+        let str = serde_json::to_string(&protocol_abis.clone()).unwrap();
+        file.write_all(str.as_bytes()).unwrap();
     }
 
     // write_test(failed_abi_addresses.clone());
