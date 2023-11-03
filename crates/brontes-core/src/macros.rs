@@ -29,13 +29,13 @@ macro_rules! error_trace {
 macro_rules! success_trace {
     ($tx:expr) => {
         use colored::Colorize;
-        use tracing::info;
+        use tracing::debug;
 
         let tx_hash = format!("{:#x}", $tx);
         let result = format!("Successfully Parsed Trace").bright_green();
         let mut values_str = format!("{}, Tx Hash = {}", result, tx_hash);
 
-        info!("result = {}", values_str);
+        debug!("result = {}", values_str);
     };
 }
 
