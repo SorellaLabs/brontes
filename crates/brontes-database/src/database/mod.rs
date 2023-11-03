@@ -102,7 +102,6 @@ impl Database {
     }
 
     async fn get_relay_info(&self, block_num: u64) -> RelayInfo {
-        println!("{:?}", block_num);
         let val: RelayInfoDB = self
             .client
             .query_one_params(RELAY_P2P_TIMES, vec![block_num])
