@@ -139,10 +139,10 @@ async fn test_classify_node() {
 
     let classified_tree = classifier.build_tree(tx_trace, block.1, &metadata);
 
-    print_tree_as_json(&raw_tree);
+    //print_tree_as_json(&raw_tree);
 
     println!("\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    print_tree_as_json(&classified_tree);
+    //print_tree_as_json(&classified_tree);
 
     //helper_classify_node(&classifier, tx_trace.trace, 0);
 }
