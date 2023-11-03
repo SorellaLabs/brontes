@@ -1,6 +1,6 @@
 use colored::Colorize;
 use reth_primitives::H256;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::PoirotMetricEvents;
 
@@ -24,8 +24,8 @@ impl From<TraceMetricEvent> for PoirotMetricEvents {
 #[derive(Clone, Debug)]
 pub struct BlockStats {
     pub block_num: u64,
-    pub txs:       Vec<TransactionStats>,
-    pub err:       Option<TraceParseErrorKind>,
+    pub txs: Vec<TransactionStats>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl BlockStats {
@@ -45,10 +45,10 @@ impl BlockStats {
 #[derive(Clone, Debug)]
 pub struct TransactionStats {
     pub block_num: u64,
-    pub tx_hash:   H256,
-    pub tx_idx:    u16,
-    pub traces:    Vec<TraceStats>,
-    pub err:       Option<TraceParseErrorKind>,
+    pub tx_hash: H256,
+    pub tx_idx: u16,
+    pub traces: Vec<TraceStats>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl TransactionStats {
@@ -70,10 +70,10 @@ impl TransactionStats {
 #[derive(Clone, Copy, Debug)]
 pub struct TraceStats {
     pub block_num: u64,
-    pub tx_hash:   H256,
-    pub tx_idx:    u16,
+    pub tx_hash: H256,
+    pub tx_idx: u16,
     pub trace_idx: u16,
-    pub err:       Option<TraceParseErrorKind>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl TraceStats {
@@ -95,7 +95,7 @@ impl TraceStats {
                 .bright_blue()
                 .bold()
         );
-        info!(message = message, tx_hash = tx_hash);
+        debug!(message = message, tx_hash = tx_hash);
     }
 }
 
