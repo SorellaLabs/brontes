@@ -2,11 +2,11 @@
 macro_rules! init_trace {
     ($tx:expr, $idx:expr, $total:expr) => {
         use colored::Colorize;
-        use tracing::info;
+        use tracing::debug;
 
         let message =
             format!("Starting Trace {}", format!("{}/{}", $idx + 1, $total).bright_cyan());
-        info!(message = message);
+        debug!(message = message);
     };
 }
 
@@ -52,7 +52,7 @@ macro_rules! init_tx {
                 .bright_blue()
                 .bold()
         );
-        info!(message = message, tx_hash = tx_hash);
+        info!(?message, ?tx_hash);
     };
 }
 
@@ -63,7 +63,10 @@ macro_rules! success_tx {
         use tracing::info;
 
         let tx_hash = format!("{:#x}", $tx);
-        info!("result = \"Successfully Parsed Transaction\", tx_hash = {}\n", tx_hash);
+        let result = format!("Successfully Parsed Transaction")
+            .bright_green()
+            .bold();
+        info!(?result, ?tx_hash);
     };
 }
 
