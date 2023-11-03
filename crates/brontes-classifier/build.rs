@@ -63,14 +63,6 @@ FROM brontes.protocol_details
 GROUP BY abi, classifier_name
 "#;
 
-const LOCAL_QUERY: &str = r#"
-SELECT arrayMap(x -> toString(x), groupArray(distinct(a.address))) as addresses, c.abi, c.classifier_name
-FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
-GROUP BY c.abi, c.classifier_name
-HAVING abi IS NOT NULL
-"#;
-
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default, PartialEq, Eq, Hash)]
 struct ProtocolDetails {
     pub addresses: Vec<String>,
@@ -86,7 +78,7 @@ pub struct DecodedTokens {
 
 fn main() {
     dotenv::dotenv().ok();
-    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
+    //println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -166,7 +158,8 @@ async fn run_classifier_mapping() {
         }
     };
     #[cfg(not(feature = "server"))]
-    let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, LOCAL_QUERY).await;
+    let mut protocol_abis =
+        query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY_FILTER).await;
     // write_test(protocol_abis.clone());
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
 
