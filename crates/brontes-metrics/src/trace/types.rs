@@ -36,7 +36,7 @@ impl BlockStats {
     pub fn trace(&self) {
         let msg = format!(
             "{} -- Block Number: {}",
-            format!("Successfuly Parsed Block").bright_green().bold(),
+            format!("Successfuly Parsed Block").bright_blue().bold(),
             self.block_num
         );
 
