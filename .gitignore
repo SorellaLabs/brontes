@@ -30,3 +30,5 @@ abi_builds/**.rs
 abi_builds/**.txt
 
 stuff
+
+crate/brontes-classifier/abis/*
