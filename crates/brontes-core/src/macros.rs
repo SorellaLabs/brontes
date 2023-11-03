@@ -63,7 +63,7 @@ macro_rules! success_tx {
         use tracing::info;
 
         let tx_hash = format!("{:#x}", $tx);
-        let result = format!("Successfully Parsed Transaction")
+        let result = format!("Successfully Parsed Transaction2")
             .bright_green()
             .bold();
         info!(?result, ?tx_hash);
