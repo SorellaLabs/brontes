@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
 use brontes_database::Metadata;
 use brontes_types::{
@@ -11,7 +14,7 @@ use brontes_types::{
 use hex_literal::hex;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, Header, H256, U256};
+use reth_primitives::{Address, Header, H160, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 
 use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
@@ -166,9 +169,9 @@ impl Classifier {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        if target_address = H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap() {
-            println!("{:?}", &target_address.0);
-            println!("{:?}", &target_address);
+        if target_address == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap() {
+            println!("target address: {:?}", &target_address);
+            println!("target address bytes: {:?}", &target_address.0);
         }
         if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0) {
             if let Some(classifier) = &protocol.0 {
@@ -177,6 +180,27 @@ impl Classifier {
                 let sig = &calldata[0..4];
                 let res: StaticReturnBindings = protocol.1.try_decode(&calldata).unwrap();
 
+                let d = classifier.dispatch(
+                    sig,
+                    index,
+                    res,
+                    return_bytes,
+                    from_address,
+                    target_address,
+                    &trace.logs,
+                );
+                if target_address
+                    == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap()
+                {
+                    println!("dispatch: {:?}", d);
+                }
+
+                if let Some(res) = d {
+                    return res;
+                }
+
+                // same as above but for testing
+                /*
                 if let Some(res) = classifier.dispatch(
                     sig,
                     index,
@@ -187,7 +211,7 @@ impl Classifier {
                     &trace.logs,
                 ) {
                     return res;
-                }
+                }*/
             }
         }
 
