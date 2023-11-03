@@ -35,7 +35,7 @@ pub async fn build_raw_test_tree(
     db: &Database,
     block_number: u64,
 ) -> TimeTree<Actions> {
-    let (traces, header, metadata) = get_traces_with_meta(tracer, db.clone(), block_number).await;
+    let (traces, header, metadata) = get_traces_with_meta(tracer, db, block_number).await;
     let roots = traces
         .into_par_iter()
         .filter_map(|mut trace| {
@@ -155,7 +155,7 @@ pub fn helper_decode_transfer(log: &Log) -> Option<(Address, Address, Address, U
 
 pub async fn get_traces_with_meta(
     tracer: &TraceParser<TracingClient>,
-    db: Database,
+    db: &Database,
     block_number: u64,
 ) -> (Vec<TxTrace>, Header, Metadata) {
     let (traces, header) = tracer.execute_block(block_number).await.unwrap();
