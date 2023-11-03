@@ -69,7 +69,7 @@ impl TransactionStats {
                 .bright_green()
                 .bold()
         );
-        info!(?result, ?tx_hash);
+        info!(result, ?tx_hash);
     }
 }
 
