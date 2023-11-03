@@ -31,4 +31,4 @@ abi_builds/**.txt
 
 stuff
 
-crate/brontes-classifier/abis/*
+crates/brontes-classifier/abis/*
