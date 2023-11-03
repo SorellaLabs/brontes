@@ -39,12 +39,22 @@ const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 
+/*
 const DATA_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
 GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
+"#;
+same as below
+*/
+
+const DATA_QUERY: &str = r#"
+SELECT 
+	groupArray(addresses) as addresses, abi, classifier_name
+FROM brontes.protocol_details
+GROUP BY abi, classifier_name
 "#;
 
 /*
@@ -53,13 +63,16 @@ SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.
 FROM ethereum.addresses AS a
 INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
 GROUP BY c.abi, c.classifier_name
-HAVING abi IS NOT NULL AND hasAny(addresses, ?) OR classifier_name != ''
-"#;*/
+HAVING (abi IS NOT NULL AND hasAny(addresses, ?)) OR classifier_name != ''
+"#;
+same as below
+*/
 
-const DATA_QUERY_FILTER: &str = r#"
+const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
 SELECT 
 	groupArray(addresses) as addresses, abi, classifier_name
 FROM brontes.protocol_details
+WHERE classifier_name IS NOT NULL
 GROUP BY abi, classifier_name
 "#;
 
@@ -78,7 +91,7 @@ pub struct DecodedTokens {
 
 fn main() {
     dotenv::dotenv().ok();
-    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
+    //println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -151,7 +164,7 @@ async fn run_classifier_mapping() {
         #[cfg(feature = "test_run")]
         {
             clickhouse_client
-                .query(DATA_QUERY_FILTER)
+                .query(CLASSIFIED_ONLY_DATA_QUERY)
                 .fetch_all::<ProtocolDetails>()
                 .await
                 .unwrap()
@@ -159,7 +172,7 @@ async fn run_classifier_mapping() {
     };
     #[cfg(not(feature = "server"))]
     let mut protocol_abis =
-        query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY_FILTER).await;
+        query_db::<ProtocolDetails>(&clickhouse_client, CLASSIFIED_ONLY_DATA_QUERY).await;
     // write_test(protocol_abis.clone());
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
 
