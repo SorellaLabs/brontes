@@ -184,7 +184,7 @@ impl Classifier {
                     sig,
                     index,
                     res,
-                    return_bytes,
+                    return_bytes.clone(),
                     from_address,
                     target_address,
                     &trace.logs,
@@ -192,7 +192,23 @@ impl Classifier {
                 if target_address
                     == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap()
                 {
-                    println!("dispatch: {:?}", d);
+                    println!("dispatch: {:?}\n", d);
+                    println!(
+                        "sig: {:?}\n
+                    index: {:?}\n
+                    calldata: {:?}\n
+                    return_bytes: {:?}\n
+                    from_address: {:?}\n
+                    target_address: {:?}\n
+                    trace.logs: {:?}",
+                        sig,
+                        index,
+                        calldata,
+                        return_bytes,
+                        from_address,
+                        target_address,
+                        &trace.logs,
+                    );
                 }
 
                 if let Some(res) = d {
