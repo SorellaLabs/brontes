@@ -67,9 +67,9 @@ impl TransactionStats {
             .bright_green()
             .bold();
 
-        println!("{msg}");
+        //println!("{msg}");
         let result = format!("{}, Tx Hash = {}", msg, tx_hash);
-        info!(result = result);
+        info!("result = {}", result);
     }
 }
 
