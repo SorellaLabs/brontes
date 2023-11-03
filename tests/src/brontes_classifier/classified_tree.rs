@@ -114,10 +114,28 @@ async fn test_classify_node() {
 
     let db = Database::default();
 
-    let raw_tree = build_raw_test_tree(&tracer, &db, block_num).await;
+    let tree = build_raw_test_tree(&tracer, &db, block_num)
+        .await
+        .roots
+        .into_iter()
+        .filter(|r| {
+            r.tx_hash
+                == H256::from_str(
+                    "0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5",
+                )
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
 
-    let classified_tree =
-        classifier.build_tree(tx_trace, block.1, &db.get_metadata(block_num).await);
+    let metadata = db.get_metadata(block_num).await;
+    let raw_tree = TimeTree {
+        roots: tree,
+        header: block.1.clone(),
+        avg_priority_fee: 0,
+        eth_prices: metadata.eth_prices.clone(),
+    };
+
+    let classified_tree = classifier.build_tree(tx_trace, block.1, &metadata);
 
     print_tree_as_json(&raw_tree);
 
