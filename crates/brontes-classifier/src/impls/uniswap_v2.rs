@@ -18,6 +18,7 @@ action_impl!(
     true,
     false,
     |index, from_address: H160, target_address: H160, data: Option<Swap>| {
+        println!("TOKENS: {:?}", ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied());
         let data = data?;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied()?;
         let amount_0_in: U256 = data.amount0In;
@@ -30,7 +31,7 @@ action_impl!(
                 token_out: token_0,
                 amount_in: data.amount1In,
                 amount_out: data.amount0Out,
-            })
+            });
         } else {
             return Some(NormalizedSwap {
                 index,
@@ -40,7 +41,7 @@ action_impl!(
                 token_out: token_1,
                 amount_in: data.amount0In,
                 amount_out: data.amount1Out,
-            })
+            });
         }
     }
 );
