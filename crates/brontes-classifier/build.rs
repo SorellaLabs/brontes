@@ -187,7 +187,7 @@ async fn run_classifier_mapping() {
         let file_path = "/home/shared/brontes/class.txt";
         File::create(file_path);
 
-        let file = fs::OpenOptions::new()
+        let mut file = fs::OpenOptions::new()
             .write(true)
             .read(true)
             .open(file_path)
