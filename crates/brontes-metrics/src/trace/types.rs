@@ -34,11 +34,13 @@ impl BlockStats {
     }
 
     pub fn trace(&self) {
-        let message = format!(
-            "Successfuly Parsed Block {}",
-            format!("{}", self.block_num).bright_blue().bold()
+        let msg = format!(
+            "{} -- Block Number: {}",
+            format!("Successfuly Parsed Block").bright_green().bold(),
+            self.block_num
         );
-        info!(message = message);
+
+        info!("{}", msg);
     }
 }
 
@@ -62,14 +64,15 @@ impl TransactionStats {
     }
 
     pub fn trace(&self) {
-        let tx_hash = format!("{:#x}", self.tx_hash);
-        let msg = format!("Successfully Parsed Transaction")
-            .bright_green()
-            .bold();
+        let msg = format!(
+            "{} -- Tx Hash: {:#x}",
+            format!("Successfully Parsed Transaction")
+                .bright_green()
+                .bold(),
+            self.tx_hash
+        );
 
-        //println!("{msg}");
-        let result = format!("{}, Tx Hash = {}", msg, tx_hash);
-        info!("result = {}", result);
+        info!("{}", msg);
     }
 }
 
