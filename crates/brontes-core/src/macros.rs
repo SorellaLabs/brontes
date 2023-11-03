@@ -43,7 +43,7 @@ macro_rules! success_trace {
 macro_rules! init_tx {
     ($tx:expr, $idx:expr, $total_len:expr) => {
         use colored::Colorize;
-        use tracing::info;
+        use tracing::debug;
 
         let tx_hash = format!("{:#x}", $tx);
         let message = format!(
@@ -52,7 +52,7 @@ macro_rules! init_tx {
                 .bright_blue()
                 .bold()
         );
-        info!(?message, ?tx_hash);
+        debug!(?message, ?tx_hash);
     };
 }
 
