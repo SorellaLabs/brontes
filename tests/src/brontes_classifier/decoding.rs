@@ -25,7 +25,7 @@ fn test_decode() {
     let bindings = StaticBindings::UniswapV2(UniswapV2_Enum::None);
     let data = bindings.try_decode(&calldata).unwrap();
 
-    UniswapV2::UniswapV2Calls::swap(())  abi_decode(&calldata, true).unwrap();
+    //UniswapV2::UniswapV2Calls::swap(())  abi_decode(&calldata, true).unwrap();
 
     let classifier = UniswapV2Classifier::default();
     println!("{:?}", classifier.0);
