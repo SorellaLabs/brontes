@@ -6979,6 +6979,8 @@ dependencies = [
 name = "tests"
 version = "0.1.0"
 dependencies = [
+ "alloy-sol-macro",
+ "alloy-sol-types",
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
