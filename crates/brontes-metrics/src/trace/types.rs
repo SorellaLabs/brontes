@@ -63,13 +63,14 @@ impl TransactionStats {
 
     pub fn trace(&self) {
         let tx_hash = format!("{:#x}", self.tx_hash);
-        let result = format!(
+        let msg = format!(
             "{}",
             format!("Successfully Parsed Transaction")
                 .bright_green()
                 .bold()
         );
-        info!(result, ?tx_hash);
+        let mut result = format!("{}, Tx Hash = {}", msg, tx_hash);
+        info!(result);
     }
 }
 
