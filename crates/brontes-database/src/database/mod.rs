@@ -21,11 +21,6 @@ use self::types::{DBTokenPrices, DBTokenPricesDB, RelayInfo};
 use super::Metadata;
 use crate::database::{const_sql::*, types::RelayInfoDB};
 
-#[cfg(not(feature = "test_run"))]
-const INSERT_DATABASE: &'static str = "mev";
-#[cfg(feature = "test_run")]
-const INSERT_DATABASE: &'static str = "mev_test";
-
 pub struct Database {
     client: ClickhouseClient,
 }
@@ -69,7 +64,6 @@ impl Database {
         block_details: MevBlock,
         mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
-        println!("{:?}", block_details);
         if let Err(e) = self
             .client
             .insert_one(block_details, MEV_BLOCKS_TABLE)
@@ -114,10 +108,6 @@ impl Database {
             .query_one_params(RELAY_P2P_TIMES, vec![block_num])
             .await
             .unwrap();
-        println!(
-            "RELAY info immediate after query: {:?}\nBlock Number: {}\nQuery: {:?}",
-            val, block_num, RELAY_P2P_TIMES
-        );
         val.into()
     }
 
