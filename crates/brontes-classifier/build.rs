@@ -76,6 +76,13 @@ WHERE classifier_name IS NOT NULL
 GROUP BY abi, classifier_name
 "#;
 
+const LOCAL_QUERY: &str = r#"
+SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
+FROM ethereum.addresses AS a
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
+GROUP BY c.abi, c.classifier_name
+"#;
+
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default, PartialEq, Eq, Hash)]
 struct ProtocolDetails {
     pub addresses: Vec<String>,
@@ -171,10 +178,24 @@ async fn run_classifier_mapping() {
         }
     };
     #[cfg(not(feature = "server"))]
-    let mut protocol_abis =
-        query_db::<ProtocolDetails>(&clickhouse_client, CLASSIFIED_ONLY_DATA_QUERY).await;
+    let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, LOCAL_QUERY).await;
     // write_test(protocol_abis.clone());
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
+
+    #[cfg(feature = "test_run")]
+    {
+        let file_path = "/home/shared/brontes/class.txt";
+        File::create(file_path);
+
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .read(true)
+            .open(file_path)
+            .expect("could not open file");
+
+        let str = serde_json::to_string(protocol_abis.clone()).unwrap();
+        file.write_all(str).unwrap();
+    }
 
     // write_test(failed_abi_addresses.clone());
     // write_test('\n');
