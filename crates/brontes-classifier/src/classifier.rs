@@ -212,6 +212,7 @@ impl Classifier {
                 }
 
                 if let Some(res) = d {
+                    println!("{:?}", res);
                     return res;
                 }
 
