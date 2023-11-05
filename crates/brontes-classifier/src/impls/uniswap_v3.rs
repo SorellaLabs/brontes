@@ -93,7 +93,10 @@ action_impl!(
     |index, from_address: H160, target_address: H160, return_data: mintReturn| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied().unwrap();
+        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
+            .get(&*from_address)
+            .copied()
+            .unwrap();
 
         // todo this address shit wrong but wanna build
         Some(NormalizedMint {
@@ -107,11 +110,12 @@ action_impl!(
     }
 );
 
+/*
 action_impl!(
     V3CollectImpl,
     Collect,
     collectCall,
-    Some(UniswapV3Calls),
+    Some(UniswapV3),
     false,
     true,
     |index,
@@ -130,5 +134,5 @@ action_impl!(
         })
     }
 );
-
-action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);
+*/
+action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl); //, V3CollectImpl);
