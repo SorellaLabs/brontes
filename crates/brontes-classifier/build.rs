@@ -129,7 +129,7 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 
     writeln!(
         file,
-        "pub static ADDRESS_TO_TOKENS_{}_POOL: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
+        "pub static ADDRESS_TO_TOKENS_POOL: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
         amount,
         amount,
         phf_map.build()
@@ -171,7 +171,8 @@ async fn run_classifier_mapping() {
         }
     };
     #[cfg(not(feature = "server"))]
-    let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, CLASSIFIED_ONLY_DATA_QUERY).await;
+    let mut protocol_abis =
+        query_db::<ProtocolDetails>(&clickhouse_client, CLASSIFIED_ONLY_DATA_QUERY).await;
     // write_test(protocol_abis.clone());
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
 

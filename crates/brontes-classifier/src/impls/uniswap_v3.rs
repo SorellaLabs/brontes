@@ -12,7 +12,7 @@ use crate::{
         burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
         swapReturn, UniswapV3Calls,
     },
-    ADDRESS_TO_TOKENS_2_POOL,
+    ADDRESS_TO_TOKENS_POOL,
 };
 
 action_impl!(
@@ -25,7 +25,7 @@ action_impl!(
     |index, from_address: H160, target_address: H160, return_data: swapReturn| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_POOL
             .get(&*target_address)
             .copied()
             .unwrap();
@@ -67,7 +67,7 @@ action_impl!(
     |index, from_address: H160, target_address: H160, return_data: burnReturn| {
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_POOL
             .get(&*target_address)
             .copied()
             .unwrap();
@@ -93,10 +93,7 @@ action_impl!(
     |index, from_address: H160, target_address: H160, return_data: mintReturn| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*from_address)
-            .copied()
-            .unwrap();
+        let [token0, token1] = ADDRESS_TO_TOKENS_POOL.get(&*from_address).copied().unwrap();
 
         // todo this address shit wrong but wanna build
         Some(NormalizedMint {
@@ -122,7 +119,7 @@ action_impl!(
      to_addr: H160,
      _call_data: &collectCall,
      return_data: collectReturn| {
-        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL.get(&*to_addr).copied().unwrap();
+        let [token0, token1] = ADDRESS_TO_TOKENS_POOL.get(&*to_addr).copied().unwrap();
         Some(NormalizedCollect {
             index,
             from: from_addr,
