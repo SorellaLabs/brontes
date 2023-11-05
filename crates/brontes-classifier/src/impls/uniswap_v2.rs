@@ -19,8 +19,8 @@ action_impl!(
     false,
     |index, from_address: H160, target_address: H160, data: Option<Swap>| {
         println!("TOKENS: {:?}", ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied());
+        println!("DATA POST qm: {:?}", data.is_some());
         let data = data?;
-        //println!("{:?}", data);
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied()?;
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {

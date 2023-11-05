@@ -12,6 +12,7 @@ use std::default;
 use std::str::FromStr;
 
 sol!(UniswapV2, "../crates/brontes-classifier/abis/UniswapV2.json");
+sol!(UniswapV3, "../crates/brontes-classifier/abis/UniswapV3.json");
 
 #[test]
 fn test_decode() {
