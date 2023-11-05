@@ -18,9 +18,12 @@ action_impl!(
     true,
     false,
     |index, from_address: H160, target_address: H160, data: Option<Swap>| {
-        println!("TOKENS: {:?}", ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied());
         let data = data?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied()?;
+        let address_bytes: [u8; 20] = from_address.clone().0.try_into().unwrap();
+        println!("TOKENS: {:?}", ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes));
+        println!("ADDRESS: {:?}", &from_address);
+        println!("ADDRESS BYTES: {:?}", &address_bytes);
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes).copied()?;
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
             return Some(NormalizedSwap {
