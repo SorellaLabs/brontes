@@ -7,7 +7,7 @@ use reth_rpc_types::Log;
 use crate::{
     ActionCollection, IntoAction, StaticReturnBindings,
     UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap},
-    ADDRESS_TO_TOKENS_POOL,
+    ADDRESS_TO_TOKENS_2_POOL,
 };
 
 action_impl!(
@@ -18,10 +18,10 @@ action_impl!(
     true,
     false,
     |index, from_address: H160, target_address: H160, data: Option<Swap>| {
-        println!("TOKENS: {:?}", ADDRESS_TO_TOKENS_POOL.get(&*from_address).copied());
+        println!("TOKENS: {:?}", ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied());
         let data = data?;
         //println!("{:?}", data);
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_POOL.get(&*from_address).copied()?;
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*from_address).copied()?;
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
             return Some(NormalizedSwap {
@@ -56,7 +56,7 @@ action_impl!(
     false,
     |index, from_address: H160, target_address: H160, data: Option<Mint>| {
         let data = data?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_POOL.get(&*target_address).copied()?;
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address).copied()?;
         Some(NormalizedMint {
             recipient: from_address,
             from: from_address,
@@ -78,7 +78,7 @@ action_impl!(
     false,
     |index, from_address: H160, target_address: H160, res: Option<Burn>| {
         let res = res?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_POOL.get(&*target_address).copied()?;
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address).copied()?;
 
         Some(NormalizedBurn {
             recipient: from_address,
