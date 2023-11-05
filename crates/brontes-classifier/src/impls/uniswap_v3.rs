@@ -110,12 +110,11 @@ action_impl!(
     }
 );
 
-/*
 action_impl!(
     V3CollectImpl,
     Collect,
     collectCall,
-    Some(UniswapV3),
+    Some(UniswapV3Calls),
     false,
     true,
     |index,
@@ -134,5 +133,5 @@ action_impl!(
         })
     }
 );
-*/
-action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl); //, V3CollectImpl);
+
+action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);
