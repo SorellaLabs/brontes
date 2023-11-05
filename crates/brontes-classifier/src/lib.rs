@@ -46,6 +46,7 @@ macro_rules! impl_decode_sol {
             type DecodingType = $inner_type;
 
             fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error> {
+                println!("{:#x}", Bytes::from(call_data.clone()));
                 Self::DecodingType::abi_decode(call_data, true)
             }
         }
