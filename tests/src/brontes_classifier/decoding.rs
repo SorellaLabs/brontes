@@ -3,8 +3,8 @@ use alloy_sol_types::SolCall;
 use alloy_sol_types::SolInterface;
 use brontes_classifier::ActionCollection;
 use brontes_classifier::IntoAction;
-use brontes_classifier::StaticBindings;
 use brontes_classifier::UniswapV2_Enum;
+use brontes_classifier::{StaticBindings, StaticReturnBindings};
 use brontes_classifier::{UniswapV2Classifier, PROTOCOL_ADDRESS_MAPPING};
 use reth_primitives::{Bytes, H160};
 use reth_rpc_types::Log;
@@ -23,10 +23,19 @@ fn test_decode() {
     let target_address = H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap();
 
     let bindings = StaticBindings::UniswapV2(UniswapV2_Enum::None);
-    let data = bindings.try_decode(&calldata).unwrap();
+    let data: StaticReturnBindings = bindings.try_decode(&calldata).unwrap();
 
+    println!(
+        "{:?}",
+        Bytes::from(
+            UniswapV2::UniswapV2Calls::abi_decode(&calldata, true)
+                .unwrap()
+                .abi_encode()
+                .as_slice()
+        )
+    );
     //UniswapV2::UniswapV2Calls::swap(())  abi_decode(&calldata, true).unwrap();
-
+    //UniswapV2::swapCall::de;
     let classifier = UniswapV2Classifier::default();
     println!("{:?}", classifier.0);
     let res =
