@@ -103,7 +103,10 @@ fn main() {
 
 async fn build_address_to_token_map() {
     let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(TOKEN_MAPPING);
-    let mut file = BufWriter::new(File::create(&path).unwrap());
+    let mut file = fs::OpenOptions::new()
+    .write(true)
+    .open(path)
+    .expect("could not open file");
 
     {
         let client = build_db();
@@ -117,7 +120,7 @@ async fn build_address_to_token_map() {
     }
 }
 
-fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<File>) {
+fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut File) {
     let mut phf_map = phf_codegen::Map::new();
 
     for row in rows {
@@ -129,7 +132,8 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<F
 
     writeln!(
         file,
-        "pub static ADDRESS_TO_TOKENS_POOL: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
+        "pub static ADDRESS_TO_TOKENS_{}_POOL: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
+        amount,
         amount,
         phf_map.build()
     )
