@@ -203,7 +203,7 @@ async fn ugh() {
 
     let classified_tree = classifier.build_tree(tx_trace, block.1, &metadata);
 
-    write_tree_as_json(&classified_tree, "./tree.json");
+    write_tree_as_json(&classified_tree, "./tree.json").await;
 
     print_tree_as_json(&raw_tree);
 
