@@ -6984,6 +6984,7 @@ dependencies = [
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
+ "brontes-inspect",
  "brontes-metrics",
  "brontes-types",
  "dotenv",

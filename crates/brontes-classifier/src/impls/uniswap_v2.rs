@@ -5,8 +5,8 @@ use reth_primitives::{Address, Bytes, H160, U256};
 use reth_rpc_types::Log;
 
 use crate::{
-    ActionCollection, IntoAction, StaticReturnBindings,
-    UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap},
+    enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
+    UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, UniswapV2Calls},
     ADDRESS_TO_TOKENS_2_POOL,
 };
 
@@ -20,9 +20,6 @@ action_impl!(
     |index, from_address: H160, target_address: H160, data: Option<Swap>| {
         let data = data?;
         let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
-        println!("TOKENS: {:?}", ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes));
-        println!("ADDRESS: {:?}", &target_address);
-        println!("ADDRESS BYTES: {:?}", &address_bytes);
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes).copied()?;
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
@@ -53,20 +50,24 @@ action_impl!(
     V2MintImpl,
     Mint,
     mintCall,
-    None,
+    Some(UniswapV2),
     true,
     false,
-    |index, from_address: H160, target_address: H160, data: Option<Mint>| {
-        let data = data?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address).copied()?;
+    |index,
+     from_address: H160,
+     target_address: H160,
+     call_data: mintCall,
+     log_data: Option<Mint>| {
+        let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
+        let log_data = log_data?;
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes).copied()?;
         Some(NormalizedMint {
-            recipient: from_address,
+            recipient: H160(call_data.to.0 .0),
             from: from_address,
             index,
-            // todo fix
-            to: H160(data.sender.0 .0),
+            to: target_address,
             token: vec![token_0, token_1],
-            amount: vec![data.amount0, data.amount1],
+            amount: vec![log_data.amount0, log_data.amount1],
         })
     }
 );
@@ -75,20 +76,24 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    None,
+    Some(UniswapV2),
     true,
     false,
-    |index, from_address: H160, target_address: H160, res: Option<Burn>| {
-        let res = res?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address).copied()?;
-
+    |index,
+     from_address: H160,
+     target_address: H160,
+     call_data: burnCall,
+     log_data: Option<Burn>| {
+        let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
+        let log_data = log_data?;
+        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes).copied()?;
         Some(NormalizedBurn {
-            recipient: from_address,
+            recipient: H160(call_data.to.0 .0),
             to: target_address,
             index,
             from: from_address,
             token: vec![token_0, token_1],
-            amount: vec![res.amount0, res.amount1],
+            amount: vec![log_data.amount0, log_data.amount1],
         })
     }
 );
