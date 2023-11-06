@@ -30,7 +30,7 @@ use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-const TOKEN_MAPPING: &str = "token_mappings.rs";
+const TOKEN_MAPPING: &str = "token_to_addresses.rs";
 const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x), tokens) AS 
                              tokens FROM pools WHERE length(tokens) = ";
 
@@ -39,6 +39,7 @@ const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 
+/*
 const DATA_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
@@ -46,24 +47,36 @@ INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHER
 GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
 "#;
+same as below
+*/
 
+const DATA_QUERY: &str = r#"
+SELECT 
+	groupArray(addresses) as addresses, abi, classifier_name
+FROM brontes.protocol_details
+GROUP BY abi, classifier_name
+"#;
+
+/*
 const DATA_QUERY_FILTER: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' 
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
 GROUP BY c.abi, c.classifier_name
-HAVING abi IS NOT NULL AND hasAny(addresses, ?) OR classifier_name != '' 
+HAVING (abi IS NOT NULL AND hasAny(addresses, ?)) OR classifier_name != ''
+"#;
+same as below
+*/
+
+const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
+SELECT 
+	groupArray(addresses) as addresses, abi, classifier_name
+FROM brontes.protocol_details
+WHERE classifier_name IS NOT NULL
+GROUP BY abi, classifier_name
 "#;
 
-const LOCAL_QUERY: &str = r#"
-SELECT arrayMap(x -> toString(x), groupArray(distinct(a.address))) as addresses, c.abi, c.classifier_name
-FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
-GROUP BY c.abi, c.classifier_name
-HAVING abi IS NOT NULL
-"#;
-
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default, PartialEq, Eq, Hash)]
 struct ProtocolDetails {
     pub addresses: Vec<String>,
     pub abi: Option<String>,
@@ -90,7 +103,10 @@ fn main() {
 
 async fn build_address_to_token_map() {
     let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(TOKEN_MAPPING);
-    let mut file = BufWriter::new(File::create(&path).unwrap());
+    let mut file = fs::OpenOptions::new()
+    .write(true)
+    .open(path)
+    .expect("could not open file");
 
     {
         let client = build_db();
@@ -104,7 +120,7 @@ async fn build_address_to_token_map() {
     }
 }
 
-fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<File>) {
+fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut File) {
     let mut phf_map = phf_codegen::Map::new();
 
     for row in rows {
@@ -143,33 +159,40 @@ async fn run_classifier_mapping() {
     };
 
     #[cfg(feature = "server")]
-    let mut protocol_abis = {
+    let mut protocol_abis: Vec<ProtocolDetails> = {
         #[cfg(not(feature = "test_run"))]
         {
             query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
         }
         #[cfg(feature = "test_run")]
         {
-            let chunks = addresses.clone().into_iter().chunks(100);
-
-            let mut all_dqf: HashSet<ProtocolDetails> = HashSet::new();
-            for chunk in &chunks {
-                let r = clickhouse_client
-                    .query(DATA_QUERY_FILTER)
-                    .bind(chunk.collect::<Vec<_>>().clone())
-                    .fetch_all::<ProtocolDetails>()
-                    .await
-                    .unwrap();
-                all_dqf.extend(r);
-            }
-
-            all_dqf.into_iter().collect::<Vec<_>>()
+            clickhouse_client
+                .query(CLASSIFIED_ONLY_DATA_QUERY)
+                .fetch_all::<ProtocolDetails>()
+                .await
+                .unwrap()
         }
     };
     #[cfg(not(feature = "server"))]
-    let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, LOCAL_QUERY).await;
+    let mut protocol_abis =
+        query_db::<ProtocolDetails>(&clickhouse_client, CLASSIFIED_ONLY_DATA_QUERY).await;
     // write_test(protocol_abis.clone());
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
+
+    #[cfg(feature = "test_run")]
+    {
+        let file_path = "/home/shared/brontes/class.txt";
+        File::create(file_path);
+
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .read(true)
+            .open(file_path)
+            .expect("could not open file");
+
+        let str = serde_json::to_string(&protocol_abis.clone()).unwrap();
+        file.write_all(str.as_bytes()).unwrap();
+    }
 
     // write_test(failed_abi_addresses.clone());
     // write_test('\n');
@@ -184,16 +207,14 @@ async fn run_classifier_mapping() {
             contract.abi.is_some()
                 && (!failed_abi_addresses.is_subset(&addrs) || failed_abi_addresses.is_empty())
         })
-        .map(|contract: ProtocolDetails| {
-            (
-                match JsonAbi::from_json_str(contract.abi.as_ref().unwrap()) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        panic!("{:?}, {:#?}", e, contract.addresses);
-                    }
-                },
-                contract,
-            )
+        .filter_map(|contract: ProtocolDetails| {
+            match JsonAbi::from_json_str(contract.abi.as_ref().unwrap()) {
+                Ok(c) => Some((c, contract)),
+                Err(e) => {
+                    println!("{:?}, {:#?}", e, contract.addresses);
+                    None
+                }
+            }
         })
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();

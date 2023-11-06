@@ -24,7 +24,7 @@ async fn test_raw_tree() {
 
     let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
     let db = Database::default();
-    let mut tree = build_raw_test_tree(&tracer, db, UNIT_TESTS_BLOCK_NUMBER).await;
+    let mut tree = build_raw_test_tree(&tracer, &db, UNIT_TESTS_BLOCK_NUMBER).await;
 
     let mut transaction_traces = tracer
         .tracer
