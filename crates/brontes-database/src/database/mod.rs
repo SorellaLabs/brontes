@@ -11,17 +11,15 @@ use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use futures::future::join_all;
 use malachite::Rational;
 use reth_primitives::{Address, TxHash};
-use sorella_db_databases::clickhouse::ClickhouseClient;
+use sorella_db_databases::{
+    clickhouse::ClickhouseClient, BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE,
+    JIT_SANDWICH_TABLE, JIT_TABLE, LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
+};
 use tracing::error;
 
-use self::types::{DBTokenPrices, RelayInfo};
+use self::types::{DBTokenPrices, DBTokenPricesDB, RelayInfo};
 use super::Metadata;
-use crate::database::const_sql::*;
-
-#[cfg(not(feature = "test_run"))]
-const INSERT_DATABASE: &'static str = "mev";
-#[cfg(feature = "test_run")]
-const INSERT_DATABASE: &'static str = "mev_test";
+use crate::database::{const_sql::*, types::RelayInfoDB};
 
 pub struct Database {
     client: ClickhouseClient,
@@ -68,7 +66,7 @@ impl Database {
     ) {
         if let Err(e) = self
             .client
-            .insert_one(block_details, &format!("{INSERT_DATABASE}.mev_blocks)"))
+            .insert_one(block_details, MEV_BLOCKS_TABLE)
             .await
         {
             error!(?e, "failed to insert block details");
@@ -77,15 +75,12 @@ impl Database {
         join_all(mev_details.into_iter().map(|(classified, specific)| async {
             if let Err(e) = self
                 .client
-                .insert_one(classified, &format!("{INSERT_DATABASE}.classified_mev)"))
+                .insert_one(classified, CLASSIFIED_MEV_TABLE)
                 .await
             {
                 error!(?e, "failed to insert classified mev");
             }
-            let table = format!(
-                "{INSERT_DATABASE}.{}",
-                serde_json::to_string(&specific.mev_type()).unwrap()
-            );
+            let table = mev_table_type(&specific);
             if let Err(e) = self.client.insert_one(specific, &table).await {
                 error!(?e, "failed to insert specific mev");
             }
@@ -96,7 +91,7 @@ impl Database {
     async fn get_private_flow(&self, block_num: u64) -> HashSet<TxHash> {
         let private_txs = self
             .client
-            .query_all_params::<String, String>(PRIVATE_FLOW, vec![block_num.to_string()])
+            .query_all_params::<u64, String>(PRIVATE_FLOW, vec![block_num])
             .await
             .unwrap();
 
@@ -107,10 +102,12 @@ impl Database {
     }
 
     async fn get_relay_info(&self, block_num: u64) -> RelayInfo {
-        self.client
-            .query_one_params(RELAY_P2P_TIMES, vec![block_num.to_string()])
+        let val: RelayInfoDB = self
+            .client
+            .query_one_params(RELAY_P2P_TIMES, vec![block_num])
             .await
-            .unwrap()
+            .unwrap();
+        val.into()
     }
 
     async fn get_cex_prices(
@@ -120,7 +117,7 @@ impl Database {
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
-            .query_all_params::<u64, DBTokenPrices>(
+            .query_all_params::<u64, DBTokenPricesDB>(
                 PRICES,
                 vec![relay_time, relay_time, p2p_time, p2p_time],
             )
@@ -129,7 +126,8 @@ impl Database {
 
         let token_prices = prices
             .into_iter()
-            .map(|row| {
+            .map(|r| {
+                let row: DBTokenPrices = r.into();
                 (
                     row.address,
                     (
@@ -142,6 +140,19 @@ impl Database {
 
         token_prices
     }
+}
+
+fn mev_table_type(mev: &Box<dyn SpecificMev>) -> String {
+    match mev.mev_type() {
+        brontes_types::classified_mev::MevType::Sandwich => SANDWICH_TABLE,
+        brontes_types::classified_mev::MevType::Backrun => BACKRUN_TABLE,
+        brontes_types::classified_mev::MevType::JitSandwich => JIT_SANDWICH_TABLE,
+        brontes_types::classified_mev::MevType::Jit => JIT_TABLE,
+        brontes_types::classified_mev::MevType::CexDex => CEX_DEX_TABLE,
+        brontes_types::classified_mev::MevType::Liquidation => LIQUIDATIONS_TABLE,
+        brontes_types::classified_mev::MevType::Unknown => "",
+    }
+    .to_string()
 }
 
 #[cfg(test)]
@@ -210,11 +221,11 @@ mod tests {
 
     fn expected_relay_info() -> RelayInfo {
         RelayInfo {
-            relay_time:      1695258707683,
-            p2p_time:        1695258708673,
-            proposer_addr:   H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
+            relay_time: 1695258707683,
+            p2p_time: 1695258708673,
+            proposer_addr: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
             proposer_reward: 113949354337187568,
-            block_hash:      H256::from_str(BLOCK_HASH).unwrap().into(),
+            block_hash: H256::from_str(BLOCK_HASH).unwrap().into(),
         }
     }
 
@@ -230,16 +241,16 @@ mod tests {
             .unwrap();
 
         Metadata {
-            block_num:              BLOCK_NUMBER,
-            block_hash:             H256::from_str(BLOCK_HASH).unwrap().into(),
-            relay_timestamp:        1695258707683,
-            p2p_timestamp:          1695258708673,
+            block_num: BLOCK_NUMBER,
+            block_hash: H256::from_str(BLOCK_HASH).unwrap().into(),
+            relay_timestamp: 1695258707683,
+            p2p_timestamp: 1695258708673,
             proposer_fee_recipient: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
-            proposer_mev_reward:    113949354337187568,
-            token_prices:           cex_prices.clone(),
-            eth_prices:             eth_prices.clone(),
-            mempool_flow:           expected_private_flow(),
+            proposer_mev_reward: 113949354337187568,
+            token_prices: cex_prices.clone(),
+            eth_prices: eth_prices.clone(),
+            mempool_flow: expected_private_flow(),
         }
     }
 

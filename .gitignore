@@ -25,3 +25,10 @@ crates/tracing/src/main.rs
 .DS_Store
 
 **/const_sql.rs
+
+abi_builds/**.rs
+abi_builds/**.txt
+
+stuff
+
+crates/brontes-classifier/abis/**.json
