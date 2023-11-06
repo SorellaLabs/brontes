@@ -23,7 +23,7 @@ async fn process_tree() {
     let metadata = db.get_metadata(block_num).await;
     let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
 
-    //write_tree_as_json(&tree, "./tree.json").await;
+    write_tree_as_json(&tree, "./tree.json").await;
 
     let inspector = SandwichInspector::default();
 
