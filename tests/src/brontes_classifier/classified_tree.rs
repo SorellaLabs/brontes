@@ -161,20 +161,7 @@ async fn ugh() {
 
     let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
 
-    let block = tracer.execute_block(block_num).await.unwrap(); // searching for
-    let tx_trace = block
-        .0
-        .into_iter()
-        .filter(|tx| {
-            tx.tx_hash
-                == H256::from_str(
-                    "0xd42987b923b9e10de70df67b2bb57eefe21dec0a4c0372d3bcbdb69feb34dff4",
-                )
-                .unwrap()
-        })
-        .collect::<Vec<_>>();
-
-    let classifier = Classifier::new();
+    let block = tracer.execute_block(block_num).await.unwrap();
 
     let db = Database::default();
 
@@ -191,8 +178,6 @@ async fn ugh() {
         })
         .collect::<Vec<_>>();
 
-    //println!("{:?}", tree.len());
-
     let metadata = db.get_metadata(block_num).await;
     let raw_tree = TimeTree {
         roots: tree,
@@ -201,14 +186,5 @@ async fn ugh() {
         eth_prices: metadata.eth_prices.clone(),
     };
 
-    let classified_tree = classifier.build_tree(tx_trace, block.1, &metadata);
-
     write_tree_as_json(&raw_tree, "./tree.json").await;
-
-    print_tree_as_json(&raw_tree);
-
-    println!("\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    print_tree_as_json(&classified_tree);
-
-    //helper_classify_node(&classifier, tx_trace.trace, 0);
 }
