@@ -133,17 +133,6 @@ fn test_uni_v2_swap() {
     let data: StaticReturnBindings = bindings.try_decode(&calldata).unwrap();
 
     let logs = vec![
-    Log { 
-        address: H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(), 
-        topics: vec![H256::from_str("0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1").unwrap()], 
-        data: Bytes::from_str("0x0000000000000000000000000000000000000000000000000006a5a6631a0b350000000000000000000000000000000000000000000000006f88a8f5e7e80584").unwrap(), 
-        block_hash: Some(H256::from_str("0x5e27d41148af7d2a4aca473c516223fe30bbe1b32f17c023b3c89c2be6d6e98d").unwrap()), 
-        block_number: Some(H256::from_str("0x00000000000000000000000000000000000000000000000000000000011101d8").unwrap().into()), 
-        transaction_hash: Some(H256::from_str("0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5").unwrap()), 
-        transaction_index: Some(H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap().into()),
-        log_index: Some(H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000002").unwrap().into()),
-        removed: false
-     },
      Log { 
         address: H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(), 
         topics: vec![
