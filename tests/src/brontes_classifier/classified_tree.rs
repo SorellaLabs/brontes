@@ -6,7 +6,10 @@ use brontes_core::{
     test_utils::{init_trace_parser, TestTraceResults, TestTransactionReceipt},
 };
 use brontes_database::database::Database;
-use brontes_types::{test_utils::print_tree_as_json, tree::TimeTree};
+use brontes_types::{
+    test_utils::{print_tree_as_json, write_tree_as_json},
+    tree::TimeTree,
+};
 use reth_primitives::{H160, H256};
 use reth_rpc_types::{
     trace::parity::{TransactionTrace, VmTrace},
@@ -199,6 +202,8 @@ async fn ugh() {
     };
 
     let classified_tree = classifier.build_tree(tx_trace, block.1, &metadata);
+
+    write_tree_as_json(&classified_tree, "./tree.json");
 
     print_tree_as_json(&raw_tree);
 
