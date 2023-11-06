@@ -394,6 +394,14 @@ impl<V: NormalizedAction> Node<V> {
     where
         F: Fn(&Node<V>) -> bool,
     {
+        println!(
+            "\n\nINSPECTOR NODE - FROM ADDRESS: {:?}, DATA: {:?}",
+            self.address,
+            &self.data.get_action()
+        );
+
+        println!("INSPECTOR NODE - SELF CALL: {}", !call(self));
+
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
             return false;
@@ -405,6 +413,8 @@ impl<V: NormalizedAction> Node<V> {
             .map(|i| i.inspect(result, call))
             .any(|f| f);
 
+        println!("INSPECTOR NODE - LOWER HAS BETTER: {}", !lower_has_better);
+
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
         if !lower_has_better {
@@ -412,6 +422,14 @@ impl<V: NormalizedAction> Node<V> {
             res.push(self.data.clone());
             result.push(res);
         }
+
+        println!(
+            "INSPECTOR NODE - RESULTS: {:?}",
+            result
+                .iter()
+                .map(|s| s.iter().map(|ss| ss.get_action()).collect::<Vec<_>>())
+                .collect::<Vec<_>>()
+        );
         // lower node has a better sub-action.
         true
     }
