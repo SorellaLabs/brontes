@@ -57,7 +57,7 @@ impl Classifier {
                     finalized: !classification.is_unclassified(),
                     subactions: vec![],
                     address,
-                    data: classification,
+                    data: classification.clone(),
                     trace_address: root_trace.trace.trace_address,
                 };
 
