@@ -64,7 +64,9 @@ impl Inspector for SandwichInspector {
             });
         }
 
-        println!("{:?}", possible_victims);
+        for v in &possible_victims {
+            println!("{:?}\n\n\n", v);
+        }
 
         let search_fn = |node: &Node<Actions>| {
             node.subactions
