@@ -13,7 +13,7 @@ use reth_tracing::TracingClient;
 use serial_test::serial;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
-use crate::UNIT_TESTS_BLOCK_NUMBER;
+use crate::brontes_types::UNIT_TESTS_BLOCK_NUMBER;
 
 #[tokio::test]
 #[serial]
