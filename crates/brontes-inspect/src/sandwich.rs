@@ -40,7 +40,6 @@ impl Inspector for SandwichInspector {
         let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
 
         for root in iter {
-            println!("TX_HASH: {:?}", root.tx_hash);
             match pairs.entry(root.head.address) {
                 Entry::Vacant(v) => {
                     v.insert(root.tx_hash);
@@ -65,14 +64,6 @@ impl Inspector for SandwichInspector {
             });
         }
 
-        for v in &possible_victims {
-            println!("POSS VICTIM: {:?}\n\n\n", v);
-        }
-
-        for s in &set {
-            println!("FOUND SET: {:?}\n\n", s);
-        }
-
         let search_fn = |node: &Node<Actions>| {
             node.subactions
                 .iter()
@@ -81,15 +72,20 @@ impl Inspector for SandwichInspector {
 
         set.into_iter()
             .filter_map(|(eoa, tx0, tx1, mev_addr, victim)| {
+                println!("\n\nFOUND SET: {:?}\n", (eoa, tx0, tx1, mev_addr, &victim));
+
                 let gas = [
                     tree.get_gas_details(tx0).cloned().unwrap(),
                     tree.get_gas_details(tx1).cloned().unwrap(),
                 ];
+                println!("GAS: {:?}\n", gas);
 
                 let victim_gas = victim
                     .iter()
                     .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                     .collect::<Vec<_>>();
+
+                println!("VICTIM GAS: {:?}\n", gas);
 
                 let victim_actions = victim
                     .iter()
@@ -101,10 +97,14 @@ impl Inspector for SandwichInspector {
                     })
                     .collect::<Vec<Vec<Actions>>>();
 
+                println!("VICTIM ACTIONS: {:?}\n", victim_actions);
+
                 let searcher_actions = vec![tx0, tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
+
+                println!("SEARCHER ACTIONS: {:?}\n", searcher_actions);
 
                 self.calculate_sandwich(
                     eoa,
