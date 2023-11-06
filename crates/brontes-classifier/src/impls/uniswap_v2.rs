@@ -56,13 +56,9 @@ action_impl!(
     |index,
      from_address: H160,
      target_address: H160,
-     call_data: &mintCall,
+     call_data: mintCall,
      log_data: Option<Mint>| {
         let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
-        println!("TOKENS: {:?}", ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes));
-        println!("ADDRESS: {:?}", &target_address);
-        println!("ADDRESS BYTES: {:?}", &address_bytes);
-        println!("CALLDATA TO: {:?}", call_data.to);
         let log_data = log_data?;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes).copied()?;
         Some(NormalizedMint {
@@ -80,20 +76,24 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    None,
+    Some(UniswapV2),
     true,
     false,
-    |index, from_address: H160, target_address: H160, res: Option<Burn>| {
+    |index,
+     from_address: H160,
+     target_address: H160,
+     call_data: burnCall,
+     log_data: Option<Burn>| {
         let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
-        let res = res?;
+        let log_data = log_data?;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes).copied()?;
         Some(NormalizedBurn {
-            recipient: from_address,
+            recipient: H160(call_data.to.0 .0),
             to: target_address,
             index,
             from: from_address,
             token: vec![token_0, token_1],
-            amount: vec![res.amount0, res.amount1],
+            amount: vec![log_data.amount0, log_data.amount1],
         })
     }
 );
