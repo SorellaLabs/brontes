@@ -233,19 +233,20 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     pub fn get_all_sub_actions(&self) -> Vec<V> {
-        let mut subactions = vec![];
         if self.finalized {
-            subactions.push(self.data.clone());
-            subactions.extend(self.subactions.clone());
+            self.subactions.clone()
         } else {
-            subactions.extend(
-                self.inner
-                    .iter()
-                    .flat_map(|inner| inner.get_all_sub_actions())
-                    .collect::<Vec<_>>(),
-            );
+            self.inner
+                .iter()
+                .flat_map(|inner| {
+                    let mut subactions = inner.get_all_sub_actions();
+                    if inner.finalized {
+                        subactions.push(inner.data.clone());
+                    }
+                    subactions
+                })
+                .collect()
         }
-        subactions
     }
 
     pub fn tree_right_path(&self) -> Vec<Address> {
