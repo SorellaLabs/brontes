@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 # brontes
 brontes-core = { workspace = true, features = ["tests"] }
-# brontes-inspect = { workspace = true, features = ["tests"] }
+brontes-inspect = { workspace = true, features = ["tests"] }
 brontes-types = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-metrics.workspace = true
