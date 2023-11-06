@@ -9,7 +9,3 @@ WHERE tx_hash NOT IN (
     SELECT tx_hash
     FROM ethereum.unique_mempool
 )
-
-
-
-

@@ -10,7 +10,9 @@ use brontes::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::database::Database;
-use brontes_inspect::{atomic_backrun::AtomicBackrunInspector, Inspector};
+use brontes_inspect::{
+    atomic_backrun::AtomicBackrunInspector, sandwich::SandwichInspector, Inspector,
+};
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
 use metrics_process::Collector;
@@ -93,7 +95,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let metrics_listener =
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
-    let dummy_inspector = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
+    let dummy_inspector = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
     let inspectors = &[&dummy_inspector];
 
     let db = Database::default();

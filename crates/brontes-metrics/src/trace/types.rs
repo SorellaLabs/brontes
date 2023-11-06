@@ -1,6 +1,6 @@
 use colored::Colorize;
 use reth_primitives::H256;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::PoirotMetricEvents;
 
@@ -24,8 +24,8 @@ impl From<TraceMetricEvent> for PoirotMetricEvents {
 #[derive(Clone, Debug)]
 pub struct BlockStats {
     pub block_num: u64,
-    pub txs:       Vec<TransactionStats>,
-    pub err:       Option<TraceParseErrorKind>,
+    pub txs: Vec<TransactionStats>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl BlockStats {
@@ -34,21 +34,23 @@ impl BlockStats {
     }
 
     pub fn trace(&self) {
-        let message = format!(
-            "Successfuly Parsed Block {}",
-            format!("{}", self.block_num).bright_blue().bold()
+        let msg = format!(
+            "{} -- Block Number: {}",
+            format!("Successfuly Parsed Block").bright_blue().bold(),
+            self.block_num
         );
-        info!(message = message);
+
+        info!("{}", msg);
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct TransactionStats {
     pub block_num: u64,
-    pub tx_hash:   H256,
-    pub tx_idx:    u16,
-    pub traces:    Vec<TraceStats>,
-    pub err:       Option<TraceParseErrorKind>,
+    pub tx_hash: H256,
+    pub tx_idx: u16,
+    pub traces: Vec<TraceStats>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl TransactionStats {
@@ -62,18 +64,25 @@ impl TransactionStats {
     }
 
     pub fn trace(&self) {
-        let tx_hash = format!("{:#x}", self.tx_hash);
-        info!("result = \"Successfully Parsed Transaction\", tx_hash = {}\n", tx_hash);
+        let msg = format!(
+            "{} -- Tx Hash: {:#x}",
+            format!("Successfully Parsed Transaction")
+                .bright_green()
+                .bold(),
+            self.tx_hash
+        );
+
+        info!("{}", msg);
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct TraceStats {
     pub block_num: u64,
-    pub tx_hash:   H256,
-    pub tx_idx:    u16,
+    pub tx_hash: H256,
+    pub tx_idx: u16,
     pub trace_idx: u16,
-    pub err:       Option<TraceParseErrorKind>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl TraceStats {
@@ -95,7 +104,7 @@ impl TraceStats {
                 .bright_blue()
                 .bold()
         );
-        info!(message = message, tx_hash = tx_hash);
+        debug!(message = message, tx_hash = tx_hash);
     }
 }
 
