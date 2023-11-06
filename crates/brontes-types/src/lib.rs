@@ -13,7 +13,7 @@ pub mod tree;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-include!(concat!(env!("OUT_DIR"), "/token_mapping.rs"));
+include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
 
 pub trait ToScaledRational {
     fn to_scaled_rational(self, decimals: u8) -> Rational;

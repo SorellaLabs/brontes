@@ -1,4 +1,4 @@
-#![feature(result_option_inspect)]
+//#![feature(result_option_inspect)]
 use std::{
     collections::HashSet,
     env,
@@ -15,6 +15,7 @@ use ethers_core::types::Chain;
 #[cfg(feature = "server")]
 use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
+use itertools::Itertools;
 #[cfg(feature = "server")]
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -29,7 +30,7 @@ use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-const TOKEN_MAPPING: &str = "token_mappings.rs";
+const TOKEN_MAPPING: &str = "token_to_addresses.rs";
 const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x), tokens) AS 
                              tokens FROM pools WHERE length(tokens) = ";
 
@@ -38,6 +39,7 @@ const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 
+/*
 const DATA_QUERY: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
@@ -45,40 +47,52 @@ INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHER
 GROUP BY c.abi, c.classifier_name
 HAVING abi IS NOT NULL
 "#;
+same as below
+*/
 
+const DATA_QUERY: &str = r#"
+SELECT 
+	groupArray(addresses) as addresses, abi, classifier_name
+FROM brontes.protocol_details
+GROUP BY abi, classifier_name
+"#;
+
+/*
 const DATA_QUERY_FILTER: &str = r#"
 SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
 FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL' 
+INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
 GROUP BY c.abi, c.classifier_name
-HAVING abi IS NOT NULL AND hasAny(addresses, ?) OR classifier_name != '' 
+HAVING (abi IS NOT NULL AND hasAny(addresses, ?)) OR classifier_name != ''
+"#;
+same as below
+*/
+
+const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
+SELECT 
+	groupArray(addresses) as addresses, abi, classifier_name
+FROM brontes.protocol_details
+WHERE classifier_name IS NOT NULL
+GROUP BY abi, classifier_name
 "#;
 
-const LOCAL_QUERY: &str = r#"
-SELECT arrayMap(x -> toString(x), groupArray(distinct(a.address))) as addresses, c.abi, c.classifier_name
-FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode where c.classifier_name != ''
-GROUP BY c.abi, c.classifier_name
-HAVING abi IS NOT NULL
-LIMIT 1
-"#;
-
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default, PartialEq, Eq, Hash)]
 struct ProtocolDetails {
-    pub addresses:       Vec<String>,
-    pub abi:             Option<String>,
+    pub addresses: Vec<String>,
+    pub abi: Option<String>,
     pub classifier_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct DecodedTokens {
     address: String,
-    tokens:  Vec<String>,
+    tokens: Vec<String>,
 }
 
 fn main() {
     dotenv::dotenv().ok();
-    let runtime = tokio::runtime::Builder::new_current_thread()
+    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap();
@@ -88,8 +102,11 @@ fn main() {
 }
 
 async fn build_address_to_token_map() {
-    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(TOKEN_MAPPING);
-    let mut file = BufWriter::new(File::create(&path).unwrap());
+    let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(TOKEN_MAPPING);
+    let mut file = fs::OpenOptions::new()
+    .write(true)
+    .open(path)
+    .expect("could not open file");
 
     {
         let client = build_db();
@@ -103,7 +120,7 @@ async fn build_address_to_token_map() {
     }
 }
 
-fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut BufWriter<File>) {
+fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut File) {
     let mut phf_map = phf_codegen::Map::new();
 
     for row in rows {
@@ -142,39 +159,62 @@ async fn run_classifier_mapping() {
     };
 
     #[cfg(feature = "server")]
-    let mut protocol_abis = {
+    let mut protocol_abis: Vec<ProtocolDetails> = {
         #[cfg(not(feature = "test_run"))]
         {
             query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
         }
         #[cfg(feature = "test_run")]
-        clickhouse_client
-            .query(DATA_QUERY_FILTER)
-            .bind(addresses.clone())
-            .fetch_all()
-            .await
-            .unwrap()
+        {
+            clickhouse_client
+                .query(CLASSIFIED_ONLY_DATA_QUERY)
+                .fetch_all::<ProtocolDetails>()
+                .await
+                .unwrap()
+        }
     };
     #[cfg(not(feature = "server"))]
-    let mut protocol_abis = query_db::<ProtocolDetails>(&clickhouse_client, LOCAL_QUERY).await;
-
+    let mut protocol_abis =
+        query_db::<ProtocolDetails>(&clickhouse_client, CLASSIFIED_ONLY_DATA_QUERY).await;
+    // write_test(protocol_abis.clone());
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
+
+    #[cfg(feature = "test_run")]
+    {
+        let file_path = "/home/shared/brontes/class.txt";
+        File::create(file_path);
+
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .read(true)
+            .open(file_path)
+            .expect("could not open file");
+
+        let str = serde_json::to_string(&protocol_abis.clone()).unwrap();
+        file.write_all(str.as_bytes()).unwrap();
+    }
+
+    // write_test(failed_abi_addresses.clone());
+    // write_test('\n');
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
         .filter(|contract: &ProtocolDetails| {
-            let addrs = contract.addresses.clone().into_iter().collect();
-
+            let addrs: HashSet<String> = contract.addresses.clone().into_iter().collect();
+            // write_test(addrs.clone());
+            // write_test(contract.abi.is_some());
+            // write_test(!failed_abi_addresses.is_subset(&addrs));
             contract.abi.is_some()
-                && !failed_abi_addresses.is_subset(&addrs)
+                && (!failed_abi_addresses.is_subset(&addrs) || failed_abi_addresses.is_empty())
         })
-        .map(|contract: ProtocolDetails| {
-            (
-                JsonAbi::from_json_str(contract.abi.as_ref().unwrap())
-                    .inspect_err(|e| println!("{:?}, {:#?}", e, contract.addresses))
-                    .unwrap(),
-                contract,
-            )
+        .filter_map(|contract: ProtocolDetails| {
+            match JsonAbi::from_json_str(contract.abi.as_ref().unwrap()) {
+                Ok(c) => Some((c, contract)),
+                Err(e) => {
+                    println!("{:?}, {:#?}", e, contract.addresses);
+                    None
+                }
+            }
         })
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
@@ -182,7 +222,7 @@ async fn run_classifier_mapping() {
     write_all_abis(&protocol_abis);
 
     generate(
-        Path::new(&env::var("OUT_DIR").unwrap())
+        Path::new(&env::var("ABI_BUILD_DIR").unwrap())
             .join(BINDINGS_PATH)
             .to_str()
             .unwrap(),
@@ -275,7 +315,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
 
     for (protocol_addr, has_functions, _has_events) in addresses {
         if !has_functions {
-            continue
+            continue;
         }
 
         let name = if protocol_addr.classifier_name.is_none() {
@@ -393,7 +433,7 @@ fn bindings_try_row(protocol_name: &str) -> String {
 fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
     for (protocol_addr, has_functions, _) in protos {
         if !has_functions {
-            continue
+            continue;
         }
 
         let name = if protocol_addr.classifier_name.is_none() {
@@ -416,7 +456,7 @@ fn write_all_abis(protos: &Vec<(ProtocolDetails, bool, bool)>) {
 
 /// creates a mapping of each address to an abi binding
 fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
-    let path = Path::new(&env::var("OUT_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
+    let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(PROTOCOL_ADDRESS_SET_PATH);
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
     let mut used_addresses = HashSet::new();
@@ -424,7 +464,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
     let mut phf_map = phf_codegen::Map::new();
     for (map, has_functions, _) in mapping {
         if !has_functions {
-            continue
+            continue;
         }
 
         if map.classifier_name.is_none() {
@@ -443,7 +483,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
 
             for address in map.addresses {
                 if !used_addresses.insert(address.clone()) {
-                    continue
+                    continue;
                 }
 
                 phf_map.entry(
@@ -467,7 +507,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
 
             for address in map.addresses {
                 if !used_addresses.insert(address.clone()) {
-                    continue
+                    continue;
                 }
 
                 phf_map.entry(
@@ -568,4 +608,16 @@ fn to_string_vec(tokens: Vec<String>) -> String {
     res += "]";
 
     res
+}
+
+fn write_test<T: std::fmt::Debug>(thing: T) {
+    let file_path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join("test_write.txt");
+
+    let mut file = fs::OpenOptions::new()
+        .append(true)
+        .read(true)
+        .open(&file_path)
+        .expect("could not open file");
+
+    file.write_all(format!("{:?}\n", thing).as_bytes()).unwrap(); // Added a newline for formatting
 }

@@ -30,7 +30,7 @@ fn main() {
         .unwrap();
 
     runtime.block_on(async move {
-        let path = Path::new(&env::var("OUT_DIR").unwrap()).join(TOKEN_MAPPING_FILE);
+        let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(TOKEN_MAPPING_FILE);
         let mut file = BufWriter::new(File::create(&path).unwrap());
         build_token_details_map(&mut file).await;
     });
@@ -38,7 +38,7 @@ fn main() {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Row)]
 pub struct TokenDetails {
-    address:  String,
+    address: String,
     decimals: u8,
 }
 
@@ -90,7 +90,7 @@ pub struct TokenList {
 pub struct Token {
     pub chain_addresses: HashMap<Blockchain, Vec<Address>>,
     /// e.g USDC, USDT, ETH, BTC
-    pub global_id:       String,
+    pub global_id: String,
 }
 
 impl Hash for Token {

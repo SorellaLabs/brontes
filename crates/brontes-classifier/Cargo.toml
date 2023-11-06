@@ -40,7 +40,6 @@ brontes-core = { workspace = true, optional = true }
 
 
 [features]
-default = []
 test_run = ["brontes-database/test_run", "server"]
 tests = ["reth-tracing", "brontes-core"]
 server = []
