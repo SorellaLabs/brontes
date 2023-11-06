@@ -61,8 +61,6 @@ impl Classifier {
                     trace_address: root_trace.trace.trace_address,
                 };
 
-                println!("NODE - ADDRESS: {:?}, DATA: {:?}", address, classification);
-
                 let mut root = Root {
                     head: node,
                     tx_hash: trace.tx_hash,
@@ -81,6 +79,7 @@ impl Classifier {
 
                     let from_addr = trace.get_from_addr();
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
+                    println!("NODE - FROM ADDRESS: {:?}, DATA: {:?}\n", from_addr, classification);
                     let node = Node {
                         index: (index + 1) as u64,
                         inner: vec![],
