@@ -31,7 +31,7 @@ impl Inspector for SandwichInspector {
         // lets grab the set of all possible sandwich txes
         let iter = tree.roots.iter();
         if iter.len() < 3 {
-            return vec![]
+            return vec![];
         }
 
         let mut set = Vec::new();
@@ -144,7 +144,7 @@ impl SandwichInspector {
 
         if finalized.0 != appearance.0 {
             error!("finalized addr != appearance addr");
-            return None
+            return None;
         }
 
         let gas_used = searcher_gas_details
@@ -167,20 +167,20 @@ impl SandwichInspector {
             .collect_vec();
 
         let sandwich = Sandwich {
-            frontrun_tx_hash:          txes[0],
-            frontrun_gas_details:      searcher_gas_details[0],
-            frontrun_swaps_index:      frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
-            frontrun_swaps_from:       frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            frontrun_swaps_pool:       frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            frontrun_swaps_token_in:   frontrun_swaps
+            frontrun_tx_hash: txes[0],
+            frontrun_gas_details: searcher_gas_details[0],
+            frontrun_swaps_index: frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            frontrun_swaps_from: frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            frontrun_swaps_pool: frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            frontrun_swaps_token_in: frontrun_swaps
                 .iter()
                 .map(|s| s.token_in)
                 .collect::<Vec<_>>(),
-            frontrun_swaps_token_out:  frontrun_swaps
+            frontrun_swaps_token_out: frontrun_swaps
                 .iter()
                 .map(|s| s.token_out)
                 .collect::<Vec<_>>(),
-            frontrun_swaps_amount_in:  frontrun_swaps
+            frontrun_swaps_amount_in: frontrun_swaps
                 .iter()
                 .map(|s| s.amount_in.to())
                 .collect::<Vec<_>>(),
@@ -189,13 +189,13 @@ impl SandwichInspector {
                 .map(|s| s.amount_out.to())
                 .collect::<Vec<_>>(),
 
-            victim_tx_hashes:        victim_txes.clone(),
-            victim_swaps_tx_hash:    victim_txes
+            victim_tx_hashes: victim_txes.clone(),
+            victim_swaps_tx_hash: victim_txes
                 .iter()
                 .enumerate()
                 .flat_map(|(idx, tx)| vec![*tx].repeat(searcher_actions[idx].len()))
                 .collect_vec(),
-            victim_swaps_index:      searcher_actions
+            victim_swaps_index: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -203,7 +203,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_from:       searcher_actions
+            victim_swaps_from: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -211,7 +211,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_pool:       searcher_actions
+            victim_swaps_pool: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -219,7 +219,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_in:   searcher_actions
+            victim_swaps_token_in: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -227,7 +227,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_out:  searcher_actions
+            victim_swaps_token_out: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -235,7 +235,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_amount_in:  searcher_actions
+            victim_swaps_amount_in: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()

@@ -169,10 +169,11 @@ impl Classifier {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
+        /*
         if target_address == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap() {
             println!("target address: {:?}", &target_address);
             println!("target address bytes: {:?}", &target_address.0);
-        }
+        } */
         if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0) {
             if let Some(classifier) = &protocol.0 {
                 let calldata = trace.get_calldata();
@@ -189,7 +190,7 @@ impl Classifier {
                     target_address,
                     &trace.logs,
                 );
-                if target_address
+                /*  if target_address
                     == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap()
                 {
                     println!("dispatch: {:?}\n", d);
@@ -209,10 +210,10 @@ impl Classifier {
                         target_address,
                         &trace.logs,
                     );
-                }
+                } */
 
                 if let Some(res) = d {
-                    println!("RES: {:?}", res);
+                    //println!("RES: {:?}", res);
                     return res;
                 }
 
