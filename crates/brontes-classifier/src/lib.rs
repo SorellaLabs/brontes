@@ -15,7 +15,7 @@ use alloy_sol_types::{sol, SolInterface};
 use brontes_types::normalized_actions::Actions;
 pub use impls::*;
 
-include!(concat!(env!("ABI_BUILD_DIR"), "/token_mappings.rs"));
+include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
 include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_addr_set.rs"));
 include!(concat!(env!("ABI_BUILD_DIR"), "/bindings.rs"));
 
@@ -46,6 +46,7 @@ macro_rules! impl_decode_sol {
             type DecodingType = $inner_type;
 
             fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error> {
+                println!("{:#x}", Bytes::from(call_data.clone()));
                 Self::DecodingType::abi_decode(call_data, true)
             }
         }
