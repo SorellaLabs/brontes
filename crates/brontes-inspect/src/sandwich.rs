@@ -30,6 +30,7 @@ impl Inspector for SandwichInspector {
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // lets grab the set of all possible sandwich txes
         let iter = tree.roots.iter();
+        println!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
             return vec![];
         }
@@ -62,6 +63,8 @@ impl Inspector for SandwichInspector {
                 v.push(root.tx_hash);
             });
         }
+
+        println!("{:?}", possible_victims);
 
         let search_fn = |node: &Node<Actions>| {
             node.subactions
