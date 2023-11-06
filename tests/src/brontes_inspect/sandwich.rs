@@ -35,7 +35,13 @@ async fn process_tree() {
         .inspect(
             H256::from_str("0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5")
                 .unwrap(),
-            |node| true,
+            |node| {
+                node.subactions
+                    .iter()
+                    .any(|action| action.is_swap() || action.is_transfer())
+                    || node.data.is_swap()
+                    || node.data.is_swap()
+            },
         )
         .into_iter()
         .collect::<Vec<_>>();
@@ -59,7 +65,9 @@ fn tree_ting() {
                 )
                 .unwrap()
         })
-        .collect::<Vec<_>>()[0];
+        .collect::<Vec<_>>();
 
-    println!("{:?}", root.head.subactions);
+    println!("{:?}", root.len());
+
+    println!("{:?}", root[0].head.subactions);
 }
