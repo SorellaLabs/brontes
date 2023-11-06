@@ -396,7 +396,6 @@ impl<V: NormalizedAction> Node<V> {
     {
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
-            println!("calling false??");
             return false;
         }
         let lower_has_better = self
