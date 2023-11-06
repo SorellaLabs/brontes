@@ -68,6 +68,8 @@ impl Inspector for SandwichInspector {
             node.subactions
                 .iter()
                 .any(|action| action.is_swap() || action.is_transfer())
+                || node.data.is_swap()
+                || node.data.is_swap()
         };
 
         set.into_iter()
