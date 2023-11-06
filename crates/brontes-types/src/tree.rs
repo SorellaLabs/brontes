@@ -188,7 +188,7 @@ impl GasDetails {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Node<V: NormalizedAction> {
     pub inner: Vec<Node<V>>,
     pub finalized: bool,
@@ -224,9 +224,6 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     pub fn get_all_inner_nodes(&mut self, n: Node<V>, mut trace_addr: Vec<usize>) {
-        if n.finalized {
-            self.subactions.push(n.data.clone());
-        }
         if trace_addr.len() == 1 {
             self.inner.push(n);
         } else {
