@@ -26,7 +26,6 @@ action_impl!(
         let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        //println!("CALLDATA TO: {:?}", return_data.to);
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
             .get(&*target_address)
             .copied()
