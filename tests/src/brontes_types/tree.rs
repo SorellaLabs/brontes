@@ -13,7 +13,7 @@ use reth_tracing::TracingClient;
 use serial_test::serial;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
-const BLOCK_NUMBER: u64 = 18180900;
+use crate::UNIT_TESTS_BLOCK_NUMBER;
 
 #[tokio::test]
 #[serial]
@@ -24,12 +24,15 @@ async fn test_raw_tree() {
 
     let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
     let db = Database::default();
-    let mut tree = build_raw_test_tree(&tracer, db, BLOCK_NUMBER).await;
+    let mut tree = build_raw_test_tree(&tracer, &db, UNIT_TESTS_BLOCK_NUMBER).await;
 
     let mut transaction_traces = tracer
         .tracer
         .trace
-        .replay_block_transactions(BLOCK_NUMBER.into(), HashSet::from([TraceType::Trace]))
+        .replay_block_transactions(
+            UNIT_TESTS_BLOCK_NUMBER.into(),
+            HashSet::from([TraceType::Trace]),
+        )
         .await
         .unwrap()
         .unwrap();

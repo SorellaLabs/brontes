@@ -25,15 +25,15 @@ type CollectionFut<'a> = Pin<
 >;
 
 pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
-    block_number:      u64,
-    parser:            &'inspector Parser<T>,
-    classifier:        &'inspector Classifier,
-    database:          &'inspector Database,
-    composer:          Composer<'inspector, N>,
+    block_number: u64,
+    parser: &'inspector Parser<T>,
+    classifier: &'inspector Classifier,
+    database: &'inspector Database,
+    composer: Composer<'inspector, N>,
     // pending future data
     classifier_future: Option<CollectionFut<'inspector>>,
     // pending insertion data
-    insertion_future:  Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
+    insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
 impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, N, T> {
@@ -77,12 +77,14 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
             match collection_fut.poll_unpin(cx) {
                 Poll::Ready((parser_data, labeller_data)) => {
                     let (traces, header) = parser_data.unwrap().unwrap();
+                    println!("Got {} traces + header + metadata", traces.len());
                     let tree = self.classifier.build_tree(traces, header, &labeller_data);
+                    println!("built tree");
                     self.composer.on_new_tree(tree.into(), labeller_data.into());
                 }
                 Poll::Pending => {
                     self.classifier_future = Some(collection_fut);
-                    return
+                    return;
                 }
             }
         }
