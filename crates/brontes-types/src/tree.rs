@@ -424,7 +424,7 @@ impl<V: NormalizedAction> Node<V> {
         }
 
         println!(
-            "INSPECTOR NODE - RESULTS: {:?}",
+            "INSPECTOR NODE - RESULTS: {:?}\n\n",
             result
                 .iter()
                 .map(|s| s.iter().map(|ss| ss.get_action()).collect::<Vec<_>>())
