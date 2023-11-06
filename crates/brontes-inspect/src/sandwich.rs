@@ -40,6 +40,7 @@ impl Inspector for SandwichInspector {
         let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
 
         for root in iter {
+            println!("TX_HASH: {:?}", root.tx_hash);
             match pairs.entry(root.head.address) {
                 Entry::Vacant(v) => {
                     v.insert(root.tx_hash);
@@ -65,7 +66,11 @@ impl Inspector for SandwichInspector {
         }
 
         for v in &possible_victims {
-            println!("{:?}\n\n\n", v);
+            println!("POSS VICTIM: {:?}\n\n\n", v);
+        }
+
+        for s in &set {
+            println!("FOUND SET: {:?}\n\n", s);
         }
 
         let search_fn = |node: &Node<Actions>| {
