@@ -12,7 +12,7 @@ use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::normalized_actions::NormalizedAction;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct TimeTree<V: NormalizedAction> {
     pub roots: Vec<Root<V>>,
     pub header: Header,
@@ -110,7 +110,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
     pub head: Node<V>,
     pub tx_hash: H256,
