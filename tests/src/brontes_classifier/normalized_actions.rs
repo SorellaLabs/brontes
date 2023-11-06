@@ -83,9 +83,14 @@ fn test_uni_v2_mint() {
     let sig: &[u8] = &UniswapV2::mintCall::SELECTOR;
     let index = 96;
     let calldata = Bytes::from_str("0x6a6278420000000000000000000000004d047bcb94f45bd745290333d2c9bdedc94f36e5").unwrap();
-    let return_bytes = Bytes::from_str("0x0000000000000000000000000000000000000000000000000000000000000001").unwrap();
+    let return_bytes = Bytes::from_str("0x00000000000000000000000000000000000000000000000000000004292ca7a9").unwrap();
     let from_address = H160::from_str("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D").unwrap();
     let target_address = H160::from_str("0x0d4a11d5eeaac28ec3f61d100daf4d40471f1852").unwrap();
+
+    println!("DEOC {:?}", H160(UniswapV2::mintCall::abi_decode(&calldata, true).unwrap().to.0 .0));
+    
+    println!("SELE {:?}", sig);
+    println!("DEOC SELE {:?}", UniswapV2::UniswapV2Calls::abi_decode(&calldata, true).unwrap().selector());
 
     let bindings = StaticBindings::UniswapV2(UniswapV2_Enum::None);
     let data: StaticReturnBindings = bindings.try_decode(&calldata).unwrap();
@@ -123,7 +128,7 @@ fn test_uni_v2_mint() {
         from: from_address,
         token:  vec![H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(), H160::from_str("0xdac17f958d2ee523a2206206994597c13d831ec7").unwrap()],
         to: target_address,
-        recipient: target_address,
+        recipient: H160::from_str("0x4d047bcb94f45bd745290333d2c9bdedc94f36e5").unwrap(),
         amount: vec![H256::from_low_u64_be(999999641424138).into(), H256::from_low_u64_be(1792743).into()],
     };
 
