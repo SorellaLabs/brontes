@@ -35,7 +35,7 @@ async fn process_tree() {
         .inspect(
             H256::from_str("0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5")
                 .unwrap(),
-            |node| node.subactions.iter().any(|action| action.is_swap()) || node.data.is_swap(),
+            |node| true,
         )
         .into_iter()
         .collect::<Vec<_>>();
