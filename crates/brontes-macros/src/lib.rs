@@ -26,12 +26,16 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let mut has_calldata = false;
     let mut option_parsing = Vec::new();
 
+    //println!("11");
+
     if !exchange_mod_name.to_string().eq("None") {
         has_calldata = true;
         option_parsing.push(quote!(
                 let call_data = enum_unwrap!(data, #exchange_mod_name, #action_type);
         ));
     }
+
+    //println!("22");
 
     if give_logs.value {
         option_parsing.push(quote!(
@@ -49,6 +53,8 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         ));
     }
     // println!("tt is the name 0");
+
+    println!("{:?}", (exchange_mod_name, has_calldata, give_logs.value, give_returns.value));
 
     let fn_call = match (has_calldata, give_logs.value, give_returns.value) {
         (true, true, true) => {
@@ -210,6 +216,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 logs: &Vec<Log>,
             ) -> Option<Actions> {
                 if sig == self.0.get_signature() {
+                    println!("YAY!");
                     return
                         self.0.decode_trace_data(
                             index,
