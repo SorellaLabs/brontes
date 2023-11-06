@@ -146,3 +146,64 @@ async fn test_classify_node() {
 
     //helper_classify_node(&classifier, tx_trace.trace, 0);
 }
+
+#[tokio::test]
+async fn ugh() {
+    dotenv::dotenv().ok();
+
+    // testing 0xd42987b923b9e10de70df67b2bb57eefe21dec0a4c0372d3bcbdb69feb34dff4
+    let block_num = 18429722;
+
+    let (tx, _rx) = unbounded_channel();
+
+    let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+
+    let block = tracer.execute_block(block_num).await.unwrap(); // searching for
+    let tx_trace = block
+        .0
+        .into_iter()
+        .filter(|tx| {
+            tx.tx_hash
+                == H256::from_str(
+                    "0xd42987b923b9e10de70df67b2bb57eefe21dec0a4c0372d3bcbdb69feb34dff4",
+                )
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
+
+    let classifier = Classifier::new();
+
+    let db = Database::default();
+
+    let tree = build_raw_test_tree(&tracer, &db, block_num)
+        .await
+        .roots
+        .into_iter()
+        .filter(|r| {
+            r.tx_hash
+                == H256::from_str(
+                    "0xd42987b923b9e10de70df67b2bb57eefe21dec0a4c0372d3bcbdb69feb34dff4",
+                )
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
+
+    //println!("{:?}", tree.len());
+
+    let metadata = db.get_metadata(block_num).await;
+    let raw_tree = TimeTree {
+        roots: tree,
+        header: block.1.clone(),
+        avg_priority_fee: 0,
+        eth_prices: metadata.eth_prices.clone(),
+    };
+
+    let classified_tree = classifier.build_tree(tx_trace, block.1, &metadata);
+
+    print_tree_as_json(&raw_tree);
+
+    println!("\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+    print_tree_as_json(&classified_tree);
+
+    //helper_classify_node(&classifier, tx_trace.trace, 0);
+}

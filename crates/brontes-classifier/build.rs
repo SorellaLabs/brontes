@@ -65,6 +65,7 @@ INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHER
 GROUP BY c.abi, c.classifier_name
 HAVING (abi IS NOT NULL AND hasAny(addresses, ?)) OR classifier_name != ''
 "#;
+
 same as below
 */
 
@@ -104,9 +105,9 @@ fn main() {
 async fn build_address_to_token_map() {
     let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(TOKEN_MAPPING);
     let mut file = fs::OpenOptions::new()
-    .write(true)
-    .open(path)
-    .expect("could not open file");
+        .write(true)
+        .open(path)
+        .expect("could not open file");
 
     {
         let client = build_db();
