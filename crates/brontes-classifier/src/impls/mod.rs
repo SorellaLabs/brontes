@@ -5,21 +5,15 @@ pub use uniswap_v3::UniswapV3Classifier;
 
 #[macro_export]
 macro_rules! enum_unwrap {
-    ($data:ident, $exchange:ident, $return:ty) => {{
-        /*
-                match $data {
-                    StaticReturnBindings::$exchange(val) => val,
-                    _ => unreachable!("1st layer no"),
-                }
-        */
-
-        unsafe {
-            let a = &$data as *const _ as *mut u8;
-            let ptr = a.add(4);
-            let inner = ptr.cast() as *mut $exchange;
-            let ptr = inner.add(1);
-
-            &*(ptr.cast() as *mut $return)
+    ($data:ident, $exchange:ident, $return:ident) => {{
+        paste::paste! {
+            match $data {
+                StaticReturnBindings::$exchange(val) => match val {
+                    [<$exchange Calls>]::[<$return:lower>](inner) => inner,
+                    _ => unreachable!("2nd layer no"),
+                },
+                _ => unreachable!("1st layer no"),
+            }
         }
     }};
 }

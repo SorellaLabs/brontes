@@ -23,8 +23,10 @@ action_impl!(
     false,
     true,
     |index, from_address: H160, target_address: H160, return_data: swapReturn| {
+        let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
+        //println!("CALLDATA TO: {:?}", return_data.to);
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
             .get(&*target_address)
             .copied()
@@ -58,6 +60,37 @@ action_impl!(
 );
 
 action_impl!(
+    V3MintImpl,
+    Mint,
+    mintCall,
+    Some(UniswapV3),
+    false,
+    true,
+    |index,
+     from_address: H160,
+     target_address: H160,
+     call_data: mintCall,
+     return_data: mintReturn| {
+        let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
+        let token_0_delta = return_data.amount0;
+        let token_1_delta = return_data.amount1;
+        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
+            .get(&address_bytes)
+            .copied()
+            .unwrap();
+
+        Some(NormalizedMint {
+            index,
+            from: from_address,
+            recipient: H160(call_data.recipient.0 .0),
+            to: target_address,
+            token: vec![token0, token1],
+            amount: vec![token_0_delta, token_1_delta],
+        })
+    }
+);
+
+action_impl!(
     V3BurnImpl,
     Burn,
     burnCall,
@@ -65,10 +98,14 @@ action_impl!(
     false,
     true,
     |index, from_address: H160, target_address: H160, return_data: burnReturn| {
+        let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
+        let token_0_delta = return_data.amount0;
+        let token_1_delta = return_data.amount1;
+
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address)
+            .get(&address_bytes)
             .copied()
             .unwrap();
 
@@ -84,49 +121,22 @@ action_impl!(
 );
 
 action_impl!(
-    V3MintImpl,
-    Mint,
-    mintCall,
-    None,
-    false,
-    true,
-    |index, from_address: H160, target_address: H160, return_data: mintReturn| {
-        let token_0_delta = return_data.amount0;
-        let token_1_delta = return_data.amount1;
-        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*from_address)
-            .copied()
-            .unwrap();
-
-        // todo this address shit wrong but wanna build
-        Some(NormalizedMint {
-            index,
-            from: target_address,
-            recipient: from_address,
-            to: target_address,
-            token: vec![token0, token1],
-            amount: vec![token_0_delta, token_1_delta],
-        })
-    }
-);
-
-action_impl!(
     V3CollectImpl,
     Collect,
     collectCall,
-    Some(UniswapV3Calls),
+    Some(UniswapV3),
     false,
     true,
-    |index,
-     from_addr: H160,
-     to_addr: H160,
-     _call_data: &collectCall,
-     return_data: collectReturn| {
-        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL.get(&*to_addr).copied().unwrap();
+    |index, from_addr: H160, to_addr: H160, call_data: collectCall, return_data: collectReturn| {
+        let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
+        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
+            .get(&address_bytes)
+            .copied()
+            .unwrap();
         Some(NormalizedCollect {
             index,
             from: from_addr,
-            recipient: from_addr,
+            recipient: H160(call_data.recipient.0 .0),
             to: to_addr,
             token: vec![token0, token1],
             amount: vec![U256::from(return_data.amount0), U256::from(return_data.amount1)],
