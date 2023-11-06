@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use reth_primitives::{Address, U256};
 use reth_rpc_types::Log;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, InsertRow, Row};
 
 use crate::structured_trace::TransactionTraceWithLogs;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum Actions {
     Swap(NormalizedSwap),
     Transfer(NormalizedTransfer),
@@ -102,7 +102,7 @@ impl Actions {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Row, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedFlashLoan {
     pub index: u64,
     pub from: Address,
@@ -111,7 +111,7 @@ pub struct NormalizedFlashLoan {
     pub fee_paid: Address,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwap {
     pub index: u64,
     pub from: Address,
@@ -122,7 +122,7 @@ pub struct NormalizedSwap {
     pub amount_out: U256,
 }
 
-#[derive(Debug, Clone, Serialize, Row, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedTransfer {
     pub index: u64,
     pub to: Address,
@@ -131,7 +131,7 @@ pub struct NormalizedTransfer {
     pub amount: U256,
 }
 
-#[derive(Debug, Clone, Serialize, Row, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedMint {
     pub index: u64,
     pub from: Address,
@@ -141,7 +141,7 @@ pub struct NormalizedMint {
     pub amount: Vec<U256>,
 }
 
-#[derive(Debug, Clone, Serialize, Row, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBurn {
     pub index: u64,
     pub from: Address,
@@ -151,7 +151,7 @@ pub struct NormalizedBurn {
     pub amount: Vec<U256>,
 }
 
-#[derive(Debug, Clone, Serialize, Row, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedCollect {
     pub index: u64,
     pub to: Address,
@@ -161,7 +161,7 @@ pub struct NormalizedCollect {
     pub amount: Vec<U256>,
 }
 
-#[derive(Debug, Clone, Serialize, Row, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLiquidation {
     pub index: u64,
     pub liquidator: Address,
@@ -171,7 +171,7 @@ pub struct NormalizedLiquidation {
     pub reward: U256,
 }
 
-#[derive(Debug, Clone, Serialize, Row, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLoan {
     pub index: u64,
     pub lender: Address,
@@ -181,7 +181,7 @@ pub struct NormalizedLoan {
     pub collateral: HashMap<Address, U256>,
 }
 
-#[derive(Debug, Clone, Serialize, Row, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedRepayment {
     pub index: u64,
     pub lender: Address,
