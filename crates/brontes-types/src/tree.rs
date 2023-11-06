@@ -398,6 +398,7 @@ impl<V: NormalizedAction> Node<V> {
         if !call(self) {
             return false;
         }
+
         let lower_has_better = self
             .inner
             .iter()
@@ -407,7 +408,9 @@ impl<V: NormalizedAction> Node<V> {
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
         if !lower_has_better {
-            result.push(self.get_all_sub_actions());
+            let mut res = self.get_all_sub_actions();
+            res.push(self.data.clone());
+            result.push(res);
         }
         // lower node has a better sub-action.
         true
