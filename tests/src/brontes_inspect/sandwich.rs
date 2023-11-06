@@ -30,17 +30,6 @@ async fn process_tree() {
     let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
 
     println!("{:?}", mev);
-
-    let actions = tree
-        .inspect(
-            H256::from_str("0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5")
-                .unwrap(),
-            |node| true,
-        )
-        .into_iter()
-        .collect::<Vec<_>>();
-
-    println!("ACTIONSSS: {:?}", actions);
 }
 
 #[test]
