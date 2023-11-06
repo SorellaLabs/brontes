@@ -29,7 +29,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     if !exchange_mod_name.to_string().eq("None") {
         has_calldata = true;
         option_parsing.push(quote!(
-                let call_data = enum_unwrap!(data, #exchange_mod_name, #call_type);
+                let call_data = enum_unwrap!(data, #exchange_mod_name, #action_type);
         ));
     }
 
@@ -42,11 +42,13 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         ));
     }
 
+    //println!("tt is not the name 0");
     if give_returns.value {
         option_parsing.push(quote!(
                 let return_data = #call_type::abi_decode_returns(&return_data, true).unwrap();
         ));
     }
+    // println!("tt is the name 0");
 
     let fn_call = match (has_calldata, give_logs.value, give_returns.value) {
         (true, true, true) => {
