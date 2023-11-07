@@ -11,6 +11,7 @@ use brontes_types::{
     ToFloatNearest,
 };
 use itertools::Itertools;
+use malachite::Rational;
 use reth_primitives::{Address, H256};
 use tracing::error;
 
@@ -41,7 +42,7 @@ impl Inspector for SandwichInspector {
         let iter = tree.roots.iter();
         println!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
-            return vec![];
+            return vec![]
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
@@ -170,27 +171,25 @@ impl SandwichInspector {
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
         println!("deltas {:#?}", deltas);
 
-        let appearance_usd_deltas = self.inner.get_best_usd_delta(
+        let appearance_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_delta(
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
         );
 
+        let appearance_usd: Rational = appearance_usd_deltas.values().sum();
+
         println!("appearance_usd_deltas {:#?}", appearance_usd_deltas);
 
-        let finalized_usd_deltas = self.inner.get_best_usd_delta(
+        let mev_collectors = appearance_usd_deltas.keys().copied().collect();
+
+        let finalized_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_delta(
             deltas,
             metadata.clone(),
             Box::new(|(_, finalized)| finalized),
         );
 
-        let (finalized, appearance) = (finalized_usd_deltas?, appearance_usd_deltas?);
-
-        if finalized.0 != appearance.0 {
-            println!("finalized addr != appearance addr");
-            error!("finalized addr != appearance addr");
-            return None;
-        }
+        let finalized_usd: Rational = finalized_usd_deltas.values().sum();
 
         let gas_used = searcher_gas_details
             .iter()
@@ -326,14 +325,14 @@ impl SandwichInspector {
 
         let classified_mev = ClassifiedMev {
             eoa,
-            mev_profit_collector: finalized.0,
+            mev_profit_collector: mev_collectors,
             tx_hash: txes[0],
             mev_contract: mev_executor_contract,
             block_number: metadata.block_num,
             mev_type: MevType::Sandwich,
-            submission_profit_usd: (appearance.1 - &gas_used_usd_appearance).to_float(),
+            submission_profit_usd: (appearance_usd - &gas_used_usd_appearance).to_float(),
             submission_bribe_usd: gas_used_usd_appearance.to_float(),
-            finalized_profit_usd: (finalized.1 - &gas_used_usd_finalized).to_float(),
+            finalized_profit_usd: (finalized_usd - &gas_used_usd_finalized).to_float(),
             finalized_bribe_usd: gas_used_usd_finalized.to_float(),
         };
 
