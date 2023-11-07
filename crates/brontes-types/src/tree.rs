@@ -5,9 +5,8 @@ use std::{
 
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
-use reth_primitives::{Address, Header, H256, U256};
+use reth_primitives::{Address, Header, H256};
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::normalized_actions::NormalizedAction;
@@ -483,12 +482,20 @@ impl<V: NormalizedAction> Node<V> {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::test_utils::*;
+    use std::collections::HashSet;
+
+    use crate::normalized_actions::Actions;
+    use crate::test_utils::{ComparisonNode, *};
+    use crate::*;
+
+    use super::{Node, *};
+    use brontes_core::decoding::parser::TraceParser;
+
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::test_utils::init_trace_parser;
     use brontes_database::database::Database;
     use reth_rpc_types::trace::parity::TraceType;
+    use reth_tracing::TracingClient;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
@@ -500,7 +507,8 @@ mod tests {
 
         let (tx, _rx) = unbounded_channel();
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let tracer: TraceParser<TracingClient> =
+            init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
         let db = Database::default();
         let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
 
@@ -517,82 +525,82 @@ mod tests {
         let first_tx = transaction_traces.remove(0);
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head),
+            ComparisonNode::from(&first_root.head as Node<Actions>),
             ComparisonNode::new(&first_tx.full_trace.trace[0], 0, 8)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[0]),
+            ComparisonNode::from(&first_root.head.inner[0]),
             ComparisonNode::new(&first_tx.full_trace.trace[1], 1, 1)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[0].inner[0]),
+            ComparisonNode::from(&first_root.head.inner[0].inner[0]),
             ComparisonNode::new(&first_tx.full_trace.trace[2], 2, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[1]),
+            ComparisonNode::from(&first_root.head.inner[1]),
             ComparisonNode::new(&first_tx.full_trace.trace[3], 3, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[2]),
+            ComparisonNode::from(&first_root.head.inner[2]),
             ComparisonNode::new(&first_tx.full_trace.trace[4], 4, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[3]),
+            ComparisonNode::from(&first_root.head.inner[3]),
             ComparisonNode::new(&first_tx.full_trace.trace[5], 5, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[4]),
+            ComparisonNode::from(&first_root.head.inner[4]),
             ComparisonNode::new(&first_tx.full_trace.trace[6], 6, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[5]),
+            ComparisonNode::from(&first_root.head.inner[5]),
             ComparisonNode::new(&first_tx.full_trace.trace[7], 7, 3)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[0]),
+            ComparisonNode::from(&first_root.head.inner[5].inner[0]),
             ComparisonNode::new(&first_tx.full_trace.trace[8], 8, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[1]),
+            ComparisonNode::from(&first_root.head.inner[5].inner[1]),
             ComparisonNode::new(&first_tx.full_trace.trace[9], 9, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[2]),
+            ComparisonNode::from(&first_root.head.inner[5].inner[2]),
             ComparisonNode::new(&first_tx.full_trace.trace[10], 10, 3)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[2].inner[0]),
+            ComparisonNode::from(&first_root.head.inner[5].inner[2].inner[0]),
             ComparisonNode::new(&first_tx.full_trace.trace[11], 11, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[2].inner[1]),
+            ComparisonNode::from(&first_root.head.inner[5].inner[2].inner[1]),
             ComparisonNode::new(&first_tx.full_trace.trace[12], 12, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[2].inner[2]),
+            ComparisonNode::from(&first_root.head.inner[5].inner[2].inner[2]),
             ComparisonNode::new(&first_tx.full_trace.trace[13], 13, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[6]),
+            ComparisonNode::from(&first_root.head.inner[6]),
             ComparisonNode::new(&first_tx.full_trace.trace[14], 14, 0)
         );
 
         assert_eq!(
-            Into::<ComparisonNode>::into(&first_root.head.inner[7]),
+            ComparisonNode::from(&first_root.head.inner[7]),
             ComparisonNode::new(&first_tx.full_trace.trace[15], 15, 0)
         );
     }
