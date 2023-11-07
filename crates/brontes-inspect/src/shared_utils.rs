@@ -117,7 +117,6 @@ impl SharedInspectorUtils {
         time_selector: Box<dyn Fn(&(Rational, Rational)) -> &Rational>,
     ) -> Option<(Address, Rational)> {
         deltas
-            .clone()
             .into_iter()
             .map(|(caller, tokens)| {
                 let summed_value = tokens
