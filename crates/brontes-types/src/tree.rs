@@ -485,8 +485,7 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::normalized_actions::Actions;
-    use crate::test_utils::{ComparisonNode, *};
-    use crate::*;
+    use crate::test_utils::ComparisonNode;
 
     use super::{Node, *};
     use brontes_core::decoding::parser::TraceParser;
