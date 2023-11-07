@@ -26,7 +26,7 @@ pub struct PossibleSandwich {
     eoa: Address,
     tx0: H256,
     tx1: H256,
-    mev_addr: Address,
+    mev_executor_contract: Address,
     victims: Vec<H256>,
 }
 
@@ -45,45 +45,48 @@ impl Inspector for SandwichInspector {
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
-
-        let mut duplicate_senders = HashMap::new();
+        let mut duplicate_senders: HashMap<Address, Vec<H256>> = HashMap::new();
         let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
 
-        // We loop through all transactions in the block
         for root in iter {
             match duplicate_senders.entry(root.head.address) {
-                // If we have not seen this sender before, we add the tx hash to the map
+                // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
-                    v.insert(root.tx_hash);
-
+                    v.insert(vec![root.tx_hash]);
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
-                    // if the sender has already been seen, get the tx hash of the previous tx
-                    let tx0: H256 = *o.get();
-                    if let Some(mut victims) = possible_victims.remove(&tx0) {
-                        if victims.len() == 0 {
-                            o.insert(root.tx_hash);
-                        } else {
-                            o.insert(root.tx_hash);
+                    let prev_tx_hashes = o.get();
 
-                            set.push(PossibleSandwich {
-                                eoa: root.head.address,
-                                tx0,
-                                tx1: root.tx_hash,
-                                mev_addr: root.head.data.get_too_address(),
-                                victims,
-                            });
+                    for prev_tx_hash in prev_tx_hashes {
+                        // Find the victims between the previous and the current transaction
+                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
+                            if victims.len() >= 2 {
+                                // Create
+                                set.push(PossibleSandwich {
+                                    eoa: root.head.address,
+                                    tx0: *prev_tx_hash,
+                                    tx1: root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_too_address(),
+                                    victims: victims.clone(),
+                                });
+                            }
                         }
                     }
+                    // Add current transaction hash to the list of transactions for this sender
+                    o.get_mut().push(root.tx_hash);
+                    possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
 
-            possible_victims.iter_mut().for_each(|(k, v)| {
+            // Now, for each existing entry in possible_victims, we add the current
+            // transaction hash as a potential victim, if it is not the same as
+            // the key (which represents another transaction hash)
+            for (k, v) in possible_victims.iter_mut() {
                 if k != &root.tx_hash {
                     v.push(root.tx_hash);
                 }
-            });
+            }
         }
         println!("{:#?}", set);
 
@@ -95,6 +98,11 @@ impl Inspector for SandwichInspector {
 
         set.into_iter()
             .filter_map(|ps| {
+                println!(
+                    "\n\nFOUND SET: {:?}\n",
+                    (ps.eoa, ps.tx0, ps.tx1, ps.mev_executor_contract, &ps.victims)
+                );
+
                 let gas = [
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
@@ -124,7 +132,7 @@ impl Inspector for SandwichInspector {
 
                 self.calculate_sandwich(
                     ps.eoa,
-                    ps.mev_addr,
+                    ps.mev_executor_contract,
                     meta_data.clone(),
                     [ps.tx0, ps.tx1],
                     gas,
@@ -142,7 +150,7 @@ impl SandwichInspector {
     fn calculate_sandwich(
         &self,
         eoa: Address,
-        mev_addr: Address,
+        mev_executor_contract: Address,
         metadata: Arc<Metadata>,
         txes: [H256; 2],
         searcher_gas_details: [GasDetails; 2],
@@ -153,14 +161,13 @@ impl SandwichInspector {
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
-        println!("{:#?}", deltas);
+        println!("{:#?}", metadata);
 
         let appearance_usd_deltas = self.inner.get_best_usd_delta(
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
         );
-        println!("{:#?}", appearance_usd_deltas);
 
         let finalized_usd_deltas = self.inner.get_best_usd_delta(
             deltas,
@@ -311,7 +318,7 @@ impl SandwichInspector {
             eoa,
             mev_profit_collector: finalized.0,
             tx_hash: txes[0],
-            mev_contract: mev_addr,
+            mev_contract: mev_executor_contract,
             block_number: metadata.block_num,
             mev_type: MevType::Sandwich,
             submission_profit_usd: (appearance.1 - &gas_used_usd_appearance).to_float(),
