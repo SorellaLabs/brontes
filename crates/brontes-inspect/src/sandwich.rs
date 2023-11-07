@@ -126,6 +126,7 @@ impl Inspector for SandwichInspector {
                     .collect::<Vec<Vec<Actions>>>();
                 println!("Victim actions - {:#?}", victim_actions);
 
+                println!("{:?}", ps);
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
