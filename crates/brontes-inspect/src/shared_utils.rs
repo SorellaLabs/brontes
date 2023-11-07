@@ -148,6 +148,7 @@ fn apply_entry(token: Address, amount: Rational, token_map: &mut HashMap<Address
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::str::FromStr;
 
     use brontes_types::normalized_actions::{Actions, NormalizedSwap};
@@ -217,6 +218,36 @@ mod tests {
 
         let deltas = inspector_utils.calculate_swap_deltas(&swaps);
 
-        println!("{:?}", deltas);
+        let mut expected_map = HashMap::new();
+
+        let mut inner_map = HashMap::new();
+        inner_map.insert(
+            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+            Rational::from(-1),
+        );
+        inner_map.insert(
+            H160::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
+            Rational::from_integers(51621651680499.into(), 2500000.into()),
+        );
+        expected_map.insert(
+            H160::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap(),
+            inner_map,
+        );
+
+        let mut inner_map = HashMap::new();
+        inner_map.insert(
+            H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
+            Rational::from(0),
+        );
+        inner_map.insert(
+            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+            Rational::from_integers(56406919415648307.into(), 500000000000000000.into()),
+        );
+        expected_map.insert(
+            H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
+            inner_map,
+        );
+
+        assert_eq!(expected_map, deltas);
     }
 }
