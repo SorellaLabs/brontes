@@ -22,11 +22,11 @@ pub struct SandwichInspector {
 }
 
 pub struct PossibleSandwich {
-    eoa: Address,
-    tx0: H256,
-    tx1: H256,
+    eoa:      Address,
+    tx0:      H256,
+    tx1:      H256,
     mev_addr: Address,
-    victims: Vec<H256>,
+    victims:  Vec<H256>,
 }
 
 #[async_trait::async_trait]
@@ -40,7 +40,7 @@ impl Inspector for SandwichInspector {
         let iter = tree.roots.iter();
         println!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
-            return vec![];
+            return vec![]
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
@@ -183,7 +183,7 @@ impl SandwichInspector {
 
         if finalized.0 != appearance.0 {
             error!("finalized addr != appearance addr");
-            return None;
+            return None
         }
 
         let gas_used = searcher_gas_details
@@ -209,20 +209,20 @@ impl SandwichInspector {
             .collect_vec();
 
         let sandwich = Sandwich {
-            frontrun_tx_hash: txes[0],
-            frontrun_gas_details: searcher_gas_details[0],
-            frontrun_swaps_index: frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
-            frontrun_swaps_from: frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            frontrun_swaps_pool: frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            frontrun_swaps_token_in: frontrun_swaps
+            frontrun_tx_hash:          txes[0],
+            frontrun_gas_details:      searcher_gas_details[0],
+            frontrun_swaps_index:      frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            frontrun_swaps_from:       frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            frontrun_swaps_pool:       frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            frontrun_swaps_token_in:   frontrun_swaps
                 .iter()
                 .map(|s| s.token_in)
                 .collect::<Vec<_>>(),
-            frontrun_swaps_token_out: frontrun_swaps
+            frontrun_swaps_token_out:  frontrun_swaps
                 .iter()
                 .map(|s| s.token_out)
                 .collect::<Vec<_>>(),
-            frontrun_swaps_amount_in: frontrun_swaps
+            frontrun_swaps_amount_in:  frontrun_swaps
                 .iter()
                 .map(|s| s.amount_in.to())
                 .collect::<Vec<_>>(),
@@ -231,9 +231,9 @@ impl SandwichInspector {
                 .map(|s| s.amount_out.to())
                 .collect::<Vec<_>>(),
 
-            victim_tx_hashes: victim_txes.clone(),
-            victim_swaps_tx_hash: victim_txes,
-            victim_swaps_index: searcher_actions
+            victim_tx_hashes:        victim_txes.clone(),
+            victim_swaps_tx_hash:    victim_txes,
+            victim_swaps_index:      searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -241,7 +241,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_from: searcher_actions
+            victim_swaps_from:       searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -249,7 +249,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_pool: searcher_actions
+            victim_swaps_pool:       searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -257,7 +257,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_in: searcher_actions
+            victim_swaps_token_in:   searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -265,7 +265,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_out: searcher_actions
+            victim_swaps_token_out:  searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -273,7 +273,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_amount_in: searcher_actions
+            victim_swaps_amount_in:  searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -339,7 +339,7 @@ impl SandwichInspector {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use std::{str::FromStr, time::SystemTime};
 
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::init_trace_parser;
@@ -372,7 +372,11 @@ mod tests {
 
         let inspector = SandwichInspector::default();
 
+        let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_millis();
+        println!("sandwich inspector took: {} ms", delta);
 
         // assert!(
         //     mev[0].0.tx_hash
