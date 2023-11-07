@@ -23,7 +23,7 @@ pub async fn write_tree_as_json(tree: &TimeTree<Actions>, path: &str) {
     tokio::fs::write(path, serialized_tree).await.unwrap();
 }
 
-fn force_call_action(trace: &TransactionTrace) -> CallAction {
+pub fn force_call_action(trace: &TransactionTrace) -> CallAction {
     match &trace.action {
         reth_rpc_types::trace::parity::Action::Call(c) => c.clone(),
         _ => unreachable!(),
