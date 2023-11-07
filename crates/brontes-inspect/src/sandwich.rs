@@ -69,7 +69,7 @@ impl Inspector for SandwichInspector {
                             let _ = victims.remove(0);
                             set.push(
                                 PossibleSandwich {
-                                    root.head.address,
+                                    eoa: root.head.address,
                                     tx0,
                                     tx1: root.tx_hash,
                                     mev_addr: root.head.data.get_too_address(),
