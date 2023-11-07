@@ -55,14 +55,14 @@ sorella-db-databases.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
 serial_test.workspace = true
-brontes-classifier = { workspace = true, default-features = false, features = ["tests"] }
-brontes-core = { workspace = true, default-features = false, features = ["tests"] }
-brontes-database = { workspace = true, default-features = false, features = ["tests"] }
+brontes-classifier = { workspace = true, features = ["tests"] }
+brontes-core = { workspace = true, features = ["tests"] }
+brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing.workspace = true
 
 
 
 [features]
-default = ["tests"]
+default = []
 server = []
 tests = ["tokio/full"]
