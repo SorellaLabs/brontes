@@ -124,11 +124,13 @@ impl Inspector for SandwichInspector {
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<Vec<Actions>>>();
+                println!("Victim actions - {:#?}", victim_actions);
 
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
+                println!("Searcher actions - {:#?}", searcher_actions);
 
                 self.calculate_sandwich(
                     ps.eoa,
@@ -360,7 +362,7 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        let tx = block.0.clone().into_iter().take(6).collect::<Vec<_>>();
+        let tx = block.0.clone().into_iter().take(10).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
         // write_tree_as_json(&tree, "./tree.json").await;

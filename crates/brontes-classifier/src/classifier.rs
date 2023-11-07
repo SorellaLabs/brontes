@@ -44,7 +44,7 @@ impl Classifier {
             .into_par_iter()
             .filter_map(|mut trace| {
                 if trace.trace.is_empty() {
-                    return None;
+                    return None
                 }
 
                 let root_trace = trace.trace[0].clone();
@@ -68,14 +68,15 @@ impl Classifier {
                 };
 
                 let mut root = Root {
-                    head: node,
-                    tx_hash: trace.tx_hash,
-                    private: false,
+                    head:        node,
+                    tx_hash:     trace.tx_hash,
+                    private:     false,
                     gas_details: GasDetails {
-                        coinbase_transfer: None,
-                        gas_used: trace.gas_used,
+                        coinbase_transfer:   None,
+                        gas_used:            trace.gas_used,
                         effective_gas_price: trace.effective_price,
-                        priority_fee: trace.effective_price - header.base_fee_per_gas.unwrap(),
+                        priority_fee:        trace.effective_price
+                            - header.base_fee_per_gas.unwrap(),
                     },
                 };
 
@@ -137,7 +138,7 @@ impl Classifier {
                         if transfer.amount == swap_data.amount_in
                             && transfer.token == swap_data.token_in
                         {
-                            return Some(*index);
+                            return Some(*index)
                         }
                         None
                     })
@@ -157,7 +158,7 @@ impl Classifier {
                         let Actions::Transfer(transfer) = data else { return None };
                         for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
                             if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                                return Some(*index);
+                                return Some(*index)
                             }
                         }
                         None
@@ -176,7 +177,7 @@ impl Classifier {
         match action {
             Action::Call(action) => {
                 if action.to == builder {
-                    return Some(action.value.to());
+                    return Some(action.value.to())
                 }
                 None
             }
@@ -198,42 +199,42 @@ impl Classifier {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
                 let sig = &calldata[0..4];
-                let res: StaticReturnBindings = protocol.1.try_decode(&calldata).unwrap();
-
-                let d = classifier.dispatch(
-                    sig,
-                    index,
-                    res,
-                    return_bytes.clone(),
-                    from_address,
-                    target_address,
-                    &trace.logs,
-                );
-                /*  if target_address
-                    == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap()
-                {
-                    println!("dispatch: {:?}\n", d);
-                    println!(
-                        "sig: {:?}\n
-                    index: {:?}\n
-                    calldata: {:?}\n
-                    return_bytes: {:?}\n
-                    from_address: {:?}\n
-                    target_address: {:?}\n
-                    trace.logs: {:?}",
+                if let Ok(res) = protocol.1.try_decode(&calldata) {
+                    let d = classifier.dispatch(
                         sig,
                         index,
-                        calldata,
-                        return_bytes,
+                        res,
+                        return_bytes.clone(),
                         from_address,
                         target_address,
                         &trace.logs,
                     );
-                } */
+                    /*  if target_address
+                        == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap()
+                    {
+                        println!("dispatch: {:?}\n", d);
+                        println!(
+                            "sig: {:?}\n
+                        index: {:?}\n
+                        calldata: {:?}\n
+                        return_bytes: {:?}\n
+                        from_address: {:?}\n
+                        target_address: {:?}\n
+                        trace.logs: {:?}",
+                            sig,
+                            index,
+                            calldata,
+                            return_bytes,
+                            from_address,
+                            target_address,
+                            &trace.logs,
+                        );
+                    } */
 
-                if let Some(res) = d {
-                    //println!("RES: {:?}", res);
-                    return res;
+                    if let Some(res) = d {
+                        //println!("RES: {:?}", res);
+                        return res
+                    }
                 }
 
                 // same as above but for testing
@@ -267,7 +268,7 @@ impl Classifier {
                     from,
                     token: addr,
                     amount: value,
-                });
+                })
             }
         }
 
@@ -296,7 +297,7 @@ impl Classifier {
             if let Some((token, from, to, value)) = self.decode_transfer(&log) {
                 // if tokens don't overlap and to & from don't overlap
                 if (token_0 != token && token_1 != token) || (from != addr && to != addr) {
-                    continue;
+                    continue
                 }
 
                 transfer_data.push((token, from, to, value));
@@ -312,47 +313,47 @@ impl Classifier {
                 // burn
                 if to0 == node.address {
                     return Some(Actions::Burn(NormalizedBurn {
-                        to: to0,
+                        to:        to0,
                         recipient: to1,
-                        index: node.index,
-                        from: from0,
-                        token: vec![t0, t1],
-                        amount: vec![value0, value1],
-                    }));
+                        index:     node.index,
+                        from:      from0,
+                        token:     vec![t0, t1],
+                        amount:    vec![value0, value1],
+                    }))
                 }
                 // mint
                 else {
                     return Some(Actions::Mint(NormalizedMint {
-                        from: to0,
+                        from:      to0,
                         recipient: to1,
-                        index: node.index,
-                        to: to0,
-                        token: vec![t0, t1],
-                        amount: vec![value0, value1],
-                    }));
+                        index:     node.index,
+                        to:        to0,
+                        token:     vec![t0, t1],
+                        amount:    vec![value0, value1],
+                    }))
                 }
             }
             // if to0 is to our addr then its the out token
             if to0 == addr {
                 return Some(Actions::Swap(NormalizedSwap {
-                    index: node.index,
-                    from: to1,
-                    pool: to0,
-                    token_in: t1,
-                    token_out: t0,
-                    amount_in: value1,
+                    index:      node.index,
+                    from:       to1,
+                    pool:       to0,
+                    token_in:   t1,
+                    token_out:  t0,
+                    amount_in:  value1,
                     amount_out: value0,
-                }));
+                }))
             } else {
                 return Some(Actions::Swap(NormalizedSwap {
-                    index: node.index,
-                    from: to0,
-                    pool: to1,
-                    token_in: t0,
-                    token_out: t1,
-                    amount_in: value0,
+                    index:      node.index,
+                    from:       to0,
+                    pool:       to1,
+                    token_in:   t0,
+                    token_out:  t1,
+                    amount_in:  value0,
                     amount_out: value1,
-                }));
+                }))
             }
         }
         // pure mint and burn
@@ -366,7 +367,7 @@ impl Classifier {
                     to,
                     token: vec![token],
                     amount: vec![value],
-                }));
+                }))
             } else {
                 return Some(Actions::Burn(NormalizedBurn {
                     to,
@@ -375,7 +376,7 @@ impl Classifier {
                     from,
                     token: vec![token],
                     amount: vec![value],
-                }));
+                }))
             }
         }
 
@@ -387,7 +388,7 @@ impl Classifier {
             let from = Address::from_slice(&log.topics[1][..20]);
             let to = Address::from_slice(&log.topics[2][..20]);
             let data = U256::try_from_be_slice(&log.data[..]).unwrap();
-            return Some((log.address, from, to, data));
+            return Some((log.address, from, to, data))
         }
 
         None
@@ -408,7 +409,7 @@ impl Classifier {
 
         for to_addr in to_address {
             if from_address.contains(&to_addr) {
-                return true;
+                return true
             }
         }
 
@@ -434,7 +435,7 @@ impl Classifier {
             if let Some((token, from, to, value)) = self.decode_transfer(&log) {
                 // if tokens don't overlap and to & from don't overlap
                 if from != addr && to != addr {
-                    continue;
+                    continue
                 }
 
                 transfer_data.push((token, from, to, value));
@@ -443,7 +444,7 @@ impl Classifier {
 
         // isn't an exchange
         if transfer_data.len() != 2 {
-            return None;
+            return None
         }
 
         let (t0, from0, to0, value0) = transfer_data.remove(0);
@@ -457,26 +458,26 @@ impl Classifier {
         {
             let swap = if t0 == addr {
                 Actions::Swap(NormalizedSwap {
-                    pool: to0,
-                    index: node.index,
-                    from: addr,
-                    token_in: t1,
-                    token_out: t0,
-                    amount_in: value1,
+                    pool:       to0,
+                    index:      node.index,
+                    from:       addr,
+                    token_in:   t1,
+                    token_out:  t0,
+                    amount_in:  value1,
                     amount_out: value0,
                 })
             } else {
                 Actions::Swap(NormalizedSwap {
-                    pool: to1,
-                    index: node.index,
-                    from: addr,
-                    token_in: t0,
-                    token_out: t1,
-                    amount_in: value0,
+                    pool:       to1,
+                    index:      node.index,
+                    from:       addr,
+                    token_in:   t0,
+                    token_out:  t1,
+                    amount_in:  value0,
                     amount_out: value1,
                 })
             };
-            return Some((addr, (t0, t1), swap));
+            return Some((addr, (t0, t1), swap))
         }
 
         None
@@ -495,12 +496,12 @@ impl Classifier {
                 // we can dyn classify this shit
                 if PROTOCOL_ADDRESS_MAPPING.contains_key(&address.0) {
                     // this is already classified
-                    return false;
+                    return false
                 }
                 if known_dyn_protocols_read.contains_key(&address)
                     || self.is_possible_exchange(sub_actions)
                 {
-                    return true;
+                    return true
                 }
 
                 false
@@ -517,7 +518,7 @@ impl Classifier {
                     node.inner.clear();
                     node.data = action;
 
-                    return Some((ex_addr, tokens));
+                    return Some((ex_addr, tokens))
                 }
                 None
             },
