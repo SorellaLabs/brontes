@@ -45,7 +45,7 @@ impl Inspector for SandwichInspector {
                     v.insert(root.tx_hash);
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
-                Entry::Occupied(o) => {
+                Entry::Occupied(mut o) => {
                     let entry: H256 = o.remove();
                     if let Some(mut victims) = possible_victims.remove(&entry) {
                         if victims.len() < 2 {
