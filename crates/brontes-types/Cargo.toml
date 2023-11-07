@@ -61,7 +61,6 @@ brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing.workspace = true
 
 
-
 [features]
 default = ["tests"]
 server = []
