@@ -53,6 +53,11 @@ sorella-db-databases.workspace = true
 [dev-dependencies]
 dotenv.workspace = true
 tokio.workspace = true
+serial_test.workspace = true
+brontes-classifier = { workspace = true, features = ["tests"] }
+brontes-core = { workspace = true, features = ["tests"] }
+brontes-database = { workspace = true, features = ["tests"] }
+
 
 [features]
 default = []
