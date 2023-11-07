@@ -10,7 +10,7 @@ use std::{
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use futures::future::join_all;
 use malachite::Rational;
-use reth_primitives::{Address, TxHash};
+use reth_primitives::{Address, TxHash, H160};
 use sorella_db_databases::{
     clickhouse::ClickhouseClient, BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE,
     JIT_SANDWICH_TABLE, JIT_TABLE, LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
@@ -20,6 +20,8 @@ use tracing::error;
 use self::types::{DBTokenPrices, DBTokenPricesDB, RelayInfo};
 use super::Metadata;
 use crate::database::{const_sql::*, types::RelayInfoDB};
+
+const WETH_ADDRESS: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 
 pub struct Database {
     client: ClickhouseClient,
@@ -40,7 +42,10 @@ impl Database {
             .await;
 
         // eth price is in cex_prices
-        let eth_prices = Default::default();
+        let eth_prices = cex_prices
+            .get(&H160::from_str(WETH_ADDRESS).unwrap())
+            .unwrap_or(&(Default::default(), Default::default()))
+            .clone();
         // = cex_prices.get("ETH").unwrap();
         // cex_prices.remove("ETH");
 
@@ -221,11 +226,11 @@ mod tests {
 
     fn expected_relay_info() -> RelayInfo {
         RelayInfo {
-            relay_time: 1695258707683,
-            p2p_time: 1695258708673,
-            proposer_addr: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
+            relay_time:      1695258707683,
+            p2p_time:        1695258708673,
+            proposer_addr:   H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
             proposer_reward: 113949354337187568,
-            block_hash: H256::from_str(BLOCK_HASH).unwrap().into(),
+            block_hash:      H256::from_str(BLOCK_HASH).unwrap().into(),
         }
     }
 
@@ -241,16 +246,16 @@ mod tests {
             .unwrap();
 
         Metadata {
-            block_num: BLOCK_NUMBER,
-            block_hash: H256::from_str(BLOCK_HASH).unwrap().into(),
-            relay_timestamp: 1695258707683,
-            p2p_timestamp: 1695258708673,
+            block_num:              BLOCK_NUMBER,
+            block_hash:             H256::from_str(BLOCK_HASH).unwrap().into(),
+            relay_timestamp:        1695258707683,
+            p2p_timestamp:          1695258708673,
             proposer_fee_recipient: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
-            proposer_mev_reward: 113949354337187568,
-            token_prices: cex_prices.clone(),
-            eth_prices: eth_prices.clone(),
-            mempool_flow: expected_private_flow(),
+            proposer_mev_reward:    113949354337187568,
+            token_prices:           cex_prices.clone(),
+            eth_prices:             eth_prices.clone(),
+            mempool_flow:           expected_private_flow(),
         }
     }
 

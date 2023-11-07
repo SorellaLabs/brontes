@@ -49,6 +49,12 @@ lazy_static.workspace = true
 auto_impl.workspace = true
 itertools.workspace = true
 
+[dev-dependencies]
+dotenv.workspace = true
+serial_test.workspace = true
+brontes-classifier = { workspace = true, features = ["tests"] }
+brontes-core = { workspace = true, features = ["tests"] }
+
 
 [features]
 test_run = ["brontes-database/test_run"]
