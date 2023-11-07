@@ -375,8 +375,8 @@ mod tests {
         let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
         let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_millis();
-        println!("sandwich inspector took: {} ms", delta);
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("sandwich inspector took: {} us", delta);
 
         // assert!(
         //     mev[0].0.tx_hash
