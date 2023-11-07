@@ -145,11 +145,12 @@ action_impl!(
 
 action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);
 
-
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
+
     use reth_primitives::H256;
+
     use super::*;
     use crate::*;
 
@@ -187,8 +188,15 @@ mod tests {
         },
         ];
 
-        let res =
-            classifier.dispatch(sig, index, data, return_bytes, from_address, target_address, &logs);
+        let res = classifier.dispatch(
+            sig,
+            index,
+            data,
+            return_bytes,
+            from_address,
+            target_address,
+            &logs,
+        );
 
         assert!(res.is_some());
 
@@ -211,9 +219,11 @@ mod tests {
             recipient: H160::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap(),
             amount:    vec![
                 H256::from_low_u64_be(479371252166).into(),
-                H256::from_str("0x00000000000000000000000000000000000000000000000DE3D53DAD63CDB215")
-                    .unwrap()
-                    .into(),
+                H256::from_str(
+                    "0x00000000000000000000000000000000000000000000000DE3D53DAD63CDB215",
+                )
+                .unwrap()
+                .into(),
             ],
         };
 
@@ -254,8 +264,15 @@ mod tests {
         },
         ];
 
-        let res =
-            classifier.dispatch(sig, index, data, return_bytes, from_address, target_address, &logs);
+        let res = classifier.dispatch(
+            sig,
+            index,
+            data,
+            return_bytes,
+            from_address,
+            target_address,
+            &logs,
+        );
 
         assert!(res.is_some());
 
@@ -278,9 +295,11 @@ mod tests {
             recipient: target_address,
             amount:    vec![
                 H256::from_low_u64_be(459314264116).into(),
-                H256::from_str("0x00000000000000000000000000000000000000000000000d45567f936fa135b8")
-                    .unwrap()
-                    .into(),
+                H256::from_str(
+                    "0x00000000000000000000000000000000000000000000000d45567f936fa135b8",
+                )
+                .unwrap()
+                .into(),
             ],
         };
 
@@ -316,8 +335,15 @@ mod tests {
         },
         ];
 
-        let res =
-            classifier.dispatch(sig, index, data, return_bytes, from_address, target_address, &logs);
+        let res = classifier.dispatch(
+            sig,
+            index,
+            data,
+            return_bytes,
+            from_address,
+            target_address,
+            &logs,
+        );
 
         assert!(res.is_some());
 
@@ -379,8 +405,15 @@ mod tests {
         }
     ];
 
-        let res =
-            classifier.dispatch(sig, index, data, return_bytes, from_address, target_address, &logs);
+        let res = classifier.dispatch(
+            sig,
+            index,
+            data,
+            return_bytes,
+            from_address,
+            target_address,
+            &logs,
+        );
 
         assert!(res.is_some());
 
@@ -404,5 +437,4 @@ mod tests {
 
         assert_eq!(swap, expected_swap);
     }
-
 }
