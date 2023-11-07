@@ -21,6 +21,7 @@ pub struct SandwichInspector {
     inner: SharedInspectorUtils,
 }
 
+#[derive(Debug)]
 pub struct PossibleSandwich {
     eoa: Address,
     tx0: H256,
@@ -84,6 +85,7 @@ impl Inspector for SandwichInspector {
                 }
             });
         }
+        println!("{:#?}", set);
 
         let search_fn = |node: &Node<Actions>| {
             node.subactions
@@ -93,24 +95,16 @@ impl Inspector for SandwichInspector {
 
         set.into_iter()
             .filter_map(|ps| {
-                println!(
-                    "\n\nFOUND SET: {:?}\n",
-                    (ps.eoa, ps.tx0, ps.tx1, ps.mev_addr, &ps.victims)
-                );
-
                 let gas = [
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
                 ];
-                println!("GAS: {:?}\n", gas);
 
                 let victim_gas = ps
                     .victims
                     .iter()
                     .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                     .collect::<Vec<_>>();
-
-                println!("VICTIM GAS: {:?}\n", gas);
 
                 let victim_actions = ps
                     .victims
@@ -123,14 +117,10 @@ impl Inspector for SandwichInspector {
                     })
                     .collect::<Vec<Vec<Actions>>>();
 
-                println!("VICTIM ACTIONS: {:?}\n", victim_actions);
-
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
-
-                println!("SEARCHER ACTIONS: {:?}\n", searcher_actions);
 
                 self.calculate_sandwich(
                     ps.eoa,
@@ -163,15 +153,12 @@ impl SandwichInspector {
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
-        println!("{:?}", deltas);
 
         let appearance_usd_deltas = self.inner.get_best_usd_delta(
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
         );
-
-        println!("{:?}", appearance_usd_deltas);
 
         let finalized_usd_deltas = self.inner.get_best_usd_delta(
             deltas,
@@ -190,8 +177,6 @@ impl SandwichInspector {
             .iter()
             .map(|g| g.gas_paid())
             .sum::<u64>();
-        println!("Gas used, {:?}", gas_used);
-        println!("Metadata: {:#?}", metadata);
 
         let (gas_used_usd_appearance, gas_used_usd_finalized) =
             metadata.get_gas_price_usd(gas_used);
@@ -352,9 +337,9 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_process_tree() {
+    async fn test_sandwich() {
         dotenv::dotenv().ok();
-        let block_num = 17891800;
+        let block_num = 17891804;
 
         let (tx, _rx) = unbounded_channel();
 
@@ -365,18 +350,18 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        let tx = block.0.clone().into_iter().take(3).collect::<Vec<_>>();
+        let tx = block.0.clone().into_iter().take(9).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
-        //write_tree_as_json(&tree, "./tree.json").await;
+        // write_tree_as_json(&tree, "./tree.json").await;
 
         let inspector = SandwichInspector::default();
 
         let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
         let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_millis();
-        println!("sandwich inspector took: {} ms", delta);
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("sandwich inspector took: {} us", delta);
 
         // assert!(
         //     mev[0].0.tx_hash
