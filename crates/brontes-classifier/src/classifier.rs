@@ -51,7 +51,6 @@ impl Classifier {
                 let address = root_trace.get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
-
                 let node = Node {
                     inner: vec![],
                     index: 0,
