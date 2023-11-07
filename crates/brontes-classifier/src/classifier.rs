@@ -51,11 +51,17 @@ impl Classifier {
                 let address = root_trace.get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
+                let subactions = if !classification.is_unclassified() {
+                    vec![classification.clone()]
+                } else {
+                    vec![]
+                };
+
                 let node = Node {
                     inner: vec![],
                     index: 0,
                     finalized: !classification.is_unclassified(),
-                    subactions: vec![],
+                    subactions,
                     address,
                     data: classification.clone(),
                     trace_address: root_trace.trace.trace_address,
@@ -81,6 +87,7 @@ impl Classifier {
                     let from_addr = trace.get_from_addr();
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
                     println!("NODE - FROM ADDRESS: {:?}, DATA: {:?}\n", from_addr, classification);
+
                     let subactions = if !classification.is_unclassified() {
                         vec![classification.clone()]
                     } else {
