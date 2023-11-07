@@ -26,8 +26,8 @@ crates/tracing/src/main.rs
 
 **/const_sql.rs
 
-abi_builds/**.rs
-abi_builds/**.txt
+abi-builds/**.rs
+abi-builds/**.txt
 
 stuff
 
