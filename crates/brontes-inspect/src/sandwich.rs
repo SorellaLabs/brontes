@@ -21,6 +21,7 @@ pub struct SandwichInspector {
     inner: SharedInspectorUtils,
 }
 
+#[derive(Debug)]
 pub struct PossibleSandwich {
     eoa:      Address,
     tx0:      H256,
@@ -84,6 +85,7 @@ impl Inspector for SandwichInspector {
                 }
             });
         }
+        println!("{:#?}", set);
 
         let search_fn = |node: &Node<Actions>| {
             node.subactions
@@ -354,7 +356,7 @@ mod tests {
         let tx = block.0.clone().into_iter().take(9).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
-        //write_tree_as_json(&tree, "./tree.json").await;
+        // write_tree_as_json(&tree, "./tree.json").await;
 
         let inspector = SandwichInspector::default();
 
