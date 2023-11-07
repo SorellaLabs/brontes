@@ -405,7 +405,15 @@ impl<V: NormalizedAction> Node<V> {
             &self.data.get_action()
         );
 
-        println!("INSPECTOR NODE - SELF CALL: {}", !call(self));
+        println!("INSPECTOR NODE - NOT SELF CALL: {}", !call(self));
+        println!(
+            "INSPECTOR NODE - SELF SUBACTIONS: {:?}",
+            self.subactions
+                .clone()
+                .iter()
+                .map(|sub| sub.get_action())
+                .collect::<Vec<_>>()
+        );
 
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
