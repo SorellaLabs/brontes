@@ -490,6 +490,7 @@ mod tests {
 
     use brontes_core::decoding::parser::TraceParser;
 
+    use crate::test_utils::force_call_action;
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::test_utils::init_trace_parser;
     use brontes_database::database::Database;
