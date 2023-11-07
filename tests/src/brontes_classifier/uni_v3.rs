@@ -1,11 +1,12 @@
+use std::{default, str::FromStr};
+
 use alloy_sol_macro::*;
 use alloy_sol_types::SolCall;
 use brontes_classifier::*;
 use brontes_types::normalized_actions::*;
 use reth_primitives::{Bytes, H160, H256};
 use reth_rpc_types::Log;
-use std::default;
-use std::str::FromStr;
+
 use crate::brontes_classifier::UniswapV3;
 
 #[test]
@@ -42,7 +43,6 @@ fn test_uni_v3_collect() {
      },
     ];
 
-    
     let res =
         classifier.dispatch(sig, index, data, return_bytes, from_address, target_address, &logs);
 
@@ -53,23 +53,28 @@ fn test_uni_v3_collect() {
 
     let collect = match action {
         Actions::Collect(s) => s,
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
     let expected_collect = NormalizedCollect {
-        index: 9,
-        from: from_address,
-        token:  vec![H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(), H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap()],
-        to: target_address,
+        index:     9,
+        from:      from_address,
+        token:     vec![
+            H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+        ],
+        to:        target_address,
         recipient: H160::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap(),
-        amount: vec![H256::from_low_u64_be(479371252166).into(), H256::from_str("0x00000000000000000000000000000000000000000000000DE3D53DAD63CDB215").unwrap().into()],
+        amount:    vec![
+            H256::from_low_u64_be(479371252166).into(),
+            H256::from_str("0x00000000000000000000000000000000000000000000000DE3D53DAD63CDB215")
+                .unwrap()
+                .into(),
+        ],
     };
 
     assert_eq!(collect, expected_collect);
 }
-
-
-
 
 #[test]
 fn test_uni_v3_burn() {
@@ -105,7 +110,6 @@ fn test_uni_v3_burn() {
      },
     ];
 
-    
     let res =
         classifier.dispatch(sig, index, data, return_bytes, from_address, target_address, &logs);
 
@@ -116,21 +120,28 @@ fn test_uni_v3_burn() {
 
     let burn = match action {
         Actions::Burn(s) => s,
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
     let expected_burn = NormalizedBurn {
-        index: 9,
-        from: from_address,
-        token:  vec![H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(), H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap()],
-        to: target_address,
+        index:     9,
+        from:      from_address,
+        token:     vec![
+            H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+        ],
+        to:        target_address,
         recipient: target_address,
-        amount: vec![H256::from_low_u64_be(459314264116).into(), H256::from_str("0x00000000000000000000000000000000000000000000000d45567f936fa135b8").unwrap().into()],
+        amount:    vec![
+            H256::from_low_u64_be(459314264116).into(),
+            H256::from_str("0x00000000000000000000000000000000000000000000000d45567f936fa135b8")
+                .unwrap()
+                .into(),
+        ],
     };
 
     assert_eq!(burn, expected_burn);
 }
-
 
 #[test]
 fn test_uni_v3_mint() {
@@ -161,7 +172,6 @@ fn test_uni_v3_mint() {
      },
     ];
 
-    
     let res =
         classifier.dispatch(sig, index, data, return_bytes, from_address, target_address, &logs);
 
@@ -172,22 +182,26 @@ fn test_uni_v3_mint() {
 
     let mint = match action {
         Actions::Mint(s) => s,
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
     let expected_mint = NormalizedMint {
-        index: 91,
-        from: from_address,
-        token:  vec![H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(), H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap()],
-        to: target_address,
+        index:     91,
+        from:      from_address,
+        token:     vec![
+            H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+        ],
+        to:        target_address,
         recipient: H160::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap(),
-        amount: vec![H256::from_low_u64_be(4173934552).into(), H256::from_low_u64_be(2499999999788867748).into()],
+        amount:    vec![
+            H256::from_low_u64_be(4173934552).into(),
+            H256::from_low_u64_be(2499999999788867748).into(),
+        ],
     };
 
     assert_eq!(mint, expected_mint);
 }
-
-
 
 #[test]
 fn test_uni_v3_swap() {
@@ -220,7 +234,7 @@ fn test_uni_v3_swap() {
         removed: false
     }
 ];
-    
+
     let res =
         classifier.dispatch(sig, index, data, return_bytes, from_address, target_address, &logs);
 
@@ -231,20 +245,18 @@ fn test_uni_v3_swap() {
 
     let swap = match action {
         Actions::Swap(s) => s,
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
     let expected_swap = NormalizedSwap {
-        index: 150,
-        from: from_address,
-        pool: target_address,
-        token_in: H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+        index:      150,
+        from:       from_address,
+        pool:       target_address,
+        token_in:   H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
         token_out:  H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-        amount_in: H256::from_low_u64_be(1798049585).into(),
+        amount_in:  H256::from_low_u64_be(1798049585).into(),
         amount_out: H256::from_low_u64_be(948730519145773605).into(),
     };
 
     assert_eq!(swap, expected_swap);
 }
-
-
