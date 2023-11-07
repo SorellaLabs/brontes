@@ -23,25 +23,9 @@ action_impl!(
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes).copied()?;
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
-            return Some(NormalizedSwap {
-                pool: target_address,
-                index,
-                from: from_address,
-                token_in: token_1,
-                token_out: token_0,
-                amount_in: data.amount1In,
-                amount_out: data.amount0Out,
-            })
+            return Some(NormalizedSwap {pool:target_address,index,from:from_address,token_in:token_1,token_out:token_0,amount_in:data.amount1In,amount_out:data.amount0Out, recipient: todo!() })
         } else {
-            return Some(NormalizedSwap {
-                index,
-                pool: target_address,
-                from: from_address,
-                token_in: token_0,
-                token_out: token_1,
-                amount_in: data.amount0In,
-                amount_out: data.amount1Out,
-            })
+            return Some(NormalizedSwap {index,pool:target_address,from:from_address,token_in:token_0,token_out:token_1,amount_in:data.amount0In,amount_out:data.amount1Out, recipient: todo!() })
         }
     }
 );
