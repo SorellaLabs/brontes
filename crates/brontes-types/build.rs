@@ -1,4 +1,3 @@
-#[cfg(feature = "server")]
 use std::str::FromStr;
 use std::{
     collections::HashMap,
@@ -11,7 +10,6 @@ use std::{
 
 use ethers_core::types::Address;
 use hyper_tls::HttpsConnector;
-#[cfg(feature = "server")]
 use reth_primitives::H160;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Client, Row};
@@ -45,15 +43,12 @@ pub struct TokenDetails {
 async fn build_token_details_map(file: &mut BufWriter<File>) {
     #[allow(unused_mut)]
     let mut phf_map: phf_codegen::Map<[u8; 20]> = phf_codegen::Map::new();
-    #[cfg(feature = "server")]
-    {
-        let client = build_db();
-        let rows = query_db::<TokenDetails>(&client, TOKEN_QUERIES).await;
 
-        for row in rows {
-            phf_map
-                .entry(H160::from_str(&row.address).unwrap().0, row.decimals.to_string().as_str());
-        }
+    let client = build_db();
+    let rows = query_db::<TokenDetails>(&client, TOKEN_QUERIES).await;
+
+    for row in rows {
+        phf_map.entry(H160::from_str(&row.address).unwrap().0, row.decimals.to_string().as_str());
     }
 
     writeln!(
