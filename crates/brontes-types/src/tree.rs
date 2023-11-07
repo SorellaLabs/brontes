@@ -395,6 +395,11 @@ impl<V: NormalizedAction> Node<V> {
         F: Fn(&Node<V>) -> bool,
     {
         println!(
+            "Subdata: {:?}",
+            &self.subactions.into_iter().map(|s| s.get_action()).collect::<Vec<_>>()
+        );
+
+        println!(
             "\n\nINSPECTOR NODE - FROM ADDRESS: {:?}, DATA: {:?}",
             self.address,
             &self.data.get_action()
