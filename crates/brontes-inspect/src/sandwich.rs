@@ -407,11 +407,11 @@ mod tests {
         //     },
         //     frontrun_swaps_index: 0,
         //     frontrun_swaps_from: vec![
-        //         H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap()
-        //     ],
+        //         H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").
+        // unwrap()     ],
         //     frontrun_swaps_pool: vec![
-        //         H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap()
-        //     ],
+        //         H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").
+        // unwrap()     ],
         //     frontrun_swaps_token_in: vec![H160::from_str(
         //         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         //     )
@@ -432,11 +432,11 @@ mod tests {
         //     .unwrap()],
         //     victim_swaps_index: vec![1],
         //     victim_swaps_from: vec![
-        //         H160::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap()
-        //     ],
+        //         H160::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").
+        // unwrap()     ],
         //     victim_swaps_pool: vec![
-        //         H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap()
-        //     ],
+        //         H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").
+        // unwrap()     ],
         //     victim_swaps_token_in: vec![H160::from_str(
         //         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         //     )
@@ -463,11 +463,11 @@ mod tests {
         //     },
         //     backrun_swaps_index: 2,
         //     backrun_swaps_from: vec![
-        //         H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap()
-        //     ],
+        //         H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").
+        // unwrap()     ],
         //     backrun_swaps_pool: vec![
-        //         H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap()
-        //     ],
+        //         H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").
+        // unwrap()     ],
         //     backrun_swaps_token_in: vec![H160::from_str(
         //         "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
         //     )
