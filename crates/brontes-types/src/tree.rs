@@ -404,7 +404,6 @@ impl<V: NormalizedAction> Node<V> {
             .map(|i| i.inspect(result, call))
             .any(|f| f);
 
-
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
         if !lower_has_better {

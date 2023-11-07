@@ -196,7 +196,6 @@ impl SandwichInspector {
         let (gas_used_usd_appearance, gas_used_usd_finalized) =
             metadata.get_gas_price_usd(gas_used);
 
-
         let frontrun_swaps = searcher_actions
             .remove(0)
             .into_iter()
