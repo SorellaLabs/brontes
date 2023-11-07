@@ -189,6 +189,7 @@ impl Classifier {
             println!("target address bytes: {:?}", &target_address.0);
         } */
         if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0) {
+            println!("{:?}", target_address);
             if let Some(classifier) = &protocol.0 {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
