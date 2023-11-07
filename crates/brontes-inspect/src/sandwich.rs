@@ -40,7 +40,7 @@ impl Inspector for SandwichInspector {
         let iter = tree.roots.iter();
         println!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
-            return vec![]
+            return vec![];
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
@@ -183,7 +183,7 @@ impl SandwichInspector {
 
         if finalized.0 != appearance.0 {
             error!("finalized addr != appearance addr");
-            return None
+            return None;
         }
 
         let gas_used = searcher_gas_details
@@ -349,7 +349,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn process_tree() {
+    async fn test_process_tree() {
         dotenv::dotenv().ok();
         let block_num = 17891800;
 
@@ -374,7 +374,7 @@ mod tests {
         // assert!(
         //     mev[0].0.tx_hash
         //         == H256::from_str(
-        //             
+        //
         // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
         //         )
         //         .unwrap()
