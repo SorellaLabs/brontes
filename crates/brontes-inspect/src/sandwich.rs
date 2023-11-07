@@ -106,7 +106,6 @@ impl Inspector for SandwichInspector {
                     .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                     .collect::<Vec<_>>();
 
-
                 let victim_actions = ps
                     .victims
                     .iter()
@@ -117,7 +116,6 @@ impl Inspector for SandwichInspector {
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<Vec<Actions>>>();
-
 
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
@@ -161,7 +159,6 @@ impl SandwichInspector {
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
         );
-
 
         let finalized_usd_deltas = self.inner.get_best_usd_delta(
             deltas,
@@ -340,7 +337,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_process_tree() {
+    async fn test_sandwich() {
         dotenv::dotenv().ok();
         let block_num = 17891804;
 
