@@ -75,29 +75,30 @@ fn recursive_parsing(
 #[cfg(test)]
 mod tests {
 
+    use std::fs;
+
     use super::*;
     use crate::test_utils::*;
-    use std::fs;
 
     #[test]
     fn test_link_vm_to_trace() {
         // Load the trace and receipt from the JSON files
         let trace_json: TestTraceResults = serde_json::from_str(
-        &fs::read_to_string(
-            "src/test_utils/0x380e6cda70b04f647a40c07e71a154e9af94facb13dc5f49c2556497ec34d6f0/\
-             trace.json",
+            &fs::read_to_string(
+                "src/test_utils/\
+                 0x380e6cda70b04f647a40c07e71a154e9af94facb13dc5f49c2556497ec34d6f0/trace.json",
+            )
+            .unwrap(),
         )
-        .unwrap(),
-    )
-    .unwrap();
+        .unwrap();
         let receipt_json: TestTransactionReceipt = serde_json::from_str(
-        &fs::read_to_string(
-            "src/test_utils/0x380e6cda70b04f647a40c07e71a154e9af94facb13dc5f49c2556497ec34d6f0/\
-             receipt.json",
+            &fs::read_to_string(
+                "src/test_utils/\
+                 0x380e6cda70b04f647a40c07e71a154e9af94facb13dc5f49c2556497ec34d6f0/receipt.json",
+            )
+            .unwrap(),
         )
-        .unwrap(),
-    )
-    .unwrap();
+        .unwrap();
 
         // Deserialize the JSON into the appropriate data structures
         let vm_trace: VmTrace = trace_json.result.vm_trace.unwrap();
