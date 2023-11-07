@@ -485,9 +485,7 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::normalized_actions::Actions;
-    use crate::test_utils::ComparisonNode;
 
-    use super::{Node, *};
     use brontes_core::decoding::parser::TraceParser;
 
     use brontes_classifier::test_utils::build_raw_test_tree;
@@ -497,6 +495,48 @@ mod tests {
     use reth_tracing::TracingClient;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct ComparisonNode {
+        inner_len: usize,
+        finalized: bool,
+        index: u64,
+        subactions_len: usize,
+        trace_address: Vec<usize>,
+        address: Address,
+        trace: TransactionTrace,
+    }
+
+    impl ComparisonNode {
+        pub fn new(trace: &TransactionTrace, index: usize, inner_len: usize) -> Self {
+            Self {
+                inner_len,
+                finalized: false,
+                index: index as u64,
+                subactions_len: 0,
+                trace_address: trace.trace_address.clone(),
+                address: force_call_action(trace).from,
+                trace: trace.clone(),
+            }
+        }
+    }
+
+    impl From<&Node<Actions>> for ComparisonNode {
+        fn from(value: &Node<Actions>) -> Self {
+            ComparisonNode {
+                inner_len: value.inner.len(),
+                finalized: value.finalized,
+                index: value.index,
+                subactions_len: value.subactions.len(),
+                trace_address: value.trace_address.clone(),
+                address: value.address,
+                trace: match &value.data {
+                    Actions::Unclassified(traces, _) => traces.trace.clone(),
+                    _ => unreachable!(),
+                },
+            }
+        }
+    }
 
     #[tokio::test]
     #[serial]
@@ -524,7 +564,7 @@ mod tests {
         let first_tx = transaction_traces.remove(0);
 
         assert_eq!(
-            ComparisonNode::from(&first_root.head as Node<Actions>),
+            ComparisonNode::from(&first_root.head),
             ComparisonNode::new(&first_tx.full_trace.trace[0], 0, 8)
         );
 
