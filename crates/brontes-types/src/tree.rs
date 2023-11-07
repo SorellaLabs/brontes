@@ -13,11 +13,11 @@ use crate::normalized_actions::NormalizedAction;
 
 #[derive(Serialize, Deserialize)]
 pub struct TimeTree<V: NormalizedAction> {
-    pub roots: Vec<Root<V>>,
-    pub header: Header,
+    pub roots:            Vec<Root<V>>,
+    pub header:           Header,
     pub avg_priority_fee: u64,
     /// first is on block submission, second is when the block gets accepted
-    pub eth_prices: (Rational, Rational),
+    pub eth_prices:       (Rational, Rational),
 }
 
 impl<V: NormalizedAction> TimeTree<V> {
@@ -111,9 +111,9 @@ impl<V: NormalizedAction> TimeTree<V> {
 
 #[derive(Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
-    pub head: Node<V>,
-    pub tx_hash: H256,
-    pub private: bool,
+    pub head:        Node<V>,
+    pub tx_hash:     H256,
+    pub private:     bool,
     pub gas_details: GasDetails,
 }
 
@@ -165,9 +165,9 @@ impl<V: NormalizedAction> Root<V> {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
 pub struct GasDetails {
-    pub coinbase_transfer: Option<u64>,
-    pub priority_fee: u64,
-    pub gas_used: u64,
+    pub coinbase_transfer:   Option<u64>,
+    pub priority_fee:        u64,
+    pub gas_used:            u64,
     pub effective_gas_price: u64,
 }
 
@@ -189,15 +189,15 @@ impl GasDetails {
 
 #[derive(Serialize, Deserialize)]
 pub struct Node<V: NormalizedAction> {
-    pub inner: Vec<Node<V>>,
+    pub inner:     Vec<Node<V>>,
     pub finalized: bool,
-    pub index: u64,
+    pub index:     u64,
 
     /// This only has values when the node is frozen
-    pub subactions: Vec<V>,
+    pub subactions:    Vec<V>,
     pub trace_address: Vec<usize>,
-    pub address: Address,
-    pub data: V,
+    pub address:       Address,
+    pub data:          V,
 }
 
 impl<V: NormalizedAction> Node<V> {
@@ -484,34 +484,27 @@ mod tests {
 
     use std::collections::HashSet;
 
-    use crate::normalized_actions::Actions;
-
-    use super::*;
-
-    use brontes_core::decoding::parser::TraceParser;
-
-    use crate::test_utils::force_call_action;
     use brontes_classifier::test_utils::build_raw_test_tree;
-    use brontes_core::test_utils::init_trace_parser;
+    use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
     use brontes_database::database::Database;
     use reth_primitives::Address;
-    use reth_rpc_types::trace::parity::TraceType;
-    use reth_rpc_types::trace::parity::TransactionTrace;
+    use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
     use reth_tracing::TracingClient;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
-    use crate::tree::Node;
+    use super::*;
+    use crate::{normalized_actions::Actions, test_utils::force_call_action, tree::Node};
 
     #[derive(Debug, PartialEq, Eq)]
     pub struct ComparisonNode {
-        inner_len: usize,
-        finalized: bool,
-        index: u64,
+        inner_len:      usize,
+        finalized:      bool,
+        index:          u64,
         subactions_len: usize,
-        trace_address: Vec<usize>,
-        address: Address,
-        trace: TransactionTrace,
+        trace_address:  Vec<usize>,
+        address:        Address,
+        trace:          TransactionTrace,
     }
 
     impl ComparisonNode {
@@ -531,13 +524,13 @@ mod tests {
     impl From<&Node<Actions>> for ComparisonNode {
         fn from(value: &Node<Actions>) -> Self {
             ComparisonNode {
-                inner_len: value.inner.len(),
-                finalized: value.finalized,
-                index: value.index,
+                inner_len:      value.inner.len(),
+                finalized:      value.finalized,
+                index:          value.index,
                 subactions_len: value.subactions.len(),
-                trace_address: value.trace_address.clone(),
-                address: value.address,
-                trace: match &value.data {
+                trace_address:  value.trace_address.clone(),
+                address:        value.address,
+                trace:          match &value.data {
                     Actions::Unclassified(traces, _) => traces.trace.clone(),
                     _ => unreachable!(),
                 },
