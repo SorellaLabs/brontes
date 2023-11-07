@@ -24,18 +24,7 @@ async fn process_tree() {
     let block = tracer.execute_block(block_num).await.unwrap();
     let metadata = db.get_metadata(block_num).await;
 
-    let tx = block
-        .0
-        .clone()
-        .into_iter()
-        .filter(|t| {
-            t.tx_hash
-                == H256::from_str(
-                    "0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5",
-                )
-                .unwrap()
-        })
-        .collect::<Vec<_>>();
+    let tx = block.0.clone().into_iter().take(3).collect::<Vec<_>>();
     let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
     //write_tree_as_json(&tree, "./tree.json").await;
