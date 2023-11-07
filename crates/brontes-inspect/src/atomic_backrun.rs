@@ -7,6 +7,7 @@ use brontes_types::{
     tree::{GasDetails, TimeTree},
     ToFloatNearest,
 };
+use malachite::Rational;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, H256};
 use tracing::error;
@@ -34,18 +35,17 @@ impl AtomicBackrunInspector {
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
-        )?;
+        );
+
+        let profit_collectors = appearance.keys().copied().collect();
+        let appearance_usd: Rational = appearance.values().sum();
 
         let finalized = self.inner.get_best_usd_delta(
             deltas,
             metadata.clone(),
             Box::new(|(_, finalized)| finalized),
-        )?;
-
-        if finalized.0 != appearance.0 {
-            error!("finalized addr != appearance addr");
-            return None
-        }
+        );
+        let finalized_usd: Rational = finalized.values().sum();
 
         let gas_used = gas_details.gas_paid();
         let (gas_used_usd_appearance, gas_used_usd_finalized) =
@@ -56,12 +56,12 @@ impl AtomicBackrunInspector {
             tx_hash,
             mev_contract,
             block_number: metadata.block_num,
-            mev_profit_collector: finalized.0,
+            mev_profit_collector: profit_collectors,
             eoa,
             submission_bribe_usd: gas_used_usd_appearance.clone().to_float(),
             finalized_bribe_usd: gas_used_usd_finalized.clone().to_float(),
-            finalized_profit_usd: (finalized.1 - gas_used_usd_finalized).to_float(),
-            submission_profit_usd: (appearance.1 - gas_used_usd_appearance).to_float(),
+            finalized_profit_usd: (finalized_usd - gas_used_usd_finalized).to_float(),
+            submission_profit_usd: (appearance_usd - gas_used_usd_appearance).to_float(),
         };
 
         let swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
