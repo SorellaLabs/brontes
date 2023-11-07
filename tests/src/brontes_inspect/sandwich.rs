@@ -6,9 +6,11 @@ use brontes_database::database::Database;
 use brontes_inspect::{sandwich::SandwichInspector, Inspector};
 use brontes_types::{normalized_actions::Actions, test_utils::write_tree_as_json, tree::TimeTree};
 use reth_primitives::H256;
+use serial_test::serial;
 use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::test]
+#[serial]
 async fn process_tree() {
     dotenv::dotenv().ok();
     let block_num = 17891800;
@@ -30,27 +32,15 @@ async fn process_tree() {
     let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
 
     println!("{:?}", mev);
-}
 
-#[test]
-fn tree_ting() {
-    let tree: TimeTree<Actions> =
-        serde_json::from_str(&fs::read_to_string("src/brontes_inspect/tree.json").unwrap())
-            .unwrap();
-
-    let root = tree
-        .roots
-        .iter()
-        .filter(|r| {
-            r.tx_hash
-                == H256::from_str(
-                    "0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5",
-                )
-                .unwrap()
-        })
+    let actions = tree
+        .inspect(
+            H256::from_str("0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5")
+                .unwrap(),
+            |node| true,
+        )
+        .into_iter()
         .collect::<Vec<_>>();
 
-    println!("{:?}", root.len());
-
-    println!("{:?}", root[0].head.subactions);
+    println!("ACTIONSSS: {:?}", actions);
 }
