@@ -7,6 +7,7 @@ use brontes_types::{
     tree::{GasDetails, TimeTree},
     ToFloatNearest,
 };
+use malachite::Rational;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, H256};
 use tracing::error;
@@ -34,18 +35,17 @@ impl AtomicBackrunInspector {
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
-        )?;
+        );
+
+        let profit_collectors = appearance.keys().copied().collect();
+        let appearance_usd: Rational = appearance.values().sum();
 
         let finalized = self.inner.get_best_usd_delta(
             deltas,
             metadata.clone(),
             Box::new(|(_, finalized)| finalized),
-        )?;
-
-        if finalized.0 != appearance.0 {
-            error!("finalized addr != appearance addr");
-            return None
-        }
+        );
+        let finalized_usd: Rational = finalized.values().sum();
 
         let gas_used = gas_details.gas_paid();
         let (gas_used_usd_appearance, gas_used_usd_finalized) =
@@ -56,12 +56,12 @@ impl AtomicBackrunInspector {
             tx_hash,
             mev_contract,
             block_number: metadata.block_num,
-            mev_profit_collector: finalized.0,
+            mev_profit_collector: profit_collectors,
             eoa,
             submission_bribe_usd: gas_used_usd_appearance.clone().to_float(),
             finalized_bribe_usd: gas_used_usd_finalized.clone().to_float(),
-            finalized_profit_usd: (finalized.1 - gas_used_usd_finalized).to_float(),
-            submission_profit_usd: (appearance.1 - gas_used_usd_appearance).to_float(),
+            finalized_profit_usd: (finalized_usd - gas_used_usd_finalized).to_float(),
+            submission_profit_usd: (appearance_usd - gas_used_usd_appearance).to_float(),
         };
 
         let swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
@@ -132,4 +132,60 @@ impl Inspector for AtomicBackrunInspector {
             })
             .collect::<Vec<_>>()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{str::FromStr, time::SystemTime};
+
+    use brontes_classifier::Classifier;
+    use brontes_core::test_utils::init_trace_parser;
+    use brontes_database::database::Database;
+    use brontes_types::test_utils::write_tree_as_json;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_backrun() {
+        dotenv::dotenv().ok();
+        let block_num = 18522278;
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
+
+        let block = tracer.execute_block(block_num).await.unwrap();
+        let metadata = db.get_metadata(block_num).await;
+
+        let tx = block.0.clone().into_iter().take(9).collect::<Vec<_>>();
+        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+
+        // write_tree_as_json(&tree, "./tree.json").await;
+
+        let inspector = AtomicBackrunInspector::default();
+
+        let t0 = SystemTime::now();
+        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("backrun inspector took: {} us", delta);
+
+        // assert!(
+        //     mev[0].0.tx_hash
+        //         == H256::from_str(
+        //
+        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
+        //         )
+        //         .unwrap()
+        // );
+
+        println!("{:#?}", mev);
+    }
+
+    fn test_process_sandwich() {}
 }

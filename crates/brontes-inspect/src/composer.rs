@@ -80,10 +80,10 @@ fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
 // they are one and the same
 
 pub struct BlockPreprocessing {
-    meta_data: Arc<Metadata>,
+    meta_data:           Arc<Metadata>,
     cumulative_gas_used: u64,
     cumulative_gas_paid: u64,
-    builder_address: Address,
+    builder_address:     Address,
 }
 
 type InspectorFut<'a> =
@@ -95,12 +95,12 @@ type InspectorFut<'a> =
 pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
 
 pub struct Composer<'a, const N: usize> {
-    orchestra: &'a [&'a Box<dyn Inspector>; N],
+    orchestra:            &'a [&'a Box<dyn Inspector>; N],
     inspectors_execution: Option<InspectorFut<'a>>,
-    pre_processing: Option<BlockPreprocessing>,
+    pre_processing:       Option<BlockPreprocessing>,
     // this is terroristic and need to prob rewrite most of this. however
     // we will leave it for now so we can get to testing
-    is_finished: bool,
+    is_finished:          bool,
 }
 
 impl<'a, const N: usize> Composer<'a, N> {
