@@ -159,7 +159,7 @@ mod tests {
         let inspector_utils = SharedInspectorUtils::default();
 
         let swap1 = Actions::Swap(NormalizedSwap {
-            index:      2,-149831878345848219/1000000000000000000
+            index:      2,
             from:       H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
             pool:       H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(),
             token_in:   H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
