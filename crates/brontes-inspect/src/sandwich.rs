@@ -93,16 +93,10 @@ impl Inspector for SandwichInspector {
 
         set.into_iter()
             .filter_map(|ps| {
-                println!(
-                    "\n\nFOUND SET: {:?}\n",
-                    (ps.eoa, ps.tx0, ps.tx1, ps.mev_addr, &ps.victims)
-                );
-
                 let gas = [
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
                 ];
-                println!("GAS: {:?}\n", gas);
 
                 let victim_gas = ps
                     .victims
@@ -110,7 +104,6 @@ impl Inspector for SandwichInspector {
                     .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                     .collect::<Vec<_>>();
 
-                println!("VICTIM GAS: {:?}\n", gas);
 
                 let victim_actions = ps
                     .victims
@@ -123,14 +116,11 @@ impl Inspector for SandwichInspector {
                     })
                     .collect::<Vec<Vec<Actions>>>();
 
-                println!("VICTIM ACTIONS: {:?}\n", victim_actions);
 
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
-
-                println!("SEARCHER ACTIONS: {:?}\n", searcher_actions);
 
                 self.calculate_sandwich(
                     ps.eoa,
@@ -163,7 +153,6 @@ impl SandwichInspector {
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
-        println!("{:?}", deltas);
 
         let appearance_usd_deltas = self.inner.get_best_usd_delta(
             deltas.clone(),
@@ -171,7 +160,6 @@ impl SandwichInspector {
             Box::new(|(appearance, _)| appearance),
         );
 
-        println!("{:?}", appearance_usd_deltas);
 
         let finalized_usd_deltas = self.inner.get_best_usd_delta(
             deltas,
@@ -190,8 +178,6 @@ impl SandwichInspector {
             .iter()
             .map(|g| g.gas_paid())
             .sum::<u64>();
-        println!("Gas used, {:?}", gas_used);
-        println!("Metadata: {:#?}", metadata);
 
         let (gas_used_usd_appearance, gas_used_usd_finalized) =
             metadata.get_gas_price_usd(gas_used);
