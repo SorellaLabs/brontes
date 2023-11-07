@@ -82,7 +82,7 @@ impl Classifier {
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
                     println!("NODE - FROM ADDRESS: {:?}, DATA: {:?}\n", from_addr, classification);
                     let subactions = if !classification.is_unclassified() {
-                        vec![classification.clone()];
+                        vec![classification.clone()]
                     } else {
                         vec![]
                     };
