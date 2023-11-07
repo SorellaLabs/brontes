@@ -401,7 +401,7 @@ impl<V: NormalizedAction> Node<V> {
         );
 
         println!("INSPECTOR NODE - NOT SELF CALL: {}", !call(self));
-        println!("INSPECTOR NODE - SELF SUBACTIONS: {}", self.subactions);
+        println!("INSPECTOR NODE - SELF SUBACTIONS: {:?}", self.subactions);
 
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
