@@ -341,7 +341,7 @@ mod tests {
     #[serial]
     async fn test_sandwich() {
         dotenv::dotenv().ok();
-        let block_num = 17891804;
+        let block_num = 18522330;
 
         let (tx, _rx) = unbounded_channel();
 
