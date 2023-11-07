@@ -396,7 +396,7 @@ impl<V: NormalizedAction> Node<V> {
     {
         println!(
             "Subdata: {:?}",
-            &self.subactions.into_iter().map(|s| s.get_action()).collect::<Vec<_>>()
+            &self.subactions.iter().map(|s| s.get_action()).collect::<Vec<_>>()
         );
 
         println!(
