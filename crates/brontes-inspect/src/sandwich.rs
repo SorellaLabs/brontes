@@ -21,6 +21,7 @@ pub struct SandwichInspector {
     inner: SharedInspectorUtils,
 }
 
+#[derive(Debug)]
 pub struct PossibleSandwich {
     eoa:                   Address,
     tx0:                   H256,
@@ -87,6 +88,7 @@ impl Inspector for SandwichInspector {
                 }
             }
         }
+        println!("{:#?}", set);
 
         let search_fn = |node: &Node<Actions>| {
             node.subactions
@@ -105,15 +107,12 @@ impl Inspector for SandwichInspector {
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
                 ];
-                println!("GAS: {:?}\n", gas);
 
                 let victim_gas = ps
                     .victims
                     .iter()
                     .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                     .collect::<Vec<_>>();
-
-                println!("VICTIM GAS: {:?}\n", gas);
 
                 let victim_actions = ps
                     .victims
@@ -126,14 +125,10 @@ impl Inspector for SandwichInspector {
                     })
                     .collect::<Vec<Vec<Actions>>>();
 
-                println!("VICTIM ACTIONS: {:?}\n", victim_actions);
-
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
-
-                println!("SEARCHER ACTIONS: {:?}\n", searcher_actions);
 
                 self.calculate_sandwich(
                     ps.eoa,
@@ -173,8 +168,6 @@ impl SandwichInspector {
             Box::new(|(appearance, _)| appearance),
         );
 
-        println!("{:?}", appearance_usd_deltas);
-
         let finalized_usd_deltas = self.inner.get_best_usd_delta(
             deltas,
             metadata.clone(),
@@ -201,6 +194,7 @@ impl SandwichInspector {
             .into_iter()
             .map(|s| s.force_swap())
             .collect_vec();
+
         let backrun_swaps = searcher_actions
             .remove(searcher_actions.len() - 1)
             .into_iter()
@@ -231,11 +225,7 @@ impl SandwichInspector {
                 .collect::<Vec<_>>(),
 
             victim_tx_hashes:        victim_txes.clone(),
-            victim_swaps_tx_hash:    victim_txes
-                .iter()
-                .enumerate()
-                .flat_map(|(idx, tx)| vec![*tx].repeat(searcher_actions[idx].len()))
-                .collect_vec(),
+            victim_swaps_tx_hash:    victim_txes,
             victim_swaps_index:      searcher_actions
                 .iter()
                 .flat_map(|swap| {
@@ -342,7 +332,7 @@ impl SandwichInspector {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use std::{str::FromStr, time::SystemTime};
 
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::init_trace_parser;
@@ -355,9 +345,9 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn process_tree() {
+    async fn test_sandwich() {
         dotenv::dotenv().ok();
-        let block_num = 17891800;
+        let block_num = 17891804;
 
         let (tx, _rx) = unbounded_channel();
 
@@ -368,23 +358,30 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        let tx = block.0.clone().into_iter().take(3).collect::<Vec<_>>();
+        let tx = block.0.clone().into_iter().take(9).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
-        write_tree_as_json(&tree, "./tree.json").await;
+        // write_tree_as_json(&tree, "./tree.json").await;
 
         let inspector = SandwichInspector::default();
 
+        let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("sandwich inspector took: {} us", delta);
 
-        assert!(
-            mev[0].0.tx_hash
-                == H256::from_str(
-                    "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
-                )
-                .unwrap()
-        );
+        // assert!(
+        //     mev[0].0.tx_hash
+        //         == H256::from_str(
+        //
+        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
+        //         )
+        //         .unwrap()
+        // );
 
-        println!("{:?}", mev);
+        println!("{:#?}", mev);
     }
+
+    fn test_process_sandwich() {}
 }

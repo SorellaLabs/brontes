@@ -23,8 +23,8 @@ use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
 /// to decode each call for later analysis.
 #[derive(Clone)]
 pub struct TraceParser<T: TracingProvider> {
-    etherscan_client: Client,
-    pub tracer: Arc<T>,
+    etherscan_client:      Client,
+    pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
@@ -264,11 +264,12 @@ impl<T: TracingProvider> TraceParser<T> {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::test_utils::*;
     use dotenv::dotenv;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+    use crate::test_utils::*;
 
     #[tokio::test]
     #[serial]

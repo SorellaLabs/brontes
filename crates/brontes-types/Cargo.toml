@@ -15,7 +15,7 @@ tracing.workspace = true
 
 # async
 rayon.workspace = true
-tokio = { workspace = true, features = ["full"], optional = true }
+tokio = { workspace = true, features = ["full"] }
 
 # numbers
 malachite = { workspace = true, features = ["enable_serde"] }
@@ -61,8 +61,7 @@ brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing.workspace = true
 
 
-
 [features]
-default = []
+default = ["tests"]
 server = []
-tests = ["tokio/full"]
+tests = []
