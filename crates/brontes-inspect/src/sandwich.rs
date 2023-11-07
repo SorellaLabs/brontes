@@ -340,7 +340,7 @@ mod tests {
     #[serial]
     async fn test_process_tree() {
         dotenv::dotenv().ok();
-        let block_num = 17891800;
+        let block_num = 17891804;
 
         let (tx, _rx) = unbounded_channel();
 
