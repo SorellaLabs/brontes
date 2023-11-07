@@ -5,7 +5,7 @@ use std::{
 
 use brontes_database::Metadata;
 use brontes_types::{normalized_actions::Actions, ToScaledRational, TOKEN_TO_DECIMALS};
-use malachite::{Rational, num::basic::traits::Zero};
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 use tracing::error;
 
@@ -100,23 +100,19 @@ impl SharedInspectorUtils {
                 .collect::<Vec<_>>();
 
             if changed == false {
-                break;
+                break
             }
         }
         deltas
     }
 
-    /// Given the deltas, metadata, and a time selector, returns the address
-    /// with the highest positive usd delta calculated using CEX prices. This is
-    /// useful in scenarios where we want to find the end address that
-    /// collects the returns of the underlying mev, which isn't always the
-    /// address / contract that executed the mev.S
-    pub(crate) fn get_best_usd_delta(
+    /// applies usd price to deltas and flattens out the tokens
+    pub(crate) fn get_best_usd_deltas(
         &self,
         deltas: HashMap<Address, HashMap<Address, Rational>>,
         metadata: Arc<Metadata>,
         time_selector: Box<dyn Fn(&(Rational, Rational)) -> &Rational>,
-    ) -> Option<(Address, Rational)> {
+    ) -> HashMap<Address, Rational> {
         deltas
             .into_iter()
             .map(|(caller, tokens)| {
@@ -133,7 +129,7 @@ impl SharedInspectorUtils {
                     .sum::<Rational>();
                 (caller, summed_value)
             })
-            .max_by(|x, y| x.1.cmp(&y.1))
+            .collect()
     }
 }
 
@@ -163,7 +159,7 @@ mod tests {
         let inspector_utils = SharedInspectorUtils::default();
 
         let swap1 = Actions::Swap(NormalizedSwap {
-            index:      2,
+            index:      2,-149831878345848219/1000000000000000000
             from:       H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
             pool:       H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(),
             token_in:   H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
