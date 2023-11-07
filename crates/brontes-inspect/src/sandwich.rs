@@ -21,6 +21,14 @@ pub struct SandwichInspector {
     inner: SharedInspectorUtils,
 }
 
+pub struct PossibleSandwich {
+    eoa:      Address,
+    tx0:      H256,
+    tx1:      H256,
+    mev_addr: Address,
+    victims:   Vec<H256>,
+}
+
 #[async_trait::async_trait]
 impl Inspector for SandwichInspector {
     async fn process_tree(
@@ -35,30 +43,39 @@ impl Inspector for SandwichInspector {
             return vec![]
         }
 
-        let mut set = Vec::new();
-        let mut duplicate_senders = HashMap::new();
-        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
+        let mut sets: Vec<PossibleSandwich> = Vec::new();
 
+        let mut duplicate_senders = HashMap::new();
+        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();\
+
+
+        // We loop through all transactions in the block
         for root in iter {
             match duplicate_senders.entry(root.head.address) {
+                // If we have not seen this sender before, we add the tx hash to the map
                 Entry::Vacant(v) => {
                     v.insert(root.tx_hash);
+                
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
-                    let entry: H256 = *o.get();
+                    // if the sender has already been seen, get the tx hash of the previous tx
+                    let tx0: H256 = *o.get();
                     if let Some(mut victims) = possible_victims.remove(&entry) {
                         if victims.len() < 2 {
                             o.insert(root.tx_hash);
                         } else {
+                            o.insert(root.tx_hash);
                             let _ = victims.remove(0);
-                            set.push((
-                                root.head.address,
-                                entry,
-                                root.tx_hash,
-                                root.head.data.get_too_address(),
-                                victims,
-                            ));
+                            set.push(
+                                PossibleSandwich {
+                                    root.head.address,
+                                    tx0,
+                                    tx1: root.tx_hash,
+                                    mev_addr: root.head.data.get_too_address(),
+                                    victims,
+                                }
+                            );
                         }
                     }
                 }
