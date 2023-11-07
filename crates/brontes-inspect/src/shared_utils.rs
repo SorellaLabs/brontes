@@ -152,6 +152,7 @@ mod tests {
     use std::str::FromStr;
 
     use brontes_types::normalized_actions::{Actions, NormalizedSwap};
+    use malachite::Integer;
     use reth_primitives::{H160, H256};
 
     use super::*;
@@ -222,32 +223,32 @@ mod tests {
 
         let mut inner_map = HashMap::new();
         inner_map.insert(
-            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-            Rational::from(-1),
-        );
-        inner_map.insert(
             H160::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
-            Rational::from_integers(Rational::from(51621651680499), Rational::from(2500000)),
-        );
-        expected_map.insert(
-            H160::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap(),
-            inner_map,
-        );
-
-        let mut inner_map = HashMap::new();
-        inner_map.insert(
-            H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
             Rational::from(0),
         );
         inner_map.insert(
             H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
             Rational::from_integers(
-                Rational::from(56406919415648307),
-                Rational::from(500000000000000000),
+                Integer::from(56406919415648307u128),
+                Integer::from(500000000000000000u128),
             ),
         );
         expected_map.insert(
             H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
+            inner_map,
+        );
+
+        let mut inner_map = HashMap::new();
+        inner_map.insert(
+            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+            Rational::from(-1),
+        );
+        inner_map.insert(
+            H160::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
+            Rational::from_integers(Integer::from(51621651680499u128), Integer::from(2500000u128)),
+        );
+        expected_map.insert(
+            H160::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap(),
             inner_map,
         );
 
