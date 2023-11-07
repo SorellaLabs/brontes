@@ -163,6 +163,10 @@ impl SandwichInspector {
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
+        if searcher_actions.len() < 2 {
+            return None
+        }
+
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
         println!("deltas {:#?}", deltas);
 
