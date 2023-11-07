@@ -48,6 +48,10 @@ impl Inspector for SandwichInspector {
                 Entry::Occupied(o) => {
                     let entry: H256 = o.remove();
                     if let Some(mut victims) = possible_victims.remove(&entry) {
+                        if victims.len() < 2 {
+                            continue;
+                        }
+
                         let _ = victims.pop();
                         set.push((
                             root.head.address,
