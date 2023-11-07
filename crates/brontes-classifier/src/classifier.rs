@@ -193,42 +193,41 @@ impl Classifier {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
                 let sig = &calldata[0..4];
-                if let Ok(res) = protocol.1.try_decode(&calldata) {
-                    let d = classifier.dispatch(
+                let res = protocol.1.try_decode(&calldata).unwrap();
+                let d = classifier.dispatch(
+                    sig,
+                    index,
+                    res,
+                    return_bytes.clone(),
+                    from_address,
+                    target_address,
+                    &trace.logs,
+                );
+                /*  if target_address
+                    == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap()
+                {
+                    println!("dispatch: {:?}\n", d);
+                    println!(
+                        "sig: {:?}\n
+                    index: {:?}\n
+                    calldata: {:?}\n
+                    return_bytes: {:?}\n
+                    from_address: {:?}\n
+                    target_address: {:?}\n
+                    trace.logs: {:?}",
                         sig,
                         index,
-                        res,
-                        return_bytes.clone(),
+                        calldata,
+                        return_bytes,
                         from_address,
                         target_address,
                         &trace.logs,
                     );
-                    /*  if target_address
-                        == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap()
-                    {
-                        println!("dispatch: {:?}\n", d);
-                        println!(
-                            "sig: {:?}\n
-                        index: {:?}\n
-                        calldata: {:?}\n
-                        return_bytes: {:?}\n
-                        from_address: {:?}\n
-                        target_address: {:?}\n
-                        trace.logs: {:?}",
-                            sig,
-                            index,
-                            calldata,
-                            return_bytes,
-                            from_address,
-                            target_address,
-                            &trace.logs,
-                        );
-                    } */
+                } */
 
-                    if let Some(res) = d {
-                        //println!("RES: {:?}", res);
-                        return res
-                    }
+                if let Some(res) = d {
+                    //println!("RES: {:?}", res);
+                    return res
                 }
 
                 // same as above but for testing
