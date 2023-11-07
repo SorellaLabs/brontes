@@ -527,8 +527,8 @@ mod tests {
         }
     }
 
-    impl From<&Node<Actions>> for ComparisonNode {
-        fn from(value: &Node<Actions>) -> Self {
+    impl<'a, V: NormalizedAction> From<&'a Node<V>> for ComparisonNode {
+        fn from(node: &'a Node<V>) -> Self {
             ComparisonNode {
                 inner_len: value.inner.len(),
                 finalized: value.finalized,
