@@ -11,7 +11,8 @@ use brontes_types::{
     ToFloatNearest,
 };
 use itertools::Itertools;
-use reth_primitives::{Address, H256};
+use malachite::Rational;
+use reth_primitives::{Address, H160, H256};
 use tracing::error;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
@@ -23,11 +24,11 @@ pub struct SandwichInspector {
 
 #[derive(Debug)]
 pub struct PossibleSandwich {
-    eoa: Address,
-    tx0: H256,
-    tx1: H256,
-    mev_addr: Address,
-    victims: Vec<H256>,
+    eoa:                   Address,
+    tx0:                   H256,
+    tx1:                   H256,
+    mev_executor_contract: Address,
+    victims:               Vec<H256>,
 }
 
 #[async_trait::async_trait]
@@ -45,45 +46,48 @@ impl Inspector for SandwichInspector {
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
-
-        let mut duplicate_senders = HashMap::new();
+        let mut duplicate_senders: HashMap<Address, Vec<H256>> = HashMap::new();
         let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
 
-        // We loop through all transactions in the block
         for root in iter {
             match duplicate_senders.entry(root.head.address) {
-                // If we have not seen this sender before, we add the tx hash to the map
+                // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
-                    v.insert(root.tx_hash);
-
+                    v.insert(vec![root.tx_hash]);
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
-                    // if the sender has already been seen, get the tx hash of the previous tx
-                    let tx0: H256 = *o.get();
-                    if let Some(mut victims) = possible_victims.remove(&tx0) {
-                        if victims.len() == 0 {
-                            o.insert(root.tx_hash);
-                        } else {
-                            o.insert(root.tx_hash);
+                    let prev_tx_hashes = o.get();
 
-                            set.push(PossibleSandwich {
-                                eoa: root.head.address,
-                                tx0,
-                                tx1: root.tx_hash,
-                                mev_addr: root.head.data.get_too_address(),
-                                victims,
-                            });
+                    for prev_tx_hash in prev_tx_hashes {
+                        // Find the victims between the previous and the current transaction
+                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
+                            if victims.len() >= 2 {
+                                // Create
+                                set.push(PossibleSandwich {
+                                    eoa:                   root.head.address,
+                                    tx0:                   *prev_tx_hash,
+                                    tx1:                   root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_too_address(),
+                                    victims:               victims.clone(),
+                                });
+                            }
                         }
                     }
+                    // Add current transaction hash to the list of transactions for this sender
+                    o.get_mut().push(root.tx_hash);
+                    possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
 
-            possible_victims.iter_mut().for_each(|(k, v)| {
+            // Now, for each existing entry in possible_victims, we add the current
+            // transaction hash as a potential victim, if it is not the same as
+            // the key (which represents another transaction hash)
+            for (k, v) in possible_victims.iter_mut() {
                 if k != &root.tx_hash {
                     v.push(root.tx_hash);
                 }
-            });
+            }
         }
         println!("{:#?}", set);
 
@@ -95,6 +99,11 @@ impl Inspector for SandwichInspector {
 
         set.into_iter()
             .filter_map(|ps| {
+                println!(
+                    "\n\nFOUND SET: {:?}\n",
+                    (ps.eoa, ps.tx0, ps.tx1, ps.mev_executor_contract, &ps.victims)
+                );
+
                 let gas = [
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
@@ -116,15 +125,18 @@ impl Inspector for SandwichInspector {
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<Vec<Actions>>>();
+                println!("Victim actions - {:#?}", victim_actions);
 
+                println!("{:?}", ps);
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
+                println!("Searcher actions - {:#?}", searcher_actions);
 
                 self.calculate_sandwich(
                     ps.eoa,
-                    ps.mev_addr,
+                    ps.mev_executor_contract,
                     meta_data.clone(),
                     [ps.tx0, ps.tx1],
                     gas,
@@ -142,7 +154,7 @@ impl SandwichInspector {
     fn calculate_sandwich(
         &self,
         eoa: Address,
-        mev_addr: Address,
+        mev_executor_contract: Address,
         metadata: Arc<Metadata>,
         txes: [H256; 2],
         searcher_gas_details: [GasDetails; 2],
@@ -152,26 +164,32 @@ impl SandwichInspector {
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
+        if searcher_actions.len() < 2 {
+            return None
+        }
 
-        let appearance_usd_deltas = self.inner.get_best_usd_delta(
+        let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
+        println!("deltas {:#?}", deltas);
+
+        let appearance_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_delta(
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
         );
 
-        let finalized_usd_deltas = self.inner.get_best_usd_delta(
+        let appearance_usd: Rational = appearance_usd_deltas.values().sum();
+
+        println!("appearance_usd_deltas {:#?}", appearance_usd_deltas);
+
+        let mev_collectors = appearance_usd_deltas.keys().copied().collect();
+
+        let finalized_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_delta(
             deltas,
             metadata.clone(),
             Box::new(|(_, finalized)| finalized),
         );
 
-        let (finalized, appearance) = (finalized_usd_deltas?, appearance_usd_deltas?);
-
-        if finalized.0 != appearance.0 {
-            error!("finalized addr != appearance addr");
-            return None;
-        }
+        let finalized_usd: Rational = finalized_usd_deltas.values().sum();
 
         let gas_used = searcher_gas_details
             .iter()
@@ -194,20 +212,20 @@ impl SandwichInspector {
             .collect_vec();
 
         let sandwich = Sandwich {
-            frontrun_tx_hash: txes[0],
-            frontrun_gas_details: searcher_gas_details[0],
-            frontrun_swaps_index: frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
-            frontrun_swaps_from: frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            frontrun_swaps_pool: frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            frontrun_swaps_token_in: frontrun_swaps
+            frontrun_tx_hash:          txes[0],
+            frontrun_gas_details:      searcher_gas_details[0],
+            frontrun_swaps_index:      frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            frontrun_swaps_from:       frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            frontrun_swaps_pool:       frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            frontrun_swaps_token_in:   frontrun_swaps
                 .iter()
                 .map(|s| s.token_in)
                 .collect::<Vec<_>>(),
-            frontrun_swaps_token_out: frontrun_swaps
+            frontrun_swaps_token_out:  frontrun_swaps
                 .iter()
                 .map(|s| s.token_out)
                 .collect::<Vec<_>>(),
-            frontrun_swaps_amount_in: frontrun_swaps
+            frontrun_swaps_amount_in:  frontrun_swaps
                 .iter()
                 .map(|s| s.amount_in.to())
                 .collect::<Vec<_>>(),
@@ -216,9 +234,9 @@ impl SandwichInspector {
                 .map(|s| s.amount_out.to())
                 .collect::<Vec<_>>(),
 
-            victim_tx_hashes: victim_txes.clone(),
-            victim_swaps_tx_hash: victim_txes,
-            victim_swaps_index: searcher_actions
+            victim_tx_hashes:        victim_txes.clone(),
+            victim_swaps_tx_hash:    victim_txes,
+            victim_swaps_index:      searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -226,7 +244,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_from: searcher_actions
+            victim_swaps_from:       searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -234,7 +252,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_pool: searcher_actions
+            victim_swaps_pool:       searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -242,7 +260,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_in: searcher_actions
+            victim_swaps_token_in:   searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -250,7 +268,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_out: searcher_actions
+            victim_swaps_token_out:  searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -258,7 +276,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_amount_in: searcher_actions
+            victim_swaps_amount_in:  searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -307,14 +325,14 @@ impl SandwichInspector {
 
         let classified_mev = ClassifiedMev {
             eoa,
-            mev_profit_collector: finalized.0,
+            mev_profit_collector: mev_collectors,
             tx_hash: txes[0],
-            mev_contract: mev_addr,
+            mev_contract: mev_executor_contract,
             block_number: metadata.block_num,
             mev_type: MevType::Sandwich,
-            submission_profit_usd: (appearance.1 - &gas_used_usd_appearance).to_float(),
+            submission_profit_usd: (appearance_usd - &gas_used_usd_appearance).to_float(),
             submission_bribe_usd: gas_used_usd_appearance.to_float(),
-            finalized_profit_usd: (finalized.1 - &gas_used_usd_finalized).to_float(),
+            finalized_profit_usd: (finalized_usd - &gas_used_usd_finalized).to_float(),
             finalized_bribe_usd: gas_used_usd_finalized.to_float(),
         };
 
@@ -339,7 +357,7 @@ mod tests {
     #[serial]
     async fn test_sandwich() {
         dotenv::dotenv().ok();
-        let block_num = 17891804;
+        let block_num = 18522330;
 
         let (tx, _rx) = unbounded_channel();
 
@@ -350,10 +368,10 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        let tx = block.0.clone().into_iter().take(9).collect::<Vec<_>>();
+        let tx = block.0.clone().into_iter().take(10).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
-        // write_tree_as_json(&tree, "./tree.json").await;
+        write_tree_as_json(&tree, "./tree.json").await;
 
         let inspector = SandwichInspector::default();
 
@@ -382,9 +400,9 @@ mod tests {
             )
             .unwrap(),
             frontrun_gas_details: GasDetails {
-                coinbase_transfer: 0, //todo
-                priority_fee: 0,
-                gas_used: 87336,
+                coinbase_transfer:   0, //todo
+                priority_fee:        0,
+                gas_used:            87336,
                 effective_gas_price: 18.990569622,
             },
             frontrun_swaps_index: 0,
@@ -438,9 +456,9 @@ mod tests {
             )
             .unwrap(),
             backrun_gas_details: GasDetails {
-                coinbase_transfer: 0, //todo
-                priority_fee: 0,
-                gas_used: 84461,
+                coinbase_transfer:   0, //todo
+                priority_fee:        0,
+                gas_used:            84461,
                 effective_gas_price: 18990569622,
             },
             backrun_swaps_index: 2,
