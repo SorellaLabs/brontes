@@ -102,7 +102,8 @@ impl Inspector for SandwichInspector {
                 ];
                 println!("GAS: {:?}\n", gas);
 
-                let victim_gas = victims
+                let victim_gas = ps
+                    .victims
                     .iter()
                     .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                     .collect::<Vec<_>>();
@@ -130,13 +131,13 @@ impl Inspector for SandwichInspector {
                 println!("SEARCHER ACTIONS: {:?}\n", searcher_actions);
 
                 self.calculate_sandwich(
-                    eoa,
-                    mev_addr,
+                    ps.eoa,
+                    ps.mev_addr,
                     meta_data.clone(),
-                    [tx0, tx1],
+                    [ps.tx0, ps.tx1],
                     gas,
                     searcher_actions,
-                    victim,
+                    ps.victims,
                     victim_actions,
                     victim_gas,
                 )
