@@ -221,11 +221,11 @@ mod tests {
 
     fn expected_relay_info() -> RelayInfo {
         RelayInfo {
-            relay_time: 1695258707683,
-            p2p_time: 1695258708673,
-            proposer_addr: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
+            relay_time:      1695258707683,
+            p2p_time:        1695258708673,
+            proposer_addr:   H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
             proposer_reward: 113949354337187568,
-            block_hash: H256::from_str(BLOCK_HASH).unwrap().into(),
+            block_hash:      H256::from_str(BLOCK_HASH).unwrap().into(),
         }
     }
 
@@ -241,16 +241,16 @@ mod tests {
             .unwrap();
 
         Metadata {
-            block_num: BLOCK_NUMBER,
-            block_hash: H256::from_str(BLOCK_HASH).unwrap().into(),
-            relay_timestamp: 1695258707683,
-            p2p_timestamp: 1695258708673,
+            block_num:              BLOCK_NUMBER,
+            block_hash:             H256::from_str(BLOCK_HASH).unwrap().into(),
+            relay_timestamp:        1695258707683,
+            p2p_timestamp:          1695258708673,
             proposer_fee_recipient: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
-            proposer_mev_reward: 113949354337187568,
-            token_prices: cex_prices.clone(),
-            eth_prices: eth_prices.clone(),
-            mempool_flow: expected_private_flow(),
+            proposer_mev_reward:    113949354337187568,
+            token_prices:           cex_prices.clone(),
+            eth_prices:             eth_prices.clone(),
+            mempool_flow:           expected_private_flow(),
         }
     }
 

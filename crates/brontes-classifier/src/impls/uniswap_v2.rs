@@ -31,7 +31,7 @@ action_impl!(
                 token_out: token_0,
                 amount_in: data.amount1In,
                 amount_out: data.amount0Out,
-            });
+            })
         } else {
             return Some(NormalizedSwap {
                 index,
@@ -41,7 +41,7 @@ action_impl!(
                 token_out: token_1,
                 amount_in: data.amount0In,
                 amount_out: data.amount1Out,
-            });
+            })
         }
     }
 );

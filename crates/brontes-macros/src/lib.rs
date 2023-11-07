@@ -121,15 +121,15 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 struct MacroParse {
     // required for all
     exchange_name: Ident,
-    action_type: Ident,
-    call_type: Ident,
+    action_type:   Ident,
+    call_type:     Ident,
 
     /// needed if we decide to decode call data
     exchange_mod_name: Ident,
     /// wether we want logs or not
-    give_logs: LitBool,
+    give_logs:         LitBool,
     /// wether we want return data or not
-    give_returns: LitBool,
+    give_returns:      LitBool,
 
     /// The closure that we use to construct the normalized type
     call_function: ExprClosure,
@@ -159,14 +159,14 @@ impl Parse for MacroParse {
         let call_function: ExprClosure = input.parse()?;
 
         if call_function.asyncness.is_some() {
-            return Err(syn::Error::new(input.span(), "closure cannot be async"));
+            return Err(syn::Error::new(input.span(), "closure cannot be async"))
         }
 
         if !input.is_empty() {
             return Err(syn::Error::new(
                 input.span(),
                 "There should be no values after the call function",
-            ));
+            ))
         }
 
         Ok(Self {
@@ -241,7 +241,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
 struct ActionDispatch {
     // required for all
     struct_name: Ident,
-    rest: Vec<Ident>,
+    rest:        Vec<Ident>,
 }
 impl Parse for ActionDispatch {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
