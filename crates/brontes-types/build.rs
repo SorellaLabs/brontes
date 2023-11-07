@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::{
     collections::HashMap,
     env,
@@ -6,6 +5,7 @@ use std::{
     hash::Hash,
     io::{BufWriter, Write},
     path::Path,
+    str::FromStr,
 };
 
 use ethers_core::types::Address;
@@ -36,7 +36,7 @@ fn main() {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Row)]
 pub struct TokenDetails {
-    address: String,
+    address:  String,
     decimals: u8,
 }
 
@@ -85,7 +85,7 @@ pub struct TokenList {
 pub struct Token {
     pub chain_addresses: HashMap<Blockchain, Vec<Address>>,
     /// e.g USDC, USDT, ETH, BTC
-    pub global_id: String,
+    pub global_id:       String,
 }
 
 impl Hash for Token {
