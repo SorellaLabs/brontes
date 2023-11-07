@@ -144,7 +144,7 @@ fn apply_entry(token: Address, amount: Rational, token_map: &mut HashMap<Address
     }
 }
 
-//#[cfg(test)]
+#[cfg(test)]
 mod tests {
     use brontes_types::normalized_actions::{Actions, NormalizedSwap};
     use reth_primitives::{H160, H256};
@@ -152,6 +152,7 @@ mod tests {
 
     use super::*;
 
+    #[test]
     fn test_swap_deltas() {
         let inspector_utils = SharedInspectorUtils::default();
 
