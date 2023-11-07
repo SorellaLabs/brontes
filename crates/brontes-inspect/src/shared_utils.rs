@@ -143,3 +143,12 @@ fn apply_entry(token: Address, amount: Rational, token_map: &mut HashMap<Address
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    fn test_swap_deltas() {
+
+        //let swap
+    }
+}
