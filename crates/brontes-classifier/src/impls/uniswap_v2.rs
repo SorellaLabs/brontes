@@ -316,4 +316,10 @@ mod tests {
 
         assert_eq!(swap, expected_swap);
     }
+
+    /* 
+    #[test]
+    fn t() {
+        println!("{:?}", H160::from_str("0x6Aa46141f1789C6BEc54651690312F754B05a99e").unwrap().0);
+    }*/
 }
