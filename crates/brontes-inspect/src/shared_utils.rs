@@ -5,7 +5,7 @@ use std::{
 
 use brontes_database::Metadata;
 use brontes_types::{normalized_actions::Actions, ToScaledRational, TOKEN_TO_DECIMALS};
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 use tracing::error;
 
@@ -100,23 +100,19 @@ impl SharedInspectorUtils {
                 .collect::<Vec<_>>();
 
             if changed == false {
-                break;
+                break
             }
         }
         deltas
     }
 
-    /// Given the deltas, metadata, and a time selector, returns the address
-    /// with the highest positive usd delta calculated using CEX prices. This is
-    /// useful in scenarios where we want to find the end address that
-    /// collects the returns of the underlying mev, which isn't always the
-    /// address / contract that executed the mev.S
+    /// applies usd price to deltas and flattens out the tokens
     pub(crate) fn get_best_usd_delta(
         &self,
         deltas: HashMap<Address, HashMap<Address, Rational>>,
         metadata: Arc<Metadata>,
         time_selector: Box<dyn Fn(&(Rational, Rational)) -> &Rational>,
-    ) -> Option<(Address, Rational)> {
+    ) -> HashMap<Address, Rational> {
         deltas
             .into_iter()
             .map(|(caller, tokens)| {
@@ -125,13 +121,15 @@ impl SharedInspectorUtils {
                     .map(|(address, mut value)| {
                         if let Some(price) = metadata.token_prices.get(&address) {
                             value *= time_selector(price);
+                            value
+                        } else {
+                            Rational::ZERO
                         }
-                        value
                     })
                     .sum::<Rational>();
                 (caller, summed_value)
             })
-            .max_by(|x, y| x.1.cmp(&y.1))
+            .collect()
     }
 }
 

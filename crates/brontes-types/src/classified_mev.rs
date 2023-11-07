@@ -56,8 +56,8 @@ pub struct ClassifiedMev {
     pub eoa:                   Address,
     #[serde_as(as = "FixedString")]
     pub mev_contract:          Address,
-    #[serde_as(as = "FixedString")]
-    pub mev_profit_collector:  Address,
+    #[serde_as(as = "Vec<FixedString>")]
+    pub mev_profit_collector:  Vec<Address>,
     pub mev_type:              MevType,
     pub submission_profit_usd: f64,
     pub finalized_profit_usd:  f64,
