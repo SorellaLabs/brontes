@@ -199,7 +199,7 @@ impl Classifier {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
                 let sig = &calldata[0..4];
-                if let Some(res) = protocol.1.try_decode(&calldata) {
+                if let Ok(res) = protocol.1.try_decode(&calldata) {
                     let d = classifier.dispatch(
                         sig,
                         index,
