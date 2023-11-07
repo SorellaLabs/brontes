@@ -1,2 +1,2 @@
 [env]
-ABI_BUILD_DIR = "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/abi_builds"
+ABI_BUILD_DIR = "../../../abi-builds"

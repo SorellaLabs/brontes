@@ -26,16 +26,12 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let mut has_calldata = false;
     let mut option_parsing = Vec::new();
 
-    //println!("11");
-
     if !exchange_mod_name.to_string().eq("None") {
         has_calldata = true;
         option_parsing.push(quote!(
                 let call_data = enum_unwrap!(data, #exchange_mod_name, #action_type);
         ));
     }
-
-    //println!("22");
 
     if give_logs.value {
         option_parsing.push(quote!(
@@ -46,15 +42,11 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         ));
     }
 
-    //println!("tt is not the name 0");
     if give_returns.value {
         option_parsing.push(quote!(
                 let return_data = #call_type::abi_decode_returns(&return_data, true).unwrap();
         ));
     }
-    // println!("tt is the name 0");
-
-    println!("{:?}", (exchange_mod_name, has_calldata, give_logs.value, give_returns.value));
 
     let fn_call = match (has_calldata, give_logs.value, give_returns.value) {
         (true, true, true) => {
@@ -129,15 +121,15 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 struct MacroParse {
     // required for all
     exchange_name: Ident,
-    action_type: Ident,
-    call_type: Ident,
+    action_type:   Ident,
+    call_type:     Ident,
 
     /// needed if we decide to decode call data
     exchange_mod_name: Ident,
     /// wether we want logs or not
-    give_logs: LitBool,
+    give_logs:         LitBool,
     /// wether we want return data or not
-    give_returns: LitBool,
+    give_returns:      LitBool,
 
     /// The closure that we use to construct the normalized type
     call_function: ExprClosure,
@@ -167,14 +159,14 @@ impl Parse for MacroParse {
         let call_function: ExprClosure = input.parse()?;
 
         if call_function.asyncness.is_some() {
-            return Err(syn::Error::new(input.span(), "closure cannot be async"));
+            return Err(syn::Error::new(input.span(), "closure cannot be async"))
         }
 
         if !input.is_empty() {
             return Err(syn::Error::new(
                 input.span(),
                 "There should be no values after the call function",
-            ));
+            ))
         }
 
         Ok(Self {
@@ -216,7 +208,6 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 logs: &Vec<Log>,
             ) -> Option<Actions> {
                 if sig == self.0.get_signature() {
-                    println!("YAY!");
                     return
                         self.0.decode_trace_data(
                             index,
@@ -250,7 +241,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
 struct ActionDispatch {
     // required for all
     struct_name: Ident,
-    rest: Vec<Ident>,
+    rest:        Vec<Ident>,
 }
 impl Parse for ActionDispatch {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {

@@ -21,7 +21,7 @@ pub trait ToScaledRational {
 
 impl ToScaledRational for U256 {
     fn to_scaled_rational(self, decimals: u8) -> Rational {
-        let top = Natural::from_limbs_desc(&self.into_limbs());
+        let top = Natural::from_limbs_asc(&self.into_limbs());
 
         Rational::from_naturals(top, Natural::from(10u8).pow(decimals as u64))
     }

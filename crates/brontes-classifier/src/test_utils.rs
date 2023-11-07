@@ -40,7 +40,7 @@ pub async fn build_raw_test_tree(
         .into_par_iter()
         .filter_map(|mut trace| {
             if trace.trace.is_empty() {
-                return None;
+                return None
             }
 
             let root_trace = trace.trace[0].clone();
@@ -58,14 +58,14 @@ pub async fn build_raw_test_tree(
             };
 
             let mut root = Root {
-                head: node,
-                tx_hash: trace.tx_hash,
-                private: false,
+                head:        node,
+                tx_hash:     trace.tx_hash,
+                private:     false,
                 gas_details: GasDetails {
-                    coinbase_transfer: None,
-                    gas_used: trace.gas_used,
+                    coinbase_transfer:   None,
+                    gas_used:            trace.gas_used,
                     effective_gas_price: trace.effective_price,
-                    priority_fee: trace.effective_price - header.base_fee_per_gas.unwrap(),
+                    priority_fee:        trace.effective_price - header.base_fee_per_gas.unwrap(),
                 },
             };
 
@@ -76,12 +76,12 @@ pub async fn build_raw_test_tree(
                 let from_addr = trace.get_from_addr();
                 let classification = classify_node(trace.clone(), (index + 1) as u64);
                 let node = Node {
-                    index: (index + 1) as u64,
-                    inner: vec![],
-                    finalized: !classification.is_unclassified(),
-                    subactions: vec![],
-                    address: from_addr,
-                    data: classification,
+                    index:         (index + 1) as u64,
+                    inner:         vec![],
+                    finalized:     !classification.is_unclassified(),
+                    subactions:    vec![],
+                    address:       from_addr,
+                    data:          classification,
                     trace_address: trace.trace.trace_address,
                 };
 
@@ -115,7 +115,7 @@ fn classify_node(trace: TransactionTraceWithLogs, index: u64) -> Actions {
                 target_address,
                 &trace.logs,
             ) {
-                return res;
+                return res
             }
         }
     }
@@ -135,7 +135,7 @@ fn classify_node(trace: TransactionTraceWithLogs, index: u64) -> Actions {
                 from,
                 token: addr,
                 amount: value,
-            });
+            })
         }
     }
 
@@ -147,7 +147,7 @@ pub fn helper_decode_transfer(log: &Log) -> Option<(Address, Address, Address, U
         let from = Address::from_slice(&log.topics[1][..20]);
         let to = Address::from_slice(&log.topics[2][..20]);
         let data = U256::try_from_be_slice(&log.data[..]).unwrap();
-        return Some((log.address, from, to, data));
+        return Some((log.address, from, to, data))
     }
 
     None
@@ -167,7 +167,7 @@ fn get_coinbase_transfer(builder: Address, action: &Action) -> Option<u64> {
     match action {
         Action::Call(action) => {
             if action.to == builder {
-                return Some(action.value.to());
+                return Some(action.value.to())
             }
             None
         }
@@ -203,12 +203,12 @@ pub fn helper_try_classify_unknown_exchanges2(
             // we can dyn classify this shit
             if PROTOCOL_ADDRESS_MAPPING.contains_key(&address.0) {
                 // this is already classified
-                return false;
+                return false
             }
             if known_dyn_protocols_read.contains_key(&address)
                 || classifier.is_possible_exchange(sub_actions)
             {
-                return true;
+                return true
             }
 
             false
@@ -225,7 +225,7 @@ pub fn helper_try_classify_unknown_exchanges2(
                 node.inner.clear();
                 node.data = action;
 
-                return Some((ex_addr, tokens));
+                return Some((ex_addr, tokens))
             }
             None
         },
