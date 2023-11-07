@@ -393,31 +393,6 @@ impl<V: NormalizedAction> Node<V> {
     where
         F: Fn(&Node<V>) -> bool,
     {
-        println!(
-            "Subdata: {:?}",
-            &self
-                .subactions
-                .iter()
-                .map(|s| s.get_action())
-                .collect::<Vec<_>>()
-        );
-
-        println!(
-            "\n\nINSPECTOR NODE - FROM ADDRESS: {:?}, DATA: {:?}",
-            self.address,
-            &self.data.get_action()
-        );
-
-        println!("INSPECTOR NODE - NOT SELF CALL: {}", !call(self));
-        println!(
-            "INSPECTOR NODE - SELF SUBACTIONS: {:?}",
-            self.subactions
-                .clone()
-                .iter()
-                .map(|sub| sub.get_action())
-                .collect::<Vec<_>>()
-        );
-
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
             return false;
@@ -429,7 +404,6 @@ impl<V: NormalizedAction> Node<V> {
             .map(|i| i.inspect(result, call))
             .any(|f| f);
 
-        println!("INSPECTOR NODE - LOWER HAS BETTER: {}", !lower_has_better);
 
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
@@ -438,13 +412,6 @@ impl<V: NormalizedAction> Node<V> {
             result.push(res);
         }
 
-        println!(
-            "INSPECTOR NODE - RESULTS: {:?}\n\n",
-            result
-                .iter()
-                .map(|s| s.iter().map(|ss| ss.get_action()).collect::<Vec<_>>())
-                .collect::<Vec<_>>()
-        );
         // lower node has a better sub-action.
         true
     }
