@@ -90,23 +90,27 @@ impl Inspector for SandwichInspector {
         };
 
         set.into_iter()
-            .filter_map(|(eoa, tx0, tx1, mev_addr, victim)| {
-                println!("\n\nFOUND SET: {:?}\n", (eoa, tx0, tx1, mev_addr, &victim));
+            .filter_map(|(ps)| {
+                println!(
+                    "\n\nFOUND SET: {:?}\n",
+                    (ps.eoa, ps.tx0, ps.tx1, ps.mev_addr, &ps.victims)
+                );
 
                 let gas = [
-                    tree.get_gas_details(tx0).cloned().unwrap(),
-                    tree.get_gas_details(tx1).cloned().unwrap(),
+                    tree.get_gas_details(ps.tx0).cloned().unwrap(),
+                    tree.get_gas_details(ps.tx1).cloned().unwrap(),
                 ];
                 println!("GAS: {:?}\n", gas);
 
-                let victim_gas = victim
+                let victim_gas = victims
                     .iter()
                     .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                     .collect::<Vec<_>>();
 
                 println!("VICTIM GAS: {:?}\n", gas);
 
-                let victim_actions = victim
+                let victim_actions = ps
+                    .victims
                     .iter()
                     .map(|victim| {
                         tree.inspect(*victim, search_fn.clone())
@@ -118,7 +122,7 @@ impl Inspector for SandwichInspector {
 
                 println!("VICTIM ACTIONS: {:?}\n", victim_actions);
 
-                let searcher_actions = vec![tx0, tx1]
+                let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
