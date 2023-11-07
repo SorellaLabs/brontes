@@ -44,7 +44,7 @@ impl AtomicBackrunInspector {
             deltas,
             metadata.clone(),
             Box::new(|(_, finalized)| finalized),
-        )?;
+        );
         let finalized_usd: Rational = finalized.values().sum();
 
         let gas_used = gas_details.gas_paid();
