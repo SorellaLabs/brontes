@@ -142,7 +142,7 @@ impl JitInspector {
             tx_hash: txes[0],
             eoa,
             mev_contract: mev_addr,
-            mev_profit_collector: mev_addr,
+            mev_profit_collector: vec![mev_addr],
             mev_type: MevType::Jit,
             submission_profit_usd: pre_profit.to_float(),
             finalized_profit_usd: post_profit.to_float(),
