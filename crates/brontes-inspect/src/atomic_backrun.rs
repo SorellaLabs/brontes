@@ -134,3 +134,58 @@ impl Inspector for AtomicBackrunInspector {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use std::{str::FromStr, time::SystemTime};
+
+    use brontes_classifier::Classifier;
+    use brontes_core::test_utils::init_trace_parser;
+    use brontes_database::database::Database;
+    use brontes_types::test_utils::write_tree_as_json;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_backrun() {
+        dotenv::dotenv().ok();
+        let block_num = 18522278;
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
+
+        let block = tracer.execute_block(block_num).await.unwrap();
+        let metadata = db.get_metadata(block_num).await;
+
+        let tx = block.0.clone().into_iter().take(9).collect::<Vec<_>>();
+        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+
+        // write_tree_as_json(&tree, "./tree.json").await;
+
+        let inspector = AtomicBackrunInspector::default();
+
+        let t0 = SystemTime::now();
+        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("backrun inspector took: {} us", delta);
+
+        // assert!(
+        //     mev[0].0.tx_hash
+        //         == H256::from_str(
+        //
+        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
+        //         )
+        //         .unwrap()
+        // );
+
+        println!("{:#?}", mev);
+    }
+
+    fn test_process_sandwich() {}
+}
