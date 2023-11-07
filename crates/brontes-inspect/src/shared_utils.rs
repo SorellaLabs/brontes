@@ -5,7 +5,7 @@ use std::{
 
 use brontes_database::Metadata;
 use brontes_types::{normalized_actions::Actions, ToScaledRational, TOKEN_TO_DECIMALS};
-use malachite::Rational;
+use malachite::{Rational, num::basic::traits::Zero};
 use reth_primitives::Address;
 use tracing::error;
 
@@ -127,7 +127,7 @@ impl SharedInspectorUtils {
                             value *= time_selector(price);
                             value
                         } else {
-                            0
+                            Rational::ZERO
                         }
                     })
                     .sum::<Rational>();
