@@ -107,7 +107,7 @@ impl SharedInspectorUtils {
     }
 
     /// applies usd price to deltas and flattens out the tokens
-    pub(crate) fn get_best_usd_deltas(
+    pub(crate) fn get_best_usd_delta(
         &self,
         deltas: HashMap<Address, HashMap<Address, Rational>>,
         metadata: Arc<Metadata>,
