@@ -486,6 +486,8 @@ mod tests {
 
     use crate::normalized_actions::Actions;
 
+    use super::*;
+
     use brontes_core::decoding::parser::TraceParser;
 
     use brontes_classifier::test_utils::build_raw_test_tree;
