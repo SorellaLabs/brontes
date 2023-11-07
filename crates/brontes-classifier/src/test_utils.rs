@@ -58,14 +58,14 @@ pub async fn build_raw_test_tree(
             };
 
             let mut root = Root {
-                head: node,
-                tx_hash: trace.tx_hash,
-                private: false,
+                head:        node,
+                tx_hash:     trace.tx_hash,
+                private:     false,
                 gas_details: GasDetails {
-                    coinbase_transfer: None,
-                    gas_used: trace.gas_used,
+                    coinbase_transfer:   None,
+                    gas_used:            trace.gas_used,
                     effective_gas_price: trace.effective_price,
-                    priority_fee: trace.effective_price - header.base_fee_per_gas.unwrap(),
+                    priority_fee:        trace.effective_price - header.base_fee_per_gas.unwrap(),
                 },
             };
 
@@ -76,12 +76,12 @@ pub async fn build_raw_test_tree(
                 let from_addr = trace.get_from_addr();
                 let classification = classify_node(trace.clone(), (index + 1) as u64);
                 let node = Node {
-                    index: (index + 1) as u64,
-                    inner: vec![],
-                    finalized: !classification.is_unclassified(),
-                    subactions: vec![],
-                    address: from_addr,
-                    data: classification,
+                    index:         (index + 1) as u64,
+                    inner:         vec![],
+                    finalized:     !classification.is_unclassified(),
+                    subactions:    vec![],
+                    address:       from_addr,
+                    data:          classification,
                     trace_address: trace.trace.trace_address,
                 };
 

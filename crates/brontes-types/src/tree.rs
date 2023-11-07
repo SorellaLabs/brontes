@@ -14,11 +14,11 @@ use crate::normalized_actions::NormalizedAction;
 
 #[derive(Serialize, Deserialize)]
 pub struct TimeTree<V: NormalizedAction> {
-    pub roots: Vec<Root<V>>,
-    pub header: Header,
+    pub roots:            Vec<Root<V>>,
+    pub header:           Header,
     pub avg_priority_fee: u64,
     /// first is on block submission, second is when the block gets accepted
-    pub eth_prices: (Rational, Rational),
+    pub eth_prices:       (Rational, Rational),
 }
 
 impl<V: NormalizedAction> TimeTree<V> {
@@ -112,9 +112,9 @@ impl<V: NormalizedAction> TimeTree<V> {
 
 #[derive(Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
-    pub head: Node<V>,
-    pub tx_hash: H256,
-    pub private: bool,
+    pub head:        Node<V>,
+    pub tx_hash:     H256,
+    pub private:     bool,
     pub gas_details: GasDetails,
 }
 
@@ -166,9 +166,9 @@ impl<V: NormalizedAction> Root<V> {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
 pub struct GasDetails {
-    pub coinbase_transfer: Option<u64>,
-    pub priority_fee: u64,
-    pub gas_used: u64,
+    pub coinbase_transfer:   Option<u64>,
+    pub priority_fee:        u64,
+    pub gas_used:            u64,
     pub effective_gas_price: u64,
 }
 
@@ -190,15 +190,15 @@ impl GasDetails {
 
 #[derive(Serialize, Deserialize)]
 pub struct Node<V: NormalizedAction> {
-    pub inner: Vec<Node<V>>,
+    pub inner:     Vec<Node<V>>,
     pub finalized: bool,
-    pub index: u64,
+    pub index:     u64,
 
     /// This only has values when the node is frozen
-    pub subactions: Vec<V>,
+    pub subactions:    Vec<V>,
     pub trace_address: Vec<usize>,
-    pub address: Address,
-    pub data: V,
+    pub address:       Address,
+    pub data:          V,
 }
 
 impl<V: NormalizedAction> Node<V> {
@@ -396,7 +396,11 @@ impl<V: NormalizedAction> Node<V> {
     {
         println!(
             "Subdata: {:?}",
-            &self.subactions.iter().map(|s| s.get_action()).collect::<Vec<_>>()
+            &self
+                .subactions
+                .iter()
+                .map(|s| s.get_action())
+                .collect::<Vec<_>>()
         );
 
         println!(
