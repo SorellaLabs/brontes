@@ -35,7 +35,7 @@ async fn process_tree() {
 
     assert!(
         mev[0].0.tx_hash
-            == H256::from("0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de")
+            == H256::from_str("0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de")
     );
 
     println!("{:?}", mev);
