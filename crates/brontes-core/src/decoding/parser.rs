@@ -23,8 +23,8 @@ use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
 /// to decode each call for later analysis.
 #[derive(Clone)]
 pub struct TraceParser<T: TracingProvider> {
-    etherscan_client: Client,
-    pub tracer: Arc<T>,
+    etherscan_client:      Client,
+    pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
