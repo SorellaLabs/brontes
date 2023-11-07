@@ -32,15 +32,15 @@ impl Inspector for SandwichInspector {
         let iter = tree.roots.iter();
         println!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
-            return vec![];
+            return vec![]
         }
 
         let mut set = Vec::new();
-        let mut pairs = HashMap::new();
+        let mut duplicate_senders = HashMap::new();
         let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
 
         for root in iter {
-            match pairs.entry(root.head.address) {
+            match duplicate_senders.entry(root.head.address) {
                 Entry::Vacant(v) => {
                     v.insert(root.tx_hash);
                     possible_victims.insert(root.tx_hash, vec![]);
@@ -49,10 +49,10 @@ impl Inspector for SandwichInspector {
                     let entry: H256 = o.remove();
                     if let Some(mut victims) = possible_victims.remove(&entry) {
                         if victims.len() < 2 {
-                            continue;
+                            continue
                         }
 
-                        let _ = victims.pop();
+                        let _ = victims.remove(0);
                         set.push((
                             root.head.address,
                             entry,
@@ -159,7 +159,7 @@ impl SandwichInspector {
 
         if finalized.0 != appearance.0 {
             error!("finalized addr != appearance addr");
-            return None;
+            return None
         }
 
         let gas_used = searcher_gas_details
