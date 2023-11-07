@@ -229,11 +229,7 @@ impl SandwichInspector {
                 .collect::<Vec<_>>(),
 
             victim_tx_hashes:        victim_txes.clone(),
-            victim_swaps_tx_hash:    victim_txes
-                .iter()
-                .enumerate()
-                .flat_map(|(idx, tx)| vec![*tx].repeat(searcher_actions[idx].len()))
-                .collect_vec(),
+            victim_swaps_tx_hash:    victim_txes,
             victim_swaps_index:      searcher_actions
                 .iter()
                 .flat_map(|swap| {
