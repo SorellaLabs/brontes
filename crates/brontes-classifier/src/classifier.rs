@@ -68,15 +68,14 @@ impl Classifier {
                 };
 
                 let mut root = Root {
-                    head:        node,
-                    tx_hash:     trace.tx_hash,
-                    private:     false,
+                    head: node,
+                    tx_hash: trace.tx_hash,
+                    private: false,
                     gas_details: GasDetails {
-                        coinbase_transfer:   None,
-                        gas_used:            trace.gas_used,
+                        coinbase_transfer: None,
+                        gas_used: trace.gas_used,
                         effective_gas_price: trace.effective_price,
-                        priority_fee:        trace.effective_price
-                            - header.base_fee_per_gas.unwrap(),
+                        priority_fee: trace.effective_price - header.base_fee_per_gas.unwrap(),
                     },
                 };
 
@@ -85,6 +84,11 @@ impl Classifier {
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let from_addr = trace.get_from_addr();
+                    println!(
+                        "NODE - PRE-CLASSIFICATION FROM ADDRESS: {:?}, DATA: {:?}\n",
+                        from_addr,
+                        trace.get_calldata()
+                    );
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
                     println!("NODE - FROM ADDRESS: {:?}, DATA: {:?}\n", from_addr, classification);
 
@@ -308,45 +312,45 @@ impl Classifier {
                 // burn
                 if to0 == node.address {
                     return Some(Actions::Burn(NormalizedBurn {
-                        to:        to0,
+                        to: to0,
                         recipient: to1,
-                        index:     node.index,
-                        from:      from0,
-                        token:     vec![t0, t1],
-                        amount:    vec![value0, value1],
+                        index: node.index,
+                        from: from0,
+                        token: vec![t0, t1],
+                        amount: vec![value0, value1],
                     }));
                 }
                 // mint
                 else {
                     return Some(Actions::Mint(NormalizedMint {
-                        from:      to0,
+                        from: to0,
                         recipient: to1,
-                        index:     node.index,
-                        to:        to0,
-                        token:     vec![t0, t1],
-                        amount:    vec![value0, value1],
+                        index: node.index,
+                        to: to0,
+                        token: vec![t0, t1],
+                        amount: vec![value0, value1],
                     }));
                 }
             }
             // if to0 is to our addr then its the out token
             if to0 == addr {
                 return Some(Actions::Swap(NormalizedSwap {
-                    index:      node.index,
-                    from:       to1,
-                    pool:       to0,
-                    token_in:   t1,
-                    token_out:  t0,
-                    amount_in:  value1,
+                    index: node.index,
+                    from: to1,
+                    pool: to0,
+                    token_in: t1,
+                    token_out: t0,
+                    amount_in: value1,
                     amount_out: value0,
                 }));
             } else {
                 return Some(Actions::Swap(NormalizedSwap {
-                    index:      node.index,
-                    from:       to0,
-                    pool:       to1,
-                    token_in:   t0,
-                    token_out:  t1,
-                    amount_in:  value0,
+                    index: node.index,
+                    from: to0,
+                    pool: to1,
+                    token_in: t0,
+                    token_out: t1,
+                    amount_in: value0,
                     amount_out: value1,
                 }));
             }
@@ -453,22 +457,22 @@ impl Classifier {
         {
             let swap = if t0 == addr {
                 Actions::Swap(NormalizedSwap {
-                    pool:       to0,
-                    index:      node.index,
-                    from:       addr,
-                    token_in:   t1,
-                    token_out:  t0,
-                    amount_in:  value1,
+                    pool: to0,
+                    index: node.index,
+                    from: addr,
+                    token_in: t1,
+                    token_out: t0,
+                    amount_in: value1,
                     amount_out: value0,
                 })
             } else {
                 Actions::Swap(NormalizedSwap {
-                    pool:       to1,
-                    index:      node.index,
-                    from:       addr,
-                    token_in:   t0,
-                    token_out:  t1,
-                    amount_in:  value0,
+                    pool: to1,
+                    index: node.index,
+                    from: addr,
+                    token_in: t0,
+                    token_out: t1,
+                    amount_in: value0,
                     amount_out: value1,
                 })
             };
