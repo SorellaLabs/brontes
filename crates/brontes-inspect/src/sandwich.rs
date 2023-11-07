@@ -22,11 +22,11 @@ pub struct SandwichInspector {
 }
 
 pub struct PossibleSandwich {
-    eoa:      Address,
-    tx0:      H256,
-    tx1:      H256,
+    eoa: Address,
+    tx0: H256,
+    tx1: H256,
     mev_addr: Address,
-    victims:  Vec<H256>,
+    victims: Vec<H256>,
 }
 
 #[async_trait::async_trait]
@@ -40,7 +40,7 @@ impl Inspector for SandwichInspector {
         let iter = tree.roots.iter();
         println!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
-            return vec![]
+            return vec![];
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
@@ -183,7 +183,7 @@ impl SandwichInspector {
 
         if finalized.0 != appearance.0 {
             error!("finalized addr != appearance addr");
-            return None
+            return None;
         }
 
         let gas_used = searcher_gas_details
@@ -209,20 +209,20 @@ impl SandwichInspector {
             .collect_vec();
 
         let sandwich = Sandwich {
-            frontrun_tx_hash:          txes[0],
-            frontrun_gas_details:      searcher_gas_details[0],
-            frontrun_swaps_index:      frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
-            frontrun_swaps_from:       frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            frontrun_swaps_pool:       frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            frontrun_swaps_token_in:   frontrun_swaps
+            frontrun_tx_hash: txes[0],
+            frontrun_gas_details: searcher_gas_details[0],
+            frontrun_swaps_index: frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            frontrun_swaps_from: frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            frontrun_swaps_pool: frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            frontrun_swaps_token_in: frontrun_swaps
                 .iter()
                 .map(|s| s.token_in)
                 .collect::<Vec<_>>(),
-            frontrun_swaps_token_out:  frontrun_swaps
+            frontrun_swaps_token_out: frontrun_swaps
                 .iter()
                 .map(|s| s.token_out)
                 .collect::<Vec<_>>(),
-            frontrun_swaps_amount_in:  frontrun_swaps
+            frontrun_swaps_amount_in: frontrun_swaps
                 .iter()
                 .map(|s| s.amount_in.to())
                 .collect::<Vec<_>>(),
@@ -231,9 +231,9 @@ impl SandwichInspector {
                 .map(|s| s.amount_out.to())
                 .collect::<Vec<_>>(),
 
-            victim_tx_hashes:        victim_txes.clone(),
-            victim_swaps_tx_hash:    victim_txes,
-            victim_swaps_index:      searcher_actions
+            victim_tx_hashes: victim_txes.clone(),
+            victim_swaps_tx_hash: victim_txes,
+            victim_swaps_index: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -241,7 +241,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_from:       searcher_actions
+            victim_swaps_from: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -249,7 +249,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_pool:       searcher_actions
+            victim_swaps_pool: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -257,7 +257,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_in:   searcher_actions
+            victim_swaps_token_in: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -265,7 +265,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_out:  searcher_actions
+            victim_swaps_token_out: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -273,7 +273,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_amount_in:  searcher_actions
+            victim_swaps_amount_in: searcher_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -390,5 +390,91 @@ mod tests {
         println!("{:#?}", mev);
     }
 
-    fn test_process_sandwich() {}
+    fn test_process_sandwich() {
+        let expected_sandwich = Sandwich {
+            frontrun_tx_hash: H256::from_str(
+                "0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5",
+            )
+            .unwrap(),
+            frontrun_gas_details: GasDetails {
+                coinbase_transfer: 0, //todo
+                priority_fee: 0,
+                gas_used: 87336,
+                effective_gas_price: 18.990569622,
+            },
+            frontrun_swaps_index: 0,
+            frontrun_swaps_from: vec![
+                H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap()
+            ],
+            frontrun_swaps_pool: vec![
+                H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap()
+            ],
+            frontrun_swaps_token_in: vec![H160::from_str(
+                "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            )
+            .unwrap()],
+            frontrun_swaps_token_out: vec![H160::from_str(
+                "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
+            )
+            .unwrap()],
+            frontrun_swaps_amount_in: vec![454788265862552718],
+            frontrun_swaps_amount_out: vec![111888798809177],
+            victim_tx_hashes: vec![H256::from_str(
+                "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
+            )
+            .unwrap()],
+            victim_swaps_tx_hash: vec![H256::from_str(
+                "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
+            )
+            .unwrap()],
+            victim_swaps_index: vec![1],
+            victim_swaps_from: vec![
+                H160::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap()
+            ],
+            victim_swaps_pool: vec![
+                H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap()
+            ],
+            victim_swaps_token_in: vec![H160::from_str(
+                "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            )
+            .unwrap()],
+            victim_swaps_token_out: vec![H160::from_str(
+                "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
+            )
+            .unwrap()],
+            victim_swaps_amount_in: vec![1000000000000000000],
+            victim_swaps_amount_out: vec![206486606721996],
+            victim_gas_details_coinbase_transfer: vec![0], //todo
+            victim_gas_details_priority_fee: vec![100000000],
+            victim_gas_details_gas_used: vec![100073],
+            victim_gas_details_effective_gas_price: vec![18990569622],
+            backrun_tx_hash: H256::from_str(
+                "0x4479723b447600b2d577bf02bd409efab249985840463c8f7088e6b5a724c667",
+            )
+            .unwrap(),
+            backrun_gas_details: GasDetails {
+                coinbase_transfer: 0, //todo
+                priority_fee: 0,
+                gas_used: 84461,
+                effective_gas_price: 18990569622,
+            },
+            backrun_swaps_index: 2,
+            backrun_swaps_from: vec![
+                H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap()
+            ],
+            backrun_swaps_pool: vec![
+                H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap()
+            ],
+            backrun_swaps_token_in: vec![H160::from_str(
+                "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
+            )
+            .unwrap()],
+            backrun_swaps_token_out: vec![H160::from_str(
+                "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            )
+            .unwrap()],
+            backrun_swaps_amount_in: vec![111888798809177],
+            backrun_swaps_amount_out: vec![567602104693849332],
+        };
+    }
 }
