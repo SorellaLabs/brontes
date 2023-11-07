@@ -43,7 +43,7 @@ impl Inspector for SandwichInspector {
             match pairs.entry(root.head.address) {
                 Entry::Vacant(v) => {
                     v.insert(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
+                    // possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(o) => {
                     let entry: H256 = o.remove();
