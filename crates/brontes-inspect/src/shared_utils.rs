@@ -125,8 +125,10 @@ impl SharedInspectorUtils {
                     .map(|(address, mut value)| {
                         if let Some(price) = metadata.token_prices.get(&address) {
                             value *= time_selector(price);
+                            value
+                        } else {
+                            0
                         }
-                        value
                     })
                     .sum::<Rational>();
                 (caller, summed_value)
