@@ -19,7 +19,7 @@ use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
 #[allow(dead_code)]
-const TOKEN_QUERIES: &str = "SELECT toString(address), decimals FROM tokens";
+const TOKEN_QUERIES: &str = "SELECT toString(address) AS address, decimals FROM tokens";
 
 fn main() {
     dotenv::dotenv().ok();
@@ -38,7 +38,7 @@ fn main() {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Row)]
 pub struct TokenDetails {
-    address:  String,
+    address: String,
     decimals: u8,
 }
 
@@ -90,7 +90,7 @@ pub struct TokenList {
 pub struct Token {
     pub chain_addresses: HashMap<Blockchain, Vec<Address>>,
     /// e.g USDC, USDT, ETH, BTC
-    pub global_id:       String,
+    pub global_id: String,
 }
 
 impl Hash for Token {
