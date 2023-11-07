@@ -163,6 +163,7 @@ impl SandwichInspector {
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
+        println!("{:?}", deltas);
 
         let appearance_usd_deltas = self.inner.get_best_usd_delta(
             deltas.clone(),
