@@ -149,6 +149,8 @@ impl SandwichInspector {
             Box::new(|(appearance, _)| appearance),
         );
 
+        println!("{:?}", appearance_usd_deltas);
+
         let finalized_usd_deltas = self.inner.get_best_usd_delta(
             deltas,
             metadata.clone(),
