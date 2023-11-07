@@ -63,6 +63,6 @@ reth-tracing.workspace = true
 
 
 [features]
-default = []
+default = ["tests"]
 server = []
 tests = []
