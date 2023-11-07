@@ -90,7 +90,7 @@ impl Inspector for SandwichInspector {
         };
 
         set.into_iter()
-            .filter_map(|(ps)| {
+            .filter_map(|ps| {
                 println!(
                     "\n\nFOUND SET: {:?}\n",
                     (ps.eoa, ps.tx0, ps.tx1, ps.mev_addr, &ps.victims)
