@@ -484,7 +484,7 @@ impl<V: NormalizedAction> Node<V> {
 mod tests {
 
     use super::*;
-    use crate::test_utils::ComparisonNode;
+    use crate::test_utils::*;
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::test_utils::init_trace_parser;
     use brontes_database::database::Database;
