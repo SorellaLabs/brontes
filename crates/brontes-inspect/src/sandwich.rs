@@ -49,17 +49,17 @@ impl Inspector for SandwichInspector {
                     let entry: H256 = o.remove();
                     if let Some(mut victims) = possible_victims.remove(&entry) {
                         if victims.len() < 2 {
-                            continue
+                            o.insert(root.tx_hash);
+                        } else {
+                            let _ = victims.remove(0);
+                            set.push((
+                                root.head.address,
+                                entry,
+                                root.tx_hash,
+                                root.head.data.get_too_address(),
+                                victims,
+                            ));
                         }
-
-                        let _ = victims.remove(0);
-                        set.push((
-                            root.head.address,
-                            entry,
-                            root.tx_hash,
-                            root.head.data.get_too_address(),
-                            victims,
-                        ));
                     }
                 }
             }
