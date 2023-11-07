@@ -115,6 +115,7 @@ pub struct NormalizedFlashLoan {
 pub struct NormalizedSwap {
     pub index:      u64,
     pub from:       Address,
+    pub recipient:  Address,
     pub pool:       Address,
     pub token_in:   Address,
     pub token_out:  Address,
