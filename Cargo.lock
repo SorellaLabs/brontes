@@ -1097,6 +1097,7 @@ dependencies = [
  "rayon",
  "reth-primitives",
  "reth-rpc-types",
+ "reth-tracing",
  "serde",
  "serde_json",
  "serde_repr",

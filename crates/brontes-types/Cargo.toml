@@ -50,16 +50,19 @@ phf_codegen.workspace = true
 dotenv.workspace = true
 sorella-db-databases.workspace = true
 
+
 [dev-dependencies]
 dotenv.workspace = true
 tokio.workspace = true
 serial_test.workspace = true
-brontes-classifier = { workspace = true, features = ["tests"] }
-brontes-core = { workspace = true, features = ["tests"] }
-brontes-database = { workspace = true, features = ["tests"] }
+brontes-classifier = { workspace = true, default-features = false, features = ["tests"] }
+brontes-core = { workspace = true, default-features = false, features = ["tests"] }
+brontes-database = { workspace = true, default-features = false, features = ["tests"] }
+reth-tracing.workspace = true
+
 
 
 [features]
-default = []
+default = ["tests"]
 server = []
 tests = ["tokio/full"]

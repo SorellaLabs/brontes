@@ -5,7 +5,7 @@ use reth_rpc_types::trace::parity::{
 use sorella_db_databases::ClickhouseClient;
 
 use crate::{
-    normalized_actions::{Actions, NormalizedAction},
+    normalized_actions::Actions,
     tree::{Node, TimeTree},
 };
 
