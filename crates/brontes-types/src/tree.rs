@@ -435,8 +435,6 @@ impl<V: NormalizedAction> Node<V> {
         // best.
         if !lower_has_better {
             let mut res = self.get_all_sub_actions();
-            println!("get all subactoins {:?}", res);
-            res.push(self.data.clone());
             result.push(res);
         }
 
