@@ -491,10 +491,14 @@ mod tests {
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::test_utils::init_trace_parser;
     use brontes_database::database::Database;
+    use reth_primitives::Address;
     use reth_rpc_types::trace::parity::TraceType;
+    use reth_rpc_types::trace::parity::TransactionTrace;
     use reth_tracing::TracingClient;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
+
+    use crate::tree::Node;
 
     #[derive(Debug, PartialEq, Eq)]
     pub struct ComparisonNode {
