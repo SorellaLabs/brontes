@@ -190,6 +190,8 @@ impl SandwichInspector {
             .iter()
             .map(|g| g.gas_paid())
             .sum::<u64>();
+        println!("Gas used, {:?}", gas_used);
+        println!("Metadata: {:#?}", metadata);
 
         let (gas_used_usd_appearance, gas_used_usd_finalized) =
             metadata.get_gas_price_usd(gas_used);
@@ -199,6 +201,7 @@ impl SandwichInspector {
             .into_iter()
             .map(|s| s.force_swap())
             .collect_vec();
+
         let backrun_swaps = searcher_actions
             .remove(searcher_actions.len() - 1)
             .into_iter()
