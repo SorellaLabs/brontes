@@ -121,15 +121,15 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 struct MacroParse {
     // required for all
     exchange_name: Ident,
-    action_type: Ident,
-    call_type: Ident,
+    action_type:   Ident,
+    call_type:     Ident,
 
     /// needed if we decide to decode call data
     exchange_mod_name: Ident,
     /// wether we want logs or not
-    give_logs: LitBool,
+    give_logs:         LitBool,
     /// wether we want return data or not
-    give_returns: LitBool,
+    give_returns:      LitBool,
 
     /// The closure that we use to construct the normalized type
     call_function: ExprClosure,
@@ -241,7 +241,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
 struct ActionDispatch {
     // required for all
     struct_name: Ident,
-    rest: Vec<Ident>,
+    rest:        Vec<Ident>,
 }
 impl Parse for ActionDispatch {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {

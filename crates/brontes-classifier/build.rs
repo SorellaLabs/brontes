@@ -79,15 +79,15 @@ GROUP BY abi, classifier_name
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default, PartialEq, Eq, Hash)]
 struct ProtocolDetails {
-    pub addresses: Vec<String>,
-    pub abi: Option<String>,
+    pub addresses:       Vec<String>,
+    pub abi:             Option<String>,
     pub classifier_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct DecodedTokens {
     address: String,
-    tokens: Vec<String>,
+    tokens:  Vec<String>,
 }
 
 fn main() {
