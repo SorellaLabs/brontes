@@ -84,7 +84,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
                 }
                 Poll::Pending => {
                     self.classifier_future = Some(collection_fut);
-                    return;
+                    return
                 }
             }
         }
