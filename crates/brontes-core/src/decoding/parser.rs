@@ -46,7 +46,7 @@ impl<T: TracingProvider> TraceParser<T> {
             self.metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
                 .unwrap();
-            return None
+            return None;
         }
         let traces = self
             .parse_block(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
@@ -214,7 +214,7 @@ impl<T: TracingProvider> TraceParser<T> {
         let (action, trace_address) = if let RethAction::Call(call) = trace.action {
             (call, trace.trace_address)
         } else {
-            return Ok(())
+            return Ok(());
         };
 
         //let binding = StaticBindings::Curve_Crypto_Factory_V2;
@@ -228,7 +228,7 @@ impl<T: TracingProvider> TraceParser<T> {
         // Check if the input is empty, indicating a potential `receive` or `fallback`
         // function call.
         if action.input.is_empty() {
-            return Ok(())
+            return Ok(());
         }
 
         let _ = self
@@ -258,5 +258,69 @@ impl<T: TracingProvider> TraceParser<T> {
             .await?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use dotenv::dotenv;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+    use crate::test_utils::*;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_execute_block() {
+        dotenv().ok();
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+
+        let block_1 = tracer.execute_block(17000000).await;
+        assert!(block_1.is_some());
+
+        let mut traces = block_1.unwrap().0;
+        assert_eq!(traces.len(), 102);
+
+        let mut txs: Vec<TestTxTrace> = join_all(
+            traces
+                .iter()
+                .map(|t| async {
+                    let full_trace = get_full_tx_trace(t.tx_hash.clone()).await;
+                    let receipt = get_tx_reciept(t.tx_hash.clone()).await;
+
+                    let traces_with_logs = link_vm_to_trace(
+                        full_trace.vm_trace.unwrap(),
+                        full_trace.trace,
+                        receipt.logs,
+                    );
+
+                    TxTrace::new(
+                        traces_with_logs,
+                        receipt.transaction_hash.unwrap(),
+                        receipt.transaction_index.as_u64(),
+                        receipt.gas_used.unwrap().to::<u64>(),
+                        receipt.effective_gas_price.to::<u64>(),
+                    )
+                    .into()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .await;
+
+        txs.sort_by(|a, b| a.tx_hash.cmp(&b.tx_hash));
+        traces.sort_by(|a, b| a.tx_hash.cmp(&b.tx_hash));
+        assert_eq!(traces.len(), txs.len());
+
+        for (trace, test_trace) in txs.into_iter().zip(traces) {
+            assert_eq!(trace.tx_hash, test_trace.tx_hash);
+            for inner_trace in test_trace.trace {
+                assert!(trace.trace.contains(&inner_trace.into()));
+            }
+        }
     }
 }
