@@ -31,17 +31,16 @@ impl SharedInspectorUtils {
             if let Actions::Swap(swap) = action {
                 let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
                     error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-                    continue
+                    continue;
                 };
 
                 let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
                     error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-                    continue
+                    continue;
                 };
 
                 let adjusted_in = -swap.amount_in.to_scaled_rational(*decimals_in);
                 let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
-
 
                 // Store the amount_in amount_out deltas for a given from address
                 match deltas.entry(swap.from) {
@@ -65,7 +64,7 @@ impl SharedInspectorUtils {
             }
         }
 
-        // Now that all swap deltas have been calculated for a given from address we need to 
+        // Now that all swap deltas have been calculated for a given from address we need to
         // apply all transfers that occurred. This is to move all the funds to there end account to
         // ensure for a given address what the exact delta's are.
         loop {
@@ -99,7 +98,7 @@ impl SharedInspectorUtils {
                 .collect::<Vec<_>>();
 
             if changed == false {
-                break
+                break;
             }
         }
         deltas
