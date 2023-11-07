@@ -14,11 +14,11 @@ use crate::normalized_actions::NormalizedAction;
 
 #[derive(Serialize, Deserialize)]
 pub struct TimeTree<V: NormalizedAction> {
-    pub roots:            Vec<Root<V>>,
-    pub header:           Header,
+    pub roots: Vec<Root<V>>,
+    pub header: Header,
     pub avg_priority_fee: u64,
     /// first is on block submission, second is when the block gets accepted
-    pub eth_prices:       (Rational, Rational),
+    pub eth_prices: (Rational, Rational),
 }
 
 impl<V: NormalizedAction> TimeTree<V> {
@@ -112,9 +112,9 @@ impl<V: NormalizedAction> TimeTree<V> {
 
 #[derive(Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
-    pub head:        Node<V>,
-    pub tx_hash:     H256,
-    pub private:     bool,
+    pub head: Node<V>,
+    pub tx_hash: H256,
+    pub private: bool,
     pub gas_details: GasDetails,
 }
 
@@ -166,9 +166,9 @@ impl<V: NormalizedAction> Root<V> {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
 pub struct GasDetails {
-    pub coinbase_transfer:   Option<u64>,
-    pub priority_fee:        u64,
-    pub gas_used:            u64,
+    pub coinbase_transfer: Option<u64>,
+    pub priority_fee: u64,
+    pub gas_used: u64,
     pub effective_gas_price: u64,
 }
 
@@ -190,15 +190,15 @@ impl GasDetails {
 
 #[derive(Serialize, Deserialize)]
 pub struct Node<V: NormalizedAction> {
-    pub inner:     Vec<Node<V>>,
+    pub inner: Vec<Node<V>>,
     pub finalized: bool,
-    pub index:     u64,
+    pub index: u64,
 
     /// This only has values when the node is frozen
-    pub subactions:    Vec<V>,
+    pub subactions: Vec<V>,
     pub trace_address: Vec<usize>,
-    pub address:       Address,
-    pub data:          V,
+    pub address: Address,
+    pub data: V,
 }
 
 impl<V: NormalizedAction> Node<V> {
@@ -216,7 +216,7 @@ impl<V: NormalizedAction> Node<V> {
     /// The address here is the from address for the trace
     pub fn insert(&mut self, n: Node<V>) {
         if self.finalized {
-            return
+            return;
         }
 
         let trace_addr = n.trace_address.clone();
@@ -268,7 +268,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn current_call_stack(&self) -> Vec<Address> {
         let Some(mut stack) = self.inner.last().map(|n| n.current_call_stack()) else {
-            return vec![self.address]
+            return vec![self.address];
         };
 
         stack.push(self.address);
@@ -290,7 +290,7 @@ impl<V: NormalizedAction> Node<V> {
     {
         // prev better
         if !find(self) {
-            return false
+            return false;
         }
         let lower_has_better = self
             .inner
@@ -305,7 +305,7 @@ impl<V: NormalizedAction> Node<V> {
             indexes.extend(classified_indexes);
         }
 
-        return true
+        return true;
     }
 
     pub fn get_bounded_info<F, R>(&self, lower: u64, upper: u64, res: &mut Vec<R>, info_fn: &F)
@@ -313,7 +313,7 @@ impl<V: NormalizedAction> Node<V> {
         F: Fn(&Node<V>) -> R,
     {
         if self.inner.is_empty() {
-            return
+            return;
         }
 
         let last = self.inner.last().unwrap();
@@ -325,7 +325,7 @@ impl<V: NormalizedAction> Node<V> {
                 .iter()
                 .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
 
-            return
+            return;
         }
 
         // find bounded limit
@@ -342,7 +342,7 @@ impl<V: NormalizedAction> Node<V> {
                     end = end.or(Some(our_index).filter(|_| peek.index > upper));
                 }
             } else {
-                break
+                break;
             }
         }
 
@@ -363,7 +363,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn remove_index_and_childs(&mut self, index: u64) {
         if self.inner.is_empty() {
-            return
+            return;
         }
 
         let mut iter = self.inner.iter_mut().enumerate().peekable();
@@ -371,16 +371,16 @@ impl<V: NormalizedAction> Node<V> {
         let val = loop {
             if let Some((our_index, next)) = iter.next() {
                 if index == next.index {
-                    break Some(our_index)
+                    break Some(our_index);
                 }
 
                 if let Some(peek) = iter.peek() {
                     if index > next.index && index < peek.1.index {
                         next.remove_index_and_childs(index);
-                        break None
+                        break None;
                     }
                 } else {
-                    break None
+                    break None;
                 }
             }
         };
@@ -421,7 +421,7 @@ impl<V: NormalizedAction> Node<V> {
 
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
-            return false
+            return false;
         }
 
         let lower_has_better = self
@@ -463,7 +463,7 @@ impl<V: NormalizedAction> Node<V> {
     {
         let works = find(self.address, self.get_all_sub_actions());
         if !works {
-            return false
+            return false;
         }
 
         let lower_has_better = self
@@ -477,5 +477,123 @@ impl<V: NormalizedAction> Node<V> {
             }
         }
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::test_utils::ComparisonNode;
+    use brontes_classifier::test_utils::build_raw_test_tree;
+    use brontes_core::test_utils::init_trace_parser;
+    use brontes_database::database::Database;
+    use reth_rpc_types::trace::parity::TraceType;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_raw_tree() {
+        let block_num = 18180900;
+        dotenv::dotenv().ok();
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
+
+        let mut transaction_traces = tracer
+            .tracer
+            .trace
+            .replay_block_transactions(block_num.into(), HashSet::from([TraceType::Trace]))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(tree.roots.len(), transaction_traces.len());
+
+        let first_root = tree.roots.remove(0);
+        let first_tx = transaction_traces.remove(0);
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head),
+            ComparisonNode::new(&first_tx.full_trace.trace[0], 0, 8)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[0]),
+            ComparisonNode::new(&first_tx.full_trace.trace[1], 1, 1)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[0].inner[0]),
+            ComparisonNode::new(&first_tx.full_trace.trace[2], 2, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[1]),
+            ComparisonNode::new(&first_tx.full_trace.trace[3], 3, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[2]),
+            ComparisonNode::new(&first_tx.full_trace.trace[4], 4, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[3]),
+            ComparisonNode::new(&first_tx.full_trace.trace[5], 5, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[4]),
+            ComparisonNode::new(&first_tx.full_trace.trace[6], 6, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[5]),
+            ComparisonNode::new(&first_tx.full_trace.trace[7], 7, 3)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[0]),
+            ComparisonNode::new(&first_tx.full_trace.trace[8], 8, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[1]),
+            ComparisonNode::new(&first_tx.full_trace.trace[9], 9, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[2]),
+            ComparisonNode::new(&first_tx.full_trace.trace[10], 10, 3)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[2].inner[0]),
+            ComparisonNode::new(&first_tx.full_trace.trace[11], 11, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[2].inner[1]),
+            ComparisonNode::new(&first_tx.full_trace.trace[12], 12, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[5].inner[2].inner[2]),
+            ComparisonNode::new(&first_tx.full_trace.trace[13], 13, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[6]),
+            ComparisonNode::new(&first_tx.full_trace.trace[14], 14, 0)
+        );
+
+        assert_eq!(
+            Into::<ComparisonNode>::into(&first_root.head.inner[7]),
+            ComparisonNode::new(&first_tx.full_trace.trace[15], 15, 0)
+        );
     }
 }

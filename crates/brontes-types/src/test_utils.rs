@@ -2,11 +2,16 @@ use reth_primitives::Address;
 use reth_rpc_types::trace::parity::{
     CallAction, TraceResultsWithTransactionHash, TransactionTrace,
 };
+use sorella_db_databases::ClickhouseClient;
 
 use crate::{
     normalized_actions::{Actions, NormalizedAction},
     tree::{Node, TimeTree},
 };
+
+pub fn spawn_db() -> ClickhouseClient {
+    ClickhouseClient::default()
+}
 
 pub fn print_tree_as_json(tree: &TimeTree<Actions>) {
     let serialized_tree = serde_json::to_string_pretty(tree).unwrap();
@@ -20,13 +25,13 @@ pub async fn write_tree_as_json(tree: &TimeTree<Actions>, path: &str) {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ComparisonNode {
-    inner_len:      usize,
-    finalized:      bool,
-    index:          u64,
+    inner_len: usize,
+    finalized: bool,
+    index: u64,
     subactions_len: usize,
-    trace_address:  Vec<usize>,
-    address:        Address,
-    trace:          TransactionTrace,
+    trace_address: Vec<usize>,
+    address: Address,
+    trace: TransactionTrace,
 }
 
 impl ComparisonNode {
@@ -46,13 +51,13 @@ impl ComparisonNode {
 impl From<&Node<Actions>> for ComparisonNode {
     fn from(value: &Node<Actions>) -> Self {
         ComparisonNode {
-            inner_len:      value.inner.len(),
-            finalized:      value.finalized,
-            index:          value.index,
+            inner_len: value.inner.len(),
+            finalized: value.finalized,
+            index: value.index,
             subactions_len: value.subactions.len(),
-            trace_address:  value.trace_address.clone(),
-            address:        value.address,
-            trace:          match &value.data {
+            trace_address: value.trace_address.clone(),
+            address: value.address,
+            trace: match &value.data {
                 Actions::Unclassified(traces, _) => traces.trace.clone(),
                 _ => unreachable!(),
             },

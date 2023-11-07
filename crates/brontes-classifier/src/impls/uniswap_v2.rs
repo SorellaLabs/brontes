@@ -108,7 +108,7 @@ mod tests {
     use std::str::FromStr;
     use reth_primitives::H256;
     use super::*;
-    use crate::{*, UniswapV2, UniswapV3};
+    use crate::*;
 
     #[test]
     fn test_uni_v2_burn() {

@@ -28,7 +28,7 @@ use crate::decoding::{parser::TraceParser, CACHE_DIRECTORY, CACHE_TIMEOUT};
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TestTransactionTraceWithLogs {
     pub trace: TransactionTrace,
-    pub logs:  Vec<Log>,
+    pub logs: Vec<Log>,
 }
 
 impl From<TransactionTraceWithLogs> for TestTransactionTraceWithLogs {
@@ -39,21 +39,21 @@ impl From<TransactionTraceWithLogs> for TestTransactionTraceWithLogs {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TestTxTrace {
-    pub trace:           Vec<TestTransactionTraceWithLogs>,
-    pub tx_hash:         H256,
-    pub gas_used:        u64,
+    pub trace: Vec<TestTransactionTraceWithLogs>,
+    pub tx_hash: H256,
+    pub gas_used: u64,
     pub effective_price: u64,
-    pub tx_index:        u64,
+    pub tx_index: u64,
 }
 
 impl From<TxTrace> for TestTxTrace {
     fn from(value: TxTrace) -> Self {
         Self {
-            trace:           value.trace.into_iter().map(|v| v.into()).collect(),
-            tx_hash:         value.tx_hash,
-            gas_used:        value.gas_used,
+            trace: value.trace.into_iter().map(|v| v.into()).collect(),
+            tx_hash: value.tx_hash,
+            gas_used: value.gas_used,
             effective_price: value.effective_price,
-            tx_index:        value.tx_index,
+            tx_index: value.tx_index,
         }
     }
 }
@@ -61,13 +61,13 @@ impl From<TxTrace> for TestTxTrace {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TestTraceResults {
     pub jsonrpc: String,
-    pub result:  TraceResults,
+    pub result: TraceResults,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TestTransactionReceipt {
     pub jsonrpc: String,
-    pub result:  TransactionReceipt,
+    pub result: TransactionReceipt,
 }
 
 pub async fn get_full_tx_trace(tx_hash: H256) -> TraceResults {
