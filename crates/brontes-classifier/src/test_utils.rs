@@ -163,7 +163,7 @@ pub async fn get_traces_with_meta(
     (traces, header, metadata)
 }
 
-fn get_coinbase_transfer(builder: Address, action: &Action) -> Option<u64> {
+fn get_coinbase_transfer(builder: Address, action: &Action) -> Option<u128> {
     match action {
         Action::Call(action) => {
             if action.to == builder {

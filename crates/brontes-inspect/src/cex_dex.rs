@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use brontes_database::Metadata;
 use brontes_types::{
@@ -22,8 +22,40 @@ pub struct CexDexInspector {
     inner: SharedInspectorUtils,
 }
 
+#[async_trait::async_trait]
+impl Inspector for CexDexInspector {
+    async fn process_tree(
+        &self,
+        tree: Arc<TimeTree<Actions>>,
+        meta_data: Arc<Metadata>,
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+        // Get all normalized swaps
+        let intersting_state =
+            tree.inspect_all(|node| node.subactions.iter().any(|action| action.is_swap()));
+
+        intersting_state
+            .into_par_iter()
+            .filter_map(|(tx, nested_swaps)| {
+                let gas_details = tree.get_gas_details(tx)?;
+
+                let root = tree.get_root(tx)?;
+                let eoa = root.head.address;
+                let mev_contract = root.head.data.get_to_address();
+                self.process_swaps(
+                    tx,
+                    mev_contract,
+                    eoa,
+                    meta_data.clone(),
+                    gas_details,
+                    nested_swaps,
+                )
+            })
+            .collect::<Vec<_>>()
+    }
+}
+
 impl CexDexInspector {
-    fn process_swap(
+    fn process_swaps(
         &self,
         hash: H256,
         mev_contract: Address,
@@ -32,11 +64,40 @@ impl CexDexInspector {
         gas_details: &GasDetails,
         swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.inner.calculate_swap_deltas(&swaps);
+        let swap_sequences: Vec<Vec<(&Actions, (_, _))>> = swaps
+            .iter()
+            .map(|swap_sequence| {
+                swap_sequence
+                    .into_iter()
+                    .filter_map(|action| {
+                        if let Actions::Swap(ref normalized_swap) = action {
+                            let (pre, post) = self.get_cex_dex(normalized_swap, metadata.as_ref());
+                            Some((action, (pre, post)))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
 
+        let (profit_sub, profit_finalized) = self.arb_gas_accounting(
+            swap_sequences,
+            gas_details,
+            &metadata.eth_prices.0,
+            &metadata.eth_prices.1,
+        );
+
+        let (gas_sub, gas_finalized) = metadata.get_gas_price_usd(gas_details.gas_paid());
+
+        // TODO: feels unecessary to do this again, given we have already looped through
+        // the swaps in a less generic way, but this is the lowest effort way of getting
+        // the collectors for now. Will need to
+
+        let deltas = self.inner.calculate_swap_deltas(&swaps);
         let mev_profit_collector = self
             .inner
-            .get_best_usd_delta(
+            .get_best_usd_deltas(
                 deltas.clone(),
                 metadata.clone(),
                 Box::new(|(appearance, _)| appearance),
@@ -45,24 +106,6 @@ impl CexDexInspector {
             .copied()
             .collect();
 
-        let (swap_data, (pre, post)): (Vec<Actions>, _) = swaps
-            .clone()
-            .into_iter()
-            .flatten()
-            .filter_map(|action| {
-                if let Actions::Swap(ref normalized_swap) = action {
-                    let (pre, post) = self.get_cex_dex(normalized_swap, metadata.as_ref());
-                    Some((action, (pre, post)))
-                } else {
-                    None
-                }
-            })
-            .unzip();
-
-        let profit_pre = self.arb_gas(pre, gas_details, &metadata.eth_prices.0)?;
-        let profit_post = self.arb_gas(post, gas_details, &metadata.eth_prices.1)?;
-        let (gas_sub, gas_finalized) = metadata.get_gas_price_usd(gas_details.gas_paid());
-
         let classified = ClassifiedMev {
             mev_profit_collector,
             tx_hash: hash,
@@ -70,15 +113,16 @@ impl CexDexInspector {
             eoa,
             block_number: metadata.block_num,
             mev_type: MevType::CexDex,
-            submission_profit_usd: profit_pre.to_float(),
-            finalized_profit_usd: profit_post.to_float(),
+            submission_profit_usd: profit_sub?.to_float(),
+            finalized_profit_usd: profit_finalized?.to_float(),
             submission_bribe_usd: gas_sub.to_float(),
             finalized_bribe_usd: gas_finalized.to_float(),
         };
 
-        let prices = swap_data
+        let prices = swaps
             .par_iter()
-            .filter_map(|swap| self.rational_dex_price(swap, &metadata))
+            .flatten()
+            .filter_map(|swap| self.rational_prices(swap, &metadata))
             .map(|(dex_price, _, cex1)| (dex_price.to_float(), cex1.to_float()))
             .collect::<Vec<_>>();
 
@@ -132,25 +176,45 @@ impl CexDexInspector {
         Some((classified, Box::new(cex_dex)))
     }
 
-    fn arb_gas(
+    fn arb_gas_accounting(
         &self,
-        arbs: Vec<Option<Rational>>,
+        swap_sequences: Vec<Vec<(&Actions, (Option<Rational>, Option<Rational>))>>,
         gas_details: &GasDetails,
-        eth_price: &Rational,
-    ) -> Option<Rational> {
-        Some(
-            arbs.into_iter().flatten().sum::<Rational>()
-                - Rational::from(gas_details.gas_paid()) * eth_price,
-        )
-        .filter(|p| p > &Rational::ZERO)
+        eth_price_pre: &Rational,
+        eth_price_post: &Rational,
+    ) -> (Option<Rational>, Option<Rational>) {
+        let (total_pre_arb, total_post_arb) = swap_sequences
+            .iter()
+            .flat_map(|sequence| sequence.iter())
+            .fold((Rational::ZERO, Rational::ZERO), |(acc_pre, acc_post), (_, (pre, post))| {
+                (
+                    acc_pre + pre.clone().unwrap_or(Rational::ZERO),
+                    acc_post + post.clone().unwrap_or(Rational::ZERO),
+                )
+            });
+
+        let gas_cost_pre = Rational::from(gas_details.gas_paid()) * eth_price_pre;
+        let gas_cost_post = Rational::from(gas_details.gas_paid()) * eth_price_post;
+
+        let profit_pre =
+            if total_pre_arb > gas_cost_pre { Some(total_pre_arb - gas_cost_pre) } else { None };
+
+        let profit_post = if total_post_arb > gas_cost_post {
+            Some(total_post_arb - gas_cost_post)
+        } else {
+            None
+        };
+
+        (profit_pre, profit_post)
     }
 
+    // TODO check correctness + check cleanup potential with shared utils?
     pub fn get_cex_dex(
         &self,
         swap: &NormalizedSwap,
         metadata: &Metadata,
     ) -> (Option<Rational>, Option<Rational>) {
-        self.rational_dex_price(&Actions::Swap(swap.clone()), metadata)
+        self.rational_prices(&Actions::Swap(swap.clone()), metadata)
             .map(|(dex_price, cex_price1, cex_price2)| {
                 let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1);
                 let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2);
@@ -172,13 +236,18 @@ impl CexDexInspector {
         // Calculate the potential profit
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            println!("missing token in token to decimal map");
             return None
         };
 
+        println!(
+            "delta price: {}",
+            &delta_price * &swap.amount_in.to_scaled_rational(*decimals_in)
+        );
         Some(delta_price * swap.amount_in.to_scaled_rational(*decimals_in))
     }
 
-    pub fn rational_dex_price(
+    pub fn rational_prices(
         &self,
         swap: &Actions,
         metadata: &Metadata,
@@ -187,12 +256,14 @@ impl CexDexInspector {
 
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            println!("missing token in token to decimal map");
             return None
         };
         //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
         // log it
         let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            println!("missing token in token to decimal map");
             return None
         };
 
@@ -210,27 +281,179 @@ impl CexDexInspector {
     }
 }
 
-#[async_trait::async_trait]
-impl Inspector for CexDexInspector {
-    async fn process_tree(
-        &self,
-        tree: Arc<TimeTree<Actions>>,
-        meta_data: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let intersting_state =
-            tree.inspect_all(|node| node.subactions.iter().any(|action| action.is_swap()));
+#[cfg(test)]
+mod tests {
 
-        intersting_state
-            .into_par_iter()
-            .filter_map(|(tx, nested_swaps)| {
-                let gas_details = tree.get_gas_details(tx)?;
-                // Flatten the nested Vec<Vec<V>> into a Vec<V>
-                let swaps = nested_swaps.into_iter().collect::<Vec<_>>();
-                let root = tree.get_root(tx)?;
-                let eoa = root.head.address;
-                let mev_contract = root.head.data.get_too_address();
-                self.process_swap(tx, mev_contract, eoa, meta_data.clone(), gas_details, swaps)
-            })
-            .collect::<Vec<_>>()
+    use std::{
+        collections::{HashMap, HashSet},
+        str::FromStr,
+        time::SystemTime,
+    };
+
+    use brontes_classifier::Classifier;
+    use brontes_core::test_utils::init_trace_parser;
+    use brontes_database::database::Database;
+    use brontes_types::test_utils::write_tree_as_json;
+    use reth_primitives::U256;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+    #[tokio::test]
+    #[serial]
+    async fn test_cex_dex() {
+        dotenv::dotenv().ok();
+        let block_num = 18264694;
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
+
+        let block = tracer.execute_block(block_num).await.unwrap();
+        let metadata = db.get_metadata(block_num).await;
+
+        println!("{:#?}", metadata);
+
+        let tx = block.0.clone().into_iter().take(40).collect::<Vec<_>>();
+        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+
+        //write_tree_as_json(&tree, "./tree.json").await;
+
+        let inspector = CexDexInspector::default();
+
+        let t0 = SystemTime::now();
+        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("{:#?}", mev);
+
+        println!("cex-dex inspector took: {} us", delta);
+
+        // assert!(
+        //     mev[0].0.tx_hash
+        //         == H256::from_str(
+        //
+        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
+        //         )
+        //         .unwrap()
+        // );
+    }
+
+    //Testing for tx:
+    // 0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295
+
+    #[tokio::test]
+    #[serial]
+    async fn test_profit_calculation() {
+        let block_num = 18264694;
+
+        let swap = NormalizedSwap {
+            index:      0,
+            from:       Address::from_str("0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C").unwrap(),
+            pool:       Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
+            token_in:   Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
+            token_out:  Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+            amount_in:  "5055369263870573349743".parse().unwrap(),
+            amount_out: "8421308582396".parse().unwrap(),
+        };
+
+        assert_eq!(
+            swap.amount_in.to_scaled_rational(18),
+            Rational::from_sci_string_simplest("50553692638705733497431e-18").unwrap(),
+            "The actual Rational value does not match the expected value."
+        );
+
+        print!("{:#?}, == 8421,308.582396", swap.amount_out.to_scaled_rational(6).to_float());
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
+
+        let metadata = db.get_metadata(block_num).await;
+
+        let inspector = CexDexInspector::default();
+        let profit = inspector.get_cex_dex(&swap, &metadata);
+
+        //assert_eq!(profit, (Some(Rational::from) None));
+        println!("{:#?}", profit);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_dex_conversion() {
+        let swap = NormalizedSwap {
+            index:      0,
+            from:       Address::from_str("0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C").unwrap(),
+            pool:       Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
+            token_in:   Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
+            token_out:  Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+            amount_in:  U256::from_str("5055369263000000000000").unwrap(),
+            amount_out: U256::from_str("8421308582396").unwrap(),
+        };
+
+        // ETH Sold = 5,055.369263
+        // USDC out = 8 421 308.582396
+        // price = $1665.8147297
+
+        let metadata = Metadata {
+            block_num:              18264694,
+            block_hash:             U256::from_str_radix(
+                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
+                16,
+            )
+            .unwrap(),
+            relay_timestamp:        1696271963129,
+            p2p_timestamp:          1696271964134,
+            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
+                .unwrap(),
+            proposer_mev_reward:    11769128921907366414,
+            token_prices:           {
+                let mut prices = HashMap::new();
+
+                // WETH = $1682.268937
+                prices.insert(
+                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+                    (
+                        Rational::from_str("7398697029111485/4398046511104").unwrap(),
+                        Rational::from_str("924734257781285/549755813888").unwrap(),
+                    ),
+                );
+
+                // USDC = $1
+                prices.insert(
+                    Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),// USDC 
+                    (
+                        Rational::from_str("1").unwrap(), // Assuming 1 USDC = 1 USD for simplicity, replace with actual values
+                        Rational::from_str("1").unwrap(),
+                    ),
+                );
+                prices
+            },
+            eth_prices:             (
+                Rational::from_str("7398697029111485/4398046511104").unwrap(),
+                Rational::from_str("924734257781285/549755813888").unwrap(),
+            ),
+            mempool_flow:           {
+                let mut private = HashSet::new();
+                private.insert(
+                    H256::from_str(
+                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
+                    )
+                    .unwrap(),
+                );
+                private
+            },
+        };
+
+        let inspector = CexDexInspector::default();
+        let rational_prices = inspector.rational_prices(&Actions::Swap(swap.clone()), &metadata);
+
+        println!("{:#?}", rational_prices);
+
+        // assert_eq!(ra
     }
 }
