@@ -345,12 +345,15 @@ mod tests {
             pool:       Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             token_in:   Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
             token_out:  Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
-            amount_in:  U256::from(5055369263000000000000),
-            amount_out: U256::from(8421308582396000000000),
+            amount_in:  "5055.369263870573349743".parse().unwrap(),
+            amount_out: "8421308.582396".parse().unwrap(),
         };
 
-        print!("{:#?}, == 5,055.369263870573349743", swap.amount_in.to_scaled_rational(18));
-        print!("{:#?}, == 8,421,308.582396", swap.amount_out.to_scaled_rational(6));
+        print!(
+            "{:#?}, == 5055.369263870573349743",
+            swap.amount_in.to_scaled_rational(18).to_float()
+        );
+        print!("{:#?}, == 8421,308.582396", swap.amount_out.to_scaled_rational(6).to_float());
 
         let (tx, _rx) = unbounded_channel();
 
