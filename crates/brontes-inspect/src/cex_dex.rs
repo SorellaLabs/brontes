@@ -296,7 +296,7 @@ mod tests {
     #[serial]
     async fn test_cex_dex() {
         dotenv::dotenv().ok();
-        let block_num = 17195495;
+        let block_num = 18264694;
 
         let (tx, _rx) = unbounded_channel();
 
@@ -317,11 +317,11 @@ mod tests {
         let inspector = CexDexInspector::default();
 
         let t0 = SystemTime::now();
-        let mev = inspector
-            .process_tree(tree.clone(), metadata.clone().into())
-            .await;
+        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("{:#?}", mev);
+
         println!("cex-dex inspector took: {} us", delta);
 
         // assert!(
@@ -332,7 +332,5 @@ mod tests {
         //         )
         //         .unwrap()
         // );
-
-        println!("{:#?}", mev);
     }
 }
