@@ -296,7 +296,7 @@ mod tests {
     #[serial]
     async fn test_cex_dex() {
         dotenv::dotenv().ok();
-        let block_num = 18020831;
+        let block_num = 17195495;
 
         let (tx, _rx) = unbounded_channel();
 
