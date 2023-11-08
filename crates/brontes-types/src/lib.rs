@@ -77,11 +77,7 @@ pub(crate) mod u256 {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         u.iter()
-            .map(|u| {
-                u.iter()
-                    .map(|u| u.to_le_bytes())
-                    .collect::<Vec<_>>()
-            })
+            .map(|u| u.iter().map(|u| u.to_le_bytes()).collect::<Vec<_>>())
             .collect::<Vec<Vec<[u8; 32]>>>()
             .serialize(serializer)
     }
