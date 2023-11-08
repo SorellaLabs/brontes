@@ -40,7 +40,10 @@ impl CexDexInspector {
                 deltas.clone(),
                 metadata.clone(),
                 Box::new(|(appearance, _)| appearance),
-            ).keys().copied().collect();
+            )
+            .keys()
+            .copied()
+            .collect();
 
         let (swap_data, (pre, post)): (Vec<Actions>, _) = swaps
             .clone()
@@ -231,4 +234,3 @@ impl Inspector for CexDexInspector {
             .collect::<Vec<_>>()
     }
 }
-
