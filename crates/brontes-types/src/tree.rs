@@ -440,6 +440,7 @@ impl<V: NormalizedAction> Node<V> {
                 result.push(res);
             }
         }
+
         true
     }
 }
@@ -511,8 +512,7 @@ mod tests {
 
         let (tx, _rx) = unbounded_channel();
 
-        let tracer: TraceParser<TracingClient> =
-            init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
         let db = Database::default();
         let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
 
