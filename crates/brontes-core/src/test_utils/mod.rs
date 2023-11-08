@@ -127,6 +127,17 @@ pub async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
     response.result
 }
 
+use tracing::Level;
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
+
+pub fn init_tracing() {
+    let filter = EnvFilter::builder()
+        .with_default_directive(Level::TRACE.into())
+        .from_env_lossy();
+
+    let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
+}
+
 pub fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,

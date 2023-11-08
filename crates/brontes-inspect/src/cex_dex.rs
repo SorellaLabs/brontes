@@ -292,7 +292,7 @@ mod tests {
     };
 
     use brontes_classifier::Classifier;
-    use brontes_core::test_utils::init_trace_parser;
+    use brontes_core::test_utils::{init_tracing, init_trace_parser};
     use brontes_database::database::Database;
     use brontes_types::test_utils::write_tree_as_json;
     use malachite::num::basic::traits::One;
@@ -301,9 +301,11 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
+
     #[tokio::test]
     #[serial]
     async fn test_cex_dex() {
+        init_tracing();
         dotenv::dotenv().ok();
         let block_num = 18264694;
 
@@ -350,6 +352,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_profit_calculation() {
+        init_tracing();
         let block_num = 18264694;
 
         let swap = NormalizedSwap {
@@ -388,6 +391,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_dex_conversion() {
+        init_tracing();
         let swap = NormalizedSwap {
             index:      0,
             from:       Address::from_str("0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C").unwrap(),
@@ -462,6 +466,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_arb_gas_accounting() {
+        init_tracing();
         let mut swaps = Vec::new();
         let gas_details = GasDetails {
             coinbase_transfer:   None,
@@ -488,8 +493,8 @@ mod tests {
 
         let pre = pre.unwrap();
         let post = post.unwrap();
-        let pre_result = Rational::from_str("24999/2500");
-        let post_result = Rational::from_str("12499/1250");
+        let pre_result = Rational::from_str("24999/2500").unwrap();
+        let post_result = Rational::from_str("12499/1250").unwrap();
 
         assert_eq!(pre, pre_result);
         assert_eq!(post, post_result);

@@ -58,6 +58,7 @@ log.workspace = true
 
 # tracing
 tracing = "0.1.37"
+tracing-subscriber.workspace = true
 colored.workspace = true
 
 # misc
