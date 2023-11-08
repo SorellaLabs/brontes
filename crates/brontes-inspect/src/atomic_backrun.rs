@@ -64,39 +64,23 @@ impl AtomicBackrunInspector {
             submission_profit_usd: (appearance_usd - gas_used_usd_appearance).to_float(),
         };
 
-        let swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
+        let swaps = swaps
+            .into_iter()
+            .flatten()
+            .filter(|actions| actions.is_swap())
+            .map(|s| s.force_swap())
+            .collect::<Vec<_>>();
 
         let backrun = Box::new(AtomicBackrun {
             tx_hash,
             gas_details,
-            swaps_index: swaps
-                .iter()
-                .map(|s| s.clone().force_swap().index)
-                .collect::<Vec<_>>(),
-            swaps_from: swaps
-                .iter()
-                .map(|s| s.clone().force_swap().from)
-                .collect::<Vec<_>>(),
-            swaps_pool: swaps
-                .iter()
-                .map(|s| s.clone().force_swap().pool)
-                .collect::<Vec<_>>(),
-            swaps_token_in: swaps
-                .iter()
-                .map(|s| s.clone().force_swap().token_in)
-                .collect::<Vec<_>>(),
-            swaps_token_out: swaps
-                .iter()
-                .map(|s| s.clone().force_swap().token_out)
-                .collect::<Vec<_>>(),
-            swaps_amount_in: swaps
-                .iter()
-                .map(|s| s.clone().force_swap().amount_in.to())
-                .collect::<Vec<_>>(),
-            swaps_amount_out: swaps
-                .iter()
-                .map(|s| s.clone().force_swap().amount_out.to())
-                .collect::<Vec<_>>(),
+            swaps_index: swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
+            swaps_token_out: swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
+            swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
+            swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
         });
         Some((classified, backrun))
     }
@@ -162,7 +146,7 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        let tx = block.0.clone().into_iter().take(9).collect::<Vec<_>>();
+        let tx = block.0.clone().into_iter().take(60).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
         // write_tree_as_json(&tree, "./tree.json").await;

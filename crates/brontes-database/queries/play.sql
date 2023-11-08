@@ -49,7 +49,4 @@ FROM ethereum.relays
 INNER JOIN ethereum.blocks AS blocks ON blocks.block_hash = relays.block_hash
 INNER JOIN ethereum.block_observations AS cb
 ON ethereum.relays.block_number = cb.block_number 
-WHERE (relays.block_number = 18523310) AND blocks.valid = 1
-
-
-  │ 
+WHERE (relays.block_number = 18522330) AND blocks.valid = 1
