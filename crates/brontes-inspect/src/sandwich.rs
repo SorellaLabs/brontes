@@ -42,7 +42,7 @@ impl Inspector for SandwichInspector {
         let iter = tree.roots.iter();
         println!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
-            return vec![];
+            return vec![]
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
@@ -68,7 +68,7 @@ impl Inspector for SandwichInspector {
                                     eoa:                   root.head.address,
                                     tx0:                   *prev_tx_hash,
                                     tx1:                   root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_too_address(),
+                                    mev_executor_contract: root.head.data.get_to_address(),
                                     victims:               victims.clone(),
                                 });
                             }
@@ -171,7 +171,7 @@ impl SandwichInspector {
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
         println!("deltas {:#?}", deltas);
 
-        let appearance_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_delta(
+        let appearance_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_deltas(
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
@@ -183,7 +183,7 @@ impl SandwichInspector {
 
         let mev_collectors = appearance_usd_deltas.keys().copied().collect();
 
-        let finalized_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_delta(
+        let finalized_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_deltas(
             deltas,
             metadata.clone(),
             Box::new(|(_, finalized)| finalized),
