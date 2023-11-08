@@ -286,6 +286,7 @@ mod tests {
 
     use std::{
         collections::{HashMap, HashSet},
+        env,
         str::FromStr,
         time::SystemTime,
     };
@@ -294,6 +295,7 @@ mod tests {
     use brontes_core::test_utils::init_trace_parser;
     use brontes_database::database::Database;
     use brontes_types::test_utils::write_tree_as_json;
+    use malachite::num::basic::traits::One;
     use reth_primitives::U256;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
@@ -304,6 +306,15 @@ mod tests {
     async fn test_cex_dex() {
         dotenv::dotenv().ok();
         let block_num = 18264694;
+        let clickhouse_path = format!(
+            "{}:{} {} {}",
+            &env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
+            &env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env"),
+            &env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_PORT not found in .env"),
+            &env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PORT not found in .env")
+        );
+
+        println!("{:#?}", clickhouse_path);
 
         let (tx, _rx) = unbounded_channel();
 
@@ -489,7 +500,6 @@ mod tests {
     //
     //     (profit_pre, profit_post)
     // }
-    use malachite::num::basic::traits::One;
 
     #[tokio::test]
     async fn test_arb_gas_accounting() {
@@ -506,10 +516,49 @@ mod tests {
 
         let pre_0 = Rational::ONE;
         let post_0 = Rational::ONE;
-        let inner_0 = vec![(Actions::Swap(swap.clone()), pre_0, post_0)];
+        let swaped = Actions::Swap(swap.clone());
+        let inner_0 = vec![(&swaped, (Some(pre_0), Some(post_0)))];
         swaps.push(inner_0);
 
-        let pre_1 = Rational::ONE;
-        let post_1 = Rational::ONE;
+        let inspector = CexDexInspector::default();
+        let eth_price_pre = Rational::from(1);
+        let eth_price_post = Rational::from(2);
+
+        let (pre, post) =
+            inspector.arb_gas_accounting(swaps, &gas_details, &eth_price_pre, &eth_price_post);
+
+        let pre = pre.unwrap();
+        let post = post.unwrap();
+        println!("{:?}, {:?}", pre, post);
+
     }
+
+    // use std::env;
+    // use clickhouse::Client;
+    // use hyper_tls::HttpsConnector;
+    // #[tokio::test]
+    // async fn test_reg() {
+    //     // clickhouse path
+    //     let clickhouse_path = format!(
+    //         "{}:{}",
+    //         &env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in
+    // .env"),         &env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT
+    // not found in .env")     );
+    //
+    //     // builds the https connector
+    //     let https = HttpsConnector::new();
+    //     let https_client = hyper::Client::builder().build::<_,
+    // hyper::Body>(https);
+    //
+    //     // builds the clickhouse client
+    //
+    //     let a = Client::with_http_client(https_client)
+    //         .with_url(clickhouse_path)
+    //         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER
+    // not found in .env"))         .with_password(env::var("
+    // CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
+    //         .with_database(
+    //             env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE
+    // not found in .env"),         );
+    // }
 }
