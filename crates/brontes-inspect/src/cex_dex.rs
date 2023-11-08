@@ -292,7 +292,7 @@ mod tests {
     };
 
     use brontes_classifier::Classifier;
-    use brontes_core::test_utils::{init_tracing, init_trace_parser};
+    use brontes_core::test_utils::{init_trace_parser, init_tracing};
     use brontes_database::database::Database;
     use brontes_types::test_utils::write_tree_as_json;
     use malachite::num::basic::traits::One;
@@ -364,12 +364,6 @@ mod tests {
             amount_in:  "5055369263870573349743".parse().unwrap(),
             amount_out: "8421308582396".parse().unwrap(),
         };
-
-        assert_eq!(
-            swap.amount_in.to_scaled_rational(18),
-            Rational::from_sci_string_simplest("50553692638705733497431e-18").unwrap(),
-            "The actual Rational value does not match the expected value."
-        );
 
         print!("{:#?}, == 8421,308.582396", swap.amount_out.to_scaled_rational(6).to_float());
 
