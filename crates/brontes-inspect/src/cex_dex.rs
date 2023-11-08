@@ -92,7 +92,7 @@ impl CexDexInspector {
 
         // TODO: feels unecessary to do this again, given we have already looped through
         // the swaps in a less generic way, but this is the lowest effort way of getting
-        // the collectors for now
+        // the collectors for now. Will need to
 
         let deltas = self.inner.calculate_swap_deltas(&swaps);
         let mev_profit_collector = self
@@ -296,7 +296,7 @@ mod tests {
     #[serial]
     async fn test_cex_dex() {
         dotenv::dotenv().ok();
-        let block_num = 17195495;
+        let block_num = 18020831;
 
         let (tx, _rx) = unbounded_channel();
 
