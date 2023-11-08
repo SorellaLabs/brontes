@@ -130,7 +130,6 @@ pub async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
 pub fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-    http: bool,
 ) -> TraceParser<Box<dyn TracingProvider>> {
     let etherscan_key = env::var("ETHERSCAN_API_KEY").expect("No ETHERSCAN_API_KEY in .env");
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
@@ -143,14 +142,18 @@ pub fn init_trace_parser(
     )
     .unwrap();
 
-    let tracer = if http {
+    #[cfg(feature = "local")]
+    let tracer = {
         let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
         let db_port = env::var("RETH_PORT").expect("No DB port.env");
         let url = format!("{db_endpoint}:{db_port}");
         Box::new(ethers::providers::Provider::new(ethers::providers::Http::new(
             url.parse::<Url>().unwrap(),
         ))) as Box<dyn TracingProvider>
-    } else {
+    };
+
+    #[cfg(not(feature = "local"))]
+    let tracer = {
         Box::new(TracingClient::new(Path::new(&db_path), handle.clone()))
             as Box<dyn TracingProvider>
     };

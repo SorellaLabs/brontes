@@ -1,0 +1,1 @@
+{"expiry":1699484761,"data":[{"type":"constructor","inputs":[{"name":"_singleton","type":"address","internalType":"address"}],"stateMutability":"nonpayable","payable":null},{"type":"fallback","stateMutability":"payable","payable":null}]}
