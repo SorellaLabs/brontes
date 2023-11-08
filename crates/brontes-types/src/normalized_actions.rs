@@ -111,7 +111,7 @@ pub struct NormalizedFlashLoan {
     pub fee_paid: Address,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwap {
     pub index:      u64,
     pub from:       Address,
