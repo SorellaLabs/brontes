@@ -443,6 +443,8 @@ mod tests {
         let inspector = CexDexInspector::default();
         let rational_price = inspector.rational_price(&Actions::Swap(swap.clone()), &metadata);
 
+        println!("{:#?}", rational_price);
+
         // assert_eq!(ra
     }
 }
