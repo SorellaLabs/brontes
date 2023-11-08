@@ -14,7 +14,7 @@ FROM
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
         (
-            (bt.timestamp <= 1696271964134) AND (bt.timestamp > 1696271964134 - 1000000)
+            (bt.timestamp <= 1687010592941) AND (bt.timestamp > 1687010592941 - 1000000)
         )
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
@@ -30,7 +30,7 @@ FROM
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
         (
-            (bt.timestamp <= 1696271963129) AND (bt.timestamp > 1696271963129 - 1000000)
+            (bt.timestamp <= 1687010591000) AND (bt.timestamp > 1687010591000 - 1000000)
         )
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
@@ -49,7 +49,7 @@ FROM ethereum.relays
 INNER JOIN ethereum.blocks AS blocks ON blocks.block_hash = relays.block_hash
 INNER JOIN ethereum.block_observations AS cb
 ON ethereum.relays.block_number = cb.block_number 
-WHERE (relays.block_number = 18264694) AND blocks.valid = 1
+WHERE (relays.block_number = 17500000) AND blocks.valid = 1
 
 
 
@@ -58,7 +58,15 @@ SELECT
     et.address AS address
 FROM cex.binance_idv_symbol_tickers AS bt
 INNER JOIN ethereum.tokens AS et ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
-WHERE substring(bt.symbol, -4) = 'USDT'
+WHERE bt.timestamp <= 1687010591000 and bt.timestamp >= 1687010591000 - 1000 and substring(bt.symbol, -4) = 'USDT' 
+GROUP BY address, (et.symbol, bt.symbol)
+
+SELECT
+    max(bt.timestamp) AS timestamp,
+    et.address AS address
+FROM cex.binance_idv_symbol_tickers AS bt
+INNER JOIN ethereum.tokens AS et ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4) OR et.symbol = substring(bt.symbol, length(bt.symbol) - 4)
+WHERE bt.timestamp <= 1687010591000 and bt.timestamp >= 1687010591000 - 1000 and substring(bt.symbol, -4) = 'USDT' 
 GROUP BY address, (et.symbol, bt.symbol)
 
 
