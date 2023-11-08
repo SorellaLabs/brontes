@@ -14,7 +14,7 @@ FROM
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
         (
-            (bt.timestamp <= 1699387260058) AND (bt.timestamp > 1699387260058 - 1000000)
+            (bt.timestamp <= 1699399055382) AND (bt.timestamp > 1699399055382 - 1000000)
         )
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
@@ -30,7 +30,7 @@ FROM
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
         (
-            (bt.timestamp <= 1699387261752) AND (bt.timestamp > 1699387261752 - 1000000)
+            (bt.timestamp <= 1699399056437) AND (bt.timestamp > 1699399056437 - 1000000)
         )
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
