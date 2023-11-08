@@ -499,15 +499,15 @@ mod tests {
         let gas_details = GasDetails {
             coinbase_transfer:   None,
             priority_fee:        0,
-            gas_used:            21_000,
+            gas_used:            20_000,
             // 20 gewi
             effective_gas_price: 20 * 10_u64.pow(9),
         };
 
         let swap = NormalizedSwap::default();
 
-        let pre_0 = Rational::ONE;
-        let post_0 = Rational::ONE;
+        let pre_0 = Rational::from(10);
+        let post_0 = Rational::from(10);
         let swaped = Actions::Swap(swap.clone());
         let inner_0 = vec![(&swaped, (Some(pre_0), Some(post_0)))];
         swaps.push(inner_0);
@@ -521,35 +521,10 @@ mod tests {
 
         let pre = pre.unwrap();
         let post = post.unwrap();
-        println!("{:?}, {:?}", pre, post);
-    }
+        let pre_result = Rational::from_str("24999/2500");
+        let post_result = Rational::from_str("12499/1250");
 
-    // use std::env;
-    // use clickhouse::Client;
-    // use hyper_tls::HttpsConnector;
-    // #[tokio::test]
-    // async fn test_reg() {
-    //     // clickhouse path
-    //     let clickhouse_path = format!(
-    //         "{}:{}",
-    //         &env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in
-    // .env"),         &env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT
-    // not found in .env")     );
-    //
-    //     // builds the https connector
-    //     let https = HttpsConnector::new();
-    //     let https_client = hyper::Client::builder().build::<_,
-    // hyper::Body>(https);
-    //
-    //     // builds the clickhouse client
-    //
-    //     let a = Client::with_http_client(https_client)
-    //         .with_url(clickhouse_path)
-    //         .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER
-    // not found in .env"))         .with_password(env::var("
-    // CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
-    //         .with_database(
-    //             env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE
-    // not found in .env"),         );
-    // }
+        assert_eq!(pre, pre_result);
+        assert_eq!(post, post_result);
+    }
 }
