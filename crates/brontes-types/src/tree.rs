@@ -11,7 +11,7 @@ use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::normalized_actions::NormalizedAction;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TimeTree<V: NormalizedAction> {
     pub roots:            Vec<Root<V>>,
     pub header:           Header,
@@ -109,7 +109,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node<V>,
     pub tx_hash:     H256,
@@ -187,7 +187,7 @@ impl GasDetails {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Node<V: NormalizedAction> {
     pub inner:     Vec<Node<V>>,
     pub finalized: bool,
@@ -502,6 +502,21 @@ mod tests {
                 },
             }
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_dyn_classifier() {
+        let block_num = 18530326;
+        dotenv::dotenv().ok();
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
+        let root = tree.roots.remove(30);
+        println!("{:?}", root);
     }
 
     #[tokio::test]
