@@ -328,7 +328,6 @@ mod tests {
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
         println!("cex-dex inspector took: {} us", delta);
-        println!("{:#?}", metadata);
 
         // assert!(
         //     mev[0].0.tx_hash
