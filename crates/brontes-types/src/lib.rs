@@ -60,7 +60,7 @@ pub(crate) mod u256 {
     pub fn serialize_vec<S: Serializer>(u: &Vec<U256>, serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
             .map(|u| u.to_le_bytes())
-            .collect()
+            .collect::<Vec<[u8;32]>>()
             .serialize(serializer)
     }
 
