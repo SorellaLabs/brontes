@@ -317,9 +317,8 @@ mod tests {
         assert_eq!(swap, expected_swap);
     }
 
-    /*
     #[test]
     fn t() {
-        println!("{:?}", H160::from_str("0x6Aa46141f1789C6BEc54651690312F754B05a99e").unwrap().0);
-    }*/
+        println!("{:?}", H160::from_str("0x3574948e6ba1d48a57f4ade944bc0e4eb20f7d5e").unwrap().0);
+    }
 }

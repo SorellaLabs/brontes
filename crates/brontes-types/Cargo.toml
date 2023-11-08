@@ -34,6 +34,7 @@ sorella-db-databases.workspace = true
 phf.workspace = true
 strum = { workspace = true, features = ["derive"] }
 auto_impl.workspace = true
+alloy-primitives = {workspace = true, features = ["serde"] }
 
 
 [build-dependencies]
@@ -65,3 +66,4 @@ reth-tracing.workspace = true
 default = ["tests"]
 server = []
 tests = []
+
