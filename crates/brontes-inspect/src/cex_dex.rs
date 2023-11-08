@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use brontes_database::Metadata;
 use brontes_types::{
@@ -288,6 +288,7 @@ mod tests {
     use brontes_core::test_utils::init_trace_parser;
     use brontes_database::database::Database;
     use brontes_types::test_utils::write_tree_as_json;
+    use reth_primitives::U256;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
@@ -333,4 +334,60 @@ mod tests {
         //         .unwrap()
         // );
     }
+    //Testing for tx:
+    // 0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295
+    async fn test_profit_calculation() {
+        let block_num = 18264694;
+
+        let swap = NormalizedSwap {
+            index:      0,
+            from:       Address::from_str("0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C").unwrap(),
+            pool:       Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
+            token_in:   Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
+            token_out:  Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+            amount_in:  U256::from(5055369263000000000000),
+            amount_out: U256::from(8421308582396000000000),
+        };
+
+        print!("{:#?}, == 5,055.369263870573349743", swap.amount_in.to_scaled_rational(18));
+        print!("{:#?}, == 8,421,308.582396", swap.amount_out.to_scaled_rational(6));
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
+
+        let metadata = db.get_metadata(block_num).await;
+
+        let inspector = CexDexInspector::default();
+
+        let profit = inspector.get_cex_dex(&swap, &metadata);
+
+        println!("{:#?}", profit);
+    }
+
+    /*async fn test_dex_conversion() {
+        let swap = NormalizedSwap {
+            index:      0,
+            from:       Address::from_str("0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C").unwrap(),
+            pool:       Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
+            token_in:   Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
+            token_out:  Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+            amount_in:  U256::from(5055369263000000000000),
+            amount_out: U256::from(8421308582396000000000),
+        };
+
+
+
+        let metadata: Metadata {
+
+        }
+
+        let inspector = CexDexInspector::default();
+
+        let rational_dex_price = inspector.rational_dex_price(&Actions::Swap(swap.clone()), &metadata);
+
+
+    }*/
 }
