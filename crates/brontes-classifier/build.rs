@@ -365,7 +365,7 @@ fn init_enum(name: &str, is_empty: bool) -> Vec<String> {
     if is_empty {
         bindings.push(format!("pub enum {} {{", name));
     } else {
-        bindings.push(format!("#[repr(u32)]\n pub enum {} {{", name));
+        bindings.push(format!("pub enum {} {{", name));
     }
 
     bindings
