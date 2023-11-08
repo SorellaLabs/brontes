@@ -16,6 +16,7 @@ use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H160, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
+use tracing::{debug, info};
 
 use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
@@ -416,6 +417,7 @@ impl Classifier {
         &self,
         node: &mut Node<Actions>,
     ) -> Option<(Address, (Address, Address), Actions)> {
+        debug!("trying to dynamically classify exchange");
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
         let logs = subactions
@@ -449,6 +451,7 @@ impl Classifier {
         if t0 != t1
             && (from0 == addr || to0 == addr)
             && (from1 == addr || to1 == addr)
+            // same person transfering
             && (from0 != from1)
         {
             let swap = if t0 == addr {
