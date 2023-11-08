@@ -38,7 +38,7 @@ use reth_rpc::eth::error::EthApiError;
 use reth_rpc_types::{trace::parity::TraceResultsWithTransactionHash, TransactionReceipt};
 
 #[async_trait::async_trait]
-#[auto_impl::auto_impl(&, Arc)]
+#[auto_impl::auto_impl(&, Arc, Box)]
 pub trait TracingProvider: Send + Sync + 'static {
     async fn block_hash_for_id(&self, block_num: u64) -> reth_interfaces::RethResult<Option<H256>>;
 
