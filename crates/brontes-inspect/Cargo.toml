@@ -59,3 +59,4 @@ brontes-core = { workspace = true, features = ["tests"] }
 [features]
 test_run = ["brontes-database/test_run"]
 tests = []
+local = ["brontes-core/local", "tests"]
