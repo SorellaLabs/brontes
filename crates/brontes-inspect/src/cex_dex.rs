@@ -354,8 +354,8 @@ mod tests {
             pool:       Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             token_in:   Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
             token_out:  Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
-            amount_in:  "5055.369263870573349743".parse().unwrap(),
-            amount_out: "8421308.582396".parse().unwrap(),
+            amount_in:  "5055369263870573349743".parse().unwrap(),
+            amount_out: "8421308582396".parse().unwrap(),
         };
 
         print!(
