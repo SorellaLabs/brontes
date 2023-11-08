@@ -1,6 +1,7 @@
 use std::{any::Any, default, fmt::Debug};
 
-use reth_primitives::{Address, H256, U256};
+use alloy_primitives::U256;
+use reth_primitives::{Address, H256};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;

@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 # reth 
 reth-rpc-types.workspace = true
-reth-primitives = { workspace = true, features = ["serde"] }
+reth-primitives.workspace = true
 
 # tracing
 tracing.workspace = true
@@ -34,6 +34,7 @@ sorella-db-databases.workspace = true
 phf.workspace = true
 strum = { workspace = true, features = ["derive"] }
 auto_impl.workspace = true
+alloy-primitives = {workspace = true, features = ["serde"] }
 
 
 [build-dependencies]
