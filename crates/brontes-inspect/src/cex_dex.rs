@@ -122,7 +122,7 @@ impl CexDexInspector {
         let prices = swaps
             .par_iter()
             .flatten()
-            .filter_map(|swap| self.rational_dex_price(swap, &metadata))
+            .filter_map(|swap| self.rational_price(swap, &metadata))
             .map(|(dex_price, _, cex1)| (dex_price.to_float(), cex1.to_float()))
             .collect::<Vec<_>>();
 
@@ -214,7 +214,7 @@ impl CexDexInspector {
         swap: &NormalizedSwap,
         metadata: &Metadata,
     ) -> (Option<Rational>, Option<Rational>) {
-        self.rational_dex_price(&Actions::Swap(swap.clone()), metadata)
+        self.rational_price(&Actions::Swap(swap.clone()), metadata)
             .map(|(dex_price, cex_price1, cex_price2)| {
                 let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1);
                 let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2);
@@ -247,7 +247,7 @@ impl CexDexInspector {
         Some(delta_price * swap.amount_in.to_scaled_rational(*decimals_in))
     }
 
-    pub fn rational_dex_price(
+    pub fn rational_price(
         &self,
         swap: &Actions,
         metadata: &Metadata,
@@ -256,12 +256,14 @@ impl CexDexInspector {
 
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            println!("missing token in token to decimal map");
             return None
         };
         //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
         // log it
         let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            println!("missing token in token to decimal map");
             return None
         };
 
@@ -282,7 +284,11 @@ impl CexDexInspector {
 #[cfg(test)]
 mod tests {
 
-    use std::{str::FromStr, time::SystemTime};
+    use std::{
+        collections::{HashMap, HashSet},
+        str::FromStr,
+        time::SystemTime,
+    };
 
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::init_trace_parser;
@@ -364,33 +370,79 @@ mod tests {
         let metadata = db.get_metadata(block_num).await;
 
         let inspector = CexDexInspector::default();
-
         let profit = inspector.get_cex_dex(&swap, &metadata);
 
+        //assert_eq!(profit, (Some(Rational::from) None));
         println!("{:#?}", profit);
     }
 
-    /*async fn test_dex_conversion() {
+    async fn test_dex_conversion() {
         let swap = NormalizedSwap {
             index:      0,
             from:       Address::from_str("0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C").unwrap(),
             pool:       Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             token_in:   Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
             token_out:  Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
-            amount_in:  U256::from(5055369263000000000000),
-            amount_out: U256::from(8421308582396000000000),
+            amount_in:  U256::from_str("5055369263000000000000").unwrap(),
+            amount_out: U256::from_str("8421308582396").unwrap(),
         };
 
+        // ETH Sold = 5,055.369263
+        // USDC out = 8 421 308.582396
+        // price = $1665.8147297
 
+        let metadata = Metadata {
+            block_num:              18264694,
+            block_hash:             U256::from_str(
+                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
+            )
+            .unwrap(),
+            relay_timestamp:        1696271963129,
+            p2p_timestamp:          1696271964134,
+            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
+                .unwrap(),
+            proposer_mev_reward:    11769128921907366414,
+            token_prices:           {
+                let mut prices = HashMap::new();
 
-        let metadata: Metadata {
+                // WETH = $1682.268937
+                prices.insert(
+                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+                    (
+                        Rational::from_str("7398697029111485/4398046511104").unwrap(),
+                        Rational::from_str("924734257781285/549755813888").unwrap(),
+                    ),
+                );
 
-        }
+                // USDC = $1
+                prices.insert(
+                    Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),// USDC 
+                    (
+                        Rational::from_str("1").unwrap(), // Assuming 1 USDC = 1 USD for simplicity, replace with actual values
+                        Rational::from_str("1").unwrap(),
+                    ),
+                );
+                prices
+            },
+            eth_prices:             (
+                Rational::from_str("7398697029111485/4398046511104").unwrap(),
+                Rational::from_str("924734257781285/549755813888").unwrap(),
+            ),
+            mempool_flow:           {
+                let mut private = HashSet::new();
+                private.insert(
+                    H256::from_str(
+                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
+                    )
+                    .unwrap(),
+                );
+                private
+            },
+        };
 
         let inspector = CexDexInspector::default();
+        let rational_price = inspector.rational_price(&Actions::Swap(swap.clone()), &metadata);
 
-        let rational_dex_price = inspector.rational_dex_price(&Actions::Swap(swap.clone()), &metadata);
-
-
-    }*/
+        // assert_eq!(ra
+    }
 }
