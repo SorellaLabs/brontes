@@ -61,7 +61,7 @@ impl Actions {
         }
     }
 
-    pub fn get_too_address(&self) -> Address {
+    pub fn get_to_address(&self) -> Address {
         match self {
             Actions::Swap(s) => s.pool,
             Actions::Mint(m) => m.to,
