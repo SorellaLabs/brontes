@@ -65,7 +65,7 @@ pub(crate) mod u256 {
         Ok(())
     }
 
-    pub fn deserialize_vec<'de, D>(deserializer: D) -> Result<U256, D::Error>
+    pub fn deserialize_vec<'de, D>(deserializer: D) -> Result<Vec<U256>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -87,7 +87,7 @@ pub(crate) mod u256 {
         Ok(())
     }
 
-    pub fn deserialize_vec_vec<'de, D>(deserializer: D) -> Result<U256, D::Error>
+    pub fn deserialize_vec_vec<'de, D>(deserializer: D) -> Result<Vec<Vec<U256>>, D::Error>
     where
         D: Deserializer<'de>,
     {
