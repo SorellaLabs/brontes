@@ -90,7 +90,7 @@ pub(crate) mod u256 {
     {
         let u: Vec<Vec<[u8; 32]>> = Deserialize::deserialize(deserializer)?;
         Ok(u.into_iter()
-            .map(|i| i.map(U256::from_le_bytes).collect())
+            .map(|i| i.into_iter().map(U256::from_le_bytes).collect())
             .collect())
     }
 }
