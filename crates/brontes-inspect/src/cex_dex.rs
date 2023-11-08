@@ -373,7 +373,7 @@ mod tests {
         let db = Database::default();
         let classifier = Classifier::new();
 
-        //let metadata = db.get_metadata(block_num).await;
+        let metadata = db.get_metadata(block_num).await;
 
         let inspector = CexDexInspector::default();
         let profit = inspector.get_cex_dex(&swap, &metadata);
@@ -401,8 +401,9 @@ mod tests {
 
         let metadata = Metadata {
             block_num:              18264694,
-            block_hash:             U256::from_str(
+            block_hash:             U256::from_str_radix(
                 "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
+                16,
             )
             .unwrap(),
             relay_timestamp:        1696271963129,
