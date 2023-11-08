@@ -236,9 +236,14 @@ impl CexDexInspector {
         // Calculate the potential profit
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            println!("missing token in token to decimal map");
             return None
         };
 
+        println!(
+            "delta price: {}",
+            &delta_price * &swap.amount_in.to_scaled_rational(*decimals_in)
+        );
         Some(delta_price * swap.amount_in.to_scaled_rational(*decimals_in))
     }
 
@@ -302,9 +307,15 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        println!("metadata: {:#?}", metadata.token_prices);
+        println!("Token Prices:");
+        for (address, (price_pre, price_post)) in &metadata.token_prices {
+            println!(
+                "Address: {:?}, Pre-Update Price: {}, Post-Update Price: {}",
+                address, price_pre, price_post
+            );
+        }
 
-        let tx = block.0.clone().into_iter().take(45).collect::<Vec<_>>();
+        let tx = block.0.clone().into_iter().take(40).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
         write_tree_as_json(&tree, "./tree.json").await;
