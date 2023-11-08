@@ -42,7 +42,7 @@ impl Inspector for SandwichInspector {
         let iter = tree.roots.iter();
         println!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
-            return vec![]
+            return vec![];
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
@@ -400,9 +400,9 @@ mod tests {
         //     )
         //     .unwrap(),
         //     frontrun_gas_details: GasDetails {
-        //         coinbase_transfer: 0, //todo
-        //         priority_fee: 0,
-        //         gas_used: 87336,
+        //         coinbase_transfer:   0, //todo
+        //         priority_fee:        0,
+        //         gas_used:            87336,
         //         effective_gas_price: 18.990569622,
         //     },
         //     frontrun_swaps_index: 0,
@@ -456,9 +456,9 @@ mod tests {
         //     )
         //     .unwrap(),
         //     backrun_gas_details: GasDetails {
-        //         coinbase_transfer: 0, //todo
-        //         priority_fee: 0,
-        //         gas_used: 84461,
+        //         coinbase_transfer:   0, //todo
+        //         priority_fee:        0,
+        //         gas_used:            84461,
         //         effective_gas_price: 18990569622,
         //     },
         //     backrun_swaps_index: 2,
