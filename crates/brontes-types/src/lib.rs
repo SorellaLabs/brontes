@@ -57,7 +57,7 @@ pub(crate) mod u256 {
         Ok(U256::from_le_bytes(u))
     }
 
-    pub fn serialize<S: Serializer>(u: &Vec<U256>, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize_vec<S: Serializer>(u: &Vec<U256>, serializer: S) -> Result<S::Ok, S::Error> {
         for res in u.iter().map(|u| buf.serialize(u.to_le_bytes())) {
             res?;
         }
@@ -65,7 +65,7 @@ pub(crate) mod u256 {
         Ok(())
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<U256, D::Error>
+    pub fn deserialize_vec<'de, D>(deserializer: D) -> Result<U256, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -73,7 +73,7 @@ pub(crate) mod u256 {
         Ok(u.into_iter().map(U256::from_le_bytes).collect())
     }
 
-    pub fn serialize<S: Serializer>(u: &Vec<Vec<U256>>, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize_vec_vec<S: Serializer>(u: &Vec<Vec<U256>>, serializer: S) -> Result<S::Ok, S::Error> {
         for res in u
             .iter()
             .map(|u| u.iter().map(|u| buf.serialize(u.to_le_bytes())))
@@ -84,7 +84,7 @@ pub(crate) mod u256 {
         Ok(())
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<U256, D::Error>
+    pub fn deserialize_vec_vec<'de, D>(deserializer: D) -> Result<U256, D::Error>
     where
         D: Deserializer<'de>,
     {
