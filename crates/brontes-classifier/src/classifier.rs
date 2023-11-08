@@ -79,13 +79,14 @@ impl Classifier {
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let from_addr = trace.get_from_addr();
-                    println!(
+                    /*println!(
                         "NODE - PRE-CLASSIFICATION FROM ADDRESS: {:?}, DATA: {:?}\n",
                         from_addr,
                         trace.get_calldata()
-                    );
+                    );*/
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
-                    println!("NODE - FROM ADDRESS: {:?}, DATA: {:?}\n", from_addr, classification);
+                    //println!("NODE - FROM ADDRESS: {:?}, DATA: {:?}\n", from_addr,
+                    // classification);
 
                     let subactions = if !classification.is_unclassified() {
                         vec![classification.clone()]
@@ -167,7 +168,7 @@ impl Classifier {
         tree
     }
 
-    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u64> {
+    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u128> {
         match action {
             Action::Call(action) => {
                 if action.to == builder {
@@ -189,7 +190,7 @@ impl Classifier {
             println!("target address bytes: {:?}", &target_address.0);
         } */
         if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0) {
-            println!("\n\n\n CALLDATA {:?}", trace.get_calldata());
+            //println!("\n\n\n CALLDATA {:?}", trace.get_calldata());
             if let Some(classifier) = &protocol.0 {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
