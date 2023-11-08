@@ -38,7 +38,7 @@ impl ToFloatNearest for Rational {
 }
 
 pub(crate) mod u256 {
-    use reth_primitives::U256;
+    use alloy_primitives::U256;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
