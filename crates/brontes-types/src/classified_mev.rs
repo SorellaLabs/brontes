@@ -1,6 +1,5 @@
 use std::{any::Any, default, fmt::Debug};
 
-use crate::u256;
 use reth_primitives::{Address, H256, U256};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -12,7 +11,7 @@ use sorella_db_databases::{
 use strum::EnumIter;
 
 use super::normalized_actions::Actions;
-use crate::tree::GasDetails;
+use crate::{tree::GasDetails, u256};
 
 #[serde_as]
 #[derive(Debug, Serialize, Row, Clone, Default)]
