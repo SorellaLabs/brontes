@@ -14,7 +14,7 @@ FROM
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
         (
-            (bt.timestamp <= 1699387260058) AND (bt.timestamp > 1699387260058 - 1000000)
+            (bt.timestamp <= 1699399055382) AND (bt.timestamp > 1699399055382 - 1000000)
         )
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
@@ -30,7 +30,7 @@ FROM
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
         (
-            (bt.timestamp <= 1699387261752) AND (bt.timestamp > 1699387261752 - 1000000)
+            (bt.timestamp <= 1699399056437) AND (bt.timestamp > 1699399056437 - 1000000)
         )
         AND substring(bt.symbol, -4) = 'USDT'
     GROUP BY 
@@ -49,4 +49,7 @@ FROM ethereum.relays
 INNER JOIN ethereum.blocks AS blocks ON blocks.block_hash = relays.block_hash
 INNER JOIN ethereum.block_observations AS cb
 ON ethereum.relays.block_number = cb.block_number 
-WHERE (relays.block_number = 18522330) AND blocks.valid = 1
+WHERE (relays.block_number = 18523310) AND blocks.valid = 1
+
+
+  │ 

@@ -1,6 +1,7 @@
 use std::{any::Any, default, fmt::Debug};
 
-use reth_primitives::{Address, H256};
+use crate::u256;
+use reth_primitives::{Address, H256, U256};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
@@ -512,9 +513,9 @@ pub struct Liquidation {
     #[serde(rename = "liquidation_swaps.token_out")]
     pub liquidation_swaps_token_out: Vec<Address>,
     #[serde(rename = "liquidation_swaps.amount_in")]
-    pub liquidation_swaps_amount_in: Vec<u128>,
+    pub liquidation_swaps_amount_in: Vec<U256>,
     #[serde(rename = "liquidation_swaps.amount_out")]
-    pub liquidation_swaps_amount_out: Vec<u128>,
+    pub liquidation_swaps_amount_out: Vec<U256>,
     #[serde(rename = "liquidations.index")]
     pub liquidations_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
@@ -579,7 +580,7 @@ pub struct JitLiquidity {
     pub jit_mints_token: Vec<Vec<Address>>,
     #[serde_as(as = "Vec<Vec<FixedString>>")]
     #[serde(rename = "jit_mints.amount")]
-    pub jit_mints_amount: Vec<Vec<u64>>,
+    pub jit_mints_amount: Vec<Vec<U256>>,
     #[serde_as(as = "FixedString")]
     pub swap_tx_hash: H256,
     #[serde(with = "gas_details_tuple")]
@@ -599,9 +600,9 @@ pub struct JitLiquidity {
     #[serde(rename = "swaps.token_out")]
     pub swaps_token_out: Vec<Address>,
     #[serde(rename = "swaps.amount_in")]
-    pub swaps_amount_in: Vec<u64>,
+    pub swaps_amount_in: Vec<U256>,
     #[serde(rename = "swaps.amount_out")]
-    pub swaps_amount_out: Vec<u64>,
+    pub swaps_amount_out: Vec<U256>,
     #[serde_as(as = "FixedString")]
     pub burn_tx_hash: H256,
     #[serde(with = "gas_details_tuple")]
@@ -622,7 +623,7 @@ pub struct JitLiquidity {
     pub jit_burns_token: Vec<Vec<Address>>,
     #[serde_as(as = "Vec<Vec<FixedString>>")]
     #[serde(rename = "jit_burns.amount")]
-    pub jit_burns_amount: Vec<Vec<u64>>,
+    pub jit_burns_amount: Vec<Vec<U256>>,
 }
 
 impl SpecificMev for JitLiquidity {
@@ -668,9 +669,11 @@ pub struct AtomicBackrun {
     #[serde(rename = "swaps.token_out")]
     pub swaps_token_out: Vec<Address>,
     #[serde(rename = "swaps.amount_in")]
-    pub swaps_amount_in: Vec<u64>,
+    #[serde(with = "u256")]
+    pub swaps_amount_in: Vec<U256>,
     #[serde(rename = "swaps.amount_out")]
-    pub swaps_amount_out: Vec<u64>,
+    #[serde(with = "u256")]
+    pub swaps_amount_out: Vec<U256>,
     #[serde(with = "gas_details_tuple")]
     pub gas_details: GasDetails,
 }
