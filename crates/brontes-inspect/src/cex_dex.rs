@@ -342,6 +342,9 @@ mod tests {
     }
     //Testing for tx:
     // 0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295
+
+    #[tokio::test]
+    #[serial]
     async fn test_profit_calculation() {
         let block_num = 18264694;
 
@@ -376,6 +379,8 @@ mod tests {
         println!("{:#?}", profit);
     }
 
+    #[tokio::test]
+    #[serial]
     async fn test_dex_conversion() {
         let swap = NormalizedSwap {
             index:      0,
