@@ -1,0 +1,1 @@
+{"expiry":1699497659,"data":[{"type":"function","name":"adjusted_balance_of","inputs":[{"name":"_user","type":"address"}],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","payable":null}]}
