@@ -165,7 +165,7 @@ impl<V: NormalizedAction> Root<V> {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
 pub struct GasDetails {
-    pub coinbase_transfer:   Option<u64>,
+    pub coinbase_transfer:   Option<u128>,
     pub priority_fee:        u64,
     pub gas_used:            u64,
     pub effective_gas_price: u64,
@@ -215,7 +215,7 @@ impl<V: NormalizedAction> Node<V> {
     /// The address here is the from address for the trace
     pub fn insert(&mut self, n: Node<V>) {
         if self.finalized {
-            return;
+            return
         }
 
         let trace_addr = n.trace_address.clone();
@@ -267,7 +267,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn current_call_stack(&self) -> Vec<Address> {
         let Some(mut stack) = self.inner.last().map(|n| n.current_call_stack()) else {
-            return vec![self.address];
+            return vec![self.address]
         };
 
         stack.push(self.address);
@@ -289,7 +289,7 @@ impl<V: NormalizedAction> Node<V> {
     {
         // prev better
         if !find(self) {
-            return false;
+            return false
         }
         let lower_has_better = self
             .inner
@@ -304,7 +304,7 @@ impl<V: NormalizedAction> Node<V> {
             indexes.extend(classified_indexes);
         }
 
-        return true;
+        return true
     }
 
     pub fn get_bounded_info<F, R>(&self, lower: u64, upper: u64, res: &mut Vec<R>, info_fn: &F)
@@ -312,7 +312,7 @@ impl<V: NormalizedAction> Node<V> {
         F: Fn(&Node<V>) -> R,
     {
         if self.inner.is_empty() {
-            return;
+            return
         }
 
         let last = self.inner.last().unwrap();
@@ -324,7 +324,7 @@ impl<V: NormalizedAction> Node<V> {
                 .iter()
                 .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
 
-            return;
+            return
         }
 
         // find bounded limit
@@ -341,7 +341,7 @@ impl<V: NormalizedAction> Node<V> {
                     end = end.or(Some(our_index).filter(|_| peek.index > upper));
                 }
             } else {
-                break;
+                break
             }
         }
 
@@ -362,7 +362,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn remove_index_and_childs(&mut self, index: u64) {
         if self.inner.is_empty() {
-            return;
+            return
         }
 
         let mut iter = self.inner.iter_mut().enumerate().peekable();
@@ -370,16 +370,16 @@ impl<V: NormalizedAction> Node<V> {
         let val = loop {
             if let Some((our_index, next)) = iter.next() {
                 if index == next.index {
-                    break Some(our_index);
+                    break Some(our_index)
                 }
 
                 if let Some(peek) = iter.peek() {
                     if index > next.index && index < peek.1.index {
                         next.remove_index_and_childs(index);
-                        break None;
+                        break None
                     }
                 } else {
-                    break None;
+                    break None
                 }
             }
         };
@@ -395,7 +395,7 @@ impl<V: NormalizedAction> Node<V> {
     {
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
-            return false;
+            return false
         }
 
         let lower_has_better = self
@@ -427,7 +427,7 @@ impl<V: NormalizedAction> Node<V> {
     {
         let works = find(self.address, self.get_all_sub_actions());
         if !works {
-            return false;
+            return false
         }
 
         let lower_has_better = self
