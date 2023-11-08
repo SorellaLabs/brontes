@@ -168,7 +168,7 @@ impl Classifier {
         tree
     }
 
-    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u64> {
+    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u128> {
         match action {
             Action::Call(action) => {
                 if action.to == builder {
