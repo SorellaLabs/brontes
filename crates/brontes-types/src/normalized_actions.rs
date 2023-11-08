@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use reth_primitives::{Address, U256};
 use reth_rpc_types::Log;
@@ -191,7 +191,7 @@ pub struct NormalizedRepayment {
     pub collateral:       HashMap<Address, U256>,
 }
 
-pub trait NormalizedAction: Send + Sync + Clone {
+pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn get_action(&self) -> &Actions;
 }
 
