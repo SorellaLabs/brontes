@@ -122,7 +122,7 @@ impl CexDexInspector {
         let prices = swaps
             .par_iter()
             .flatten()
-            .filter_map(|swap| self.rational_price(swap, &metadata))
+            .filter_map(|swap| self.rational_prices(swap, &metadata))
             .map(|(dex_price, _, cex1)| (dex_price.to_float(), cex1.to_float()))
             .collect::<Vec<_>>();
 
@@ -214,7 +214,7 @@ impl CexDexInspector {
         swap: &NormalizedSwap,
         metadata: &Metadata,
     ) -> (Option<Rational>, Option<Rational>) {
-        self.rational_price(&Actions::Swap(swap.clone()), metadata)
+        self.rational_prices(&Actions::Swap(swap.clone()), metadata)
             .map(|(dex_price, cex_price1, cex_price2)| {
                 let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1);
                 let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2);
@@ -247,7 +247,7 @@ impl CexDexInspector {
         Some(delta_price * swap.amount_in.to_scaled_rational(*decimals_in))
     }
 
-    pub fn rational_price(
+    pub fn rational_prices(
         &self,
         swap: &Actions,
         metadata: &Metadata,
@@ -358,10 +358,12 @@ mod tests {
             amount_out: "8421308582396".parse().unwrap(),
         };
 
-        print!(
-            "{:#?}, == 5055.369263870573349743",
-            swap.amount_in.to_scaled_rational(18).to_float()
+        assert_eq!(
+            swap.amount_in.to_scaled_rational(18),
+            Rational::from_sci_string_simplest("50553692638705733497431e-18").unwrap(),
+            "The actual Rational value does not match the expected value."
         );
+
         print!("{:#?}, == 8421,308.582396", swap.amount_out.to_scaled_rational(6).to_float());
 
         let (tx, _rx) = unbounded_channel();
@@ -370,7 +372,7 @@ mod tests {
         let db = Database::default();
         let classifier = Classifier::new();
 
-        let metadata = db.get_metadata(block_num).await;
+        //let metadata = db.get_metadata(block_num).await;
 
         let inspector = CexDexInspector::default();
         let profit = inspector.get_cex_dex(&swap, &metadata);
@@ -446,9 +448,9 @@ mod tests {
         };
 
         let inspector = CexDexInspector::default();
-        let rational_price = inspector.rational_price(&Actions::Swap(swap.clone()), &metadata);
+        let rational_prices = inspector.rational_prices(&Actions::Swap(swap.clone()), &metadata);
 
-        println!("{:#?}", rational_price);
+        println!("{:#?}", rational_prices);
 
         // assert_eq!(ra
     }
