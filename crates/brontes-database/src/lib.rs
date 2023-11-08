@@ -5,7 +5,7 @@ use reth_primitives::{Address, TxHash, U256};
 
 pub mod database;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Metadata {
     pub block_num:              u64,
     pub block_hash:             U256,
