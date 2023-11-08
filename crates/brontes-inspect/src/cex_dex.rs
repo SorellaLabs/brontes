@@ -314,6 +314,7 @@ mod tests {
                 address, price_pre, price_post
             );
         }
+        println!("{:#?}", metadata);
 
         let tx = block.0.clone().into_iter().take(40).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
