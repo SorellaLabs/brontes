@@ -32,12 +32,12 @@ impl SharedInspectorUtils {
             if let Actions::Swap(swap) = action {
                 let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
                     error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-                    continue;
+                    continue
                 };
 
                 let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
                     error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-                    continue;
+                    continue
                 };
 
                 let adjusted_in = -swap.amount_in.to_scaled_rational(*decimals_in);
@@ -107,7 +107,7 @@ impl SharedInspectorUtils {
     }
 
     /// applies usd price to deltas and flattens out the tokens
-    pub(crate) fn get_best_usd_delta(
+    pub(crate) fn get_best_usd_deltas(
         &self,
         deltas: HashMap<Address, HashMap<Address, Rational>>,
         metadata: Arc<Metadata>,

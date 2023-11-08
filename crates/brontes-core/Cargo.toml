@@ -27,10 +27,10 @@ brontes-types.workspace = true
 brontes-metrics.workspace = true
 
 # async
+
 tokio = { workspace = true, features = ["full", "tracing"] }
 futures.workspace = true
 async-trait.workspace = true
-
 # alloy
 alloy-sol-types.workspace = true
 alloy-primitives.workspace = true
@@ -95,4 +95,4 @@ default = []
 test_run = ["server"]
 tests = []
 server = []
-
+local = []

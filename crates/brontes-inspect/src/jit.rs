@@ -38,7 +38,7 @@ impl Inspector for JitInspector {
                         t1.head.address,
                         t1.tx_hash,
                         t3.tx_hash,
-                        t1.head.data.get_too_address(),
+                        t1.head.data.get_to_address(),
                         t2.tx_hash,
                     ))
                 } else {

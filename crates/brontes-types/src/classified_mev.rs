@@ -166,7 +166,7 @@ pub struct Sandwich {
     #[serde(rename = "victim_swaps.amount_out")]
     pub victim_swaps_amount_out: Vec<U256>,
     #[serde(rename = "victim_gas_details.coinbase_transfer")]
-    pub victim_gas_details_coinbase_transfer: Vec<Option<u64>>,
+    pub victim_gas_details_coinbase_transfer: Vec<Option<u128>>,
     #[serde(rename = "victim_gas_details.priority_fee")]
     pub victim_gas_details_priority_fee: Vec<u64>,
     #[serde(rename = "victim_gas_details.gas_used")]
@@ -365,7 +365,7 @@ pub struct JitLiquiditySandwich {
     #[serde(rename = "victim_swaps.amount_out")]
     pub victim_swaps_amount_out: Vec<U256>,
     #[serde(rename = "victim_gas_details.coinbase_transfer")]
-    pub victim_gas_details_coinbase_transfer: Vec<Option<u64>>,
+    pub victim_gas_details_coinbase_transfer: Vec<Option<u128>>,
     #[serde(rename = "victim_gas_details.priority_fee")]
     pub victim_gas_details_priority_fee: Vec<u64>,
     #[serde(rename = "victim_gas_details.gas_used")]
@@ -744,7 +744,7 @@ mod gas_details_tuple {
     {
         let tuple = <(u64, u64, u64, u64)>::deserialize(deserializer)?;
         Ok(GasDetails {
-            coinbase_transfer:   Some(tuple.0),
+            coinbase_transfer:   Some(tuple.0.into()),
             priority_fee:        tuple.1,
             gas_used:            tuple.2,
             effective_gas_price: tuple.3,
