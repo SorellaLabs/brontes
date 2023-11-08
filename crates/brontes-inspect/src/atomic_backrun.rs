@@ -31,7 +31,7 @@ impl AtomicBackrunInspector {
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.inner.calculate_swap_deltas(&swaps);
 
-        let appearance = self.inner.get_best_usd_delta(
+        let appearance = self.inner.get_best_usd_deltas(
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
@@ -40,7 +40,7 @@ impl AtomicBackrunInspector {
         let profit_collectors = appearance.keys().copied().collect();
         let appearance_usd: Rational = appearance.values().sum();
 
-        let finalized = self.inner.get_best_usd_delta(
+        let finalized = self.inner.get_best_usd_deltas(
             deltas,
             metadata.clone(),
             Box::new(|(_, finalized)| finalized),
@@ -108,7 +108,7 @@ impl Inspector for AtomicBackrunInspector {
                 self.process_swaps(
                     tx,
                     root.head.address,
-                    root.head.data.get_too_address(),
+                    root.head.data.get_to_address(),
                     meta_data.clone(),
                     gas_details,
                     swaps,
