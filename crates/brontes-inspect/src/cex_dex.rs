@@ -307,13 +307,6 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        println!("Token Prices:");
-        for (address, (price_pre, price_post)) in &metadata.token_prices {
-            println!(
-                "Address: {:?}, Pre-Update Price: {}, Post-Update Price: {}",
-                address, price_pre, price_post
-            );
-        }
         println!("{:#?}", metadata);
 
         let tx = block.0.clone().into_iter().take(40).collect::<Vec<_>>();
@@ -330,7 +323,6 @@ mod tests {
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
         println!("cex-dex inspector took: {} us", delta);
-        println!("{:#?}", metadata);
 
         // assert!(
         //     mev[0].0.tx_hash
