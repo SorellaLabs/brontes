@@ -306,21 +306,13 @@ mod tests {
     async fn test_cex_dex() {
         dotenv::dotenv().ok();
         let block_num = 18264694;
-        let clickhouse_path = format!(
-            "{}:{} {} {}",
-            &env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
-            &env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env"),
-            &env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_PORT not found in .env"),
-            &env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PORT not found in .env")
-        );
-
-        println!("{:#?}", clickhouse_path);
 
         let (tx, _rx) = unbounded_channel();
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
         let db = Database::default();
         let classifier = Classifier::new();
+        println!("{:?}", db.credentials());
 
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
@@ -530,7 +522,6 @@ mod tests {
         let pre = pre.unwrap();
         let post = post.unwrap();
         println!("{:?}, {:?}", pre, post);
-
     }
 
     // use std::env;
