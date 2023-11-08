@@ -12,7 +12,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::Rational;
-use reth_primitives::{Address, H256, H160};
+use reth_primitives::{Address, H160, H256};
 use tracing::error;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
