@@ -183,18 +183,18 @@ impl CexDexInspector {
         eth_price_pre: &Rational,
         eth_price_post: &Rational,
     ) -> (Option<Rational>, Option<Rational>) {
+        let zero = Rational::ZERO;
         let (total_pre_arb, total_post_arb) = swap_sequences
             .iter()
-            .flat_map(|sequence| sequence.iter())
+            .flat_map(|sequence| sequence)
             .fold((Rational::ZERO, Rational::ZERO), |(acc_pre, acc_post), (_, (pre, post))| {
-                (
-                    acc_pre + pre.clone().unwrap_or(Rational::ZERO),
-                    acc_post + post.clone().unwrap_or(Rational::ZERO),
-                )
+                (acc_pre + pre.as_ref().unwrap_or(&zero), acc_post + post.as_ref().unwrap_or(&zero))
             });
 
-        let gas_cost_pre = Rational::from(gas_details.gas_paid()) * eth_price_pre;
-        let gas_cost_post = Rational::from(gas_details.gas_paid()) * eth_price_post;
+        let gas_cost_pre =
+            Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) * eth_price_pre;
+        let gas_cost_post =
+            Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) * eth_price_post;
 
         let profit_pre =
             if total_pre_arb > gas_cost_pre { Some(total_pre_arb - gas_cost_pre) } else { None };
@@ -455,5 +455,61 @@ mod tests {
         println!("{:#?}", rational_prices);
 
         // assert_eq!(ra
+    }
+    // fn arb_gas_accounting(
+    //     &self,
+    //     swap_sequences: Vec<Vec<(&Actions, (Option<Rational>,
+    // Option<Rational>))>>,     gas_details: &GasDetails,
+    //     eth_price_pre: &Rational,
+    //     eth_price_post: &Rational,
+    // ) -> (Option<Rational>, Option<Rational>) {
+    //     let zero = Rational::ZERO;
+    //     let (total_pre_arb, total_post_arb) = swap_sequences
+    //         .iter()
+    //         .flat_map(|sequence| sequence)
+    //         .fold((Rational::ZERO, Rational::ZERO), |(acc_pre, acc_post), (_,
+    // (pre, post))| {             (acc_pre + pre.as_ref().unwrap_or(&zero),
+    // acc_post + post.as_ref().unwrap_or(&zero))         });
+    //
+    //     let gas_cost_pre =
+    //         Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) *
+    // eth_price_pre;     let gas_cost_post =
+    //         Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) *
+    // eth_price_post;
+    //
+    //     let profit_pre =
+    //         if total_pre_arb > gas_cost_pre { Some(total_pre_arb - gas_cost_pre)
+    // } else { None };
+    //
+    //     let profit_post = if total_post_arb > gas_cost_post {
+    //         Some(total_post_arb - gas_cost_post)
+    //     } else {
+    //         None
+    //     };
+    //
+    //     (profit_pre, profit_post)
+    // }
+    use malachite::num::basic::traits::One;
+
+    #[tokio::test]
+    async fn test_arb_gas_accounting() {
+        let mut swaps = Vec::new();
+        let gas_details = GasDetails {
+            coinbase_transfer:   None,
+            priority_fee:        0,
+            gas_used:            21_000,
+            // 20 gewi
+            effective_gas_price: 20 * 10_u64.pow(9),
+        };
+
+        let swap = NormalizedSwap::default();
+
+        let pre_0 = Rational::ONE;
+        let post_0 = Rational::ONE;
+        let inner_0 = vec![(Actions::Swap(swap.clone()), pre_0, post_0)];
+        swaps.push(inner_0);
+
+        let pre_1 = Rational::ONE;
+        let post_1 = Rational::ONE;
     }
 }
