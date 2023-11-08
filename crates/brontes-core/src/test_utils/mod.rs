@@ -10,6 +10,7 @@ use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use dotenv::dotenv;
 use ethers_core::types::Chain;
 use futures::future::join_all;
+use reqwest::Url;
 use reth_primitives::H256;
 use reth_rpc_types::{
     trace::parity::{TraceResults, TransactionTrace, VmTrace},
@@ -23,7 +24,7 @@ use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedSender},
 };
 
-use crate::decoding::{parser::TraceParser, CACHE_DIRECTORY, CACHE_TIMEOUT};
+use crate::decoding::{parser::TraceParser, TracingProvider, CACHE_DIRECTORY, CACHE_TIMEOUT};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TestTransactionTraceWithLogs {
@@ -129,7 +130,8 @@ pub async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
 pub fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-) -> TraceParser<TracingClient> {
+    http: bool,
+) -> TraceParser<Box<dyn TracingProvider>> {
     let etherscan_key = env::var("ETHERSCAN_API_KEY").expect("No ETHERSCAN_API_KEY in .env");
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
@@ -141,7 +143,17 @@ pub fn init_trace_parser(
     )
     .unwrap();
 
-    let tracer = TracingClient::new(Path::new(&db_path), handle.clone());
+    let tracer = if http {
+        let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
+        let db_port = env::var("RETH_PORT").expect("No DB port.env");
+        let url = format!("{db_endpoint}:{db_port}");
+        Box::new(ethers::providers::Provider::new(ethers::providers::Http::new(
+            url.parse::<Url>().unwrap(),
+        ))) as Box<dyn TracingProvider>
+    } else {
+        Box::new(TracingClient::new(Path::new(&db_path), handle.clone()))
+            as Box<dyn TracingProvider>
+    };
 
     TraceParser::new(etherscan_client, Arc::new(tracer), Arc::new(metrics_tx))
 }
