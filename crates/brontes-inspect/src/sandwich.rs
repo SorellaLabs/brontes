@@ -345,7 +345,7 @@ mod tests {
     use std::{str::FromStr, time::SystemTime};
 
     use brontes_classifier::Classifier;
-    use brontes_core::test_utils::init_trace_parser;
+    use brontes_core::{test_utils::init_trace_parser, init_tracing};
     use brontes_database::database::Database;
     use brontes_types::test_utils::write_tree_as_json;
     use serial_test::serial;
@@ -357,6 +357,7 @@ mod tests {
     #[serial]
     async fn test_sandwich() {
         dotenv::dotenv().ok();
+        init_tracing();
         let block_num = 18522330;
 
         let (tx, _rx) = unbounded_channel();
