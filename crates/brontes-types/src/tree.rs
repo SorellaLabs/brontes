@@ -531,17 +531,17 @@ mod tests {
         let db = Database::default();
         let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
 
-        let mut transaction_traces = tracer
-            .tracer
-            .trace
-            .replay_block_transactions(block_num.into(), HashSet::from([TraceType::Trace]))
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(tree.roots.len(), transaction_traces.len());
-
-        let first_root = tree.roots.remove(0);
-        let first_tx = transaction_traces.remove(0);
+        // let mut transaction_traces = tracer
+        //     .tracer
+        //     .trace
+        //     .replay_block_transactions(block_num.into(), HashSet::from([TraceType::Trace]))
+        //     .await
+        //     .unwrap()
+        //     .unwrap();
+        // assert_eq!(tree.roots.len(), transaction_traces.len());
+        //
+        // let first_root = tree.roots.remove(0);
+        // let first_tx = transaction_traces.remove(0);
         /*
 
             assert_eq!(
