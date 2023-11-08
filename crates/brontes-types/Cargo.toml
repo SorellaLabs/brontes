@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 # reth 
 reth-rpc-types.workspace = true
-reth-primitives.workspace = true
+reth-primitives = { workspace = true, features = ["serde"] }
 
 # tracing
 tracing.workspace = true
@@ -65,3 +65,4 @@ reth-tracing.workspace = true
 default = ["tests"]
 server = []
 tests = []
+
