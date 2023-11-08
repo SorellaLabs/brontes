@@ -153,8 +153,8 @@ pub fn helper_decode_transfer(log: &Log) -> Option<(Address, Address, Address, U
     None
 }
 
-pub async fn get_traces_with_meta(
-    tracer: &TraceParser<TracingClient>,
+pub async fn get_traces_with_meta<T: TracingProvider>(
+    tracer: &TraceParser<T>,
     db: &Database,
     block_number: u64,
 ) -> (Vec<TxTrace>, Header, Metadata) {
