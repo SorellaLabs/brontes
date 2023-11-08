@@ -319,7 +319,7 @@ mod tests {
         let tx = block.0.clone().into_iter().take(40).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
-        write_tree_as_json(&tree, "./tree.json").await;
+        //write_tree_as_json(&tree, "./tree.json").await;
 
         let inspector = CexDexInspector::default();
 
@@ -328,6 +328,7 @@ mod tests {
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
         println!("cex-dex inspector took: {} us", delta);
+        println!("{:#?}", metadata);
 
         // assert!(
         //     mev[0].0.tx_hash
