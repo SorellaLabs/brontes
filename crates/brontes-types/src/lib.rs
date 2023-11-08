@@ -79,7 +79,7 @@ pub(crate) mod u256 {
         u.iter()
             .map(|u| {
                 u.iter()
-                    .map(|u| u.to_le_bytes().serialize(serializer))
+                    .map(|u| u.to_le_bytes())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<Vec<[u8; 32]>>>()
