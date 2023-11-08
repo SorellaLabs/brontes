@@ -56,23 +56,39 @@ pub(crate) mod u256 {
         let u: [u8; 32] = Deserialize::deserialize(deserializer)?;
         Ok(U256::from_le_bytes(u))
     }
+}
 
-    pub fn serialize_vec<S: Serializer>(u: &Vec<U256>, serializer: S) -> Result<S::Ok, S::Error> {
+pub(crate) mod vec_u256 {
+    use alloy_primitives::U256;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    pub fn serialize<S: Serializer>(u: &Vec<U256>, serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
             .map(|u| u.to_le_bytes())
             .collect::<Vec<[u8; 32]>>()
             .serialize(serializer)
     }
 
-    pub fn deserialize_vec<'de, D>(deserializer: D) -> Result<Vec<U256>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<U256>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let u: Vec<[u8; 32]> = Deserialize::deserialize(deserializer)?;
         Ok(u.into_iter().map(U256::from_le_bytes).collect())
     }
+}
+pub(crate) mod vec_vec_u256 {
 
-    pub fn serialize_vec_vec<S: Serializer>(
+    use alloy_primitives::U256;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    pub fn serialize<S: Serializer>(
         u: &Vec<Vec<U256>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
@@ -82,7 +98,7 @@ pub(crate) mod u256 {
             .serialize(serializer)
     }
 
-    pub fn deserialize_vec_vec<'de, D>(deserializer: D) -> Result<Vec<Vec<U256>>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Vec<U256>>, D::Error>
     where
         D: Deserializer<'de>,
     {
