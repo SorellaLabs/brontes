@@ -129,29 +129,29 @@ impl CexDexInspector {
         let flat_swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
 
         let cex_dex = CexDex {
-            tx_hash: hash,
-            gas_details: gas_details.clone(),
-            swaps_index: flat_swaps
+            tx_hash:          hash,
+            gas_details:      gas_details.clone(),
+            swaps_index:      flat_swaps
                 .iter()
                 .map(|s| s.clone().force_swap().index)
                 .collect::<Vec<_>>(),
-            swaps_from: flat_swaps
+            swaps_from:       flat_swaps
                 .iter()
                 .map(|s| s.clone().force_swap().from)
                 .collect::<Vec<_>>(),
-            swaps_pool: flat_swaps
+            swaps_pool:       flat_swaps
                 .iter()
                 .map(|s| s.clone().force_swap().pool)
                 .collect::<Vec<_>>(),
-            swaps_token_in: flat_swaps
+            swaps_token_in:   flat_swaps
                 .iter()
                 .map(|s| s.clone().force_swap().token_in)
                 .collect::<Vec<_>>(),
-            swaps_token_out: flat_swaps
+            swaps_token_out:  flat_swaps
                 .iter()
                 .map(|s| s.clone().force_swap().token_out)
                 .collect::<Vec<_>>(),
-            swaps_amount_in: flat_swaps
+            swaps_amount_in:  flat_swaps
                 .iter()
                 .map(|s| s.clone().force_swap().amount_in.to())
                 .collect::<Vec<_>>(),
@@ -159,15 +159,15 @@ impl CexDexInspector {
                 .iter()
                 .map(|s| s.clone().force_swap().amount_out.to())
                 .collect::<Vec<_>>(),
-            prices_kind: prices
+            prices_kind:      prices
                 .iter()
                 .flat_map(|_| vec![PriceKind::Dex, PriceKind::Cex])
                 .collect(),
-            prices_address: flat_swaps
+            prices_address:   flat_swaps
                 .iter()
                 .flat_map(|s| vec![s.clone().force_swap().token_in].repeat(2))
                 .collect(),
-            prices_price: prices
+            prices_price:     prices
                 .iter()
                 .flat_map(|(dex, cex)| vec![*dex, *cex])
                 .collect(),
@@ -237,7 +237,7 @@ impl CexDexInspector {
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             println!("missing token in token to decimal map");
-            return None;
+            return None
         };
 
         println!(
@@ -256,13 +256,13 @@ impl CexDexInspector {
 
         let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-            return None;
+            return None
         };
         //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
         // log it
         let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-            return None;
+            return None
         };
 
         let adjusted_in = swap.amount_in.to_scaled_rational(*decimals_in);
@@ -324,10 +324,13 @@ mod tests {
         let inspector = CexDexInspector::default();
 
         let t0 = SystemTime::now();
-        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+        let mev = inspector
+            .process_tree(tree.clone(), metadata.clone().into())
+            .await;
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
         println!("cex-dex inspector took: {} us", delta);
+        println!("{:#?}", metadata);
 
         // assert!(
         //     mev[0].0.tx_hash
@@ -339,18 +342,5 @@ mod tests {
         // );
 
         println!("{:#?}", mev);
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_metadata() {
-        dotenv::dotenv().ok();
-        let block_num = 17195495;
-
-        let db = Database::default();
-
-        let metadata = db.get_metadata(block_num).await;
-
-        println!("{:#?}", metadata);
     }
 }
