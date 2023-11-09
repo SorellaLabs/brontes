@@ -407,7 +407,7 @@ impl<V: NormalizedAction> Node<V> {
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
         if !lower_has_better {
-            let mut res = self.get_all_sub_actions();
+            let res = self.get_all_sub_actions();
             result.push(res);
         }
 
@@ -516,7 +516,7 @@ mod tests {
         let db = Database::default();
         let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
         let root = tree.roots.remove(30);
-        println!("{:?}", root);
+        println!("{:#?}", root);
     }
 
     #[tokio::test]
@@ -534,8 +534,8 @@ mod tests {
         // let mut transaction_traces = tracer
         //     .tracer
         //     .trace
-        //     .replay_block_transactions(block_num.into(), HashSet::from([TraceType::Trace]))
-        //     .await
+        //     .replay_block_transactions(block_num.into(),
+        // HashSet::from([TraceType::Trace]))     .await
         //     .unwrap()
         //     .unwrap();
         // assert_eq!(tree.roots.len(), transaction_traces.len());
