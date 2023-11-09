@@ -270,13 +270,13 @@ impl CexDexInspector {
         let adjusted_in = swap.amount_in.to_scaled_rational(*decimals_in);
         let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
 
-        let centralized_prices_out = metadata.token_prices.get(&swap.token_out)?;
-        let centralized_prices_in = metadata.token_prices.get(&swap.token_in)?;
+        let token_out_centralized_price = metadata.token_prices.get(&swap.token_out)?;
+        let token_in_centralized_price = metadata.token_prices.get(&swap.token_in)?;
 
         Some((
             (adjusted_out / adjusted_in),
-            &centralized_prices_out.0 / &centralized_prices_in.0,
-            &centralized_prices_out.1 / &centralized_prices_in.1,
+            &token_out_centralized_price.0 / &token_in_centralized_price.0,
+            &token_out_centralized_price.1 / &token_in_centralized_price.1,
         ))
     }
 }
@@ -365,8 +365,6 @@ mod tests {
             amount_out: "8421308582396".parse().unwrap(),
         };
 
-        print!("{:#?}, == 8421,308.582396", swap.amount_out.to_scaled_rational(6).to_float());
-
         let (tx, _rx) = unbounded_channel();
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
@@ -384,7 +382,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_dex_conversion() {
+    async fn test_rational_price() {
         init_tracing();
         let swap = NormalizedSwap {
             index:      0,
@@ -453,7 +451,43 @@ mod tests {
         let inspector = CexDexInspector::default();
         let rational_prices = inspector.rational_prices(&Actions::Swap(swap.clone()), &metadata);
 
-        assert_eq!(1665.81472942, rational_prices.unwrap().0.to_float());
+        let expected_dex_price = Rational::from_str("1665.81472942").unwrap();
+
+        assert_eq!(
+            expected_dex_price,
+            rational_prices.as_ref().unwrap().0,
+            "Dex price did not match"
+        );
+
+        let expected_cex_price1 = metadata
+            .token_prices
+            .get(&swap.token_out)
+            .unwrap()
+            .0
+            .clone()
+            / metadata.token_prices.get(&swap.token_in).unwrap().0.clone();
+
+        assert_eq!(
+            expected_cex_price1,
+            rational_prices.as_ref().unwrap().1,
+            "Pre cex price did not match {}",
+            rational_prices.as_ref().unwrap().1
+        );
+
+        let expected_cex_price2 = metadata
+            .token_prices
+            .get(&swap.token_out)
+            .unwrap()
+            .1
+            .clone()
+            / metadata.token_prices.get(&swap.token_in).unwrap().1.clone();
+
+        assert_eq!(
+            expected_cex_price2,
+            rational_prices.as_ref().unwrap().2,
+            "Post cex price did not match {}",
+            rational_prices.as_ref().unwrap().2
+        );
 
         // assert_eq!(ra
     }
