@@ -44,7 +44,16 @@ default = []
 test_run = ["brontes-database/test_run", "server"]
 tests = ["reth-tracing", "brontes-core"]
 server = []
+local = ["brontes-core/local"]
 
+[dev-dependencies]
+dotenv.workspace = true
+tokio.workspace = true
+serial_test.workspace = true
+brontes-classifier = { workspace = true, features = ["tests"] }
+brontes-core = { workspace = true, features = ["tests"] }
+brontes-database = { workspace = true, features = ["tests"] }
+reth-tracing.workspace = true
 
 [build-dependencies]
 tokio.workspace = true
