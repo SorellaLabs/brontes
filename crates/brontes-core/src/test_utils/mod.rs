@@ -128,14 +128,34 @@ pub async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
 }
 
 use tracing::Level;
-use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
-
-pub fn init_tracing() {
+/*pub fn init_tracing() {
     let filter = EnvFilter::builder()
         .with_default_directive(Level::TRACE.into())
         .from_env_lossy();
 
     let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
+}*/
+use tracing_subscriber::fmt;
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
+
+// TODO: Joe pls fix, fyi you had the on above before
+pub fn init_tracing() {
+    // Setup a filter for tracing
+    let filter = EnvFilter::builder()
+        .with_default_directive(Level::TRACE.into()) // Sets the default level to TRACE
+        .from_env_lossy(); // Tries to get the log level directive from RUST_LOG env var
+
+    // Setup the subscriber
+    let subscriber = Registry::default().with(fmt::layer().with_filter(filter)); // Attach the filter to the formatter layer
+
+    // Set the subscriber as the global default (may fail if already set in another
+    // test)
+    if tracing::subscriber::set_global_default(subscriber).is_err() {
+        eprintln!(
+            "Warning: Could not set the tracing subscriber as the global default (it may already \
+             be set)"
+        );
+    }
 }
 
 pub fn init_trace_parser(
