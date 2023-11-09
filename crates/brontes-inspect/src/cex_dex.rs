@@ -359,10 +359,79 @@ mod tests {
             index:      0,
             from:       Address::from_str("0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C").unwrap(),
             pool:       Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
-            token_in:   Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
+            token_in:   Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
             token_out:  Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
             amount_in:  "5055369263870573349743".parse().unwrap(),
             amount_out: "8421308582396".parse().unwrap(),
+        };
+
+        // ETH Sold = 5,055.369263
+        // USDC bought = 8 421 308.582396
+        // price = $1665.8147297
+        // See Chart: https://www.tradingview.com/x/eLfjxI9h
+        //
+        // We need to integrate more granular data because otherwise I think the binance
+        // quotes are out of whack at that time TBD
+
+        let metadata = Metadata {
+            block_num:              18264694,
+            block_hash:             U256::from_str_radix(
+                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
+                16,
+            )
+            .unwrap(),
+            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
+            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
+            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
+                .unwrap(),
+            proposer_mev_reward:    11769128921907366414,
+            token_prices:           {
+                let mut prices = HashMap::new();
+
+                // By looking at the chart, and comparing it to the binance quote we can see
+                // that our quotes are lagging:
+                // - 1: If we can get a chart that shows us 1s time frames we can tell if quotes
+                //   are out of whack but I doubt this is the problem
+                // - 2: Most likely that the quotes are correct, their signals are forward
+                //   looking by definition so we need to get CEX quotes at tx time + time frame.
+
+                // At 18:39:23 UTC (time of submission) the price is $1682.268937
+                // At 18:40 UTC (lowest level granularity I could get from the ) the price is
+                // $1682.081816
+
+                // See chart: https://www.tradingview.com/x/5uG0Zxdq
+                prices.insert(
+                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+                    (
+                        Rational::from_str("7398697029111485/4398046511104").unwrap(),  // WETH = $1682.268937
+                        Rational::from_str("924734257781285/549755813888").unwrap(), // WETH = $1682.081816
+                    ),
+                );
+
+                // USDC = $1
+                prices.insert(
+                    Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),// USDC 
+                    (
+                        Rational::from_str("1").unwrap(), // Assuming 1 USDC = 1 USD for simplicity, replace with actual values
+                        Rational::from_str("1").unwrap(),
+                    ),
+                );
+                prices
+            },
+            eth_prices:             (
+                Rational::from_str("7398697029111485/4398046511104").unwrap(),
+                Rational::from_str("924734257781285/549755813888").unwrap(),
+            ),
+            mempool_flow:           {
+                let mut private = HashSet::new();
+                private.insert(
+                    H256::from_str(
+                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
+                    )
+                    .unwrap(),
+                );
+                private
+            },
         };
 
         let (tx, _rx) = unbounded_channel();
@@ -371,20 +440,16 @@ mod tests {
         let db = Database::default();
         let classifier = Classifier::new();
 
-        let metadata = db.get_metadata(block_num).await;
-
         let inspector = CexDexInspector::default();
         let profit = inspector.get_cex_dex(&swap, &metadata);
 
-        //assert_eq!(profit, (Some(Rational::from) None));
-        println!("{:#?}", profit);
+        assert_eq!(profit, (Some(Rational::from) None));
     }
 
     #[tokio::test]
     #[serial]
     async fn test_rational_price() {
         init_tracing();
-
         let swap = NormalizedSwap {
             index:      0,
             from:       Address::from_str("0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C").unwrap(),
@@ -396,7 +461,7 @@ mod tests {
         };
 
         // ETH Sold = 5,055.369263
-        // USDC out = 8 421 308.582396
+        // USDC bought = 8 421 308.582396
         // price = $1665.8147297
 
         let metadata = Metadata {
@@ -406,8 +471,8 @@ mod tests {
                 16,
             )
             .unwrap(),
-            relay_timestamp:        1696271963129,
-            p2p_timestamp:          1696271964134,
+            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
+            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
             proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
                 .unwrap(),
             proposer_mev_reward:    11769128921907366414,
