@@ -80,14 +80,7 @@ impl Classifier {
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let from_addr = trace.get_from_addr();
-                    /*println!(
-                        "NODE - PRE-CLASSIFICATION FROM ADDRESS: {:?}, DATA: {:?}\n",
-                        from_addr,
-                        trace.get_calldata()
-                    );*/
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
-                    //println!("NODE - FROM ADDRESS: {:?}, DATA: {:?}\n", from_addr,
-                    // classification);
 
                     let subactions = if !classification.is_unclassified() {
                         vec![classification.clone()]
@@ -185,13 +178,7 @@ impl Classifier {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        /*
-        if target_address == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap() {
-            println!("target address: {:?}", &target_address);
-            println!("target address bytes: {:?}", &target_address.0);
-        } */
         if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0) {
-            //println!("\n\n\n CALLDATA {:?}", trace.get_calldata());
             if let Some(classifier) = &protocol.0 {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
@@ -206,53 +193,17 @@ impl Classifier {
                     target_address,
                     &trace.logs,
                 );
-                /*  if target_address
-                    == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap()
-                {
-                    println!("dispatch: {:?}\n", d);
-                    println!(
-                        "sig: {:?}\n
-                    index: {:?}\n
-                    calldata: {:?}\n
-                    return_bytes: {:?}\n
-                    from_address: {:?}\n
-                    target_address: {:?}\n
-                    trace.logs: {:?}",
-                        sig,
-                        index,
-                        calldata,
-                        return_bytes,
-                        from_address,
-                        target_address,
-                        &trace.logs,
-                    );
-                } */
 
                 if let Some(res) = d {
-                    //println!("RES: {:?}", res);
                     return res
                 }
-
-                // same as above but for testing
-                /*
-                if let Some(res) = classifier.dispatch(
-                    sig,
-                    index,
-                    res,
-                    return_bytes,
-                    from_address,
-                    target_address,
-                    &trace.logs,
-                ) {
-                    return res;
-                }*/
             }
         }
 
         let rem = trace
             .logs
             .iter()
-            .filter(|log| log.address == from_address)
+            .filter(|log| log.topics[0] == TRANSFER_TOPIC)
             .cloned()
             .collect::<Vec<Log>>();
 
@@ -653,10 +604,17 @@ pub mod test {
 
         let classifier = Classifier::new();
 
-        let (traces, header, meta) = get_traces_with_meta(&tracer, &db, block_num).await;
+        let (traces, header, metadata) = get_traces_with_meta(&tracer, &db, block_num).await;
 
-        let mut tree = classifier.build_tree(traces, header, metadata);
+        let mut tree = classifier.build_tree(traces, header, &metadata);
         let root = tree.roots.remove(30);
-        println!("{:#?}", root);
+
+        let swaps = root.inspect(&|node| {
+            node.get_all_sub_actions()
+                .iter()
+                .any(|s| s.is_swap() || s.is_transfer())
+        });
+
+        println!("{:#?}", swaps);
     }
 }
