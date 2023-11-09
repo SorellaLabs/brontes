@@ -453,7 +453,7 @@ mod tests {
         let inspector = CexDexInspector::default();
         let rational_prices = inspector.rational_prices(&Actions::Swap(swap.clone()), &metadata);
 
-        println!("{:#?}", rational_prices);
+        assert_eq!(1665.81472942, rational_prices.unwrap().0.to_float());
 
         // assert_eq!(ra
     }
