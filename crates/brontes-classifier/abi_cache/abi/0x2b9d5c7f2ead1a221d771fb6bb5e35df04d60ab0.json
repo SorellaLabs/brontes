@@ -1,0 +1,1 @@
+{"expiry":1699511570,"data":[{"type":"constructor","inputs":[{"name":"_masterCopy","type":"address","internalType":"address"}],"stateMutability":"nonpayable","payable":false},{"type":"fallback","stateMutability":"payable","payable":true}]}
