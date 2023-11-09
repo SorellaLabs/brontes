@@ -622,3 +622,41 @@ impl Classifier {
         // });
     }
 }
+
+#[cfg(test)]
+pub mod test {
+    use std::collections::HashSet;
+
+    use brontes_classifier::test_utils::build_raw_test_tree;
+    use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
+    use brontes_database::database::Database;
+    use brontes_types::{normalized_actions::Actions, test_utils::force_call_action, tree::Node};
+    use reth_primitives::Address;
+    use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
+    use reth_tracing::TracingClient;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+    use crate::test_utils::get_traces_with_meta;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_dyn_classifier() {
+        let block_num = 18530326;
+        dotenv::dotenv().ok();
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+
+        let classifier = Classifier::new();
+
+        let (traces, header, meta) = get_traces_with_meta(&tracer, &db, block_num).await;
+
+        let mut tree = classifier.build_tree(traces, header, metadata);
+        let root = tree.roots.remove(30);
+        println!("{:#?}", root);
+    }
+}

@@ -911,6 +911,7 @@ dependencies = [
  "alloy-json-abi",
  "alloy-sol-macro",
  "alloy-sol-types",
+ "brontes-classifier",
  "brontes-core",
  "brontes-database",
  "brontes-macros",
@@ -936,6 +937,7 @@ dependencies = [
  "reth-tracing",
  "serde",
  "serde_json",
+ "serial_test",
  "tokio",
  "tracing",
 ]
