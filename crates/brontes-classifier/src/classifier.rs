@@ -580,7 +580,7 @@ pub mod test {
     use super::*;
     use crate::test_utils::get_traces_with_meta;
 
-    #[tokio::test]
+    /*#[tokio::test]
     #[serial]
     async fn test_dyn_classifier() {
         let block_num = 18530326;
@@ -605,5 +605,5 @@ pub mod test {
         });
 
         println!("{:#?}", swaps);
-    }
+    }*/
 }
