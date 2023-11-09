@@ -220,7 +220,6 @@ impl Classifier {
         }
 
         Actions::Unclassified(trace, rem)
-        // }
     }
 
     /// tries to prove dyn mint, dyn burn and dyn swap.
@@ -368,35 +367,23 @@ impl Classifier {
         &self,
         node: &mut Node<Actions>,
     ) -> Option<(Address, (Address, Address), Actions)> {
-        debug!("trying to dynamically classify exchange");
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
-        let logs = subactions
+
+        let mut transfer_data = subactions
             .iter()
-            .flat_map(|i| i.get_logs())
+            .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
+            .map(|data| (data.token, data.from, data.to, data.amount))
             .collect::<Vec<_>>();
-
-        let mut transfer_data = Vec::new();
-
-        // index all transfers. due to tree this should only be two transactions
-        for log in logs {
-            if let Some((token, from, to, value)) = self.decode_transfer(&log) {
-                // if tokens don't overlap and to & from don't overlap
-                if from != addr && to != addr {
-                    continue
-                }
-
-                transfer_data.push((token, from, to, value));
-            }
-        }
 
         // isn't an exchange
         if transfer_data.len() != 2 {
+            println!("more than 2 transfers");
             return None
         }
 
         let (t0, from0, to0, value0) = transfer_data.remove(0);
-        let (t1, from1, to1, value1) = transfer_data.remove(1);
+        let (t1, from1, to1, value1) = transfer_data.remove(0);
 
         // is a exchange
         if t0 != t1
@@ -406,6 +393,7 @@ impl Classifier {
             && (from0 != from1)
         {
             let swap = if t0 == addr {
+                println!("found exchange");
                 Actions::Swap(NormalizedSwap {
                     pool:       to0,
                     index:      node.index,
@@ -416,6 +404,7 @@ impl Classifier {
                     amount_out: value0,
                 })
             } else {
+                println!("found exchange");
                 Actions::Swap(NormalizedSwap {
                     pool:       to1,
                     index:      node.index,
@@ -612,7 +601,7 @@ pub mod test {
         let swaps = root.inspect(&|node| {
             node.get_all_sub_actions()
                 .iter()
-                .any(|s| s.is_swap() || s.is_transfer())
+                .any(|s| s.is_transfer() || s.is_swap())
         });
 
         println!("{:#?}", swaps);
