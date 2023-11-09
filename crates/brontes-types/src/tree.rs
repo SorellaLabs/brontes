@@ -214,10 +214,6 @@ impl<V: NormalizedAction> Node<V> {
 
     /// The address here is the from address for the trace
     pub fn insert(&mut self, n: Node<V>) {
-        if self.finalized {
-            return
-        }
-
         let trace_addr = n.trace_address.clone();
         self.get_all_inner_nodes(n, trace_addr);
     }
