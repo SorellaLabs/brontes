@@ -295,7 +295,7 @@ mod tests {
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
     use brontes_database::database::Database;
     use brontes_types::test_utils::write_tree_as_json;
-    use malachite::num::basic::traits::One;
+    use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
     use reth_primitives::U256;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
@@ -384,6 +384,7 @@ mod tests {
     #[serial]
     async fn test_rational_price() {
         init_tracing();
+
         let swap = NormalizedSwap {
             index:      0,
             from:       Address::from_str("0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C").unwrap(),
@@ -451,11 +452,17 @@ mod tests {
         let inspector = CexDexInspector::default();
         let rational_prices = inspector.rational_prices(&Actions::Swap(swap.clone()), &metadata);
 
-        let expected_dex_price = Rational::from_str("1665.81472942").unwrap();
+        let amount_in = Rational::from_sci_string("5055369263000000000000e-18").unwrap();
+        let amount_out = Rational::from_sci_string("8421308582396e-6").unwrap();
+
+        let expected_dex_price = amount_out / amount_in;
 
         assert_eq!(
             expected_dex_price,
-            rational_prices.as_ref().unwrap().0,
+            rational_prices
+                .as_ref()
+                .unwrap_or(&(Rational::ZERO, Rational::ZERO, Rational::ZERO))
+                .0,
             "Dex price did not match"
         );
 
@@ -488,8 +495,6 @@ mod tests {
             "Post cex price did not match {}",
             rational_prices.as_ref().unwrap().2
         );
-
-        // assert_eq!(ra
     }
 
     #[tokio::test]
