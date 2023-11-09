@@ -128,18 +128,19 @@ pub async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
 }
 
 use tracing::Level;
-/*pub fn init_tracing() {
+pub fn init_tracing() {
     let filter = EnvFilter::builder()
-        .with_default_directive(Level::TRACE.into())
+        .with_default_directive(Level::DEBUG.into())
         .from_env_lossy();
 
     let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
-}*/
-use tracing_subscriber::fmt;
-use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
+}
+use tracing_subscriber::{
+    fmt, prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry,
+};
 
 // TODO: Joe pls fix, fyi you had the on above before
-pub fn init_tracing() {
+/*pub fn init_tracing() {
     // Setup a filter for tracing
     let filter = EnvFilter::builder()
         .with_default_directive(Level::TRACE.into()) // Sets the default level to TRACE
@@ -156,7 +157,7 @@ pub fn init_tracing() {
              be set)"
         );
     }
-}
+}*/
 
 pub fn init_trace_parser(
     handle: Handle,
