@@ -293,10 +293,11 @@ impl<V: NormalizedAction> Node<V> {
         if !find(self) {
             return false
         }
-        let lower_has_better = self
+        let lower_has_better_collect = self
             .inner
             .iter()
-            .map(|i| i.indexes_to_remove(indexes, find, classify, info))
+            .map(|i| i.indexes_to_remove(indexes, find, classify, info)).collect::<Vec<bool>>();
+
             .any(|f| f);
 
         if !lower_has_better {
@@ -442,9 +443,11 @@ impl<V: NormalizedAction> Node<V> {
             return false
         }
 
-        let lower_has_better = self
+        let lower_has_better_c= self
             .inner
             .iter_mut()
+            .map(|i| i.dyn_classify(find,call,result)).collect::<Vec<_>>();
+        let lower_has_better = lower_has_better_c.into_iter()
             .any(|i| i.dyn_classify(find, call, result));
 
         if !lower_has_better {
