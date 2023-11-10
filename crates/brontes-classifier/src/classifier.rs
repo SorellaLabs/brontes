@@ -16,6 +16,7 @@ use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H160, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
+use tracing::{debug, info};
 
 use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
@@ -58,7 +59,7 @@ impl Classifier {
                     subactions: vec![],
                     address,
                     data: classification.clone(),
-                    trace_address: root_trace.trace.trace_address,
+                    trace_address: vec![],
                 };
 
                 let mut root = Root {
@@ -79,14 +80,7 @@ impl Classifier {
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let from_addr = trace.get_from_addr();
-                    /*println!(
-                        "NODE - PRE-CLASSIFICATION FROM ADDRESS: {:?}, DATA: {:?}\n",
-                        from_addr,
-                        trace.get_calldata()
-                    );*/
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
-                    //println!("NODE - FROM ADDRESS: {:?}, DATA: {:?}\n", from_addr,
-                    // classification);
 
                     let subactions = if !classification.is_unclassified() {
                         vec![classification.clone()]
@@ -122,47 +116,48 @@ impl Classifier {
         // self.try_classify_flashloans(&mut tree);
 
         // remove duplicate swaps
-        tree.remove_duplicate_data(
-            |node| node.data.is_swap(),
-            |other_nodes, node| {
-                let Actions::Swap(swap_data) = &node.data else { unreachable!() };
-                other_nodes
-                    .into_iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data else { return None };
-                        if transfer.amount == swap_data.amount_in
-                            && transfer.token == swap_data.token_in
-                        {
-                            return Some(*index)
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>()
-            },
-            |node| (node.index, node.data.clone()),
-        );
-
-        // remove duplicate mints
-        tree.remove_duplicate_data(
-            |node| node.data.is_mint(),
-            |other_nodes, node| {
-                let Actions::Mint(mint_data) = &node.data else { unreachable!() };
-                other_nodes
-                    .into_iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data else { return None };
-                        for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
-                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                                return Some(*index)
-                            }
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>()
-            },
-            |node| (node.index, node.data.clone()),
-        );
-
+        // tree.remove_duplicate_data(
+        //     |node| node.data.is_swap(),
+        //     |other_nodes, node| {
+        //         let Actions::Swap(swap_data) = &node.data else { unreachable!() };
+        //         other_nodes
+        //             .into_iter()
+        //             .filter_map(|(index, data)| {
+        //                 let Actions::Transfer(transfer) = data else { return None };
+        //                 if transfer.amount == swap_data.amount_in
+        //                     && transfer.token == swap_data.token_in
+        //                 {
+        //                     return Some(*index)
+        //                 }
+        //                 None
+        //             })
+        //             .collect::<Vec<_>>()
+        //     },
+        //     |node| (node.index, node.data.clone()),
+        // );
+        //
+        // // remove duplicate mints
+        // tree.remove_duplicate_data(
+        //     |node| node.data.is_mint(),
+        //     |other_nodes, node| {
+        //         let Actions::Mint(mint_data) = &node.data else { unreachable!() };
+        //         other_nodes
+        //             .into_iter()
+        //             .filter_map(|(index, data)| {
+        //                 let Actions::Transfer(transfer) = data else { return None };
+        //                 for (amount, token) in
+        // mint_data.amount.iter().zip(&mint_data.token) {
+        // if transfer.amount.eq(amount) && transfer.token.eq(token) {
+        //                         return Some(*index)
+        //                     }
+        //                 }
+        //                 None
+        //             })
+        //             .collect::<Vec<_>>()
+        //     },
+        //     |node| (node.index, node.data.clone()),
+        // );
+        //
         tree.finalize_tree();
 
         tree
@@ -184,13 +179,7 @@ impl Classifier {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        /*
-        if target_address == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap() {
-            println!("target address: {:?}", &target_address);
-            println!("target address bytes: {:?}", &target_address.0);
-        } */
         if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0) {
-            //println!("\n\n\n CALLDATA {:?}", trace.get_calldata());
             if let Some(classifier) = &protocol.0 {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
@@ -205,53 +194,17 @@ impl Classifier {
                     target_address,
                     &trace.logs,
                 );
-                /*  if target_address
-                    == H160::from_str("0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151").unwrap()
-                {
-                    println!("dispatch: {:?}\n", d);
-                    println!(
-                        "sig: {:?}\n
-                    index: {:?}\n
-                    calldata: {:?}\n
-                    return_bytes: {:?}\n
-                    from_address: {:?}\n
-                    target_address: {:?}\n
-                    trace.logs: {:?}",
-                        sig,
-                        index,
-                        calldata,
-                        return_bytes,
-                        from_address,
-                        target_address,
-                        &trace.logs,
-                    );
-                } */
 
                 if let Some(res) = d {
-                    //println!("RES: {:?}", res);
                     return res
                 }
-
-                // same as above but for testing
-                /*
-                if let Some(res) = classifier.dispatch(
-                    sig,
-                    index,
-                    res,
-                    return_bytes,
-                    from_address,
-                    target_address,
-                    &trace.logs,
-                ) {
-                    return res;
-                }*/
             }
         }
 
         let rem = trace
             .logs
             .iter()
-            .filter(|log| log.address == from_address)
+            .filter(|log| log.topics[0] == TRANSFER_TOPIC)
             .cloned()
             .collect::<Vec<Log>>();
 
@@ -268,7 +221,6 @@ impl Classifier {
         }
 
         Actions::Unclassified(trace, rem)
-        // }
     }
 
     /// tries to prove dyn mint, dyn burn and dyn swap.
@@ -418,40 +370,31 @@ impl Classifier {
     ) -> Option<(Address, (Address, Address), Actions)> {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
-        let logs = subactions
+
+        let mut transfer_data = subactions
             .iter()
-            .flat_map(|i| i.get_logs())
+            .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
+            .map(|data| (data.token, data.from, data.to, data.amount))
             .collect::<Vec<_>>();
-
-        let mut transfer_data = Vec::new();
-
-        // index all transfers. due to tree this should only be two transactions
-        for log in logs {
-            if let Some((token, from, to, value)) = self.decode_transfer(&log) {
-                // if tokens don't overlap and to & from don't overlap
-                if from != addr && to != addr {
-                    continue
-                }
-
-                transfer_data.push((token, from, to, value));
-            }
-        }
 
         // isn't an exchange
         if transfer_data.len() != 2 {
+            println!("more than 2 transfers");
             return None
         }
 
         let (t0, from0, to0, value0) = transfer_data.remove(0);
-        let (t1, from1, to1, value1) = transfer_data.remove(1);
+        let (t1, from1, to1, value1) = transfer_data.remove(0);
 
         // is a exchange
         if t0 != t1
             && (from0 == addr || to0 == addr)
             && (from1 == addr || to1 == addr)
+            // same person transfering
             && (from0 != from1)
         {
             let swap = if t0 == addr {
+                println!("found exchange");
                 Actions::Swap(NormalizedSwap {
                     pool:       to0,
                     index:      node.index,
@@ -462,6 +405,7 @@ impl Classifier {
                     amount_out: value0,
                 })
             } else {
+                println!("found exchange");
                 Actions::Swap(NormalizedSwap {
                     pool:       to1,
                     index:      node.index,
@@ -617,5 +561,55 @@ impl Classifier {
         //
         //     false
         // });
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use std::collections::HashSet;
+
+    use brontes_classifier::test_utils::build_raw_test_tree;
+    use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
+    use brontes_database::database::Database;
+    use brontes_types::{normalized_actions::Actions, test_utils::force_call_action, tree::Node};
+    use reth_primitives::Address;
+    use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
+    use reth_tracing::TracingClient;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+    use crate::test_utils::get_traces_with_meta;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_dyn_classifier() {
+        let block_num = 18530326;
+        dotenv::dotenv().ok();
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+
+        let classifier = Classifier::new();
+
+        let (traces, header, metadata) = get_traces_with_meta(&tracer, &db, block_num).await;
+
+        let mut tree = classifier.build_tree(traces, header, &metadata);
+        let root = tree.roots.remove(30);
+
+        let swaps = root.inspect(&|node| {
+            let res = node.get_all_sub_actions()
+                .iter()
+                .any(|s| s.is_transfer() || s.is_swap());
+            if res {
+                println!("\n\n NODE {:#?}\n\n", node);
+            }
+
+            res
+        });
+
+        println!("{:#?}", swaps);
     }
 }

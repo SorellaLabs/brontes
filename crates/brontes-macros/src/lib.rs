@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parenthesized, parse::Parse, token::Paren, ExprClosure, Ident, LitBool, Token};
+use syn::{parenthesized, parse::Parse, token::Paren, ExprClosure, Ident, Index, LitBool, Token};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
@@ -189,7 +189,11 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
         panic!("need more than one entry");
     }
 
-    let (mut i, name): (Vec<usize>, Vec<Ident>) = rest.into_iter().enumerate().unzip();
+    let (mut i, name): (Vec<Index>, Vec<Ident>) = rest
+        .into_iter()
+        .enumerate()
+        .map(|(i, n)| (Index::from(i), n))
+        .unzip();
     i.remove(0);
 
     quote!(
