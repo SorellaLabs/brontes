@@ -399,6 +399,9 @@ impl<V: NormalizedAction> Node<V> {
     where
         F: Fn(&Node<V>) -> bool,
     {
+        if self.trace_address == vec![1usize, 0usize] {
+            println!("{:#?}", self);
+        }
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
             return false
@@ -414,10 +417,11 @@ impl<V: NormalizedAction> Node<V> {
 
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
-        if !lower_has_better || self.inner.is_empty() {
+        if !lower_has_better {
             let res = self.get_all_sub_actions();
             result.push(res);
-        } 
+        }
+
         // lower node has a better sub-action.
         true
     }
@@ -443,9 +447,7 @@ impl<V: NormalizedAction> Node<V> {
             .map(|i| i.dyn_classify(find, call, result))
             .collect::<Vec<_>>();
 
-        let lower_has_better = lower_has_better_c
-            .into_iter()
-            .any(|i| i);
+        let lower_has_better = lower_has_better_c.into_iter().any(|i| i);
 
         if !lower_has_better {
             if let Some(res) = call(self) {
