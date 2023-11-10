@@ -6,7 +6,7 @@ use reth_rpc_types::{
 
 pub fn link_vm_to_trace(
     vm: VmTrace,
-    mut tx_trace: Vec<TransactionTrace>,
+    tx_trace: Vec<TransactionTrace>,
     mut logs: Vec<Log>,
 ) -> Vec<TransactionTraceWithLogs> {
     let mut res = Vec::new();
@@ -20,6 +20,7 @@ pub fn link_vm_to_trace(
             .collect::<Vec<_>>(),
         &mut logs,
     );
+    res.sort_by_key(|item| item.trace_idx);
 
     res
 }
@@ -35,7 +36,7 @@ fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log>
     match instruction.op.take()?.as_str() {
         "LOG0" | "LOG1" | "LOG2" | "LOG3" | "LOG4" => {
             if logs.len() == 0 {
-                return None;
+                return None
             } else {
                 Some(logs.remove(0))
             }
@@ -55,8 +56,8 @@ fn recursive_parsing(
     let logs = vm
         .ops
         .into_iter()
-        .zip(vec![&scoped_trace].into_iter().cycle())
-        .filter_map(|(mut instruction, trace)| {
+        .filter_map(|mut instruction| {
+            // jumping on call stack
             if let Some(sub) = instruction.sub.take() {
                 recursive_parsing(current_traces, sub, tx_trace, logs)
             }
