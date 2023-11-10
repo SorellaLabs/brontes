@@ -30,6 +30,7 @@ brontes-metrics = { path = "./crates/brontes-metrics/" }
 brontes-database = { path = "./crates/brontes-database/" }
 brontes-macros = { path = "./crates/brontes-macros/" }
 reth-tracing = { path = "./crates/reth-tracing/" }
+brontes-tracing = { path = "./crates/tracing" }
 
 # Ethers
 ethers-core = "2.0.10"
