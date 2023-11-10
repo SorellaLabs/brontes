@@ -12,9 +12,10 @@ use futures::future::join_all;
 use malachite::Rational;
 use reth_primitives::{Address, TxHash, H160};
 use sorella_db_databases::{
-    clickhouse::ClickhouseClient, config::ClickhouseConfig, BACKRUN_TABLE, CEX_DEX_TABLE,
-    CLASSIFIED_MEV_TABLE, JIT_SANDWICH_TABLE, JIT_TABLE, LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE,
-    SANDWICH_TABLE,
+    clickhouse::{ClickhouseClient, Credentials},
+    config::ClickhouseConfig,
+    BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE, JIT_SANDWICH_TABLE, JIT_TABLE,
+    LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
 };
 use tracing::error;
 
@@ -38,6 +39,10 @@ impl Database {
     pub fn new(config: ClickhouseConfig) -> Self {
         let client = ClickhouseClient::new(config);
         Self { client }
+    }
+
+    pub fn credentials(&self) -> Credentials {
+        self.client.credentials()
     }
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {

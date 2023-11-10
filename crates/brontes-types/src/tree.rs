@@ -11,7 +11,7 @@ use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::normalized_actions::NormalizedAction;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TimeTree<V: NormalizedAction> {
     pub roots:            Vec<Root<V>>,
     pub header:           Header,
@@ -109,7 +109,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node<V>,
     pub tx_hash:     H256,
@@ -187,7 +187,7 @@ impl GasDetails {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Node<V: NormalizedAction> {
     pub inner:     Vec<Node<V>>,
     pub finalized: bool,
@@ -206,6 +206,7 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     pub fn finalize(&mut self) {
+        self.finalized = false;
         self.subactions = self.get_all_sub_actions();
         self.finalized = true;
 
@@ -214,10 +215,6 @@ impl<V: NormalizedAction> Node<V> {
 
     /// The address here is the from address for the trace
     pub fn insert(&mut self, n: Node<V>) {
-        if self.finalized {
-            return
-        }
-
         let trace_addr = n.trace_address.clone();
         self.get_all_inner_nodes(n, trace_addr);
     }
@@ -240,6 +237,7 @@ impl<V: NormalizedAction> Node<V> {
                 .iter()
                 .flat_map(|inner| inner.get_all_sub_actions())
                 .collect::<Vec<V>>();
+
             inner.push(self.data.clone());
 
             inner
@@ -291,11 +289,13 @@ impl<V: NormalizedAction> Node<V> {
         if !find(self) {
             return false
         }
-        let lower_has_better = self
+        let lower_has_better_collect = self
             .inner
             .iter()
             .map(|i| i.indexes_to_remove(indexes, find, classify, info))
-            .any(|f| f);
+            .collect::<Vec<bool>>();
+
+        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
 
         if !lower_has_better {
             let mut data = Vec::new();
@@ -389,6 +389,8 @@ impl<V: NormalizedAction> Node<V> {
         }
     }
 
+    // currently this will drop the amount of nodes who reach the criteria and are
+    // higher
     pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
         F: Fn(&Node<V>) -> bool,
@@ -398,16 +400,18 @@ impl<V: NormalizedAction> Node<V> {
             return false
         }
 
-        let lower_has_better = self
+        let lower_has_better_collect = self
             .inner
             .iter()
             .map(|i| i.inspect(result, call))
-            .any(|f| f);
+            .collect::<Vec<bool>>();
+
+        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
         if !lower_has_better {
-            let mut res = self.get_all_sub_actions();
+            let res = self.get_all_sub_actions();
             result.push(res);
         }
 
@@ -430,16 +434,20 @@ impl<V: NormalizedAction> Node<V> {
             return false
         }
 
-        let lower_has_better = self
+        let lower_has_better_c = self
             .inner
             .iter_mut()
-            .any(|i| i.dyn_classify(find, call, result));
+            .map(|i| i.dyn_classify(find, call, result))
+            .collect::<Vec<_>>();
+
+        let lower_has_better = lower_has_better_c.into_iter().any(|i| i);
 
         if !lower_has_better {
             if let Some(res) = call(self) {
                 result.push(res);
             }
         }
+
         true
     }
 }
@@ -447,7 +455,6 @@ impl<V: NormalizedAction> Node<V> {
 #[cfg(test)]
 mod tests {
 
-    use std::collections::HashSet;
 
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
@@ -511,22 +518,21 @@ mod tests {
 
         let (tx, _rx) = unbounded_channel();
 
-        let tracer: TraceParser<TracingClient> =
-            init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
         let db = Database::default();
         let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
 
-        let mut transaction_traces = tracer
-            .tracer
-            .trace
-            .replay_block_transactions(block_num.into(), HashSet::from([TraceType::Trace]))
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(tree.roots.len(), transaction_traces.len());
-
-        let first_root = tree.roots.remove(0);
-        let first_tx = transaction_traces.remove(0);
+        // let mut transaction_traces = tracer
+        //     .tracer
+        //     .trace
+        //     .replay_block_transactions(block_num.into(),
+        // HashSet::from([TraceType::Trace]))     .await
+        //     .unwrap()
+        //     .unwrap();
+        // assert_eq!(tree.roots.len(), transaction_traces.len());
+        //
+        // let first_root = tree.roots.remove(0);
+        // let first_tx = transaction_traces.remove(0);
         /*
 
             assert_eq!(

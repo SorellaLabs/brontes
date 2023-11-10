@@ -25,6 +25,7 @@ reth-tracing.workspace = true
 ruint = { workspace = true, features = ["primitive-types", "rlp"] }
 brontes-types.workspace = true
 brontes-metrics.workspace = true
+brontes-tracing.workspace = true
 
 # async
 
@@ -58,6 +59,7 @@ log.workspace = true
 
 # tracing
 tracing = "0.1.37"
+tracing-subscriber.workspace = true
 colored.workspace = true
 
 # misc

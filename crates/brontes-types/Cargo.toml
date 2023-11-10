@@ -66,4 +66,5 @@ reth-tracing.workspace = true
 default = ["tests"]
 server = []
 tests = []
+local = ["brontes-core/local"]
 
