@@ -140,10 +140,10 @@ use tracing_subscriber::{
 };
 
 // TODO: Joe pls fix, fyi you had the on above before
-/*pub fn init_tracing() {
+pub fn init_tracing() {
     // Setup a filter for tracing
     let filter = EnvFilter::builder()
-        .with_default_directive(Level::TRACE.into()) // Sets the default level to TRACE
+        .with_default_directive(Level::INFO.into()) // Sets the default level to TRACE
         .from_env_lossy(); // Tries to get the log level directive from RUST_LOG env var
 
     // Setup the subscriber
@@ -157,7 +157,7 @@ use tracing_subscriber::{
              be set)"
         );
     }
-}*/
+}
 
 pub fn init_trace_parser(
     handle: Handle,
