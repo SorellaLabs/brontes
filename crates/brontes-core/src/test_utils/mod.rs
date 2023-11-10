@@ -488,7 +488,6 @@ pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
 
 // if we want more tracing/logging/metrics layers, build and push to this vec
 // the stdout one (logging) is the only 1 we need
-//
 // peep the Database repo -> bin/sorella-db/src/cli.rs line 34 for example
 pub fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes
@@ -500,8 +499,7 @@ pub fn init_tracing() {
     brontes_tracing::init(layers);
 }
 
-#[cfg(feature = "local-reth")]
-pub async fn init_trace_parser(
+pub fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &'static LibmdbxReadWriter,
