@@ -296,9 +296,10 @@ impl<V: NormalizedAction> Node<V> {
         let lower_has_better_collect = self
             .inner
             .iter()
-            .map(|i| i.indexes_to_remove(indexes, find, classify, info)).collect::<Vec<bool>>();
+            .map(|i| i.indexes_to_remove(indexes, find, classify, info))
+            .collect::<Vec<bool>>();
 
-            .any(|f| f);
+        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
 
         if !lower_has_better {
             let mut data = Vec::new();
@@ -398,7 +399,6 @@ impl<V: NormalizedAction> Node<V> {
     where
         F: Fn(&Node<V>) -> bool,
     {
-
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
             return false
@@ -410,8 +410,7 @@ impl<V: NormalizedAction> Node<V> {
             .map(|i| i.inspect(result, call))
             .collect::<Vec<bool>>();
 
-        let lower_has_better = lower_has_better_collect.into_iter()
-            .any(|f| f);
+        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
@@ -443,11 +442,14 @@ impl<V: NormalizedAction> Node<V> {
             return false
         }
 
-        let lower_has_better_c= self
+        let lower_has_better_c = self
             .inner
             .iter_mut()
-            .map(|i| i.dyn_classify(find,call,result)).collect::<Vec<_>>();
-        let lower_has_better = lower_has_better_c.into_iter()
+            .map(|i| i.dyn_classify(find, call, result))
+            .collect::<Vec<_>>();
+
+        let lower_has_better = lower_has_better_c
+            .into_iter()
             .any(|i| i.dyn_classify(find, call, result));
 
         if !lower_has_better {
