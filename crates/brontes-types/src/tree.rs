@@ -206,6 +206,7 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     pub fn finalize(&mut self) {
+        self.finalized = false;
         self.subactions = self.get_all_sub_actions();
         self.finalized = true;
 
@@ -214,6 +215,10 @@ impl<V: NormalizedAction> Node<V> {
 
     /// The address here is the from address for the trace
     pub fn insert(&mut self, n: Node<V>) {
+        // if self.is_finalized() {
+        //     return
+        // }
+
         let trace_addr = n.trace_address.clone();
         self.get_all_inner_nodes(n, trace_addr);
     }
@@ -236,6 +241,7 @@ impl<V: NormalizedAction> Node<V> {
                 .iter()
                 .flat_map(|inner| inner.get_all_sub_actions())
                 .collect::<Vec<V>>();
+
             inner.push(self.data.clone());
 
             inner
@@ -385,26 +391,36 @@ impl<V: NormalizedAction> Node<V> {
         }
     }
 
+    // currently this will drop the amount of nodes who reach the criteria and are
+    // higher
     pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
         F: Fn(&Node<V>) -> bool,
     {
+
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
             return false
         }
 
-        let lower_has_better = self
+        let lower_has_better_collect = self
             .inner
             .iter()
             .map(|i| i.inspect(result, call))
+            .collect::<Vec<bool>>();
+
+        let lower_has_better = lower_has_better_collect.into_iter()
             .any(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
-        if !lower_has_better {
+        if !lower_has_better || self.inner.is_empty() {
             let res = self.get_all_sub_actions();
+            // println!("\n\n adding: {:#?}\n\n", res);
             result.push(res);
+        } else {
+            let res = self.get_all_sub_actions();
+            // println!("\n\n inner has better: {:#?}\n\n", res);
         }
 
         // lower node has a better sub-action.
@@ -498,21 +514,6 @@ mod tests {
                 },
             }
         }
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_dyn_classifier() {
-        let block_num = 18530326;
-        dotenv::dotenv().ok();
-
-        let (tx, _rx) = unbounded_channel();
-
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
-        let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
-        let root = tree.roots.remove(30);
-        println!("{:#?}", root);
     }
 
     #[tokio::test]

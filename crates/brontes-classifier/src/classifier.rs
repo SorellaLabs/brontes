@@ -59,7 +59,7 @@ impl Classifier {
                     subactions: vec![],
                     address,
                     data: classification.clone(),
-                    trace_address: root_trace.trace.trace_address,
+                    trace_address: vec![],
                 };
 
                 let mut root = Root {
@@ -116,47 +116,48 @@ impl Classifier {
         // self.try_classify_flashloans(&mut tree);
 
         // remove duplicate swaps
-        tree.remove_duplicate_data(
-            |node| node.data.is_swap(),
-            |other_nodes, node| {
-                let Actions::Swap(swap_data) = &node.data else { unreachable!() };
-                other_nodes
-                    .into_iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data else { return None };
-                        if transfer.amount == swap_data.amount_in
-                            && transfer.token == swap_data.token_in
-                        {
-                            return Some(*index)
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>()
-            },
-            |node| (node.index, node.data.clone()),
-        );
-
-        // remove duplicate mints
-        tree.remove_duplicate_data(
-            |node| node.data.is_mint(),
-            |other_nodes, node| {
-                let Actions::Mint(mint_data) = &node.data else { unreachable!() };
-                other_nodes
-                    .into_iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data else { return None };
-                        for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
-                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                                return Some(*index)
-                            }
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>()
-            },
-            |node| (node.index, node.data.clone()),
-        );
-
+        // tree.remove_duplicate_data(
+        //     |node| node.data.is_swap(),
+        //     |other_nodes, node| {
+        //         let Actions::Swap(swap_data) = &node.data else { unreachable!() };
+        //         other_nodes
+        //             .into_iter()
+        //             .filter_map(|(index, data)| {
+        //                 let Actions::Transfer(transfer) = data else { return None };
+        //                 if transfer.amount == swap_data.amount_in
+        //                     && transfer.token == swap_data.token_in
+        //                 {
+        //                     return Some(*index)
+        //                 }
+        //                 None
+        //             })
+        //             .collect::<Vec<_>>()
+        //     },
+        //     |node| (node.index, node.data.clone()),
+        // );
+        //
+        // // remove duplicate mints
+        // tree.remove_duplicate_data(
+        //     |node| node.data.is_mint(),
+        //     |other_nodes, node| {
+        //         let Actions::Mint(mint_data) = &node.data else { unreachable!() };
+        //         other_nodes
+        //             .into_iter()
+        //             .filter_map(|(index, data)| {
+        //                 let Actions::Transfer(transfer) = data else { return None };
+        //                 for (amount, token) in
+        // mint_data.amount.iter().zip(&mint_data.token) {
+        // if transfer.amount.eq(amount) && transfer.token.eq(token) {
+        //                         return Some(*index)
+        //                     }
+        //                 }
+        //                 None
+        //             })
+        //             .collect::<Vec<_>>()
+        //     },
+        //     |node| (node.index, node.data.clone()),
+        // );
+        //
         tree.finalize_tree();
 
         tree
