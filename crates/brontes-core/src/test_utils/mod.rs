@@ -488,7 +488,6 @@ pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
 
 // if we want more tracing/logging/metrics layers, build and push to this vec
 // the stdout one (logging) is the only 1 we need
-//
 // peep the Database repo -> bin/sorella-db/src/cli.rs line 34 for example
 pub fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes
@@ -500,36 +499,8 @@ pub fn init_tracing() {
     brontes_tracing::init(layers);
 }
 
-#[cfg(feature = "local-reth")]
-pub async fn init_trace_parser(
+pub fn init_trace_parser(
     handle: Handle,
-    metrics_tx: UnboundedSender<PoirotMetricEvents>,
-    libmdbx: &'static LibmdbxReadWriter,
-    max_tasks: u32,
-) -> TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter> {
-    let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
-
-    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-    let db_path = std::path::Path::new(&db_path);
-    let mut static_files = db_path.to_path_buf();
-    static_files.pop();
-    static_files.push("static_files");
-
-    let client = TracingClient::new_with_db(
-        get_reth_db_handle(),
-        max_tasks as u64,
-        executor.executor(),
-        static_files,
-    );
-    handle.spawn(executor);
-    let tracer = Box::new(client) as Box<dyn TracingProvider>;
-
-    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx)).await
-}
-
-#[cfg(not(feature = "local-reth"))]
-pub async fn init_trace_parser(
-    _handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &'static LibmdbxReadWriter,
     _max_tasks: u32,
