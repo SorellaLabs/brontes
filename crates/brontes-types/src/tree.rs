@@ -215,10 +215,6 @@ impl<V: NormalizedAction> Node<V> {
 
     /// The address here is the from address for the trace
     pub fn insert(&mut self, n: Node<V>) {
-        // if self.is_finalized() {
-        //     return
-        // }
-
         let trace_addr = n.trace_address.clone();
         self.get_all_inner_nodes(n, trace_addr);
     }
@@ -399,9 +395,6 @@ impl<V: NormalizedAction> Node<V> {
     where
         F: Fn(&Node<V>) -> bool,
     {
-        if self.trace_address == vec![1usize, 0usize] {
-            println!("{:#?}", self);
-        }
         // the previous sub-action was the last one to meet the criteria
         if !call(self) {
             return false
