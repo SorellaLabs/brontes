@@ -10,6 +10,7 @@ use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use dotenv::dotenv;
 use ethers_core::types::Chain;
 use futures::future::join_all;
+use log::Level;
 use reqwest::Url;
 use reth_primitives::H256;
 use reth_rpc_types::{
@@ -23,6 +24,7 @@ use tokio::{
     runtime::Handle,
     sync::mpsc::{unbounded_channel, UnboundedSender},
 };
+use tracing_subscriber::filter::Directive;
 
 use crate::decoding::{parser::TraceParser, TracingProvider, CACHE_DIRECTORY, CACHE_TIMEOUT};
 
@@ -127,13 +129,40 @@ pub async fn get_tx_reciept(tx_hash: H256) -> TransactionReceipt {
     response.result
 }
 
-use tracing::Level;
+// if we want more tracing/logging/metrics layers, build and push to this vec
+// the stdout one (logging) is the only 1 we need
 pub fn init_tracing() {
+    // all lower level logging directives include higher level ones (Trace includes
+    // all, Debug includes all but Trace, ...)
+    let verbosity_level = Level::Info; // Error >= Warn >= Info >= Debug >= Trace
+    let directive: Directive = format!("brontes={verbosity_level}").parse().unwrap();
+    let mut layers = vec![brontes_tracing::stdout(directive)];
+
+    /*
+        make sure the first field of the macro is: 'target: "brontes"',
+        otherwise you will get logs from other crates (it's OD annoying trust).
+
+        if you really want tracing from other external crates:
+            replace -> let directive: Directive = format!("brontes={verbosity_level}").parse().unwrap();
+            with -> let directive: Directive = format!("{verbosity_level}").parse().unwrap();
+
+        to use the logging in a test:
+        error!(target: "brontes", ...)
+        warn!(target: "brontes", ...)
+        info!(target: "brontes", ...)
+        debug!(target: "brontes", ...)
+        trace!(target: "brontes", ...)
+    */
+
+    brontes_tracing::init(layers);
+}
+/*
     let filter = EnvFilter::builder()
         .with_default_directive(Level::DEBUG.into())
         .from_env_lossy();
 
     let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
+
 }
 use tracing_subscriber::{
     fmt, prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry,
@@ -158,7 +187,7 @@ pub fn init_tracing() {
         );
     }
 }
-
+    */
 pub fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
