@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use reth_primitives::{Address, U256};
 use reth_rpc_types::Log;
@@ -111,7 +111,7 @@ pub struct NormalizedFlashLoan {
     pub fee_paid: Address,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwap {
     pub index:      u64,
     pub from:       Address,
@@ -191,7 +191,7 @@ pub struct NormalizedRepayment {
     pub collateral:       HashMap<Address, U256>,
 }
 
-pub trait NormalizedAction: Send + Sync + Clone {
+pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn get_action(&self) -> &Actions;
 }
 
