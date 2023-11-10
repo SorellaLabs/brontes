@@ -1,1 +1,1 @@
-{"expiry":1699585122,"data":[{"type":"constructor","inputs":[{"name":"_masterCopy","type":"address","internalType":"address"}],"stateMutability":"nonpayable","payable":false},{"type":"fallback","stateMutability":"payable","payable":true}]}
+{"expiry":1699585743,"data":[{"type":"constructor","inputs":[{"name":"_masterCopy","type":"address","internalType":"address"}],"stateMutability":"nonpayable","payable":false},{"type":"fallback","stateMutability":"payable","payable":true}]}
