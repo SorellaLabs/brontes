@@ -45,6 +45,7 @@ fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log>
     }
 }
 
+/// this currently breaks if a log is emitted after it calls a new tx that emits a tx
 fn recursive_parsing(
     current_traces: &mut Vec<TransactionTraceWithLogs>,
     vm: VmTrace,
