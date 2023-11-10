@@ -57,7 +57,6 @@ fn recursive_parsing(
         .ops
         .into_iter()
         .filter_map(|mut instruction| {
-            // jumping on call stack
             if let Some(sub) = instruction.sub.take() {
                 recursive_parsing(current_traces, sub, tx_trace, logs)
             }
