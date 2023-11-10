@@ -455,7 +455,6 @@ impl<V: NormalizedAction> Node<V> {
 #[cfg(test)]
 mod tests {
 
-    use std::collections::HashSet;
 
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
