@@ -52,7 +52,7 @@ same as below
 
 const DATA_QUERY: &str = r#"
 SELECT 
-	groupArray(addresses) as addresses, abi, classifier_name
+	groupArray(address) as addresses, abi, classifier_name
 FROM brontes.protocol_details
 GROUP BY abi, classifier_name
 "#;
@@ -71,7 +71,7 @@ same as below
 
 const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
 SELECT 
-	groupArray(addresses) as addresses, abi, classifier_name
+	groupArray(address) as addresses, abi, classifier_name
 FROM brontes.protocol_details
 WHERE classifier_name IS NOT NULL
 GROUP BY abi, classifier_name
