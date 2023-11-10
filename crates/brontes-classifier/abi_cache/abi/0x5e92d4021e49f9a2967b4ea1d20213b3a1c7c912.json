@@ -1,1 +1,1 @@
-{"expiry":1699585122,"data":[{"type":"function","name":"isPriorityFeeValid","inputs":[],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view","payable":null}]}
+{"expiry":1699586404,"data":[{"type":"function","name":"isPriorityFeeValid","inputs":[],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view","payable":null}]}
