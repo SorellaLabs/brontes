@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use brontes_core::decoding::parser::TraceParser;
+use brontes_core::decoding::{parser::TraceParser, TracingProvider};
 use brontes_database::{database::Database, Metadata};
 use brontes_types::{
     normalized_actions::{
@@ -30,8 +30,8 @@ pub fn helper_build_tree(
     classifier.build_tree(traces, header, metadata)
 }
 
-pub async fn build_raw_test_tree(
-    tracer: &TraceParser<TracingClient>,
+pub async fn build_raw_test_tree<T: TracingProvider>(
+    tracer: &TraceParser<T>,
     db: &Database,
     block_number: u64,
 ) -> TimeTree<Actions> {
@@ -153,8 +153,8 @@ pub fn helper_decode_transfer(log: &Log) -> Option<(Address, Address, Address, U
     None
 }
 
-pub async fn get_traces_with_meta(
-    tracer: &TraceParser<TracingClient>,
+pub async fn get_traces_with_meta<T: TracingProvider>(
+    tracer: &TraceParser<T>,
     db: &Database,
     block_number: u64,
 ) -> (Vec<TxTrace>, Header, Metadata) {
