@@ -416,13 +416,8 @@ impl<V: NormalizedAction> Node<V> {
         // best.
         if !lower_has_better || self.inner.is_empty() {
             let res = self.get_all_sub_actions();
-            // println!("\n\n adding: {:#?}\n\n", res);
             result.push(res);
-        } else {
-            let res = self.get_all_sub_actions();
-            // println!("\n\n inner has better: {:#?}\n\n", res);
-        }
-
+        } 
         // lower node has a better sub-action.
         true
     }
@@ -450,7 +445,7 @@ impl<V: NormalizedAction> Node<V> {
 
         let lower_has_better = lower_has_better_c
             .into_iter()
-            .any(|i| i.dyn_classify(find, call, result));
+            .any(|i| i);
 
         if !lower_has_better {
             if let Some(res) = call(self) {
