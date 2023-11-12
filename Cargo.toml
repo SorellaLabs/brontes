@@ -12,7 +12,7 @@ members = [
   "crates/brontes-database",
   "crates/brontes-macros",
   "tests"
-]
+, "dylib-bindings"]
 
 resolver = "2"
 
