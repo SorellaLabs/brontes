@@ -3,6 +3,15 @@ name = "dylib-bindings"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["dylib"]
 
 [dependencies]
+alloy-json-abi.workspace = true
+alloy-primitives.workspace = true
+clickhouse.workspace = true
+hyper-tls.workspace = true
+libloading = "0.8.1"
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
