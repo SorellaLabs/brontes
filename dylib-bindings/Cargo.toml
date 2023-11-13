@@ -9,9 +9,12 @@ crate-type = ["dylib"]
 [dependencies]
 alloy-json-abi.workspace = true
 alloy-primitives.workspace = true
-clickhouse.workspace = true
-hyper-tls.workspace = true
-libloading = "0.8.1"
-serde.workspace = true
-serde_json.workspace = true
-tokio.workspace = true
+alloy-sol-macro = { workspace = true, features = ["json"] }
+alloy-sol-types.workspace = true
+# clickhouse.workspace = true
+# hyper-tls.workspace = true
+# libloading = "0.8.1"
+# serde.workspace = true
+# serde_json.workspace = true
+# tokio.workspace = true
+
