@@ -49,8 +49,6 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 }
 
-/// All of this data is put as strings to avoid dealing with dynamic nested
-/// values
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecodedCallData {
     pub function_name: String,
