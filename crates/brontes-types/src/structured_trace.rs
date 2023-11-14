@@ -1,4 +1,4 @@
-use alloy_dyn_abi::DynSolType;
+use alloy_dyn_abi::DynSolValue;
 use reth_primitives::{Address, Bytes, H160, H256};
 use reth_rpc_types::{
     trace::parity::{Action, TransactionTrace},
@@ -50,18 +50,20 @@ impl TraceActions for TransactionTraceWithLogs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DecodedData {
+/// All of this data is put as strings to avoid dealing with dynamic nested
+/// values
+pub struct DecodedCallData {
     pub function_name:  String,
     pub decoded_params: String,
     pub return_params:  String,
-    pub call_data:      DynSolType,
-    pub return_data:    DynSolType,
+    pub call_data:      String,
+    pub return_data:    String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
-    pub decoded_data: DecodedData,
+    pub decoded_data: DecodedCallData,
     pub logs:         Vec<Log>,
     pub trace_idx:    u64,
 }
@@ -69,7 +71,7 @@ pub struct TransactionTraceWithLogs {
 #[derive(Debug, Clone)]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
-    pub decoded_data:    DecodedData,
+    pub decoded_data:    DecodedCallData,
     pub tx_hash:         H256,
     pub gas_used:        u64,
     pub effective_price: u64,
@@ -79,7 +81,7 @@ pub struct TxTrace {
 impl TxTrace {
     pub fn new(
         trace: Vec<TransactionTraceWithLogs>,
-        decoded_data: DecodedData,
+        decoded_data: DecodedCallData,
         tx_hash: H256,
         tx_index: u64,
         gas_used: u64,
