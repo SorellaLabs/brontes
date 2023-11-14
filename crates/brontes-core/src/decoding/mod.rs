@@ -20,6 +20,7 @@ use crate::{
     init_trace,
 };
 
+mod dyn_decode;
 pub mod parser;
 mod utils;
 pub mod vm_linker;
