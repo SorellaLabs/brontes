@@ -114,40 +114,21 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 }
 
-#[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
-)]
-
-pub struct DecodedCallData {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecodedData {
     pub function_name: String,
-    pub call_data:     Vec<DecodedParams>,
-    pub return_data:   Vec<DecodedParams>,
+    pub decoded_params: String,
+
+
 }
 
-self_convert_redefined!(DecodedCallData);
-
-#[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
-)]
-pub struct DecodedParams {
-    pub field_name: String,
-    pub field_type: String,
-    pub value:      String,
-}
-
-self_convert_redefined!(DecodedParams);
-
-#[derive(Debug, Clone)]
-pub struct CallFrameInfo<'a> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransactionTraceWithLogs {
+    pub trace:          TransactionTrace,
+    pub function_name:  String,
+    pub decoded_params: String,
+    pub logs:           Vec<Log>,
     pub trace_idx:      u64,
-    pub call_data:      Bytes,
-    pub return_data:    Bytes,
-    pub target_address: Address,
-    pub from_address:   Address,
-    pub logs:           &'a [Log],
-    pub delegate_logs:  Vec<&'a Log>,
-    pub msg_sender:     Address,
-    pub msg_value:      U256,
 }
 
 #[derive(Debug, Clone)]
