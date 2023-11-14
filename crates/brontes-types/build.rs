@@ -20,7 +20,6 @@ const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
 const TOKEN_QUERIES: &str = "SELECT toString(address) AS address, decimals FROM tokens";
 
 fn main() {
-    dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -28,6 +27,7 @@ fn main() {
         .unwrap();
 
     runtime.block_on(async move {
+        dotenv::dotenv().ok();
         let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(TOKEN_MAPPING_FILE);
         let mut file = BufWriter::new(File::create(&path).unwrap());
         build_token_details_map(&mut file).await;
