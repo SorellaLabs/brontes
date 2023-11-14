@@ -49,15 +49,20 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
 /// All of this data is put as strings to avoid dealing with dynamic nested
 /// values
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecodedCallData {
-    pub function_name:  String,
-    pub decoded_params: String,
-    pub return_params:  String,
-    pub call_data:      String,
-    pub return_data:    String,
+    pub function_name: String,
+    pub call_data:     Vec<DecodedParams>,
+    pub return_data:   Vec<DecodedParams>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecodedParams {
+    pub field_name: String,
+    pub field_type: String,
+    pub value:      String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
