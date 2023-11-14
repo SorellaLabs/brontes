@@ -20,7 +20,7 @@ use tracing::{info, warn};
 const FALLBACK: &str = "fallback";
 const RECEIVE: &str = "receive";
 
-fn decode_input_with_abi(
+pub fn decode_input_with_abi(
     abi: &JsonAbi,
     trace: &TransactionTrace,
 ) -> Result<Option<DecodedCallData>, TraceParseError> {
