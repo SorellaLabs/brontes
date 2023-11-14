@@ -600,7 +600,8 @@ pub mod test {
         let root = tree.roots.remove(30);
 
         let swaps = root.inspect(&|node| {
-            let res = node.get_all_sub_actions()
+            let res = node
+                .get_all_sub_actions()
                 .iter()
                 .any(|s| s.is_transfer() || s.is_swap());
             if res {
