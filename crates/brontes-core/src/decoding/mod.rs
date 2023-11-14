@@ -7,7 +7,7 @@ use ethers_core::types::Chain;
 use ethers_reth::type_conversions::{ToEthers, ToReth};
 use futures::Future;
 use reth_interfaces::RethError;
-use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
+use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H160, H256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::trace::parity::TraceType;
@@ -204,7 +204,7 @@ impl<T: TracingProvider> Parser<T> {
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         etherscan_key: &str,
         tracing: T,
-        should_fetch: Box<dyn Fn(Address) -> bool>,
+        should_fetch: Box<dyn Fn(H160) -> bool>,
     ) -> Self {
         let executor = Executor::new();
         // let tracer =
