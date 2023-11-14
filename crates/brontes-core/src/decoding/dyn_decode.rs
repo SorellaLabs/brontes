@@ -3,7 +3,21 @@ use alloy_json_abi::JsonAbi;
 use brontes_types::structured_trace::{DecodedCallData, DecodedParams};
 use reth_rpc_types::trace::parity::{Action, TraceOutput, TransactionTrace};
 
-use crate::errors::TraceParseError;
+use alloy_dyn_abi::*;
+use alloy_etherscan::Client;
+use alloy_json_abi::JsonAbi;
+use brontes_types::structured_trace::TxTrace;
+use ethers::prelude::{Http, Middleware, Provider};
+use ethers_core::types::Chain;
+use ethers_reth::type_conversions::{ToEthers, ToReth};
+use futures::Future;
+use reth_interfaces::RethError;
+use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
+use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
+use reth_rpc_api::EthApiServer;
+use reth_rpc_types::trace::parity::TraceType;
+use reth_tracing::TracingClient;
+use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 pub fn decode_input_with_abi(
     abi: &JsonAbi,
@@ -45,33 +59,26 @@ pub fn decode_input_with_abi(
 
                 // Remove the function selector from the input.
                 let inputs = &action.input[4..];
-                let mut input_results = Vec::new();
-
-                // decode input
-                decode_params(
-                    input_params_type.abi_decode(inputs)?,
-                    &mut input_names,
-                    &mut input_results,
-                );
-
-                // decode output if exists
-                let output = if let Some(TraceOutput::Call(output)) = &trace.result {
-                    let mut output_results = Vec::new();
-                    decode_params(
-                        output_type.abi_decode(&output.output)?,
-                        &mut output_names,
-                        &mut output_results,
-                    );
-                    output_results
-                } else {
-                    vec![]
-                };
-
-                return Ok(Some(DecodedCallData {
-                    function_name: function.name.clone(),
-                    call_data:     input_results,
-                    return_data:   output,
-                }));
+                // Decode the inputs based on the resolved parameters.
+                match params_type.decode_params(inputs) {
+                    Ok(decoded_params) => {
+                        info!(
+                            "For function {}: Decoded params: {:?} \n, with tx hash: {:#?}",
+                            function.name, decoded_params, tx_hash
+                        );
+                        todo!()
+                        // return Ok(Some(StructuredTrace::CALL(CallAction::new(
+                        //     action.from,
+                        //     action.to,
+                        //     function.name.clone(),
+                        //     Some(decoded_params),
+                        //     trace_address.clone(),
+                        // ))))
+                    }
+                    Err(e) => {
+                        warn!(error=?e, "Failed to decode params");
+                    }
+                }
             }
         }
     }

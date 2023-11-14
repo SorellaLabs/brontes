@@ -35,19 +35,9 @@
 .cargo/
 
 stuff
-possible_mev/
-
-# Libmdbx files
-data/*
-
-.cargo/
-
-p.sql
-
-# Misc 
-.vscode/
-expanded_code.rs
+abi-builds/**.rs
 
 
-t
-t.json
+/crates/brontes-core/abi_cache/sources/*
+/crates/brontes-inspect/abi_cache/sources/*
+/crates/brontes-classifier/abi_cache/sources/*
