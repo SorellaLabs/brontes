@@ -105,6 +105,7 @@ fn main() {
 async fn build_address_to_token_map() {
     let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(TOKEN_MAPPING);
     let mut file = fs::OpenOptions::new()
+        .create(true)
         .write(true)
         .open(path)
         .expect("could not open file");

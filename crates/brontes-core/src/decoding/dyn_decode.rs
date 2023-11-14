@@ -12,12 +12,13 @@ use reth_interfaces::RethError;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::trace::parity::TraceType;
+use reth_rpc_types::trace::parity::{CallAction, TraceType};
 use reth_tracing::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
+use tracing::{info, warn};
 
-use self::parser::TraceParser;
 use crate::{
+    errors::TraceParseError,
     executor::{Executor, TaskKind},
     init_trace,
 };
@@ -43,7 +44,7 @@ fn decode_input_with_abi(
                 // Remove the function selector from the input.
                 let inputs = &action.input[4..];
                 // Decode the inputs based on the resolved parameters.
-                match params_type.decode_params(inputs) {
+                match params_type.abi_decode(inputs) {
                     Ok(decoded_params) => {
                         info!(
                             "For function {}: Decoded params: {:?} \n, with tx hash: {:#?}",
@@ -74,30 +75,31 @@ fn handle_empty_input(
     trace_address: &Vec<usize>,
     tx_hash: &H256,
 ) -> Result<StructuredTrace, TraceParseError> {
-    if action.value != U256::from(0) {
-        if let Some(receive) = &abi.receive {
-            if receive.state_mutability == StateMutability::Payable {
-                return Ok(StructuredTrace::CALL(CallAction::new(
-                    action.to,
-                    action.from,
-                    RECEIVE.to_string(),
-                    None,
-                    trace_address.clone(),
-                )))
-            }
-        }
-
-        if let Some(fallback) = &abi.fallback {
-            if fallback.state_mutability == StateMutability::Payable {
-                return Ok(StructuredTrace::CALL(CallAction::new(
-                    action.from,
-                    action.to,
-                    FALLBACK.to_string(),
-                    None,
-                    trace_address.clone(),
-                )))
-            }
-        }
-    }
-    Err(TraceParseError::EmptyInput(tx_hash.clone().into()))
+    todo!()
+    // if action.value != U256::from(0) {
+    //     if let Some(receive) = &abi.receive {
+    //         if receive.state_mutability == StateMutability::Payable {
+    //             return Ok(StructuredTrace::CALL(CallAction::new(
+    //                 action.to,
+    //                 action.from,
+    //                 RECEIVE.to_string(),
+    //                 None,
+    //                 trace_address.clone(),
+    //             )))
+    //         }
+    //     }
+    //
+    //     if let Some(fallback) = &abi.fallback {
+    //         if fallback.state_mutability == StateMutability::Payable {
+    //             return Ok(StructuredTrace::CALL(CallAction::new(
+    //                 action.from,
+    //                 action.to,
+    //                 FALLBACK.to_string(),
+    //                 None,
+    //                 trace_address.clone(),
+    //             )))
+    //         }
+    //     }
+    // }
+    // Err(TraceParseError::EmptyInput(tx_hash.clone().into()))
 }
