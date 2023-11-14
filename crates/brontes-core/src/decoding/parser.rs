@@ -16,25 +16,26 @@ use reth_rpc_types::{
     Log, TransactionReceipt,
 };
 
+use brontes_database::database::Database;
 use super::*;
 use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
 
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 #[derive(Clone)]
-pub struct TraceParser<T: TracingProvider> {
-    etherscan_client:      Client,
+pub struct TraceParser<'db, T: TracingProvider> {
+    database:      &'db Database,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl<T: TracingProvider> TraceParser<T> {
+impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
-        etherscan_client: Client,
+        database: &'db Database,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
-        Self { etherscan_client, tracer, metrics_tx }
+        Self { database, tracer, metrics_tx }
     }
 
     /// executes the tracing of a given block
@@ -46,7 +47,7 @@ impl<T: TracingProvider> TraceParser<T> {
             self.metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
                 .unwrap();
-            return None;
+            return None
         }
         let traces = self
             .parse_block(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
@@ -61,7 +62,7 @@ impl<T: TracingProvider> TraceParser<T> {
     pub(crate) async fn trace_block(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TraceResultsWithTransactionHash>>, BlockStats) {
+    ) -> (Option<Vec<TraceResultsWithTransactionHash>>, Vec<Option<JsonAbi>>, BlockStats) {
         let mut trace_type = HashSet::new();
         trace_type.insert(TraceType::Trace);
         trace_type.insert(TraceType::VmTrace);
@@ -185,6 +186,7 @@ impl<T: TracingProvider> TraceParser<T> {
         let len = tx_trace.len();
 
         let mut linked_trace = link_vm_to_trace(vm, tx_trace, logs);
+        // let mut 
 
         for (idx, trace) in linked_trace.into_iter().enumerate() {
             let abi_trace = self
@@ -213,7 +215,7 @@ impl<T: TracingProvider> TraceParser<T> {
         let (action, trace_address) = if let RethAction::Call(call) = trace.action {
             (call, trace.trace_address)
         } else {
-            return Ok(());
+            return Ok(())
         };
 
         //let binding = StaticBindings::Curve_Crypto_Factory_V2;
@@ -227,7 +229,7 @@ impl<T: TracingProvider> TraceParser<T> {
         // Check if the input is empty, indicating a potential `receive` or `fallback`
         // function call.
         if action.input.is_empty() {
-            return Ok(());
+            return Ok(())
         }
 
         let _ = self

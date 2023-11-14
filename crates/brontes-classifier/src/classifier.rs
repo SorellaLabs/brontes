@@ -220,7 +220,7 @@ impl Classifier {
             }
         }
 
-        Actions::Unclassified(trace, rem)
+        Actions::Unclassified(trace)
     }
 
     /// tries to prove dyn mint, dyn burn and dyn swap.
