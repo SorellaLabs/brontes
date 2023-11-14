@@ -59,7 +59,7 @@ macro_rules! mev_composability {
 
 mev_composability!(
     // reduce first
-    Sandwich => Backrun, Jit;
+    Sandwich => Backrun;
     // try compose
     JitSandwich => Sandwich, Jit;
 );
@@ -113,7 +113,7 @@ impl<'a, const N: usize> Composer<'a, N> {
     }
 
     pub fn is_finished(&self) -> bool {
-        return self.is_finished;
+        return self.is_finished
     }
 
     pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) {
@@ -394,7 +394,7 @@ impl<const N: usize> Future for Composer<'_, N> {
                     self.inspectors_execution = Some(calculations);
                     Poll::Pending
                 }
-            };
+            }
         }
         Poll::Pending
     }
