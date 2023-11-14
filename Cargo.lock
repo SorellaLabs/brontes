@@ -1019,6 +1019,7 @@ dependencies = [
 name = "brontes-database"
 version = "0.1.0"
 dependencies = [
+ "alloy-json-abi",
  "brontes-types",
  "dotenv",
  "futures",

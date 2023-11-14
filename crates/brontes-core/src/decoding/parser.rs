@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
+use brontes_database::database::Database;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
     PoirotMetricEvents,
@@ -16,7 +17,6 @@ use reth_rpc_types::{
     Log, TransactionReceipt,
 };
 
-use brontes_database::database::Database;
 use super::*;
 use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
 
@@ -24,7 +24,8 @@ use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
 /// to decode each call for later analysis.
 #[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider> {
-    database:      &'db Database,
+    database:              &'db Database,
+    should_fetch:          Box<dyn Fn(Address) -> bool>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
@@ -32,10 +33,11 @@ pub struct TraceParser<'db, T: TracingProvider> {
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
         database: &'db Database,
+        should_fetch: Box<dyn Fn(Address) -> bool>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
-        Self { database, tracer, metrics_tx }
+        Self { database, tracer, metrics_tx, should_fetch }
     }
 
     /// executes the tracing of a given block
@@ -186,12 +188,8 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         let len = tx_trace.len();
 
         let mut linked_trace = link_vm_to_trace(vm, tx_trace, logs);
-        // let mut 
 
         for (idx, trace) in linked_trace.into_iter().enumerate() {
-            let abi_trace = self
-                .update_abi_cache(trace.trace.clone(), block_num, tx_hash)
-                .await;
             let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
             if let Err(e) = abi_trace {
                 stat.err = Some(Into::<TraceParseErrorKind>::into(&e));
@@ -203,62 +201,6 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
         stats.trace();
         (TxTrace::new(traces, tx_hash, tx_idx, gas_used, effective_gas_price), stats)
-    }
-
-    /// pushes each trace to parser_fut
-    async fn update_abi_cache(
-        &self,
-        trace: TransactionTrace,
-        block_num: u64,
-        tx_hash: H256,
-    ) -> Result<(), TraceParseError> {
-        let (action, trace_address) = if let RethAction::Call(call) = trace.action {
-            (call, trace.trace_address)
-        } else {
-            return Ok(())
-        };
-
-        //let binding = StaticBindings::Curve_Crypto_Factory_V2;
-        let _addr = format!("{:#x}", action.from);
-        let abi = //if let Some(abi_path) = PROTOCOL_ADDRESS_MAPPING.get(&addr) {
-            //serde_json::from_str(abi_path).map_err(|e| TraceParseError::AbiParseError(e))?
-        //} else {
-            self.etherscan_client.contract_abi(action.to.into()).await?;
-        //};
-
-        // Check if the input is empty, indicating a potential `receive` or `fallback`
-        // function call.
-        if action.input.is_empty() {
-            return Ok(())
-        }
-
-        let _ = self
-            .abi_decoding_pipeline(&abi, &action, &trace_address, &tx_hash, block_num)
-            .await;
-        Ok(())
-    }
-
-    /// cycles through all possible abi decodings
-    /// 1) regular
-    /// 2) proxy
-    /// 3) diamond proxy
-    async fn abi_decoding_pipeline(
-        &self,
-        _abi: &JsonAbi,
-        action: &RethCallAction,
-        _trace_address: &[usize],
-        _tx_hash: &H256,
-        _block_num: u64,
-    ) -> Result<(), TraceParseError> {
-        // check decoding with the regular abi
-
-        // tries to get the proxy abi -> decode
-        let _proxy_abi = self
-            .etherscan_client
-            .proxy_contract_abi(action.to.into())
-            .await?;
-
-        Ok(())
     }
 }
 
