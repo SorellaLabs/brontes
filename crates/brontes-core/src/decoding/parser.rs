@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
@@ -8,7 +8,7 @@ use brontes_metrics::{
     PoirotMetricEvents,
 };
 use futures::future::join_all;
-use reth_primitives::{Header, H256};
+use reth_primitives::{Header, H160, H256};
 use reth_rpc_types::{
     trace::parity::{
         Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
@@ -18,14 +18,17 @@ use reth_rpc_types::{
 };
 
 use super::*;
-use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
+use crate::{
+    decoding::{dyn_decode::decode_input_with_abi, vm_linker::link_vm_to_trace},
+    errors::TraceParseError,
+};
 
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 #[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider> {
     database:              &'db Database,
-    should_fetch:          Box<dyn Fn(Address) -> bool>,
+    should_fetch:          Box<dyn Fn(&H160) -> bool>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
@@ -47,12 +50,12 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
         if parity_trace.0.is_none() && receipts.0.is_none() {
             self.metrics_tx
-                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
+                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.2).into())
                 .unwrap();
             return None
         }
         let traces = self
-            .parse_block(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
+            .parse_block(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
             .await;
         self.metrics_tx
             .send(TraceMetricEvent::BlockMetricRecieved(traces.1).into())
@@ -64,7 +67,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub(crate) async fn trace_block(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TraceResultsWithTransactionHash>>, Vec<Option<JsonAbi>>, BlockStats) {
+    ) -> (Option<Vec<TraceResultsWithTransactionHash>>, HashMap<H160, JsonAbi>, BlockStats) {
         let mut trace_type = HashSet::new();
         trace_type.insert(TraceType::Trace);
         trace_type.insert(TraceType::VmTrace);
@@ -90,7 +93,26 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             }
         };
 
-        (trace, stats)
+        let json = if let Some(trace) = &trace {
+            let addresses = trace
+                .iter()
+                .flat_map(|t| {
+                    t.full_trace
+                        .trace
+                        .iter()
+                        .filter_map(|inner| match &inner.action {
+                            RethAction::Call(call) => Some(call.to),
+                            _ => None,
+                        })
+                })
+                .filter(|addr| (self.should_fetch)(addr))
+                .collect::<Vec<H160>>();
+            self.database.get_abis(addresses).await
+        } else {
+            HashMap::default()
+        };
+
+        (trace, json, stats)
     }
 
     /// gets the transaction $receipts for a block
@@ -119,6 +141,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub(crate) async fn parse_block(
         &self,
         block_trace: Vec<TraceResultsWithTransactionHash>,
+        dyn_json: HashMap<H160, JsonAbi>,
         block_receipts: Vec<TransactionReceipt>,
         block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
@@ -126,7 +149,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
         let (traces, tx_stats): (Vec<_>, Vec<_>) =
             join_all(block_trace.into_iter().zip(block_receipts.into_iter()).map(
-                |(trace, receipt)| async move {
+                |(trace, receipt)| {
                     let transaction_traces = trace.full_trace.trace;
                     let vm_traces = trace.full_trace.vm_trace.unwrap();
 
@@ -134,6 +157,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
                     self.parse_transaction(
                         transaction_traces,
+                        &dyn_json,
                         vm_traces,
                         receipt.logs,
                         block_num,
@@ -142,7 +166,6 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                         receipt.gas_used.unwrap().to(),
                         receipt.effective_gas_price.to(),
                     )
-                    .await
                 },
             ))
             .await
@@ -167,6 +190,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     async fn parse_transaction(
         &self,
         tx_trace: Vec<TransactionTrace>,
+        dyn_json: &HashMap<H160, JsonAbi>,
         vm: VmTrace,
         logs: Vec<Log>,
         block_num: u64,
@@ -188,6 +212,24 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         let len = tx_trace.len();
 
         let mut linked_trace = link_vm_to_trace(vm, tx_trace, logs);
+
+        let mut linked_trace: Vec<TransactionTraceWithLogs> = linked_trace
+            .into_iter()
+            .map(|iter| {
+                let addr = match iter.trace.action {
+                    RethAction::Call(addr) => addr.to,
+                    _ => return iter,
+                };
+
+                if let Some(json_abi) = dyn_json.get(&addr) {
+                    let decoded_calldata =
+                        decode_input_with_abi(json_abi, &iter.trace).ok().flatten();
+                    iter.decoded_data = decoded_calldata;
+                }
+
+                iter
+            })
+            .collect();
 
         for (idx, trace) in linked_trace.into_iter().enumerate() {
             let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
