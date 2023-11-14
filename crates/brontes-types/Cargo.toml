@@ -34,7 +34,9 @@ sorella-db-databases.workspace = true
 phf.workspace = true
 strum = { workspace = true, features = ["derive"] }
 auto_impl.workspace = true
-alloy-primitives = {workspace = true, features = ["serde"] }
+alloy-primitives = { workspace = true, features = ["serde"] }
+alloy-sol-types.workspace = true
+alloy-dyn-abi.workspace = true
 
 
 [build-dependencies]
@@ -67,4 +69,3 @@ default = ["tests"]
 server = []
 tests = []
 local = ["brontes-core/local"]
-
