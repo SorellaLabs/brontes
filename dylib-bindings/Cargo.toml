@@ -11,10 +11,11 @@ alloy-json-abi.workspace = true
 alloy-primitives.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types.workspace = true
-# clickhouse.workspace = true
+libloading = "0.8.1"
+lru = "0.12.0"
+num_cpus = "1.16.0"
+sorella-db-databases.workspace = true
 # hyper-tls.workspace = true
-# libloading = "0.8.1"
 # serde.workspace = true
 # serde_json.workspace = true
 # tokio.workspace = true
-
