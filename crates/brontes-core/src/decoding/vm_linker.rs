@@ -69,6 +69,7 @@ fn recursive_parsing(
 
     current_traces.push(TransactionTraceWithLogs {
         trace: scoped_trace,
+        decoded_data: None,
         logs,
         trace_idx: idx as u64,
     })

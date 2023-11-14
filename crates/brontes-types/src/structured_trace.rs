@@ -66,7 +66,7 @@ pub struct DecodedParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
-    pub decoded_data: DecodedCallData,
+    pub decoded_data: Option<DecodedCallData>,
     pub logs:         Vec<Log>,
     pub trace_idx:    u64,
 }
@@ -74,7 +74,6 @@ pub struct TransactionTraceWithLogs {
 #[derive(Debug, Clone)]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
-    pub decoded_data:    DecodedCallData,
     pub tx_hash:         H256,
     pub gas_used:        u64,
     pub effective_price: u64,
@@ -84,12 +83,11 @@ pub struct TxTrace {
 impl TxTrace {
     pub fn new(
         trace: Vec<TransactionTraceWithLogs>,
-        decoded_data: DecodedCallData,
         tx_hash: H256,
         tx_index: u64,
         gas_used: u64,
         effective_price: u64,
     ) -> Self {
-        Self { trace, decoded_data, tx_hash, tx_index, effective_price, gas_used }
+        Self { trace, tx_hash, tx_index, effective_price, gas_used }
     }
 }
