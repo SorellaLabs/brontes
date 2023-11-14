@@ -9,6 +9,9 @@ edition = "2021"
 # brontes
 brontes-types.workspace = true
 
+alloy-json-abi = { workspace = true, features = ["serde_json"] }
+
+# alloy
 # reth
 reth-primitives.workspace = true
 
@@ -39,6 +42,7 @@ tracing.workspace = true
 
 # misc
 dotenv.workspace = true
+
 
 [features]
 test_run = []

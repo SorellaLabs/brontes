@@ -17,20 +17,12 @@ use reth_tracing::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 use tracing::{info, warn};
 
-use crate::{
-    errors::TraceParseError,
-    executor::{Executor, TaskKind},
-    init_trace,
-};
-
 const FALLBACK: &str = "fallback";
 const RECEIVE: &str = "receive";
 
 fn decode_input_with_abi(
     abi: &JsonAbi,
     trace: &TransactionTrace,
-    trace_address: &Vec<usize>,
-    tx_hash: &H256,
 ) -> Result<Option<DecodedCallData>, TraceParseError> {
     let Action::Call(action) = trace.action else { return Ok(None) };
 
@@ -93,8 +85,6 @@ fn decode_input_with_abi(
 fn handle_empty_input(
     abi: &JsonAbi,
     action: &CallAction,
-    trace_address: &Vec<usize>,
-    tx_hash: &H256,
 ) -> Result<DecodedCallData, TraceParseError> {
     todo!()
 }

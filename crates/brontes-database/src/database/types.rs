@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
-use reth_primitives::{H160, H256};
+use alloy_json_abi::JsonAbi;
+use reth_primitives::{Address, H160, H256};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use sorella_db_databases::{clickhouse, clickhouse::Row};
@@ -32,6 +33,21 @@ impl From<DBTokenPricesDB> for DBTokenPrices {
             price0:  value.price0,
             price1:  value.price1,
         }
+    }
+}
+
+#[serde_as]
+#[derive(Debug, Row, Serialize, Deserialize)]
+pub struct Abis {
+    address: String,
+    abi:     String,
+}
+
+impl From<Abis> for (Address, JsonAbi) {
+    fn from(value: Abis) -> Self {
+        let address = Address::from_str(&value.address).unwrap();
+        let abi = JsonAbi::from_json_str(&value.abi).unwrap();
+        (address, abi)
     }
 }
 
