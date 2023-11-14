@@ -204,6 +204,7 @@ impl<T: TracingProvider> Parser<T> {
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         etherscan_key: &str,
         tracing: T,
+        should_fetch: Box<dyn Fn(Address) -> bool>,
     ) -> Self {
         let executor = Executor::new();
         // let tracer =
@@ -217,7 +218,12 @@ impl<T: TracingProvider> Parser<T> {
             CACHE_TIMEOUT,
         )
         .unwrap();
-        let parser = TraceParser::new(etherscan_client, Arc::new(tracing), Arc::new(metrics_tx));
+        let parser = TraceParser::new(
+            etherscan_client,
+            Arc::new(tracing),
+            Arc::new(metrics_tx),
+            should_fetch,
+        );
 
         Self { executor, parser: Arc::new(parser) }
     }
