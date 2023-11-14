@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 use alloy_dyn_abi::*;
 use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
-use brontes_types::structured_trace::TxTrace;
+use brontes_types::structured_trace::{DecodedCallData, TxTrace};
 use ethers::prelude::{Http, Middleware, Provider};
 use ethers_core::types::Chain;
 use ethers_reth::type_conversions::{ToEthers, ToReth};
@@ -28,7 +28,7 @@ fn decode_input_with_abi(
     action: &CallAction,
     trace_address: &Vec<usize>,
     tx_hash: &H256,
-) -> Result<Option<StructuredTrace>, TraceParseError> {
+) -> Result<Option<DecodedCallData>, TraceParseError> {
     for functions in abi.functions.values() {
         for function in functions {
             if function.selector() == action.input[..4] {
@@ -74,7 +74,7 @@ fn handle_empty_input(
     action: &CallAction,
     trace_address: &Vec<usize>,
     tx_hash: &H256,
-) -> Result<StructuredTrace, TraceParseError> {
+) -> Result<DecodedCallData, TraceParseError> {
     todo!()
     // if action.value != U256::from(0) {
     //     if let Some(receive) = &abi.receive {
