@@ -49,10 +49,20 @@ impl TraceActions for TransactionTraceWithLogs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecodedData {
+    pub function_name: String,
+    pub decoded_params: String,
+
+
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionTraceWithLogs {
-    pub trace:     TransactionTrace,
-    pub logs:      Vec<Log>,
-    pub trace_idx: u64,
+    pub trace:          TransactionTrace,
+    pub function_name:  String,
+    pub decoded_params: String,
+    pub logs:           Vec<Log>,
+    pub trace_idx:      u64,
 }
 
 #[derive(Debug, Clone)]

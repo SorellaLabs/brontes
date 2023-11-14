@@ -1,6 +1,8 @@
 use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
+use alloy_dyn_abi::*;
 use alloy_etherscan::Client;
+use alloy_json_abi::JsonAbi;
 use brontes_types::structured_trace::TxTrace;
 use ethers::prelude::{Http, Middleware, Provider};
 use ethers_core::types::Chain;
@@ -47,13 +49,14 @@ fn decode_input_with_abi(
                             "For function {}: Decoded params: {:?} \n, with tx hash: {:#?}",
                             function.name, decoded_params, tx_hash
                         );
-                        return Ok(Some(StructuredTrace::CALL(CallAction::new(
-                            action.from,
-                            action.to,
-                            function.name.clone(),
-                            Some(decoded_params),
-                            trace_address.clone(),
-                        ))))
+                        todo!()
+                        // return Ok(Some(StructuredTrace::CALL(CallAction::new(
+                        //     action.from,
+                        //     action.to,
+                        //     function.name.clone(),
+                        //     Some(decoded_params),
+                        //     trace_address.clone(),
+                        // ))))
                     }
                     Err(e) => {
                         warn!(error=?e, "Failed to decode params");
