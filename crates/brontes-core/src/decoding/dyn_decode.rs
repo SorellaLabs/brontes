@@ -97,32 +97,32 @@ fn handle_empty_input(
     tx_hash: &H256,
 ) -> Result<DecodedCallData, TraceParseError> {
     todo!()
-    // if action.value != U256::from(0) {
-    //     if let Some(receive) = &abi.receive {
-    //         if receive.state_mutability == StateMutability::Payable {
-    //             return Ok(StructuredTrace::CALL(CallAction::new(
-    //                 action.to,
-    //                 action.from,
-    //                 RECEIVE.to_string(),
-    //                 None,
-    //                 trace_address.clone(),
-    //             )))
-    //         }
-    //     }
-    //
-    //     if let Some(fallback) = &abi.fallback {
-    //         if fallback.state_mutability == StateMutability::Payable {
-    //             return Ok(StructuredTrace::CALL(CallAction::new(
-    //                 action.from,
-    //                 action.to,
-    //                 FALLBACK.to_string(),
-    //                 None,
-    //                 trace_address.clone(),
-    //             )))
-    //         }
-    //     }
-    // }
-    // Err(TraceParseError::EmptyInput(tx_hash.clone().into()))
+    if action.value != U256::from(0) {
+        if let Some(receive) = &abi.receive {
+            if receive.state_mutability == StateMutability::Payable {
+                return Ok(StructuredTrace::CALL(CallAction::new(
+                    action.to,
+                    action.from,
+                    RECEIVE.to_string(),
+                    None,
+                    trace_address.clone(),
+                )))
+            }
+        }
+
+        if let Some(fallback) = &abi.fallback {
+            if fallback.state_mutability == StateMutability::Payable {
+                return Ok(StructuredTrace::CALL(CallAction::new(
+                    action.from,
+                    action.to,
+                    FALLBACK.to_string(),
+                    None,
+                    trace_address.clone(),
+                )))
+            }
+        }
+    }
+    Err(TraceParseError::EmptyInput(tx_hash.clone().into()))
 }
 
 fn decode_params(
