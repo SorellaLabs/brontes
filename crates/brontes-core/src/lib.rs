@@ -1,3 +1,4 @@
+#![feature(trait_alias)]
 pub mod decoding;
 pub mod errors;
 pub mod executor;
