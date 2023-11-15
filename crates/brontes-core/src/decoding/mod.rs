@@ -191,13 +191,12 @@ impl TracingProvider for TracingClient {
     }
 }
 
-pub type ParserFuture<'a> = Pin<
-    Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
->;
+pub type ParserFuture<'a> =
+    Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
 
 pub struct Parser<'a, T: TracingProvider> {
     executor: Executor,
-    parser:   Arc<TraceParser<'a, T>>,
+    parser:   TraceParser<'a, T>,
 }
 
 impl<'a, T: TracingProvider> Parser<'a, T> {
@@ -215,7 +214,7 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
         let parser =
             TraceParser::new(database, should_fetch, Arc::new(tracing), Arc::new(metrics_tx));
 
-        Self { executor, parser: Arc::new(parser) }
+        Self { executor, parser }
     }
 
     #[cfg(not(feature = "server"))]
@@ -237,7 +236,11 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
 
     /// executes the tracing of a given block
     pub fn execute(&self, block_num: u64) -> ParserFuture {
-        let parser = self.parser.clone();
+        // Safety: This is safe as the Arc ensures immutability.
+        // This will satisfy its lifetime scope do to the lifetime itself living longer
+        // than the process that runs brontes.
+        let parser: &'static TraceParser<'static, T> = unsafe { std::mem::transmute(&self.parser) };
+
         Box::pin(
             self.executor
                 .spawn_result_task_as(parser.execute_block(block_num), TaskKind::Default),
