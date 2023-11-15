@@ -31,6 +31,7 @@ abi-builds/**.rs
 abi-builds/**.txt
 
 stuff
+abi-builds/**.rs
 
 crates/brontes-classifier/abis/**.json
 crates/brontes-inspect/abis/**.json

@@ -7,6 +7,7 @@ use std::{
     str::FromStr,
 };
 
+use alloy_json_abi::JsonAbi;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use futures::future::join_all;
 use malachite::Rational;
@@ -19,7 +20,7 @@ use sorella_db_databases::{
 };
 use tracing::error;
 
-use self::types::{DBTokenPrices, DBTokenPricesDB, RelayInfo};
+use self::types::{Abis, DBTokenPrices, DBTokenPricesDB, RelayInfo};
 use super::Metadata;
 use crate::database::{const_sql::*, types::RelayInfoDB};
 
@@ -102,6 +103,21 @@ impl Database {
             }
         }))
         .await;
+    }
+
+    pub async fn get_abis(&self, addresses: Vec<Address>) -> HashMap<Address, JsonAbi> {
+        let addresses = addresses
+            .into_iter()
+            .map(|a| format!("{:?}", a).to_lowercase())
+            .collect::<Vec<String>>();
+
+        self.client
+            .query_all_params::<Vec<String>, Abis>(ABIS, vec![addresses])
+            .await
+            .unwrap()
+            .into_iter()
+            .map(Into::into)
+            .collect()
     }
 
     async fn get_private_flow(&self, block_num: u64) -> HashSet<TxHash> {
