@@ -1,6 +1,7 @@
 use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
 use alloy_etherscan::Client;
+use brontes_database::database::Database;
 use brontes_types::structured_trace::TxTrace;
 use ethers::prelude::{Http, Middleware, Provider};
 use ethers_core::types::Chain;
@@ -194,15 +195,15 @@ pub type ParserFuture = Pin<
     Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
 >;
 
-pub struct Parser<T: TracingProvider> {
+pub struct Parser<'a, T: TracingProvider> {
     executor: Executor,
-    parser:   Arc<TraceParser<T>>,
+    parser:   Arc<TraceParser<'a, T>>,
 }
 
-impl<T: TracingProvider> Parser<T> {
+impl<'a, T: TracingProvider> Parser<'a, T> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
-        etherscan_key: &str,
+        database: &'a Database,
         tracing: T,
         should_fetch: Box<dyn Fn(H160) -> bool>,
     ) -> Self {
@@ -211,19 +212,8 @@ impl<T: TracingProvider> Parser<T> {
         //     Arc::new(TracingClient::new(Path::new(db_path),
         // executor.runtime.handle().clone()));
 
-        let etherscan_client = Client::new_cached(
-            Chain::Mainnet,
-            etherscan_key,
-            Some(PathBuf::from(CACHE_DIRECTORY)),
-            CACHE_TIMEOUT,
-        )
-        .unwrap();
-        let parser = TraceParser::new(
-            etherscan_client,
-            Arc::new(tracing),
-            Arc::new(metrics_tx),
-            should_fetch,
-        );
+        let parser =
+            TraceParser::new(database, Arc::new(tracing), Arc::new(metrics_tx), should_fetch);
 
         Self { executor, parser: Arc::new(parser) }
     }

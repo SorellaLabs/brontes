@@ -5,6 +5,7 @@ use std::{
 };
 
 use alloy_etherscan::Client;
+use brontes_database::database::Database;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use dotenv::dotenv;
@@ -189,5 +190,8 @@ pub fn init_trace_parser(
             as Box<dyn TracingProvider>
     };
 
-    TraceParser::new(etherscan_client, Arc::new(tracer), Arc::new(metrics_tx))
+    let db = Box::new(Database::default());
+    let leaked = Box::leak(db);
+
+    TraceParser::new(leaked, |_| true, Arc::new(tracer), Arc::new(metrics_tx))
 }
