@@ -12,10 +12,12 @@ use reth_interfaces::RethError;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::trace::parity::{CallAction, TraceType, TransactionTrace};
+use reth_rpc_types::trace::parity::{Action, CallAction, TraceOutput, TraceType, TransactionTrace};
 use reth_tracing::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 use tracing::{info, warn};
+
+use crate::errors::TraceParseError;
 
 const FALLBACK: &str = "fallback";
 const RECEIVE: &str = "receive";
@@ -117,7 +119,7 @@ fn decode_params(
         DynSolValue::FixedBytes(word, size) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::FixedBytes(size).to_string(),
-            value:      i.to_string(),
+            value:      word.to_string(),
         }),
         /// An address.
         DynSolValue::Address(address) => output.push(DecodedParams {
@@ -157,7 +159,7 @@ fn decode_params(
         }
         /// A fixed-size array of values.
         DynSolValue::FixedArray(fixed_array) => {
-            let string_val = value_parse(array, false);
+            let string_val = value_parse(fixed_array, false);
             let type_name = sol_value.sol_type_name().unwrap().to_string();
             output.push(DecodedParams {
                 field_name: field_name.remove(0),
@@ -167,7 +169,7 @@ fn decode_params(
         }
         /// A tuple of values.
         DynSolValue::Tuple(tuple) => {
-            let string_val = value_parse(array, true);
+            let string_val = value_parse(tuple, true);
             let type_name = sol_value.sol_type_name().unwrap().to_string();
             output.push(DecodedParams {
                 field_name: field_name.remove(0),
