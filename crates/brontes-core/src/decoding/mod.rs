@@ -17,7 +17,6 @@ use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 use self::parser::TraceParser;
 use crate::{
-    decoding::parser::ShouldFetch,
     executor::{Executor, TaskKind},
     init_trace,
 };
@@ -206,7 +205,7 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         database: &'a Database,
         tracing: T,
-        should_fetch: Box<dyn ShouldFetch>,
+        should_fetch: Box<dyn Fn(&H160) -> bool + Send + Sync>,
     ) -> Self {
         let executor = Executor::new();
         // let tracer =

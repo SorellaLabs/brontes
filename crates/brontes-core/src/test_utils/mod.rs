@@ -27,10 +27,7 @@ use tokio::{
 };
 use tracing_subscriber::filter::Directive;
 
-use crate::decoding::{
-    parser::{ShouldFetch, TraceParser},
-    TracingProvider, CACHE_DIRECTORY, CACHE_TIMEOUT,
-};
+use crate::decoding::{parser::TraceParser, TracingProvider, CACHE_DIRECTORY, CACHE_TIMEOUT};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TestTransactionTraceWithLogs {
@@ -195,6 +192,7 @@ pub fn init_trace_parser<'a>(
 
     let db = Box::new(Database::default());
     let leaked = Box::leak(db);
+    let call = Box::new(|_: &_| true);
 
-    TraceParser::new(leaked, Box::new(|_: &H160| true), Arc::new(tracer), Arc::new(metrics_tx))
+    TraceParser::new(leaked, call, Arc::new(tracer), Arc::new(metrics_tx))
 }
