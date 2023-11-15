@@ -26,7 +26,7 @@ pub fn decode_input_with_abi(
     abi: &JsonAbi,
     trace: &TransactionTrace,
 ) -> Result<Option<DecodedCallData>, TraceParseError> {
-    let Action::Call(action) = trace.action else { return Ok(None) };
+    let Action::Call(ref action) = trace.action else { return Ok(None) };
 
     for functions in abi.functions.values() {
         for function in functions {
@@ -38,7 +38,11 @@ pub fn decode_input_with_abi(
                     .filter_map(|param| param.resolve().ok())
                     .collect();
 
-                let mut input_names = function.inputs.iter().map(|f| f.name).collect::<Vec<_>>();
+                let mut input_names = function
+                    .inputs
+                    .iter()
+                    .map(|f| f.name.clone())
+                    .collect::<Vec<_>>();
                 let input_params_type = DynSolType::Tuple(resolved_params);
 
                 let mut resolved_output_params: Vec<DynSolType> = function
@@ -47,7 +51,11 @@ pub fn decode_input_with_abi(
                     .filter_map(|param| param.resolve().ok())
                     .collect();
 
-                let mut output_names = function.outputs.iter().map(|f| f.name).collect::<Vec<_>>();
+                let mut output_names = function
+                    .outputs
+                    .iter()
+                    .map(|f| f.name.clone())
+                    .collect::<Vec<_>>();
                 let output_type = DynSolType::Tuple(resolved_output_params);
 
                 // Remove the function selector from the input.
@@ -62,7 +70,7 @@ pub fn decode_input_with_abi(
                 );
 
                 // decode output if exists
-                let output = if let Some(TraceOutput::Call(output)) = trace.result {
+                let output = if let Some(TraceOutput::Call(output)) = &trace.result {
                     let mut output_results = Vec::new();
                     decode_params(
                         output_type.abi_decode(&output.output)?,
@@ -75,7 +83,7 @@ pub fn decode_input_with_abi(
                 };
 
                 return Ok(Some(DecodedCallData {
-                    function_name: function.name,
+                    function_name: function.name.clone(),
                     call_data:     input_results,
                     return_data:   output,
                 }))
@@ -149,7 +157,7 @@ fn decode_params(
         }),
 
         /// A dynamically-sized array of values.
-        DynSolValue::Array(array) => {
+        DynSolValue::Array(ref array) => {
             let string_val = value_parse(array, false);
             let type_name = sol_value.sol_type_name().unwrap().to_string();
             output.push(DecodedParams {
@@ -159,7 +167,7 @@ fn decode_params(
             })
         }
         /// A fixed-size array of values.
-        DynSolValue::FixedArray(fixed_array) => {
+        DynSolValue::FixedArray(ref fixed_array) => {
             let string_val = value_parse(fixed_array, false);
             let type_name = sol_value.sol_type_name().unwrap().to_string();
             output.push(DecodedParams {
@@ -169,7 +177,7 @@ fn decode_params(
             })
         }
         /// A tuple of values.
-        DynSolValue::Tuple(tuple) => {
+        DynSolValue::Tuple(ref tuple) => {
             let string_val = value_parse(tuple, true);
             let type_name = sol_value.sol_type_name().unwrap().to_string();
             output.push(DecodedParams {
@@ -181,7 +189,7 @@ fn decode_params(
     }
 }
 
-fn value_parse(sol_value: Vec<DynSolValue>, tuple: bool) -> String {
+fn value_parse(sol_value: &[DynSolValue], tuple: bool) -> String {
     let ty = if tuple { String::from("(") } else { String::from("[") };
 
     let unclosed = sol_value
@@ -193,11 +201,11 @@ fn value_parse(sol_value: Vec<DynSolValue>, tuple: bool) -> String {
             DynSolValue::FixedBytes(i, _) => i.to_string(),
             DynSolValue::Address(a) => format!("{:?}", a),
             DynSolValue::Function(f) => f.to_string(),
-            DynSolValue::String(s) => s,
-            DynSolValue::Bytes(b) => alloy_primitives::Bytes::from(b).to_string(),
-            DynSolValue::Tuple(t) => value_parse(t, true),
-            DynSolValue::Array(a) => value_parse(a, false),
-            DynSolValue::FixedArray(a) => value_parse(a, false),
+            DynSolValue::String(s) => s.to_string(),
+            DynSolValue::Bytes(b) => alloy_primitives::Bytes::from(b.clone()).to_string(),
+            DynSolValue::Tuple(t) => value_parse(&t, true),
+            DynSolValue::Array(a) => value_parse(&a, false),
+            DynSolValue::FixedArray(a) => value_parse(&a, false),
         })
         .fold(ty, |a, b| a + "," + &b);
 
