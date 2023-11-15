@@ -170,4 +170,5 @@ pub enum TraceParseErrorKind {
     EthApiUnknownSafeOrFinalizedBlock,
     EthApiExecutionTimedOut,
     EthApiCallInputError,
+    AlloyError,
 }
