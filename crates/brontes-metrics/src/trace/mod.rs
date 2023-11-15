@@ -166,4 +166,6 @@ pub(crate) struct TransactionTracingMetrics {
     pub(crate) eth_api_execution_timed_out: Counter,
     /// EthApi Call Input Error
     pub(crate) eth_api_call_input_error: Counter,
+    /// alloy error
+    pub(crate) alloy_error: Counter, // todo: expand error type
 }

@@ -5,6 +5,7 @@ use std::{
 };
 
 use alloy_etherscan::Client;
+use brontes_database::database::Database;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use dotenv::dotenv;
@@ -12,7 +13,7 @@ use ethers_core::types::Chain;
 use futures::future::join_all;
 use log::Level;
 use reqwest::Url;
-use reth_primitives::H256;
+use reth_primitives::{H160, H256};
 use reth_rpc_types::{
     trace::parity::{TraceResults, TransactionTrace, VmTrace},
     Log, TransactionReceipt,
@@ -158,10 +159,10 @@ pub fn init_tracing() {
     brontes_tracing::init(layers);
 }
 
-pub fn init_trace_parser(
+pub fn init_trace_parser<'a>(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-) -> TraceParser<Box<dyn TracingProvider>> {
+) -> TraceParser<'a, Box<dyn TracingProvider>> {
     let etherscan_key = env::var("ETHERSCAN_API_KEY").expect("No ETHERSCAN_API_KEY in .env");
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
@@ -189,5 +190,9 @@ pub fn init_trace_parser(
             as Box<dyn TracingProvider>
     };
 
-    TraceParser::new(etherscan_client, Arc::new(tracer), Arc::new(metrics_tx))
+    let db = Box::new(Database::default());
+    let leaked = Box::leak(db);
+    let call = Box::new(|_: &_| true);
+
+    TraceParser::new(leaked, call, Arc::new(tracer), Arc::new(metrics_tx))
 }

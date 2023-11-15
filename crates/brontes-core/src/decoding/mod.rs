@@ -1,13 +1,14 @@
 use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
 use alloy_etherscan::Client;
+use brontes_database::database::Database;
 use brontes_types::structured_trace::TxTrace;
 use ethers::prelude::{Http, Middleware, Provider};
 use ethers_core::types::Chain;
 use ethers_reth::type_conversions::{ToEthers, ToReth};
 use futures::Future;
 use reth_interfaces::RethError;
-use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
+use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H160, H256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::trace::parity::TraceType;
@@ -20,6 +21,7 @@ use crate::{
     init_trace,
 };
 
+mod dyn_decode;
 pub mod parser;
 mod utils;
 pub mod vm_linker;
@@ -189,36 +191,30 @@ impl TracingProvider for TracingClient {
     }
 }
 
-pub type ParserFuture = Pin<
-    Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
->;
+pub type ParserFuture<'a> =
+    Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
 
-pub struct Parser<T: TracingProvider> {
+pub struct Parser<'a, T: TracingProvider> {
     executor: Executor,
-    parser:   Arc<TraceParser<T>>,
+    parser:   TraceParser<'a, T>,
 }
 
-impl<T: TracingProvider> Parser<T> {
+impl<'a, T: TracingProvider> Parser<'a, T> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
-        etherscan_key: &str,
+        database: &'a Database,
         tracing: T,
+        should_fetch: Box<dyn Fn(&H160) -> bool + Send + Sync>,
     ) -> Self {
         let executor = Executor::new();
         // let tracer =
         //     Arc::new(TracingClient::new(Path::new(db_path),
         // executor.runtime.handle().clone()));
 
-        let etherscan_client = Client::new_cached(
-            Chain::Mainnet,
-            etherscan_key,
-            Some(PathBuf::from(CACHE_DIRECTORY)),
-            CACHE_TIMEOUT,
-        )
-        .unwrap();
-        let parser = TraceParser::new(etherscan_client, Arc::new(tracing), Arc::new(metrics_tx));
+        let parser =
+            TraceParser::new(database, should_fetch, Arc::new(tracing), Arc::new(metrics_tx));
 
-        Self { executor, parser: Arc::new(parser) }
+        Self { executor, parser }
     }
 
     #[cfg(not(feature = "server"))]
@@ -240,10 +236,14 @@ impl<T: TracingProvider> Parser<T> {
 
     /// executes the tracing of a given block
     pub fn execute(&self, block_num: u64) -> ParserFuture {
-        let parser = self.parser.clone();
-        Box::pin(self.executor.spawn_result_task_as(
-            async move { parser.execute_block(block_num).await },
-            TaskKind::Default,
-        )) as ParserFuture
+        // Safety: This is safe as the Arc ensures immutability.
+        // This will satisfy its lifetime scope do to the lifetime itself living longer
+        // than the process that runs brontes.
+        let parser: &'static TraceParser<'static, T> = unsafe { std::mem::transmute(&self.parser) };
+
+        Box::pin(
+            self.executor
+                .spawn_result_task_as(parser.execute_block(block_num), TaskKind::Default),
+        ) as ParserFuture
     }
 }

@@ -26,7 +26,7 @@ type CollectionFut<'a> = Pin<
 
 pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
     block_number:      u64,
-    parser:            &'inspector Parser<T>,
+    parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier,
     database:          &'inspector Database,
     composer:          Composer<'inspector, N>,
@@ -38,7 +38,7 @@ pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
 
 impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, N, T> {
     pub fn new(
-        parser: &'inspector Parser<T>,
+        parser: &'inspector Parser<'inspector, T>,
         database: &'inspector Database,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
