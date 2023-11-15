@@ -14,7 +14,7 @@ pub enum Actions {
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
     Collect(NormalizedCollect),
-    Unclassified(TransactionTraceWithLogs, Vec<Log>),
+    Unclassified(TransactionTraceWithLogs),
 }
 
 impl InsertRow for Actions {
@@ -41,7 +41,7 @@ impl Serialize for Actions {
             Actions::Transfer(t) => t.serialize(serializer),
             Actions::Burn(b) => b.serialize(serializer),
             Actions::Collect(c) => c.serialize(serializer),
-            Actions::Unclassified(trace, log) => (trace, log).serialize(serializer),
+            Actions::Unclassified(trace) => (trace).serialize(serializer),
         }
     }
 }
@@ -56,7 +56,7 @@ impl Actions {
 
     pub fn get_logs(&self) -> Vec<Log> {
         match self {
-            Self::Unclassified(_, log) => log.clone(),
+            Self::Unclassified(a) => a.logs.clone(),
             _ => vec![],
         }
     }
@@ -68,7 +68,7 @@ impl Actions {
             Actions::Burn(b) => b.to,
             Actions::Transfer(t) => t.to,
             Actions::Collect(c) => c.to,
-            Actions::Unclassified(t, _) => match &t.trace.action {
+            Actions::Unclassified(t) => match &t.trace.action {
                 reth_rpc_types::trace::parity::Action::Call(c) => c.to,
                 reth_rpc_types::trace::parity::Action::Create(_) => Address::zero(),
                 reth_rpc_types::trace::parity::Action::Reward(_) => Address::zero(),
@@ -98,7 +98,7 @@ impl Actions {
     }
 
     pub fn is_unclassified(&self) -> bool {
-        matches!(self, Actions::Unclassified(_, _))
+        matches!(self, Actions::Unclassified(_))
     }
 }
 

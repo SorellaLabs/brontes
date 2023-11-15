@@ -1,3 +1,4 @@
+use alloy_dyn_abi::DynSolValue;
 use reth_primitives::{Address, Bytes, H160, H256};
 use reth_rpc_types::{
     trace::parity::{Action, TransactionTrace},
@@ -49,10 +50,25 @@ impl TraceActions for TransactionTraceWithLogs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecodedCallData {
+    pub function_name: String,
+    pub call_data:     Vec<DecodedParams>,
+    pub return_data:   Vec<DecodedParams>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecodedParams {
+    pub field_name: String,
+    pub field_type: String,
+    pub value:      String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionTraceWithLogs {
-    pub trace:     TransactionTrace,
-    pub logs:      Vec<Log>,
-    pub trace_idx: u64,
+    pub trace:        TransactionTrace,
+    pub decoded_data: Option<DecodedCallData>,
+    pub logs:         Vec<Log>,
+    pub trace_idx:    u64,
 }
 
 #[derive(Debug, Clone)]

@@ -31,7 +31,7 @@ pub fn helper_build_tree(
 }
 
 pub async fn build_raw_test_tree<T: TracingProvider>(
-    tracer: &TraceParser<T>,
+    tracer: &TraceParser<'_, T>,
     db: &Database,
     block_number: u64,
 ) -> TimeTree<Actions> {
@@ -139,7 +139,7 @@ fn classify_node(trace: TransactionTraceWithLogs, index: u64) -> Actions {
         }
     }
 
-    Actions::Unclassified(trace, rem)
+    Actions::Unclassified(trace)
 }
 
 pub fn helper_decode_transfer(log: &Log) -> Option<(Address, Address, Address, U256)> {
@@ -154,7 +154,7 @@ pub fn helper_decode_transfer(log: &Log) -> Option<(Address, Address, Address, U
 }
 
 pub async fn get_traces_with_meta<T: TracingProvider>(
-    tracer: &TraceParser<T>,
+    tracer: &TraceParser<'_, T>,
     db: &Database,
     block_number: u64,
 ) -> (Vec<TxTrace>, Header, Metadata) {
