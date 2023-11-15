@@ -7,7 +7,7 @@ use std::{
 };
 
 use brontes::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
-use brontes_classifier::Classifier;
+use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::database::Database;
 use brontes_inspect::{
@@ -102,7 +102,12 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let tracer = TracingClient::new(Path::new(&db_path), handle.clone());
 
-    let parser = DParser::new(metrics_tx, &etherscan_key, tracer);
+    let parser = DParser::new(
+        metrics_tx,
+        &db,
+        tracer,
+        Box::new(|address| !PROTOCOL_ADDRESS_MAPPING.contains_key(&**address)),
+    );
     let classifier = Classifier::new();
 
     #[cfg(feature = "server")]

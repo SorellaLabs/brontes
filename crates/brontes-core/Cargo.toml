@@ -26,6 +26,10 @@ ruint = { workspace = true, features = ["primitive-types", "rlp"] }
 brontes-types.workspace = true
 brontes-metrics.workspace = true
 brontes-tracing.workspace = true
+brontes-database.workspace = true
+
+# tooling = { git = "https://github.com/SorellaLabs/tooling" }
+
 
 # async
 
@@ -37,6 +41,7 @@ alloy-sol-types.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-etherscan.workspace = true
+alloy-dyn-abi.workspace = true
 
 # ethers
 ethers-core.workspace = true
