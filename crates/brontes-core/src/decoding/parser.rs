@@ -45,7 +45,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     }
 
     /// executes the tracing of a given block
-    pub async fn execute_block(&self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+    pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         let parity_trace = self.trace_block(block_num).await;
         let receipts = self.get_receipts(block_num).await;
 

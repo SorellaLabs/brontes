@@ -28,6 +28,9 @@ brontes-metrics.workspace = true
 brontes-tracing.workspace = true
 brontes-database.workspace = true
 
+# tooling = { git = "https://github.com/SorellaLabs/tooling" }
+
+
 # async
 
 tokio = { workspace = true, features = ["full", "tracing"] }
