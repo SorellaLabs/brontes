@@ -106,7 +106,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         metrics_tx,
         &db,
         tracer,
-        Box::new(|address| !PROTOCOL_ADDRESS_MAPPING.contains(*address)),
+        Box::new(|address| !PROTOCOL_ADDRESS_MAPPING.contains_key(&**address)),
     );
     let classifier = Classifier::new();
 
