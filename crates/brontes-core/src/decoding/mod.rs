@@ -17,6 +17,7 @@ use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 use self::parser::TraceParser;
 use crate::{
+    decoding::parser::ShouldFetch,
     executor::{Executor, TaskKind},
     init_trace,
 };
@@ -205,7 +206,7 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         database: &'a Database,
         tracing: T,
-        should_fetch: Box<dyn Fn(H160) -> bool>,
+        should_fetch: Box<dyn ShouldFetch>,
     ) -> Self {
         let executor = Executor::new();
         // let tracer =
@@ -213,7 +214,7 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
         // executor.runtime.handle().clone()));
 
         let parser =
-            TraceParser::new(database, Arc::new(tracing), Arc::new(metrics_tx), should_fetch);
+            TraceParser::new(database, should_fetch, Arc::new(tracing), Arc::new(metrics_tx));
 
         Self { executor, parser: Arc::new(parser) }
     }
@@ -238,9 +239,9 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
     /// executes the tracing of a given block
     pub fn execute(&self, block_num: u64) -> ParserFuture {
         let parser = self.parser.clone();
-        Box::pin(self.executor.spawn_result_task_as(
-            async move { parser.execute_block(block_num).await },
-            TaskKind::Default,
-        )) as ParserFuture
+        Box::pin(
+            self.executor
+                .spawn_result_task_as(parser.execute_block(block_num), TaskKind::Default),
+        ) as ParserFuture
     }
 }

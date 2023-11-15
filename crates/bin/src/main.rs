@@ -102,9 +102,12 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let tracer = TracingClient::new(Path::new(&db_path), handle.clone());
 
-    let parser = DParser::new(metrics_tx, &db, tracer, |address| {
-        !PROTOCOL_ADDRESS_MAPPING.contains(*address)
-    });
+    let parser = DParser::new(
+        metrics_tx,
+        &db,
+        tracer,
+        Box::new(|address| !PROTOCOL_ADDRESS_MAPPING.contains(*address)),
+    );
     let classifier = Classifier::new();
 
     #[cfg(feature = "server")]
