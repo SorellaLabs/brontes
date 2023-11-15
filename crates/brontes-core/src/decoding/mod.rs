@@ -191,7 +191,7 @@ impl TracingProvider for TracingClient {
     }
 }
 
-pub type ParserFuture = Pin<
+pub type ParserFuture<'a> = Pin<
     Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
 >;
 
