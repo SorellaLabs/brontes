@@ -36,7 +36,7 @@ pub struct TraceParser<'db, T: TracingProvider> {
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
         database: &'db Database,
-        should_fetch: Box<dyn Fn(Address) -> bool>,
+        should_fetch: Box<dyn Fn(&H160) -> bool>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
