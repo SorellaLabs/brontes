@@ -27,6 +27,8 @@ pub enum TraceParseError {
     ChannelSendError(String),
     #[error("trace missing")]
     EthApiError(EthApiError),
+    #[error("alloy error {0}")]
+    AlloyError(alloy_dyn_abi::Error),
 }
 
 impl From<EtherscanError> for TraceParseError {
@@ -38,6 +40,13 @@ impl From<EtherscanError> for TraceParseError {
 impl From<EthApiError> for TraceParseError {
     fn from(err: EthApiError) -> TraceParseError {
         TraceParseError::EthApiError(err)
+    }
+}
+
+impl From<alloy_dyn_abi::Error> for TraceParseError {
+    fn from(err: alloy_dyn_abi::Error) -> TraceParseError {
+        //TraceParseError::EthApiError(err)
+        TraceParseError::AlloyError(err)
     }
 }
 
@@ -154,6 +163,7 @@ impl From<&TraceParseError> for TraceParseErrorKind {
             }
             TraceParseError::AbiDecodingFailed(_) => TraceParseErrorKind::AbiDecodingFailed,
             TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError,
+            TraceParseError::AlloyError(_) => TraceParseErrorKind::AlloyError,
         }
     }
 }
