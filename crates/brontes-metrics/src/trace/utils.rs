@@ -150,5 +150,6 @@ pub(crate) fn increment_error(
         TraceParseErrorKind::EthApiInternalJsTracerError => {
             tx_metric.eth_api_internal_js_tracer_error.increment(1)
         }
+        TraceParseErrorKind::AlloyError => tx_metric.alloy_error.increment(1), // todo: expand error
     }
 }

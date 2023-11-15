@@ -7,6 +7,7 @@ use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
     PoirotMetricEvents,
 };
+use brontes_types::structured_trace::TransactionTraceWithLogs;
 use futures::future::join_all;
 use reth_primitives::{Header, H160, H256};
 use reth_rpc_types::{
@@ -23,12 +24,14 @@ use crate::{
     errors::TraceParseError,
 };
 
+pub(crate) trait ShouldFetch: Fn(&H160) -> bool + Send + Sync {}
+
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
-#[derive(Clone)]
+//#[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider> {
     database:              &'db Database,
-    should_fetch:          Box<dyn Fn(&H160) -> bool>,
+    should_fetch:          Box<dyn ShouldFetch>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
@@ -36,7 +39,7 @@ pub struct TraceParser<'db, T: TracingProvider> {
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
         database: &'db Database,
-        should_fetch: Box<dyn Fn(&H160) -> bool>,
+        should_fetch: Box<dyn ShouldFetch>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
@@ -215,9 +218,9 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
         let mut linked_trace: Vec<TransactionTraceWithLogs> = linked_trace
             .into_iter()
-            .map(|iter| {
+            .map(|mut iter| {
                 let addr = match iter.trace.action {
-                    RethAction::Call(addr) => addr.to,
+                    RethAction::Call(ref addr) => addr.to,
                     _ => return iter,
                 };
 
@@ -233,9 +236,9 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
         for (idx, trace) in linked_trace.into_iter().enumerate() {
             let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
-            if let Err(e) = abi_trace {
-                stat.err = Some(Into::<TraceParseErrorKind>::into(&e));
-            }
+            // if let Err(e) = abi_trace {
+            //    stat.err = Some(Into::<TraceParseErrorKind>::into(&e));
+            //  }
             traces.push(trace);
             stat.trace(len);
             stats.traces.push(stat);

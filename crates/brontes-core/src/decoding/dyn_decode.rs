@@ -65,19 +65,20 @@ pub fn decode_input_with_abi(
                 let output = if let Some(TraceOutput::Call(output)) = trace.result {
                     let mut output_results = Vec::new();
                     decode_params(
-                        output_type.abi_decode(output.output),
+                        output_type.abi_decode(&output.output)?,
                         &mut output_names,
                         &mut output_results,
-                    )
+                    );
+                    output_results
                 } else {
                     vec![]
                 };
 
-                Ok(DecodedCallData {
+                return Ok(Some(DecodedCallData {
                     function_name: function.name,
                     call_data:     input_results,
                     return_data:   output,
-                })
+                }))
             }
         }
     }
