@@ -24,14 +24,12 @@ use crate::{
     errors::TraceParseError,
 };
 
-pub(crate) trait ShouldFetch: Fn(&H160) -> bool + Send + Sync {}
-
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 //#[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider> {
     database:              &'db Database,
-    should_fetch:          Box<dyn ShouldFetch>,
+    should_fetch:          Box<dyn Fn(&H160) -> bool + Send + Sync>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
@@ -39,7 +37,7 @@ pub struct TraceParser<'db, T: TracingProvider> {
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
         database: &'db Database,
-        should_fetch: Box<dyn ShouldFetch>,
+        should_fetch: Box<dyn Fn(&H160) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
