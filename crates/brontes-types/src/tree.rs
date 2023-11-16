@@ -389,8 +389,7 @@ impl<V: NormalizedAction> Node<V> {
         }
     }
 
-    // currently this will drop the amount of nodes who reach the criteria and are
-    // higher
+    // only grabs the lowest subset of specified actions
     pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
         F: Fn(&Node<V>) -> bool,
@@ -417,6 +416,24 @@ impl<V: NormalizedAction> Node<V> {
 
         // lower node has a better sub-action.
         true
+    }
+
+    // will collect all elements of the operation that are specified.
+    // useful for fetching all transfers etc
+    pub fn collect(&self, results: &mut Vec<V>, call: &F)
+    where
+        F: Fn(&Node<V>) -> (bool, bool),
+    {
+        let (add, go_lower) = call(self);
+        if add {
+            results.push(self.data.clone())
+        }
+
+        if go_lower {
+            self.inner
+                .iter()
+                .for_each(|inner| inner.collect(results, call))
+        }
     }
 
     pub fn dyn_classify<T, F>(
