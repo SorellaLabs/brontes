@@ -221,7 +221,7 @@ pub fn helper_try_classify_unknown_exchanges2(
                     node.inner.clear();
                     node.data = res;
                 }
-            } else if let Some((ex_addr, tokens, action)) = classifier.try_clasify_exchange(node) {
+            } else if let Some((ex_addr, tokens, action)) = classifier.try_classify_exchange(node) {
                 node.inner.clear();
                 node.data = action;
 
