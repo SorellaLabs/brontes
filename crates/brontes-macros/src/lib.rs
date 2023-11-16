@@ -1,6 +1,10 @@
+use std::fmt::format;
+
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parenthesized, parse::Parse, token::Paren, ExprClosure, Ident, Index, LitBool, Token};
+use syn::{
+    parenthesized, parse::Parse, token::Paren, Error, ExprClosure, Ident, Index, LitBool, Token,
+};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
@@ -21,19 +25,18 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         give_logs,
         give_returns,
         call_function,
+        give_calldata,
     } = syn::parse2(token_stream.into()).unwrap();
 
-    let mut has_calldata = false;
     let mut option_parsing = Vec::new();
 
-    if !exchange_mod_name.to_string().eq("None") {
-        has_calldata = true;
+    if give_calldata {
         option_parsing.push(quote!(
                 let call_data = enum_unwrap!(data, #exchange_mod_name, #action_type);
         ));
     }
 
-    if give_logs.value {
+    if give_logs {
         option_parsing.push(quote!(
             let log_data = logs.into_iter().filter_map(|log| {
                 #action_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, true).ok()
@@ -42,13 +45,13 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         ));
     }
 
-    if give_returns.value {
+    if give_returns {
         option_parsing.push(quote!(
                 let return_data = #call_type::abi_decode_returns(&return_data, true).unwrap();
         ));
     }
 
-    let fn_call = match (has_calldata, give_logs.value, give_returns.value) {
+    let fn_call = match (give_calldata, give_logs, give_returns) {
         (true, true, true) => {
             quote!(
             (#call_function)(index, from_address, target_address, call_data, return_data, log_data)
@@ -124,12 +127,13 @@ struct MacroParse {
     action_type:   Ident,
     call_type:     Ident,
 
-    /// needed if we decide to decode call data
+    /// for call data decoding
     exchange_mod_name: Ident,
     /// wether we want logs or not
-    give_logs:         LitBool,
+    give_logs:         bool,
     /// wether we want return data or not
-    give_returns:      LitBool,
+    give_returns:      bool,
+    give_calldata:     bool,
 
     /// The closure that we use to construct the normalized type
     call_function: ExprClosure,
@@ -143,19 +147,38 @@ impl Parse for MacroParse {
         input.parse::<Token![,]>()?;
         let call_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let mut exchange_mod_name: Ident = input.parse()?;
 
-        if input.peek(Paren) {
-            let content;
-            parenthesized!(content in input);
-            exchange_mod_name = content.parse()?;
+        let exchange_mod_name: Ident = input.parse()?;
+
+        let mut logs = false;
+        let mut return_data = false;
+        let mut call_data = false;
+
+        input.parse::<Token![,]>()?;
+
+        while !input.peek(Token![|]) {
+            let arg: Ident = input.parse()?;
+            input.parse::<Token![:]>()?;
+            let enabled: LitBool = input.parse()?;
+
+            match arg.to_string().to_lowercase().as_str() {
+                "logs" => logs = enabled.value(),
+                "call_data" => call_data = enabled.value(),
+                "return_data" => return_data = enabled.value(),
+                _ => {
+                    return Err(Error::new(
+                        arg.span(),
+                        format!(
+                            "{} is not a valid config option, valid options are: \n logs , \
+                             call_data, return_data",
+                            arg,
+                        ),
+                    ))
+                }
+            }
+            input.parse::<Token![,]>()?;
         }
-
-        input.parse::<Token![,]>()?;
-        let give_logs: LitBool = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let give_returns: LitBool = input.parse()?;
-        input.parse::<Token![,]>()?;
+        // no data enabled
         let call_function: ExprClosure = input.parse()?;
 
         if call_function.asyncness.is_some() {
@@ -169,10 +192,22 @@ impl Parse for MacroParse {
             ))
         }
 
+        if call_function.asyncness.is_some() {
+            return Err(syn::Error::new(input.span(), "closure cannot be async"))
+        }
+
+        if !input.is_empty() {
+            return Err(syn::Error::new(
+                input.span(),
+                "There should be no values after the call function",
+            ))
+        }
+
         Ok(Self {
-            give_returns,
+            give_returns: return_data,
             call_function,
-            give_logs,
+            give_logs: logs,
+            give_calldata: call_data,
             call_type,
             action_type,
             exchange_name,
