@@ -378,8 +378,6 @@ impl Classifier {
             .combinations(2)
             .collect::<Vec<_>>();
 
-        println!("dyn classify transfers: {:#?}", transfer_data);
-
         // need to now go through all combinations of transfers and try to find a set of
         // two that fall under our classification
 
@@ -389,11 +387,10 @@ impl Classifier {
                 let (t0, from0, to0, value0, index0) = transfers.pop()?;
                 let (t1, from1, to1, value1, index1) = transfers.pop()?;
 
-                // diff tokens
-                if t0 != t1 && (from0 == to1 || to0 == from1) && (from0 != from1 && to0 != to1) {
+                // diff tokens, direct from to mappings
+                if t0 != t1 && (from0 == to1 && from1 == to0) {
                     // if the first swap occurred after the second
                     let swap = if index0 > index1 {
-                        println!("found exchange");
                         Actions::Swap(NormalizedSwap {
                             pool:       to0,
                             index:      node.index,
@@ -404,7 +401,6 @@ impl Classifier {
                             amount_out: value0,
                         })
                     } else {
-                        println!("found exchange");
                         Actions::Swap(NormalizedSwap {
                             pool:       to1,
                             index:      node.index,
@@ -455,6 +451,7 @@ impl Classifier {
                         node.data = res;
                     }
                 } else if let Some((ex_addr, tokens, action)) = self.try_classify_exchange(node) {
+                    println!("{:#?}", action);
                     node.inner.clear();
                     node.data = action;
 
@@ -600,11 +597,7 @@ pub mod test {
         let mut tree = classifier.build_tree(traces, header, &metadata);
         let root = tree.roots.remove(30);
 
-        let swaps = root.inspect(&|node| {
-            node.get_all_sub_actions()
-                .iter()
-                .any(|s| s.is_transfer() || s.is_swap())
-        });
+        let swaps = root.inspect(&|node| node.get_all_sub_actions().iter().any(|s| s.is_swap()));
 
         println!("{:#?}", swaps);
     }
