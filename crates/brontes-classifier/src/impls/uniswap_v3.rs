@@ -19,9 +19,8 @@ action_impl!(
     V3SwapImpl,
     Swap,
     swapCall,
-    None,
-    false,
-    true,
+    UniswapV3,
+    return_data: true,
     |index, from_address: H160, target_address: H160, return_data: swapReturn| {
         let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
         let token_0_delta = return_data.amount0;
@@ -62,9 +61,9 @@ action_impl!(
     V3MintImpl,
     Mint,
     mintCall,
-    Some(UniswapV3),
-    false,
-    true,
+    UniswapV3,
+    return_data: true,
+    call_data: true,
     |index,
      from_address: H160,
      target_address: H160,
@@ -93,9 +92,8 @@ action_impl!(
     V3BurnImpl,
     Burn,
     burnCall,
-    None,
-    false,
-    true,
+    UniswapV3,
+    return_data: true,
     |index, from_address: H160, target_address: H160, return_data: burnReturn| {
         let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
         let token_0_delta = return_data.amount0;
@@ -123,9 +121,9 @@ action_impl!(
     V3CollectImpl,
     Collect,
     collectCall,
-    Some(UniswapV3),
-    false,
-    true,
+    UniswapV3,
+    call_data: true,
+    return_data: true,
     |index, from_addr: H160, to_addr: H160, call_data: collectCall, return_data: collectReturn| {
         let address_bytes: [u8; 20] = target_address.clone().0.try_into().unwrap();
         let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
