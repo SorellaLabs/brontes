@@ -144,8 +144,9 @@ impl Classifier {
         //             .into_iter()
         //             .filter_map(|(index, data)| {
         //                 let Actions::Transfer(transfer) = data else { return None };
-        //                 for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
-        //                     if transfer.amount.eq(amount) && transfer.token.eq(token) {
+        //                 for (amount, token) in
+        // mint_data.amount.iter().zip(&mint_data.token) {
+        // if transfer.amount.eq(amount) && transfer.token.eq(token) {
         //                         return Some(*index)
         //                     }
         //                 }
@@ -251,7 +252,7 @@ impl Classifier {
 
         if transfer_data.len() == 2 {
             let (t0, from0, to0, value0) = transfer_data.remove(0);
-            let (t1, from1, to1, value1) = transfer_data.remove(1);
+            let (t1, from1, to1, value1) = transfer_data.remove(0);
 
             // sending 2 transfers to same addr
             if to0 == to1 && from0 == from1 {
@@ -362,62 +363,61 @@ impl Classifier {
     }
 
     /// tries to classify new exchanges
-    pub(crate) fn try_clasify_exchange(
+    pub(crate) fn try_classify_exchange(
         &self,
         node: &mut Node<Actions>,
     ) -> Option<(Address, (Address, Address), Actions)> {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
 
-        let mut transfer_data = subactions
+        let mut transfer_data: Vec<Vec<(Address, Address, Address, U256, usize)>> = subactions
             .iter()
             .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
-            .map(|data| (data.token, data.from, data.to, data.amount))
+            .map(|data| (data.token, data.from, data.to, data.amount, data.index))
+            .combinations(2)
             .collect::<Vec<_>>();
 
-        // isn't an exchange
-        if transfer_data.len() != 2 {
-            println!("more than 2 transfers");
-            return None
-        }
+        // need to now go through all combinations of transfers and try to find a set of
+        // two that fall under our classification
 
-        let (t0, from0, to0, value0) = transfer_data.remove(0);
-        let (t1, from1, to1, value1) = transfer_data.remove(0);
+        transfer_data
+            .into_par_iter()
+            .map(|mut transfers| {
+                let (t0, from0, to0, value0, index0) = transfers.remove(0);
+                let (t1, from1, to1, value1, index1) = transfers.remove(0);
 
-        // is a exchange
-        if t0 != t1
-            && (from0 == addr || to0 == addr)
-            && (from1 == addr || to1 == addr)
-            // same person transfering
-            && (from0 != from1)
-        {
-            let swap = if t0 == addr {
-                println!("found exchange");
-                Actions::Swap(NormalizedSwap {
-                    pool:       to0,
-                    index:      node.index,
-                    from:       addr,
-                    token_in:   t1,
-                    token_out:  t0,
-                    amount_in:  value1,
-                    amount_out: value0,
-                })
-            } else {
-                println!("found exchange");
-                Actions::Swap(NormalizedSwap {
-                    pool:       to1,
-                    index:      node.index,
-                    from:       addr,
-                    token_in:   t0,
-                    token_out:  t1,
-                    amount_in:  value0,
-                    amount_out: value1,
-                })
-            };
-            return Some((addr, (t0, t1), swap))
-        }
-
-        None
+                // diff tokens
+                if t0 != t1 && (from0 == to1 || to0 == from1) && (from0 != from1 && to0 != t01) {
+                    // if the first swap occurred after the second
+                    let swap = if index0 > index1 {
+                        println!("found exchange");
+                        Actions::Swap(NormalizedSwap {
+                            pool:       to0,
+                            index:      node.index,
+                            from:       addr,
+                            token_in:   t1,
+                            token_out:  t0,
+                            amount_in:  value1,
+                            amount_out: value0,
+                        })
+                    } else {
+                        println!("found exchange");
+                        Actions::Swap(NormalizedSwap {
+                            pool:       to1,
+                            index:      node.index,
+                            from:       addr,
+                            token_in:   t0,
+                            token_out:  t1,
+                            amount_in:  value0,
+                            amount_out: value1,
+                        })
+                    };
+                    return Some((addr, (t0, t1), swap))
+                }
+                None
+            })
+            .find_any(|val| val.is_some())
+            .flatten()
     }
 
     // fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
