@@ -106,13 +106,14 @@ impl Database {
     }
 
     pub async fn get_abis(&self, addresses: Vec<Address>) -> HashMap<Address, JsonAbi> {
-        let addresses = addresses
+        let mut addresses = addresses
             .into_iter()
             .map(|a| format!("{:?}", a).to_lowercase())
-            .collect::<Vec<String>>();
+            .fold("[".to_string(), |a, b| a + "," + &b);
+        addresses += "]";
 
         self.client
-            .query_all_params::<Vec<String>, Abis>(ABIS, vec![addresses])
+            .query_all_params::<String, Abis>(ABIS, vec![addresses])
             .await
             .unwrap()
             .into_iter()
