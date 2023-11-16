@@ -135,7 +135,6 @@ impl Classifier {
         //     },
         //     |node| (node.index, node.data.clone()),
         // );
-        //
         // // remove duplicate mints
         // tree.remove_duplicate_data(
         //     |node| node.data.is_mint(),
@@ -145,9 +144,8 @@ impl Classifier {
         //             .into_iter()
         //             .filter_map(|(index, data)| {
         //                 let Actions::Transfer(transfer) = data else { return None };
-        //                 for (amount, token) in
-        // mint_data.amount.iter().zip(&mint_data.token) {
-        // if transfer.amount.eq(amount) && transfer.token.eq(token) {
+        //                 for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
+        //                     if transfer.amount.eq(amount) && transfer.token.eq(token) {
         //                         return Some(*index)
         //                     }
         //                 }
@@ -157,7 +155,7 @@ impl Classifier {
         //     },
         //     |node| (node.index, node.data.clone()),
         // );
-        //
+
         tree.finalize_tree();
 
         tree
