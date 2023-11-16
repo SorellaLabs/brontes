@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    hash::Hash,
-    ops::Index,
-};
+use std::collections::{HashMap, HashSet};
 
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
