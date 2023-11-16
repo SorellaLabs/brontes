@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    hash::Hash,
     ops::Index,
 };
 
@@ -73,6 +74,27 @@ impl<V: NormalizedAction> TimeTree<V> {
         }
     }
 
+    pub fn collect<F>(&self, hash: H256, call: F) -> Vec<V>
+    where
+        F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
+    {
+        if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
+            root.collect(&call)
+        } else {
+            vec![]
+        }
+    }
+
+    pub fn collect_all<F>(&self, call: F) -> HashMap<H256, Vec<V>>
+    where
+        F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
+    {
+        self.roots
+            .par_iter()
+            .map(|r| (r.tx_hash, r.collect(&call)))
+            .collect()
+    }
+
     pub fn inspect_all<F>(&self, call: F) -> HashMap<H256, Vec<Vec<V>>>
     where
         F: Fn(&Node<V>) -> bool + Send + Sync,
@@ -128,6 +150,16 @@ impl<V: NormalizedAction> Root<V> {
     {
         let mut result = Vec::new();
         self.head.inspect(&mut result, call);
+
+        result
+    }
+
+    pub fn collect<F>(&self, call: &F) -> Vec<V>
+    where
+        F: Fn(&Node<V>) -> (bool, bool),
+    {
+        let mut result = Vec::new();
+        self.head.collect(&mut result, call);
 
         result
     }
@@ -420,7 +452,7 @@ impl<V: NormalizedAction> Node<V> {
 
     // will collect all elements of the operation that are specified.
     // useful for fetching all transfers etc
-    pub fn collect(&self, results: &mut Vec<V>, call: &F)
+    pub fn collect<F>(&self, results: &mut Vec<V>, call: &F)
     where
         F: Fn(&Node<V>) -> (bool, bool),
     {
@@ -430,9 +462,7 @@ impl<V: NormalizedAction> Node<V> {
         }
 
         if go_lower {
-            self.inner
-                .iter()
-                .for_each(|inner| inner.collect(results, call))
+            self.inner.iter().for_each(|i| i.collect(results, call))
         }
     }
 
