@@ -15,6 +15,7 @@ use reth_primitives::{Address, TxHash, H160};
 use sorella_db_databases::{
     clickhouse::{ClickhouseClient, Credentials},
     config::ClickhouseConfig,
+    utils::format_query_array,
     BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE, JIT_SANDWICH_TABLE, JIT_TABLE,
     LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
 };
@@ -106,14 +107,10 @@ impl Database {
     }
 
     pub async fn get_abis(&self, addresses: Vec<Address>) -> HashMap<Address, JsonAbi> {
-        let mut addresses = addresses
-            .into_iter()
-            .map(|a| format!("{:?}", a).to_lowercase())
-            .fold("[".to_string(), |a, b| a + "," + &b);
-        addresses += "]";
+        let query = format_query_array(&addresses, ABIS);
 
         self.client
-            .query_all_params::<String, Abis>(ABIS, vec![addresses])
+            .query_all::<Abis>(&query)
             .await
             .unwrap()
             .into_iter()
