@@ -83,19 +83,13 @@ impl Classifier {
                     let from_addr = trace.get_from_addr();
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
 
-                    let subactions = if !classification.is_unclassified() {
-                        vec![classification.clone()]
-                    } else {
-                        vec![]
-                    };
-
                     let node = Node {
-                        index: (index + 1) as u64,
-                        inner: vec![],
-                        finalized: !classification.is_unclassified(),
-                        subactions,
-                        address: from_addr,
-                        data: classification,
+                        index:         (index + 1) as u64,
+                        inner:         vec![],
+                        finalized:     false,
+                        subactions:    vec![],
+                        address:       from_addr,
+                        data:          classification,
                         trace_address: trace.trace.trace_address,
                     };
 
@@ -380,7 +374,6 @@ impl Classifier {
 
         // need to now go through all combinations of transfers and try to find a set of
         // two that fall under our classification
-
         transfer_data
             .into_par_iter()
             .map(|mut transfers| {
@@ -452,8 +445,8 @@ impl Classifier {
                     }
                 } else if let Some((ex_addr, tokens, action)) = self.try_classify_exchange(node) {
                     println!("{:#?}", action);
-                    node.inner.clear();
                     node.data = action;
+
 
                     return Some((ex_addr, tokens))
                 }
