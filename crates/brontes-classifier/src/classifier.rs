@@ -371,12 +371,14 @@ impl Classifier {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
 
-        let mut transfer_data: Vec<Vec<(Address, Address, Address, U256, u64)>> = subactions
+        let transfer_data: Vec<Vec<(Address, Address, Address, U256, u64)>> = subactions
             .iter()
             .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
             .map(|data| (data.token, data.from, data.to, data.amount, data.index))
             .combinations(2)
             .collect::<Vec<_>>();
+
+        println!("dyn classify transfers: {:#?}", transfer_data);
 
         // need to now go through all combinations of transfers and try to find a set of
         // two that fall under our classification
@@ -599,15 +601,9 @@ pub mod test {
         let root = tree.roots.remove(30);
 
         let swaps = root.inspect(&|node| {
-            let res = node
-                .get_all_sub_actions()
+            node.get_all_sub_actions()
                 .iter()
-                .any(|s| s.is_transfer() || s.is_swap());
-            if res {
-                println!("\n\n NODE {:#?}\n\n", node);
-            }
-
-            res
+                .any(|s| s.is_transfer() || s.is_swap())
         });
 
         println!("{:#?}", swaps);
