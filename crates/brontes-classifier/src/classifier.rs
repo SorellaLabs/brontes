@@ -12,6 +12,7 @@ use brontes_types::{
     tree::{GasDetails, Node, Root, TimeTree},
 };
 use hex_literal::hex;
+use itertools::Itertools;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H160, H256, U256};
@@ -370,7 +371,7 @@ impl Classifier {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
 
-        let mut transfer_data: Vec<Vec<(Address, Address, Address, U256, usize)>> = subactions
+        let mut transfer_data: Vec<Vec<(Address, Address, Address, U256, u64)>> = subactions
             .iter()
             .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
             .map(|data| (data.token, data.from, data.to, data.amount, data.index))
@@ -383,11 +384,11 @@ impl Classifier {
         transfer_data
             .into_par_iter()
             .map(|mut transfers| {
-                let (t0, from0, to0, value0, index0) = transfers.remove(0);
-                let (t1, from1, to1, value1, index1) = transfers.remove(0);
+                let (t0, from0, to0, value0, index0) = transfers.pop()?;
+                let (t1, from1, to1, value1, index1) = transfers.pop()?;
 
                 // diff tokens
-                if t0 != t1 && (from0 == to1 || to0 == from1) && (from0 != from1 && to0 != t01) {
+                if t0 != t1 && (from0 == to1 || to0 == from1) && (from0 != from1 && to0 != to1) {
                     // if the first swap occurred after the second
                     let swap = if index0 > index1 {
                         println!("found exchange");
@@ -451,7 +452,7 @@ impl Classifier {
                         node.inner.clear();
                         node.data = res;
                     }
-                } else if let Some((ex_addr, tokens, action)) = self.try_clasify_exchange(node) {
+                } else if let Some((ex_addr, tokens, action)) = self.try_classify_exchange(node) {
                     node.inner.clear();
                     node.data = action;
 
