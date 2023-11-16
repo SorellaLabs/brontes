@@ -14,7 +14,7 @@ use brontes_types::{
 use hex_literal::hex;
 use itertools::Itertools;
 use parking_lot::RwLock;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H160, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 use tracing::{debug, info};
@@ -365,12 +365,16 @@ impl Classifier {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
 
-        let transfer_data: Vec<Vec<(Address, Address, Address, U256, u64)>> = subactions
+        let sets = Vec::new();
+
+        for data in subactions
             .iter()
             .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
             .map(|data| (data.token, data.from, data.to, data.amount, data.index))
-            .combinations(2)
-            .collect::<Vec<_>>();
+        {
+            sets.par_iter_mut().for_each(|inner: &mut Vec<_>| inner.push(data));
+            sets.push(vec![data]);
+        }
 
         // need to now go through all combinations of transfers and try to find a set of
         // two that fall under our classification
@@ -446,7 +450,6 @@ impl Classifier {
                 } else if let Some((ex_addr, tokens, action)) = self.try_classify_exchange(node) {
                     println!("{:#?}", action);
                     node.data = action;
-
 
                     return Some((ex_addr, tokens))
                 }
