@@ -1,24 +1,22 @@
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::collections::{HashMap, HashSet};
 
 use brontes_database::Metadata;
 use brontes_types::{
     normalized_actions::{
-        Actions, NormalizedBurn, NormalizedMint, NormalizedSwap, NormalizedTransfer,
+        Actions, NormalizedAction, NormalizedBurn, NormalizedMint, NormalizedSwap,
+        NormalizedTransfer,
     },
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
 };
 use hex_literal::hex;
+use itertools::Itertools;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, Header, H160, H256, U256};
+use reth_primitives::{Address, Header, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
-use tracing::{debug, info};
 
-use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
+use crate::PROTOCOL_ADDRESS_MAPPING;
 
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -82,19 +80,13 @@ impl Classifier {
                     let from_addr = trace.get_from_addr();
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
 
-                    let subactions = if !classification.is_unclassified() {
-                        vec![classification.clone()]
-                    } else {
-                        vec![]
-                    };
-
                     let node = Node {
-                        index: (index + 1) as u64,
-                        inner: vec![],
-                        finalized: !classification.is_unclassified(),
-                        subactions,
-                        address: from_addr,
-                        data: classification,
+                        index:         (index + 1) as u64,
+                        inner:         vec![],
+                        finalized:     false,
+                        subactions:    vec![],
+                        address:       from_addr,
+                        data:          classification,
                         trace_address: trace.trace.trace_address,
                     };
 
@@ -135,7 +127,6 @@ impl Classifier {
         //     },
         //     |node| (node.index, node.data.clone()),
         // );
-        //
         // // remove duplicate mints
         // tree.remove_duplicate_data(
         //     |node| node.data.is_mint(),
@@ -157,7 +148,7 @@ impl Classifier {
         //     },
         //     |node| (node.index, node.data.clone()),
         // );
-        //
+
         tree.finalize_tree();
 
         tree
@@ -175,7 +166,7 @@ impl Classifier {
         }
     }
 
-    pub(crate) fn classify_node(&self, trace: TransactionTraceWithLogs, index: u64) -> Actions {
+    fn classify_node(&self, trace: TransactionTraceWithLogs, index: u64) -> Actions {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
@@ -224,7 +215,7 @@ impl Classifier {
     }
 
     /// tries to prove dyn mint, dyn burn and dyn swap.
-    pub(crate) fn prove_dyn_action(
+    fn prove_dyn_action(
         &self,
         node: &mut Node<Actions>,
         token_0: Address,
@@ -253,7 +244,7 @@ impl Classifier {
 
         if transfer_data.len() == 2 {
             let (t0, from0, to0, value0) = transfer_data.remove(0);
-            let (t1, from1, to1, value1) = transfer_data.remove(1);
+            let (t1, from1, to1, value1) = transfer_data.remove(0);
 
             // sending 2 transfers to same addr
             if to0 == to1 && from0 == from1 {
@@ -332,8 +323,8 @@ impl Classifier {
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
         if log.topics.get(0) == Some(&TRANSFER_TOPIC.into()) {
-            let from = Address::from_slice(&log.topics[1][..20]);
-            let to = Address::from_slice(&log.topics[2][..20]);
+            let from = Address::from_slice(&log.topics[1][12..]);
+            let to = Address::from_slice(&log.topics[2][12..]);
             let data = U256::try_from_be_slice(&log.data[..]).unwrap();
             return Some((log.address, from, to, data))
         }
@@ -343,118 +334,106 @@ impl Classifier {
 
     /// checks to see if we have a direct to <> from mapping for underlying
     /// transfers
-    pub(crate) fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
-        let mut to_address = HashSet::new();
-        let mut from_address = HashSet::new();
+    fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
+        let a = actions
+            .iter()
+            .map(|a| a.get_index())
+            .collect::<HashSet<_>>();
 
-        for action in &actions {
-            if let Actions::Transfer(t) = action {
-                to_address.insert(t.to);
-                from_address.insert(t.from);
-            }
+        let res = actions.into_iter().map(|a| a.is_transfer()).count() >= 2;
+        if a.contains(&14) && a.contains(&15) {
+            println!("res: {res}");
         }
-
-        for to_addr in to_address {
-            if from_address.contains(&to_addr) {
-                return true
-            }
-        }
-
-        false
+        res
     }
 
     /// tries to classify new exchanges
-    pub(crate) fn try_clasify_exchange(
+    fn try_classify_exchange(
         &self,
         node: &mut Node<Actions>,
     ) -> Option<(Address, (Address, Address), Actions)> {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
 
-        let mut transfer_data = subactions
+        let transfers = subactions
             .iter()
             .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
-            .map(|data| (data.token, data.from, data.to, data.amount))
+            .map(|data| (data.token, data.from, data.to, data.amount, data.index))
+            .combinations(2)
             .collect::<Vec<_>>();
 
-        // isn't an exchange
-        if transfer_data.len() != 2 {
-            println!("more than 2 transfers");
+        if transfers.len() < 2 {
             return None
         }
 
-        let (t0, from0, to0, value0) = transfer_data.remove(0);
-        let (t1, from1, to1, value1) = transfer_data.remove(0);
+        transfers
+            .into_par_iter()
+            .filter_map(|mut transfer| {
+                let (t0, from0, to0, value0, index0) = transfer.remove(0);
+                let (t1, from1, to1, value1, index1) = transfer.remove(0);
 
-        // is a exchange
-        if t0 != t1
-            && (from0 == addr || to0 == addr)
-            && (from1 == addr || to1 == addr)
-            // same person transfering
-            && (from0 != from1)
-        {
-            let swap = if t0 == addr {
-                println!("found exchange");
-                Actions::Swap(NormalizedSwap {
-                    pool:       to0,
-                    index:      node.index,
-                    from:       addr,
-                    token_in:   t1,
-                    token_out:  t0,
-                    amount_in:  value1,
-                    amount_out: value0,
-                })
-            } else {
-                println!("found exchange");
-                Actions::Swap(NormalizedSwap {
-                    pool:       to1,
-                    index:      node.index,
-                    from:       addr,
-                    token_in:   t0,
-                    token_out:  t1,
-                    amount_in:  value0,
-                    amount_out: value1,
-                })
-            };
-            return Some((addr, (t0, t1), swap))
-        }
-
-        None
+                // diff tokens, direct from to mappings
+                if t0 != t1 && (from0 == to1 && from1 == to0) {
+                    // if the first swap occurred after the second
+                    let swap = if index0 > index1 {
+                        Actions::Swap(NormalizedSwap {
+                            pool:       to1,
+                            index:      node.index,
+                            from:       from1,
+                            token_in:   t1,
+                            token_out:  t0,
+                            amount_in:  value1,
+                            amount_out: value0,
+                        })
+                    } else {
+                        Actions::Swap(NormalizedSwap {
+                            pool:       to0,
+                            index:      node.index,
+                            from:       from0,
+                            token_in:   t0,
+                            token_out:  t1,
+                            amount_in:  value0,
+                            amount_out: value1,
+                        })
+                    };
+                    return Some((addr, (t0, t1), swap))
+                }
+                None
+            })
+            .min_by(|x, y| x.2.get_index().cmp(&y.2.get_index()))
     }
 
-    // fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
-    //     tree.remove_duplicate_data(find, classify, info)
-    // }
-
-    pub(crate) fn try_classify_unknown_exchanges(&self, tree: &mut TimeTree<Actions>) {
+    fn try_classify_unknown_exchanges(&self, tree: &mut TimeTree<Actions>) {
         // Acquire the read lock once
         let known_dyn_protocols_read = self.known_dyn_protocols.read();
 
         let new_classifed_exchanges = tree.dyn_classify(
-            |address, sub_actions| {
+            |address, node| {
                 // we can dyn classify this shit
                 if PROTOCOL_ADDRESS_MAPPING.contains_key(&address.0) {
                     // this is already classified
-                    return false
+                    return (false, false)
                 }
                 if known_dyn_protocols_read.contains_key(&address)
-                    || self.is_possible_exchange(sub_actions)
+                    || self.is_possible_exchange(node.get_all_sub_actions())
                 {
-                    return true
+                    if node.data.is_transfer() {
+                        println!("transfer trigger: {:?}", node.data);
+                        return (true, true)
+                    } else {
+                        return (true, false)
+                    }
                 }
 
-                false
+                (false, false)
             },
             |node| {
                 if known_dyn_protocols_read.contains_key(&node.address) {
                     let (token_0, token_1) = known_dyn_protocols_read.get(&node.address).unwrap();
                     if let Some(res) = self.prove_dyn_action(node, *token_0, *token_1) {
-                        // we have reduced the lower part of the tree. we can delete this now
-                        node.inner.clear();
                         node.data = res;
                     }
-                } else if let Some((ex_addr, tokens, action)) = self.try_clasify_exchange(node) {
-                    node.inner.clear();
+                } else if let Some((ex_addr, tokens, action)) = self.try_classify_exchange(node) {
                     node.data = action;
 
                     return Some((ex_addr, tokens))
@@ -599,16 +578,13 @@ pub mod test {
         let mut tree = classifier.build_tree(traces, header, &metadata);
         let root = tree.roots.remove(30);
 
-        let swaps = root.inspect(&|node| {
-            let res = node
-                .get_all_sub_actions()
-                .iter()
-                .any(|s| s.is_transfer() || s.is_swap());
-            if res {
-                println!("\n\n NODE {:#?}\n\n", node);
-            }
-
-            res
+        let swaps = root.collect(&|node| {
+            (
+                node.data.is_swap() || node.data.is_transfer(),
+                node.get_all_sub_actions()
+                    .iter()
+                    .any(|s| s.is_swap() || s.is_transfer()),
+            )
         });
 
         println!("{:#?}", swaps);
