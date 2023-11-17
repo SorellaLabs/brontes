@@ -336,7 +336,7 @@ impl Classifier {
     /// transfers
     fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
         let a = actions
-            .into_iter()
+            .iter()
             .map(|a| a.get_index())
             .collect::<HashSet<_>>();
 
