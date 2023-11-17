@@ -473,8 +473,15 @@ impl<V: NormalizedAction> Node<V> {
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         let (go_lower, set_change) = find(self.address, self);
+
         if !go_lower {
             return false
+        }
+
+        if set_change {
+            if let Some(res) = call(self) {
+                result.push(res);
+            }
         }
 
         let lower_has_better_c = self
@@ -485,11 +492,7 @@ impl<V: NormalizedAction> Node<V> {
 
         let lower_has_better = lower_has_better_c.into_iter().any(|i| i);
 
-        if !lower_has_better {
-            if let Some(res) = call(self) {
-                result.push(res);
-            }
-        } else if set_change {
+        if !lower_has_better && !set_change {
             if let Some(res) = call(self) {
                 result.push(res);
             }
