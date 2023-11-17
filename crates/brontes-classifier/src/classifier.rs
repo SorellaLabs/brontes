@@ -345,8 +345,9 @@ impl Classifier {
     ) -> Option<(Address, (Address, Address), Actions)> {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
+        println!("{:#?}", subactions);
 
-        let mut transfers = subactions
+        let transfers = subactions
             .iter()
             .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
             .map(|data| (data.token, data.from, data.to, data.amount, data.index))
