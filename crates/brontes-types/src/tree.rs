@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Index,
-};
+use std::collections::{HashMap, HashSet};
 
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -73,6 +70,27 @@ impl<V: NormalizedAction> TimeTree<V> {
         }
     }
 
+    pub fn collect<F>(&self, hash: H256, call: F) -> Vec<V>
+    where
+        F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
+    {
+        if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
+            root.collect(&call)
+        } else {
+            vec![]
+        }
+    }
+
+    pub fn collect_all<F>(&self, call: F) -> HashMap<H256, Vec<V>>
+    where
+        F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
+    {
+        self.roots
+            .par_iter()
+            .map(|r| (r.tx_hash, r.collect(&call)))
+            .collect()
+    }
+
     pub fn inspect_all<F>(&self, call: F) -> HashMap<H256, Vec<Vec<V>>>
     where
         F: Fn(&Node<V>) -> bool + Send + Sync,
@@ -88,7 +106,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     /// the call function gets executed in order to capture the data
     pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
     where
-        T: Fn(Address, Vec<V>) -> bool + Sync,
+        T: Fn(Address, &Node<V>) -> (bool, bool) + Sync,
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         self.roots
@@ -132,6 +150,16 @@ impl<V: NormalizedAction> Root<V> {
         result
     }
 
+    pub fn collect<F>(&self, call: &F) -> Vec<V>
+    where
+        F: Fn(&Node<V>) -> (bool, bool),
+    {
+        let mut result = Vec::new();
+        self.head.collect(&mut result, call);
+
+        result
+    }
+
     pub fn remove_duplicate_data<F, C, T, R>(&mut self, find: &F, classify: &C, info: &T)
     where
         T: Fn(&Node<V>) -> R,
@@ -148,7 +176,7 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
     where
-        T: Fn(Address, Vec<V>) -> bool,
+        T: Fn(Address, &Node<V>) -> (bool, bool),
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         // bool is used for recursion
@@ -389,8 +417,7 @@ impl<V: NormalizedAction> Node<V> {
         }
     }
 
-    // currently this will drop the amount of nodes who reach the criteria and are
-    // higher
+    // only grabs the lowest subset of specified actions
     pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
         F: Fn(&Node<V>) -> bool,
@@ -419,6 +446,22 @@ impl<V: NormalizedAction> Node<V> {
         true
     }
 
+    // will collect all elements of the operation that are specified.
+    // useful for fetching all transfers etc
+    pub fn collect<F>(&self, results: &mut Vec<V>, call: &F)
+    where
+        F: Fn(&Node<V>) -> (bool, bool),
+    {
+        let (add, go_lower) = call(self);
+        if add {
+            results.push(self.data.clone())
+        }
+
+        if go_lower {
+            self.inner.iter().for_each(|i| i.collect(results, call))
+        }
+    }
+
     pub fn dyn_classify<T, F>(
         &mut self,
         find: &T,
@@ -426,12 +469,19 @@ impl<V: NormalizedAction> Node<V> {
         result: &mut Vec<(Address, (Address, Address))>,
     ) -> bool
     where
-        T: Fn(Address, Vec<V>) -> bool,
+        T: Fn(Address, &Node<V>) -> (bool, bool),
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
-        let works = find(self.address, self.get_all_sub_actions());
-        if !works {
+        let (go_lower, set_change) = find(self.address, self);
+
+        if !go_lower {
             return false
+        }
+
+        if set_change {
+            if let Some(res) = call(self) {
+                result.push(res);
+            }
         }
 
         let lower_has_better_c = self
@@ -442,7 +492,7 @@ impl<V: NormalizedAction> Node<V> {
 
         let lower_has_better = lower_has_better_c.into_iter().any(|i| i);
 
-        if !lower_has_better {
+        if !lower_has_better && !set_change {
             if let Some(res) = call(self) {
                 result.push(res);
             }
@@ -502,7 +552,7 @@ mod tests {
                 trace_address:  value.trace_address.clone(),
                 address:        value.address,
                 trace:          match &value.data {
-                    Actions::Unclassified(traces, _) => traces.trace.clone(),
+                    Actions::Unclassified(traces) => traces.trace.clone(),
                     _ => unreachable!(),
                 },
             }
