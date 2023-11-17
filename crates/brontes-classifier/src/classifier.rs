@@ -438,12 +438,9 @@ impl Classifier {
                 if known_dyn_protocols_read.contains_key(&node.address) {
                     let (token_0, token_1) = known_dyn_protocols_read.get(&node.address).unwrap();
                     if let Some(res) = self.prove_dyn_action(node, *token_0, *token_1) {
-                        // we have reduced the lower part of the tree. we can delete this now
-                        node.inner.clear();
                         node.data = res;
                     }
                 } else if let Some((ex_addr, tokens, action)) = self.try_classify_exchange(node) {
-                    println!("{:#?}", action);
                     node.data = action;
 
                     return Some((ex_addr, tokens))
@@ -589,7 +586,12 @@ pub mod test {
         let root = tree.roots.remove(30);
 
         let swaps = root.collect(&|node| {
-            (node.data.is_swap(), node.get_all_sub_actions().iter().any(|s| s.is_swap()))
+            (
+                node.data.is_swap() || node.data.is_transfer(),
+                node.get_all_sub_actions()
+                    .iter()
+                    .any(|s| s.is_swap() || s.is_transfer()),
+            )
         });
 
         println!("{:#?}", swaps);
