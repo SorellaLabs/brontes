@@ -410,7 +410,7 @@ impl Classifier {
                 }
                 None
             })
-            .min_by(|k| k.get_index())
+            .min_by(|x,y| x.get_index().cmp(y.get_index()))
     }
 
     // fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
