@@ -193,10 +193,22 @@ pub struct NormalizedRepayment {
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn get_action(&self) -> &Actions;
+    fn get_index(&self) -> u64;
 }
 
 impl NormalizedAction for Actions {
     fn get_action(&self) -> &Actions {
         self
+    }
+
+    fn get_index(&self) -> u64 {
+        match self {
+            Self::Swap(s) => s.index,
+            Self::Mint(m) => m.index,
+            Self::Burn(b) => b.index,
+            Self::Transfer(t) => t.index,
+            Self::Collect(c) => c.index,
+            Self::Unclassified(u) => u.trace_idx,
+        }
     }
 }
