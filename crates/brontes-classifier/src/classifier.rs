@@ -365,55 +365,46 @@ impl Classifier {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
 
-        let sets = Vec::new();
-
-        for data in subactions
+        let mut transfers = subactions
             .iter()
             .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
             .map(|data| (data.token, data.from, data.to, data.amount, data.index))
-        {
-            sets.par_iter_mut().for_each(|inner: &mut Vec<_>| inner.push(data));
-            sets.push(vec![data]);
+            .collect::<Vec<_>>();
+
+        if transfers.len() < 2 {
+            return None
         }
 
-        // need to now go through all combinations of transfers and try to find a set of
-        // two that fall under our classification
-        transfer_data
-            .into_par_iter()
-            .map(|mut transfers| {
-                let (t0, from0, to0, value0, index0) = transfers.pop()?;
-                let (t1, from1, to1, value1, index1) = transfers.pop()?;
+        let (t0, from0, to0, value0, index0) = transfers.remove(0);
+        let (t1, from1, to1, value1, index1) = transfers.pop()?;
 
-                // diff tokens, direct from to mappings
-                if t0 != t1 && (from0 == to1 && from1 == to0) {
-                    // if the first swap occurred after the second
-                    let swap = if index0 > index1 {
-                        Actions::Swap(NormalizedSwap {
-                            pool:       to0,
-                            index:      node.index,
-                            from:       addr,
-                            token_in:   t1,
-                            token_out:  t0,
-                            amount_in:  value1,
-                            amount_out: value0,
-                        })
-                    } else {
-                        Actions::Swap(NormalizedSwap {
-                            pool:       to1,
-                            index:      node.index,
-                            from:       addr,
-                            token_in:   t0,
-                            token_out:  t1,
-                            amount_in:  value0,
-                            amount_out: value1,
-                        })
-                    };
-                    return Some((addr, (t0, t1), swap))
-                }
-                None
-            })
-            .find_any(|val| val.is_some())
-            .flatten()
+        // diff tokens, direct from to mappings
+        if t0 != t1 && (from0 == to1 && from1 == to0) {
+            // if the first swap occurred after the second
+            let swap = if index0 > index1 {
+                Actions::Swap(NormalizedSwap {
+                    pool:       to1,
+                    index:      node.index,
+                    from:       from1,
+                    token_in:   t1,
+                    token_out:  t0,
+                    amount_in:  value1,
+                    amount_out: value0,
+                })
+            } else {
+                Actions::Swap(NormalizedSwap {
+                    pool:       to0,
+                    index:      node.index,
+                    from:       from0,
+                    token_in:   t0,
+                    token_out:  t1,
+                    amount_in:  value0,
+                    amount_out: value1,
+                })
+            };
+            return Some((addr, (t0, t1), swap))
+        }
+        None
     }
 
     // fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
@@ -425,16 +416,20 @@ impl Classifier {
         let known_dyn_protocols_read = self.known_dyn_protocols.read();
 
         let new_classifed_exchanges = tree.dyn_classify(
-            |address, sub_actions| {
+            |address, node| {
                 // we can dyn classify this shit
                 if PROTOCOL_ADDRESS_MAPPING.contains_key(&address.0) {
                     // this is already classified
-                    return false
+                    return (false, false)
                 }
                 if known_dyn_protocols_read.contains_key(&address)
-                    || self.is_possible_exchange(sub_actions)
+                    || self.is_possible_exchange(node.get_all_sub_actions())
                 {
-                    return true
+                    if node.data.is_transfer() {
+                        return (true, true)
+                    } else {
+                        return (true, false)
+                    }
                 }
 
                 false
