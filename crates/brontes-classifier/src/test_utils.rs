@@ -39,3 +39,14 @@ pub async fn build_raw_test_tree<T: TracingProvider>(
     let classifier = Classifier::new();
     classifier.build_tree(traces, header, &metadata)
 }
+
+pub async fn get_traces_with_meta<T: TracingProvider>(
+    tracer: &TraceParser<'_, T>,
+    db: &Database,
+    block_number: u64,
+) -> (Vec<TxTrace>, Header, Metadata) {
+    let (traces, header) = tracer.execute_block(block_number).await.unwrap();
+    let metadata = db.get_metadata(block_number).await;
+    (traces, header, metadata)
+}
+
