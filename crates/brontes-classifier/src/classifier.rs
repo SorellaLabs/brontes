@@ -326,8 +326,8 @@ impl Classifier {
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
         if log.topics.get(0) == Some(&TRANSFER_TOPIC.into()) {
-            let from = Address::from_slice(&log.topics[1][16..]);
-            let to = Address::from_slice(&log.topics[2][16..]);
+            let from = Address::from_slice(&log.topics[1][12..]);
+            let to = Address::from_slice(&log.topics[2][12..]);
             let data = U256::try_from_be_slice(&log.data[..]).unwrap();
             return Some((log.address, from, to, data))
         }
