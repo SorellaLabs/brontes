@@ -335,23 +335,7 @@ impl Classifier {
     /// checks to see if we have a direct to <> from mapping for underlying
     /// transfers
     pub(crate) fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
-        let mut to_address = HashSet::new();
-        let mut from_address = HashSet::new();
-
-        for action in &actions {
-            if let Actions::Transfer(t) = action {
-                to_address.insert(t.to);
-                from_address.insert(t.from);
-            }
-        }
-
-        for to_addr in to_address {
-            if from_address.contains(&to_addr) {
-                return true
-            }
-        }
-
-        false
+        actions.into_iter().map(|a| a.is_transfer()).count() >= 2
     }
 
     /// tries to classify new exchanges
