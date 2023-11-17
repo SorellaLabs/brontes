@@ -106,7 +106,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     /// the call function gets executed in order to capture the data
     pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
     where
-        T: Fn(Address, Vec<V>) -> bool + Sync,
+        T: Fn(Address, &Node<V>) -> (bool, bool) + Sync,
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         self.roots
@@ -176,7 +176,7 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
     where
-        T: Fn(Address, Vec<V>) -> bool,
+        T: Fn(Address, &Node<V>) -> (bool, bool),
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         // bool is used for recursion
@@ -469,11 +469,11 @@ impl<V: NormalizedAction> Node<V> {
         result: &mut Vec<(Address, (Address, Address))>,
     ) -> bool
     where
-        T: Fn(Address, Vec<V>) -> bool,
+        T: Fn(Address, &Node<V>) -> (bool, bool),
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
-        let works = find(self.address, self.get_all_sub_actions());
-        if !works {
+        let (go_lower, set_change) = find(self.address, self);
+        if !go_lower {
             return false
         }
 
@@ -486,6 +486,10 @@ impl<V: NormalizedAction> Node<V> {
         let lower_has_better = lower_has_better_c.into_iter().any(|i| i);
 
         if !lower_has_better {
+            if let Some(res) = call(self) {
+                result.push(res);
+            }
+        } else if set_change {
             if let Some(res) = call(self) {
                 result.push(res);
             }
@@ -545,7 +549,7 @@ mod tests {
                 trace_address:  value.trace_address.clone(),
                 address:        value.address,
                 trace:          match &value.data {
-                    Actions::Unclassified(traces, _) => traces.trace.clone(),
+                    Actions::Unclassified(traces) => traces.trace.clone(),
                     _ => unreachable!(),
                 },
             }
