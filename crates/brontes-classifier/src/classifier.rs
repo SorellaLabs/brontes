@@ -426,6 +426,7 @@ impl Classifier {
                     || self.is_possible_exchange(node.get_all_sub_actions())
                 {
                     if node.data.is_transfer() {
+                        println!("transfer trigger: {:?}", node.data);
                         return (true, true)
                     } else {
                         return (true, false)
