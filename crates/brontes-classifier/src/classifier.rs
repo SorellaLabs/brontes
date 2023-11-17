@@ -1,12 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::collections::{HashMap, HashSet};
 
 use brontes_database::Metadata;
 use brontes_types::{
     normalized_actions::{
-        Actions, NormalizedBurn, NormalizedMint, NormalizedSwap, NormalizedTransfer,
+        Actions, NormalizedAction, NormalizedBurn, NormalizedMint, NormalizedSwap,
+        NormalizedTransfer,
     },
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
@@ -14,12 +12,11 @@ use brontes_types::{
 use hex_literal::hex;
 use itertools::Itertools;
 use parking_lot::RwLock;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
-use reth_primitives::{Address, Header, H160, H256, U256};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reth_primitives::{Address, Header, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
-use tracing::{debug, info};
 
-use crate::{StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
+use crate::PROTOCOL_ADDRESS_MAPPING;
 
 const TRANSFER_TOPIC: H256 =
     H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -410,7 +407,7 @@ impl Classifier {
                 }
                 None
             })
-            .min_by(|x,y| x.2.get_index().cmp(y.2.get_index()))
+            .min_by(|x, y| x.2.get_index().cmp(&y.2.get_index()))
     }
 
     // fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
