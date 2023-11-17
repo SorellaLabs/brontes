@@ -432,7 +432,7 @@ impl Classifier {
                     }
                 }
 
-                false
+                (false, false)
             },
             |node| {
                 if known_dyn_protocols_read.contains_key(&node.address) {
@@ -588,7 +588,9 @@ pub mod test {
         let mut tree = classifier.build_tree(traces, header, &metadata);
         let root = tree.roots.remove(30);
 
-        let swaps = root.inspect(&|node| node.get_all_sub_actions().iter().any(|s| s.is_swap()));
+        let swaps = root.collect(&|node| {
+            (node.data.is_swap(), node.get_all_sub_actions().iter().any(|s| s.is_swap()))
+        });
 
         println!("{:#?}", swaps);
     }
