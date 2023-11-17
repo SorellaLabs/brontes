@@ -341,7 +341,7 @@ impl Classifier {
             .collect::<HashSet<_>>();
 
         let res = actions.into_iter().map(|a| a.is_transfer()).count() >= 2;
-        if a.contains(14) && a.contains(15) {
+        if a.contains(&14) && a.contains(&15) {
             println!("res: {res}");
         }
         res
