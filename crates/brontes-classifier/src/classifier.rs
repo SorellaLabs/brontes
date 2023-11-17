@@ -369,44 +369,48 @@ impl Classifier {
             .iter()
             .flat_map(|i| if let Actions::Transfer(t) = i { Some(t) } else { None })
             .map(|data| (data.token, data.from, data.to, data.amount, data.index))
+            .combinations(2)
             .collect::<Vec<_>>();
 
         if transfers.len() < 2 {
             return None
         }
 
-        println!("{:#?}", transfers);
+        transfers
+            .into_par_iter()
+            .filter_map(|mut transfer| {
+                let (t0, from0, to0, value0, index0) = transfer.remove(0);
+                let (t1, from1, to1, value1, index1) = transfer.remove(0);
 
-        let (t0, from0, to0, value0, index0) = transfers.remove(0);
-        let (t1, from1, to1, value1, index1) = transfers.pop()?;
-
-        // diff tokens, direct from to mappings
-        if t0 != t1 && (from0 == to1 && from1 == to0) {
-            // if the first swap occurred after the second
-            let swap = if index0 > index1 {
-                Actions::Swap(NormalizedSwap {
-                    pool:       to1,
-                    index:      node.index,
-                    from:       from1,
-                    token_in:   t1,
-                    token_out:  t0,
-                    amount_in:  value1,
-                    amount_out: value0,
-                })
-            } else {
-                Actions::Swap(NormalizedSwap {
-                    pool:       to0,
-                    index:      node.index,
-                    from:       from0,
-                    token_in:   t0,
-                    token_out:  t1,
-                    amount_in:  value0,
-                    amount_out: value1,
-                })
-            };
-            return Some((addr, (t0, t1), swap))
-        }
-        None
+                // diff tokens, direct from to mappings
+                if t0 != t1 && (from0 == to1 && from1 == to0) {
+                    // if the first swap occurred after the second
+                    let swap = if index0 > index1 {
+                        Actions::Swap(NormalizedSwap {
+                            pool:       to1,
+                            index:      node.index,
+                            from:       from1,
+                            token_in:   t1,
+                            token_out:  t0,
+                            amount_in:  value1,
+                            amount_out: value0,
+                        })
+                    } else {
+                        Actions::Swap(NormalizedSwap {
+                            pool:       to0,
+                            index:      node.index,
+                            from:       from0,
+                            token_in:   t0,
+                            token_out:  t1,
+                            amount_in:  value0,
+                            amount_out: value1,
+                        })
+                    };
+                    return Some((addr, (t0, t1), swap))
+                }
+                None
+            })
+            .min_by(|k| k.get_index())
     }
 
     // fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
