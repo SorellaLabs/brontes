@@ -166,7 +166,7 @@ impl Classifier {
         }
     }
 
-    pub(crate) fn classify_node(&self, trace: TransactionTraceWithLogs, index: u64) -> Actions {
+    fn classify_node(&self, trace: TransactionTraceWithLogs, index: u64) -> Actions {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
@@ -215,7 +215,7 @@ impl Classifier {
     }
 
     /// tries to prove dyn mint, dyn burn and dyn swap.
-    pub(crate) fn prove_dyn_action(
+    fn prove_dyn_action(
         &self,
         node: &mut Node<Actions>,
         token_0: Address,
@@ -334,18 +334,26 @@ impl Classifier {
 
     /// checks to see if we have a direct to <> from mapping for underlying
     /// transfers
-    pub(crate) fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
-        actions.into_iter().map(|a| a.is_transfer()).count() >= 2
+    fn is_possible_exchange(&self, actions: Vec<Actions>) -> bool {
+        let a = actions
+            .into_iter()
+            .map(|a| a.get_index())
+            .collect::<HashSet<_>>();
+
+        let res = actions.into_iter().map(|a| a.is_transfer()).count() >= 2;
+        if a.contains(14) && a.contains(15) {
+            println!("res: {res}");
+        }
+        res
     }
 
     /// tries to classify new exchanges
-    pub(crate) fn try_classify_exchange(
+    fn try_classify_exchange(
         &self,
         node: &mut Node<Actions>,
     ) -> Option<(Address, (Address, Address), Actions)> {
         let addr = node.address;
         let subactions = node.get_all_sub_actions();
-        println!("{:#?}", subactions);
 
         let transfers = subactions
             .iter()
@@ -395,11 +403,7 @@ impl Classifier {
             .min_by(|x, y| x.2.get_index().cmp(&y.2.get_index()))
     }
 
-    // fn dyn_flashloan_classify(&self, tree: &mut TimeTree<Actions>) {
-    //     tree.remove_duplicate_data(find, classify, info)
-    // }
-
-    pub(crate) fn try_classify_unknown_exchanges(&self, tree: &mut TimeTree<Actions>) {
+    fn try_classify_unknown_exchanges(&self, tree: &mut TimeTree<Actions>) {
         // Acquire the read lock once
         let known_dyn_protocols_read = self.known_dyn_protocols.read();
 
