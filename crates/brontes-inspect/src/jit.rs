@@ -47,7 +47,7 @@ impl Inspector for JitInspector {
                 }
             })
             .collect::<Vec<_>>();
-        debug!(?set, "possible jit set");
+        info!(?set, "possible jit set");
 
         set.into_iter()
             .filter_map(|(eoa, tx0, tx1, mev_addr, victim)| {
@@ -140,7 +140,7 @@ impl JitInspector {
 
         let post_profit = jit_fee_post + burn_post - mint_post - &post_bribe;
 
-        debug!(?pre_profit, ?post_profit, "pre post jit profit");
+        info!(?pre_profit, ?post_profit, "pre post jit profit");
 
         let classified = ClassifiedMev {
             block_number: metadata.block_num,
@@ -295,8 +295,6 @@ mod tests {
 
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
-
-        println!("{:#?}", metadata);
 
         let tx = block.0.clone().into_iter().take(20).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
