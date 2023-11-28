@@ -377,6 +377,7 @@ mod tests {
     use super::*;
 
     fn get_metadata() -> Metadata {
+        // 2126.43
         Metadata {
             block_num:              18539312,
             block_hash:             U256::from_str_radix(
@@ -392,43 +393,47 @@ mod tests {
             token_prices:           {
                 let mut prices = HashMap::new();
 
-                // WETH = $1682.268937
                 prices.insert(
                     Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
                     (
-                        Rational::from_str("7398697029111485/4398046511104").unwrap(),
-                        Rational::from_str("924734257781285/549755813888").unwrap(),
+                        Rational::from_str("2126.43").unwrap(),
+                        Rational::from_str("2126.43").unwrap(),
                     ),
                 );
 
-                // SMT 
+                // SMT
                 prices.insert(
-                Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
-                    );
+                    Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
+                    (
+                        Rational::from_str("0.09081931").unwrap(),
+                        Rational::from_str("0.09081931").unwrap(),
+                    ),
+                );
 
                 // APX
-                    prices.insert(
-                        Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
-                        );
+                prices.insert(
+                    Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
+                    (
+                        // in eth
+                        Rational::from_str("0.00004047064"),
+                        Rational::from_str("0.00004047064"),
+                    ),
+                );
                 // FTT
                 prices.insert(
                     Address::from_str("0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9").unwrap(),
-                    );
-
-
-                // USDC = $1
-                prices.insert(
-                    Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),// USDC 
                     (
-                        Rational::from_str("1").unwrap(), // Assuming 1 USDC = 1 USD for simplicity, replace with actual values
-                        Rational::from_str("1").unwrap(),
+                        // in eth
+                        Rational::from_str("1.9358"),
+                        Rational::from_str("1.9358"),
                     ),
                 );
+
                 prices
             },
             eth_prices:             (
-                Rational::from_str("7398697029111485/4398046511104").unwrap(),
-                Rational::from_str("924734257781285/549755813888").unwrap(),
+                Rational::from_str("2126.43").unwrap(),
+                Rational::from_str("2126.43").unwrap(),
             ),
             mempool_flow:           {
                 let mut private = HashSet::new();
