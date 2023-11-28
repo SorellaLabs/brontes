@@ -414,6 +414,7 @@ pub mod tests {
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
     use brontes_database::database::Database;
     use brontes_types::test_utils::write_tree_as_json;
+    use futures::future::BoxFuture;
     use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
     use reth_primitives::U256;
     use serial_test::serial;
@@ -469,7 +470,7 @@ pub mod tests {
                 composer.on_new_tree(tree, metadata.into());
 
                 composer
-            })
+            } as BoxFuture<Composer<'static, 4>>)
             .await
     }
 
