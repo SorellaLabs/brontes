@@ -348,7 +348,7 @@ impl JitInspector {
             .filter_map(|(token, amount)| {
                 Some(
                     is_pre(metadata.token_prices.get(&token)?)
-                        * amount.to_scaled_rational(*TOKEN_TO_DECIMALS.get(&token.0)?),
+                        // * amount.to_scaled_rational(*TOKEN_TO_DECIMALS.get(&token.0)?),
                 )
             })
             .sum::<Rational>()
@@ -414,7 +414,6 @@ mod tests {
                 prices.insert(
                     Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
                     (
-                        // in eth
                         Rational::try_from_float_simplest(0.00004047064).unwrap(),
                         Rational::try_from_float_simplest(0.00004047064).unwrap(),
                     ),
@@ -423,7 +422,6 @@ mod tests {
                 prices.insert(
                     Address::from_str("0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9").unwrap(),
                     (
-                        // in eth
                         Rational::try_from_float_simplest(1.9358).unwrap(),
                         Rational::try_from_float_simplest(1.9358).unwrap(),
                     ),
