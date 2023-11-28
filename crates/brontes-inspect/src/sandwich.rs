@@ -133,6 +133,10 @@ impl SandwichInspector {
 
         let finalized_usd: Rational = finalized_usd_deltas.values().sum();
 
+        if appearance_usd <= Rational::ZERO || finalized_usd <= Rational::ZERO {
+            return None
+        }
+
         let gas_used = searcher_gas_details
             .iter()
             .map(|g| g.gas_paid())
