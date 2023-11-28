@@ -63,9 +63,9 @@ impl Inspector for JitInspector {
                         .iter()
                         .flatten()
                         .filter_map(|action| match action {
-                            Actions::Mint(m) => Some(m.recipient),
-                            Actions::Burn(b) => Some(b.from),
-                            Actions::Collect(c) => Some(c.from),
+                            Actions::Mint(m) => Some(m.to),
+                            Actions::Burn(b) => Some(b.to),
+                            Actions::Collect(c) => Some(c.to),
                             _ => None,
                         })
                         .collect::<HashSet<_>>();
