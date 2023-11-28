@@ -436,7 +436,7 @@ pub mod tests {
     /// returning the composer
     pub async fn setup(block_num: u64) -> &'static Composer<'static, 4> {
         COMPOSER
-            .get_or_init(|| async {
+            .get_or_init(|| async move {
                 init_tracing();
                 dotenv::dotenv().ok();
 
