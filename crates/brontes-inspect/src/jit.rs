@@ -10,6 +10,7 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::Rational;
 use reth_primitives::{Address, H160, H256, U256};
+use tracing::{debug, info};
 
 use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
 
@@ -46,6 +47,7 @@ impl Inspector for JitInspector {
                 }
             })
             .collect::<Vec<_>>();
+        debug!(?set, "possible jit set");
 
         set.into_iter()
             .filter_map(|(eoa, tx0, tx1, mev_addr, victim)| {
@@ -135,7 +137,10 @@ impl JitInspector {
         let (pre_bribe, post_bribe) = self.get_bribes(metadata.clone(), searcher_gas_details);
 
         let pre_profit = jit_fee_pre + burn_pre - mint_pre - &pre_bribe;
+
         let post_profit = jit_fee_post + burn_post - mint_post - &post_bribe;
+
+        debug!(?pre_profit, ?post_profit, "pre post jit profit");
 
         let classified = ClassifiedMev {
             block_number: metadata.block_num,
@@ -249,5 +254,70 @@ impl JitInspector {
                 )
             })
             .sum::<Rational>()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        collections::{HashMap, HashSet},
+        env,
+        str::FromStr,
+        time::SystemTime,
+    };
+
+    use brontes_classifier::Classifier;
+    use brontes_core::test_utils::{init_trace_parser, init_tracing};
+    use brontes_database::database::Database;
+    use brontes_types::test_utils::write_tree_as_json;
+    use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
+    use reth_primitives::U256;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+    use tracing::info;
+
+    use super::*;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_jit() {
+        init_tracing();
+        dotenv::dotenv().ok();
+        // testing https://eigenphi.io/mev/ethereum/tx/0x96a1decbb3787fbe26de84e86d6c2392f7ab7b31fb33f685334d49db2624a424
+        // This is a jit sandwich, however we are just trying to detect the jit portion
+        let block_num = 18539312;
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
+
+        let block = tracer.execute_block(block_num).await.unwrap();
+        let metadata = db.get_metadata(block_num).await;
+
+        println!("{:#?}", metadata);
+
+        let tx = block.0.clone().into_iter().take(20).collect::<Vec<_>>();
+        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+
+        let inspector = JitInspector::default();
+
+        let t0 = SystemTime::now();
+        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("{:#?}", mev);
+
+        println!("jit inspector took: {} us", delta);
+
+        // assert!(
+        //     mev[0].0.tx_hash
+        //         == H256::from_str(
+        //
+        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
+        //         )
+        //         .unwrap()
+        // );
     }
 }
