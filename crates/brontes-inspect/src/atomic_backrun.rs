@@ -118,7 +118,6 @@ impl AtomicBackrunInspector {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use std::{str::FromStr, time::SystemTime};
