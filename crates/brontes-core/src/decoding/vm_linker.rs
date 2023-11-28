@@ -81,6 +81,7 @@ mod tests {
     use std::fs;
 
     use reth_rpc_types::TransactionReceipt;
+    use reth_primitives::BlockNumberOrTag;
 
     use super::*;
     use crate::test_utils::*;
