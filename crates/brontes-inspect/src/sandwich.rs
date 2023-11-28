@@ -144,12 +144,14 @@ impl SandwichInspector {
         let frontrun_swaps = searcher_actions
             .remove(0)
             .into_iter()
+            .filter(|s| s.is_swap())
             .map(|s| s.force_swap())
             .collect_vec();
 
         let backrun_swaps = searcher_actions
             .remove(searcher_actions.len() - 1)
             .into_iter()
+            .filter(|s| s.is_swap())
             .map(|s| s.force_swap())
             .collect_vec();
 
@@ -182,12 +184,14 @@ impl SandwichInspector {
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().index)
                         .collect_vec()
                 })
                 .collect(),
             victim_swaps_from:       searcher_actions
                 .iter()
+                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
                         .map(|s| s.clone().force_swap().from)
@@ -196,6 +200,7 @@ impl SandwichInspector {
                 .collect(),
             victim_swaps_pool:       searcher_actions
                 .iter()
+                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
                         .map(|s| s.clone().force_swap().pool)
@@ -204,6 +209,7 @@ impl SandwichInspector {
                 .collect(),
             victim_swaps_token_in:   searcher_actions
                 .iter()
+                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
                         .map(|s| s.clone().force_swap().token_in)
@@ -212,6 +218,7 @@ impl SandwichInspector {
                 .collect(),
             victim_swaps_token_out:  searcher_actions
                 .iter()
+                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
                         .map(|s| s.clone().force_swap().token_out)
@@ -220,6 +227,7 @@ impl SandwichInspector {
                 .collect(),
             victim_swaps_amount_in:  searcher_actions
                 .iter()
+                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
                         .map(|s| s.clone().force_swap().amount_in.to())
@@ -228,6 +236,7 @@ impl SandwichInspector {
                 .collect(),
             victim_swaps_amount_out: searcher_actions
                 .iter()
+                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
                         .map(|s| s.clone().force_swap().amount_out.to())
