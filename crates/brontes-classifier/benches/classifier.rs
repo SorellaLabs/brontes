@@ -44,7 +44,7 @@ fn bench_tree_building(c: &mut Criterion) {
     let classifier = Classifier::new();
 
     c.bench_function("build 28m gas tree", |b| {
-        b.iter(|| black_box(classifier.build_tree(traces, header, &metadata)))
+        b.iter(|| black_box(classifier.build_tree(traces.clone(), header.clone(), &metadata)))
     });
 }
 
