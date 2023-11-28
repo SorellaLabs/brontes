@@ -75,6 +75,7 @@ dotenv.workspace = true
 
 [dev-dependencies]
 serial_test.workspace = true
+brontes-core = { workspace = true, features = ["tests"] }
 
 [build-dependencies]
 tokio.workspace = true
