@@ -546,7 +546,7 @@ pub mod tests {
     pub async fn test_jit_sandwich_composition() {
         let mut composer = setup(18539312, Some(get_metadata())).await;
         let (mev_block, classified_mev) = composer.await;
-        info!(?mev_block, ?classified_mev);
+        info!("{:#?}\n\n{:#?}", mev_block, classified_mev);
     }
 
     #[tokio::test]
