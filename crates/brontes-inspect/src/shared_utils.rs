@@ -36,7 +36,7 @@ impl SharedInspectorUtils {
                 };
 
                 let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
-                    error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+                    error!(missing_token=?swap.token_out, "missing token out token to decimal map");
                     continue
                 };
 
