@@ -19,10 +19,9 @@ use reth_rpc_types::{
 };
 
 use super::*;
-use crate::{
-    decoding::{dyn_decode::decode_input_with_abi, vm_linker::link_vm_to_trace},
-    errors::TraceParseError,
-};
+#[cfg(feature = "dyn-decode")]
+use crate::decoding::dyn_decode::decode_input_with_abi;
+use crate::{decoding::vm_linker::link_vm_to_trace, errors::TraceParseError};
 
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
@@ -50,20 +49,32 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         let receipts = self.get_receipts(block_num).await;
 
         if parity_trace.0.is_none() && receipts.0.is_none() {
+            #[cfg(feature = "dyn-decode")]
             self.metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.2).into())
                 .unwrap();
+            #[cfg(not(feature = "dyn-decode"))]
+            self.metrics_tx
+                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
+                .unwrap();
             return None
         }
+        #[cfg(feature = "dyn-decode")]
         let traces = self
             .parse_block(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
             .await;
+        #[cfg(not(feature = "dyn-decode"))]
+        let traces = self
+            .parse_block(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
+            .await;
+
         self.metrics_tx
             .send(TraceMetricEvent::BlockMetricRecieved(traces.1).into())
             .unwrap();
         Some((traces.0, traces.2))
     }
 
+    #[cfg(feature = "dyn-decode")]
     /// traces a block into a vec of tx traces
     pub(crate) async fn trace_block(
         &self,
@@ -116,6 +127,39 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         (trace, json, stats)
     }
 
+    #[cfg(not(feature = "dyn-decode"))]
+    pub(crate) async fn trace_block(
+        &self,
+        block_num: u64,
+    ) -> (Option<Vec<TraceResultsWithTransactionHash>>, BlockStats) {
+        let mut trace_type = HashSet::new();
+        trace_type.insert(TraceType::Trace);
+        trace_type.insert(TraceType::VmTrace);
+
+        let parity_trace = self
+            .tracer
+            .replay_block_transactions(
+                BlockId::Number(BlockNumberOrTag::Number(block_num)),
+                trace_type,
+            )
+            .await;
+
+        let mut stats = BlockStats::new(block_num, None);
+        let trace = match parity_trace {
+            Ok(Some(t)) => Some(t),
+            Ok(None) => {
+                stats.err = Some(TraceParseErrorKind::TracesMissingBlock);
+                None
+            }
+            Err(e) => {
+                stats.err = Some((&Into::<TraceParseError>::into(e)).into());
+                None
+            }
+        };
+
+        (trace, stats)
+    }
+
     /// gets the transaction $receipts for a block
     pub(crate) async fn get_receipts(
         &self,
@@ -142,7 +186,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub(crate) async fn parse_block(
         &self,
         block_trace: Vec<TraceResultsWithTransactionHash>,
-        dyn_json: HashMap<H160, JsonAbi>,
+        #[cfg(feature = "dyn-decode")] dyn_json: HashMap<H160, JsonAbi>,
         block_receipts: Vec<TransactionReceipt>,
         block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
@@ -158,6 +202,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
                     self.parse_transaction(
                         transaction_traces,
+                        #[cfg(feature = "dyn-decode")]
                         &dyn_json,
                         vm_traces,
                         receipt.logs,
@@ -191,7 +236,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     async fn parse_transaction(
         &self,
         tx_trace: Vec<TransactionTrace>,
-        dyn_json: &HashMap<H160, JsonAbi>,
+        #[cfg(feature = "dyn-decode")] &dyn_json: HashMap<H160, JsonAbi>,
         vm: VmTrace,
         logs: Vec<Log>,
         block_num: u64,
@@ -222,6 +267,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                     _ => return iter,
                 };
 
+                #[cfg(feature = "dyn-decode")]
                 if let Some(json_abi) = dyn_json.get(&addr) {
                     let decoded_calldata =
                         decode_input_with_abi(json_abi, &iter.trace).ok().flatten();
@@ -234,9 +280,6 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
         for (idx, trace) in linked_trace.into_iter().enumerate() {
             let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
-            // if let Err(e) = abi_trace {
-            //    stat.err = Some(Into::<TraceParseErrorKind>::into(&e));
-            //  }
             traces.push(trace);
             stat.trace(len);
             stats.traces.push(stat);
