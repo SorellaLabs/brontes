@@ -49,4 +49,3 @@ pub async fn get_traces_with_meta<T: TracingProvider>(
     let metadata = db.get_metadata(block_number).await;
     (traces, header, metadata)
 }
-
