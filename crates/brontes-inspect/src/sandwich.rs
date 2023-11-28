@@ -383,8 +383,6 @@ mod tests {
         let tx = block.0.clone().into_iter().take(10).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
-        write_tree_as_json(&tree, "./tree.json").await;
-
         let inspector = SandwichInspector::default();
 
         let t0 = SystemTime::now();
@@ -491,8 +489,7 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = get_metadata();
 
-        let tx = block.0.clone().into_iter().take(10).collect::<Vec<_>>();
-        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+        let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
 
         let inspector = SandwichInspector::default();
 
