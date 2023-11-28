@@ -63,9 +63,8 @@ impl Inspector for JitInspector {
                         })
                         .collect::<HashSet<_>>();
 
-                    // grab all victim swaps dropping swaps that don't touch adresses with
+                    // grab all victim swaps dropping swaps that don't touch addresses with
                     // liquidity deltas
-
                     let (victims, victim_actions): (Vec<H256>, Vec<Vec<Actions>>) = victims
                         .iter()
                         .map(|victim| {
