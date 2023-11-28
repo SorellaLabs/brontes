@@ -137,12 +137,11 @@ impl JitInspector {
             .clone()
             .into_iter()
             .flatten()
-            .map(|action| match action {
-                Actions::Burn(b) => (None, Some(b), None),
-                Actions::Mint(m) => (Some(m), None, None),
-                Actions::Collect(c) => (None, None, Some(c)),
-
-                _ => unreachable!(),
+            .filter_map(|action| match action {
+                Actions::Burn(b) => Some((None, Some(b), None)),
+                Actions::Mint(m) => Some((Some(m), None, None)),
+                Actions::Collect(c) => Some((None, None, Some(c))),
+                _ =>None,
             })
             .multiunzip();
 
