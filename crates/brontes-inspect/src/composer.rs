@@ -436,7 +436,7 @@ pub mod tests {
     /// returning the composer
     pub async fn setup(block_num: u64) -> Composer<'static, 4> {
         COMPOSER
-            .get_or_init(|| {
+            .get_or_init(|| async {
                 init_tracing();
                 dotenv::dotenv().ok();
 
@@ -449,7 +449,7 @@ pub mod tests {
                 let block = tracer.execute_block(block_num).await.unwrap();
                 let metadata = db.get_metadata(block_num).await;
 
-                let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+                let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
 
                 let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
                 let backrun = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
