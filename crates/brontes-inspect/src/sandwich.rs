@@ -133,7 +133,7 @@ impl SandwichInspector {
 
         let finalized_usd: Rational = finalized_usd_deltas.values().sum();
 
-        if appearance_usd <= Rational::ZERO || finalized_usd <= Rational::ZERO {
+        if appearance_usd == Rational::ZERO || finalized_usd == Rational::ZERO {
             return None
         }
 
