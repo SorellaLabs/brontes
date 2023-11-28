@@ -393,6 +393,7 @@ mod tests {
 
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
+        info!("{:#?}", metadata);
 
         let tx = block.0.clone().into_iter().take(20).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
