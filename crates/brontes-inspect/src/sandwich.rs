@@ -354,6 +354,8 @@ impl SandwichInspector {
 mod tests {
     use std::{str::FromStr, time::SystemTime};
 
+    use reth_primitives::U256;
+    use std::collections::HashSet;
     use brontes_classifier::Classifier;
     use brontes_core::{init_tracing, test_utils::init_trace_parser};
     use brontes_database::database::Database;
