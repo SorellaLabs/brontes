@@ -93,7 +93,7 @@ impl Inspector for JitInspector {
                         })
                         .unzip();
 
-                    info!("{:#?}" victims);
+                    info!("{:#?}", victims);
 
                     let victim_gas = victims
                         .iter()
