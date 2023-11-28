@@ -414,8 +414,11 @@ pub mod tests {
     use brontes_database::database::Database;
     use brontes_types::test_utils::write_tree_as_json;
     use futures::future::BoxFuture;
-    use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
-    use reth_primitives::U256;
+    use malachite::{
+        num::{basic::traits::One, conversion::traits::FromSciString},
+        Rational,
+    };
+    use reth_primitives::{H256, U256};
     use serial_test::serial;
     use tokio::sync::{mpsc::unbounded_channel, OnceCell};
     use tracing::info;
