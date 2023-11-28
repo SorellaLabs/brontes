@@ -188,6 +188,7 @@ impl JitInspector {
         let swaps = victim_actions
             .into_iter()
             .flatten()
+            .filter(|s| s.is_swap())
             .map(|s| s.force_swap())
             .collect::<Vec<_>>();
 
