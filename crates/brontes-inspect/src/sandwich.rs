@@ -191,54 +191,54 @@ impl SandwichInspector {
                 .collect(),
             victim_swaps_from:       searcher_actions
                 .iter()
-                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().from)
                         .collect_vec()
                 })
                 .collect(),
             victim_swaps_pool:       searcher_actions
                 .iter()
-                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().pool)
                         .collect_vec()
                 })
                 .collect(),
             victim_swaps_token_in:   searcher_actions
                 .iter()
-                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().token_in)
                         .collect_vec()
                 })
                 .collect(),
             victim_swaps_token_out:  searcher_actions
                 .iter()
-                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().token_out)
                         .collect_vec()
                 })
                 .collect(),
             victim_swaps_amount_in:  searcher_actions
                 .iter()
-                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().amount_in.to())
                         .collect_vec()
                 })
                 .collect(),
             victim_swaps_amount_out: searcher_actions
                 .iter()
-                .filter(|s| s.is_swap())
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().amount_out.to())
                         .collect_vec()
                 })
