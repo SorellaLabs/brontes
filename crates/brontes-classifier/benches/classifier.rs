@@ -11,11 +11,8 @@ use brontes_types::{
     tree::Node,
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use reth_primitives::Address;
-use reth_rpc_types::{
-    trace::parity::{TraceType, TransactionTrace},
-    Header,
-};
+use reth_primitives::{Address, Header};
+use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
 use reth_tracing::TracingClient;
 use serial_test::serial;
 use tokio::sync::mpsc::unbounded_channel;
