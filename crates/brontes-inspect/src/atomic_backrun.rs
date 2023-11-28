@@ -19,6 +19,38 @@ pub struct AtomicBackrunInspector {
     inner: SharedInspectorUtils,
 }
 
+#[async_trait::async_trait]
+impl Inspector for AtomicBackrunInspector {
+    async fn process_tree(
+        &self,
+        tree: Arc<TimeTree<Actions>>,
+        meta_data: Arc<Metadata>,
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+        let intersting_state = tree.inspect_all(|node| {
+            node.subactions
+                .iter()
+                .any(|action| action.is_swap() || action.is_transfer())
+        });
+
+        intersting_state
+            .into_par_iter()
+            .filter_map(|(tx, swaps)| {
+                let gas_details = tree.get_gas_details(tx)?.clone();
+                let root = tree.get_root(tx)?;
+
+                self.process_swaps(
+                    tx,
+                    root.head.address,
+                    root.head.data.get_to_address(),
+                    meta_data.clone(),
+                    gas_details,
+                    swaps,
+                )
+            })
+            .collect::<Vec<_>>()
+    }
+}
+
 impl AtomicBackrunInspector {
     fn process_swaps(
         &self,
@@ -86,37 +118,6 @@ impl AtomicBackrunInspector {
     }
 }
 
-#[async_trait::async_trait]
-impl Inspector for AtomicBackrunInspector {
-    async fn process_tree(
-        &self,
-        tree: Arc<TimeTree<Actions>>,
-        meta_data: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let intersting_state = tree.inspect_all(|node| {
-            node.subactions
-                .iter()
-                .any(|action| action.is_swap() || action.is_transfer())
-        });
-
-        intersting_state
-            .into_par_iter()
-            .filter_map(|(tx, swaps)| {
-                let gas_details = tree.get_gas_details(tx)?.clone();
-                let root = tree.get_root(tx)?;
-
-                self.process_swaps(
-                    tx,
-                    root.head.address,
-                    root.head.data.get_to_address(),
-                    meta_data.clone(),
-                    gas_details,
-                    swaps,
-                )
-            })
-            .collect::<Vec<_>>()
-    }
-}
 
 #[cfg(test)]
 mod tests {
