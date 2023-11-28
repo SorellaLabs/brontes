@@ -13,7 +13,7 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::Rational;
 use reth_primitives::{Address, H160, H256};
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
@@ -39,57 +39,6 @@ impl Inspector for SandwichInspector {
         meta_data: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // grab the set of all possible sandwich txes
-        let iter = tree.roots.iter();
-        println!("roots len: {:?}", iter.len());
-        if iter.len() < 3 {
-            return vec![]
-        }
-
-        let mut set: Vec<PossibleSandwich> = Vec::new();
-        let mut duplicate_senders: HashMap<Address, Vec<H256>> = HashMap::new();
-        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
-
-        for root in iter {
-            match duplicate_senders.entry(root.head.address) {
-                // If we have not seen this sender before, we insert the tx hash into the map
-                Entry::Vacant(v) => {
-                    v.insert(vec![root.tx_hash]);
-                    possible_victims.insert(root.tx_hash, vec![]);
-                }
-                Entry::Occupied(mut o) => {
-                    let prev_tx_hashes = o.get();
-
-                    for prev_tx_hash in prev_tx_hashes {
-                        // Find the victims between the previous and the current transaction
-                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
-                            if victims.len() >= 2 {
-                                // Create
-                                set.push(PossibleSandwich {
-                                    eoa:                   root.head.address,
-                                    tx0:                   *prev_tx_hash,
-                                    tx1:                   root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_to_address(),
-                                    victims:               victims.clone(),
-                                });
-                            }
-                        }
-                    }
-                    // Add current transaction hash to the list of transactions for this sender
-                    o.get_mut().push(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
-                }
-            }
-
-            // Now, for each existing entry in possible_victims, we add the current
-            // transaction hash as a potential victim, if it is not the same as
-            // the key (which represents another transaction hash)
-            for (k, v) in possible_victims.iter_mut() {
-                if k != &root.tx_hash {
-                    v.push(root.tx_hash);
-                }
-            }
-        }
-        println!("{:#?}", set);
 
         let search_fn = |node: &Node<Actions>| {
             node.subactions
@@ -97,7 +46,8 @@ impl Inspector for SandwichInspector {
                 .any(|action| action.is_swap() || action.is_transfer())
         };
 
-        set.into_iter()
+        self.get_possible_sandwich(tree.clone())
+            .into_iter()
             .filter_map(|ps| {
                 println!(
                     "\n\nFOUND SET: {:?}\n",
@@ -337,6 +287,62 @@ impl SandwichInspector {
         };
 
         Some((classified_mev, Box::new(sandwich)))
+    }
+
+    fn get_possible_sandwich(&self, tree: Arc<TimeTree<Actions>>) -> Vec<PossibleSandwich> {
+        let iter = tree.roots.iter();
+        info!("roots len: {:?}", iter.len());
+        if iter.len() < 3 {
+            return vec![]
+        }
+
+        let mut set: Vec<PossibleSandwich> = Vec::new();
+        let mut duplicate_senders: HashMap<Address, Vec<H256>> = HashMap::new();
+        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
+
+        for root in iter {
+            match duplicate_senders.entry(root.head.address) {
+                // If we have not seen this sender before, we insert the tx hash into the map
+                Entry::Vacant(v) => {
+                    v.insert(vec![root.tx_hash]);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+                Entry::Occupied(mut o) => {
+                    let prev_tx_hashes = o.get();
+
+                    for prev_tx_hash in prev_tx_hashes {
+                        // Find the victims between the previous and the current transaction
+                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
+                            if victims.len() >= 2 {
+                                // Create
+                                set.push(PossibleSandwich {
+                                    eoa:                   root.head.address,
+                                    tx0:                   *prev_tx_hash,
+                                    tx1:                   root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_to_address(),
+                                    victims:               victims.clone(),
+                                });
+                            }
+                        }
+                    }
+                    // Add current transaction hash to the list of transactions for this sender
+                    o.get_mut().push(root.tx_hash);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+            }
+
+            // Now, for each existing entry in possible_victims, we add the current
+            // transaction hash as a potential victim, if it is not the same as
+            // the key (which represents another transaction hash)
+            for (k, v) in possible_victims.iter_mut() {
+                if k != &root.tx_hash {
+                    v.push(root.tx_hash);
+                }
+            }
+        }
+        info!(?set, "possible sandwich set");
+
+        set
     }
 }
 
