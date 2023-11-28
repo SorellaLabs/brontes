@@ -150,9 +150,6 @@ impl JitInspector {
         let mints = mints.into_iter().flatten().collect::<Vec<_>>();
         let burns = burns.into_iter().flatten().collect::<Vec<_>>();
         let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
-        info!("{:#?}", mints);
-        info!("{:#?}", burns);
-        info!("{:#?}", fee_collect);
 
         let (jit_fee_pre, jit_fee_post) = self.get_collect_amount(fee_collect, metadata.clone());
 
@@ -169,8 +166,6 @@ impl JitInspector {
 
         let pre_profit = jit_fee_pre - mint_pre - &pre_bribe;
         let post_profit = jit_fee_post - mint_post - &post_bribe;
-
-        info!(?pre_profit, ?post_profit, "pre post jit profit");
 
         let classified = ClassifiedMev {
             block_number: metadata.block_num,
@@ -293,7 +288,6 @@ impl JitInspector {
             }
         }
 
-        info!(?set, "possible jit set");
         set
     }
 
