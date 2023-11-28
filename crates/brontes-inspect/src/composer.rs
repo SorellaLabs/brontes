@@ -428,8 +428,8 @@ pub mod tests {
 
     static COMPOSER: OnceCell<Composer<'static, 4>> = OnceCell::const_new();
 
-    unsafe fn cast_lifetime<'final, I>(item: &I) -> &'final I {
-        std::mem::transmute::<&I, &'final I>(item)
+    unsafe fn cast_lifetime<'final, 'a, I>(item: &'a I) -> &'final I {
+        std::mem::transmute::<&'a I, &'final I>(item)
     }
 
     /// takes the blocknumber, setups the tree and calls on_new_tree before
