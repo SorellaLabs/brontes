@@ -85,6 +85,7 @@ impl Inspector for JitInspector {
                         .filter(|(_, actions)| {
                             actions
                                 .iter()
+                                .filter(|s| s.is_swap())
                                 .any(|s| liquidity_addresses.contains(&s.force_swap_ref().pool))
                         })
                         .unzip();
