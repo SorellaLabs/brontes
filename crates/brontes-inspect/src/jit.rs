@@ -396,8 +396,8 @@ mod tests {
                 prices.insert(
                     Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
                     (
-                        Rational::from_str("2126.43").unwrap(),
-                        Rational::from_str("2126.43").unwrap(),
+                        Rational::try_from_float_simplest(2126.43).unwrap(),
+                        Rational::try_from_float_simplest(2126.43).unwrap(),
                     ),
                 );
 
@@ -405,8 +405,8 @@ mod tests {
                 prices.insert(
                     Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
                     (
-                        Rational::from_str("0.09081931").unwrap(),
-                        Rational::from_str("0.09081931").unwrap(),
+                        Rational::try_from_float_simplest(0.09081931).unwrap(),
+                        Rational::try_from_float_simplest(0.09081931).unwrap(),
                     ),
                 );
 
@@ -415,8 +415,8 @@ mod tests {
                     Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
                     (
                         // in eth
-                        Rational::from_str("0.00004047064").unwrap(),
-                        Rational::from_str("0.00004047064").unwrap(),
+                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
+                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
                     ),
                 );
                 // FTT
@@ -424,16 +424,16 @@ mod tests {
                     Address::from_str("0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9").unwrap(),
                     (
                         // in eth
-                        Rational::from_str("1.9358").unwrap(),
-                        Rational::from_str("1.9358").unwrap(),
+                        Rational::try_from_float_simplest(1.9358).unwrap(),
+                        Rational::try_from_float_simplest(1.9358).unwrap(),
                     ),
                 );
 
                 prices
             },
             eth_prices:             (
-                Rational::from_str("2126.43").unwrap(),
-                Rational::from_str("2126.43").unwrap(),
+                Rational::try_from_float_simplest(2126.43).unwrap(),
+                Rational::try_from_float_simplest(2126.43).unwrap(),
             ),
             mempool_flow:           {
                 let mut private = HashSet::new();
