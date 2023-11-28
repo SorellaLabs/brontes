@@ -48,7 +48,7 @@ fn bench_tree_building(c: &mut Criterion) {
 
     c.bench_function("build 28m gas tree", |b| {
         b.iter(|| black_box(classifier.build_tree(traces, header, &metadata)))
-    })
+    });
 }
 
 criterion_group!(tree, bench_tree_building);
