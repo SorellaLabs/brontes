@@ -153,8 +153,9 @@ impl JitInspector {
 
         let (pre_bribe, post_bribe) = self.get_bribes(metadata.clone(), searcher_gas_details);
 
+        // take the fee we earn plus the amount we burned (amount out) minus the mint
+        // amount in minus the bribe;
         let pre_profit = jit_fee_pre + burn_pre - mint_pre - &pre_bribe;
-
         let post_profit = jit_fee_post + burn_post - mint_post - &post_bribe;
 
         info!(?pre_profit, ?post_profit, "pre post jit profit");
@@ -179,34 +180,46 @@ impl JitInspector {
             .collect::<Vec<_>>();
 
         let jit_details = JitLiquidity {
-            mint_tx_hash:        txes[0],
-            mint_gas_details:    searcher_gas_details[0],
-            jit_mints_index:     mints.iter().map(|m| m.index).collect(),
-            jit_mints_from:      mints.iter().map(|m| m.from).collect(),
-            jit_mints_to:        mints.iter().map(|m| m.to).collect(),
+            mint_tx_hash: txes[0],
+            mint_gas_details: searcher_gas_details[0],
+            jit_mints_index: mints.iter().map(|m| m.index).collect(),
+            jit_mints_from: mints.iter().map(|m| m.from).collect(),
+            jit_mints_to: mints.iter().map(|m| m.to).collect(),
             jit_mints_recipient: mints.iter().map(|m| m.recipient).collect(),
-            jit_mints_token:     mints.iter().map(|m| m.token.clone()).collect(),
-            jit_mints_amount:    mints
+            jit_mints_token: mints.iter().map(|m| m.token.clone()).collect(),
+            jit_mints_amount: mints
                 .iter()
                 .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
                 .collect(),
-            swap_tx_hash:        victim_tx,
-            swap_gas_details:    victim_gas,
-            swaps_index:         swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
-            swaps_from:          swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            swaps_pool:          swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            swaps_token_in:      swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
-            swaps_token_out:     swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
-            swaps_amount_in:     swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
-            swaps_amount_out:    swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
-            burn_tx_hash:        txes[1],
-            burn_gas_details:    searcher_gas_details[1],
-            jit_burns_index:     burns.iter().map(|m| m.index).collect(),
-            jit_burns_from:      burns.iter().map(|m| m.from).collect(),
-            jit_burns_to:        burns.iter().map(|m| m.to).collect(),
+            swap_tx_hash: victim_txs,
+            victim_gas_details_gas_used: victim_gas.iter().map(|s| s.gas_used).collect_vec(),
+            victim_gas_details_priority_fee: victim_gas
+                .iter()
+                .map(|s| s.priority_fee)
+                .collect_vec(),
+            victim_gas_details_coinbase_transfer: victim_gas
+                .iter()
+                .map(|s| s.coinbase_transfer)
+                .collect_vec(),
+            victim_gas_details_effective_gas_price: victim_gas
+                .iter()
+                .map(|s| s.effective_gas_price)
+                .collect_vec(),
+            swaps_index: swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
+            swaps_token_out: swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
+            swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
+            swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
+            burn_tx_hash: txes[1],
+            burn_gas_details: searcher_gas_details[1],
+            jit_burns_index: burns.iter().map(|m| m.index).collect(),
+            jit_burns_from: burns.iter().map(|m| m.from).collect(),
+            jit_burns_to: burns.iter().map(|m| m.to).collect(),
             jit_burns_recipient: burns.iter().map(|m| m.recipient).collect(),
-            jit_burns_token:     burns.iter().map(|m| m.token.clone()).collect(),
-            jit_burns_amount:    burns
+            jit_burns_token: burns.iter().map(|m| m.token.clone()).collect(),
+            jit_burns_amount: burns
                 .iter()
                 .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
                 .collect(),
@@ -317,6 +330,8 @@ impl JitInspector {
         amount: &Vec<U256>,
         is_pre: impl Fn(&(Rational, Rational)) -> &Rational,
     ) -> Rational {
+        assert_eq!(token.len(), amount.len());
+
         token
             .iter()
             .zip(amount.iter())
