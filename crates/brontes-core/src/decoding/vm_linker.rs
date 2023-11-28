@@ -82,6 +82,7 @@ mod tests {
 
     use reth_primitives::BlockNumberOrTag;
     use reth_rpc_types::TransactionReceipt;
+    use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
     use crate::test_utils::*;
@@ -90,6 +91,7 @@ mod tests {
     async fn print_logs() {
         dotenv::dotenv().ok();
         init_tracing();
+        let (tx, _rx) = unbounded_channel();
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
         let hash = reth_primitives::H256::from_str(
