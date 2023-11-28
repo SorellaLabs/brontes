@@ -5,7 +5,6 @@ edition = "2021"
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 # poirot
 brontes-core.workspace = true
@@ -89,3 +88,5 @@ tests = [
   "brontes-classifier/tests",
   "brontes-inspect/tests",
 ]
+
+dyn-decode = ["brontes-core/dyn-decode"]
