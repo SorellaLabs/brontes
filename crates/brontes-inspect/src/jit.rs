@@ -415,8 +415,8 @@ mod tests {
                     Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
                     (
                         // in eth
-                        Rational::from_str("0.00004047064"),
-                        Rational::from_str("0.00004047064"),
+                        Rational::from_str("0.00004047064").unwrap(),
+                        Rational::from_str("0.00004047064").unwrap(),
                     ),
                 );
                 // FTT
@@ -424,8 +424,8 @@ mod tests {
                     Address::from_str("0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9").unwrap(),
                     (
                         // in eth
-                        Rational::from_str("1.9358"),
-                        Rational::from_str("1.9358"),
+                        Rational::from_str("1.9358").unwrap(),
+                        Rational::from_str("1.9358").unwrap(),
                     ),
                 );
 
