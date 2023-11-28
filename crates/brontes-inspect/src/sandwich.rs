@@ -404,6 +404,106 @@ mod tests {
         println!("{:#?}", mev);
     }
 
+    fn get_metadata() -> Metadata {
+        // 2126.43
+        Metadata {
+            block_num:              18539312,
+            block_hash:             U256::from_str_radix(
+                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
+                16,
+            )
+            .unwrap(),
+            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
+            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
+            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
+                .unwrap(),
+            proposer_mev_reward:    11769128921907366414,
+            token_prices:           {
+                let mut prices = HashMap::new();
+
+                prices.insert(
+                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(2126.43).unwrap(),
+                        Rational::try_from_float_simplest(2126.43).unwrap(),
+                    ),
+                );
+
+                // SMT
+                prices.insert(
+                    Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(0.09081931).unwrap(),
+                        Rational::try_from_float_simplest(0.09081931).unwrap(),
+                    ),
+                );
+
+                // APX
+                prices.insert(
+                    Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
+                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
+                    ),
+                );
+                // FTT
+                prices.insert(
+                    Address::from_str("0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(1.9358).unwrap(),
+                        Rational::try_from_float_simplest(1.9358).unwrap(),
+                    ),
+                );
+
+                prices
+            },
+            eth_prices:             (
+                Rational::try_from_float_simplest(2126.43).unwrap(),
+                Rational::try_from_float_simplest(2126.43).unwrap(),
+            ),
+            mempool_flow:           {
+                let mut private = HashSet::new();
+                private.insert(
+                    H256::from_str(
+                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
+                    )
+                    .unwrap(),
+                );
+                private
+            },
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_complex_sandwich() {
+        dotenv::dotenv().ok();
+        init_tracing();
+        let block_num = 18539312;
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
+
+        let block = tracer.execute_block(block_num).await.unwrap();
+        let metadata = get_metadata();
+
+        let tx = block.0.clone().into_iter().take(10).collect::<Vec<_>>();
+        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+
+        let inspector = SandwichInspector::default();
+
+        let t0 = SystemTime::now();
+        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("sandwich inspector took: {} us", delta);
+
+        println!("{:#?}", mev);
+    }
+
     fn test_process_sandwich() {
         // let expected_sandwich = Sandwich {
         //     frontrun_tx_hash: H256::from_str(
