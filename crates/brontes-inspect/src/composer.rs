@@ -426,8 +426,6 @@ pub mod tests {
         sandwich::SandwichInspector,
     };
 
-    static COMPOSER: OnceCell<Composer<'static, 4>> = OnceCell::const_new();
-
     unsafe fn cast_lifetime<'final, 'a, I>(item: &'a I) -> &'final I {
         std::mem::transmute::<&'a I, &'final I>(item)
     }
@@ -435,44 +433,37 @@ pub mod tests {
     /// takes the blocknumber, setups the tree and calls on_new_tree before
     /// returning the composer
     pub async fn setup(block_num: u64) -> &'static Composer<'static, 4> {
-        COMPOSER
-            .get_or_init(|| {
-                Box::pin(async move {
-                    init_tracing();
-                    dotenv::dotenv().ok();
+        init_tracing();
+        dotenv::dotenv().ok();
 
-                    let (tx, _rx) = unbounded_channel();
+        let (tx, _rx) = unbounded_channel();
 
-                    let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-                    let db = Database::default();
-                    let classifier = Classifier::new();
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
 
-                    let block = tracer.execute_block(block_num).await.unwrap();
-                    let metadata = db.get_metadata(block_num).await;
+        let block = tracer.execute_block(block_num).await.unwrap();
+        let metadata = db.get_metadata(block_num).await;
 
-                    let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
+        let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
 
-                    let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
-                    let backrun = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
-                    let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
-                    let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
+        let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
+        let backrun = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
+        let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
+        let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
 
-                    let inspectors: [&'static Box<dyn Inspector>; 4] = unsafe {
-                        [
-                            cast_lifetime::<'static>(&cex_dex),
-                            cast_lifetime::<'static>(&backrun),
-                            cast_lifetime::<'static>(&jit),
-                            cast_lifetime::<'static>(&sandwich),
-                        ]
-                    };
+        let inspectors: [&'static Box<dyn Inspector>; 4] = unsafe {
+            [
+                cast_lifetime::<'static>(&cex_dex),
+                cast_lifetime::<'static>(&backrun),
+                cast_lifetime::<'static>(&jit),
+                cast_lifetime::<'static>(&sandwich),
+            ]
+        };
 
-                    let mut composer = Composer::new(Box::leak(Box::new(inspectors)));
-                    composer.on_new_tree(tree, metadata.into());
-
-                    composer
-                }) as BoxFuture<Composer<'static, 4>>
-            })
-            .await
+        let mut composer = Composer::new(Box::leak(Box::new(inspectors)));
+        composer.on_new_tree(tree, metadata.into());
+        composer
     }
 
     #[tokio::test]
