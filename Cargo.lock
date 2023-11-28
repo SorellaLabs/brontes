@@ -976,6 +976,7 @@ dependencies = [
  "alloy-sol-types",
  "async-trait",
  "auto_impl",
+ "brontes-core",
  "brontes-database",
  "brontes-metrics",
  "brontes-tracing",
