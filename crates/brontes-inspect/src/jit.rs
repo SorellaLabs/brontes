@@ -1,4 +1,7 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, HashMap, HashSet},
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use brontes_types::{
@@ -14,6 +17,7 @@ use tracing::{debug, info};
 
 use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
 
+#[derive(Debug)]
 struct PossibleJit {
     pub eoa:                   Address,
     pub frontrun_tx:           H256,
@@ -31,7 +35,7 @@ impl Inspector for JitInspector {
         tree: Arc<TimeTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        self.possible_jit_set(tree)
+        self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
                 |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
@@ -68,17 +72,20 @@ impl Inspector for JitInspector {
                     let (victims, victim_actions): (Vec<H256>, Vec<Vec<Actions>>) = victims
                         .iter()
                         .map(|victim| {
-                            tree.inspect(*victim, |node| {
-                                node.subactions.iter().any(|action| action.is_swap())
-                            })
-                            .into_iter()
-                            .flatten()
-                            .collect::<Vec<_>>()
+                            (
+                                victim,
+                                tree.inspect(*victim, |node| {
+                                    node.subactions.iter().any(|action| action.is_swap())
+                                })
+                                .into_iter()
+                                .flatten()
+                                .collect::<Vec<_>>(),
+                            )
                         })
-                        .filter(|actions| {
+                        .filter(|(_, actions)| {
                             actions
                                 .iter()
-                                .any(|s| liquidity_addresses.contains(&s.force_swap().pool))
+                                .any(|s| liquidity_addresses.contains(&s.force_swap_ref().pool))
                         })
                         .unzip();
 
@@ -89,9 +96,9 @@ impl Inspector for JitInspector {
 
                     self.calculate_jit(
                         eoa,
-                        mev_addr,
+                        mev_executor_contract,
                         metadata.clone(),
-                        [tx0, tx1],
+                        [frontrun_tx, backrun_tx],
                         gas,
                         searcher_actions,
                         victims,
