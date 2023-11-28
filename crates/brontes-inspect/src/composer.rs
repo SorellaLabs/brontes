@@ -127,13 +127,12 @@ impl<'a, const N: usize> Composer<'a, N> {
             scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
         });
 
-        let fut = async move {
+        let fut = Box::pin(async move {
             scope
                 .collect()
                 .map(|r| r.into_iter().flatten().flatten().collect::<Vec<_>>())
                 .await
-        }
-        .boxed();
+        });
 
         self.inspectors_execution = Some(fut);
 
