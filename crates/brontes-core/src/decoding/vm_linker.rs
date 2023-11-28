@@ -78,10 +78,10 @@ fn recursive_parsing(
 #[cfg(test)]
 mod tests {
 
-    use std::fs;
+    use std::{fs, str::FromStr};
 
-    use reth_rpc_types::TransactionReceipt;
     use reth_primitives::BlockNumberOrTag;
+    use reth_rpc_types::TransactionReceipt;
 
     use super::*;
     use crate::test_utils::*;
@@ -98,6 +98,7 @@ mod tests {
         .unwrap();
 
         let tx_receipts: Vec<TransactionReceipt> = tracer
+            .tracer
             .block_receipts(BlockNumberOrTag::Number(18539312))
             .await
             .unwrap()
