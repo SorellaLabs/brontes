@@ -62,11 +62,11 @@ impl Inspector for JitInspector {
                     let liquidity_addresses = searcher_actions
                         .iter()
                         .flatten()
-                        .map(|action| match action {
-                            Actions::Mint(m) => m.recipient,
-                            Actions::Burn(b) => b.from,
-                            Actions::Collect(c) => c.from,
-                            _ => unreachable!(),
+                        .filter_map(|action| match action {
+                            Actions::Mint(m) => Some(m.recipient),
+                            Actions::Burn(b) => Some(b.from),
+                            Actions::Collect(c) => Some(c.from),
+                            _ => None,
                         })
                         .collect::<HashSet<_>>();
 
