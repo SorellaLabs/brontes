@@ -434,7 +434,7 @@ pub mod tests {
 
     /// takes the blocknumber, setups the tree and calls on_new_tree before
     /// returning the composer
-    pub async fn setup(block_num: u64) -> Composer<'static, 4> {
+    pub async fn setup(block_num: u64) -> &'static Composer<'static, 4> {
         COMPOSER
             .get_or_init(|| async {
                 init_tracing();
@@ -466,7 +466,7 @@ pub mod tests {
                 };
 
                 let mut composer = Composer::new(Box::leak(Box::new(inspectors)));
-                composer.on_new_tree(tree, metadata);
+                composer.on_new_tree(tree, metadata.into());
 
                 composer
             })
