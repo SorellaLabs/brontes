@@ -110,6 +110,7 @@ impl SandwichInspector {
             return None
         }
 
+        println!("{:#?}", searcher_actions);
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
         println!("deltas {:#?}", deltas);
 
