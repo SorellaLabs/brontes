@@ -49,11 +49,6 @@ impl Inspector for SandwichInspector {
         self.get_possible_sandwich(tree.clone())
             .into_iter()
             .filter_map(|ps| {
-                println!(
-                    "\n\nFOUND SET: {:?}\n",
-                    (ps.eoa, ps.tx0, ps.tx1, ps.mev_executor_contract, &ps.victims)
-                );
-
                 let gas = [
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
@@ -75,14 +70,11 @@ impl Inspector for SandwichInspector {
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<Vec<Actions>>>();
-                println!("Victim actions - {:#?}", victim_actions);
 
-                println!("{:?}", ps);
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
-                println!("Searcher actions - {:#?}", searcher_actions);
 
                 self.calculate_sandwich(
                     ps.eoa,
@@ -340,7 +332,6 @@ impl SandwichInspector {
                 }
             }
         }
-        info!(?set, "possible sandwich set");
 
         set
     }
