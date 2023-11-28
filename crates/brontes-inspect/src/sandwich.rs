@@ -346,6 +346,8 @@ impl SandwichInspector {
             }
         }
 
+        info!("{:#?}", set);
+
         set
     }
 }
