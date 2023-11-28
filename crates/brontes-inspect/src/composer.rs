@@ -426,8 +426,8 @@ pub mod tests {
         sandwich::SandwichInspector,
     };
 
-    unsafe fn cast_lifetime<'final, 'a, I>(item: &'a I) -> &'final I {
-        std::mem::transmute::<&'a I, &'final I>(item)
+    unsafe fn cast_lifetime<'f, 'a, I>(item: &'a I) -> &'f I {
+        std::mem::transmute::<&'a I, &'f I>(item)
     }
 
     /// takes the blocknumber, setups the tree and calls on_new_tree before
