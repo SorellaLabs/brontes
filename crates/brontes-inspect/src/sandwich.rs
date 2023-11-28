@@ -11,7 +11,7 @@ use brontes_types::{
     ToFloatNearest,
 };
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, H160, H256};
 use tracing::{error, info};
 
