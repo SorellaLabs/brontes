@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use async_trait::async_trait;
 use brontes_types::{
@@ -14,6 +14,13 @@ use tracing::{debug, info};
 
 use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
 
+struct PossibleJit {
+    pub eoa:                   Address,
+    pub frontrun_tx:           H256,
+    pub backrun_tx:            H256,
+    pub mev_executor_contract: Address,
+    pub victims:               Vec<H256>,
+}
 #[derive(Default)]
 pub struct JitInspector;
 
@@ -24,65 +31,76 @@ impl Inspector for JitInspector {
         tree: Arc<TimeTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let iter = tree.roots.iter();
-
-        if iter.len() < 3 {
-            return vec![]
-        }
-
-        let set = iter
+        self.possible_jit_set(tree)
             .into_iter()
-            .tuple_windows::<(_, _, _)>()
-            .filter_map(|(t1, t2, t3)| {
-                if t1.head.address == t3.head.address {
-                    Some((
-                        t1.head.address,
-                        t1.tx_hash,
-                        t3.tx_hash,
-                        t1.head.data.get_to_address(),
-                        t2.tx_hash,
-                    ))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        info!(?set, "possible jit set");
+            .filter_map(
+                |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
+                    let gas = [
+                        tree.get_gas_details(frontrun_tx).cloned().unwrap(),
+                        tree.get_gas_details(backrun_tx).cloned().unwrap(),
+                    ];
 
-        set.into_iter()
-            .filter_map(|(eoa, tx0, tx1, mev_addr, victim)| {
-                let gas = [
-                    tree.get_gas_details(tx0).cloned().unwrap(),
-                    tree.get_gas_details(tx1).cloned().unwrap(),
-                ];
-
-                let victim_gas = tree.get_gas_details(victim).unwrap().clone();
-                let victim_actions = tree
-                    .inspect(victim, |node| node.subactions.iter().any(|action| action.is_swap()));
-
-                let searcher_actions = vec![tx0, tx1]
-                    .into_iter()
-                    .flat_map(|tx| {
-                        tree.inspect(tx, |node| {
-                            node.subactions.iter().any(|action| {
-                                action.is_mint() || action.is_burn() || action.is_collect()
+                    let searcher_actions = vec![frontrun_tx, backrun_tx]
+                        .into_iter()
+                        .flat_map(|tx| {
+                            tree.inspect(tx, |node| {
+                                node.subactions.iter().any(|action| {
+                                    action.is_mint() || action.is_burn() || action.is_collect()
+                                })
                             })
                         })
-                    })
-                    .collect::<Vec<Vec<Actions>>>();
+                        .collect::<Vec<Vec<Actions>>>();
 
-                self.calculate_jit(
-                    eoa,
-                    mev_addr,
-                    metadata.clone(),
-                    [tx0, tx1],
-                    gas,
-                    searcher_actions,
-                    victim,
-                    victim_actions,
-                    victim_gas,
-                )
-            })
+                    // grab all the pools that had liquidity events on them
+                    let liquidity_addresses = searcher_actions
+                        .iter()
+                        .flatten()
+                        .map(|action| match action {
+                            Actions::Mint(m) => m.recipient,
+                            Actions::Burn(b) => b.from,
+                            Actions::Collect(c) => c.from,
+                            _ => unreachable!(),
+                        })
+                        .collect::<HashSet<_>>();
+
+                    // grab all victim swaps dropping swaps that don't touch adresses with
+                    // liquidity deltas
+
+                    let (victims, victim_actions): (Vec<H256>, Vec<Vec<Actions>>) = victims
+                        .iter()
+                        .map(|victim| {
+                            tree.inspect(*victim, |node| {
+                                node.subactions.iter().any(|action| action.is_swap())
+                            })
+                            .into_iter()
+                            .flatten()
+                            .collect::<Vec<_>>()
+                        })
+                        .filter(|actions| {
+                            actions
+                                .iter()
+                                .any(|s| liquidity_addresses.contains(&s.force_swap().pool))
+                        })
+                        .unzip();
+
+                    let victim_gas = victims
+                        .iter()
+                        .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
+                        .collect::<Vec<_>>();
+
+                    self.calculate_jit(
+                        eoa,
+                        mev_addr,
+                        metadata.clone(),
+                        [tx0, tx1],
+                        gas,
+                        searcher_actions,
+                        victims,
+                        victim_actions,
+                        victim_gas,
+                    )
+                },
+            )
             .collect::<Vec<_>>()
     }
 }
@@ -97,9 +115,9 @@ impl JitInspector {
         searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,
         // victim
-        victim_tx: H256,
+        victim_txs: Vec<H256>,
         victim_actions: Vec<Vec<Actions>>,
-        victim_gas: GasDetails,
+        victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let (mints, burns, collect): (
             Vec<Option<NormalizedMint>>,
@@ -196,6 +214,62 @@ impl JitInspector {
         };
 
         Some((classified, Box::new(jit_details)))
+    }
+
+    fn possible_jit_set(&self, tree: Arc<TimeTree<Actions>>) -> Vec<PossibleJit> {
+        let iter = tree.roots.iter();
+
+        if iter.len() < 3 {
+            return vec![]
+        }
+
+        let mut set: Vec<PossibleJit> = Vec::new();
+        let mut duplicate_senders: HashMap<Address, Vec<H256>> = HashMap::new();
+        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
+
+        for root in iter {
+            match duplicate_senders.entry(root.head.address) {
+                // If we have not seen this sender before, we insert the tx hash into the map
+                Entry::Vacant(v) => {
+                    v.insert(vec![root.tx_hash]);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+                Entry::Occupied(mut o) => {
+                    let prev_tx_hashes = o.get();
+
+                    for prev_tx_hash in prev_tx_hashes {
+                        // Find the victims between the previous and the current transaction
+                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
+                            if victims.len() >= 2 {
+                                // Create
+                                set.push(PossibleJit {
+                                    eoa:                   root.head.address,
+                                    frontrun_tx:           *prev_tx_hash,
+                                    backrun_tx:            root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_to_address(),
+                                    victims:               victims.clone(),
+                                });
+                            }
+                        }
+                    }
+                    // Add current transaction hash to the list of transactions for this sender
+                    o.get_mut().push(root.tx_hash);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+            }
+
+            // Now, for each existing entry in possible_victims, we add the current
+            // transaction hash as a potential victim, if it is not the same as
+            // the key (which represents another transaction hash)
+            for (k, v) in possible_victims.iter_mut() {
+                if k != &root.tx_hash {
+                    v.push(root.tx_hash);
+                }
+            }
+        }
+
+        info!(?set, "possible jit set");
+        set
     }
 
     fn get_bribes(&self, price: Arc<Metadata>, gas: [GasDetails; 2]) -> (Rational, Rational) {
