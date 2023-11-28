@@ -28,7 +28,7 @@ pub async fn setup_data(block_number: u64) -> (Vec<TxTrace>, Header, Metadata) {
 
     let classifier = Classifier::new();
 
-    get_traces_with_meta(&tracer, &db, block_num).await
+    get_traces_with_meta(&tracer, &db, block_number).await
 }
 
 fn bench_tree_building(c: &mut Criterion) {
