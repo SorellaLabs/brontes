@@ -149,13 +149,13 @@ impl JitInspector {
 
         let mints = mints.into_iter().flatten().collect::<Vec<_>>();
         let burns = burns.into_iter().flatten().collect::<Vec<_>>();
-
         let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
+        info!("{:#?}", mints);
+        info!("{:#?}", burns);
+        info!("{:#?}", fee_collect);
 
         let (jit_fee_pre, jit_fee_post) = self.get_collect_amount(fee_collect, metadata.clone());
 
-        info!("{:#?}", mints);
-        info!("{:#?}", burns);
         let (mint_pre, mint_post) = self.get_total_pricing(
             mints.iter().map(|mint| (&mint.token, &mint.amount)),
             metadata.clone(),
