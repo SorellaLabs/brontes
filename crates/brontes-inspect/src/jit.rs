@@ -39,11 +39,6 @@ impl Inspector for JitInspector {
             .into_iter()
             .filter_map(
                 |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
-                    let gas = [
-                        tree.get_gas_details(frontrun_tx).cloned().unwrap(),
-                        tree.get_gas_details(backrun_tx).cloned().unwrap(),
-                    ];
-
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .flat_map(|tx| {
@@ -54,6 +49,14 @@ impl Inspector for JitInspector {
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
+
+                    if searcher_actions.is_empty() {
+                        return None
+                    }
+                    let gas = [
+                        tree.get_gas_details(frontrun_tx).cloned().unwrap(),
+                        tree.get_gas_details(backrun_tx).cloned().unwrap(),
+                    ];
 
                     // grab all the pools that had liquidity events on them
                     let liquidity_addresses = searcher_actions
