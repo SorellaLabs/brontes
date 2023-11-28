@@ -167,10 +167,8 @@ impl JitInspector {
 
         let (pre_bribe, post_bribe) = self.get_bribes(metadata.clone(), searcher_gas_details);
 
-        // take the fee we earn plus the amount we burned (amount out) minus the mint
-        // amount in minus the bribe;
-        let pre_profit = jit_fee_pre + burn_pre - mint_pre - &pre_bribe;
-        let post_profit = jit_fee_post + burn_post - mint_post - &post_bribe;
+        let pre_profit = jit_fee_pre - mint_pre - &pre_bribe;
+        let post_profit = jit_fee_post - mint_post - &post_bribe;
 
         info!(?pre_profit, ?post_profit, "pre post jit profit");
 
