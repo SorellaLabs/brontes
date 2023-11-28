@@ -7,7 +7,7 @@ use brontes_types::{
     tree::{GasDetails, TimeTree},
     ToFloatNearest,
 };
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, H256};
 use tracing::error;
@@ -78,6 +78,10 @@ impl AtomicBackrunInspector {
             Box::new(|(_, finalized)| finalized),
         );
         let finalized_usd: Rational = finalized.values().sum();
+
+        if appearance_usd <= Rational::ZERO || finalized_usd <= Rational::ZERO {
+            return None
+        }
 
         let gas_used = gas_details.gas_paid();
         let (gas_used_usd_appearance, gas_used_usd_finalized) =
