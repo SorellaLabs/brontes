@@ -127,12 +127,13 @@ impl<'a, const N: usize> Composer<'a, N> {
             scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
         });
 
-        let fut = Box::pin(async move {
+        let fut = async move {
             scope
                 .collect()
                 .map(|r| r.into_iter().flatten().flatten().collect::<Vec<_>>())
                 .await
-        });
+        }
+        .boxed();
 
         self.inspectors_execution = Some(fut);
 
@@ -398,4 +399,89 @@ impl<const N: usize> Future for Composer<'_, N> {
         }
         Poll::Pending
     }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use std::{
+        collections::{HashMap, HashSet},
+        env,
+        str::FromStr,
+        time::SystemTime,
+    };
+
+    use brontes_classifier::Classifier;
+    use brontes_core::test_utils::{init_trace_parser, init_tracing};
+    use brontes_database::database::Database;
+    use brontes_types::test_utils::write_tree_as_json;
+    use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
+    use reth_primitives::U256;
+    use serial_test::serial;
+    use tokio::sync::{mpsc::unbounded_channel, OnceCell};
+    use tracing::info;
+
+    use super::*;
+    use crate::{
+        atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
+        sandwich::SandwichInspector,
+    };
+
+    static COMPOSER: OnceCell<Composer<'static, 4>> = OnceCell::const_new();
+
+    unsafe fn cast_lifetime<'final, I>(item: &I) -> &'final I {
+        std::mem::transmute::<&I, &'final I>(item)
+    }
+
+    /// takes the blocknumber, setups the tree and calls on_new_tree before
+    /// returning the composer
+    pub async fn setup(block_num: u64) -> Composer<'static, 4> {
+        COMPOSER
+            .get_or_init(|| {
+                init_tracing();
+                dotenv::dotenv().ok();
+
+                let (tx, _rx) = unbounded_channel();
+
+                let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+                let db = Database::default();
+                let classifier = Classifier::new();
+
+                let block = tracer.execute_block(block_num).await.unwrap();
+                let metadata = db.get_metadata(block_num).await;
+
+                let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+
+                let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
+                let backrun = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
+                let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
+                let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
+
+                let inspectors: [&'static Box<dyn Inspector>; 4] = unsafe {
+                    [
+                        cast_lifetime::<'static>(&cex_dex),
+                        cast_lifetime::<'static>(&backrun),
+                        cast_lifetime::<'static>(&jit),
+                        cast_lifetime::<'static>(&sandwich),
+                    ]
+                };
+
+                let mut composer = Composer::new(Box::leak(Box::new(inspectors)));
+                composer.on_new_tree(tree, metadata);
+
+                composer
+            })
+            .await
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    pub fn test_sandwich_backrun_reduction() {
+        let mut composer = setup(1244).await;
+        let (mev_block, classified_mev) = composer.await;
+        info!(?mev_block, ?classified_mev);
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    pub fn test_sandwich_jit_compose() {}
 }
