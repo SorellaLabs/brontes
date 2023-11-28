@@ -470,7 +470,7 @@ pub mod tests {
     #[tokio::test]
     #[serial_test::serial]
     pub async fn test_sandwich_backrun_reduction() {
-        let mut composer = setup(1244).await;
+        let mut composer = setup(18532162).await;
         let (mev_block, classified_mev) = composer.await;
         info!(?mev_block, ?classified_mev);
     }
