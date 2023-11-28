@@ -236,7 +236,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     async fn parse_transaction(
         &self,
         tx_trace: Vec<TransactionTrace>,
-        #[cfg(feature = "dyn-decode")] &dyn_json: HashMap<H160, JsonAbi>,
+        #[cfg(feature = "dyn-decode")] dyn_json: &HashMap<H160, JsonAbi>,
         vm: VmTrace,
         logs: Vec<Log>,
         block_num: u64,
