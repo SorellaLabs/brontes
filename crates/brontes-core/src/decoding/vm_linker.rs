@@ -80,8 +80,34 @@ mod tests {
 
     use std::fs;
 
+    use reth_rpc_types::TransactionReceipt;
+
     use super::*;
     use crate::test_utils::*;
+
+    #[tokio::test]
+    async fn print_logs() {
+        dotenv::dotenv().ok();
+        init_tracing();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let hash = reth_primitives::H256::from_str(
+            "0x22ea36d516f59cc90ccc01042e20f8fba196f32b067a7e5f1510099140ae5e0a",
+        )
+        .unwrap();
+
+        let tx_receipts: Vec<TransactionReceipt> = tracer
+            .block_receipts(BlockNumberOrTag::Number(18539312))
+            .await
+            .unwrap()
+            .unwrap();
+
+        let receipt = tx_receipts
+            .into_iter()
+            .find(|r| r.transaction_hash.unwrap() == hash)
+            .unwrap();
+        println!("{:#?}", receipt.logs);
+    }
 
     #[test]
     fn test_link_vm_to_trace() {
