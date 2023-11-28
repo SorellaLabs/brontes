@@ -40,6 +40,8 @@ fn bench_tree_building(c: &mut Criterion) {
         .build()
         .unwrap();
 
+    // massive almost gas cap block
+    // https://etherscan.io/block/18672183
     let block_number = 18672183;
     let (traces, header, metadata) = rt.block_on(setup_data(block_number));
     let classifier = Classifier::new();
