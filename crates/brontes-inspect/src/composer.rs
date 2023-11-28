@@ -513,11 +513,8 @@ pub mod tests {
         let classifier = Classifier::new();
 
         let block = tracer.execute_block(block_num).await.unwrap();
-        let metadata = if let Some(meta) = custom_meta {
-            meta
-        } else {
-         db.get_metadata(block_num).await
-        };
+        let metadata =
+            if let Some(meta) = custom_meta { meta } else { db.get_metadata(block_num).await };
 
         let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
 
@@ -543,10 +540,11 @@ pub mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
-    pub async fn test_sandwich_backrun_reduction() {
+    pub async fn test_jit_sandwich_composition() {
         let mut composer = setup(18539312, Some(get_metadata())).await;
         let (mev_block, classified_mev) = composer.await;
         info!(?mev_block, ?classified_mev);
+    }
 
     #[tokio::test]
     #[serial]
