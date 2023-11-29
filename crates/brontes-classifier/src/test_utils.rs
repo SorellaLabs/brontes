@@ -14,7 +14,7 @@ use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, Header, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
-use reth_tracing::TracingClient;
+use reth_tracing_ext::TracingClient;
 
 use crate::{Classifier, StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
