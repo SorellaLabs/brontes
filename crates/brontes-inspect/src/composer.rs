@@ -399,3 +399,169 @@ impl<const N: usize> Future for Composer<'_, N> {
         Poll::Pending
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use std::{
+        collections::{HashMap, HashSet},
+        env,
+        str::FromStr,
+        time::SystemTime,
+    };
+
+    use brontes_classifier::Classifier;
+    use brontes_core::test_utils::{init_trace_parser, init_tracing};
+    use brontes_database::database::Database;
+    use brontes_types::test_utils::write_tree_as_json;
+    use futures::future::BoxFuture;
+    use malachite::{
+        num::{basic::traits::One, conversion::traits::FromSciString},
+        Rational,
+    };
+    use reth_primitives::{H256, U256};
+    use serial_test::serial;
+    use tokio::sync::{mpsc::unbounded_channel, OnceCell};
+    use tracing::info;
+
+    use super::*;
+    use crate::{
+        atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
+        sandwich::SandwichInspector,
+    };
+
+    unsafe fn cast_lifetime<'f, 'a, I>(item: &'a I) -> &'f I {
+        std::mem::transmute::<&'a I, &'f I>(item)
+    }
+
+    fn get_metadata() -> Metadata {
+        // 2126.43
+        Metadata {
+            block_num:              18539312,
+            block_hash:             U256::from_str_radix(
+                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
+                16,
+            )
+            .unwrap(),
+            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
+            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
+            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
+                .unwrap(),
+            proposer_mev_reward:    11769128921907366414,
+            token_prices:           {
+                let mut prices = HashMap::new();
+
+                prices.insert(
+                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(2126.43).unwrap(),
+                        Rational::try_from_float_simplest(2126.43).unwrap(),
+                    ),
+                );
+
+                // SMT
+                prices.insert(
+                    Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(0.09081931).unwrap(),
+                        Rational::try_from_float_simplest(0.09081931).unwrap(),
+                    ),
+                );
+
+                // APX
+                prices.insert(
+                    Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
+                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
+                    ),
+                );
+                // FTT
+                prices.insert(
+                    Address::from_str("0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(1.9358).unwrap(),
+                        Rational::try_from_float_simplest(1.9358).unwrap(),
+                    ),
+                );
+
+                prices
+            },
+            eth_prices:             (
+                Rational::try_from_float_simplest(2126.43).unwrap(),
+                Rational::try_from_float_simplest(2126.43).unwrap(),
+            ),
+            mempool_flow:           {
+                let mut private = HashSet::new();
+                private.insert(
+                    H256::from_str(
+                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
+                    )
+                    .unwrap(),
+                );
+                private
+            },
+        }
+    }
+
+    /// takes the blocknumber, setups the tree and calls on_new_tree before
+    /// returning the composer
+    pub async fn setup(block_num: u64, custom_meta: Option<Metadata>) -> Composer<'static, 4> {
+        init_tracing();
+        dotenv::dotenv().ok();
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
+
+        let block = tracer.execute_block(block_num).await.unwrap();
+        let metadata =
+            if let Some(meta) = custom_meta { meta } else { db.get_metadata(block_num).await };
+
+        let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
+
+        let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
+        let backrun = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
+        let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
+        let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
+
+        let inspectors: [&'static Box<dyn Inspector>; 4] = unsafe {
+            [
+                cast_lifetime::<'static>(&cex_dex),
+                cast_lifetime::<'static>(&backrun),
+                cast_lifetime::<'static>(&jit),
+                cast_lifetime::<'static>(&sandwich),
+            ]
+        };
+
+        let mut composer = Composer::new(Box::leak(Box::new(inspectors)));
+        composer.on_new_tree(tree, metadata.into());
+
+        composer
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    pub async fn test_jit_sandwich_composition() {
+        let mut composer = setup(18539312, Some(get_metadata())).await;
+        let a = composer.inspectors_execution.take().unwrap().await;
+        println!("{:#?}", a);
+        // let (mev_block, classified_mev) = composer.await;
+        // info!("{:#?}\n\n{:#?}", mev_block, classified_mev);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_jit() {
+        init_tracing();
+        dotenv::dotenv().ok();
+        // testing https://eigenphi.io/mev/ethereum/tx/0x96a1decbb3787fbe26de84e86d6c2392f7ab7b31fb33f685334d49db2624a424
+        // This is a jit sandwich, however we are just trying to detect the jit portion
+        let block_num = 18539312;
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    pub async fn test_sandwich_jit_compose() {}
+}
