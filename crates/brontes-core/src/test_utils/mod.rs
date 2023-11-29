@@ -17,7 +17,7 @@ use reth_rpc_types::{
     trace::parity::{TraceResults, TransactionTrace, VmTrace},
     Log, TransactionReceipt,
 };
-use reth_tracing::TracingClient;
+use reth_tracing_ext::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::{
