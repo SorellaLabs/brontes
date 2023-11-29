@@ -8,18 +8,25 @@ use reth_rpc_types::{
 
 pub fn link_vm_to_trace(
     vm: VmTrace,
-    tx_trace: Vec<TransactionTrace>,
+    mut tx_trace: Vec<TransactionTrace>,
     mut logs: Vec<Log>,
 ) -> Vec<TransactionTraceWithLogs> {
-    println!("{:#?}", vm.ops);
     let mut res = Vec::new();
+    let first = tx_trace.remove(0);
+    res.push(TransactionTraceWithLogs {
+        logs:         vec![],
+        trace:        first,
+        trace_idx:    0,
+        decoded_data: None,
+    });
+
     recursive_parsing(
         &mut res,
         vm,
         &mut tx_trace
             .into_iter()
             .enumerate()
-            .map(|ti| ti)
+            .map(|(t, i)| (t + 1, i))
             .collect::<Vec<_>>(),
         &mut logs,
     );
