@@ -486,7 +486,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
                 }
 
                 phf_map.entry(
-                    H160::from_str(&address).unwrap().0,
+                    Address::from_str(&address).unwrap().0 .0,
                     &format!("&{}", name.to_uppercase()),
                 );
             }
@@ -510,7 +510,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
                 }
 
                 phf_map.entry(
-                    H160::from_str(&address).unwrap().0,
+                    Address::from_str(&address).unwrap().0 .0,
                     &format!("&{}", name.to_uppercase()),
                 );
             }
@@ -591,12 +591,12 @@ async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &
 fn to_string_vec(tokens: Vec<String>) -> String {
     let tokens = tokens
         .into_iter()
-        .map(|t| H160::from_str(&t).unwrap())
+        .map(|t| Address::from_str(&t).unwrap())
         .collect::<Vec<_>>();
     let mut res = "[".to_string();
     for token in tokens {
         res += "H160([";
-        for byte in token.to_fixed_bytes() {
+        for byte in token.0 {
             res += &byte.to_string();
             res += ",";
         }
