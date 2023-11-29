@@ -65,8 +65,6 @@ hyper.workspace = true
 hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-ethers-core.workspace = true
-phf.workspace = true
 phf_codegen.workspace = true
 rayon.workspace = true
 alloy-json-abi = { workspace = true, features = ["serde_json"] }

@@ -31,12 +31,6 @@ brontes-macros = { path = "./crates/brontes-macros/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/tracing" }
 
-# Ethers
-ethers-core = "2.0.10"
-ethers-solc = "2.0.10"
-ethers = "2.0.10"
-ethers-reth = { git = "https://github.com/SorellaLabs/ethers-reth.git" }
-
 # Reth
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "3d291ea" }
 reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "3d291ea" }
