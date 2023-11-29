@@ -28,9 +28,6 @@ brontes-metrics.workspace = true
 brontes-tracing.workspace = true
 brontes-database.workspace = true
 
-# tooling = { git = "https://github.com/SorellaLabs/tooling" }
-
-
 # async
 
 tokio = { workspace = true, features = ["full", "tracing"] }
@@ -41,11 +38,17 @@ alloy-sol-types.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi.workspace = true
+alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-transport = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-networks = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
 
 # ethers
 ethers-core.workspace = true
 ethers.workspace = true
-ethers-reth.workspace = true
 
 # Serde 
 serde.workspace = true
