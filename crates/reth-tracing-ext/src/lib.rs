@@ -6,11 +6,11 @@ use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
 use reth_db::{
-    database::{Database, DatabaseGAT},
-    mdbx::{Env, WriteMap},
+    database::Database,
+    // mdbx::{Env, WriteMap},
     tables,
     transaction::DbTx,
-    DatabaseError,
+    DatabaseError, DatabaseEnv,
 };
 use reth_network_api::noop::NoopNetwork;
 use reth_primitives::{BlockId, PruneModes, MAINNET};
@@ -20,9 +20,9 @@ use reth_provider::{
 use reth_revm::{
     database::{StateProviderDatabase, SubState},
     db::CacheDB,
-    env::tx_env_with_recovered,
+    // env::tx_env_with_recovered,
     tracing::{TracingInspector, TracingInspectorConfig},
-    DatabaseCommit, Factory,
+    DatabaseCommit,
 };
 use reth_rpc::{
     eth::{
@@ -31,9 +31,8 @@ use reth_rpc::{
         gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
         EthTransactions, RPC_DEFAULT_GAS_CAP,
     },
-    EthApi, TraceApi, TracingCallGuard, TracingCallPool,
+    EthApi, TraceApi,
 };
-use reth_rpc_eth::error::EthApiError;
 use reth_rpc_types::{
     trace::parity::{TraceResultsWithTransactionHash, TraceType},
     BlockError, TransactionInfo,
@@ -48,8 +47,8 @@ use revm_primitives::ExecutionResult;
 use tokio::runtime::Handle;
 
 pub type Provider = BlockchainProvider<
-    Arc<Env<WriteMap>>,
-    ShareableBlockchainTree<Arc<Env<WriteMap>>, Arc<BeaconConsensus>, Factory>,
+    DatabaseEnv,
+    ShareableBlockchainTree<DatabaseEnv, Arc<BeaconConsensus>>,
 >;
 
 pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork>;
@@ -136,162 +135,136 @@ impl TracingClient {
     }
 
     /// Replays all transactions in a block
-    pub async fn replay_block_transactions(
-        &self,
-        block_id: BlockId,
-    ) -> EthResult<Option<Vec<TraceResultsWithTransactionHash>>> {
-        let config = TracingInspectorConfig {
-            record_logs:              true,
-            record_steps:             false,
-            record_state_diff:        false,
-            record_stack_snapshots:   false,
-            record_memory_snapshots:  false,
-            record_call_return_data:  true,
-            exclude_precompile_calls: false,
-        };
-        self.trace_block_with(
-            block_id,
-            config,
-            |tx_info, tracing_inspector, execution_res, state, db| Ok(3),
-        );
-        todo!()
-    }
-
-    /// Executes all transactions of a block and returns a list of callback
-    /// results invoked for each transaction in the block.
-    ///
-    /// This
-    /// 1. fetches all transactions of the block
-    /// 2. configures the EVM evn
-    /// 3. loops over all transactions and executes them
-    /// 4. calls the callback with the transaction info, the execution result,
-    /// the changed state _after_ the transaction [StateProviderDatabase]
-    /// and the database that points to the state right _before_ the
-    /// transaction.
-    async fn trace_block_with<F, R>(
-        &self,
-        block_id: BlockId,
-        config: TracingInspectorConfig,
-        f: F,
-    ) -> EthResult<Option<Vec<R>>>
-    where
-        // This is the callback that's invoked for each transaction with
-        F: for<'a> Fn(
-                TransactionInfo,
-                TracingInspector,
-                ExecutionResult,
-                &'a revm_primitives::State,
-                &'a CacheDB<StateProviderDatabase<StateProviderBox<'a>>>,
-            ) -> EthResult<R>
-            + Send
-            + 'static,
-        R: Send + 'static,
-    {
-        let ((cfg, block_env, _), block) =
-            futures::try_join!(self.api.evm_env_at(block_id), self.api.block_by_id(block_id),)?;
-
-        let block = match block {
-            Some(block) => block,
-            None => return Ok(None),
-        };
-
-        // we need to get the state of the parent block because we're replaying this
-        // block on top of its parent block's state
-        let state_at = block.parent_hash;
-
-        let block_hash = block.hash;
-        let transactions = block.body;
-
-        // replay all transactions of the block
-        self.api
-            .spawn_with_state_at_block(state_at.into(), move |state| {
-                let mut results = Vec::with_capacity(transactions.len());
-                let mut db = SubState::new(StateProviderDatabase::new(state));
-
-                let mut transactions = transactions.into_iter().enumerate().peekable();
-
-                while let Some((idx, tx)) = transactions.next() {
-                    let tx = tx.into_ecrecovered().ok_or(BlockError::InvalidSignature)?;
-                    let tx_info = TransactionInfo {
-                        hash:         Some(tx.hash()),
-                        index:        Some(idx as u64),
-                        block_hash:   Some(block_hash),
-                        block_number: Some(block_env.number.try_into().unwrap_or(u64::MAX)),
-                        base_fee:     Some(block_env.basefee.try_into().unwrap_or(u64::MAX)),
-                    };
-
-                    let tx = tx_env_with_recovered(&tx);
-                    let env =
-                        revm_primitives::Env { cfg: cfg.clone(), block: block_env.clone(), tx };
-
-                    let mut inspector = TracingInspector::new(config);
-                    let (res, _) = inspect(&mut db, env, &mut inspector)?;
-                    let ResultAndState { result, state } = res;
-                    results.push(f(tx_info, inspector, result, &state, &db)?);
-
-                    // need to apply the state changes of this transaction before executing the
-                    // next transaction
-                    if transactions.peek().is_some() {
-                        // need to apply the state changes of this transaction before executing
-                        // the next transaction
-                        db.commit(state)
-                    }
-                }
-
-                Ok(results)
-            })
-            .await
-            .map(Some)
-    }
+//     pub async fn replay_block_transactions(
+//         &self,
+//         block_id: BlockId,
+//     ) -> EthResult<Option<Vec<TraceResultsWithTransactionHash>>> {
+//         let config = TracingInspectorConfig {
+//             record_logs:              true,
+//             record_steps:             false,
+//             record_state_diff:        false,
+//             record_stack_snapshots:   false,
+//             record_memory_snapshots:  false,
+//             record_call_return_data:  true,
+//             exclude_precompile_calls: false,
+//         };
+//         self.trace_block_with(
+//             block_id,
+//             config,
+//             |tx_info, tracing_inspector, execution_res, state, db| Ok(3),
+//         );
+//         todo!()
+//     }
+//
+//     /// Executes all transactions of a block and returns a list of callback
+//     /// results invoked for each transaction in the block.
+//     ///
+//     /// This
+//     /// 1. fetches all transactions of the block
+//     /// 2. configures the EVM evn
+//     /// 3. loops over all transactions and executes them
+//     /// 4. calls the callback with the transaction info, the execution result,
+//     /// the changed state _after_ the transaction [StateProviderDatabase]
+//     /// and the database that points to the state right _before_ the
+//     /// transaction.
+//     async fn trace_block_with<F, R>(
+//         &self,
+//         block_id: BlockId,
+//         config: TracingInspectorConfig,
+//         f: F,
+//     ) -> EthResult<Option<Vec<R>>>
+//     where
+//         // This is the callback that's invoked for each transaction with
+//         F: for<'a> Fn(
+//                 TransactionInfo,
+//                 TracingInspector,
+//                 ExecutionResult,
+//                 &'a revm_primitives::State,
+//                 &'a CacheDB<StateProviderDatabase<StateProviderBox<'a>>>,
+//             ) -> EthResult<R>
+//             + Send
+//             + 'static,
+//         R: Send + 'static,
+//     {
+//         let ((cfg, block_env, _), block) =
+//             futures::try_join!(self.api.evm_env_at(block_id), self.api.block_by_id(block_id),)?;
+//
+//         let block = match block {
+//             Some(block) => block,
+//             None => return Ok(None),
+//         };
+//
+//         // we need to get the state of the parent block because we're replaying this
+//         // block on top of its parent block's state
+//         let state_at = block.parent_hash;
+//
+//         let block_hash = block.hash;
+//         let transactions = block.body;
+//
+//         // replay all transactions of the block
+//         self.api
+//             .spawn_with_state_at_block(state_at.into(), move |state| {
+//                 let mut results = Vec::with_capacity(transactions.len());
+//                 let mut db = SubState::new(StateProviderDatabase::new(state));
+//
+//                 let mut transactions = transactions.into_iter().enumerate().peekable();
+//
+//                 while let Some((idx, tx)) = transactions.next() {
+//                     let tx = tx.into_ecrecovered().ok_or(BlockError::InvalidSignature)?;
+//                     let tx_info = TransactionInfo {
+//                         hash:         Some(tx.hash()),
+//                         index:        Some(idx as u64),
+//                         block_hash:   Some(block_hash),
+//                         block_number: Some(block_env.number.try_into().unwrap_or(u64::MAX)),
+//                         base_fee:     Some(block_env.basefee.try_into().unwrap_or(u64::MAX)),
+//                     };
+//
+//                     let tx = tx_env_with_recovered(&tx);
+//                     let env =
+//                         revm_primitives::Env { cfg: cfg.clone(), block: block_env.clone(), tx };
+//
+//                     let mut inspector = TracingInspector::new(config);
+//                     let (res, _) = inspect(&mut db, env, &mut inspector)?;
+//                     let ResultAndState { result, state } = res;
+//                     results.push(f(tx_info, inspector, result, &state, &db)?);
+//
+//                     // need to apply the state changes of this transaction before executing the
+//                     // next transaction
+//                     if transactions.peek().is_some() {
+//                         // need to apply the state changes of this transaction before executing
+//                         // the next transaction
+//                         db.commit(state)
+//                     }
+//                 }
+//
+//                 Ok(results)
+//             })
+//             .await
+//             .map(Some)
+//     }
 }
-
-fn inspect<DB, I>(
-    db: DB,
-    env: revm_primitives::Env,
-    inspector: I,
-) -> EthResult<(ResultAndState, revm_primitives::Env)>
-where
-    DB: Database,
-    <DB as Database>::Error: Into<EthApiError>,
-    I: Inspector<DB>,
-{
-    let mut evm = revm::EVM::with_env(env);
-    evm.database(db);
-    let res = evm.inspect(inspector)?;
-    Ok((res, evm.env))
-}
+// fn inspect<DB, I>(
+//     db: DB,
+//     env: revm_primitives::Env,
+//     inspector: I,
+// ) -> EthResult<(ResultAndState, revm_primitives::Env)>
+// where
+//     DB: Database,
+//     <DB as Database>::Error: Into<EthApiError>,
+//     I: Inspector<DB>,
+// {
+//     let mut evm = revm::EVM::with_env(env);
+//     evm.database(db);
+//     let res = evm.inspect(inspector)?;
+//     Ok((res, evm.env))
+// }
 
 /// re-implementation of 'view()'
 /// allows for a function to be passed in through a RO libmdbx transaction
 /// /reth/crates/storage/db/src/abstraction/database.rs
-pub fn view<F, T>(db: &Env<WriteMap>, f: F) -> Result<T, DatabaseError>
-where
-    F: FnOnce(&<Env<WriteMap> as DatabaseGAT<'_>>::TX) -> T,
-{
-    let tx = db.tx()?;
-    let res = f(&tx);
-    tx.commit()?;
-
-    Ok(res)
-}
 
 /// Opens up an existing database at the specified path.
-pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<Env<WriteMap>> {
-    let _ = std::fs::create_dir_all(path.as_ref());
-    let db = reth_db::mdbx::Env::<reth_db::mdbx::WriteMap>::open(
-        path.as_ref(),
-        reth_db::mdbx::EnvKind::RO,
-        None,
-    )?;
+pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
+        reth_db::open_db(path.as_ref(), None)
 
-    view(&db, |tx| {
-        for table in tables::Tables::ALL.iter().map(|table| table.name()) {
-            tx.inner
-                .open_db(Some(table))
-                .wrap_err("Could not open db.")
-                .unwrap();
-        }
-    })?;
-
-    Ok(db)
 }
