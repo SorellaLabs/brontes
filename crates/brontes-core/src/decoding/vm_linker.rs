@@ -45,7 +45,7 @@ fn link_traces(
 
         let next_op = current.0.remove(0);
         // parse inner
-        if let Some(sub) = next.sub {
+        if let Some(sub) = next_op.sub {
             trace_stack.push_front(current);
             current = (sub.ops, vec![], tx.remove(0));
         } else {
