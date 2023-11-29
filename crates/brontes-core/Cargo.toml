@@ -46,10 +46,6 @@ alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
 
-# ethers
-ethers-core.workspace = true
-ethers.workspace = true
-
 # Serde 
 serde.workspace = true
 serde_json.workspace = true
@@ -89,7 +85,6 @@ serde.workspace = true
 serde_json.workspace = true
 rayon.workspace = true
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
-ethers-core.workspace = true
 phf.workspace = true
 phf_codegen.workspace = true
 dotenv.workspace = true
