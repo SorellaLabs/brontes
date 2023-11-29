@@ -89,9 +89,6 @@ impl From<&TraceParseError> for TraceParseErrorKind {
                 EthApiError::InvalidRewardPercentiles => {
                     TraceParseErrorKind::EthApiInvalidRewardPercentiles
                 }
-                EthApiError::InternalTracingError => {
-                    TraceParseErrorKind::EthApiInternalTracingError
-                }
                 EthApiError::InternalEthError => TraceParseErrorKind::EthApiInternalEthError,
                 EthApiError::InternalJsTracerError(_) => {
                     TraceParseErrorKind::EthApiInternalJsTracerError
