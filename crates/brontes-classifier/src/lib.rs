@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 
 use once_cell::sync::Lazy;
-use reth_primitives::{Address, Bytes};
+use reth_primitives::{Address, FixedBytes, Bytes};
+
 use reth_rpc_types::Log;
 
 pub mod classifier;
@@ -14,7 +15,6 @@ mod impls;
 use alloy_sol_types::{sol, SolInterface};
 use brontes_types::normalized_actions::Actions;
 pub use impls::*;
-
 use reth_primitives::Address;
 
 include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
