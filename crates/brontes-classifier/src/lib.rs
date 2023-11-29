@@ -15,6 +15,8 @@ use alloy_sol_types::{sol, SolInterface};
 use brontes_types::normalized_actions::Actions;
 pub use impls::*;
 
+use reth_primitives::Address;
+
 include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
 include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_addr_set.rs"));
 include!(concat!(env!("ABI_BUILD_DIR"), "/bindings.rs"));
