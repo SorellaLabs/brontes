@@ -24,6 +24,8 @@ use crate::{
 #[cfg(feature = "dyn-decode")]
 mod dyn_decode;
 
+mod inspector;
+
 pub mod parser;
 mod utils;
 pub mod vm_linker;
