@@ -318,7 +318,7 @@ impl SandwichInspector {
 
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
-                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
+                        if let Some(victims) = possible_victims.get(prev_tx_hash) {
                             if victims.len() >= 2 {
                                 // Create
                                 set.push(PossibleSandwich {
