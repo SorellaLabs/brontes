@@ -77,8 +77,8 @@ impl Actions {
             Actions::Collect(c) => c.to,
             Actions::Unclassified(t) => match &t.trace.action {
                 reth_rpc_types::trace::parity::Action::Call(c) => c.to,
-                reth_rpc_types::trace::parity::Action::Create(_) => Address::zero(),
-                reth_rpc_types::trace::parity::Action::Reward(_) => Address::zero(),
+                reth_rpc_types::trace::parity::Action::Create(_) => Address::ZERO,
+                reth_rpc_types::trace::parity::Action::Reward(_) => Address::ZERO,
                 reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address,
             },
         }
