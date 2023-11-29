@@ -80,7 +80,7 @@ action_impl!(
         Some(NormalizedMint {
             index,
             from: from_address,
-            recipient: H160(call_data.recipient.0 .0),
+            recipient: call_data.recipient,
             to: target_address,
             token: vec![token0, token1],
             amount: vec![token_0_delta, token_1_delta],
@@ -133,7 +133,7 @@ action_impl!(
         Some(NormalizedCollect {
             index,
             from: from_addr,
-            recipient: H160(call_data.recipient.0 .0),
+            recipient: call_data.recipient,
             to: to_addr,
             token: vec![token0, token1],
             amount: vec![U256::from(return_data.amount0), U256::from(return_data.amount1)],
