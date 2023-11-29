@@ -1,7 +1,6 @@
 use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
 use alloy_dyn_abi::*;
-use alloy_etherscan::Client;
 use alloy_json_abi::JsonAbi;
 use brontes_types::structured_trace::{DecodedCallData, DecodedParams, TxTrace};
 use ethers::prelude::{Http, Middleware, Provider};
