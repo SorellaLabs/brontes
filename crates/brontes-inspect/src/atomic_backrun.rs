@@ -7,7 +7,7 @@ use brontes_types::{
     tree::{GasDetails, TimeTree},
     ToFloatNearest,
 };
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, H256};
 use tracing::error;
@@ -17,6 +17,38 @@ use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, Specif
 #[derive(Default)]
 pub struct AtomicBackrunInspector {
     inner: SharedInspectorUtils,
+}
+
+#[async_trait::async_trait]
+impl Inspector for AtomicBackrunInspector {
+    async fn process_tree(
+        &self,
+        tree: Arc<TimeTree<Actions>>,
+        meta_data: Arc<Metadata>,
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+        let intersting_state = tree.inspect_all(|node| {
+            node.subactions
+                .iter()
+                .any(|action| action.is_swap() || action.is_transfer())
+        });
+
+        intersting_state
+            .into_par_iter()
+            .filter_map(|(tx, swaps)| {
+                let gas_details = tree.get_gas_details(tx)?.clone();
+                let root = tree.get_root(tx)?;
+
+                self.process_swaps(
+                    tx,
+                    root.head.address,
+                    root.head.data.get_to_address(),
+                    meta_data.clone(),
+                    gas_details,
+                    swaps,
+                )
+            })
+            .collect::<Vec<_>>()
+    }
 }
 
 impl AtomicBackrunInspector {
@@ -46,6 +78,10 @@ impl AtomicBackrunInspector {
             Box::new(|(_, finalized)| finalized),
         );
         let finalized_usd: Rational = finalized.values().sum();
+
+        if appearance_usd <= Rational::ZERO || finalized_usd <= Rational::ZERO {
+            return None
+        }
 
         let gas_used = gas_details.gas_paid();
         let (gas_used_usd_appearance, gas_used_usd_finalized) =
@@ -83,38 +119,6 @@ impl AtomicBackrunInspector {
             swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
         });
         Some((classified, backrun))
-    }
-}
-
-#[async_trait::async_trait]
-impl Inspector for AtomicBackrunInspector {
-    async fn process_tree(
-        &self,
-        tree: Arc<TimeTree<Actions>>,
-        meta_data: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let intersting_state = tree.inspect_all(|node| {
-            node.subactions
-                .iter()
-                .any(|action| action.is_swap() || action.is_transfer())
-        });
-
-        intersting_state
-            .into_par_iter()
-            .filter_map(|(tx, swaps)| {
-                let gas_details = tree.get_gas_details(tx)?.clone();
-                let root = tree.get_root(tx)?;
-
-                self.process_swaps(
-                    tx,
-                    root.head.address,
-                    root.head.data.get_to_address(),
-                    meta_data.clone(),
-                    gas_details,
-                    swaps,
-                )
-            })
-            .collect::<Vec<_>>()
     }
 }
 
