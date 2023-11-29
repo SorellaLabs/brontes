@@ -27,10 +27,10 @@ fn link_traces(
 
     let top = tx.remove(0);
     results.push(TransactionTraceWithLogs {
-        trace:        top,
+        trace:        top.0,
         decoded_data: None,
         logs:         vec![],
-        trace_idx:    0 as u64,
+        trace_idx:    top.1 as u64,
     });
 
     let mut current = (vm.ops, vec![], tx.remove(0));
