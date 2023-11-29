@@ -11,9 +11,9 @@ use brontes_types::{
     ToFloatNearest,
 };
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, H160, H256};
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
@@ -39,57 +39,6 @@ impl Inspector for SandwichInspector {
         meta_data: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // grab the set of all possible sandwich txes
-        let iter = tree.roots.iter();
-        println!("roots len: {:?}", iter.len());
-        if iter.len() < 3 {
-            return vec![]
-        }
-
-        let mut set: Vec<PossibleSandwich> = Vec::new();
-        let mut duplicate_senders: HashMap<Address, Vec<H256>> = HashMap::new();
-        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
-
-        for root in iter {
-            match duplicate_senders.entry(root.head.address) {
-                // If we have not seen this sender before, we insert the tx hash into the map
-                Entry::Vacant(v) => {
-                    v.insert(vec![root.tx_hash]);
-                    possible_victims.insert(root.tx_hash, vec![]);
-                }
-                Entry::Occupied(mut o) => {
-                    let prev_tx_hashes = o.get();
-
-                    for prev_tx_hash in prev_tx_hashes {
-                        // Find the victims between the previous and the current transaction
-                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
-                            if victims.len() >= 2 {
-                                // Create
-                                set.push(PossibleSandwich {
-                                    eoa:                   root.head.address,
-                                    tx0:                   *prev_tx_hash,
-                                    tx1:                   root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_to_address(),
-                                    victims:               victims.clone(),
-                                });
-                            }
-                        }
-                    }
-                    // Add current transaction hash to the list of transactions for this sender
-                    o.get_mut().push(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
-                }
-            }
-
-            // Now, for each existing entry in possible_victims, we add the current
-            // transaction hash as a potential victim, if it is not the same as
-            // the key (which represents another transaction hash)
-            for (k, v) in possible_victims.iter_mut() {
-                if k != &root.tx_hash {
-                    v.push(root.tx_hash);
-                }
-            }
-        }
-        println!("{:#?}", set);
 
         let search_fn = |node: &Node<Actions>| {
             node.subactions
@@ -97,13 +46,9 @@ impl Inspector for SandwichInspector {
                 .any(|action| action.is_swap() || action.is_transfer())
         };
 
-        set.into_iter()
+        self.get_possible_sandwich(tree.clone())
+            .into_iter()
             .filter_map(|ps| {
-                println!(
-                    "\n\nFOUND SET: {:?}\n",
-                    (ps.eoa, ps.tx0, ps.tx1, ps.mev_executor_contract, &ps.victims)
-                );
-
                 let gas = [
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
@@ -125,14 +70,11 @@ impl Inspector for SandwichInspector {
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<Vec<Actions>>>();
-                println!("Victim actions - {:#?}", victim_actions);
 
-                println!("{:?}", ps);
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
-                println!("Searcher actions - {:#?}", searcher_actions);
 
                 self.calculate_sandwich(
                     ps.eoa,
@@ -168,6 +110,7 @@ impl SandwichInspector {
             return None
         }
 
+        println!("{:#?}", searcher_actions);
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
         println!("deltas {:#?}", deltas);
 
@@ -191,6 +134,10 @@ impl SandwichInspector {
 
         let finalized_usd: Rational = finalized_usd_deltas.values().sum();
 
+        if appearance_usd == Rational::ZERO || finalized_usd == Rational::ZERO {
+            return None
+        }
+
         let gas_used = searcher_gas_details
             .iter()
             .map(|g| g.gas_paid())
@@ -202,12 +149,14 @@ impl SandwichInspector {
         let frontrun_swaps = searcher_actions
             .remove(0)
             .into_iter()
+            .filter(|s| s.is_swap())
             .map(|s| s.force_swap())
             .collect_vec();
 
         let backrun_swaps = searcher_actions
             .remove(searcher_actions.len() - 1)
             .into_iter()
+            .filter(|s| s.is_swap())
             .map(|s| s.force_swap())
             .collect_vec();
 
@@ -240,6 +189,7 @@ impl SandwichInspector {
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().index)
                         .collect_vec()
                 })
@@ -248,6 +198,7 @@ impl SandwichInspector {
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().from)
                         .collect_vec()
                 })
@@ -256,6 +207,7 @@ impl SandwichInspector {
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().pool)
                         .collect_vec()
                 })
@@ -264,6 +216,7 @@ impl SandwichInspector {
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().token_in)
                         .collect_vec()
                 })
@@ -272,6 +225,7 @@ impl SandwichInspector {
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().token_out)
                         .collect_vec()
                 })
@@ -280,6 +234,7 @@ impl SandwichInspector {
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().amount_in.to())
                         .collect_vec()
                 })
@@ -288,6 +243,7 @@ impl SandwichInspector {
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
+                        .filter(|s| s.is_swap())
                         .map(|s| s.clone().force_swap().amount_out.to())
                         .collect_vec()
                 })
@@ -338,16 +294,74 @@ impl SandwichInspector {
 
         Some((classified_mev, Box::new(sandwich)))
     }
+
+    fn get_possible_sandwich(&self, tree: Arc<TimeTree<Actions>>) -> Vec<PossibleSandwich> {
+        let iter = tree.roots.iter();
+        info!("roots len: {:?}", iter.len());
+        if iter.len() < 3 {
+            return vec![]
+        }
+
+        let mut set: Vec<PossibleSandwich> = Vec::new();
+        let mut duplicate_senders: HashMap<Address, Vec<H256>> = HashMap::new();
+        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
+
+        for root in iter {
+            match duplicate_senders.entry(root.head.address) {
+                // If we have not seen this sender before, we insert the tx hash into the map
+                Entry::Vacant(v) => {
+                    v.insert(vec![root.tx_hash]);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+                Entry::Occupied(mut o) => {
+                    let prev_tx_hashes = o.get();
+
+                    for prev_tx_hash in prev_tx_hashes {
+                        // Find the victims between the previous and the current transaction
+                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
+                            if victims.len() >= 2 {
+                                // Create
+                                set.push(PossibleSandwich {
+                                    eoa:                   root.head.address,
+                                    tx0:                   *prev_tx_hash,
+                                    tx1:                   root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_to_address(),
+                                    victims:               victims.clone(),
+                                });
+                            }
+                        }
+                    }
+                    // Add current transaction hash to the list of transactions for this sender
+                    o.get_mut().push(root.tx_hash);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+            }
+
+            // Now, for each existing entry in possible_victims, we add the current
+            // transaction hash as a potential victim, if it is not the same as
+            // the key (which represents another transaction hash)
+            for (k, v) in possible_victims.iter_mut() {
+                if k != &root.tx_hash {
+                    v.push(root.tx_hash);
+                }
+            }
+        }
+
+        info!("{:#?}", set);
+
+        set
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, time::SystemTime};
+    use std::{collections::HashSet, str::FromStr, time::SystemTime};
 
     use brontes_classifier::Classifier;
     use brontes_core::{init_tracing, test_utils::init_trace_parser};
     use brontes_database::database::Database;
     use brontes_types::test_utils::write_tree_as_json;
+    use reth_primitives::U256;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
@@ -372,8 +386,6 @@ mod tests {
         let tx = block.0.clone().into_iter().take(10).collect::<Vec<_>>();
         let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
-        write_tree_as_json(&tree, "./tree.json").await;
-
         let inspector = SandwichInspector::default();
 
         let t0 = SystemTime::now();
@@ -390,6 +402,105 @@ mod tests {
         //         )
         //         .unwrap()
         // );
+
+        println!("{:#?}", mev);
+    }
+
+    fn get_metadata() -> Metadata {
+        // 2126.43
+        Metadata {
+            block_num:              18539312,
+            block_hash:             U256::from_str_radix(
+                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
+                16,
+            )
+            .unwrap(),
+            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
+            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
+            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
+                .unwrap(),
+            proposer_mev_reward:    11769128921907366414,
+            token_prices:           {
+                let mut prices = HashMap::new();
+
+                prices.insert(
+                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(2126.43).unwrap(),
+                        Rational::try_from_float_simplest(2126.43).unwrap(),
+                    ),
+                );
+
+                // SMT
+                prices.insert(
+                    Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(0.09081931).unwrap(),
+                        Rational::try_from_float_simplest(0.09081931).unwrap(),
+                    ),
+                );
+
+                // APX
+                prices.insert(
+                    Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
+                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
+                    ),
+                );
+                // FTT
+                prices.insert(
+                    Address::from_str("0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9").unwrap(),
+                    (
+                        Rational::try_from_float_simplest(1.9358).unwrap(),
+                        Rational::try_from_float_simplest(1.9358).unwrap(),
+                    ),
+                );
+
+                prices
+            },
+            eth_prices:             (
+                Rational::try_from_float_simplest(2126.43).unwrap(),
+                Rational::try_from_float_simplest(2126.43).unwrap(),
+            ),
+            mempool_flow:           {
+                let mut private = HashSet::new();
+                private.insert(
+                    H256::from_str(
+                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
+                    )
+                    .unwrap(),
+                );
+                private
+            },
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_complex_sandwich() {
+        dotenv::dotenv().ok();
+        init_tracing();
+        let block_num = 18539312;
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let db = Database::default();
+        let classifier = Classifier::new();
+
+        let block = tracer.execute_block(block_num).await.unwrap();
+        let metadata = get_metadata();
+
+        let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
+
+        let inspector = SandwichInspector::default();
+
+        let t0 = SystemTime::now();
+        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        println!("sandwich inspector took: {} us", delta);
 
         println!("{:#?}", mev);
     }

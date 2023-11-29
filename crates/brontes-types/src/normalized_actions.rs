@@ -54,6 +54,13 @@ impl Actions {
         }
     }
 
+    pub fn force_swap_ref(&self) -> &NormalizedSwap {
+        match self {
+            Actions::Swap(s) => s,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn get_logs(&self) -> Vec<Log> {
         match self {
             Self::Unclassified(a) => a.logs.clone(),
