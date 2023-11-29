@@ -133,30 +133,37 @@ impl CexDexInspector {
             gas_details:      gas_details.clone(),
             swaps_index:      flat_swaps
                 .iter()
+                .filter(|s| s.is_swap())
                 .map(|s| s.clone().force_swap().index)
                 .collect::<Vec<_>>(),
             swaps_from:       flat_swaps
                 .iter()
+                .filter(|s| s.is_swap())
                 .map(|s| s.clone().force_swap().from)
                 .collect::<Vec<_>>(),
             swaps_pool:       flat_swaps
                 .iter()
+                .filter(|s| s.is_swap())
                 .map(|s| s.clone().force_swap().pool)
                 .collect::<Vec<_>>(),
             swaps_token_in:   flat_swaps
                 .iter()
+                .filter(|s| s.is_swap())
                 .map(|s| s.clone().force_swap().token_in)
                 .collect::<Vec<_>>(),
             swaps_token_out:  flat_swaps
                 .iter()
+                .filter(|s| s.is_swap())
                 .map(|s| s.clone().force_swap().token_out)
                 .collect::<Vec<_>>(),
             swaps_amount_in:  flat_swaps
                 .iter()
+                .filter(|s| s.is_swap())
                 .map(|s| s.clone().force_swap().amount_in.to())
                 .collect::<Vec<_>>(),
             swaps_amount_out: flat_swaps
                 .iter()
+                .filter(|s| s.is_swap())
                 .map(|s| s.clone().force_swap().amount_out.to())
                 .collect::<Vec<_>>(),
             prices_kind:      prices
@@ -165,6 +172,7 @@ impl CexDexInspector {
                 .collect(),
             prices_address:   flat_swaps
                 .iter()
+                .filter(|s| s.is_swap())
                 .flat_map(|s| vec![s.clone().force_swap().token_in].repeat(2))
                 .collect(),
             prices_price:     prices
@@ -262,7 +270,7 @@ impl CexDexInspector {
         //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
         // log it
         let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
-            error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            error!(missing_token=?swap.token_out, "missing token out token to decimal map");
             println!("missing token in token to decimal map");
             return None
         };

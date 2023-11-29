@@ -17,7 +17,7 @@ use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
 #[allow(dead_code)]
-const TOKEN_QUERIES: &str = "SELECT toString(address) AS address, decimals FROM tokens";
+const TOKEN_QUERIES: &str = "SELECT toString(address) AS address, decimals FROM ethereum.dex_tokens";
 
 fn main() {
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
