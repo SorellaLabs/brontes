@@ -33,7 +33,7 @@ fn link_traces(
             results.push(TransactionTraceWithLogs {
                 trace:        current.2 .1,
                 decoded_data: None,
-                logs:         current,
+                logs:         current.1,
                 trace_idx:    current.2 .0,
             });
 
@@ -49,7 +49,7 @@ fn link_traces(
             trace_stack.push_front(current);
             current = (sub.ops, vec![], tx.remove(0));
         } else {
-            let Some(logs) = try_parse(next_op.op, &mut logs) else {
+            let Some(logs) = try_parse(next_op, &mut logs) else {
                 continue;
             };
             current.1.push(logs);
