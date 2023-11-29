@@ -8,7 +8,6 @@ use brontes_database::database::Database;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use dotenv::dotenv;
-use ethers_core::types::Chain;
 use futures::future::join_all;
 use log::Level;
 use reqwest::Url;
