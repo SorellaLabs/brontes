@@ -13,7 +13,7 @@ use reth_db::{
     DatabaseError,
 };
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{BlockId, PruneModes, ResultAndState, MAINNET};
+use reth_primitives::{BlockId, PruneModes, MAINNET};
 use reth_provider::{
     providers::BlockchainProvider, ProviderFactory, StateProviderBox, TransactionsProvider,
 };
@@ -33,6 +33,7 @@ use reth_rpc::{
     },
     EthApi, TraceApi, TracingCallGuard, TracingCallPool,
 };
+use reth_rpc_eth::error::EthApiError;
 use reth_rpc_types::{
     trace::parity::{TraceResultsWithTransactionHash, TraceType},
     BlockError, TransactionInfo,
@@ -42,6 +43,7 @@ use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
+use revm::Inspector;
 use revm_primitives::ExecutionResult;
 use tokio::runtime::Handle;
 
@@ -241,6 +243,22 @@ impl TracingClient {
             .await
             .map(Some)
     }
+}
+
+fn inspect<DB, I>(
+    db: DB,
+    env: revm_primitives::Env,
+    inspector: I,
+) -> EthResult<(ResultAndState, revm_primitives::Env)>
+where
+    DB: Database,
+    <DB as Database>::Error: Into<EthApiError>,
+    I: Inspector<DB>,
+{
+    let mut evm = revm::EVM::with_env(env);
+    evm.database(db);
+    let res = evm.inspect(inspector)?;
+    Ok((res, evm.env))
 }
 
 /// re-implementation of 'view()'
