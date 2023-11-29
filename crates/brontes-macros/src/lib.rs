@@ -1,10 +1,6 @@
-use std::fmt::format;
-
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parenthesized, parse::Parse, token::Paren, Error, ExprClosure, Ident, Index, LitBool, Token,
-};
+use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
