@@ -8,9 +8,8 @@ use std::{
     str::FromStr,
 };
 
-use ethers_core::types::Address;
 use hyper_tls::HttpsConnector;
-use reth_primitives::H160;
+use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Client, Row};
 use strum::Display;
@@ -49,7 +48,10 @@ async fn build_token_details_map(file: &mut BufWriter<File>) {
     let rows = query_db::<TokenDetails>(&client, TOKEN_QUERIES).await;
 
     for row in rows {
-        phf_map.entry(H160::from_str(&row.address).unwrap().0, row.decimals.to_string().as_str());
+        phf_map.entry(
+            Address::from_str(&row.address).unwrap().0 .0,
+            row.decimals.to_string().as_str(),
+        );
     }
 
     writeln!(
