@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use brontes_metrics::trace::types::TraceParseErrorKind;
-use ethers_core::types::H256;
+use reth_primitives::H256;
 use reth_rpc::eth::error::EthApiError;
 use thiserror::Error;
 
