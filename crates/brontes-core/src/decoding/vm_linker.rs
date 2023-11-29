@@ -24,16 +24,8 @@ fn link_traces(
 ) -> Vec<TransactionTraceWithLogs> {
     let mut results = Vec::new();
     let mut trace_stack = VecDeque::new();
-
-    let top = tx.remove(0);
-    results.push(TransactionTraceWithLogs {
-        trace:        top.1,
-        decoded_data: None,
-        logs:         vec![],
-        trace_idx:    top.0 as u64,
-    });
-
     let mut current = (vm.ops, vec![], tx.remove(0));
+
     loop {
         // top of stack is empty
         if current.0.is_empty() {
