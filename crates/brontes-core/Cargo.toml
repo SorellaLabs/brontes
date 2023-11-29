@@ -45,7 +45,7 @@ alloy-dyn-abi.workspace = true
 # ethers
 ethers-core.workspace = true
 ethers.workspace = true
-# ethers-reth.workspace = true
+ethers-reth.workspace = true
 
 # Serde 
 serde.workspace = true

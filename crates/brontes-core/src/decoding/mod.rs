@@ -11,7 +11,7 @@ use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H160, H256
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::trace::parity::TraceType;
-use reth_tracing::TracingClient;
+use reth_tracing_ext::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 use self::parser::TraceParser;
