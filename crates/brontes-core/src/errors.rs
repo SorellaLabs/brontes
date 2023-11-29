@@ -98,5 +98,13 @@ impl From<&TraceParseError> for TraceParseErrorKind {
                 }
                 _ => TraceParseErrorKind::EthApiInternalJsTracerError,
             },
+            TraceParseError::AbiParseError(_) => TraceParseErrorKind::AbiParseError,
+            TraceParseError::InvalidFunctionSelector(_) => {
+                TraceParseErrorKind::InvalidFunctionSelector
+            }
+            TraceParseError::AbiDecodingFailed(_) => TraceParseErrorKind::AbiDecodingFailed,
+            TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError,
+            TraceParseError::AlloyError(_) => TraceParseErrorKind::AlloyError,
+        }
     }
 }
