@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use brontes_types::structured_trace::TransactionTraceWithLogs;
 use reth_rpc_types::{
     trace::parity::{TransactionTrace, VmInstruction, VmTrace},
@@ -36,6 +38,7 @@ fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log>
     match instruction.op.take()?.as_str() {
         "LOG0" | "LOG1" | "LOG2" | "LOG3" | "LOG4" => {
             if logs.len() == 0 {
+                println!("empty logs");
                 return None
             } else {
                 Some(logs.remove(0))
