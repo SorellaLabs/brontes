@@ -12,22 +12,10 @@ pub fn link_vm_to_trace(
     mut logs: Vec<Log>,
 ) -> Vec<TransactionTraceWithLogs> {
     let mut res = Vec::new();
-    let first = tx_trace.remove(0);
-    res.push(TransactionTraceWithLogs {
-        logs:         vec![],
-        trace:        first,
-        trace_idx:    0,
-        decoded_data: None,
-    });
-
     recursive_parsing(
         &mut res,
         vm,
-        &mut tx_trace
-            .into_iter()
-            .enumerate()
-            .map(|(t, i)| (t + 1, i))
-            .collect::<Vec<_>>(),
+        &mut tx_trace.into_iter().enumerate().collect::<Vec<_>>(),
         &mut logs,
     );
     res.sort_by_key(|item| item.trace_idx);
