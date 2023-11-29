@@ -1,7 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
 
-use alloy_etherscan::Client;
-use alloy_json_abi::JsonAbi;
 use brontes_database::database::Database;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},

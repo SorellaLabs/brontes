@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use alloy_etherscan::Client;
 use brontes_database::database::Database;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
@@ -165,14 +164,6 @@ pub fn init_trace_parser<'a>(
 ) -> TraceParser<'a, Box<dyn TracingProvider>> {
     let etherscan_key = env::var("ETHERSCAN_API_KEY").expect("No ETHERSCAN_API_KEY in .env");
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-
-    let etherscan_client = Client::new_cached(
-        Chain::Mainnet,
-        etherscan_key,
-        Some(PathBuf::from(CACHE_DIRECTORY)),
-        CACHE_TIMEOUT,
-    )
-    .unwrap();
 
     #[cfg(feature = "local")]
     let tracer = {

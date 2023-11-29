@@ -1,6 +1,5 @@
 use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
-use alloy_etherscan::Client;
 use brontes_database::database::Database;
 use brontes_types::structured_trace::TxTrace;
 use ethers::prelude::{Http, Middleware, Provider};
