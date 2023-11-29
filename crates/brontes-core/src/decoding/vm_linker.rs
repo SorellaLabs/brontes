@@ -11,16 +11,51 @@ pub fn link_vm_to_trace(
     mut tx_trace: Vec<TransactionTrace>,
     mut logs: Vec<Log>,
 ) -> Vec<TransactionTraceWithLogs> {
-    let mut res = Vec::new();
-    recursive_parsing(
-        &mut res,
-        vm,
-        &mut tx_trace.into_iter().enumerate().collect::<Vec<_>>(),
-        &mut logs,
-    );
+    let mut res = link_traces(vm, tx_trace.into_iter().enumerate().collect(), logs);
     res.sort_by_key(|item| item.trace_idx);
 
     res
+}
+
+fn link_traces(
+    mut vm: VmTrace,
+    mut tx: Vec<(usize, TransactionTrace)>,
+    mut logs: Vec<Log>,
+) -> Vec<TransactionTraceWithLogs> {
+    let mut trace_stack = VecDeque::new();
+    let mut current = (vm.ops, vec![], tx.remove(0));
+
+    let mut results = Vec::new();
+
+    loop {
+        // top of stack is empty
+        if current.0.is_empty() {
+            results.push(TransactionTraceWithLogs {
+                trace:        current.2 .1,
+                decoded_data: None,
+                logs:         current,
+                trace_idx:    current.2 .0,
+            });
+
+            let Some(upper) = trace_stack.pop_front() else {
+                break;
+            };
+            current = upper;
+        }
+
+        let next_op = current.0.remove(0);
+        // parse inner
+        if let Some(sub) = next.sub {
+            trace_stack.push_front(current);
+            current = (sub.ops, vec![], tx.remove(0));
+        } else {
+            let Some(logs) = try_parse(next_op.op, &mut logs) else {
+                continue;
+            };
+            current.1.push(logs);
+        }
+    }
+    results
 }
 
 /// all type of log setups
@@ -45,8 +80,6 @@ fn try_parse(mut instruction: VmInstruction, logs: &mut Vec<Log>) -> Option<Log>
     }
 }
 
-/// this currently breaks if a log is emitted after it calls a new tx that emits
-/// a tx
 fn recursive_parsing(
     current_traces: &mut Vec<TransactionTraceWithLogs>,
     vm: VmTrace,
