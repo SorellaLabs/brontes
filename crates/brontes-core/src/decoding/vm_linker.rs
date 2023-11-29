@@ -34,7 +34,7 @@ fn link_traces(
                 trace:        current.2 .1,
                 decoded_data: None,
                 logs:         current.1,
-                trace_idx:    current.2 .0,
+                trace_idx:    current.2 .0 as usize,
             });
 
             let Some(upper) = trace_stack.pop_front() else {
