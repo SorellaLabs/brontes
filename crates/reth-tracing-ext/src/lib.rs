@@ -205,7 +205,7 @@ impl TracingInspectorLocal {
         self.traces
             .nodes()
             .into_iter()
-            .filter(|node| node.trace.maybe_precompile.unwrap_or(false))
+            .filter(|node| !node.trace.maybe_precompile.unwrap_or(false))
     }
 
     /// Returns the tracing types that are configured in the set.
