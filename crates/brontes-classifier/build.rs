@@ -1,4 +1,3 @@
-//#![feature(result_option_inspect)]
 use std::{
     collections::HashSet,
     env,
@@ -24,15 +23,6 @@ const FAILED_ABI_FILE: &str = "../../failed_abis.txt";
 const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
-
-#[cfg(not(feature = "test_run"))]
-#[cfg(feature = "server")]
-const DATA_QUERY: &str = r#"
-SELECT 
-	groupArray(address) as addresses, abi, classifier_name
-FROM brontes.protocol_details
-GROUP BY abi, classifier_name
-"#;
 
 const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
 SELECT 
@@ -107,51 +97,15 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut File) {
 async fn run_classifier_mapping() {
     let clickhouse_client = build_db();
 
-    #[cfg(feature = "server")]
-    let protocol_abis: Vec<ProtocolDetails> = {
-        #[cfg(not(feature = "test_run"))]
-        {
-            query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
-        }
-        #[cfg(feature = "test_run")]
-        {
-            clickhouse_client
-                .query(CLASSIFIED_ONLY_DATA_QUERY)
-                .fetch_all::<ProtocolDetails>()
-                .await
-                .unwrap()
-        }
-    };
-    #[cfg(not(feature = "server"))]
     let protocol_abis =
         query_db::<ProtocolDetails>(&clickhouse_client, CLASSIFIED_ONLY_DATA_QUERY).await;
+
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
-
-    #[cfg(feature = "test_run")]
-    {
-        let file_path = "/home/shared/brontes/class.txt";
-        File::create(file_path).unwrap();
-
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .read(true)
-            .open(file_path)
-            .expect("could not open file");
-
-        let str = serde_json::to_string(&protocol_abis.clone()).unwrap();
-        file.write_all(str.as_bytes()).unwrap();
-    }
-
-    // write_test(failed_abi_addresses.clone());
-    // write_test('\n');
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
         .filter(|contract: &ProtocolDetails| {
             let addrs: HashSet<String> = contract.addresses.clone().into_iter().collect();
-            // write_test(addrs.clone());
-            // write_test(contract.abi.is_some());
-            // write_test(!failed_abi_addresses.is_subset(&addrs));
             contract.abi.is_some()
                 && (!failed_abi_addresses.is_subset(&addrs) || failed_abi_addresses.is_empty())
         })
