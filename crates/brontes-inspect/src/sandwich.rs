@@ -491,7 +491,6 @@ mod tests {
 
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = get_metadata();
-        println!("{:#?}", block.0);
 
         let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
 
