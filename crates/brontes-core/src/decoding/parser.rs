@@ -1,5 +1,9 @@
+#[cfg(feature = "dyn-decode")]
+use std::collections::HashMap;
 use std::sync::Arc;
 
+#[cfg(feature = "dyn-decode")]
+use alloy_json_abi::JsonAbi;
 use brontes_database::database::Database;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
@@ -7,21 +11,13 @@ use brontes_metrics::{
 };
 use futures::future::join_all;
 use reth_primitives::{Address, Header, B256};
+#[cfg(feature = "dyn-decode")]
+use reth_rpc_types::trace::parity::{Action, TraceResultsWithTransactionHash};
 use reth_rpc_types::TransactionReceipt;
 
-#[cfg(feature = "dyn-decode")]
-mod dyn_imports {
-    use std::collections::HashMap;
-
-    use alloy_json_abi::JsonAbi;
-    use reth_rpc_types::trace::parity::{Action, TraceResultsWithTransactionHash};
-
-    use crate::{decoding::dyn_decode::decode_input_with_abi, errors::TraceParseError};
-}
-#[cfg(feature = "dyn-decode")]
-pub use dyn_imports::*;
-
 use super::*;
+#[cfg(feature = "dyn-decode")]
+use crate::{decoding::dyn_decode::decode_input_with_abi, errors::TraceParseError};
 
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
