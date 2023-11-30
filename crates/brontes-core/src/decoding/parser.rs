@@ -176,13 +176,10 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         let (traces, tx_stats): (Vec<_>, Vec<_>) =
             join_all(block_trace.into_iter().zip(block_receipts.into_iter()).map(
                 |(trace, receipt)| {
-                    let transaction_traces = trace.full_trace.trace;
-                    let vm_traces = trace.full_trace.vm_trace.unwrap();
-
-                    let tx_hash = trace.transaction_hash;
+                    let tx_hash = trace.tx_hash;
 
                     self.parse_transaction(
-                        transaction_traces,
+                        trace,
                         #[cfg(feature = "dyn-decode")]
                         &dyn_json,
                         block_num,
