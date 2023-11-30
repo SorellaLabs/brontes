@@ -13,9 +13,7 @@ use brontes_database::database::Database;
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, sandwich::SandwichInspector, Inspector,
 };
-use brontes_metrics::{
-    prometheus_exporter::initialize, BrontesMetricsListener, PoirotMetricsListener,
-};
+use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
 use metrics_process::Collector;
 use reth_tracing_ext::TracingClient;
