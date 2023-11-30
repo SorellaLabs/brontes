@@ -1,11 +1,11 @@
 use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
-use reqwest::Client;
-use brontes_database::database::Database;
-use brontes_types::structured_trace::TxTrace;
 use alloy_providers::provider::Provider;
 use alloy_transport_http::Http;
+use brontes_database::database::Database;
+use brontes_types::structured_trace::TxTrace;
 use futures::Future;
+use reqwest::Client;
 use reth_interfaces::{provider::ProviderResult, RethError, RethResult};
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H160, H256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
@@ -100,7 +100,6 @@ impl TracingProvider for Provider<Http<Client>> {
         todo!()
     }
 }
-
 
 #[async_trait::async_trait]
 impl TracingProvider for TracingClient {
