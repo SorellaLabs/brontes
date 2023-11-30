@@ -28,7 +28,7 @@ impl Inspector for AtomicBackrunInspector {
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let intersting_state = tree.collect_all(|node| {
             (
-                node.data.is_swap() || node.data.is_transfer,
+                node.data.is_swap() || node.data.is_transfer(),
                 node.subactions
                     .iter()
                     .any(|action| action.is_swap() || action.is_transfer()),
@@ -47,7 +47,7 @@ impl Inspector for AtomicBackrunInspector {
                     root.head.data.get_to_address(),
                     meta_data.clone(),
                     gas_details,
-                    swaps,
+                    vec![swaps],
                 )
             })
             .collect::<Vec<_>>()
