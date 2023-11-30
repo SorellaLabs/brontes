@@ -21,6 +21,7 @@ reth-beacon-consensus.workspace = true
 reth-revm.workspace = true
 reth-interfaces.workspace = true
 futures.workspace = true
+brontes-types.workspace = true
 
 revm = { git = "https://github.com/bluealloy/revm", branch = "reth_freeze",  features = ["std", "secp256k1"], default-features = false }
 revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "reth_freeze", features = ["std"], default-features = false }
