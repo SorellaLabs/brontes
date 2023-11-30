@@ -5,7 +5,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
 };
-use tokio::pin;
 
 use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
@@ -19,7 +18,7 @@ use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
 use metrics_process::Collector;
 use reth_tracing_ext::TracingClient;
-use tokio::sync::mpsc::unbounded_channel;
+use tokio::{pin, sync::mpsc::unbounded_channel};
 use tracing::{info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
 mod cli;
@@ -133,7 +132,6 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     pin!(brontes);
     pin!(manager);
     pin!(metrics_listener);
-
 
     // wait for completion
     tokio::select! {
