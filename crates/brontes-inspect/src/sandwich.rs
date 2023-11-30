@@ -66,17 +66,12 @@ impl Inspector for SandwichInspector {
                 let victim_actions = ps
                     .victims
                     .iter()
-                    .map(|victim| {
-                        tree.collect(*victim, search_fn.clone())
-                            .into_iter()
-                            .flatten()
-                            .collect::<Vec<_>>()
-                    })
+                    .map(|victim| tree.collect(*victim, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
 
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
-                    .flat_map(|tx| tree.collect(tx, search_fn.clone()))
+                    .map(|tx| tree.collect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
 
                 self.calculate_sandwich(
