@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::Debug, path::Path, sync::Arc};
+use std::{fmt::Debug, path::Path, sync::Arc};
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use eyre::Context;
@@ -6,25 +6,17 @@ use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
-use reth_db::{
-    database::Database, mdbx::tx::Tx, tables, transaction::DbTx, DatabaseEnv, DatabaseError,
-};
+use reth_db::{database::Database, transaction::DbTx, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
 use reth_primitives::{alloy_primitives::U256, BlockId, Bytes, PruneModes, MAINNET, U64};
-use reth_provider::{
-    providers::BlockchainProvider, ProviderFactory, StateProviderBox, TransactionsProvider,
-};
-use reth_revm::{
-    database::{StateProviderDatabase, SubState},
-    db::CacheDB,
-    // env::tx_env_with_recovered,
-    tracing::{types::CallTraceNode, TracingInspector, TracingInspectorConfig},
-    DatabaseCommit,
-    EvmProcessorFactory,
-};
+use reth_provider::{providers::BlockchainProvider, ProviderFactory, TransactionsProvider};
 use reth_revm::{
     inspectors::GasInspector,
-    tracing::{types::CallKind, *},
+    tracing::{
+        types::{CallKind, CallTraceNode},
+        TracingInspectorConfig, *,
+    },
+    DatabaseCommit, EvmProcessorFactory,
 };
 use reth_rpc::{
     eth::{
@@ -36,11 +28,8 @@ use reth_rpc::{
     BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
 };
 use reth_rpc_types::{
-    trace::{
-        self,
-        parity::{TraceResultsWithTransactionHash, TraceType, TransactionTrace, *},
-    },
-    BlockError, Log, TransactionInfo,
+    trace::parity::{TransactionTrace, *},
+    TransactionInfo,
 };
 use reth_tasks::TaskManager;
 use reth_transaction_pool::{
@@ -50,7 +39,6 @@ use reth_transaction_pool::{
 use revm::{interpreter::InstructionResult, Inspector};
 use revm_primitives::{ExecutionResult, SpecId};
 use tokio::runtime::Handle;
-use tracing::info;
 
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
@@ -154,7 +142,7 @@ impl TracingClient {
         };
 
         self.api
-            .trace_block_with(block_id, config, move |tx_info, inspector, res, state, db| {
+            .trace_block_with(block_id, config, move |tx_info, inspector, res, _state, _db| {
                 // this is safe as there the exact same memory layout. This is needed as we need
                 // access to the internal fields of the struct that arent public
                 let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
