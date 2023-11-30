@@ -143,7 +143,6 @@ impl TracingClient {
     pub async fn replay_block_transactions(
         &self,
         block_id: BlockId,
-        trace_types: HashSet<TraceType>,
     ) -> EthResult<Option<Vec<TxTrace>>> {
         let config = TracingInspectorConfig {
             record_logs:              true,
@@ -196,6 +195,7 @@ impl TracingInspectorLocal {
             trace: trace.unwrap_or(vec![]),
             tx_hash: info.hash.unwrap(),
             gas_used,
+            // set with header,
             effective_price: 0,
             tx_index: info.index.unwrap(),
         }
