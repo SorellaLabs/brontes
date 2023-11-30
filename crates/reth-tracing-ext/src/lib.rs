@@ -1,20 +1,23 @@
 use std::{collections::HashSet, fmt::Debug, path::Path, sync::Arc};
 
+use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use eyre::Context;
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
+use reth_rpc_types::Log;
+
 use reth_db::{
     database::Database,
-    // mdbx::{Env, WriteMap},
+    mdbx::tx::Tx,
     tables,
     transaction::DbTx,
     DatabaseEnv,
     DatabaseError,
 };
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{BlockId, PruneModes, MAINNET};
+use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
 use reth_provider::{
     providers::BlockchainProvider, ProviderFactory, StateProviderBox, TransactionsProvider,
 };
@@ -22,9 +25,13 @@ use reth_revm::{
     database::{StateProviderDatabase, SubState},
     db::CacheDB,
     // env::tx_env_with_recovered,
-    tracing::{TracingInspector, TracingInspectorConfig},
+    tracing::{types::CallTraceNode, TracingInspector, TracingInspectorConfig},
     DatabaseCommit,
     EvmProcessorFactory,
+};
+use reth_revm::{
+    inspectors::GasInspector,
+    tracing::{types::CallKind, *},
 };
 use reth_rpc::{
     eth::{
@@ -36,7 +43,10 @@ use reth_rpc::{
     BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
 };
 use reth_rpc_types::{
-    trace::parity::{TraceResultsWithTransactionHash, TraceType},
+    trace::{
+        self,
+        parity::{TraceResultsWithTransactionHash, TraceType, TransactionTrace, *},
+    },
     BlockError, TransactionInfo,
 };
 use reth_tasks::TaskManager;
@@ -44,8 +54,8 @@ use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
-use revm::Inspector;
-use revm_primitives::ExecutionResult;
+use revm::{interpreter::InstructionResult, Inspector};
+use revm_primitives::{ExecutionResult, SpecId};
 use tokio::runtime::Handle;
 
 pub type Provider = BlockchainProvider<
@@ -136,136 +146,254 @@ impl TracingClient {
         Self { api, trace }
     }
 
-    // Replays all transactions in a block
-    //     pub async fn replay_block_transactions(
-    //         &self,
-    //         block_id: BlockId,
-    //     ) -> EthResult<Option<Vec<TraceResultsWithTransactionHash>>> {
-    //         let config = TracingInspectorConfig {
-    //             record_logs:              true,
-    //             record_steps:             false,
-    //             record_state_diff:        false,
-    //             record_stack_snapshots:   false,
-    //             record_memory_snapshots:  false,
-    //             record_call_return_data:  true,
-    //             exclude_precompile_calls: false,
-    //         };
-    //         self.trace_block_with(
-    //             block_id,
-    //             config,
-    //             |tx_info, tracing_inspector, execution_res, state, db| Ok(3),
-    //         );
-    //         todo!()
-    //     }
-    //
-    //     /// Executes all transactions of a block and returns a list of callback
-    //     /// results invoked for each transaction in the block.
-    //     ///
-    //     /// This
-    //     /// 1. fetches all transactions of the block
-    //     /// 2. configures the EVM evn
-    //     /// 3. loops over all transactions and executes them
-    //     /// 4. calls the callback with the transaction info, the execution
-    // result,     /// the changed state _after_ the transaction
-    // [StateProviderDatabase]     /// and the database that points to the state
-    // right _before_ the     /// transaction.
-    //     async fn trace_block_with<F, R>(
-    //         &self,
-    //         block_id: BlockId,
-    //         config: TracingInspectorConfig,
-    //         f: F,
-    //     ) -> EthResult<Option<Vec<R>>>
-    //     where
-    //         // This is the callback that's invoked for each transaction with
-    //         F: for<'a> Fn(
-    //                 TransactionInfo,
-    //                 TracingInspector,
-    //                 ExecutionResult,
-    //                 &'a revm_primitives::State,
-    //                 &'a CacheDB<StateProviderDatabase<StateProviderBox<'a>>>,
-    //             ) -> EthResult<R>
-    //             + Send
-    //             + 'static,
-    //         R: Send + 'static,
-    //     {
-    //         let ((cfg, block_env, _), block) =
-    //             futures::try_join!(self.api.evm_env_at(block_id),
-    // self.api.block_by_id(block_id),)?;
-    //
-    //         let block = match block {
-    //             Some(block) => block,
-    //             None => return Ok(None),
-    //         };
-    //
-    //         // we need to get the state of the parent block because we're
-    // replaying this         // block on top of its parent block's state
-    //         let state_at = block.parent_hash;
-    //
-    //         let block_hash = block.hash;
-    //         let transactions = block.body;
-    //
-    //         // replay all transactions of the block
-    //         self.api
-    //             .spawn_with_state_at_block(state_at.into(), move |state| {
-    //                 let mut results = Vec::with_capacity(transactions.len());
-    //                 let mut db =
-    // SubState::new(StateProviderDatabase::new(state));
-    //
-    //                 let mut transactions =
-    // transactions.into_iter().enumerate().peekable();
-    //
-    //                 while let Some((idx, tx)) = transactions.next() {
-    //                     let tx =
-    // tx.into_ecrecovered().ok_or(BlockError::InvalidSignature)?;
-    // let tx_info = TransactionInfo {                         hash:
-    // Some(tx.hash()),                         index:        Some(idx as u64),
-    //                         block_hash:   Some(block_hash),
-    //                         block_number:
-    // Some(block_env.number.try_into().unwrap_or(u64::MAX)),
-    // base_fee:     Some(block_env.basefee.try_into().unwrap_or(u64::MAX)),
-    //                     };
-    //
-    //                     let tx = tx_env_with_recovered(&tx);
-    //                     let env =
-    //                         revm_primitives::Env { cfg: cfg.clone(), block:
-    // block_env.clone(), tx };
-    //
-    //                     let mut inspector = TracingInspector::new(config);
-    //                     let (res, _) = inspect(&mut db, env, &mut inspector)?;
-    //                     let ResultAndState { result, state } = res;
-    //                     results.push(f(tx_info, inspector, result, &state,
-    // &db)?);
-    //
-    //                     // need to apply the state changes of this transaction
-    // before executing the                     // next transaction
-    //                     if transactions.peek().is_some() {
-    //                         // need to apply the state changes of this
-    // transaction before executing                         // the next
-    // transaction                         db.commit(state)
-    //                     }
-    //                 }
-    //
-    //                 Ok(results)
-    //             })
-    //             .await
-    //             .map(Some)
-    //     }
+    /// Replays all transactions in a block
+    pub async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+        trace_types: HashSet<TraceType>,
+    ) -> EthResult<Option<Vec<TxTrace>>> {
+        let config = TracingInspectorConfig {
+            record_logs:              true,
+            record_steps:             false,
+            record_state_diff:        false,
+            record_stack_snapshots:   reth_revm::tracing::StackSnapshotType::None,
+            record_memory_snapshots:  false,
+            record_call_return_data:  true,
+            exclude_precompile_calls: true,
+        };
+
+        self.api
+            .trace_block_with(block_id, config, move |tx_info, inspector, res, state, db| {
+                let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
+                Ok(localized.into_trace_results(tx_info, &res))
+            })
+            .await
+    }
 }
-// fn inspect<DB, I>(
-//     db: DB,
-//     env: revm_primitives::Env,
-//     inspector: I,
-// ) -> EthResult<(ResultAndState, revm_primitives::Env)>
-// where
-//     DB: Database,
-//     <DB as Database>::Error: Into<EthApiError>,
-//     I: Inspector<DB>,
-// {
-//     let mut evm = revm::EVM::with_env(env);
-//     evm.database(db);
-//     let res = evm.inspect(inspector)?;
-//     Ok((res, evm.env))
-// }
+
+#[derive(Debug, Clone)]
+pub struct TracingInspectorLocal {
+    /// Configures what and how the inspector records traces.
+    pub config:                TracingInspectorConfig,
+    /// Records all call traces
+    pub traces:                CallTraceArena,
+    /// Tracks active calls
+    pub trace_stack:           Vec<usize>,
+    /// Tracks active steps
+    pub step_stack:            Vec<StackStep>,
+    /// Tracks the return value of the last call
+    pub last_call_return_data: Option<Bytes>,
+    /// The gas inspector used to track remaining gas.
+    pub gas_inspector:         GasInspector,
+    /// The spec id of the EVM.
+    ///
+    /// This is filled during execution.
+    pub spec_id:               Option<SpecId>,
+}
+
+impl TracingInspectorLocal {
+    pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
+        let gas_used = res.gas_used();
+
+        let trace = self.build_trace();
+
+         TxTrace {
+            trace: trace.unwrap_or(vec![]),
+            tx_hash: info.hash.unwrap(),
+            gas_used,
+            effective_price: 0,
+            tx_index: info.index.unwrap(),
+        }
+    }
+
+    fn iter_traceable_nodes(&self) -> impl Iterator<Item = &CallTraceNode> {
+        self.traces
+            .nodes()
+            .into_iter()
+            .filter(|node| node.trace.maybe_precompile.unwrap_or(false))
+    }
+
+    /// Returns the tracing types that are configured in the set.
+    ///
+    /// Warning: if [TraceType::StateDiff] is provided this does __not__ fill
+    /// the state diff, since this requires access to the account diffs.
+    ///
+    /// See [Self::into_trace_results_with_state] and [populate_state_diff].
+    pub fn build_trace(&self) -> Option<Vec<TransactionTraceWithLogs>> {
+        if self.traces.nodes().is_empty() {
+            return None
+        }
+
+        let mut traces = Vec::with_capacity(self.traces.nodes().len());
+
+        for node in self.iter_traceable_nodes() {
+            let trace_address = self.trace_address(self.traces.nodes(),node.idx);
+
+            let trace = self.build_tx_trace(node, trace_address);
+            let logs = node.logs.into();
+
+            traces.push(TransactionTraceWithLogs {
+                trace,
+                logs,
+                decoded_data: None,
+                trace_idx: node.idx as u64,
+            });
+
+            // check if the trace node is a selfdestruct
+            if node.trace.status == InstructionResult::SelfDestruct {
+                // selfdestructs are not recorded as individual call traces but are derived from
+                // the call trace and are added as additional `TransactionTrace` objects in the
+                // trace array
+                let addr = {
+                    let last = traces.last_mut().expect("exists");
+                    let mut addr = last.trace.trace_address.clone();
+                    addr.push(last.trace.subtraces);
+                    // need to account for the additional selfdestruct trace
+                    last.trace.subtraces += 1;
+                    addr
+                };
+
+                if let Some(trace) = self.parity_selfdestruct_trace(node, addr) {
+                    traces.push(TransactionTraceWithLogs {
+                        trace,
+                        logs: vec![],
+                        decoded_data: None,
+                        trace_idx: node.idx as u64,
+                    });
+                }
+            }
+        }
+
+        Some(traces)
+    }
+
+    fn trace_address(&self, nodes: &[CallTraceNode], idx: usize) -> Vec<usize> {
+        if idx == 0 {
+            // root call has empty traceAddress
+            return vec![]
+        }
+        let mut graph = vec![];
+        let mut node = &nodes[idx];
+        if node.trace.maybe_precompile.unwrap_or(false) {
+            return graph
+        }
+        while let Some(parent) = node.parent {
+            // the index of the child call in the arena
+            let child_idx = node.idx;
+            node = &nodes[parent];
+            // find the index of the child call in the parent node
+            let call_idx = node
+                .children
+                .iter()
+                .position(|child| *child == child_idx)
+                .expect("non precompile child call exists in parent");
+            graph.push(call_idx);
+        }
+        graph.reverse();
+        graph
+    }
+
+    pub(crate) fn parity_selfdestruct_trace(
+        &self,
+        node: &CallTraceNode,
+        trace_address: Vec<usize>,
+    ) -> Option<TransactionTrace> {
+        let trace = self.parity_selfdestruct_action(node)?;
+        Some(TransactionTrace {
+            action: trace,
+            error: None,
+            result: None,
+            trace_address,
+            subtraces: 0,
+        })
+    }
+
+    pub(crate) fn parity_selfdestruct_action(&self, node: &CallTraceNode) -> Option<Action> {
+        if node.trace.selfdestruct_refund_target.is_some() {
+            Some(Action::Selfdestruct(SelfdestructAction {
+                address:        node.trace.address,
+                refund_address: node.trace.selfdestruct_refund_target.unwrap_or_default(),
+                balance:        node.trace.value,
+            }))
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn parity_action(&self, node: &CallTraceNode) -> Action {
+        match node.trace.kind {
+            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
+                Action::Call(CallAction {
+                    from:      node.trace.caller,
+                    to:        node.trace.address,
+                    value:     node.trace.value,
+                    gas:       U64::from(node.trace.gas_limit),
+                    input:     node.trace.data.clone(),
+                    call_type: node.trace.kind.into(),
+                })
+            }
+            CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
+                from:  node.trace.caller,
+                value: node.trace.value,
+                gas:   U64::from(node.trace.gas_limit),
+                init:  node.trace.data.clone(),
+            }),
+        }
+    }
+
+    pub(crate) fn parity_trace_output(&self, node: &CallTraceNode) -> TraceOutput {
+        match node.trace.kind {
+            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
+                TraceOutput::Call(CallOutput {
+                    gas_used: U64::from(node.trace.gas_used),
+                    output:   node.trace.output.clone(),
+                })
+            }
+            CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
+                gas_used: U64::from(node.trace.gas_used),
+                code:     node.trace.output.clone(),
+                address:  node.trace.address,
+            }),
+        }
+    }
+
+    /// Returns the error message if it is an erroneous result.
+    pub(crate) fn as_error_msg(&self, node: &CallTraceNode) -> Option<String> {
+        // See also <https://github.com/ethereum/go-ethereum/blob/34d507215951fb3f4a5983b65e127577989a6db8/eth/tracers/native/call_flat.go#L39-L55>
+        node.trace.is_error().then(|| match node.trace.status {
+            InstructionResult::Revert => "execution reverted".to_string(),
+            InstructionResult::OutOfGas | InstructionResult::MemoryOOG => "out of gas".to_string(),
+            InstructionResult::OpcodeNotFound => "invalid opcode".to_string(),
+            InstructionResult::StackOverflow => "Out of stack".to_string(),
+            InstructionResult::InvalidJump => "invalid jump destination".to_string(),
+            InstructionResult::PrecompileError => "precompiled failed".to_string(),
+            status => format!("{:?}", status),
+        })
+    }
+
+    pub fn build_tx_trace(
+        &self,
+        node: &CallTraceNode,
+        trace_address: Vec<usize>,
+    ) -> TransactionTrace {
+        let action = self.parity_action(&node);
+        let result = if node.trace.is_error() && !node.trace.is_revert() {
+            // if the trace is a selfdestruct or an error that is not a revert, the result
+            // is None
+            None
+        } else {
+            Some(self.parity_trace_output(&node))
+        };
+        let error = self.as_error_msg(node);
+        TransactionTrace { action, error, result, trace_address, subtraces: node.children.len() }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct StackStep {
+    trace_idx: usize,
+    step_idx:  usize,
+}
 
 /// Opens up an existing database at the specified path.
 pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
