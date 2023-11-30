@@ -108,9 +108,7 @@ impl SandwichInspector {
             return None
         }
 
-        println!("{:#?}", searcher_actions);
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
-        println!("deltas {:#?}", deltas);
 
         let appearance_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_deltas(
             deltas.clone(),
@@ -344,8 +342,6 @@ impl SandwichInspector {
                 }
             }
         }
-
-        info!("{:#?}", set);
 
         set
     }
