@@ -157,6 +157,10 @@ impl JitInspector {
         let burns = burns.into_iter().flatten().collect::<Vec<_>>();
         let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
 
+        if mints.is_empty() || burns.is_empty() {
+            return None
+        }
+
         let (jit_fee_pre, jit_fee_post) = self.get_collect_amount(fee_collect, metadata.clone());
 
         let (mint_pre, mint_post) = self.get_total_pricing(
