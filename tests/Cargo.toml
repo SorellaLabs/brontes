@@ -28,7 +28,7 @@ alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types.workspace = true
 
 # tracing
-reth-tracing.workspace = true
+reth-tracing-ext.workspace = true
 
 # async
 tokio.workspace = true

@@ -22,10 +22,9 @@ fn link_traces(
     mut tx: Vec<(usize, TransactionTrace)>,
     mut logs: Vec<Log>,
 ) -> Vec<TransactionTraceWithLogs> {
+    let mut results = Vec::new();
     let mut trace_stack = VecDeque::new();
     let mut current = (vm.ops, vec![], tx.remove(0));
-
-    let mut results = Vec::new();
 
     loop {
         // top of stack is empty

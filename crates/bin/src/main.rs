@@ -16,7 +16,7 @@ use brontes_inspect::{
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
 use metrics_process::Collector;
-use reth_tracing::TracingClient;
+use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
@@ -106,7 +106,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         metrics_tx,
         &db,
         tracer,
-        Box::new(|address| !PROTOCOL_ADDRESS_MAPPING.contains_key(&**address)),
+        Box::new(|address| !PROTOCOL_ADDRESS_MAPPING.contains_key(&address.0.0)),
     );
     let classifier = Classifier::new();
 

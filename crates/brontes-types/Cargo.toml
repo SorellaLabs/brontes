@@ -45,7 +45,6 @@ hyper.workspace = true
 hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-ethers-core.workspace = true
 reth-primitives.workspace = true
 phf.workspace = true
 phf_codegen.workspace = true
@@ -60,7 +59,7 @@ serial_test.workspace = true
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
-reth-tracing.workspace = true
+reth-tracing-ext.workspace = true
 
 
 [features]

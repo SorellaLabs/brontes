@@ -242,7 +242,7 @@ impl CexDexInspector {
         let delta_price = cex_price - dex_price;
 
         // Calculate the potential profit
-        let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
+        let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             println!("missing token in token to decimal map");
             return None
@@ -262,14 +262,14 @@ impl CexDexInspector {
     ) -> Option<(Rational, Rational, Rational)> {
         let Actions::Swap(swap) = swap else { return None };
 
-        let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
+        let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0.0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             println!("missing token in token to decimal map");
             return None
         };
         //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
         // log it
-        let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
+        let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0.0) else {
             error!(missing_token=?swap.token_out, "missing token out token to decimal map");
             println!("missing token in token to decimal map");
             return None

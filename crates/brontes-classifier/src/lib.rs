@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use once_cell::sync::Lazy;
-use reth_primitives::{Address, Bytes, H160};
+use reth_primitives::{Address, Bytes, alloy_primitives::FixedBytes};
 use reth_rpc_types::Log;
 
 pub mod classifier;

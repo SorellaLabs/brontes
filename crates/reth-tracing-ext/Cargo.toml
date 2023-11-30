@@ -1,5 +1,5 @@
 [package]
-name = "reth-tracing"
+name = "reth-tracing-ext"
 version = "0.1.0"
 edition = "2021"
 
@@ -20,6 +20,11 @@ reth-blockchain-tree.workspace = true
 reth-beacon-consensus.workspace = true
 reth-revm.workspace = true
 reth-interfaces.workspace = true
+futures.workspace = true
+
+revm = { git = "https://github.com/bluealloy/revm", branch = "reth_freeze",  features = ["std", "secp256k1"], default-features = false }
+revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "reth_freeze", features = ["std"], default-features = false }
+bitflags = "2.4"
 
 # error
 eyre = "0.6.8"

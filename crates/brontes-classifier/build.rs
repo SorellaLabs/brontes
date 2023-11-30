@@ -19,7 +19,7 @@ use itertools::Itertools;
 #[cfg(feature = "server")]
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, H160};
+use reth_primitives::Address;
 #[cfg(feature = "server")]
 use reth_primitives::{BlockId, BlockNumberOrTag};
 use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
@@ -126,15 +126,12 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut File) {
     let mut phf_map = phf_codegen::Map::new();
 
     for row in rows {
-        phf_map.entry(
-            H160::from_str(&row.address).unwrap().to_fixed_bytes(),
-            &to_string_vec(row.tokens),
-        );
+        phf_map.entry(Address::from_str(&row.address).unwrap().0 .0, &to_string_vec(row.tokens));
     }
 
     writeln!(
         file,
-        "pub static ADDRESS_TO_TOKENS_{}_POOL: phf::Map<[u8; 20], [H160; {}]> = \n{};\n",
+        "pub static ADDRESS_TO_TOKENS_{}_POOL: phf::Map<[u8; 20], [Address; {}]> = \n{};\n",
         amount,
         amount,
         phf_map.build()
@@ -489,7 +486,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
                 }
 
                 phf_map.entry(
-                    H160::from_str(&address).unwrap().0,
+                    Address::from_str(&address).unwrap().0 .0,
                     &format!("&{}", name.to_uppercase()),
                 );
             }
@@ -513,7 +510,7 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
                 }
 
                 phf_map.entry(
-                    H160::from_str(&address).unwrap().0,
+                    Address::from_str(&address).unwrap().0 .0,
                     &format!("&{}", name.to_uppercase()),
                 );
             }
@@ -594,17 +591,17 @@ async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &
 fn to_string_vec(tokens: Vec<String>) -> String {
     let tokens = tokens
         .into_iter()
-        .map(|t| H160::from_str(&t).unwrap())
+        .map(|t| Address::from_str(&t).unwrap())
         .collect::<Vec<_>>();
     let mut res = "[".to_string();
     for token in tokens {
-        res += "H160([";
-        for byte in token.to_fixed_bytes() {
+        res += "Address(FixedBytes([";
+        for byte in token.0 {
             res += &byte.to_string();
             res += ",";
         }
         let _ = res.pop();
-        res += "]),";
+        res += "])),";
     }
     let _ = res.pop();
     res += "]";

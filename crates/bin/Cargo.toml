@@ -45,7 +45,7 @@ log.workspace = true
 # tracing
 tracing.workspace = true
 tracing-subscriber.workspace = true
-reth-tracing.workspace = true
+reth-tracing-ext.workspace = true
 colored.workspace = true
 
 # misc
@@ -67,12 +67,11 @@ cfg-if = "1.0.0"
 metrics-process.workspace = true
 
 
-
 [features]
 server = [
   "brontes-types/server",
   "brontes-classifier/server",
-  "brontes-core/server"
+  "brontes-core/server",
 ]
 
 test_run = [
