@@ -41,11 +41,18 @@ impl Inspector for JitInspector {
                 |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
-                        .flat_map(|tx| {
-                            tree.inspect(tx, |node| {
-                                node.subactions
-                                    .iter()
-                                    .any(|action| action.is_mint() || action.is_collect())
+                        .map(|tx| {
+                            tree.collect(tx, |node| {
+                                (
+                                    node.data.is_mint()
+                                        || node.data.is_burn()
+                                        || node.data.is_collect(),
+                                    node.subactions.iter().any(|action| {
+                                        action.is_mint()
+                                            || action.is_collect()
+                                            || node.data.is_burn()
+                                    }),
+                                )
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
@@ -82,7 +89,7 @@ impl Inspector for JitInspector {
                                         node.data.is_swap(),
                                         node.subactions.iter().any(|action| action.is_swap()),
                                     )
-                                })
+                                }),
                             )
                         })
                         .filter(|(_, actions)| {
