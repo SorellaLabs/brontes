@@ -181,7 +181,7 @@ impl SandwichInspector {
 
             victim_tx_hashes:        victim_txes.clone(),
             victim_swaps_tx_hash:    victim_txes,
-            victim_swaps_index:      searcher_actions
+            victim_swaps_index:      victim_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -190,7 +190,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_from:       searcher_actions
+            victim_swaps_from:       victim_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -199,7 +199,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_pool:       searcher_actions
+            victim_swaps_pool:       victim_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -208,7 +208,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_in:   searcher_actions
+            victim_swaps_token_in:   victim_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -217,7 +217,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_token_out:  searcher_actions
+            victim_swaps_token_out:  victim_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -226,7 +226,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_amount_in:  searcher_actions
+            victim_swaps_amount_in:  victim_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
@@ -235,7 +235,7 @@ impl SandwichInspector {
                         .collect_vec()
                 })
                 .collect(),
-            victim_swaps_amount_out: searcher_actions
+            victim_swaps_amount_out: victim_actions
                 .iter()
                 .flat_map(|swap| {
                     swap.into_iter()
