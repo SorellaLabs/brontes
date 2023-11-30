@@ -141,7 +141,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         _ = &mut metrics_listener => {
         }
     }
-    manager.manager.graceful_shutdown();
+    manager.graceful_shutdown();
 
     Ok(())
 }
