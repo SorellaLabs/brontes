@@ -3,7 +3,7 @@ use std::str::FromStr;
 use alloy_json_abi::JsonAbi;
 use reth_primitives::{Address, H160, H256};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 #[derive(Debug, Row, Serialize, Deserialize)]
