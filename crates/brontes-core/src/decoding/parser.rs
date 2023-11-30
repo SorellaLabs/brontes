@@ -7,14 +7,20 @@ use brontes_metrics::{
 };
 use futures::future::join_all;
 use reth_primitives::{Address, Header, B256};
-#[cfg(feature = "dyn-decode")]
-use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::TransactionReceipt;
 
-use super::*;
 #[cfg(feature = "dyn-decode")]
-use crate::decoding::dyn_decode::decode_input_with_abi;
-use crate::errors::TraceParseError;
+mod dyn_imports {
+    use std::collections::HashMap;
+    use alloy_json_abi::JsonAbi;
+
+    pub use dyn_imports::*;
+    use reth_rpc_types::trace::parity::{Action, TraceResultsWithTransactionHash};
+
+    use crate::{decoding::dyn_decode::decode_input_with_abi, errors::TraceParseError};
+}
+
+use super::*;
 
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
