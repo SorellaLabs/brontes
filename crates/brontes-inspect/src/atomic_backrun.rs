@@ -26,10 +26,13 @@ impl Inspector for AtomicBackrunInspector {
         tree: Arc<TimeTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let intersting_state = tree.inspect_all(|node| {
-            node.subactions
-                .iter()
-                .any(|action| action.is_swap() || action.is_transfer())
+        let intersting_state = tree.collect_all(|node| {
+            (
+                node.data.is_swap() || node.data.is_transfer,
+                node.subactions
+                    .iter()
+                    .any(|action| action.is_swap() || action.is_transfer()),
+            )
         });
 
         intersting_state
