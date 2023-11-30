@@ -82,10 +82,10 @@ pub struct RelayInfo {
 impl From<RelayInfoDB> for RelayInfo {
     fn from(value: RelayInfoDB) -> Self {
         RelayInfo {
-            block_hash:      B256::from_str(&value.block_hash).unwrap(),
+            block_hash:      B256::from_str(&value.block_hash).unwrap_or_default(),
             relay_time:      value.relay_time,
             p2p_time:        value.p2p_time,
-            proposer_addr:   Address::from_str(&value.proposer_addr).unwrap(),
+            proposer_addr:   Address::from_str(&value.proposer_addr).unwrap_or_default(),
             proposer_reward: value.proposer_reward,
         }
     }
