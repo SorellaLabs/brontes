@@ -273,8 +273,6 @@ impl TracingInspectorLocal {
             }
         }
 
-        info!(parsed_amount = traces.len());
-
         Some(traces)
     }
 
