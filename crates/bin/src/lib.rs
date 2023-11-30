@@ -55,12 +55,13 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
             block_inspectors: FuturesUnordered::new(),
         };
 
+
         let max_blocks = match end_block {
             Some(end_block) => end_block.min(init_block + max_tasks),
             None => init_block + max_tasks,
         };
 
-        for _ in init_block..max_blocks {
+        for _ in init_block..=max_blocks {
             brontes.spawn_block_inspector();
         }
 
