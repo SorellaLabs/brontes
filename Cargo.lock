@@ -5450,6 +5450,7 @@ dependencies = [
  "revm",
  "revm-primitives",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
