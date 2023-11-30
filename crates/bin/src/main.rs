@@ -112,9 +112,9 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     );
     let classifier = Classifier::new();
 
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "local"))]
     let chain_tip = parser.get_latest_block_number().unwrap();
-    #[cfg(not(feature = "server"))]
+    #[cfg(feature = "local")]
     let chain_tip = parser.get_latest_block_number().await.unwrap();
 
     let brontes = Brontes::new(

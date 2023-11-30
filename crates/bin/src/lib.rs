@@ -88,7 +88,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
             return false
         }
 
-        #[cfg(feature = "server")]
+        #[cfg(not(feature = "local"))]
         if self.current_block >= self.chain_tip {
             if let Ok(chain_tip) = self.parser.get_latest_block_number() {
                 self.chain_tip = chain_tip;
@@ -98,7 +98,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
             }
         }
 
-        #[cfg(not(feature = "server"))]
+        #[cfg(feature = "local")]
         if self.current_block >= self.chain_tip {
             if let Ok(chain_tip) = tokio::task::block_in_place(|| {
                 // This will now run the future to completion on the current thread
