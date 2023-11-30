@@ -41,9 +41,12 @@ impl Inspector for SandwichInspector {
         // grab the set of all possible sandwich txes
 
         let search_fn = |node: &Node<Actions>| {
-            node.subactions
-                .iter()
-                .any(|action| action.is_swap() || action.is_transfer())
+            (
+                node.data.is_swap() || node.data.is_transfer(),
+                node.subactions
+                    .iter()
+                    .any(|action| action.is_swap() || action.is_transfer()),
+            )
         };
 
         self.get_possible_sandwich(tree.clone())
@@ -64,7 +67,7 @@ impl Inspector for SandwichInspector {
                     .victims
                     .iter()
                     .map(|victim| {
-                        tree.inspect(*victim, search_fn.clone())
+                        tree.collect(*victim, search_fn.clone())
                             .into_iter()
                             .flatten()
                             .collect::<Vec<_>>()
@@ -73,7 +76,7 @@ impl Inspector for SandwichInspector {
 
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
-                    .flat_map(|tx| tree.inspect(tx, search_fn.clone()))
+                    .flat_map(|tx| tree.collect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
 
                 self.calculate_sandwich(
