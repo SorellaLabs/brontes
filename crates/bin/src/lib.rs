@@ -20,7 +20,7 @@ pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 // need to have a tracker of end block or tip block
 // need a concept of batch size
 
-pub struct Poirot<'inspector, const N: usize, T: TracingProvider> {
+pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     current_block:    u64,
     end_block:        Option<u64>,
     chain_tip:        u64,
@@ -32,7 +32,7 @@ pub struct Poirot<'inspector, const N: usize, T: TracingProvider> {
     block_inspectors: FuturesUnordered<BlockInspector<'inspector, N, T>>,
 }
 
-impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
+impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
     pub fn new(
         init_block: u64,
         end_block: Option<u64>,
@@ -119,7 +119,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
     }
 }
 
-impl<const N: usize, T: TracingProvider> Future for Poirot<'_, N, T> {
+impl<const N: usize, T: TracingProvider> Future for Brontes<'_, N, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
