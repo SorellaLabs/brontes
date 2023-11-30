@@ -18,7 +18,7 @@ use clap::Parser;
 use metrics_process::Collector;
 use reth_tracing_ext::TracingClient;
 use tokio::{pin, sync::mpsc::unbounded_channel};
-use tracing::{info, Level};
+use tracing::{error, info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
 mod cli;
 
@@ -42,48 +42,24 @@ fn main() {
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");
 
-    match runtime.block_on(run(runtime.handle().clone())) {
+    match runtime.block_on(run()) {
         Ok(()) => info!("SUCCESS!"),
         Err(e) => {
-            eprintln!("Error: {:?}", e);
+            error!("Error: {:?}", e);
 
             let mut source: Option<&dyn Error> = e.source();
             while let Some(err) = source {
-                eprintln!("Caused by: {:?}", err);
+                error!("Caused by: {:?}", err);
                 source = err.source();
             }
         }
     }
 }
 
-async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
+async fn run() -> Result<(), Box<dyn Error>> {
     // parse cli
     let opt = Opts::parse();
     let Commands::Brontes(command) = opt.sub;
-
-    #[cfg(feature = "test_run")]
-    {
-        let start_block = u64::from_str_radix(
-            &env::var("START_BLOCK").expect("START_BLOCK not found in env"),
-            10,
-        )
-        .expect("expected number for start block");
-
-        let end_block =
-            u64::from_str_radix(&env::var("END_BLOCK").expect("END_BLOCK not found in env"), 10)
-                .expect("expected number for end block");
-
-        assert_eq!(
-            start_block, command.start_block,
-            "Test mode start needs to be same as specified in config to work properly"
-        );
-        assert!(command.end_block.is_some(), "running in test mode. need end block");
-        assert_eq!(
-            end_block,
-            *command.end_block.as_ref().unwrap(),
-            "Test mode end needs to be the same as specified in config to work properly"
-        );
-    }
 
     initalize_prometheus().await;
 
@@ -102,7 +78,8 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let db = Database::default();
 
-    let (mut manager, tracer) = TracingClient::new(Path::new(&db_path), handle.clone());
+    let (mut manager, tracer) =
+        TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current());
 
     let parser = DParser::new(
         metrics_tx,

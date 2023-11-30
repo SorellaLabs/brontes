@@ -60,7 +60,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
             None => init_block + max_tasks,
         };
 
-        for _ in init_block..max_blocks {
+        for _ in init_block..=max_blocks {
             brontes.spawn_block_inspector();
         }
 
