@@ -6,18 +6,11 @@ use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
-use reth_rpc_types::Log;
-
 use reth_db::{
-    database::Database,
-    mdbx::tx::Tx,
-    tables,
-    transaction::DbTx,
-    DatabaseEnv,
-    DatabaseError,
+    database::Database, mdbx::tx::Tx, tables, transaction::DbTx, DatabaseEnv, DatabaseError,
 };
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
+use reth_primitives::{alloy_primitives::U256, BlockId, Bytes, PruneModes, MAINNET, U64};
 use reth_provider::{
     providers::BlockchainProvider, ProviderFactory, StateProviderBox, TransactionsProvider,
 };
@@ -47,7 +40,7 @@ use reth_rpc_types::{
         self,
         parity::{TraceResultsWithTransactionHash, TraceType, TransactionTrace, *},
     },
-    BlockError, TransactionInfo,
+    BlockError, Log, TransactionInfo,
 };
 use reth_tasks::TaskManager;
 use reth_transaction_pool::{
@@ -164,6 +157,8 @@ impl TracingClient {
 
         self.api
             .trace_block_with(block_id, config, move |tx_info, inspector, res, state, db| {
+                // this is safe as there the exact same memory layout. This is needed as we need
+                // access to the internal fields of the struct that arent public
                 let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
                 Ok(localized.into_trace_results(tx_info, &res))
             })
@@ -195,9 +190,9 @@ impl TracingInspectorLocal {
     pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
         let gas_used = res.gas_used();
 
-        let trace = self.build_trace();
+        let trace = self.build_trace(&info);
 
-         TxTrace {
+        TxTrace {
             trace: trace.unwrap_or(vec![]),
             tx_hash: info.hash.unwrap(),
             gas_used,
@@ -219,7 +214,7 @@ impl TracingInspectorLocal {
     /// the state diff, since this requires access to the account diffs.
     ///
     /// See [Self::into_trace_results_with_state] and [populate_state_diff].
-    pub fn build_trace(&self) -> Option<Vec<TransactionTraceWithLogs>> {
+    pub fn build_trace(&self, info: &TransactionInfo) -> Option<Vec<TransactionTraceWithLogs>> {
         if self.traces.nodes().is_empty() {
             return None
         }
@@ -227,10 +222,24 @@ impl TracingInspectorLocal {
         let mut traces = Vec::with_capacity(self.traces.nodes().len());
 
         for node in self.iter_traceable_nodes() {
-            let trace_address = self.trace_address(self.traces.nodes(),node.idx);
+            let trace_address = self.trace_address(self.traces.nodes(), node.idx);
 
             let trace = self.build_tx_trace(node, trace_address);
-            let logs = node.logs.into();
+            let logs = node
+                .logs
+                .iter()
+                .map(|alloy_log| reth_rpc_types::Log {
+                    data:              alloy_log.data.clone(),
+                    topics:            alloy_log.topics().to_vec(),
+                    log_index:         None,
+                    block_hash:        info.block_hash,
+                    transaction_hash:  info.hash,
+                    block_number:      info.block_number.map(|i| U256::from(i)),
+                    transaction_index: info.index.map(|i| U256::from(i)),
+                    removed:           false,
+                    address:           node.trace.address,
+                })
+                .collect::<Vec<_>>();
 
             traces.push(TransactionTraceWithLogs {
                 trace,
