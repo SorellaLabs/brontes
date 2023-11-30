@@ -57,6 +57,5 @@ brontes-core = { workspace = true, features = ["tests"] }
 tracing-subscriber.workspace = true
 
 [features]
-test_run = ["brontes-database/test_run"]
 tests = []
 local = ["brontes-core/local", "tests"]

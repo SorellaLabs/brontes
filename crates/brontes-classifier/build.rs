@@ -1,4 +1,3 @@
-//#![feature(result_option_inspect)]
 use std::{
     collections::HashSet,
     env,
@@ -10,23 +9,9 @@ use std::{
 
 use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
-#[cfg(feature = "server")]
-use ethers_core::types::Chain;
-#[cfg(feature = "server")]
-use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
-use itertools::Itertools;
-#[cfg(feature = "server")]
-use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
-#[cfg(feature = "server")]
-use reth_primitives::{BlockId, BlockNumberOrTag};
-use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
-#[cfg(feature = "server")]
-use reth_rpc_types::trace::parity::TraceType;
-#[cfg(feature = "server")]
-use reth_tracing::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -38,36 +23,6 @@ const FAILED_ABI_FILE: &str = "../../failed_abis.txt";
 const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
-
-/*
-const DATA_QUERY: &str = r#"
-SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
-FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
-GROUP BY c.abi, c.classifier_name
-HAVING abi IS NOT NULL
-"#;
-same as below
-*/
-
-const DATA_QUERY: &str = r#"
-SELECT 
-	groupArray(address) as addresses, abi, classifier_name
-FROM brontes.protocol_details
-GROUP BY abi, classifier_name
-"#;
-
-/*
-const DATA_QUERY_FILTER: &str = r#"
-SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
-FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
-GROUP BY c.abi, c.classifier_name
-HAVING (abi IS NOT NULL AND hasAny(addresses, ?)) OR classifier_name != ''
-"#;
-
-same as below
-*/
 
 const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
 SELECT 
@@ -142,67 +97,15 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut File) {
 async fn run_classifier_mapping() {
     let clickhouse_client = build_db();
 
-    #[cfg(feature = "test_run")]
-    let addresses = {
-        let start_block = env::var("START_BLOCK").expect("START_BLOCK not found in env");
-        let end_block = env::var("END_BLOCK").expect("END_BLOCK not found in env");
-
-        get_all_touched_addresses(
-            u64::from_str_radix(&start_block, 10).unwrap(),
-            u64::from_str_radix(&end_block, 10).unwrap(),
-        )
-        .await
-        .into_iter()
-        .map(|addr| format!("{:?}", addr).to_lowercase())
-        .collect::<HashSet<_>>()
-    };
-
-    #[cfg(feature = "server")]
-    let mut protocol_abis: Vec<ProtocolDetails> = {
-        #[cfg(not(feature = "test_run"))]
-        {
-            query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
-        }
-        #[cfg(feature = "test_run")]
-        {
-            clickhouse_client
-                .query(CLASSIFIED_ONLY_DATA_QUERY)
-                .fetch_all::<ProtocolDetails>()
-                .await
-                .unwrap()
-        }
-    };
-    #[cfg(not(feature = "server"))]
-    let mut protocol_abis =
+    let protocol_abis =
         query_db::<ProtocolDetails>(&clickhouse_client, CLASSIFIED_ONLY_DATA_QUERY).await;
-    // write_test(protocol_abis.clone());
+
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
-
-    #[cfg(feature = "test_run")]
-    {
-        let file_path = "/home/shared/brontes/class.txt";
-        File::create(file_path);
-
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .read(true)
-            .open(file_path)
-            .expect("could not open file");
-
-        let str = serde_json::to_string(&protocol_abis.clone()).unwrap();
-        file.write_all(str.as_bytes()).unwrap();
-    }
-
-    // write_test(failed_abi_addresses.clone());
-    // write_test('\n');
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
         .filter(|contract: &ProtocolDetails| {
             let addrs: HashSet<String> = contract.addresses.clone().into_iter().collect();
-            // write_test(addrs.clone());
-            // write_test(contract.abi.is_some());
-            // write_test(!failed_abi_addresses.is_subset(&addrs));
             contract.abi.is_some()
                 && (!failed_abi_addresses.is_subset(&addrs) || failed_abi_addresses.is_empty())
         })
@@ -230,70 +133,6 @@ async fn run_classifier_mapping() {
     .await;
 
     address_abi_mapping(protocol_abis)
-}
-
-#[cfg(feature = "test_run")]
-async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<Address> {
-    let db_path = env::var("DB_PATH").expect("DB_PATH not found in env");
-    let tracer = TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current());
-
-    let range = (start_block..end_block).into_iter().collect::<Vec<_>>();
-    let mut res = HashSet::new();
-
-    for chunk in range.as_slice().chunks(5) {
-        res.extend(get_addresses_for_chunk(&tracer, chunk).await);
-        res.shrink_to_fit();
-    }
-
-    res
-}
-
-#[cfg(feature = "test_run")]
-async fn get_addresses_for_chunk(client: &TracingClient, chunk: &[u64]) -> HashSet<Address> {
-    let mut trace_type = HashSet::new();
-    trace_type.insert(TraceType::Trace);
-    trace_type.insert(TraceType::VmTrace);
-
-    let res = join_all(chunk.into_iter().map(|block_num| {
-        client
-            .trace
-            .replay_block_transactions(
-                BlockId::Number(BlockNumberOrTag::Number(*block_num)),
-                trace_type.clone(),
-            )
-            .map(|trace| expand_trace(trace.unwrap().unwrap()))
-    }))
-    .await
-    .into_iter()
-    .flatten()
-    .collect::<HashSet<_>>();
-    println!("got addresses for chunk");
-
-    res
-}
-
-fn expand_trace(trace: Vec<TraceResultsWithTransactionHash>) -> HashSet<Address> {
-    let mut result = trace
-        .into_par_iter()
-        .flat_map(|trace| {
-            trace
-                .full_trace
-                .trace
-                .into_par_iter()
-                .filter_map(|call_frame| match call_frame.action {
-                    reth_rpc_types::trace::parity::Action::Call(c) => Some(c.to),
-                    reth_rpc_types::trace::parity::Action::Create(_)
-                    | reth_rpc_types::trace::parity::Action::Reward(_) => None,
-                    reth_rpc_types::trace::parity::Action::Selfdestruct(s) => Some(s.address),
-                })
-                .collect::<HashSet<_>>()
-        })
-        .collect::<HashSet<_>>();
-
-    result.shrink_to_fit();
-    println!("{}", result.len());
-
-    result
 }
 
 //
@@ -340,7 +179,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
 
     binding_enums.push("}".to_string());
     return_binding_enums.push("}".to_string());
-    bindings_impl_try_decode.push(r#"_=> panic!("no binding match found")}"#.to_string());
+    bindings_impl_try_decode.push(r#"}"#.to_string());
     bindings_impl_try_decode.push(" }".to_string());
     bindings_impl_try_decode.push("}".to_string());
 
@@ -607,16 +446,4 @@ fn to_string_vec(tokens: Vec<String>) -> String {
     res += "]";
 
     res
-}
-
-fn write_test<T: std::fmt::Debug>(thing: T) {
-    let file_path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join("test_write.txt");
-
-    let mut file = fs::OpenOptions::new()
-        .append(true)
-        .read(true)
-        .open(&file_path)
-        .expect("could not open file");
-
-    file.write_all(format!("{:?}\n", thing).as_bytes()).unwrap(); // Added a newline for formatting
 }

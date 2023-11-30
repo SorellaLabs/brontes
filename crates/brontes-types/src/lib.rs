@@ -18,7 +18,7 @@ include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
 pub trait ToScaledRational {
     fn to_scaled_rational(self, decimals: u8) -> Rational;
 }
-//TODO: Will unit test this pls
+
 impl ToScaledRational for U256 {
     fn to_scaled_rational(self, decimals: u8) -> Rational {
         let top = Natural::from_limbs_asc(&self.into_limbs());
@@ -37,27 +37,6 @@ impl ToFloatNearest for Rational {
     }
 }
 
-pub(crate) mod u256 {
-    use alloy_primitives::U256;
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
-
-    pub fn serialize<S: Serializer>(u: &U256, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut buf: [u8; 32] = u.to_le_bytes();
-        buf.serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<U256, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let u: [u8; 32] = Deserialize::deserialize(deserializer)?;
-        Ok(U256::from_le_bytes(u))
-    }
-}
-
 pub(crate) mod vec_u256 {
     use alloy_primitives::U256;
     use serde::{
@@ -72,6 +51,7 @@ pub(crate) mod vec_u256 {
             .serialize(serializer)
     }
 
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<U256>, D::Error>
     where
         D: Deserializer<'de>,
@@ -95,6 +75,7 @@ pub(crate) mod vec_vec_u256 {
             .serialize(serializer)
     }
 
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Vec<U256>>, D::Error>
     where
         D: Deserializer<'de>,
