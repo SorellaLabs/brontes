@@ -41,11 +41,18 @@ impl Inspector for JitInspector {
                 |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
-                        .flat_map(|tx| {
-                            tree.inspect(tx, |node| {
-                                node.subactions.iter().any(|action| {
-                                    action.is_mint() || action.is_burn() || action.is_collect()
-                                })
+                        .map(|tx| {
+                            tree.collect(tx, |node| {
+                                (
+                                    node.data.is_mint()
+                                        || node.data.is_burn()
+                                        || node.data.is_collect(),
+                                    node.subactions.iter().any(|action| {
+                                        action.is_mint()
+                                            || action.is_collect()
+                                            || node.data.is_burn()
+                                    }),
+                                )
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
@@ -77,18 +84,17 @@ impl Inspector for JitInspector {
                         .map(|victim| {
                             (
                                 victim,
-                                tree.inspect(*victim, |node| {
-                                    node.subactions.iter().any(|action| action.is_swap())
-                                })
-                                .into_iter()
-                                .flatten()
-                                .collect::<Vec<_>>(),
+                                tree.collect(*victim, |node| {
+                                    (
+                                        node.data.is_swap(),
+                                        node.subactions.iter().any(|action| action.is_swap()),
+                                    )
+                                }),
                             )
                         })
                         .filter(|(_, actions)| {
                             actions
                                 .iter()
-                                .filter(|s| s.is_swap())
                                 .any(|s| liquidity_addresses.contains(&s.force_swap_ref().pool))
                         })
                         .unzip();
@@ -150,6 +156,10 @@ impl JitInspector {
         let mints = mints.into_iter().flatten().collect::<Vec<_>>();
         let burns = burns.into_iter().flatten().collect::<Vec<_>>();
         let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
+
+        if mints.is_empty() || burns.is_empty() {
+            return None
+        }
 
         let (jit_fee_pre, jit_fee_post) = self.get_collect_amount(fee_collect, metadata.clone());
 
