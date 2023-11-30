@@ -10,19 +10,9 @@ use std::{
 
 use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
-#[cfg(feature = "server")]
-use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
-use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
-#[cfg(feature = "server")]
-use reth_primitives::{BlockId, BlockNumberOrTag};
-use reth_rpc_types::trace::parity::TraceResultsWithTransactionHash;
-#[cfg(feature = "server")]
-use reth_rpc_types::trace::parity::TraceType;
-#[cfg(feature = "server")]
-use reth_tracing_ext::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -235,7 +225,7 @@ async fn generate(bindings_file_path: &str, addresses: &Vec<(ProtocolDetails, bo
 
     binding_enums.push("}".to_string());
     return_binding_enums.push("}".to_string());
-    bindings_impl_try_decode.push(r#"_=> panic!("no binding match found")}"#.to_string());
+    bindings_impl_try_decode.push(r#"}"#.to_string());
     bindings_impl_try_decode.push(" }".to_string());
     bindings_impl_try_decode.push("}".to_string());
 
@@ -503,4 +493,3 @@ fn to_string_vec(tokens: Vec<String>) -> String {
 
     res
 }
-
