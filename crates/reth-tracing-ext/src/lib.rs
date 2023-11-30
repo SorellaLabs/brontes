@@ -216,10 +216,10 @@ impl TracingInspectorLocal {
     /// See [Self::into_trace_results_with_state] and [populate_state_diff].
     pub fn build_trace(&self, info: &TransactionInfo) -> Option<Vec<TransactionTraceWithLogs>> {
         if self.traces.nodes().is_empty() {
-            info!("trace with no nodes");
+            info!(target: brontes,"trace with no nodes");
             return None
         }
-        info!("tracing tx with {} traces", self.traces.nodes().len());
+        info!(target: brontes, "tracing tx with {} traces", self.traces.nodes().len());
 
         let mut traces = Vec::with_capacity(self.traces.nodes().len());
 
