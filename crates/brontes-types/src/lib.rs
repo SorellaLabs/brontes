@@ -18,7 +18,7 @@ include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
 pub trait ToScaledRational {
     fn to_scaled_rational(self, decimals: u8) -> Rational;
 }
-//TODO: Will unit test this pls
+
 impl ToScaledRational for U256 {
     fn to_scaled_rational(self, decimals: u8) -> Rational {
         let top = Natural::from_limbs_asc(&self.into_limbs());
@@ -51,6 +51,7 @@ pub(crate) mod vec_u256 {
             .serialize(serializer)
     }
 
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<U256>, D::Error>
     where
         D: Deserializer<'de>,
@@ -74,6 +75,7 @@ pub(crate) mod vec_vec_u256 {
             .serialize(serializer)
     }
 
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Vec<U256>>, D::Error>
     where
         D: Deserializer<'de>,

@@ -742,6 +742,7 @@ mod gas_details_tuple {
         tuple.serialize(serializer)
     }
 
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<GasDetails, D::Error>
     where
         D: Deserializer<'de>,

@@ -5,6 +5,7 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
 };
+use tokio::pin;
 
 use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
@@ -93,8 +94,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
-    let metrics_listener =
-        tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
+    let metrics_listener = PoirotMetricsListener::new(metrics_rx);
 
     let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
     let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
@@ -104,7 +104,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let db = Database::default();
 
-    let tracer = TracingClient::new(Path::new(&db_path), handle.clone());
+    let (mut manager, tracer) = TracingClient::new(Path::new(&db_path), handle.clone());
 
     let parser = DParser::new(
         metrics_tx,
@@ -119,7 +119,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     #[cfg(not(feature = "server"))]
     let chain_tip = parser.get_latest_block_number().await.unwrap();
 
-    Brontes::new(
+    let mut brontes = Brontes::new(
         command.start_block,
         command.end_block,
         chain_tip,
@@ -128,19 +128,24 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
         &db,
         &classifier,
         inspectors,
-    )
-    .await;
+    );
 
-    drop(parser);
-    info!("dropped parser");
+    pin!(brontes);
+    pin!(manager);
+    pin!(metrics_listener);
 
-    // you have a intermediate parse function for the range of blocks you want to
-    // parse it collects the aggregate stats of each block stats
-    // the block stats collect the aggregate stats of each tx
-    // the tx stats collect the aggregate stats of each trace
 
-    metrics_listener.await?;
-    info!("metrics returned");
+    // wait for completion
+    tokio::select! {
+        _ = &mut brontes => {
+        }
+        _ = &mut manager => {
+        }
+        _ = &mut metrics_listener => {
+        }
+    }
+    manager.graceful_shutdown();
+
     Ok(())
 }
 
