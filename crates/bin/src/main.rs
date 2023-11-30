@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     env,
     error::Error,
     net::{IpAddr, Ipv4Addr, SocketAddr},

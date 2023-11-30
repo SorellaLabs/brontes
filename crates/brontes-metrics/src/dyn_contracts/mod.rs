@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 
 use metrics::Counter;
@@ -7,7 +8,6 @@ use tracing::trace;
 use self::types::DynamicContractMetricEvent;
 pub mod types;
 
-#[allow(dead_code)]
 #[derive(Debug, Default, Clone)]
 pub struct DynamicContractMetrics {
     contracts: ContractMetrics,
