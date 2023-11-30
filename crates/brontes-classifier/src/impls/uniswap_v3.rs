@@ -3,7 +3,7 @@ use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{
     Actions, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
-use reth_primitives::{Bytes, Address, U256};
+use reth_primitives::{Address, Bytes, U256};
 use reth_rpc_types::Log;
 
 use crate::{
@@ -121,7 +121,13 @@ action_impl!(
     UniswapV3,
     call_data: true,
     return_data: true,
-    |index, from_addr: Address, to_addr: Address, call_data: collectCall, return_data: collectReturn| {
+    |
+    index,
+    from_addr: Address,
+    to_addr: Address,
+    call_data: collectCall,
+    return_data: collectReturn
+    | {
         let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
             .get(&*target_address.0)
             .copied()
@@ -159,24 +165,25 @@ mod tests {
         let calldata = Bytes::from_str("0x4f1eb3d8000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe880000000000000000000000000000000000000000000000000000000000030a0c000000000000000000000000000000000000000000000000000000000003165a0000000000000000000000000000000000000000000000000000006f9cc0d1c600000000000000000000000000000000000000000000000de3d53dad63cdb215").unwrap();
         let return_bytes = Bytes::from_str("0x0000000000000000000000000000000000000000000000000000006f9cc0d1c600000000000000000000000000000000000000000000000de3d53dad63cdb215").unwrap();
         let from_address = Address::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap();
-        let target_address = Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap();
+        let target_address =
+            Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap();
 
         let bindings = StaticBindings::UniswapV3(UniswapV3_Enum::None);
         let data: StaticReturnBindings = bindings.try_decode(&calldata).unwrap();
 
         let logs = vec![
-        Log { 
+        Log {
             address: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(),
             topics: vec![
                 B256::from_str("0x70935338e69775456a85ddef226c395fb668b63fa0115f5f20610b388e6ca9c0").unwrap().into(),
                 B256::from_str("0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88").unwrap().into(),
                 B256::from_str("0x0000000000000000000000000000000000000000000000000000000000030a0c").unwrap().into(),
                 B256::from_str("0x000000000000000000000000000000000000000000000000000000000003165a").unwrap().into(),
-            ], 
-            data: Bytes::from_str("0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe880000000000000000000000000000000000000000000000000000006f9cc0d1c600000000000000000000000000000000000000000000000de3d53dad63cdb215").unwrap(), 
-            block_hash: Some(B256::from_str("0xc698adc7019160c893fd294bae7f30cd78047fe540575c52911bc7ecbc2ab29f").unwrap()), 
-            block_number: Some(B256::from_str("0x00000000000000000000000000000000000000000000000000000000011A7F71").unwrap().into()), 
-            transaction_hash: Some(B256::from_str("0x9d5cb1e9e83fd5b2c95e5d9f68f48cc90cc5f5b0f44c7a61aa0d260c461e9ebe").unwrap()), 
+            ],
+            data: Bytes::from_str("0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe880000000000000000000000000000000000000000000000000000006f9cc0d1c600000000000000000000000000000000000000000000000de3d53dad63cdb215").unwrap()
+            block_hash: Some(B256::from_str("0xc698adc7019160c893fd294bae7f30cd78047fe540575c52911bc7ecbc2ab29f").unwrap()),
+            block_number: Some(B256::from_str("0x00000000000000000000000000000000000000000000000000000000011A7F71").unwrap().into()),
+            transaction_hash: Some(B256::from_str("0x9d5cb1e9e83fd5b2c95e5d9f68f48cc90cc5f5b0f44c7a61aa0d260c461e9ebe").unwrap()),
             transaction_index: Some(B256::from_str("0x0000000000000000000000000000000000000000000000000000000000000009").unwrap().into()),
             log_index: Some(B256::from_str("0x0000000000000000000000000000000000000000000000000000000000000002").unwrap().into()),
             removed: false
@@ -235,20 +242,21 @@ mod tests {
         let calldata = Bytes::from_str("0xa34123a70000000000000000000000000000000000000000000000000000000000030a0c000000000000000000000000000000000000000000000000000000000003165a00000000000000000000000000000000000000000000000001f18297c89002cb").unwrap();
         let return_bytes = Bytes::from_str("0x0000000000000000000000000000000000000000000000000000006af143783400000000000000000000000000000000000000000000000d45567f936fa135b8").unwrap();
         let from_address = Address::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap();
-        let target_address = Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap();
+        let target_address =
+            Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap();
 
         let bindings = StaticBindings::UniswapV3(UniswapV3_Enum::None);
         let data: StaticReturnBindings = bindings.try_decode(&calldata).unwrap();
 
         let logs = vec![
-        Log { 
+        Log {
             address: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(),
             topics: vec![
                 B256::from_str("0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c").unwrap().into(),
                 B256::from_str("0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88").unwrap().into(),
                 B256::from_str("0x0000000000000000000000000000000000000000000000000000000000030a0c").unwrap().into(),
                 B256::from_str("0x000000000000000000000000000000000000000000000000000000000003165a").unwrap().into(),
-            ], 
+            ],
             data: Bytes::from_str("0x00000000000000000000000000000000000000000000000001f18297c89002cb0000000000000000000000000000000000000000000000000000006af143783400000000000000000000000000000000000000000000000d45567f936fa135b8").unwrap(), 
             block_hash: Some(B256::from_str("0xc698adc7019160c893fd294bae7f30cd78047fe540575c52911bc7ecbc2ab29f").unwrap()), 
             block_number: Some(B256::from_str("0x00000000000000000000000000000000000000000000000000000000011A7F71").unwrap().into()), 
@@ -311,13 +319,14 @@ mod tests {
         let calldata = Bytes::from_str("0x3c8a7d8d000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe880000000000000000000000000000000000000000000000000000000000030c8c00000000000000000000000000000000000000000000000000000000000313a800000000000000000000000000000000000000000000000000082d987468f32000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000080000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000001f400000000000000000000000037164b9a28bb47f17d47ea1338870ac43299d352").unwrap();
         let return_bytes = Bytes::from_str("0x00000000000000000000000000000000000000000000000000000000f8c92fd800000000000000000000000000000000000000000000000022b1c8c115e460a4").unwrap();
         let from_address = Address::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap();
-        let target_address = Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap();
+        let target_address =
+            Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap();
 
         let bindings = StaticBindings::UniswapV3(UniswapV3_Enum::None);
         let data: StaticReturnBindings = bindings.try_decode(&calldata).unwrap();
 
         let logs = vec![
-        Log { 
+        Log {
             address: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(), 
             topics: vec![B256::from_str("0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde").unwrap().into()], 
             data: Bytes::from_str("0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe8800000000000000000000000000000000000000000000000000082d987468f32000000000000000000000000000000000000000000000000000000000f8c92fd800000000000000000000000000000000000000000000000022b1c8c115e460a4").unwrap(), 
@@ -377,13 +386,14 @@ mod tests {
         let calldata = Bytes::from_str("0x128acb080000000000000000000000003fc91a3afd70395cd496c647d5a6cc9d4b2b7fad0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000006b2c0f3100000000000000000000000000000000000000000000000000000001000276a400000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000400000000000000000000000003fc91a3afd70395cd496c647d5a6cc9d4b2b7fad000000000000000000000000000000000000000000000000000000000000002ba0b86991c6218b36c1d19d4a2e9eb0ce3606eb480001f4c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000").unwrap();
         let return_bytes = Bytes::from_str("0x000000000000000000000000000000000000000000000000000000006b2c0f31fffffffffffffffffffffffffffffffffffffffffffffffff2d56e9e92be85db").unwrap();
         let from_address = Address::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap();
-        let target_address = Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap();
+        let target_address =
+            Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap();
 
         let bindings = StaticBindings::UniswapV3(UniswapV3_Enum::None);
         let data: StaticReturnBindings = bindings.try_decode(&calldata).unwrap();
 
         let logs = vec![
-        Log { 
+        Log {
             address: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(), 
             topics: vec![
                 B256::from_str("0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67").unwrap(),
