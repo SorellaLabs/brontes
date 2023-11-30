@@ -9,7 +9,7 @@ FROM
         et.address as address, 
         round(avg(bt.ask_price + bt.bid_price)/2, 6) as price
     FROM 
-        cex.binance_idv_symbol_tickers as bt
+        cex.normalized_quotes as bt
     INNER JOIN ethereum.tokens AS et 
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
@@ -25,7 +25,7 @@ FROM
         et.address as address, 
         round(avg(bt.ask_price + bt.bid_price)/2, 6) as price
     FROM 
-        cex.binance_idv_symbol_tickers as bt
+        cex.normalized_quotes as bt
     INNER JOIN ethereum.tokens AS et 
     ON et.symbol = substring(bt.symbol, 1, length(bt.symbol) - 4)
     WHERE 
