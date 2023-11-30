@@ -126,7 +126,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             .await;
 
         let mut stats = BlockStats::new(block_num, None);
-        let trace = match parity_trace {
+        let trace = match merged_trace {
             Ok(Some(t)) => Some(t),
             Ok(None) => {
                 stats.err = Some(TraceParseErrorKind::TracesMissingBlock);
