@@ -175,8 +175,10 @@ pub fn init_trace_parser<'a>(
 
     #[cfg(not(feature = "local"))]
     let tracer = {
-        Box::new(TracingClient::new(Path::new(&db_path), handle.clone()))
-            as Box<dyn TracingProvider>
+        let (t_handle, client) = TracingClient::new(Path::new(&db_path), handle.clone());
+            handle.spawn(t_handle);
+
+            client as Box<dyn TracingProvider>
     };
 
     let db = Box::new(Database::default());
