@@ -1,5 +1,4 @@
 use std::{collections::HashSet, fmt::Debug, path::Path, sync::Arc};
-use tracing::info;
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use eyre::Context;
@@ -51,6 +50,7 @@ use reth_transaction_pool::{
 use revm::{interpreter::InstructionResult, Inspector};
 use revm_primitives::{ExecutionResult, SpecId};
 use tokio::runtime::Handle;
+use tracing::info;
 
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
