@@ -6,14 +6,16 @@ use std::{
     path::Path,
 };
 
-use brontes::{Poirot, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
+use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::database::Database;
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, sandwich::SandwichInspector, Inspector,
 };
-use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
+use brontes_metrics::{
+    prometheus_exporter::initialize, BrontesMetricsListener, PoirotMetricsListener,
+};
 use clap::Parser;
 use metrics_process::Collector;
 use reth_tracing_ext::TracingClient;
@@ -115,7 +117,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     #[cfg(not(feature = "server"))]
     let chain_tip = parser.get_latest_block_number().await.unwrap();
 
-    Poirot::new(
+    Brontes::new(
         command.start_block,
         command.end_block,
         chain_tip,
