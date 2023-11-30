@@ -26,7 +26,7 @@ action_impl!(
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address)
+            .get(&*target_address.0)
             .copied()
             .unwrap();
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
