@@ -131,6 +131,8 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     )
     .await;
 
+    drop(parser);
+
     // you have a intermediate parse function for the range of blocks you want to
     // parse it collects the aggregate stats of each block stats
     // the block stats collect the aggregate stats of each tx
