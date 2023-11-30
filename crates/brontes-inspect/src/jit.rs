@@ -43,9 +43,9 @@ impl Inspector for JitInspector {
                         .into_iter()
                         .flat_map(|tx| {
                             tree.inspect(tx, |node| {
-                                node.subactions.iter().any(|action| {
-                                    action.is_mint() || action.is_burn() || action.is_collect()
-                                })
+                                node.subactions
+                                    .iter()
+                                    .any(|action| action.is_mint() || action.is_collect())
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
@@ -77,8 +77,11 @@ impl Inspector for JitInspector {
                         .map(|victim| {
                             (
                                 victim,
-                                tree.inspect(*victim, |node| {
-                                    node.subactions.iter().any(|action| action.is_swap())
+                                tree.collect(*victim, |node| {
+                                    (
+                                        node.data.is_swap(),
+                                        node.subactions.iter().any(|action| action.is_swap()),
+                                    )
                                 })
                                 .into_iter()
                                 .flatten()
@@ -88,7 +91,6 @@ impl Inspector for JitInspector {
                         .filter(|(_, actions)| {
                             actions
                                 .iter()
-                                .filter(|s| s.is_swap())
                                 .any(|s| liquidity_addresses.contains(&s.force_swap_ref().pool))
                         })
                         .unzip();
