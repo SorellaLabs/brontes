@@ -505,7 +505,7 @@ pub mod tests {
 
     /// takes the blocknumber, setups the tree and calls on_new_tree before
     /// returning the composer
-    pub async fn setup(block_num: u64, custom_meta: Option<Metadata>) -> Composer<'static, 4> {
+    pub async fn setup(block_num: u64, custom_meta: Option<Metadata>) -> Composer<'static, 2> {
         init_tracing();
         dotenv::dotenv().ok();
 
