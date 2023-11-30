@@ -1,7 +1,7 @@
 use alloy_dyn_abi::DynSolValue;
 use reth_primitives::{Address, Bytes, H160, H256};
 use reth_rpc_types::{
-    trace::parity::{Action, TransactionTrace},
+    trace::parity::{Action, CallType, TransactionTrace},
     Log,
 };
 use serde::{Deserialize, Serialize};
@@ -11,9 +11,17 @@ pub trait TraceActions {
     fn get_to_address(&self) -> Address;
     fn get_calldata(&self) -> Bytes;
     fn get_return_calldata(&self) -> Bytes;
+    fn is_static_call(&self) -> bool;
 }
 
 impl TraceActions for TransactionTraceWithLogs {
+    fn is_static_call(&self) -> bool {
+        match &self.trace.action {
+            Action::Call(call) => call.call_type == CallType::StaticCall,
+            _ => false,
+        }
+    }
+
     fn get_from_addr(&self) -> Address {
         match &self.trace.action {
             Action::Call(call) => call.from,
