@@ -250,7 +250,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         }
 
         stats.trace();
-        tx_trace.effective_price= effective_gas_price;
+        tx_trace.effective_price = effective_gas_price;
         tx_trace.gas_used = gas_used;
 
         (tx_trace, stats)
