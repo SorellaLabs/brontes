@@ -3,10 +3,7 @@ use reth_rpc_types::trace::parity::{
 };
 use sorella_db_databases::ClickhouseClient;
 
-use crate::{
-    normalized_actions::Actions,
-    tree::{ TimeTree},
-};
+use crate::{normalized_actions::Actions, tree::TimeTree};
 
 pub fn spawn_db() -> ClickhouseClient {
     ClickhouseClient::default()
