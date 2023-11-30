@@ -13,12 +13,12 @@ use hex_literal::hex;
 use itertools::Itertools;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, H256, U256};
+use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256,  U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 
 use crate::PROTOCOL_ADDRESS_MAPPING;
 
-const TRANSFER_TOPIC: H256 =
+const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 /// goes through and classifies all exchanges
