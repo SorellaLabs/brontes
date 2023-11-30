@@ -96,8 +96,6 @@ itertools.workspace = true
 
 [features]
 default = []
-test_run = ["server"]
 dyn-decode = []
 tests = []
-server = []
 local = []
