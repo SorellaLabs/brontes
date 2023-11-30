@@ -1,5 +1,5 @@
 use colored::Colorize;
-use reth_primitives::H160;
+use reth_primitives::Address;
 use tracing::info;
 
 use crate::PoirotMetricEvents;
@@ -29,12 +29,12 @@ impl From<DynamicContractMetricEvent> for PoirotMetricEvents {
 
 #[derive(Clone, Debug)]
 pub struct ContractMetric {
-    pub address:         H160,
+    pub address:         Address,
     pub function_called: String,
 }
 
 impl ContractMetric {
-    pub fn new(address: H160, function_called: String) -> Self {
+    pub fn new(address: Address, function_called: String) -> Self {
         Self { address, function_called }
     }
 

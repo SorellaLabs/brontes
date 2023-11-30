@@ -68,24 +68,12 @@ metrics-process.workspace = true
 
 
 [features]
-server = [
-  "brontes-types/server",
-  "brontes-classifier/server",
-  "brontes-core/server",
-]
-
-test_run = [
-  "brontes-core/test_run",
-  "brontes-database/test_run",
-  "brontes-classifier/test_run",
-  "brontes-inspect/test_run",
-]
-
 tests = [
   "brontes-core/tests",
   "brontes-database/tests",
   "brontes-classifier/tests",
   "brontes-inspect/tests",
 ]
+local = ["brontes-core/local"]
 
 dyn-decode = ["brontes-core/dyn-decode"]

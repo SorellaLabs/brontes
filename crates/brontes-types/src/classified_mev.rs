@@ -1,8 +1,8 @@
-use std::{any::Any, default, fmt::Debug};
+use std::{any::Any, fmt::Debug};
 
 use alloy_primitives::U256;
-use reth_primitives::{Address, H256};
-use serde::{Deserialize, Serialize};
+use reth_primitives::{Address, B256};
+use serde::Serialize;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 use sorella_db_databases::{
@@ -11,14 +11,13 @@ use sorella_db_databases::{
 };
 use strum::EnumIter;
 
-use super::normalized_actions::Actions;
-use crate::{tree::GasDetails, u256, vec_u256, vec_vec_u256};
+use crate::{tree::GasDetails, vec_u256, vec_vec_u256};
 
 #[serde_as]
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct MevBlock {
     #[serde_as(as = "FixedString")]
-    pub block_hash: H256,
+    pub block_hash: B256,
     pub block_number: u64,
     pub mev_count: u64,
     pub submission_eth_price: f64,
@@ -52,7 +51,7 @@ pub struct ClassifiedMev {
     // can be multiple for sandwich
     pub block_number:          u64,
     #[serde_as(as = "FixedString")]
-    pub tx_hash:               H256,
+    pub tx_hash:               B256,
     #[serde_as(as = "FixedString")]
     pub eoa:                   Address,
     #[serde_as(as = "FixedString")]
@@ -95,7 +94,7 @@ pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + Debug
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u64;
     fn bribe(&self) -> u64;
-    fn mev_transaction_hashes(&self) -> Vec<H256>;
+    fn mev_transaction_hashes(&self) -> Vec<B256>;
 }
 
 impl InsertRow for Box<dyn SpecificMev> {
@@ -117,7 +116,7 @@ impl serde::Serialize for dyn SpecificMev {
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct Sandwich {
     #[serde_as(as = "FixedString")]
-    pub frontrun_tx_hash: H256,
+    pub frontrun_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
     pub frontrun_gas_details: GasDetails,
     #[serde(rename = "frontrun_swaps.index")]
@@ -141,10 +140,10 @@ pub struct Sandwich {
     #[serde(rename = "frontrun_swaps.amount_out")]
     pub frontrun_swaps_amount_out: Vec<U256>,
     #[serde_as(as = "Vec<FixedString>")]
-    pub victim_tx_hashes: Vec<H256>,
+    pub victim_tx_hashes: Vec<B256>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "victim_swaps.tx_hash")]
-    pub victim_swaps_tx_hash: Vec<H256>,
+    pub victim_swaps_tx_hash: Vec<B256>,
     #[serde(rename = "victim_swaps.index")]
     pub victim_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
@@ -174,7 +173,7 @@ pub struct Sandwich {
     #[serde(rename = "victim_gas_details.effective_gas_price")]
     pub victim_gas_details_effective_gas_price: Vec<u64>,
     #[serde_as(as = "FixedString")]
-    pub backrun_tx_hash: H256,
+    pub backrun_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
     pub backrun_gas_details: GasDetails,
     #[serde(rename = "backrun_swaps.index")]
@@ -290,7 +289,7 @@ impl SpecificMev for Sandwich {
             + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)) as u64
     }
 
-    fn mev_transaction_hashes(&self) -> Vec<H256> {
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
         vec![self.frontrun_tx_hash, self.backrun_tx_hash]
     }
 }
@@ -299,7 +298,7 @@ impl SpecificMev for Sandwich {
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct JitLiquiditySandwich {
     #[serde_as(as = "FixedString")]
-    pub frontrun_tx_hash: H256,
+    pub frontrun_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
     pub frontrun_gas_details: GasDetails,
     #[serde(rename = "frontrun_swaps.index")]
@@ -340,10 +339,10 @@ pub struct JitLiquiditySandwich {
     #[serde(rename = "frontrun_mints.amount")]
     pub frontrun_mints_amount: Vec<Vec<U256>>,
     #[serde_as(as = "Vec<FixedString>")]
-    pub victim_tx_hashes: Vec<H256>,
+    pub victim_tx_hashes: Vec<B256>,
     #[serde_as(as = "Vec<FixedString>")]
     #[serde(rename = "victim_swaps.tx_hash")]
-    pub victim_swaps_tx_hash: Vec<H256>,
+    pub victim_swaps_tx_hash: Vec<B256>,
     #[serde(rename = "victim_swaps.index")]
     pub victim_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
@@ -373,7 +372,7 @@ pub struct JitLiquiditySandwich {
     #[serde(rename = "victim_gas_details.effective_gas_price")]
     pub victim_gas_details_effective_gas_price: Vec<u64>,
     #[serde_as(as = "FixedString")]
-    pub backrun_tx_hash: H256,
+    pub backrun_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
     pub backrun_gas_details: GasDetails,
     #[serde(rename = "backrun_swaps.index")]
@@ -433,7 +432,7 @@ impl SpecificMev for JitLiquiditySandwich {
             + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)) as u64
     }
 
-    fn mev_transaction_hashes(&self) -> Vec<H256> {
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
         vec![self.frontrun_tx_hash, self.backrun_tx_hash]
     }
 }
@@ -451,7 +450,7 @@ pub enum PriceKind {
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct CexDex {
     #[serde_as(as = "FixedString")]
-    pub tx_hash:          H256,
+    pub tx_hash:          B256,
     #[serde(rename = "swaps.index")]
     pub swaps_index:      Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
@@ -496,7 +495,7 @@ impl SpecificMev for CexDex {
         self.gas_details.priority_fee
     }
 
-    fn mev_transaction_hashes(&self) -> Vec<H256> {
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
         vec![self.tx_hash]
     }
 
@@ -509,9 +508,9 @@ impl SpecificMev for CexDex {
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct Liquidation {
     #[serde_as(as = "FixedString")]
-    pub liquidation_tx_hash: H256,
+    pub liquidation_tx_hash: B256,
     #[serde_as(as = "FixedString")]
-    pub trigger: H256,
+    pub trigger: B256,
     #[serde(rename = "liquidation_swaps.index")]
     pub liquidation_swaps_index: Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
@@ -561,7 +560,7 @@ impl SpecificMev for Liquidation {
         self
     }
 
-    fn mev_transaction_hashes(&self) -> Vec<H256> {
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
         vec![self.liquidation_tx_hash]
     }
 
@@ -578,7 +577,7 @@ impl SpecificMev for Liquidation {
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct JitLiquidity {
     #[serde_as(as = "FixedString")]
-    pub mint_tx_hash: H256,
+    pub mint_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
     pub mint_gas_details: GasDetails,
     #[serde(rename = "jit_mints.index")]
@@ -599,7 +598,7 @@ pub struct JitLiquidity {
     #[serde(rename = "jit_mints.amount")]
     pub jit_mints_amount: Vec<Vec<U256>>,
     #[serde_as(as = "Vec<FixedString>")]
-    pub swap_tx_hash: Vec<H256>,
+    pub swap_tx_hash: Vec<B256>,
     #[serde(rename = "victim_gas_details.coinbase_transfer")]
     pub victim_gas_details_coinbase_transfer: Vec<Option<u128>>,
     #[serde(rename = "victim_gas_details.priority_fee")]
@@ -629,7 +628,7 @@ pub struct JitLiquidity {
     #[serde(rename = "swaps.amount_out")]
     pub swaps_amount_out: Vec<U256>,
     #[serde_as(as = "FixedString")]
-    pub burn_tx_hash: H256,
+    pub burn_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
     pub burn_gas_details: GasDetails,
     #[serde(rename = "jit_burns.index")]
@@ -656,7 +655,7 @@ impl SpecificMev for JitLiquidity {
         MevType::Jit
     }
 
-    fn mev_transaction_hashes(&self) -> Vec<H256> {
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
         vec![self.mint_tx_hash, self.burn_tx_hash]
     }
 
@@ -678,7 +677,7 @@ impl SpecificMev for JitLiquidity {
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct AtomicBackrun {
     #[serde_as(as = "FixedString")]
-    pub tx_hash:          H256,
+    pub tx_hash:          B256,
     #[serde(rename = "swaps.index")]
     pub swaps_index:      Vec<u64>,
     #[serde_as(as = "Vec<FixedString>")]
@@ -716,7 +715,7 @@ impl SpecificMev for AtomicBackrun {
         self.gas_details.coinbase_transfer.unwrap_or(0) as u64
     }
 
-    fn mev_transaction_hashes(&self) -> Vec<H256> {
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
         vec![self.tx_hash]
     }
 
@@ -726,7 +725,6 @@ impl SpecificMev for AtomicBackrun {
 }
 
 mod gas_details_tuple {
-    use reth_primitives::U256;
     use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
     use super::GasDetails;
@@ -744,6 +742,7 @@ mod gas_details_tuple {
         tuple.serialize(serializer)
     }
 
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<GasDetails, D::Error>
     where
         D: Deserializer<'de>,

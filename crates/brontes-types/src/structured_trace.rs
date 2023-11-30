@@ -1,7 +1,6 @@
-use alloy_dyn_abi::DynSolValue;
-use reth_primitives::{Address, Bytes, H160, H256};
+use reth_primitives::{Address, Bytes, B256};
 use reth_rpc_types::{
-    trace::parity::{Action, TransactionTrace},
+    trace::parity::{Action, CallType, TransactionTrace},
     Log,
 };
 use serde::{Deserialize, Serialize};
@@ -11,9 +10,17 @@ pub trait TraceActions {
     fn get_to_address(&self) -> Address;
     fn get_calldata(&self) -> Bytes;
     fn get_return_calldata(&self) -> Bytes;
+    fn is_static_call(&self) -> bool;
 }
 
 impl TraceActions for TransactionTraceWithLogs {
+    fn is_static_call(&self) -> bool {
+        match &self.trace.action {
+            Action::Call(call) => call.call_type == CallType::StaticCall,
+            _ => false,
+        }
+    }
+
     fn get_from_addr(&self) -> Address {
         match &self.trace.action {
             Action::Call(call) => call.from,
@@ -26,8 +33,8 @@ impl TraceActions for TransactionTraceWithLogs {
     fn get_to_address(&self) -> Address {
         match &self.trace.action {
             Action::Call(call) => call.to,
-            Action::Create(_) => H160::default(),
-            Action::Reward(_) => H160::default(),
+            Action::Create(_) => Address::default(),
+            Action::Reward(_) => Address::default(),
             Action::Selfdestruct(call) => call.address,
         }
     }
@@ -74,7 +81,7 @@ pub struct TransactionTraceWithLogs {
 #[derive(Debug, Clone)]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
-    pub tx_hash:         H256,
+    pub tx_hash:         B256,
     pub gas_used:        u64,
     pub effective_price: u64,
     pub tx_index:        u64,
@@ -83,7 +90,7 @@ pub struct TxTrace {
 impl TxTrace {
     pub fn new(
         trace: Vec<TransactionTraceWithLogs>,
-        tx_hash: H256,
+        tx_hash: B256,
         tx_index: u64,
         gas_used: u64,
         effective_price: u64,
