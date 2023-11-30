@@ -130,19 +130,18 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     );
 
     pin!(brontes);
-    pin!(manager);
     pin!(metrics_listener);
 
     // wait for completion
     tokio::select! {
         _ = &mut brontes => {
         }
-        _ = &mut manager => {
+        _ = Pin::new(&mut manager) => {
         }
         _ = &mut metrics_listener => {
         }
     }
-    manager.graceful_shutdown();
+    manager.manager.graceful_shutdown();
 
     Ok(())
 }
