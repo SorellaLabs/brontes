@@ -30,12 +30,12 @@ impl SharedInspectorUtils {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-                let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0) else {
+                let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0.0) else {
                     error!(missing_token=?swap.token_in, "missing token in token to decimal map");
                     continue
                 };
 
-                let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0) else {
+                let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0.0) else {
                     error!(missing_token=?swap.token_out, "missing token out token to decimal map");
                     continue
                 };
@@ -76,7 +76,7 @@ impl SharedInspectorUtils {
                 .into_iter()
                 .filter_map(|transfer| {
                     // normalize token decimals
-                    let Some(decimals) = TOKEN_TO_DECIMALS.get(&transfer.token.0) else {
+                    let Some(decimals) = TOKEN_TO_DECIMALS.get(&transfer.token.0.0) else {
                         error!(missing_token=?transfer.token, "missing token in token to decimal map");
                         return None;
                     };
