@@ -107,25 +107,25 @@ impl Classifier {
         // self.try_classify_flashloans(&mut tree);
 
         // remove duplicate swaps
-        // tree.remove_duplicate_data(
-        //     |node| node.data.is_swap(),
-        //     |other_nodes, node| {
-        //         let Actions::Swap(swap_data) = &node.data else { unreachable!() };
-        //         other_nodes
-        //             .into_iter()
-        //             .filter_map(|(index, data)| {
-        //                 let Actions::Transfer(transfer) = data else { return None };
-        //                 if transfer.amount == swap_data.amount_in
-        //                     && transfer.token == swap_data.token_in
-        //                 {
-        //                     return Some(*index)
-        //                 }
-        //                 None
-        //             })
-        //             .collect::<Vec<_>>()
-        //     },
-        //     |node| (node.index, node.data.clone()),
-        // );
+        tree.remove_duplicate_data(
+            |node| node.data.is_swap(),
+            |other_nodes, node| {
+                let Actions::Swap(swap_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        if transfer.amount == swap_data.amount_in
+                            && transfer.token == swap_data.token_in
+                        {
+                            return Some(*index)
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+            |node| (node.index, node.data.clone()),
+        );
         // // remove duplicate mints
         // tree.remove_duplicate_data(
         //     |node| node.data.is_mint(),
@@ -187,7 +187,7 @@ impl Classifier {
                 if let Some(res) = d {
                     return res
                 } else {
-                    tracing::error!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
+                    tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
                 }
             }
         }

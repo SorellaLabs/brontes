@@ -505,7 +505,7 @@ pub mod tests {
 
     /// takes the blocknumber, setups the tree and calls on_new_tree before
     /// returning the composer
-    pub async fn setup(block_num: u64, custom_meta: Option<Metadata>) -> Composer<'static, 4> {
+    pub async fn setup(block_num: u64, custom_meta: Option<Metadata>) -> Composer<'static, 2> {
         init_tracing();
         dotenv::dotenv().ok();
 
@@ -526,10 +526,10 @@ pub mod tests {
         let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
         let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
 
-        let inspectors: [&'static Box<dyn Inspector>; 4] = unsafe {
+        let inspectors: [&'static Box<dyn Inspector>; 2] = unsafe {
             [
-                cast_lifetime::<'static>(&cex_dex),
-                cast_lifetime::<'static>(&backrun),
+                // cast_lifetime::<'static>(&cex_dex),
+                // cast_lifetime::<'static>(&backrun),
                 cast_lifetime::<'static>(&jit),
                 cast_lifetime::<'static>(&sandwich),
             ]
@@ -545,10 +545,8 @@ pub mod tests {
     #[serial_test::serial]
     pub async fn test_jit_sandwich_composition() {
         let mut composer = setup(18539312, Some(get_metadata())).await;
-        let a = composer.inspectors_execution.take().unwrap().await;
-        println!("{:#?}", a);
-        // let (mev_block, classified_mev) = composer.await;
-        // info!("{:#?}\n\n{:#?}", mev_block, classified_mev);
+        let (mev_block, classified_mev) = composer.await;
+        info!("{:#?}\n\n{:#?}", mev_block, classified_mev);
     }
 
     #[tokio::test]
