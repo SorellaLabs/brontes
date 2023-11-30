@@ -40,10 +40,10 @@ use reth_rpc_types::TransactionReceipt;
 pub trait TracingProvider: Send + Sync + 'static {
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>>;
 
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "local"))]
     fn best_block_number(&self) -> ProviderResult<u64>;
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(feature = "local")]
     async fn best_block_number(&self) -> ProviderResult<u64>;
 
     async fn replay_block_transactions(&self, block_id: BlockId)
@@ -63,12 +63,12 @@ impl TracingProvider for Provider<Http<Client>> {
         todo!()
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "local"))]
     fn best_block_number(&self) -> ProviderResult<u64> {
         todo!()
     }
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(feature = "local")]
     async fn best_block_number(&self) -> ProviderResult<u64> {
         todo!()
     }
@@ -100,12 +100,12 @@ impl TracingProvider for TracingClient {
             .block_hash_for_id(BlockId::Number(BlockNumberOrTag::Number(block_num.into())))
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "local"))]
     fn best_block_number(&self) -> ProviderResult<u64> {
         self.trace.provider().best_block_number()
     }
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(feature = "local")]
     async fn best_block_number(&self) -> ProviderResult<u64> {
         self.trace.provider().best_block_number()
     }
@@ -158,12 +158,12 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
         Self { executor, parser }
     }
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(feature = "local")]
     pub async fn get_latest_block_number(&self) -> ProviderResult<u64> {
         self.parser.tracer.best_block_number().await
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "local"))]
     pub fn get_latest_block_number(&self) -> ProviderResult<u64> {
         self.parser.tracer.best_block_number()
     }

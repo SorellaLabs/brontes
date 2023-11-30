@@ -74,5 +74,6 @@ tests = [
   "brontes-classifier/tests",
   "brontes-inspect/tests",
 ]
+local = ["brontes-core/local"]
 
 dyn-decode = ["brontes-core/dyn-decode"]
