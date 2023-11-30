@@ -26,7 +26,7 @@ const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 
 #[cfg(not(feature = "test_run"))]
-#[cfg((feature = "server"))]
+#[cfg(feature = "server")]
 const DATA_QUERY: &str = r#"
 SELECT 
 	groupArray(address) as addresses, abi, classifier_name
