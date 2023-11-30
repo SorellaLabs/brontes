@@ -1,11 +1,11 @@
 use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
 
-use reqwest::Client;
-use brontes_database::database::Database;
-use brontes_types::structured_trace::TxTrace;
 use alloy_providers::provider::Provider;
 use alloy_transport_http::Http;
+use brontes_database::database::Database;
+use brontes_types::structured_trace::TxTrace;
 use futures::Future;
+use reqwest::Client;
 use reth_interfaces::{provider::ProviderResult, RethError, RethResult};
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H160, H256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
@@ -25,7 +25,6 @@ mod dyn_decode;
 
 pub mod parser;
 mod utils;
-pub mod vm_linker;
 use brontes_metrics::{trace::types::TraceMetricEvent, PoirotMetricEvents};
 #[allow(dead_code)]
 pub(crate) const UNKNOWN: &str = "unknown";
@@ -37,7 +36,7 @@ pub(crate) const FALLBACK: &str = "fallback";
 pub(crate) const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
 pub(crate) const CACHE_DIRECTORY: &str = "./abi_cache";
 
-use reth_rpc::eth::error::EthApiError;
+use reth_rpc::eth::error::{EthApiError, EthResult};
 use reth_rpc_types::{trace::parity::TraceResultsWithTransactionHash, TransactionReceipt};
 
 #[async_trait::async_trait]
@@ -51,11 +50,8 @@ pub trait TracingProvider: Send + Sync + 'static {
     #[cfg(not(feature = "server"))]
     async fn best_block_number(&self) -> ProviderResult<u64>;
 
-    async fn replay_block_transactions(
-        &self,
-        block_id: BlockId,
-        trace_type: HashSet<TraceType>,
-    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError>;
+    async fn replay_block_transactions(&self, block_id: BlockId)
+        -> EthResult<Option<Vec<TxTrace>>>;
 
     async fn block_receipts(
         &self,
@@ -84,8 +80,7 @@ impl TracingProvider for Provider<Http<Client>> {
     async fn replay_block_transactions(
         &self,
         block_id: BlockId,
-        trace_type: HashSet<TraceType>,
-    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError> {
+    ) -> EthResult<Option<Vec<TxTrace>>> {
         todo!()
     }
 
@@ -100,7 +95,6 @@ impl TracingProvider for Provider<Http<Client>> {
         todo!()
     }
 }
-
 
 #[async_trait::async_trait]
 impl TracingProvider for TracingClient {
@@ -123,11 +117,8 @@ impl TracingProvider for TracingClient {
     async fn replay_block_transactions(
         &self,
         block_id: BlockId,
-        trace_type: HashSet<TraceType>,
-    ) -> Result<Option<Vec<TraceResultsWithTransactionHash>>, EthApiError> {
-        self.trace
-            .replay_block_transactions(block_id, trace_type)
-            .await
+    ) -> EthResult<Option<Vec<TxTrace>>> {
+        self.replay_block_transactions(block_id).await
     }
 
     async fn block_receipts(
