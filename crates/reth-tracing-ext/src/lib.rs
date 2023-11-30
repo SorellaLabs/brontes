@@ -219,6 +219,7 @@ impl TracingInspectorLocal {
             info!("trace with no nodes");
             return None
         }
+        info!("tracing tx with {} traces", self.traces.nodes().len());
 
         let mut traces = Vec::with_capacity(self.traces.nodes().len());
 
