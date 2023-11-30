@@ -1,22 +1,21 @@
 use std::{fmt::Debug, path::Path, sync::Arc};
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
-use eyre::Context;
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
-use reth_db::{database::Database, transaction::DbTx, DatabaseEnv};
+use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
 use reth_primitives::{alloy_primitives::U256, BlockId, Bytes, PruneModes, MAINNET, U64};
-use reth_provider::{providers::BlockchainProvider, ProviderFactory, TransactionsProvider};
+use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{
     inspectors::GasInspector,
     tracing::{
         types::{CallKind, CallTraceNode},
         TracingInspectorConfig, *,
     },
-    DatabaseCommit, EvmProcessorFactory,
+    EvmProcessorFactory,
 };
 use reth_rpc::{
     eth::{
@@ -36,7 +35,7 @@ use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
-use revm::{interpreter::InstructionResult, Inspector};
+use revm::interpreter::InstructionResult;
 use revm_primitives::{ExecutionResult, SpecId};
 use tokio::runtime::Handle;
 
@@ -155,21 +154,21 @@ impl TracingClient {
 #[derive(Debug, Clone)]
 pub struct TracingInspectorLocal {
     /// Configures what and how the inspector records traces.
-    pub config:                TracingInspectorConfig,
+    pub _config:                TracingInspectorConfig,
     /// Records all call traces
-    pub traces:                CallTraceArena,
+    pub traces:                 CallTraceArena,
     /// Tracks active calls
-    pub trace_stack:           Vec<usize>,
+    pub _trace_stack:           Vec<usize>,
     /// Tracks active steps
-    pub step_stack:            Vec<StackStep>,
+    pub _step_stack:            Vec<StackStep>,
     /// Tracks the return value of the last call
-    pub last_call_return_data: Option<Bytes>,
+    pub _last_call_return_data: Option<Bytes>,
     /// The gas inspector used to track remaining gas.
-    pub gas_inspector:         GasInspector,
+    pub _gas_inspector:         GasInspector,
     /// The spec id of the EVM.
     ///
     /// This is filled during execution.
-    pub spec_id:               Option<SpecId>,
+    pub _spec_id:               Option<SpecId>,
 }
 
 impl TracingInspectorLocal {
@@ -385,9 +384,9 @@ impl TracingInspectorLocal {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct StackStep {
-    trace_idx: usize,
-    step_idx:  usize,
+pub struct StackStep {
+    _trace_idx: usize,
+    _step_idx:  usize,
 }
 
 /// Opens up an existing database at the specified path.
