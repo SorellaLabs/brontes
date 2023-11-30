@@ -156,6 +156,8 @@ impl<const N: usize, T: TracingProvider> Future for Brontes<'_, N, T> {
             }
         }
 
+        info!(current_block=self.current_block, pending_block_inspectors=self.block_inspectors.len(), ?self.end_block);
+
         Poll::Pending
     }
 }
