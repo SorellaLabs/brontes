@@ -135,7 +135,7 @@ pub fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes
     // all, Debug includes all but Trace, ...)
     let verbosity_level = Level::Info; // Error >= Warn >= Info >= Debug >= Trace
-    let directive: Directive = format!("brontes={verbosity_level}").parse().unwrap();
+    let directive: Directive = format!("{verbosity_level}").parse().unwrap();
     let mut layers = vec![brontes_tracing::stdout(directive)];
 
     /*
