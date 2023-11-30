@@ -11,7 +11,8 @@ use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::database::Database;
 use brontes_inspect::{
-    atomic_backrun::AtomicBackrunInspector, sandwich::SandwichInspector, Inspector,
+    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
+    sandwich::SandwichInspector, Inspector,
 };
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
@@ -95,8 +96,11 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     let metrics_listener =
         tokio::spawn(async move { PoirotMetricsListener::new(metrics_rx).await });
 
-    let dummy_inspector = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
-    let inspectors = &[&dummy_inspector];
+    let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
+    let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
+    let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
+    let backrun = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
+    let inspectors = &[&sandwich, &cex_dex, &jit, &backrun];
 
     let db = Database::default();
 
