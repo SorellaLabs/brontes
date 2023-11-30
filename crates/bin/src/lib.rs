@@ -138,12 +138,8 @@ impl<const N: usize, T: TracingProvider> Future for Brontes<'_, N, T> {
         // And tokio's docs on cooperative scheduling <https://docs.rs/tokio/latest/tokio/task/#cooperative-scheduling>
         let mut iters = 1024;
         loop {
-            if let Some(end_block) = self.end_block {
-                if self.current_block > end_block {
-                    if self.block_inspectors.is_empty() && self.current_block > end_block {
-                        return Poll::Ready(())
-                    }
-                }
+            if Some(self.current_block) >= self.end_block && self.block_inspectors.is_empty() {
+                return Poll::Ready(())
             }
 
             if self.start_block_inspector() {
