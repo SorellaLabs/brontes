@@ -115,11 +115,15 @@ impl<V: NormalizedAction> TimeTree<V> {
             .collect()
     }
 
-    pub fn remove_duplicate_data<F, C, T, R>(&mut self, find: F, classify: C, info: T)
-    where
-        T: Fn(&Node<V>) -> R + Sync,
-        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        F: Fn(&Node<V>) -> bool + Sync,
+    pub fn remove_duplicate_data<FindActionHead, ClassifyRemovalIndex, WantedData, R>(
+        &mut self,
+        find: FindActionHead,
+        info: WantedData,
+        classify: ClassifyRemovalIndex,
+    ) where
+        WantedData: Fn(&Node<V>) -> R + Sync,
+        ClassifyRemovalIndex: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
+        FindActionHead: Fn(&Node<V>) -> bool + Sync,
     {
         self.roots
             .par_iter_mut()
