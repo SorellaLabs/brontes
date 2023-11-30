@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use brontes_database::Metadata;
 use brontes_types::{
-    normalized_actions::{Actions, NormalizedAction},
+    normalized_actions::{Actions, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
 };
