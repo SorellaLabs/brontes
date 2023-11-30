@@ -71,11 +71,9 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, handle: Handle) -> Self {
+    pub fn new(db_path: &Path, handle: Handle) -> (TaskManager, Self) {
         let task_manager = TaskManager::new(handle);
         let task_executor: reth_tasks::TaskExecutor = task_manager.executor();
-
-        tokio::task::spawn(task_manager);
 
         let chain = MAINNET.clone();
         let db = Arc::new(init_db(db_path).unwrap());
@@ -137,7 +135,7 @@ impl TracingClient {
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        Self { api, trace }
+        (task_manager, Self { api, trace })
     }
 
     /// Replays all transactions in a block
