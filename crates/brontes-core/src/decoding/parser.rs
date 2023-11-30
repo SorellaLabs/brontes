@@ -253,3 +253,32 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         (tx_trace, stats)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{str::FromStr, time::SystemTime};
+
+    use brontes_classifier::Classifier;
+    use brontes_database::database::Database;
+    use brontes_types::test_utils::write_tree_as_json;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+    use crate::{init_tracing, test_utils::init_trace_parser};
+
+    // #[cfg(feature = "dyn-decode")]
+    #[tokio::test]
+    #[serial]
+    async fn test_dyn_decode() {
+        dotenv::dotenv().ok();
+        init_tracing();
+        let block_num = 18522278;
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let (trace, stats) = tracer.trace_block(block_num).await;
+        info!("{:#?}", trace.unwrap());
+    }
+}
