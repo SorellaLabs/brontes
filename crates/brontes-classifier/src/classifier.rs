@@ -109,6 +109,7 @@ impl Classifier {
         // remove duplicate swaps
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
+            |node| (node.index, node.data.clone()),
             |other_nodes, node| {
                 let Actions::Swap(swap_data) = &node.data else { unreachable!() };
                 other_nodes
@@ -124,7 +125,6 @@ impl Classifier {
                     })
                     .collect::<Vec<_>>()
             },
-            |node| (node.index, node.data.clone()),
         );
         // // remove duplicate mints
         // tree.remove_duplicate_data(
