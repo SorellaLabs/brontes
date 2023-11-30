@@ -12,13 +12,14 @@ use reth_rpc_types::TransactionReceipt;
 #[cfg(feature = "dyn-decode")]
 mod dyn_imports {
     use std::collections::HashMap;
-    use alloy_json_abi::JsonAbi;
 
-    pub use dyn_imports::*;
+    use alloy_json_abi::JsonAbi;
     use reth_rpc_types::trace::parity::{Action, TraceResultsWithTransactionHash};
 
     use crate::{decoding::dyn_decode::decode_input_with_abi, errors::TraceParseError};
 }
+#[cfg(feature = "dyn-decode")]
+pub use dyn_imports::*;
 
 use super::*;
 
