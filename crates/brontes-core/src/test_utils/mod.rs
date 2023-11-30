@@ -3,21 +3,16 @@ use std::{env, path::Path, sync::Arc};
 use brontes_database::database::Database;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
-use dotenv::dotenv;
-use futures::future::join_all;
 use log::Level;
-use reth_primitives::{Address, B256};
+use reth_primitives::B256;
 use reth_rpc_types::{
-    trace::parity::{TraceResults, TransactionTrace, VmTrace},
+    trace::parity::{TraceResults, TransactionTrace},
     Log, TransactionReceipt,
 };
 use reth_tracing_ext::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tokio::{
-    runtime::Handle,
-    sync::mpsc::{ UnboundedSender},
-};
+use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tracing_subscriber::filter::Directive;
 
 use crate::decoding::{parser::TraceParser, TracingProvider};
