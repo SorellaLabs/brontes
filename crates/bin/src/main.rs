@@ -159,7 +159,7 @@ async fn initalize_prometheus() {
     info!("Initialized prometheus endpoint");
 }
 
-fn get_env_vars() -> Result<(String, String), Box<dyn Error>> {
+fn get_env_vars() -> Result<String, Box<dyn Error>> {
     let db_path = env::var("DB_PATH").map_err(|_| Box::new(std::env::VarError::NotPresent))?;
     info!("Found DB Path");
 

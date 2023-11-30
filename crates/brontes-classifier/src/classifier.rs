@@ -1,16 +1,12 @@
-use std::collections::{HashMap};
+use std::collections::HashMap;
 
 use brontes_database::Metadata;
 use brontes_types::{
-    normalized_actions::{
-        Actions, NormalizedAction, NormalizedBurn, NormalizedMint, NormalizedSwap,
-        NormalizedTransfer,
-    },
+    normalized_actions::{Actions, NormalizedAction},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
 };
 use hex_literal::hex;
-use itertools::Itertools;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
