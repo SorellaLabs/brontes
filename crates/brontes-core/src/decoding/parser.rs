@@ -59,7 +59,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
-            .parse_block(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
+            .fill_metadata(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
             .await;
         #[cfg(not(feature = "dyn-decode"))]
         let traces = self
@@ -84,7 +84,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             .await;
 
         let mut stats = BlockStats::new(block_num, None);
-        let trace = match parity_trace {
+        let trace = match merged_trace {
             Ok(Some(t)) => Some(t),
             Ok(None) => {
                 stats.err = Some(TraceParseErrorKind::TracesMissingBlock);
