@@ -1,24 +1,20 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use brontes_database::Metadata;
 use brontes_types::{
-    normalized_actions::{
-        Actions, NormalizedAction, NormalizedBurn, NormalizedMint, NormalizedSwap,
-        NormalizedTransfer,
-    },
+    normalized_actions::{Actions, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
 };
 use hex_literal::hex;
-use itertools::Itertools;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, H256, U256};
+use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 
 use crate::PROTOCOL_ADDRESS_MAPPING;
 
-const TRANSFER_TOPIC: H256 =
+const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 /// goes through and classifies all exchanges
@@ -109,6 +105,7 @@ impl Classifier {
         // remove duplicate swaps
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
+            |node| (node.index, node.data.clone()),
             |other_nodes, node| {
                 let Actions::Swap(swap_data) = &node.data else { unreachable!() };
                 other_nodes
@@ -124,7 +121,6 @@ impl Classifier {
                     })
                     .collect::<Vec<_>>()
             },
-            |node| (node.index, node.data.clone()),
         );
         // // remove duplicate mints
         // tree.remove_duplicate_data(
@@ -165,6 +161,11 @@ impl Classifier {
     }
 
     fn classify_node(&self, trace: TransactionTraceWithLogs, index: u64) -> Actions {
+        // we don't classify static calls
+        if trace.is_static_call() {
+            return Actions::Unclassified(trace)
+        }
+
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 

@@ -1,30 +1,21 @@
-use std::{collections::HashSet, fmt::Debug, path::Path, sync::Arc};
+use std::{fmt::Debug, path::Path, sync::Arc};
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
-use eyre::Context;
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
-use reth_db::{
-    database::Database, mdbx::tx::Tx, tables, transaction::DbTx, DatabaseEnv, DatabaseError,
-};
+use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
 use reth_primitives::{alloy_primitives::U256, BlockId, Bytes, PruneModes, MAINNET, U64};
-use reth_provider::{
-    providers::BlockchainProvider, ProviderFactory, StateProviderBox, TransactionsProvider,
-};
-use reth_revm::{
-    database::{StateProviderDatabase, SubState},
-    db::CacheDB,
-    // env::tx_env_with_recovered,
-    tracing::{types::CallTraceNode, TracingInspector, TracingInspectorConfig},
-    DatabaseCommit,
-    EvmProcessorFactory,
-};
+use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{
     inspectors::GasInspector,
-    tracing::{types::CallKind, *},
+    tracing::{
+        types::{CallKind, CallTraceNode},
+        TracingInspectorConfig, *,
+    },
+    EvmProcessorFactory,
 };
 use reth_rpc::{
     eth::{
@@ -36,21 +27,17 @@ use reth_rpc::{
     BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
 };
 use reth_rpc_types::{
-    trace::{
-        self,
-        parity::{TraceResultsWithTransactionHash, TraceType, TransactionTrace, *},
-    },
-    BlockError, Log, TransactionInfo,
+    trace::parity::{TransactionTrace, *},
+    TransactionInfo,
 };
 use reth_tasks::TaskManager;
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
-use revm::{interpreter::InstructionResult, Inspector};
+use revm::interpreter::InstructionResult;
 use revm_primitives::{ExecutionResult, SpecId};
 use tokio::runtime::Handle;
-use tracing::info;
 
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
@@ -71,11 +58,9 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, handle: Handle) -> Self {
+    pub fn new(db_path: &Path, handle: Handle) -> (TaskManager, Self) {
         let task_manager = TaskManager::new(handle);
         let task_executor: reth_tasks::TaskExecutor = task_manager.executor();
-
-        tokio::task::spawn(task_manager);
 
         let chain = MAINNET.clone();
         let db = Arc::new(init_db(db_path).unwrap());
@@ -137,7 +122,7 @@ impl TracingClient {
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        Self { api, trace }
+        (task_manager, Self { api, trace })
     }
 
     /// Replays all transactions in a block
@@ -156,7 +141,7 @@ impl TracingClient {
         };
 
         self.api
-            .trace_block_with(block_id, config, move |tx_info, inspector, res, state, db| {
+            .trace_block_with(block_id, config, move |tx_info, inspector, res, _state, _db| {
                 // this is safe as there the exact same memory layout. This is needed as we need
                 // access to the internal fields of the struct that arent public
                 let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
@@ -169,21 +154,21 @@ impl TracingClient {
 #[derive(Debug, Clone)]
 pub struct TracingInspectorLocal {
     /// Configures what and how the inspector records traces.
-    pub config:                TracingInspectorConfig,
+    pub _config:                TracingInspectorConfig,
     /// Records all call traces
-    pub traces:                CallTraceArena,
+    pub traces:                 CallTraceArena,
     /// Tracks active calls
-    pub trace_stack:           Vec<usize>,
+    pub _trace_stack:           Vec<usize>,
     /// Tracks active steps
-    pub step_stack:            Vec<StackStep>,
+    pub _step_stack:            Vec<StackStep>,
     /// Tracks the return value of the last call
-    pub last_call_return_data: Option<Bytes>,
+    pub _last_call_return_data: Option<Bytes>,
     /// The gas inspector used to track remaining gas.
-    pub gas_inspector:         GasInspector,
+    pub _gas_inspector:         GasInspector,
     /// The spec id of the EVM.
     ///
     /// This is filled during execution.
-    pub spec_id:               Option<SpecId>,
+    pub _spec_id:               Option<SpecId>,
 }
 
 impl TracingInspectorLocal {
@@ -272,8 +257,6 @@ impl TracingInspectorLocal {
                 }
             }
         }
-
-        info!(parsed_amount = traces.len());
 
         Some(traces)
     }
@@ -401,9 +384,9 @@ impl TracingInspectorLocal {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct StackStep {
-    trace_idx: usize,
-    step_idx:  usize,
+pub struct StackStep {
+    _trace_idx: usize,
+    _step_idx:  usize,
 }
 
 /// Opens up an existing database at the specified path.
