@@ -118,7 +118,7 @@ impl TracingProvider for TracingClient {
         &self,
         block_id: BlockId,
     ) -> EthResult<Option<Vec<TxTrace>>> {
-        self.replay_block_transactions(block_id)
+        self.replay_block_transactions(block_id).await
     }
 
     async fn block_receipts(

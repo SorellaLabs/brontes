@@ -219,7 +219,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         gas_used: u64,
         effective_gas_price: u64,
     ) -> (TxTrace, TransactionStats) {
-        init_trace!(tx_hash, tx_idx, tx_trace.len());
+        init_trace!(tx_hash, tx_idx, tx_trace.trace.len());
         let mut stats = TransactionStats {
             block_num,
             tx_hash,
@@ -250,7 +250,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         }
 
         stats.trace();
-        tx_trace.effective_gas_price = effective_gas_price;
+        tx_trace.effective_price= effective_gas_price;
         tx_trace.gas_used = gas_used;
 
         (tx_trace, stats)
