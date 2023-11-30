@@ -1,20 +1,15 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::database::Database;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
     PoirotMetricEvents,
 };
-use brontes_types::structured_trace::TransactionTraceWithLogs;
 use futures::future::join_all;
-use reth_primitives::{Header, H160, H256};
-use reth_rpc_types::{
-    trace::parity::{
-        Action as RethAction, CallAction as RethCallAction, TraceResultsWithTransactionHash,
-        TraceType, TransactionTrace, VmTrace,
-    },
-    Log, TransactionReceipt,
-};
+use reth_primitives::{Address, Header, B256};
+#[cfg(feature = "dyn-decode")]
+use reth_rpc_types::trace::parity::Action;
+use reth_rpc_types::TransactionReceipt;
 
 use super::*;
 #[cfg(feature = "dyn-decode")]
@@ -25,8 +20,10 @@ use crate::errors::TraceParseError;
 /// to decode each call for later analysis.
 //#[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider> {
+    #[allow(unused)]
     database:              &'db Database,
-    should_fetch:          Box<dyn Fn(&H160) -> bool + Send + Sync>,
+    #[allow(unused)]
+    should_fetch:          Box<dyn Fn(&Address) -> bool + Send + Sync>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
@@ -34,7 +31,7 @@ pub struct TraceParser<'db, T: TracingProvider> {
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
         database: &'db Database,
-        should_fetch: Box<dyn Fn(&H160) -> bool + Send + Sync>,
+        should_fetch: Box<dyn Fn(&Address) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
@@ -77,7 +74,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub(crate) async fn trace_block(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TraceResultsWithTransactionHash>>, HashMap<H160, JsonAbi>, BlockStats) {
+    ) -> (Option<Vec<TraceResultsWithTransactionHash>>, HashMap<Address, JsonAbi>, BlockStats) {
         let merged_trace = self
             .tracer
             .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num)))
@@ -104,12 +101,12 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                         .trace
                         .iter()
                         .filter_map(|inner| match &inner.action {
-                            RethAction::Call(call) => Some(call.to),
+                            Action::Call(call) => Some(call.to),
                             _ => None,
                         })
                 })
                 .filter(|addr| (self.should_fetch)(addr))
-                .collect::<Vec<H160>>();
+                .collect::<Vec<Address>>();
             self.database.get_abis(addresses).await
         } else {
             HashMap::default()
@@ -167,7 +164,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub(crate) async fn fill_metadata(
         &self,
         block_trace: Vec<TxTrace>,
-        #[cfg(feature = "dyn-decode")] dyn_json: HashMap<H160, JsonAbi>,
+        #[cfg(feature = "dyn-decode")] dyn_json: HashMap<Address, JsonAbi>,
         block_receipts: Vec<TransactionReceipt>,
         block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
@@ -212,9 +209,9 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     async fn parse_transaction(
         &self,
         mut tx_trace: TxTrace,
-        #[cfg(feature = "dyn-decode")] dyn_json: &HashMap<H160, JsonAbi>,
+        #[cfg(feature = "dyn-decode")] dyn_json: &HashMap<Address, JsonAbi>,
         block_num: u64,
-        tx_hash: H256,
+        tx_hash: B256,
         tx_idx: u64,
         gas_used: u64,
         effective_gas_price: u64,
@@ -228,13 +225,13 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             err: None,
         };
 
+        #[cfg(feature = "dyn-decode")]
         tx_trace.trace.iter_mut().for_each(|mut iter| {
             let addr = match iter.trace.action {
-                RethAction::Call(ref addr) => addr.to,
+                Action::Call(ref addr) => addr.to,
                 _ => return,
             };
 
-            #[cfg(feature = "dyn-decode")]
             if let Some(json_abi) = dyn_json.get(&addr) {
                 let decoded_calldata = decode_input_with_abi(json_abi, &iter.trace).ok().flatten();
                 iter.decoded_data = decoded_calldata;
@@ -243,8 +240,8 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
         let len = tx_trace.trace.len();
 
-        for (idx, trace) in tx_trace.trace.iter().enumerate() {
-            let mut stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
+        for idx in 0..tx_trace.trace.len() {
+            let stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
             stat.trace(len);
             stats.traces.push(stat);
         }
