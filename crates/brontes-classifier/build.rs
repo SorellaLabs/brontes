@@ -233,7 +233,8 @@ async fn run_classifier_mapping() {
 #[cfg(feature = "test_run")]
 async fn get_all_touched_addresses(start_block: u64, end_block: u64) -> HashSet<Address> {
     let db_path = env::var("DB_PATH").expect("DB_PATH not found in env");
-    let tracer = TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current());
+    let (client, tracer) = TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current());
+    tokio::spawn(client);
 
     let range = (start_block..end_block).into_iter().collect::<Vec<_>>();
     let mut res = HashSet::new();
