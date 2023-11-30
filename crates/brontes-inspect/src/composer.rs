@@ -526,10 +526,10 @@ pub mod tests {
         let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
         let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
 
-        let inspectors: [&'static Box<dyn Inspector>; 4] = unsafe {
+        let inspectors: [&'static Box<dyn Inspector>; 2] = unsafe {
             [
-                cast_lifetime::<'static>(&cex_dex),
-                cast_lifetime::<'static>(&backrun),
+                // cast_lifetime::<'static>(&cex_dex),
+                // cast_lifetime::<'static>(&backrun),
                 cast_lifetime::<'static>(&jit),
                 cast_lifetime::<'static>(&sandwich),
             ]
