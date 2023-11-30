@@ -18,7 +18,7 @@ use clap::Parser;
 use metrics_process::Collector;
 use reth_tracing_ext::TracingClient;
 use tokio::{pin, sync::mpsc::unbounded_channel};
-use tracing::{info, Level};
+use tracing::{error, info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
 mod cli;
 
@@ -42,21 +42,21 @@ fn main() {
     tracing::subscriber::set_global_default(subscriber)
         .expect("Could not set global default subscriber");
 
-    match runtime.block_on(run(runtime.handle().clone())) {
+    match runtime.block_on(run()) {
         Ok(()) => info!("SUCCESS!"),
         Err(e) => {
-            eprintln!("Error: {:?}", e);
+            error!("Error: {:?}", e);
 
             let mut source: Option<&dyn Error> = e.source();
             while let Some(err) = source {
-                eprintln!("Caused by: {:?}", err);
+                error!("Caused by: {:?}", err);
                 source = err.source();
             }
         }
     }
 }
 
-async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
+async fn run() -> Result<(), Box<dyn Error>> {
     // parse cli
     let opt = Opts::parse();
     let Commands::Brontes(command) = opt.sub;
@@ -78,7 +78,8 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
 
     let db = Database::default();
 
-    let (mut manager, tracer) = TracingClient::new(Path::new(&db_path), handle.clone());
+    let (mut manager, tracer) =
+        TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current());
 
     let parser = DParser::new(
         metrics_tx,
