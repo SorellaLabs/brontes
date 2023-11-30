@@ -14,8 +14,6 @@ use clickhouse::{Client, Row};
 use futures::{future::join_all, FutureExt};
 use hyper_tls::HttpsConnector;
 use itertools::Itertools;
-#[cfg(feature = "server")]
-use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 #[cfg(feature = "server")]
@@ -37,35 +35,14 @@ const ABI_DIRECTORY: &str = "./abis/";
 const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 
-/*
-const DATA_QUERY: &str = r#"
-SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
-FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
-GROUP BY c.abi, c.classifier_name
-HAVING abi IS NOT NULL
-"#;
-same as below
-*/
-
+#[cfg(not(feature = "test_run"))]
+#[cfg((feature = "server"))]
 const DATA_QUERY: &str = r#"
 SELECT 
 	groupArray(address) as addresses, abi, classifier_name
 FROM brontes.protocol_details
 GROUP BY abi, classifier_name
 "#;
-
-/*
-const DATA_QUERY_FILTER: &str = r#"
-SELECT arrayMap(x -> toString(x), groupArray(a.address)) as addresses, c.abi, c.classifier_name
-FROM ethereum.addresses AS a
-INNER JOIN ethereum.contracts AS c ON a.hashed_bytecode = c.hashed_bytecode WHERE a.hashed_bytecode != 'NULL'
-GROUP BY c.abi, c.classifier_name
-HAVING (abi IS NOT NULL AND hasAny(addresses, ?)) OR classifier_name != ''
-"#;
-
-same as below
-*/
 
 const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
 SELECT 
@@ -140,23 +117,8 @@ fn build_token_map(amount: i32, rows: Vec<DecodedTokens>, file: &mut File) {
 async fn run_classifier_mapping() {
     let clickhouse_client = build_db();
 
-    #[cfg(feature = "test_run")]
-    let addresses = {
-        let start_block = env::var("START_BLOCK").expect("START_BLOCK not found in env");
-        let end_block = env::var("END_BLOCK").expect("END_BLOCK not found in env");
-
-        get_all_touched_addresses(
-            u64::from_str_radix(&start_block, 10).unwrap(),
-            u64::from_str_radix(&end_block, 10).unwrap(),
-        )
-        .await
-        .into_iter()
-        .map(|addr| format!("{:?}", addr).to_lowercase())
-        .collect::<HashSet<_>>()
-    };
-
     #[cfg(feature = "server")]
-    let mut protocol_abis: Vec<ProtocolDetails> = {
+    let protocol_abis: Vec<ProtocolDetails> = {
         #[cfg(not(feature = "test_run"))]
         {
             query_db::<ProtocolDetails>(&clickhouse_client, DATA_QUERY).await
@@ -171,15 +133,14 @@ async fn run_classifier_mapping() {
         }
     };
     #[cfg(not(feature = "server"))]
-    let mut protocol_abis =
+    let protocol_abis =
         query_db::<ProtocolDetails>(&clickhouse_client, CLASSIFIED_ONLY_DATA_QUERY).await;
-    // write_test(protocol_abis.clone());
     let failed_abi_addresses = parse_filtered_addresses(FAILED_ABI_FILE);
 
     #[cfg(feature = "test_run")]
     {
         let file_path = "/home/shared/brontes/class.txt";
-        File::create(file_path);
+        File::create(file_path).unwrap();
 
         let mut file = fs::OpenOptions::new()
             .write(true)
@@ -609,14 +570,3 @@ fn to_string_vec(tokens: Vec<String>) -> String {
     res
 }
 
-fn write_test<T: std::fmt::Debug>(thing: T) {
-    let file_path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join("test_write.txt");
-
-    let mut file = fs::OpenOptions::new()
-        .append(true)
-        .read(true)
-        .open(&file_path)
-        .expect("could not open file");
-
-    file.write_all(format!("{:?}\n", thing).as_bytes()).unwrap(); // Added a newline for formatting
-}
