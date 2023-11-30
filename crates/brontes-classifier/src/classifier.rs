@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 
 use brontes_database::Metadata;
 use brontes_types::{
@@ -13,7 +13,7 @@ use hex_literal::hex;
 use itertools::Itertools;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256,  U256};
+use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 
 use crate::PROTOCOL_ADDRESS_MAPPING;

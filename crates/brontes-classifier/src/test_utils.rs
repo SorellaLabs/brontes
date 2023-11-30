@@ -1,10 +1,7 @@
-use std::collections::{HashMap, HashSet};
-
 use brontes_core::decoding::{parser::TraceParser, TracingProvider};
 use brontes_database::{database::Database, Metadata};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
-use hex_literal::hex;
-use reth_primitives::{alloy_primitives::FixedBytes, Header, H256};
+use reth_primitives::Header;
 
 use crate::Classifier;
 

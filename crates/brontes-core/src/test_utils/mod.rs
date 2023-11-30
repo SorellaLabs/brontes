@@ -126,7 +126,7 @@ pub fn init_tracing() {
     // all, Debug includes all but Trace, ...)
     let verbosity_level = Level::Info; // Error >= Warn >= Info >= Debug >= Trace
     let directive: Directive = format!("{verbosity_level}").parse().unwrap();
-    let mut layers = vec![brontes_tracing::stdout(directive)];
+    let layers = vec![brontes_tracing::stdout(directive)];
 
     /*
         make sure the first field of the macro is: 'target: "brontes"',
@@ -151,7 +151,6 @@ pub fn init_trace_parser<'a>(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
 ) -> TraceParser<'a, Box<dyn TracingProvider>> {
-    let etherscan_key = env::var("ETHERSCAN_API_KEY").expect("No ETHERSCAN_API_KEY in .env");
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
     #[cfg(feature = "local")]
