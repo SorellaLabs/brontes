@@ -81,7 +81,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
 
     fn start_block_inspector(&mut self) -> bool {
         // reached end of line
-        if self.block_inspectors.len() > self.max_tasks as usize
+        if self.block_inspectors.len() >= self.max_tasks as usize
             || Some(self.current_block) == self.end_block
         {
             return false
