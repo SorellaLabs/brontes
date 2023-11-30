@@ -253,7 +253,8 @@ mod tests {
         RelayInfo {
             relay_time:      1695258707683,
             p2p_time:        1695258708673,
-            proposer_addr:   Address::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
+            proposer_addr:   Address::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
+                .unwrap(),
             proposer_reward: 113949354337187568,
             block_hash:      B256::from_str(BLOCK_HASH).unwrap().into(),
         }
