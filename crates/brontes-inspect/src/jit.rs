@@ -83,9 +83,6 @@ impl Inspector for JitInspector {
                                         node.subactions.iter().any(|action| action.is_swap()),
                                     )
                                 })
-                                .into_iter()
-                                .flatten()
-                                .collect::<Vec<_>>(),
                             )
                         })
                         .filter(|(_, actions)| {
