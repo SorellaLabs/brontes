@@ -43,7 +43,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {
-        let mut poirot = Self {
+        let mut brontes = Self {
             current_block: init_block,
             end_block,
             chain_tip,
@@ -61,9 +61,10 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         };
 
         for _ in init_block..max_blocks {
-            poirot.spawn_block_inspector();
+            brontes.spawn_block_inspector();
         }
-        poirot
+
+        brontes
     }
 
     fn spawn_block_inspector(&mut self) {
