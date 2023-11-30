@@ -1,4 +1,3 @@
-use alloy_dyn_abi::DynSolValue;
 use reth_primitives::{Address, Bytes, H160, H256};
 use reth_rpc_types::{
     trace::parity::{Action, CallType, TransactionTrace},

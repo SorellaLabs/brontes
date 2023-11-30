@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
-use reth_primitives::{Address, Header, H256};
+use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
 
@@ -22,11 +22,11 @@ impl<V: NormalizedAction> TimeTree<V> {
         Self { roots: Vec::with_capacity(150), header, eth_prices, avg_priority_fee: 0 }
     }
 
-    pub fn get_root(&self, tx_hash: H256) -> Option<&Root<V>> {
+    pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
         self.roots.par_iter().find_any(|r| r.tx_hash == tx_hash)
     }
 
-    pub fn get_gas_details(&self, hash: H256) -> Option<&GasDetails> {
+    pub fn get_gas_details(&self, hash: B256) -> Option<&GasDetails> {
         self.roots
             .iter()
             .find(|h| h.tx_hash == hash)
@@ -55,11 +55,11 @@ impl<V: NormalizedAction> TimeTree<V> {
             .insert(node);
     }
 
-    pub fn get_hashes(&self) -> Vec<H256> {
+    pub fn get_hashes(&self) -> Vec<B256> {
         self.roots.iter().map(|r| r.tx_hash).collect()
     }
 
-    pub fn inspect<F>(&self, hash: H256, call: F) -> Vec<Vec<V>>
+    pub fn inspect<F>(&self, hash: B256, call: F) -> Vec<Vec<V>>
     where
         F: Fn(&Node<V>) -> bool,
     {
@@ -70,7 +70,7 @@ impl<V: NormalizedAction> TimeTree<V> {
         }
     }
 
-    pub fn collect<F>(&self, hash: H256, call: F) -> Vec<V>
+    pub fn collect<F>(&self, hash: B256, call: F) -> Vec<V>
     where
         F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
     {
@@ -81,7 +81,7 @@ impl<V: NormalizedAction> TimeTree<V> {
         }
     }
 
-    pub fn collect_all<F>(&self, call: F) -> HashMap<H256, Vec<V>>
+    pub fn collect_all<F>(&self, call: F) -> HashMap<B256, Vec<V>>
     where
         F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
     {
@@ -91,7 +91,7 @@ impl<V: NormalizedAction> TimeTree<V> {
             .collect()
     }
 
-    pub fn inspect_all<F>(&self, call: F) -> HashMap<H256, Vec<Vec<V>>>
+    pub fn inspect_all<F>(&self, call: F) -> HashMap<B256, Vec<Vec<V>>>
     where
         F: Fn(&Node<V>) -> bool + Send + Sync,
     {
@@ -134,7 +134,7 @@ impl<V: NormalizedAction> TimeTree<V> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node<V>,
-    pub tx_hash:     H256,
+    pub tx_hash:     B256,
     pub private:     bool,
     pub gas_details: GasDetails,
 }
