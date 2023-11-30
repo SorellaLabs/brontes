@@ -26,7 +26,7 @@ action_impl!(
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address)
+            .get(&*target_address.0)
             .copied()
             .unwrap();
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
@@ -80,7 +80,7 @@ action_impl!(
         Some(NormalizedMint {
             index,
             from: from_address,
-            recipient: H160(call_data.recipient.0 .0),
+            recipient: call_data.recipient,
             to: target_address,
             token: vec![token0, token1],
             amount: vec![token_0_delta, token_1_delta],
@@ -133,7 +133,7 @@ action_impl!(
         Some(NormalizedCollect {
             index,
             from: from_addr,
-            recipient: H160(call_data.recipient.0 .0),
+            recipient: call_data.recipient,
             to: to_addr,
             token: vec![token0, token1],
             amount: vec![U256::from(return_data.amount0), U256::from(return_data.amount1)],

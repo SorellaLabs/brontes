@@ -259,7 +259,7 @@ impl JitInspector {
 
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
-                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
+                        if let Some(victims) = possible_victims.get(prev_tx_hash) {
                             if victims.len() >= 2 {
                                 // Create
                                 set.push(PossibleJit {
@@ -344,8 +344,8 @@ impl JitInspector {
             .zip(amount.iter())
             .filter_map(|(token, amount)| {
                 Some(
-                    is_pre(metadata.token_prices.get(&token)?)
-                        * amount.to_scaled_rational(*TOKEN_TO_DECIMALS.get(&token.0)?),
+                    is_pre(metadata.token_prices.get(token)?)
+                        * amount.to_scaled_rational(*TOKEN_TO_DECIMALS.get(&token.0 .0)?),
                 )
             })
             .sum::<Rational>()

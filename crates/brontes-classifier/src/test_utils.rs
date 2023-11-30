@@ -12,14 +12,14 @@ use brontes_types::{
 use hex_literal::hex;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, Header, H256, U256};
+use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, H256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
-use reth_tracing::TracingClient;
+use reth_tracing_ext::TracingClient;
 
 use crate::{Classifier, StaticReturnBindings, PROTOCOL_ADDRESS_MAPPING};
 
 const TRANSFER_TOPIC: H256 =
-    H256(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
+    FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 pub fn helper_build_tree(
     classifier: &Classifier,

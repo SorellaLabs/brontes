@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use alloy_etherscan::errors::EtherscanError;
 use brontes_metrics::trace::types::TraceParseErrorKind;
-use ethers_core::types::H256;
+use reth_primitives::H256;
 use reth_rpc::eth::error::EthApiError;
 use thiserror::Error;
 
@@ -15,8 +14,6 @@ pub enum TraceParseError {
     TracesMissingTx(H256),
     #[error("empty input: {0}")]
     EmptyInput(H256),
-    #[error("etherscan error: {0}")]
-    EtherscanError(Arc<EtherscanError>),
     #[error("abi parse error: {0}")]
     AbiParseError(serde_json::Error),
     #[error("invalid function selector: {0}")]
@@ -29,12 +26,6 @@ pub enum TraceParseError {
     EthApiError(EthApiError),
     #[error("alloy error {0}")]
     AlloyError(alloy_dyn_abi::Error),
-}
-
-impl From<EtherscanError> for TraceParseError {
-    fn from(err: EtherscanError) -> TraceParseError {
-        TraceParseError::EtherscanError(Arc::new(err))
-    }
 }
 
 impl From<EthApiError> for TraceParseError {
@@ -98,64 +89,11 @@ impl From<&TraceParseError> for TraceParseErrorKind {
                 EthApiError::InvalidRewardPercentiles => {
                     TraceParseErrorKind::EthApiInvalidRewardPercentiles
                 }
-                EthApiError::InternalTracingError => {
-                    TraceParseErrorKind::EthApiInternalTracingError
-                }
                 EthApiError::InternalEthError => TraceParseErrorKind::EthApiInternalEthError,
                 EthApiError::InternalJsTracerError(_) => {
                     TraceParseErrorKind::EthApiInternalJsTracerError
                 }
                 _ => TraceParseErrorKind::EthApiInternalJsTracerError,
-            },
-            TraceParseError::EtherscanError(e) => match e.as_ref() {
-                EtherscanError::ChainNotSupported(_) => {
-                    TraceParseErrorKind::EtherscanChainNotSupported
-                }
-                EtherscanError::ExecutionFailed(_) => TraceParseErrorKind::EtherscanExecutionFailed,
-                EtherscanError::BalanceFailed => TraceParseErrorKind::EtherscanBalanceFailed,
-                EtherscanError::NotProxy => TraceParseErrorKind::EtherscanNotProxy,
-                EtherscanError::MissingImplementationAddress => {
-                    TraceParseErrorKind::EtherscanMissingImplementationAddress
-                }
-                EtherscanError::BlockNumberByTimestampFailed => {
-                    TraceParseErrorKind::EtherscanBlockNumberByTimestampFailed
-                }
-                EtherscanError::TransactionReceiptFailed => {
-                    TraceParseErrorKind::EtherscanTransactionReceiptFailed
-                }
-                EtherscanError::GasEstimationFailed => {
-                    TraceParseErrorKind::EtherscanGasEstimationFailed
-                }
-                EtherscanError::BadStatusCode(_) => TraceParseErrorKind::EtherscanBadStatusCode,
-                EtherscanError::EnvVarNotFound(_) => TraceParseErrorKind::EtherscanEnvVarNotFound,
-                EtherscanError::Reqwest(_) => TraceParseErrorKind::EtherscanReqwest,
-                EtherscanError::Serde(_) => TraceParseErrorKind::EtherscanSerde,
-                EtherscanError::ContractCodeNotVerified(_) => {
-                    TraceParseErrorKind::EtherscanContractCodeNotVerified
-                }
-                EtherscanError::EmptyResult { .. } => TraceParseErrorKind::EtherscanEmptyResult,
-                EtherscanError::RateLimitExceeded => {
-                    TraceParseErrorKind::EtherscanRateLimitExceeded
-                }
-                EtherscanError::IO(_) => TraceParseErrorKind::EtherscanIO,
-                EtherscanError::LocalNetworksNotSupported => {
-                    TraceParseErrorKind::EtherscanLocalNetworksNotSupported
-                }
-                EtherscanError::ErrorResponse { .. } => TraceParseErrorKind::EtherscanErrorResponse,
-                EtherscanError::Unknown(_) => TraceParseErrorKind::EtherscanUnknown,
-                EtherscanError::Builder(_) => TraceParseErrorKind::EtherscanBuilder,
-                EtherscanError::MissingSolcVersion(_) => {
-                    TraceParseErrorKind::EtherscanMissingSolcVersion
-                }
-                EtherscanError::InvalidApiKey => TraceParseErrorKind::EtherscanInvalidApiKey,
-                EtherscanError::BlockedByCloudflare => {
-                    TraceParseErrorKind::EtherscanBlockedByCloudflare
-                }
-                EtherscanError::CloudFlareSecurityChallenge => {
-                    TraceParseErrorKind::EtherscanCloudFlareSecurityChallenge
-                }
-                EtherscanError::PageNotFound => TraceParseErrorKind::EtherscanPageNotFound,
-                EtherscanError::CacheError(_) => TraceParseErrorKind::EtherscanCacheError,
             },
             TraceParseError::AbiParseError(_) => TraceParseErrorKind::AbiParseError,
             TraceParseError::InvalidFunctionSelector(_) => {

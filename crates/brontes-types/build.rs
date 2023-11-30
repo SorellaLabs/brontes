@@ -8,16 +8,16 @@ use std::{
     str::FromStr,
 };
 
-use ethers_core::types::Address;
 use hyper_tls::HttpsConnector;
-use reth_primitives::H160;
+use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Client, Row};
 use strum::Display;
 
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
 #[allow(dead_code)]
-const TOKEN_QUERIES: &str = "SELECT toString(address) AS address, decimals FROM ethereum.dex_tokens";
+const TOKEN_QUERIES: &str =
+    "SELECT toString(address) AS address, decimals FROM ethereum.dex_tokens";
 
 fn main() {
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
@@ -48,7 +48,10 @@ async fn build_token_details_map(file: &mut BufWriter<File>) {
     let rows = query_db::<TokenDetails>(&client, TOKEN_QUERIES).await;
 
     for row in rows {
-        phf_map.entry(H160::from_str(&row.address).unwrap().0, row.decimals.to_string().as_str());
+        phf_map.entry(
+            Address::from_str(&row.address).unwrap().0 .0,
+            row.decimals.to_string().as_str(),
+        );
     }
 
     writeln!(
