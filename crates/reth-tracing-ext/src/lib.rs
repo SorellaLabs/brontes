@@ -1,4 +1,5 @@
 use std::{collections::HashSet, fmt::Debug, path::Path, sync::Arc};
+use tracing::info;
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use eyre::Context;
@@ -195,7 +196,6 @@ impl TracingInspectorLocal {
             trace: trace.unwrap_or(vec![]),
             tx_hash: info.hash.unwrap(),
             gas_used,
-            // set with header,
             effective_price: 0,
             tx_index: info.index.unwrap(),
         }
@@ -216,6 +216,7 @@ impl TracingInspectorLocal {
     /// See [Self::into_trace_results_with_state] and [populate_state_diff].
     pub fn build_trace(&self, info: &TransactionInfo) -> Option<Vec<TransactionTraceWithLogs>> {
         if self.traces.nodes().is_empty() {
+            info!("trace with no nodes");
             return None
         }
 
