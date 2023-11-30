@@ -88,7 +88,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     initalize_prometheus().await;
 
     // Fetch required environment variables.
-    let (db_path, etherscan_key) = get_env_vars()?;
+    let db_path = get_env_vars()?;
 
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
@@ -117,7 +117,7 @@ async fn run(handle: tokio::runtime::Handle) -> Result<(), Box<dyn Error>> {
     #[cfg(not(feature = "server"))]
     let chain_tip = parser.get_latest_block_number().await.unwrap();
 
-    let mut brontes = Brontes::new(
+    let brontes = Brontes::new(
         command.start_block,
         command.end_block,
         chain_tip,
@@ -163,9 +163,5 @@ fn get_env_vars() -> Result<(String, String), Box<dyn Error>> {
     let db_path = env::var("DB_PATH").map_err(|_| Box::new(std::env::VarError::NotPresent))?;
     info!("Found DB Path");
 
-    let etherscan_key =
-        env::var("ETHERSCAN_API_KEY").map_err(|_| Box::new(std::env::VarError::NotPresent))?;
-    info!("Found Etherscan API Key");
-
-    Ok((db_path, etherscan_key))
+    Ok(db_path)
 }
