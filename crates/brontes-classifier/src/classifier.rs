@@ -165,10 +165,11 @@ impl Classifier {
     }
 
     fn classify_node(&self, trace: TransactionTraceWithLogs, index: u64) -> Actions {
-        // we don't classifiy static calls
+        // we don't classify static calls
         if trace.is_static_call() {
-            Actions::Unclassified(trace);
+            return Actions::Unclassified(trace)
         }
+
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
