@@ -4,12 +4,10 @@ use std::{
     sync::Arc,
 };
 
-use alloy_etherscan::Client;
 use brontes_database::database::Database;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use dotenv::dotenv;
-use ethers_core::types::Chain;
 use futures::future::join_all;
 use log::Level;
 use reqwest::Url;
@@ -18,7 +16,7 @@ use reth_rpc_types::{
     trace::parity::{TraceResults, TransactionTrace, VmTrace},
     Log, TransactionReceipt,
 };
-use reth_tracing::TracingClient;
+use reth_tracing_ext::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::{
@@ -166,22 +164,13 @@ pub fn init_trace_parser<'a>(
     let etherscan_key = env::var("ETHERSCAN_API_KEY").expect("No ETHERSCAN_API_KEY in .env");
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
-    let etherscan_client = Client::new_cached(
-        Chain::Mainnet,
-        etherscan_key,
-        Some(PathBuf::from(CACHE_DIRECTORY)),
-        CACHE_TIMEOUT,
-    )
-    .unwrap();
-
     #[cfg(feature = "local")]
     let tracer = {
         let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
         let db_port = env::var("RETH_PORT").expect("No DB port.env");
         let url = format!("{db_endpoint}:{db_port}");
-        Box::new(ethers::providers::Provider::new(ethers::providers::Http::new(
-            url.parse::<Url>().unwrap(),
-        ))) as Box<dyn TracingProvider>
+        Box::new(alloy_providers::provider::Provider::new(url).unwrap())
+            as Box<dyn TracingProvider>;
     };
 
     #[cfg(not(feature = "local"))]

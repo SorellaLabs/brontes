@@ -61,7 +61,7 @@ action_impl!(
         let log_data = log_data?;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes).copied()?;
         Some(NormalizedMint {
-            recipient: H160(call_data.to.0 .0),
+            recipient: call_data.to,
             from: from_address,
             index,
             to: target_address,
@@ -87,7 +87,7 @@ action_impl!(
         let log_data = log_data?;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&address_bytes).copied()?;
         Some(NormalizedBurn {
-            recipient: H160(call_data.to.0 .0),
+            recipient: call_data.to,
             to: target_address,
             index,
             from: from_address,

@@ -21,15 +21,12 @@ reth-beacon-consensus.workspace = true
 #reth-revm.workspace = true
 reth-interfaces.workspace = true
 reth-metrics.workspace = true
-reth-tracing.workspace = true
+reth-tracing-ext.workspace = true
 ruint = { workspace = true, features = ["primitive-types", "rlp"] }
 brontes-types.workspace = true
 brontes-metrics.workspace = true
 brontes-tracing.workspace = true
 brontes-database.workspace = true
-
-# tooling = { git = "https://github.com/SorellaLabs/tooling" }
-
 
 # async
 
@@ -40,13 +37,14 @@ async-trait.workspace = true
 alloy-sol-types.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
-alloy-etherscan.workspace = true
 alloy-dyn-abi.workspace = true
-
-# ethers
-ethers-core.workspace = true
-ethers.workspace = true
-ethers-reth.workspace = true
+alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-transport = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-networks = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
 
 # Serde 
 serde.workspace = true
@@ -79,16 +77,14 @@ brontes-core = { workspace = true, features = ["tests"] }
 
 [build-dependencies]
 tokio.workspace = true
-reth-tracing.workspace = true
+reth-tracing-ext.workspace = true
 clickhouse.workspace = true
 hyper.workspace = true
 hyper-tls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-alloy-etherscan.workspace = true
 rayon.workspace = true
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
-ethers-core.workspace = true
 phf.workspace = true
 phf_codegen.workspace = true
 dotenv.workspace = true
