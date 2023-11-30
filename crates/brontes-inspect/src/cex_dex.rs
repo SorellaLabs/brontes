@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::Metadata;
 use brontes_types::{
@@ -12,7 +12,7 @@ use rayon::{
     iter::{IntoParallelIterator, ParallelIterator},
     prelude::IntoParallelRefIterator,
 };
-use reth_primitives::{Address, H256};
+use reth_primitives::{Address, B256};
 use tracing::error;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
@@ -57,7 +57,7 @@ impl Inspector for CexDexInspector {
 impl CexDexInspector {
     fn process_swaps(
         &self,
-        hash: H256,
+        hash: B256,
         mev_contract: Address,
         eoa: Address,
         metadata: Arc<Metadata>,
@@ -349,7 +349,7 @@ mod tests {
 
         // assert!(
         //     mev[0].0.tx_hash
-        //         == H256::from_str(
+        //         == B256::from_str(
         //
         // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
         //         )
@@ -436,7 +436,7 @@ mod tests {
             mempool_flow:           {
                 let mut private = HashSet::new();
                 private.insert(
-                    H256::from_str(
+                    B256::from_str(
                         "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
                     )
                     .unwrap(),
@@ -516,7 +516,7 @@ mod tests {
             mempool_flow:           {
                 let mut private = HashSet::new();
                 private.insert(
-                    H256::from_str(
+                    B256::from_str(
                         "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
                     )
                     .unwrap(),

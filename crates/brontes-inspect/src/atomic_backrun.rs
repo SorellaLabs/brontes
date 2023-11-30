@@ -9,8 +9,7 @@ use brontes_types::{
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, H256};
-use tracing::error;
+use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
@@ -57,7 +56,7 @@ impl Inspector for AtomicBackrunInspector {
 impl AtomicBackrunInspector {
     fn process_swaps(
         &self,
-        tx_hash: H256,
+        tx_hash: B256,
         eoa: Address,
         mev_contract: Address,
         metadata: Arc<Metadata>,
@@ -169,7 +168,7 @@ mod tests {
 
         // assert!(
         //     mev[0].0.tx_hash
-        //         == H256::from_str(
+        //         == B256::from_str(
         //
         // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
         //         )
