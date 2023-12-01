@@ -12,18 +12,18 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::Rational;
-use reth_primitives::{Address, H160, H256, U256};
-use tracing::{debug, info};
+use reth_primitives::{Address, B256, U256};
+use tracing::info;
 
 use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
 
 #[derive(Debug)]
 struct PossibleJit {
     pub eoa:                   Address,
-    pub frontrun_tx:           H256,
-    pub backrun_tx:            H256,
+    pub frontrun_tx:           B256,
+    pub backrun_tx:            B256,
     pub mev_executor_contract: Address,
-    pub victims:               Vec<H256>,
+    pub victims:               Vec<B256>,
 }
 #[derive(Default)]
 pub struct JitInspector;
@@ -79,7 +79,7 @@ impl Inspector for JitInspector {
 
                     // grab all victim swaps dropping swaps that don't touch addresses with
                     // liquidity deltas
-                    let (victims, victim_actions): (Vec<H256>, Vec<Vec<Actions>>) = victims
+                    let (victims, victim_actions): (Vec<B256>, Vec<Vec<Actions>>) = victims
                         .iter()
                         .map(|victim| {
                             (
@@ -129,11 +129,11 @@ impl JitInspector {
         eoa: Address,
         mev_addr: Address,
         metadata: Arc<Metadata>,
-        txes: [H256; 2],
+        txes: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,
         // victim
-        victim_txs: Vec<H256>,
+        victim_txs: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
@@ -165,10 +165,6 @@ impl JitInspector {
 
         let (mint_pre, mint_post) = self.get_total_pricing(
             mints.iter().map(|mint| (&mint.token, &mint.amount)),
-            metadata.clone(),
-        );
-        let (burn_pre, burn_post) = self.get_total_pricing(
-            burns.iter().map(|burn| (&burn.token, &burn.amount)),
             metadata.clone(),
         );
 
@@ -254,8 +250,8 @@ impl JitInspector {
         }
 
         let mut set: Vec<PossibleJit> = Vec::new();
-        let mut duplicate_senders: HashMap<Address, Vec<H256>> = HashMap::new();
-        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
+        let mut duplicate_senders: HashMap<Address, Vec<B256>> = HashMap::new();
+        let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
 
         for root in iter {
             match duplicate_senders.entry(root.head.address) {
@@ -326,7 +322,7 @@ impl JitInspector {
 
     fn get_total_pricing<'a>(
         &self,
-        iter: impl Iterator<Item = (&'a Vec<H160>, &'a Vec<U256>)>,
+        iter: impl Iterator<Item = (&'a Vec<Address>, &'a Vec<U256>)>,
         metadata: Arc<Metadata>,
     ) -> (Rational, Rational) {
         let (pre, post): (Vec<_>, Vec<_>) = iter
@@ -343,7 +339,7 @@ impl JitInspector {
     fn get_liquidity_price(
         &self,
         metadata: Arc<Metadata>,
-        token: &Vec<H160>,
+        token: &Vec<Address>,
         amount: &Vec<U256>,
         is_pre: impl Fn(&(Rational, Rational)) -> &Rational,
     ) -> Rational {
@@ -443,7 +439,7 @@ mod tests {
             mempool_flow:           {
                 let mut private = HashSet::new();
                 private.insert(
-                    H256::from_str(
+                    B256::from_str(
                         "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
                     )
                     .unwrap(),
@@ -486,7 +482,7 @@ mod tests {
 
         // assert!(
         //     mev[0].0.tx_hash
-        //         == H256::from_str(
+        //         == B256::from_str(
         //
         // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
         //         )

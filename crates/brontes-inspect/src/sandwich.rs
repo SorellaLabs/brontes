@@ -12,8 +12,8 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::{Address, H160, H256};
-use tracing::{error, info};
+use reth_primitives::{Address, B256};
+use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
@@ -25,10 +25,10 @@ pub struct SandwichInspector {
 #[derive(Debug)]
 pub struct PossibleSandwich {
     eoa:                   Address,
-    tx0:                   H256,
-    tx1:                   H256,
+    tx0:                   B256,
+    tx1:                   B256,
     mev_executor_contract: Address,
-    victims:               Vec<H256>,
+    victims:               Vec<B256>,
 }
 
 #[async_trait::async_trait]
@@ -96,11 +96,11 @@ impl SandwichInspector {
         eoa: Address,
         mev_executor_contract: Address,
         metadata: Arc<Metadata>,
-        txes: [H256; 2],
+        txes: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
         mut searcher_actions: Vec<Vec<Actions>>,
         // victim
-        victim_txes: Vec<H256>,
+        victim_txes: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
@@ -110,7 +110,7 @@ impl SandwichInspector {
 
         let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
 
-        let appearance_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_deltas(
+        let appearance_usd_deltas: HashMap<Address, Rational> = self.inner.get_best_usd_deltas(
             deltas.clone(),
             metadata.clone(),
             Box::new(|(appearance, _)| appearance),
@@ -122,7 +122,7 @@ impl SandwichInspector {
 
         let mev_collectors = appearance_usd_deltas.keys().copied().collect();
 
-        let finalized_usd_deltas: HashMap<H160, Rational> = self.inner.get_best_usd_deltas(
+        let finalized_usd_deltas: HashMap<Address, Rational> = self.inner.get_best_usd_deltas(
             deltas,
             metadata.clone(),
             Box::new(|(_, finalized)| finalized),
@@ -299,8 +299,8 @@ impl SandwichInspector {
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
-        let mut duplicate_senders: HashMap<Address, Vec<H256>> = HashMap::new();
-        let mut possible_victims: HashMap<H256, Vec<H256>> = HashMap::new();
+        let mut duplicate_senders: HashMap<Address, Vec<B256>> = HashMap::new();
+        let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
 
         for root in iter {
             match duplicate_senders.entry(root.head.address) {
@@ -390,7 +390,7 @@ mod tests {
 
         // assert!(
         //     mev[0].0.tx_hash
-        //         == H256::from_str(
+        //         == B256::from_str(
         //
         // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
         //         )
@@ -460,7 +460,7 @@ mod tests {
             mempool_flow:           {
                 let mut private = HashSet::new();
                 private.insert(
-                    H256::from_str(
+                    B256::from_str(
                         "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
                     )
                     .unwrap(),
@@ -501,7 +501,7 @@ mod tests {
 
     fn test_process_sandwich() {
         // let expected_sandwich = Sandwich {
-        //     frontrun_tx_hash: H256::from_str(
+        //     frontrun_tx_hash: B256::from_str(
         //         "0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5",
         //     )
         //     .unwrap(),
@@ -513,41 +513,41 @@ mod tests {
         //     },
         //     frontrun_swaps_index: 0,
         //     frontrun_swaps_from: vec![
-        //         H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").
-        // unwrap()     ],
+        //         Address::from_str("
+        // 0xcc2687c14915fd68226ccf388842515739a739bd"). unwrap()     ],
         //     frontrun_swaps_pool: vec![
-        //         H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").
-        // unwrap()     ],
-        //     frontrun_swaps_token_in: vec![H160::from_str(
+        //         Address::from_str("
+        // 0xde55ec8002d6a3480be27e0b9755ef987ad6e151"). unwrap()     ],
+        //     frontrun_swaps_token_in: vec![Address::from_str(
         //         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         //     )
         //     .unwrap()],
-        //     frontrun_swaps_token_out: vec![H160::from_str(
+        //     frontrun_swaps_token_out: vec![Address::from_str(
         //         "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
         //     )
         //     .unwrap()],
         //     frontrun_swaps_amount_in: vec![454788265862552718],
         //     frontrun_swaps_amount_out: vec![111888798809177],
-        //     victim_tx_hashes: vec![H256::from_str(
+        //     victim_tx_hashes: vec![B256::from_str(
         //         "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
         //     )
         //     .unwrap()],
-        //     victim_swaps_tx_hash: vec![H256::from_str(
+        //     victim_swaps_tx_hash: vec![B256::from_str(
         //         "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
         //     )
         //     .unwrap()],
         //     victim_swaps_index: vec![1],
         //     victim_swaps_from: vec![
-        //         H160::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").
-        // unwrap()     ],
+        //         Address::from_str("
+        // 0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad"). unwrap()     ],
         //     victim_swaps_pool: vec![
-        //         H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").
-        // unwrap()     ],
-        //     victim_swaps_token_in: vec![H160::from_str(
+        //         Address::from_str("
+        // 0xde55ec8002d6a3480be27e0b9755ef987ad6e151"). unwrap()     ],
+        //     victim_swaps_token_in: vec![Address::from_str(
         //         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         //     )
         //     .unwrap()],
-        //     victim_swaps_token_out: vec![H160::from_str(
+        //     victim_swaps_token_out: vec![Address::from_str(
         //         "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
         //     )
         //     .unwrap()],
@@ -557,7 +557,7 @@ mod tests {
         //     victim_gas_details_priority_fee: vec![100000000],
         //     victim_gas_details_gas_used: vec![100073],
         //     victim_gas_details_effective_gas_price: vec![18990569622],
-        //     backrun_tx_hash: H256::from_str(
+        //     backrun_tx_hash: B256::from_str(
         //         "0x4479723b447600b2d577bf02bd409efab249985840463c8f7088e6b5a724c667",
         //     )
         //     .unwrap(),
@@ -569,16 +569,16 @@ mod tests {
         //     },
         //     backrun_swaps_index: 2,
         //     backrun_swaps_from: vec![
-        //         H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").
-        // unwrap()     ],
+        //         Address::from_str("
+        // 0xcc2687c14915fd68226ccf388842515739a739bd"). unwrap()     ],
         //     backrun_swaps_pool: vec![
-        //         H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").
-        // unwrap()     ],
-        //     backrun_swaps_token_in: vec![H160::from_str(
+        //         Address::from_str("
+        // 0xde55ec8002d6a3480be27e0b9755ef987ad6e151"). unwrap()     ],
+        //     backrun_swaps_token_in: vec![Address::from_str(
         //         "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
         //     )
         //     .unwrap()],
-        //     backrun_swaps_token_out: vec![H160::from_str(
+        //     backrun_swaps_token_out: vec![Address::from_str(
         //         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         //     )
         //     .unwrap()],

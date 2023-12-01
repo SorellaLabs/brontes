@@ -1,13 +1,9 @@
-use reth_primitives::Address;
 use reth_rpc_types::trace::parity::{
     CallAction, TraceResultsWithTransactionHash, TransactionTrace,
 };
 use sorella_db_databases::ClickhouseClient;
 
-use crate::{
-    normalized_actions::Actions,
-    tree::{Node, TimeTree},
-};
+use crate::{normalized_actions::Actions, tree::TimeTree};
 
 pub fn spawn_db() -> ClickhouseClient {
     ClickhouseClient::default()

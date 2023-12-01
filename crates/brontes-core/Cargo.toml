@@ -37,7 +37,7 @@ async-trait.workspace = true
 alloy-sol-types.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
-alloy-dyn-abi.workspace = true
+alloy-dyn-abi = { workspace = true, features = ["default"] }
 alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-transport = { git = "https://github.com/alloy-rs/alloy.git" }
@@ -75,6 +75,7 @@ dotenv.workspace = true
 serial_test.workspace = true
 brontes-core = { workspace = true, features = ["tests"] }
 
+
 [build-dependencies]
 tokio.workspace = true
 reth-tracing-ext.workspace = true
@@ -96,8 +97,6 @@ itertools.workspace = true
 
 [features]
 default = []
-test_run = ["server"]
 dyn-decode = []
 tests = []
-server = []
 local = []
