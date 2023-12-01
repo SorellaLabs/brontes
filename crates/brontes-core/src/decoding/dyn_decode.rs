@@ -101,57 +101,46 @@ fn decode_params(
     output: &mut Vec<DecodedParams>,
 ) {
     match sol_value {
-        /// A boolean.
         DynSolValue::Bool(bool) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Bool.sol_type_name().to_string(),
             value:      bool.to_string(),
         }),
-        /// A signed integer.
         DynSolValue::Int(i, size) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Int(size).to_string(),
             value:      i.to_string(),
         }),
-        /// An unsigned integer.
         DynSolValue::Uint(i, size) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Uint(size).to_string(),
             value:      i.to_string(),
         }),
-        /// A fixed-length byte string.
         DynSolValue::FixedBytes(word, size) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::FixedBytes(size).to_string(),
             value:      word.to_string(),
         }),
-        /// An address.
         DynSolValue::Address(address) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Address.to_string(),
             value:      format!("{:?}", address),
         }),
-        /// A function pointer.
         DynSolValue::Function(function) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Function.to_string(),
             value:      function.to_string(),
         }),
-
-        /// A dynamic-length byte array.
         DynSolValue::Bytes(bytes) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Bytes.to_string(),
             value:      alloy_primitives::Bytes::from(bytes).to_string(),
         }),
-        /// A string.
         DynSolValue::String(string) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::String.to_string(),
             value:      string,
         }),
-
-        /// A dynamically-sized array of values.
         DynSolValue::Array(ref array) => {
             let string_val = value_parse(array, false);
             let type_name = sol_value.sol_type_name().unwrap().to_string();
@@ -161,7 +150,6 @@ fn decode_params(
                 value:      string_val,
             })
         }
-        /// A fixed-size array of values.
         DynSolValue::FixedArray(ref fixed_array) => {
             let string_val = value_parse(fixed_array, false);
             let type_name = sol_value.sol_type_name().unwrap().to_string();
@@ -171,7 +159,6 @@ fn decode_params(
                 value:      string_val,
             })
         }
-        /// A tuple of values.
         DynSolValue::Tuple(ref tuple) => {
             let string_val = value_parse(tuple, true);
             let type_name = sol_value.sol_type_name().unwrap().to_string();
@@ -181,6 +168,7 @@ fn decode_params(
                 value:      string_val,
             })
         }
+        DynSolValue::CustomStruct { .. } => unreachable!("only eip-712"),
     }
 }
 
@@ -201,6 +189,7 @@ fn value_parse(sol_value: &[DynSolValue], tuple: bool) -> String {
             DynSolValue::Tuple(t) => value_parse(&t, true),
             DynSolValue::Array(a) => value_parse(&a, false),
             DynSolValue::FixedArray(a) => value_parse(&a, false),
+            DynSolValue::CustomStruct { .. } => unreachable!("only eip-712"),
         })
         .fold(ty, |a, b| a + "," + &b);
 
