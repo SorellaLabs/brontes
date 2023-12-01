@@ -11,7 +11,7 @@ use alloy_json_abi::JsonAbi;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use futures::future::join_all;
 use malachite::Rational;
-use reth_primitives::{Address, TxHash, H160};
+use reth_primitives::{Address, TxHash};
 use sorella_db_databases::{
     clickhouse::{ClickhouseClient, Credentials},
     config::ClickhouseConfig,
@@ -55,7 +55,7 @@ impl Database {
 
         // eth price is in cex_prices
         let eth_prices = cex_prices
-            .get(&H160::from_str(WETH_ADDRESS).unwrap())
+            .get(&Address::from_str(WETH_ADDRESS).unwrap())
             .unwrap_or(&(Default::default(), Default::default()))
             .clone();
         // = cex_prices.get("ETH").unwrap();
@@ -117,20 +117,21 @@ impl Database {
             .collect()
     }
 
-    async fn get_private_flow(&self, block_num: u64) -> HashSet<TxHash> {
-        let private_txs = self
-            .client
-            .query_all_params::<u64, String>(PRIVATE_FLOW, vec![block_num])
-            .await
-            .unwrap();
+    /*
+       async fn get_private_flow(&self, block_num: u64) -> HashSet<TxHash> {
+           let private_txs = self
+               .client
+               .query_all_params::<u64, String>(PRIVATE_FLOW, vec![block_num])
+               .await
+               .unwrap();
 
-        private_txs
-            .into_iter()
-            .map(|tx| TxHash::from_str(&tx).unwrap())
-            .collect::<HashSet<TxHash>>()
-    }
-
-    async fn get_times_flow_info(&self, block_num: u64) -> RelayInfo {
+           private_txs
+               .into_iter()
+               .map(|tx| TxHash::from_str(&tx).unwrap())
+               .collect::<HashSet<TxHash>>()
+       }
+    */
+    async fn get_times_flow_info(&self, block_num: u64) -> TimesFlow {
         let val: TimesFlowDB = self
             .client
             .query_one_params(TIMES_FLOW, vec![block_num])
@@ -151,11 +152,15 @@ impl Database {
             .unwrap();
 
         let token_prices = prices
+            .token_prices
             .into_iter()
             .map(|(address, (relay_price, p2p_price))| {
                 (
-                    Address::from_str(address),
-                    (Rational::try_from(price0).unwrap(), Rational::try_from(price1).unwrap()),
+                    Address::from_str(&address).unwrap(),
+                    (
+                        Rational::try_from(relay_price).unwrap(),
+                        Rational::try_from(p2p_price).unwrap(),
+                    ),
                 )
             })
             .collect::<HashMap<Address, (Rational, Rational)>>();
@@ -181,60 +186,60 @@ fn mev_table_type(mev: &Box<dyn SpecificMev>) -> String {
 mod tests {
 
     use dotenv::dotenv;
-    use reth_primitives::{H160, H256};
+    use reth_primitives::{Address, B256};
 
     use super::*;
 
     const BLOCK_NUMBER: u64 = 18180900;
     const BLOCK_HASH: &str = "0x2c6bb65135fd200b7bb92fc9e63017d26a61a34d8ccdb6f6a501dc73bc32ce41";
 
-    fn expected_private_flow() -> HashSet<H256> {
+    fn expected_private_flow() -> HashSet<B256> {
         let set = vec![
-            H256::from_str("0x6343399486888e07485ea91f1096b55f5508767df88d928376094318a346bc81")
+            B256::from_str("0x6343399486888e07485ea91f1096b55f5508767df88d928376094318a346bc81")
                 .unwrap(),
-            H256::from_str("0x4ca5bf9ace6088f1c58cd5a0bbf5830864c4c344b39046ad288775e7e94e58de")
+            B256::from_str("0x4ca5bf9ace6088f1c58cd5a0bbf5830864c4c344b39046ad288775e7e94e58de")
                 .unwrap(),
-            H256::from_str("0xd328a2afe816f680c495545373fb2d739829c56c88714e9f34326e73ccfe54f2")
+            B256::from_str("0xd328a2afe816f680c495545373fb2d739829c56c88714e9f34326e73ccfe54f2")
                 .unwrap(),
-            H256::from_str("0x94fee12653f619bb8c7fcec60eb995d50c7430f497583acb45486362973ab1d3")
+            B256::from_str("0x94fee12653f619bb8c7fcec60eb995d50c7430f497583acb45486362973ab1d3")
                 .unwrap(),
-            H256::from_str("0xc78bf07b9b7b43058e11bb0da08ca29cc9143374aec3a129bef08007f1204477")
+            B256::from_str("0xc78bf07b9b7b43058e11bb0da08ca29cc9143374aec3a129bef08007f1204477")
                 .unwrap(),
-            H256::from_str("0xa8cacf2de6e06b83372bf8e1e5264df28d1b810125e6b124cf7a95dfabaeda16")
+            B256::from_str("0xa8cacf2de6e06b83372bf8e1e5264df28d1b810125e6b124cf7a95dfabaeda16")
                 .unwrap(),
-            H256::from_str("0x89f1c8ae2820654dd03735802f85114f910b3cb63ec8e7408c5464588097a7b4")
+            B256::from_str("0x89f1c8ae2820654dd03735802f85114f910b3cb63ec8e7408c5464588097a7b4")
                 .unwrap(),
-            H256::from_str("0x95b67f167abb03b585c2aedb636843797fd02511449dd614a15a772840a3d039")
+            B256::from_str("0x95b67f167abb03b585c2aedb636843797fd02511449dd614a15a772840a3d039")
                 .unwrap(),
-            H256::from_str("0xb1e92797d49c003f4ee933dd4529ee63568057243ee0dbc4c3ff9f1eb58d6f95")
+            B256::from_str("0xb1e92797d49c003f4ee933dd4529ee63568057243ee0dbc4c3ff9f1eb58d6f95")
                 .unwrap(),
-            H256::from_str("0x75a9c74e6e50adf5debf2e83254d0da58314eb07eefc2ae25718df66b480bb6f")
+            B256::from_str("0x75a9c74e6e50adf5debf2e83254d0da58314eb07eefc2ae25718df66b480bb6f")
                 .unwrap(),
-            H256::from_str("0xdab644a36ffbcdbba36f4950db373ea7377d3a6204a639561e2a1f9a59cbef3f")
+            B256::from_str("0xdab644a36ffbcdbba36f4950db373ea7377d3a6204a639561e2a1f9a59cbef3f")
                 .unwrap(),
-            H256::from_str("0x2d43c26e7e7d01cd5e139e710467fb1045ae5d5a5be4bfbaa4b0dee07bdb5edb")
+            B256::from_str("0x2d43c26e7e7d01cd5e139e710467fb1045ae5d5a5be4bfbaa4b0dee07bdb5edb")
                 .unwrap(),
-            H256::from_str("0xd79a2c1b9dd8d55ea05eb3653c572c827951fb40f52ff7562801a8b8cca484e0")
+            B256::from_str("0xd79a2c1b9dd8d55ea05eb3653c572c827951fb40f52ff7562801a8b8cca484e0")
                 .unwrap(),
-            H256::from_str("0x17eb3b75fbf381ac2ef8840763c93363b962255660568194b8da5f6c7aefdc3c")
+            B256::from_str("0x17eb3b75fbf381ac2ef8840763c93363b962255660568194b8da5f6c7aefdc3c")
                 .unwrap(),
-            H256::from_str("0xf95dfb7950d6cf3cf4aa342239d823d2e77916baf48100bb961d2dfaea63cd49")
+            B256::from_str("0xf95dfb7950d6cf3cf4aa342239d823d2e77916baf48100bb961d2dfaea63cd49")
                 .unwrap(),
-            H256::from_str("0xf5de99a8d45aa1b65138b62ed7f77de75efac2d934b6903a3a3927ae4fa9d252")
+            B256::from_str("0xf5de99a8d45aa1b65138b62ed7f77de75efac2d934b6903a3a3927ae4fa9d252")
                 .unwrap(),
-            H256::from_str("0xce29f9146afd9e954c0f60b0b05b6ede02b73df6512ff0977fb748c72a1ffebd")
+            B256::from_str("0xce29f9146afd9e954c0f60b0b05b6ede02b73df6512ff0977fb748c72a1ffebd")
                 .unwrap(),
-            H256::from_str("0xf4e4b9faf3801718b9f1a95ec39970b1831c6efd3dd57c14cbfd77a1e9595802")
+            B256::from_str("0xf4e4b9faf3801718b9f1a95ec39970b1831c6efd3dd57c14cbfd77a1e9595802")
                 .unwrap(),
-            H256::from_str("0xf1b1ab5fcd494071a41764a3847542dfa94251dd81909ea2525a29038d887d5f")
+            B256::from_str("0xf1b1ab5fcd494071a41764a3847542dfa94251dd81909ea2525a29038d887d5f")
                 .unwrap(),
-            H256::from_str("0xbf8c489f02b769046452abae13a6d24d2793f0a098937c2db9f71828f0254b81")
+            B256::from_str("0xbf8c489f02b769046452abae13a6d24d2793f0a098937c2db9f71828f0254b81")
                 .unwrap(),
-            H256::from_str("0x9f18e09fd33378e75f5266b70201d0a7e63d8e7759c571c0a1fe5b3acc83ed7a")
+            B256::from_str("0x9f18e09fd33378e75f5266b70201d0a7e63d8e7759c571c0a1fe5b3acc83ed7a")
                 .unwrap(),
-            H256::from_str("0xf7adf7b12196f424b5845b8a56701b06bc8a7f06ed53aa455e41b05b3a4f4a94")
+            B256::from_str("0xf7adf7b12196f424b5845b8a56701b06bc8a7f06ed53aa455e41b05b3a4f4a94")
                 .unwrap(),
-            H256::from_str("0x18484a968cac9ea2dfb9d357d7e14642f474ebfaa447d4812488ae77af6f61e4")
+            B256::from_str("0x18484a968cac9ea2dfb9d357d7e14642f474ebfaa447d4812488ae77af6f61e4")
                 .unwrap(),
         ];
 
@@ -245,29 +250,30 @@ mod tests {
         RelayInfo {
             relay_time:      1695258707683,
             p2p_time:        1695258708673,
-            proposer_addr:   H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297").unwrap(),
+            proposer_addr:   Address::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
+                .unwrap(),
             proposer_reward: 113949354337187568,
-            block_hash:      H256::from_str(BLOCK_HASH).unwrap().into(),
+            block_hash:      B256::from_str(BLOCK_HASH).unwrap().into(),
         }
     }
 
     fn expected_metadata(cex_prices: HashMap<Address, (Rational, Rational)>) -> Metadata {
         let mut cex_prices = cex_prices.clone();
         let eth_prices = &cex_prices
-            .get(&H160::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
+            .get(&Address::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
             .unwrap()
             .clone();
 
         cex_prices
-            .remove(&H160::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
+            .remove(&Address::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
             .unwrap();
 
         Metadata {
             block_num:              BLOCK_NUMBER,
-            block_hash:             H256::from_str(BLOCK_HASH).unwrap().into(),
+            block_hash:             B256::from_str(BLOCK_HASH).unwrap().into(),
             relay_timestamp:        1695258707683,
             p2p_timestamp:          1695258708673,
-            proposer_fee_recipient: H160::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
+            proposer_fee_recipient: Address::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
             proposer_mev_reward:    113949354337187568,
             token_prices:           cex_prices.clone(),
@@ -312,7 +318,7 @@ mod tests {
         let cex_prices = db.get_cex_prices(1695258707683, 1695258708673).await;
 
         let real_prices = cex_prices
-            .get(&H160::from_str("5cf04716ba20127f1e2297addcf4b5035000c9eb").unwrap())
+            .get(&Address::from_str("5cf04716ba20127f1e2297addcf4b5035000c9eb").unwrap())
             .unwrap()
             .clone();
         let queried_prices =
@@ -320,7 +326,7 @@ mod tests {
         assert_eq!(real_prices, queried_prices);
 
         let real_prices = cex_prices
-            .get(&H160::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
+            .get(&Address::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
             .unwrap()
             .clone();
         let queried_prices =

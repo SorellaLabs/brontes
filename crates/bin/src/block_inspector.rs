@@ -127,6 +127,7 @@ impl<const N: usize, T: TracingProvider> Future for BlockInspector<'_, N, T> {
             && !self.composer.is_processing()
             && self.insertion_future.is_none()
         {
+            info!(block_number = self.block_number, "finished inspecting block");
             Poll::Ready(())
         } else {
             Poll::Pending
