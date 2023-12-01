@@ -21,9 +21,9 @@ use sorella_db_databases::{
 };
 use tracing::error;
 
-use self::types::{Abis, DBTokenPrices, DBTokenPricesDB, RelayInfo};
+use self::types::{Abis, DBTokenPrices, TimesFlow, TokenPricesTimeDB};
 use super::Metadata;
-use crate::database::{const_sql::*, types::RelayInfoDB};
+use crate::database::{const_sql::*, types::TimesFlowDB};
 
 const WETH_ADDRESS: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 
@@ -48,10 +48,9 @@ impl Database {
     }
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {
-        let private_flow = self.get_private_flow(block_num).await;
-        let relay_data = self.get_relay_info(block_num).await;
+        let times_flow = self.get_times_flow_info(block_num).await;
         let cex_prices = self
-            .get_cex_prices(relay_data.relay_time, relay_data.p2p_time)
+            .get_token_prices(times_flow.relay_time, times_flow.p2p_time)
             .await;
 
         // eth price is in cex_prices
@@ -64,14 +63,14 @@ impl Database {
 
         let metadata = Metadata::new(
             block_num,
-            relay_data.block_hash.into(),
-            relay_data.relay_time,
-            relay_data.p2p_time,
-            relay_data.proposer_addr,
-            relay_data.proposer_reward,
+            times_flow.block_hash.into(),
+            times_flow.relay_time,
+            times_flow.p2p_time,
+            times_flow.proposer_addr,
+            times_flow.proposer_reward,
             cex_prices,
             eth_prices,
-            private_flow,
+            times_flow.private_flow,
         );
 
         metadata
@@ -131,39 +130,32 @@ impl Database {
             .collect::<HashSet<TxHash>>()
     }
 
-    async fn get_relay_info(&self, block_num: u64) -> RelayInfo {
-        let val: RelayInfoDB = self
+    async fn get_times_flow_info(&self, block_num: u64) -> RelayInfo {
+        let val: TimesFlowDB = self
             .client
-            .query_one_params(RELAY_P2P_TIMES, vec![block_num])
+            .query_one_params(TIMES_FLOW, vec![block_num])
             .await
             .unwrap();
         val.into()
     }
 
-    async fn get_cex_prices(
+    async fn get_token_prices(
         &self,
         relay_time: u64,
         p2p_time: u64,
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
-            .query_all_params::<u64, DBTokenPricesDB>(
-                PRICES,
-                vec![relay_time, relay_time, p2p_time, p2p_time],
-            )
+            .query_one_params::<u64, TokenPricesTimeDB>(PRICES, vec![relay_time, p2p_time])
             .await
             .unwrap();
 
         let token_prices = prices
             .into_iter()
-            .map(|r| {
-                let row: DBTokenPrices = r.into();
+            .map(|(address, (relay_price, p2p_price))| {
                 (
-                    row.address,
-                    (
-                        Rational::try_from(row.price0).unwrap(),
-                        Rational::try_from(row.price1).unwrap(),
-                    ),
+                    Address::from_str(address),
+                    (Rational::try_from(price0).unwrap(), Rational::try_from(price1).unwrap()),
                 )
             })
             .collect::<HashMap<Address, (Rational, Rational)>>();
