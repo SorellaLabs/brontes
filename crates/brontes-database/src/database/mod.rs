@@ -2,16 +2,13 @@ pub mod const_sql;
 pub mod errors;
 pub mod types;
 
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::{collections::HashMap, str::FromStr};
 
 use alloy_json_abi::JsonAbi;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use futures::future::join_all;
 use malachite::Rational;
-use reth_primitives::{Address, TxHash};
+use reth_primitives::Address;
 use sorella_db_databases::{
     clickhouse::{ClickhouseClient, Credentials},
     config::ClickhouseConfig,
@@ -21,9 +18,9 @@ use sorella_db_databases::{
 };
 use tracing::error;
 
-use self::types::{Abis, DBTokenPrices, DBTokenPricesDB, RelayInfo};
+use self::types::{Abis, DBTokenPrices, TimesFlow, TokenPricesTimeDB};
 use super::Metadata;
-use crate::database::{const_sql::*, types::RelayInfoDB};
+use crate::database::{const_sql::*, types::TimesFlowDB};
 
 const WETH_ADDRESS: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 
@@ -48,10 +45,9 @@ impl Database {
     }
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {
-        let private_flow = self.get_private_flow(block_num).await;
-        let relay_data = self.get_relay_info(block_num).await;
+        let times_flow = self.get_times_flow_info(block_num).await;
         let cex_prices = self
-            .get_cex_prices(relay_data.relay_time, relay_data.p2p_time)
+            .get_token_prices(times_flow.relay_time, times_flow.p2p_time)
             .await;
 
         // eth price is in cex_prices
@@ -64,14 +60,14 @@ impl Database {
 
         let metadata = Metadata::new(
             block_num,
-            relay_data.block_hash.into(),
-            relay_data.relay_time,
-            relay_data.p2p_time,
-            relay_data.proposer_addr,
-            relay_data.proposer_reward,
+            times_flow.block_hash.into(),
+            times_flow.relay_time,
+            times_flow.p2p_time,
+            times_flow.proposer_addr,
+            times_flow.proposer_reward,
             cex_prices,
             eth_prices,
-            private_flow,
+            times_flow.private_flow,
         );
 
         metadata
@@ -118,51 +114,49 @@ impl Database {
             .collect()
     }
 
-    async fn get_private_flow(&self, block_num: u64) -> HashSet<TxHash> {
-        let private_txs = self
-            .client
-            .query_all_params::<u64, String>(PRIVATE_FLOW, vec![block_num])
-            .await
-            .unwrap();
+    /*
+       async fn get_private_flow(&self, block_num: u64) -> HashSet<TxHash> {
+           let private_txs = self
+               .client
+               .query_all_params::<u64, String>(PRIVATE_FLOW, vec![block_num])
+               .await
+               .unwrap();
 
-        private_txs
-            .into_iter()
-            .map(|tx| TxHash::from_str(&tx).unwrap())
-            .collect::<HashSet<TxHash>>()
-    }
-
-    async fn get_relay_info(&self, block_num: u64) -> RelayInfo {
-        let val: RelayInfoDB = self
+           private_txs
+               .into_iter()
+               .map(|tx| TxHash::from_str(&tx).unwrap())
+               .collect::<HashSet<TxHash>>()
+       }
+    */
+    async fn get_times_flow_info(&self, block_num: u64) -> TimesFlow {
+        let val: TimesFlowDB = self
             .client
-            .query_one_params(RELAY_P2P_TIMES, vec![block_num])
+            .query_one_params(TIMES_FLOW, vec![block_num])
             .await
             .unwrap();
         val.into()
     }
 
-    async fn get_cex_prices(
+    async fn get_token_prices(
         &self,
         relay_time: u64,
         p2p_time: u64,
     ) -> HashMap<Address, (Rational, Rational)> {
         let prices = self
             .client
-            .query_all_params::<u64, DBTokenPricesDB>(
-                PRICES,
-                vec![relay_time, relay_time, p2p_time, p2p_time],
-            )
+            .query_one_params::<u64, TokenPricesTimeDB>(PRICES, vec![relay_time, p2p_time])
             .await
             .unwrap();
 
         let token_prices = prices
+            .token_prices
             .into_iter()
-            .map(|r| {
-                let row: DBTokenPrices = r.into();
+            .map(|(address, (relay_price, p2p_price))| {
                 (
-                    row.address,
+                    Address::from_str(&address).unwrap(),
                     (
-                        Rational::try_from(row.price0).unwrap(),
-                        Rational::try_from(row.price1).unwrap(),
+                        Rational::try_from(relay_price).unwrap(),
+                        Rational::try_from(p2p_price).unwrap(),
                     ),
                 )
             })
@@ -249,14 +243,21 @@ mod tests {
         HashSet::from_iter(set.into_iter())
     }
 
-    fn expected_relay_info() -> RelayInfo {
-        RelayInfo {
+    fn is_valid_utf8(s: &str) -> bool {
+        let bytes = s.as_bytes();
+        std::str::from_utf8(bytes).is_ok()
+    }
+
+    fn expected_relay_info() -> TimesFlow {
+        TimesFlow {
             relay_time:      1695258707683,
             p2p_time:        1695258708673,
             proposer_addr:   Address::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
             proposer_reward: 113949354337187568,
             block_hash:      B256::from_str(BLOCK_HASH).unwrap().into(),
+            private_flow:    expected_private_flow(),
+            block_number:    BLOCK_NUMBER,
         }
     }
 
@@ -274,7 +275,7 @@ mod tests {
         Metadata {
             block_num:              BLOCK_NUMBER,
             block_hash:             B256::from_str(BLOCK_HASH).unwrap().into(),
-            relay_timestamp:        1695258707683,
+            relay_timestamp:        1695258707711,
             p2p_timestamp:          1695258708673,
             proposer_fee_recipient: Address::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
@@ -285,26 +286,22 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_get_private_flow() {
-        dotenv().ok();
+    #[test]
+    fn test_valid_utf8() {
+        let mut query = TIMES_FLOW.to_string();
+        query = query.replace("?", &BLOCK_NUMBER.to_string());
 
-        let db = Database::default();
-
-        let expected_private_flow = expected_private_flow();
-        let private_flow = db.get_private_flow(BLOCK_NUMBER).await;
-
-        assert_eq!(expected_private_flow, private_flow)
+        assert!(is_valid_utf8(&query))
     }
 
     #[tokio::test]
-    async fn test_get_relay_info() {
+    async fn test_get_times_flow_info() {
         dotenv().ok();
 
         let db = Database::default();
 
         let expected_relay_info = expected_relay_info();
-        let relay_info = db.get_relay_info(BLOCK_NUMBER).await;
+        let relay_info = db.get_times_flow_info(BLOCK_NUMBER).await;
 
         assert_eq!(expected_relay_info.relay_time, relay_info.relay_time);
         assert_eq!(expected_relay_info.p2p_time, relay_info.p2p_time);
@@ -313,12 +310,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_cex_prices() {
+    async fn test_get_token_prices() {
         dotenv().ok();
 
         let db = Database::default();
 
-        let cex_prices = db.get_cex_prices(1695258707683, 1695258708673).await;
+        let cex_prices = db.get_token_prices(1695258707711, 1695258708673).await;
 
         let real_prices = cex_prices
             .get(&Address::from_str("5cf04716ba20127f1e2297addcf4b5035000c9eb").unwrap())
@@ -345,7 +342,7 @@ mod tests {
 
         let db = Database::default();
 
-        let cex_prices = db.get_cex_prices(1695258707683, 1695258708673).await;
+        let cex_prices = db.get_token_prices(1695258707711, 1695258708673).await;
 
         let expected_metadata = expected_metadata(cex_prices);
 
