@@ -58,11 +58,11 @@ pub struct ClassifiedMev {
     pub mev_contract:          Address,
     #[serde_as(as = "Vec<FixedString>")]
     pub mev_profit_collector:  Vec<Address>,
-    pub mev_type:              MevType,
     pub submission_profit_usd: f64,
     pub finalized_profit_usd:  f64,
     pub submission_bribe_usd:  f64,
     pub finalized_bribe_usd:   f64,
+    pub mev_type:              MevType,
 }
 
 #[derive(
