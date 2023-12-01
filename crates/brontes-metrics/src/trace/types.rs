@@ -1,5 +1,5 @@
 use colored::Colorize;
-use reth_primitives::H256;
+use reth_primitives::B256;
 use tracing::{debug, info};
 
 use crate::PoirotMetricEvents;
@@ -47,7 +47,7 @@ impl BlockStats {
 #[derive(Clone, Debug)]
 pub struct TransactionStats {
     pub block_num: u64,
-    pub tx_hash:   H256,
+    pub tx_hash:   B256,
     pub tx_idx:    u16,
     pub traces:    Vec<TraceStats>,
     pub err:       Option<TraceParseErrorKind>,
@@ -56,7 +56,7 @@ pub struct TransactionStats {
 impl TransactionStats {
     pub fn new(
         block_num: u64,
-        tx_hash: H256,
+        tx_hash: B256,
         tx_idx: u16,
         err: Option<TraceParseErrorKind>,
     ) -> Self {
@@ -79,7 +79,7 @@ impl TransactionStats {
 #[derive(Clone, Copy, Debug)]
 pub struct TraceStats {
     pub block_num: u64,
-    pub tx_hash:   H256,
+    pub tx_hash:   B256,
     pub tx_idx:    u16,
     pub trace_idx: u16,
     pub err:       Option<TraceParseErrorKind>,
@@ -88,7 +88,7 @@ pub struct TraceStats {
 impl TraceStats {
     pub fn new(
         block_num: u64,
-        tx_hash: H256,
+        tx_hash: B256,
         tx_idx: u16,
         trace_idx: u16,
         err: Option<TraceParseErrorKind>,

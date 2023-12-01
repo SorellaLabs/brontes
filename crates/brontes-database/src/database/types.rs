@@ -1,14 +1,15 @@
-use std::str::FromStr;
+use std::{collections::HashSet, str::FromStr};
 
 use alloy_json_abi::JsonAbi;
-use reth_primitives::{Address, H160, H256};
+use reth_primitives::{Address, B256};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct TokenPricesTimeDB {
-    token_prices: Vec<(String, (f64, f64))>,
+    // (address, (relay time, p2p time))
+    pub token_prices: Vec<(String, (f64, f64))>,
 }
 
 #[derive(Debug, Row, Serialize, Deserialize)]
@@ -20,7 +21,7 @@ pub struct DBP2PRelayTimes {
 #[serde_as]
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct DBTokenPrices {
-    pub address: H160,
+    pub address: Address,
     pub price0:  f64,
     pub price1:  f64,
 }
@@ -28,7 +29,7 @@ pub struct DBTokenPrices {
 impl From<DBTokenPricesDB> for DBTokenPrices {
     fn from(value: DBTokenPricesDB) -> Self {
         DBTokenPrices {
-            address: H160::from_str(&value.address).unwrap(),
+            address: Address::from_str(&value.address).unwrap(),
             price0:  value.price0,
             price1:  value.price1,
         }
@@ -74,27 +75,27 @@ pub struct TimesFlowDB {
 #[derive(Debug, Clone, Deserialize, Row)]
 pub struct TimesFlow {
     pub block_number:    u64,
-    pub block_hash:      H256,
+    pub block_hash:      B256,
     pub relay_time:      u64,
     pub p2p_time:        u64,
-    pub proposer_addr:   H160,
+    pub proposer_addr:   Address,
     pub proposer_reward: u64,
-    pub private_flow:    Vec<H256>,
+    pub private_flow:    HashSet<B256>,
 }
 
 impl From<TimesFlowDB> for TimesFlow {
     fn from(value: TimesFlowDB) -> Self {
         TimesFlow {
             block_number:    value.block_number,
-            block_hash:      H256::from_str(&value.block_hash).unwrap(),
+            block_hash:      B256::from_str(&value.block_hash).unwrap(),
             relay_time:      value.relay_time,
             p2p_time:        value.p2p_time,
-            proposer_addr:   H160::from_str(&value.proposer_addr).unwrap(),
+            proposer_addr:   Address::from_str(&value.proposer_addr).unwrap_or_default(),
             proposer_reward: value.proposer_reward,
             private_flow:    value
                 .private_flow
                 .into_iter()
-                .map(|tx| H256::from_str(&tx).unwrap())
+                .map(|tx| B256::from_str(&tx).unwrap())
                 .collect(),
         }
     }

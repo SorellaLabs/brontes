@@ -20,7 +20,7 @@ pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 // need to have a tracker of end block or tip block
 // need a concept of batch size
 
-pub struct Poirot<'inspector, const N: usize, T: TracingProvider> {
+pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     current_block:    u64,
     end_block:        Option<u64>,
     chain_tip:        u64,
@@ -32,7 +32,7 @@ pub struct Poirot<'inspector, const N: usize, T: TracingProvider> {
     block_inspectors: FuturesUnordered<BlockInspector<'inspector, N, T>>,
 }
 
-impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
+impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
     pub fn new(
         init_block: u64,
         end_block: Option<u64>,
@@ -43,7 +43,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {
-        let mut poirot = Self {
+        let mut brontes = Self {
             current_block: init_block,
             end_block,
             chain_tip,
@@ -60,10 +60,11 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
             None => init_block + max_tasks,
         };
 
-        for _ in init_block..max_blocks {
-            poirot.spawn_block_inspector();
+        for _ in init_block..=max_blocks {
+            brontes.spawn_block_inspector();
         }
-        poirot
+
+        brontes
     }
 
     fn spawn_block_inspector(&mut self) {
@@ -81,13 +82,13 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
 
     fn start_block_inspector(&mut self) -> bool {
         // reached end of line
-        if self.block_inspectors.len() > self.max_tasks as usize
-            || Some(self.current_block + self.max_tasks) > self.end_block
+        if self.block_inspectors.len() >= self.max_tasks as usize
+            || Some(self.current_block) > self.end_block
         {
             return false
         }
 
-        #[cfg(feature = "server")]
+        #[cfg(not(feature = "local"))]
         if self.current_block >= self.chain_tip {
             if let Ok(chain_tip) = self.parser.get_latest_block_number() {
                 self.chain_tip = chain_tip;
@@ -97,7 +98,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
             }
         }
 
-        #[cfg(not(feature = "server"))]
+        #[cfg(feature = "local")]
         if self.current_block >= self.chain_tip {
             if let Ok(chain_tip) = tokio::task::block_in_place(|| {
                 // This will now run the future to completion on the current thread
@@ -119,7 +120,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Poirot<'inspector, N, T> {
     }
 }
 
-impl<const N: usize, T: TracingProvider> Future for Poirot<'_, N, T> {
+impl<const N: usize, T: TracingProvider> Future for Brontes<'_, N, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -138,12 +139,8 @@ impl<const N: usize, T: TracingProvider> Future for Poirot<'_, N, T> {
         // And tokio's docs on cooperative scheduling <https://docs.rs/tokio/latest/tokio/task/#cooperative-scheduling>
         let mut iters = 1024;
         loop {
-            if let Some(end_block) = self.end_block {
-                if self.current_block > end_block {
-                    if self.block_inspectors.is_empty() && self.current_block > end_block {
-                        return Poll::Ready(())
-                    }
-                }
+            if Some(self.current_block) >= self.end_block && self.block_inspectors.is_empty() {
+                return Poll::Ready(())
             }
 
             if self.start_block_inspector() {
@@ -158,7 +155,6 @@ impl<const N: usize, T: TracingProvider> Future for Poirot<'_, N, T> {
                 break
             }
         }
-
         Poll::Pending
     }
 }
