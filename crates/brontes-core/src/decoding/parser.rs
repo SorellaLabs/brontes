@@ -14,6 +14,8 @@ use reth_primitives::{Address, Header, B256};
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::TransactionReceipt;
+#[cfg(feature = "dyn-decode")]
+use tracing::info;
 
 use super::*;
 #[cfg(feature = "dyn-decode")]
@@ -110,10 +112,13 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                 })
                 .filter(|addr| (self.should_fetch)(addr))
                 .collect::<Vec<Address>>();
+            info!("addresses for dyn decoding: {:#?}", addresses);
             self.database.get_abis(addresses).await
         } else {
             HashMap::default()
         };
+
+        info!("{:#?}", json);
 
         (trace, json, stats)
     }
@@ -259,15 +264,11 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, time::SystemTime};
 
-    use brontes_database::database::Database;
-    use brontes_types::test_utils::write_tree_as_json;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
     use tracing::info;
 
-    use super::*;
     use crate::{init_tracing, test_utils::init_trace_parser};
 
     #[cfg(feature = "dyn-decode")]
@@ -281,7 +282,7 @@ mod tests {
         let (tx, _rx) = unbounded_channel();
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let (trace, stats) = tracer.execute_block(block_num).await.unwrap();
+        let (trace, _) = tracer.execute_block(block_num).await.unwrap();
         let has_decoded = trace
             .into_iter()
             .flat_map(|t| t.trace.into_iter().map(|t| t.decoded_data.is_some()))
