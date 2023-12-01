@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use brontes_metrics::trace::types::TraceParseErrorKind;
-use reth_primitives::H256;
+use reth_primitives::B256;
 use reth_rpc::eth::error::EthApiError;
 use thiserror::Error;
 
@@ -11,15 +9,15 @@ pub enum TraceParseError {
     #[error("trace missing in block {0}")]
     TracesMissingBlock(u64),
     #[error("trace missing in transaction {0}")]
-    TracesMissingTx(H256),
+    TracesMissingTx(B256),
     #[error("empty input: {0}")]
-    EmptyInput(H256),
+    EmptyInput(B256),
     #[error("abi parse error: {0}")]
     AbiParseError(serde_json::Error),
     #[error("invalid function selector: {0}")]
-    InvalidFunctionSelector(H256),
+    InvalidFunctionSelector(B256),
     #[error("abi decoding failed: {0}")]
-    AbiDecodingFailed(H256),
+    AbiDecodingFailed(B256),
     #[error("send error to prometheus")]
     ChannelSendError(String),
     #[error("trace missing")]

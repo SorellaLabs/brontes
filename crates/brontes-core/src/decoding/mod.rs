@@ -1,4 +1,4 @@
-use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
+use std::{pin::Pin, sync::Arc};
 
 use alloy_providers::provider::Provider;
 use alloy_transport_http::Http;
@@ -6,11 +6,10 @@ use brontes_database::database::Database;
 use brontes_types::structured_trace::TxTrace;
 use futures::Future;
 use reqwest::Client;
-use reth_interfaces::{provider::ProviderResult, RethError, RethResult};
-use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H160, H256};
+use reth_interfaces::provider::ProviderResult;
+use reth_primitives::{Address, BlockId, BlockNumber, BlockNumberOrTag, Header, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::trace::parity::TraceType;
 use reth_tracing_ext::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
@@ -33,21 +32,18 @@ pub(crate) const RECEIVE: &str = "receive";
 #[allow(dead_code)]
 pub(crate) const FALLBACK: &str = "fallback";
 
-pub(crate) const CACHE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10_000);
-pub(crate) const CACHE_DIRECTORY: &str = "./abi_cache";
-
-use reth_rpc::eth::error::{EthApiError, EthResult};
-use reth_rpc_types::{trace::parity::TraceResultsWithTransactionHash, TransactionReceipt};
+use reth_rpc::eth::error::EthResult;
+use reth_rpc_types::TransactionReceipt;
 
 #[async_trait::async_trait]
 #[auto_impl::auto_impl(&, Arc, Box)]
 pub trait TracingProvider: Send + Sync + 'static {
-    async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<H256>>;
+    async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>>;
 
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "local"))]
     fn best_block_number(&self) -> ProviderResult<u64>;
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(feature = "local")]
     async fn best_block_number(&self) -> ProviderResult<u64>;
 
     async fn replay_block_transactions(&self, block_id: BlockId)
@@ -63,53 +59,53 @@ pub trait TracingProvider: Send + Sync + 'static {
 
 #[async_trait::async_trait]
 impl TracingProvider for Provider<Http<Client>> {
-    async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<H256>> {
+    async fn block_hash_for_id(&self, _block_num: u64) -> ProviderResult<Option<B256>> {
         todo!()
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "local"))]
     fn best_block_number(&self) -> ProviderResult<u64> {
         todo!()
     }
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(feature = "local")]
     async fn best_block_number(&self) -> ProviderResult<u64> {
         todo!()
     }
 
     async fn replay_block_transactions(
         &self,
-        block_id: BlockId,
+        _block_id: BlockId,
     ) -> EthResult<Option<Vec<TxTrace>>> {
         todo!()
     }
 
     async fn block_receipts(
         &self,
-        number: BlockNumberOrTag,
+        _number: BlockNumberOrTag,
     ) -> ProviderResult<Option<Vec<TransactionReceipt>>> {
         todo!()
     }
 
-    async fn header_by_number(&self, number: BlockNumber) -> ProviderResult<Option<Header>> {
+    async fn header_by_number(&self, _number: BlockNumber) -> ProviderResult<Option<Header>> {
         todo!()
     }
 }
 
 #[async_trait::async_trait]
 impl TracingProvider for TracingClient {
-    async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<H256>> {
+    async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
         self.trace
             .provider()
             .block_hash_for_id(BlockId::Number(BlockNumberOrTag::Number(block_num.into())))
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "local"))]
     fn best_block_number(&self) -> ProviderResult<u64> {
         self.trace.provider().best_block_number()
     }
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(feature = "local")]
     async fn best_block_number(&self) -> ProviderResult<u64> {
         self.trace.provider().best_block_number()
     }
@@ -152,7 +148,7 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         database: &'a Database,
         tracing: T,
-        should_fetch: Box<dyn Fn(&H160) -> bool + Send + Sync>,
+        should_fetch: Box<dyn Fn(&Address) -> bool + Send + Sync>,
     ) -> Self {
         let executor = Executor::new();
 
@@ -162,17 +158,17 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
         Self { executor, parser }
     }
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(feature = "local")]
     pub async fn get_latest_block_number(&self) -> ProviderResult<u64> {
         self.parser.tracer.best_block_number().await
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "local"))]
     pub fn get_latest_block_number(&self) -> ProviderResult<u64> {
         self.parser.tracer.best_block_number()
     }
 
-    pub async fn get_block_hash_for_number(&self, block_num: u64) -> ProviderResult<Option<H256>> {
+    pub async fn get_block_hash_for_number(&self, block_num: u64) -> ProviderResult<Option<B256>> {
         self.parser.tracer.block_hash_for_id(block_num.into()).await
     }
 
