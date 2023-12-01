@@ -12,10 +12,11 @@ use brontes_metrics::{
 use futures::future::join_all;
 use reth_primitives::{Address, Header, B256};
 #[cfg(feature = "dyn-decode")]
-use reth_rpc_types::trace::parity::{Action, TraceResultsWithTransactionHash};
+use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::TransactionReceipt;
 
 use super::*;
+use crate::errors::TraceParseError;
 #[cfg(feature = "dyn-decode")]
 use crate::{decoding::dyn_decode::decode_input_with_abi, errors::TraceParseError};
 
@@ -228,7 +229,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         };
 
         #[cfg(feature = "dyn-decode")]
-        tx_trace.trace.iter_mut().for_each(|mut iter| {
+        tx_trace.trace.iter_mut().for_each(|iter| {
             let addr = match iter.trace.action {
                 Action::Call(ref addr) => addr.to,
                 _ => return,
