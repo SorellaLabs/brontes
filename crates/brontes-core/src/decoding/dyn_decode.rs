@@ -1,21 +1,9 @@
-use std::{collections::HashSet, path::PathBuf, pin::Pin, sync::Arc};
-
 use alloy_dyn_abi::*;
 use alloy_json_abi::JsonAbi;
-use brontes_types::structured_trace::{DecodedCallData, DecodedParams, TxTrace};
-use futures::Future;
-use reth_interfaces::RethError;
-use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Header, H256};
-use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
-use reth_rpc_api::EthApiServer;
-use reth_rpc_types::trace::parity::{Action, CallAction, TraceOutput, TraceType, TransactionTrace};
-use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
-use tracing::{info, warn};
+use brontes_types::structured_trace::{DecodedCallData, DecodedParams};
+use reth_rpc_types::trace::parity::{Action, TraceOutput, TransactionTrace};
 
 use crate::errors::TraceParseError;
-
-const FALLBACK: &str = "fallback";
-const RECEIVE: &str = "receive";
 
 pub fn decode_input_with_abi(
     abi: &JsonAbi,
@@ -27,7 +15,7 @@ pub fn decode_input_with_abi(
         for function in functions {
             if function.selector() == action.input[..4] {
                 // Resolve all inputs
-                let mut resolved_params: Vec<DynSolType> = function
+                let resolved_params: Vec<DynSolType> = function
                     .inputs
                     .iter()
                     .filter_map(|param| param.resolve().ok())
@@ -40,7 +28,7 @@ pub fn decode_input_with_abi(
                     .collect::<Vec<_>>();
                 let input_params_type = DynSolType::Tuple(resolved_params);
 
-                let mut resolved_output_params: Vec<DynSolType> = function
+                let resolved_output_params: Vec<DynSolType> = function
                     .outputs
                     .iter()
                     .filter_map(|param| param.resolve().ok())
@@ -86,13 +74,6 @@ pub fn decode_input_with_abi(
         }
     }
     Ok(None)
-}
-
-fn handle_empty_input(
-    abi: &JsonAbi,
-    action: &CallAction,
-) -> Result<DecodedCallData, TraceParseError> {
-    todo!()
 }
 
 fn decode_params(
