@@ -1,7 +1,6 @@
 pub mod const_sql;
 pub mod errors;
 pub mod types;
-
 use std::{collections::HashMap, str::FromStr};
 
 use alloy_json_abi::JsonAbi;
@@ -16,7 +15,7 @@ use sorella_db_databases::{
     BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE, JIT_SANDWICH_TABLE, JIT_TABLE,
     LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
 };
-use tracing::error;
+use tracing::{error, info};
 
 use self::types::{Abis, TimesFlow, TokenPricesTimeDB};
 use super::Metadata;
