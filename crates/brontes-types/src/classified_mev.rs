@@ -1,7 +1,7 @@
 use std::{any::Any, fmt::Debug};
 
-use alloy_primitives::U256;
-use reth_primitives::{Address, B256};
+use alloy_primitives::{Address, U256};
+use reth_primitives::B256;
 use serde::Serialize;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
@@ -11,7 +11,10 @@ use sorella_db_databases::{
 };
 use strum::EnumIter;
 
-use crate::{tree::GasDetails, vec_u256, vec_vec_u256};
+use crate::{
+    tree::GasDetails, vec_b256, vec_fixed_string, vec_u256, vec_vec_b256, vec_vec_fixed_string,
+    vec_vec_u256,
+};
 
 #[serde_as]
 #[derive(Debug, Serialize, Row, Clone, Default)]
@@ -56,13 +59,13 @@ pub struct ClassifiedMev {
     pub eoa:                   Address,
     #[serde_as(as = "FixedString")]
     pub mev_contract:          Address,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     pub mev_profit_collector:  Vec<Address>,
-    pub mev_type:              MevType,
     pub submission_profit_usd: f64,
     pub finalized_profit_usd:  f64,
     pub submission_bribe_usd:  f64,
     pub finalized_bribe_usd:   f64,
+    pub mev_type:              MevType,
 }
 
 #[derive(
@@ -121,16 +124,16 @@ pub struct Sandwich {
     pub frontrun_gas_details: GasDetails,
     #[serde(rename = "frontrun_swaps.index")]
     pub frontrun_swaps_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_swaps.from")]
     pub frontrun_swaps_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_swaps.pool")]
     pub frontrun_swaps_pool: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_swaps.token_in")]
     pub frontrun_swaps_token_in: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_swaps.token_out")]
     pub frontrun_swaps_token_out: Vec<Address>,
     #[serde(with = "vec_u256")]
@@ -139,23 +142,23 @@ pub struct Sandwich {
     #[serde(with = "vec_u256")]
     #[serde(rename = "frontrun_swaps.amount_out")]
     pub frontrun_swaps_amount_out: Vec<U256>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_b256")]
     pub victim_tx_hashes: Vec<B256>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_b256")]
     #[serde(rename = "victim_swaps.tx_hash")]
     pub victim_swaps_tx_hash: Vec<B256>,
     #[serde(rename = "victim_swaps.index")]
     pub victim_swaps_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "victim_swaps.from")]
     pub victim_swaps_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "victim_swaps.pool")]
     pub victim_swaps_pool: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "victim_swaps.token_in")]
     pub victim_swaps_token_in: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "victim_swaps.token_out")]
     pub victim_swaps_token_out: Vec<Address>,
     #[serde(with = "vec_u256")]
@@ -178,16 +181,16 @@ pub struct Sandwich {
     pub backrun_gas_details: GasDetails,
     #[serde(rename = "backrun_swaps.index")]
     pub backrun_swaps_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_swaps.from")]
     pub backrun_swaps_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_swaps.pool")]
     pub backrun_swaps_pool: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_swaps.token_in")]
     pub backrun_swaps_token_in: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_swaps.token_out")]
     pub backrun_swaps_token_out: Vec<Address>,
     #[serde(with = "vec_u256")]
@@ -210,19 +213,23 @@ pub fn compose_sandwich_jit(
     let jit_sand = Box::new(JitLiquiditySandwich {
         frontrun_tx_hash: sandwich.frontrun_tx_hash,
         frontrun_gas_details: sandwich.frontrun_gas_details,
-        frontrun_swaps_index: sandwich.frontrun_swaps_index,
+        frontrun_swaps_index: sandwich
+            .frontrun_swaps_index
+            .into_iter()
+            .map(|x| x as u64)
+            .collect(),
         frontrun_swaps_from: sandwich.frontrun_swaps_from,
         frontrun_swaps_pool: sandwich.frontrun_swaps_pool,
         frontrun_swaps_token_in: sandwich.frontrun_swaps_token_in,
         frontrun_swaps_token_out: sandwich.frontrun_swaps_token_out,
         frontrun_swaps_amount_in: sandwich.frontrun_swaps_amount_in,
         frontrun_swaps_amount_out: sandwich.frontrun_swaps_amount_out,
-        frontrun_mints_index: jit.jit_mints_index,
+        frontrun_mints_index: jit.jit_mints_index.into_iter().map(|x| x as u64).collect(),
         frontrun_mints_from: jit.jit_mints_from,
         frontrun_mints_to: jit.jit_mints_to,
         frontrun_mints_recipient: jit.jit_mints_recipient,
-        frontrun_mints_token: jit.jit_mints_token,
-        frontrun_mints_amount: jit.jit_mints_amount,
+        frontrun_mints_tokens: jit.jit_mints_tokens,
+        frontrun_mints_amounts: jit.jit_mints_amounts,
         victim_tx_hashes: sandwich.victim_tx_hashes,
         victim_swaps_tx_hash: sandwich.victim_swaps_tx_hash,
         victim_swaps_index: sandwich.victim_swaps_index,
@@ -245,12 +252,12 @@ pub fn compose_sandwich_jit(
         backrun_swaps_token_out: sandwich.backrun_swaps_token_out,
         backrun_swaps_amount_in: sandwich.backrun_swaps_amount_in,
         backrun_swaps_amount_out: sandwich.backrun_swaps_amount_out,
-        backrun_burns_index: jit.jit_burns_index,
+        backrun_burns_index: jit.jit_burns_index.into_iter().map(|x| x as u64).collect(),
         backrun_burns_from: jit.jit_burns_from,
         backrun_burns_to: jit.jit_burns_to,
         backrun_burns_recipient: jit.jit_burns_recipient,
-        backrun_burns_token: jit.jit_burns_token,
-        backrun_burns_amount: jit.jit_burns_amount,
+        backrun_burns_tokens: jit.jit_burns_tokens,
+        backrun_burns_amounts: jit.jit_burns_amounts,
     });
 
     let new_classifed = ClassifiedMev {
@@ -303,16 +310,16 @@ pub struct JitLiquiditySandwich {
     pub frontrun_gas_details: GasDetails,
     #[serde(rename = "frontrun_swaps.index")]
     pub frontrun_swaps_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_swaps.from")]
     pub frontrun_swaps_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_swaps.pool")]
     pub frontrun_swaps_pool: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_swaps.token_in")]
     pub frontrun_swaps_token_in: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_swaps.token_out")]
     pub frontrun_swaps_token_out: Vec<Address>,
     #[serde(with = "vec_u256")]
@@ -323,38 +330,38 @@ pub struct JitLiquiditySandwich {
     pub frontrun_swaps_amount_out: Vec<U256>,
     #[serde(rename = "frontrun_mints.index")]
     pub frontrun_mints_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_mints.from")]
     pub frontrun_mints_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_mints.to")]
     pub frontrun_mints_to: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "frontrun_mints.recipient")]
     pub frontrun_mints_recipient: Vec<Address>,
-    #[serde_as(as = "Vec<Vec<FixedString>>")]
-    #[serde(rename = "frontrun_mints.token")]
-    pub frontrun_mints_token: Vec<Vec<Address>>,
+    #[serde(with = "vec_vec_fixed_string")]
+    #[serde(rename = "frontrun_mints.tokens")]
+    pub frontrun_mints_tokens: Vec<Vec<Address>>,
     #[serde(with = "vec_vec_u256")]
-    #[serde(rename = "frontrun_mints.amount")]
-    pub frontrun_mints_amount: Vec<Vec<U256>>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(rename = "frontrun_mints.amounts")]
+    pub frontrun_mints_amounts: Vec<Vec<U256>>,
+    #[serde(with = "vec_b256")]
     pub victim_tx_hashes: Vec<B256>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_b256")]
     #[serde(rename = "victim_swaps.tx_hash")]
     pub victim_swaps_tx_hash: Vec<B256>,
     #[serde(rename = "victim_swaps.index")]
     pub victim_swaps_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "victim_swaps.from")]
     pub victim_swaps_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "victim_swaps.pool")]
     pub victim_swaps_pool: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "victim_swaps.token_in")]
     pub victim_swaps_token_in: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "victim_swaps.token_out")]
     pub victim_swaps_token_out: Vec<Address>,
     #[serde(with = "vec_u256")]
@@ -377,16 +384,16 @@ pub struct JitLiquiditySandwich {
     pub backrun_gas_details: GasDetails,
     #[serde(rename = "backrun_swaps.index")]
     pub backrun_swaps_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_swaps.from")]
     pub backrun_swaps_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_swaps.pool")]
     pub backrun_swaps_pool: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_swaps.token_in")]
     pub backrun_swaps_token_in: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_swaps.token_out")]
     pub backrun_swaps_token_out: Vec<Address>,
     #[serde(with = "vec_u256")]
@@ -397,30 +404,30 @@ pub struct JitLiquiditySandwich {
     pub backrun_swaps_amount_out: Vec<U256>,
     #[serde(rename = "backrun_burns.index")]
     pub backrun_burns_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_burns.from")]
     pub backrun_burns_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_burns.to")]
     pub backrun_burns_to: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "backrun_burns.recipient")]
     pub backrun_burns_recipient: Vec<Address>,
-    #[serde_as(as = "Vec<Vec<FixedString>>")]
-    #[serde(rename = "backrun_burns.token")]
-    pub backrun_burns_token: Vec<Vec<Address>>,
+    #[serde(with = "vec_vec_fixed_string")]
+    #[serde(rename = "backrun_burns.tokens")]
+    pub backrun_burns_tokens: Vec<Vec<Address>>,
     #[serde(with = "vec_vec_u256")]
-    #[serde(rename = "backrun_burns.amount")]
-    pub backrun_burns_amount: Vec<Vec<U256>>,
+    #[serde(rename = "backrun_burns.amounts")]
+    pub backrun_burns_amounts: Vec<Vec<U256>>,
 }
 
 impl SpecificMev for JitLiquiditySandwich {
-    fn mev_type(&self) -> MevType {
-        MevType::JitSandwich
-    }
-
     fn into_any(self: Box<Self>) -> Box<dyn Any> {
         self
+    }
+
+    fn mev_type(&self) -> MevType {
+        MevType::JitSandwich
     }
 
     fn priority_fee_paid(&self) -> u64 {
@@ -453,16 +460,16 @@ pub struct CexDex {
     pub tx_hash:          B256,
     #[serde(rename = "swaps.index")]
     pub swaps_index:      Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "swaps.from")]
     pub swaps_from:       Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "swaps.pool")]
     pub swaps_pool:       Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "swaps.token_in")]
     pub swaps_token_in:   Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "swaps.token_out")]
     pub swaps_token_out:  Vec<Address>,
     #[serde(with = "vec_u256")]
@@ -475,7 +482,7 @@ pub struct CexDex {
     pub gas_details:      GasDetails,
     #[serde(rename = "prices.kind")]
     pub prices_kind:      Vec<PriceKind>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "prices.address")]
     pub prices_address:   Vec<Address>,
     #[serde(rename = "prices.price")]
@@ -483,12 +490,12 @@ pub struct CexDex {
 }
 
 impl SpecificMev for CexDex {
-    fn mev_type(&self) -> MevType {
-        MevType::CexDex
-    }
-
     fn into_any(self: Box<Self>) -> Box<dyn Any> {
         self
+    }
+
+    fn mev_type(&self) -> MevType {
+        MevType::CexDex
     }
 
     fn priority_fee_paid(&self) -> u64 {
@@ -513,16 +520,16 @@ pub struct Liquidation {
     pub trigger: B256,
     #[serde(rename = "liquidation_swaps.index")]
     pub liquidation_swaps_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "liquidation_swaps.from")]
     pub liquidation_swaps_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "liquidation_swaps.pool")]
     pub liquidation_swaps_pool: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "liquidation_swaps.token_in")]
     pub liquidation_swaps_token_in: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "liquidation_swaps.token_out")]
     pub liquidation_swaps_token_out: Vec<Address>,
     #[serde(with = "vec_u256")]
@@ -533,13 +540,13 @@ pub struct Liquidation {
     pub liquidation_swaps_amount_out: Vec<U256>,
     #[serde(rename = "liquidations.index")]
     pub liquidations_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "liquidations.liquidator")]
     pub liquidations_liquidator: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "liquidations.liquidatee")]
     pub liquidations_liquidatee: Vec<Address>,
-    #[serde_as(as = "Vec<Vec<FixedString>>")]
+    #[serde(with = "vec_vec_fixed_string")]
     #[serde(rename = "liquidations.tokens")]
     pub liquidations_tokens: Vec<Vec<Address>>,
     #[serde(with = "vec_vec_u256")]
@@ -552,12 +559,12 @@ pub struct Liquidation {
 }
 
 impl SpecificMev for Liquidation {
-    fn mev_type(&self) -> MevType {
-        MevType::Liquidation
-    }
-
     fn into_any(self: Box<Self>) -> Box<dyn Any> {
         self
+    }
+
+    fn mev_type(&self) -> MevType {
+        MevType::Liquidation
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
@@ -581,24 +588,47 @@ pub struct JitLiquidity {
     #[serde(with = "gas_details_tuple")]
     pub mint_gas_details: GasDetails,
     #[serde(rename = "jit_mints.index")]
-    pub jit_mints_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    pub jit_mints_index: Vec<u16>,
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "jit_mints.from")]
     pub jit_mints_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "jit_mints.to")]
     pub jit_mints_to: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "jit_mints.recipient")]
     pub jit_mints_recipient: Vec<Address>,
-    #[serde_as(as = "Vec<Vec<FixedString>>")]
-    #[serde(rename = "jit_mints.token")]
-    pub jit_mints_token: Vec<Vec<Address>>,
+    #[serde(with = "vec_vec_fixed_string")]
+    #[serde(rename = "jit_mints.tokens")]
+    pub jit_mints_tokens: Vec<Vec<Address>>,
     #[serde(with = "vec_vec_u256")]
-    #[serde(rename = "jit_mints.amount")]
-    pub jit_mints_amount: Vec<Vec<U256>>,
-    #[serde_as(as = "Vec<FixedString>")]
-    pub swap_tx_hash: Vec<B256>,
+    #[serde(rename = "jit_mints.amounts")]
+    pub jit_mints_amounts: Vec<Vec<U256>>,
+    #[serde(with = "vec_b256")]
+    pub victim_swap_tx_hashes: Vec<B256>,
+    #[serde(with = "vec_b256")]
+    #[serde(rename = "victim_swaps.tx_hash")]
+    pub victim_swaps_tx_hash: Vec<B256>,
+    #[serde(rename = "victim_swaps.index")]
+    pub victim_swaps_index: Vec<u16>,
+    #[serde(with = "vec_fixed_string")]
+    #[serde(rename = "victim_swaps.from")]
+    pub victim_swaps_from: Vec<Address>,
+    #[serde(with = "vec_fixed_string")]
+    #[serde(rename = "victim_swaps.pool")]
+    pub victim_swaps_pool: Vec<Address>,
+    #[serde(with = "vec_fixed_string")]
+    #[serde(rename = "victim_swaps.token_in")]
+    pub victim_swaps_token_in: Vec<Address>,
+    #[serde(with = "vec_fixed_string")]
+    #[serde(rename = "victim_swaps.token_out")]
+    pub victim_swaps_token_out: Vec<Address>,
+    #[serde(with = "vec_u256")]
+    #[serde(rename = "victim_swaps.amount_in")]
+    pub victim_swaps_amount_in: Vec<U256>,
+    #[serde(with = "vec_u256")]
+    #[serde(rename = "victim_swaps.amount_out")]
+    pub victim_swaps_amount_out: Vec<U256>,
     #[serde(rename = "victim_gas_details.coinbase_transfer")]
     pub victim_gas_details_coinbase_transfer: Vec<Option<u128>>,
     #[serde(rename = "victim_gas_details.priority_fee")]
@@ -607,47 +637,27 @@ pub struct JitLiquidity {
     pub victim_gas_details_gas_used: Vec<u64>,
     #[serde(rename = "victim_gas_details.effective_gas_price")]
     pub victim_gas_details_effective_gas_price: Vec<u64>,
-    #[serde(rename = "swaps.index")]
-    pub swaps_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.from")]
-    pub swaps_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.pool")]
-    pub swaps_pool: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.token_in")]
-    pub swaps_token_in: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
-    #[serde(rename = "swaps.token_out")]
-    pub swaps_token_out: Vec<Address>,
-    #[serde(with = "vec_u256")]
-    #[serde(rename = "swaps.amount_in")]
-    pub swaps_amount_in: Vec<U256>,
-    #[serde(with = "vec_u256")]
-    #[serde(rename = "swaps.amount_out")]
-    pub swaps_amount_out: Vec<U256>,
     #[serde_as(as = "FixedString")]
     pub burn_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
     pub burn_gas_details: GasDetails,
     #[serde(rename = "jit_burns.index")]
-    pub jit_burns_index: Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    pub jit_burns_index: Vec<u16>,
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "jit_burns.from")]
     pub jit_burns_from: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "jit_burns.to")]
     pub jit_burns_to: Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "jit_burns.recipient")]
     pub jit_burns_recipient: Vec<Address>,
-    #[serde_as(as = "Vec<Vec<FixedString>>")]
-    #[serde(rename = "jit_burns.token")]
-    pub jit_burns_token: Vec<Vec<Address>>,
+    #[serde(with = "vec_vec_fixed_string")]
+    #[serde(rename = "jit_burns.tokens")]
+    pub jit_burns_tokens: Vec<Vec<Address>>,
     #[serde(with = "vec_vec_u256")]
-    #[serde(rename = "jit_burns.amount")]
-    pub jit_burns_amount: Vec<Vec<U256>>,
+    #[serde(rename = "jit_burns.amounts")]
+    pub jit_burns_amounts: Vec<Vec<U256>>,
 }
 
 impl SpecificMev for JitLiquidity {
@@ -664,12 +674,12 @@ impl SpecificMev for JitLiquidity {
             + self.burn_gas_details.coinbase_transfer.unwrap_or(0)) as u64
     }
 
-    fn priority_fee_paid(&self) -> u64 {
-        self.mint_gas_details.priority_fee + self.burn_gas_details.priority_fee
-    }
-
     fn into_any(self: Box<Self>) -> Box<dyn Any> {
         self
+    }
+
+    fn priority_fee_paid(&self) -> u64 {
+        self.mint_gas_details.priority_fee + self.burn_gas_details.priority_fee
     }
 }
 
@@ -680,16 +690,16 @@ pub struct AtomicBackrun {
     pub tx_hash:          B256,
     #[serde(rename = "swaps.index")]
     pub swaps_index:      Vec<u64>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "swaps.from")]
     pub swaps_from:       Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "swaps.pool")]
     pub swaps_pool:       Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "swaps.token_in")]
     pub swaps_token_in:   Vec<Address>,
-    #[serde_as(as = "Vec<FixedString>")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "swaps.token_out")]
     pub swaps_token_out:  Vec<Address>,
     #[serde(rename = "swaps.amount_in")]
@@ -747,9 +757,9 @@ mod gas_details_tuple {
     where
         D: Deserializer<'de>,
     {
-        let tuple = <(u64, u64, u64, u64)>::deserialize(deserializer)?;
+        let tuple = <(Option<u128>, u64, u64, u64)>::deserialize(deserializer)?;
         Ok(GasDetails {
-            coinbase_transfer:   Some(tuple.0.into()),
+            coinbase_transfer:   tuple.0.map(Into::into),
             priority_fee:        tuple.1,
             gas_used:            tuple.2,
             effective_gas_price: tuple.3,
@@ -760,16 +770,68 @@ mod gas_details_tuple {
 #[cfg(test)]
 mod tests {
 
+    use std::{any::Any, str::FromStr};
+
     use sorella_db_databases::*;
 
     use super::*;
     use crate::test_utils::spawn_db;
 
+    async fn insert_classified_data2_test<T: SpecificMev + serde::Serialize + Row + Clone>(
+        db_client: &ClickhouseClient,
+        mev_detail: Box<dyn Any>,
+        table: &str,
+    ) {
+        let this = (*mev_detail).downcast_ref::<T>().unwrap();
+        db_client.insert_one(this.clone(), table).await.unwrap();
+    }
+
+    async fn insert_classified_data_test(
+        db_client: &ClickhouseClient,
+        mev_details: Vec<(Box<dyn SpecificMev>, MevType)>,
+        table: &str,
+    ) {
+        for (mev, mev_type) in mev_details {
+            let mev = mev.into_any();
+            match mev_type {
+                MevType::Sandwich => {
+                    insert_classified_data2_test::<Sandwich>(db_client, mev, SANDWICH_TABLE).await
+                }
+                MevType::Backrun => {
+                    insert_classified_data2_test::<AtomicBackrun>(db_client, mev, BACKRUN_TABLE)
+                        .await
+                }
+                MevType::JitSandwich => {
+                    insert_classified_data2_test::<JitLiquiditySandwich>(
+                        db_client,
+                        mev,
+                        JIT_SANDWICH_TABLE,
+                    )
+                    .await
+                }
+                MevType::Jit => {
+                    insert_classified_data2_test::<JitLiquidity>(db_client, mev, JIT_TABLE).await
+                }
+                MevType::CexDex => {
+                    insert_classified_data2_test::<CexDex>(db_client, mev, CEX_DEX_TABLE).await
+                }
+                MevType::Liquidation => {
+                    insert_classified_data2_test::<Liquidation>(db_client, mev, LIQUIDATIONS_TABLE)
+                        .await
+                }
+                MevType::Unknown => unimplemented!("none yet"),
+            }
+        }
+
+        //let this = (*mev_detail).downcast_ref::<T>().unwrap();
+        //db_client.insert_one(this.clone(), table).await.unwrap();
+    }
+
     #[tokio::test]
     async fn test_db_mev_block() {
         let test_block = MevBlock::default();
 
-        let db = spawn_db();
+        let db: ClickhouseClient = spawn_db();
 
         db.insert_one(test_block.clone(), MEV_BLOCKS_TABLE)
             .await
@@ -842,11 +904,30 @@ mod tests {
 
     #[tokio::test]
     async fn test_db_jit() {
-        let test_mev = JitLiquidity::default();
+        let mut test_mev: JitLiquidity = JitLiquidity::default();
+        test_mev.jit_mints_index.push(Default::default());
+        test_mev.jit_mints_to.push(Default::default());
+        test_mev.jit_mints_recipient.push(Default::default());
+        test_mev.jit_mints_from.push(Default::default());
+        test_mev.jit_mints_tokens.push(vec![Default::default()]);
+        test_mev.jit_mints_amounts.push(vec![Default::default()]);
+        test_mev.burn_gas_details.coinbase_transfer = None;
+        test_mev.jit_burns_tokens = vec![vec![
+            Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
+            Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+        ]];
+        test_mev.jit_burns_index.push(Default::default());
+        test_mev.jit_burns_to.push(Default::default());
+        test_mev.jit_burns_recipient.push(Default::default());
+        test_mev.jit_burns_from.push(Default::default());
+        test_mev.jit_burns_amounts.push(vec![Default::default()]);
 
         let db = spawn_db();
 
-        db.insert_one(test_mev.clone(), JIT_TABLE).await.unwrap();
+        //db.insert_one(test_mev.clone(), JIT_TABLE).await.unwrap();
+        let t: Box<dyn SpecificMev> = Box::new(test_mev.clone());
+
+        insert_classified_data_test(&db, vec![(t, MevType::Jit)], JIT_TABLE).await;
 
         db.execute(&format!(
             "DELETE FROM {JIT_TABLE} where mint_tx_hash = '{:?}' and burn_tx_hash = '{:?}'",
