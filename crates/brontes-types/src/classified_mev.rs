@@ -11,7 +11,10 @@ use sorella_db_databases::{
 };
 use strum::EnumIter;
 
-use crate::{tree::GasDetails, vec_fixed_string, vec_u256, vec_vec_fixed_string, vec_vec_u256};
+use crate::{
+    tree::GasDetails, vec_b256, vec_fixed_string, vec_u256, vec_vec_b256, vec_vec_fixed_string,
+    vec_vec_u256,
+};
 
 #[serde_as]
 #[derive(Debug, Serialize, Row, Clone, Default)]
@@ -139,9 +142,9 @@ pub struct Sandwich {
     #[serde(with = "vec_u256")]
     #[serde(rename = "frontrun_swaps.amount_out")]
     pub frontrun_swaps_amount_out: Vec<U256>,
-    #[serde(with = "vec_fixed_string")]
+    #[serde(with = "vec_b256")]
     pub victim_tx_hashes: Vec<B256>,
-    #[serde(with = "vec_fixed_string")]
+    #[serde(with = "vec_b256")]
     #[serde(rename = "victim_swaps.tx_hash")]
     pub victim_swaps_tx_hash: Vec<B256>,
     #[serde(rename = "victim_swaps.index")]
@@ -338,9 +341,9 @@ pub struct JitLiquiditySandwich {
     #[serde(with = "vec_vec_u256")]
     #[serde(rename = "frontrun_mints.amounts")]
     pub frontrun_mints_amounts: Vec<Vec<U256>>,
-    #[serde(with = "vec_fixed_string")]
+    #[serde(with = "vec_b256")]
     pub victim_tx_hashes: Vec<B256>,
-    #[serde(with = "vec_fixed_string")]
+    #[serde(with = "vec_b256")]
     #[serde(rename = "victim_swaps.tx_hash")]
     pub victim_swaps_tx_hash: Vec<B256>,
     #[serde(rename = "victim_swaps.index")]
@@ -597,9 +600,9 @@ pub struct JitLiquidity {
     #[serde(with = "vec_vec_u256")]
     #[serde(rename = "jit_mints.amounts")]
     pub jit_mints_amounts: Vec<Vec<U256>>,
-    #[serde(with = "vec_fixed_string")]
+    #[serde(with = "vec_b256")]
     pub victim_swap_tx_hashes: Vec<B256>,
-    #[serde(with = "vec_fixed_string")]
+    #[serde(with = "vec_b256")]
     #[serde(rename = "victim_swaps.tx_hash")]
     pub victim_swaps_tx_hash: Vec<B256>,
     #[serde(rename = "victim_swaps.index")]
