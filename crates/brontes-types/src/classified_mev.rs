@@ -213,14 +213,18 @@ pub fn compose_sandwich_jit(
     let jit_sand = Box::new(JitLiquiditySandwich {
         frontrun_tx_hash: sandwich.frontrun_tx_hash,
         frontrun_gas_details: sandwich.frontrun_gas_details,
-        frontrun_swaps_index: sandwich.frontrun_swaps_index,
+        frontrun_swaps_index: sandwich
+            .frontrun_swaps_index
+            .into_iter()
+            .map(|x| x as u64)
+            .collect(),
         frontrun_swaps_from: sandwich.frontrun_swaps_from,
         frontrun_swaps_pool: sandwich.frontrun_swaps_pool,
         frontrun_swaps_token_in: sandwich.frontrun_swaps_token_in,
         frontrun_swaps_token_out: sandwich.frontrun_swaps_token_out,
         frontrun_swaps_amount_in: sandwich.frontrun_swaps_amount_in,
         frontrun_swaps_amount_out: sandwich.frontrun_swaps_amount_out,
-        frontrun_mints_index: jit.jit_mints_index,
+        frontrun_mints_index: jit.jit_mints_index.into_iter().map(|x| x as u64).collect(),
         frontrun_mints_from: jit.jit_mints_from,
         frontrun_mints_to: jit.jit_mints_to,
         frontrun_mints_recipient: jit.jit_mints_recipient,
@@ -248,7 +252,7 @@ pub fn compose_sandwich_jit(
         backrun_swaps_token_out: sandwich.backrun_swaps_token_out,
         backrun_swaps_amount_in: sandwich.backrun_swaps_amount_in,
         backrun_swaps_amount_out: sandwich.backrun_swaps_amount_out,
-        backrun_burns_index: jit.jit_burns_index,
+        backrun_burns_index: jit.jit_burns_index.into_iter().map(|x| x as u64).collect(),
         backrun_burns_from: jit.jit_burns_from,
         backrun_burns_to: jit.jit_burns_to,
         backrun_burns_recipient: jit.jit_burns_recipient,
@@ -584,7 +588,7 @@ pub struct JitLiquidity {
     #[serde(with = "gas_details_tuple")]
     pub mint_gas_details: GasDetails,
     #[serde(rename = "jit_mints.index")]
-    pub jit_mints_index: Vec<u64>,
+    pub jit_mints_index: Vec<u16>,
     #[serde(with = "vec_fixed_string")]
     #[serde(rename = "jit_mints.from")]
     pub jit_mints_from: Vec<Address>,
@@ -606,7 +610,7 @@ pub struct JitLiquidity {
     #[serde(rename = "victim_swaps.tx_hash")]
     pub victim_swaps_tx_hash: Vec<B256>,
     #[serde(rename = "victim_swaps.index")]
-    pub victim_swaps_index: Vec<u64>,
+    pub victim_swaps_index: Vec<u16>,
     #[serde(with = "vec_fixed_string")]
     #[serde(rename = "victim_swaps.from")]
     pub victim_swaps_from: Vec<Address>,
@@ -638,7 +642,7 @@ pub struct JitLiquidity {
     #[serde(with = "gas_details_tuple")]
     pub burn_gas_details: GasDetails,
     #[serde(rename = "jit_burns.index")]
-    pub jit_burns_index: Vec<u64>,
+    pub jit_burns_index: Vec<u16>,
     #[serde(with = "vec_fixed_string")]
     #[serde(rename = "jit_burns.from")]
     pub jit_burns_from: Vec<Address>,
@@ -753,9 +757,9 @@ mod gas_details_tuple {
     where
         D: Deserializer<'de>,
     {
-        let tuple = <(u64, u64, u64, u64)>::deserialize(deserializer)?;
+        let tuple = <(Option<u128>, u64, u64, u64)>::deserialize(deserializer)?;
         Ok(GasDetails {
-            coinbase_transfer:   Some(tuple.0.into()),
+            coinbase_transfer:   tuple.0.map(Into::into),
             priority_fee:        tuple.1,
             gas_used:            tuple.2,
             effective_gas_price: tuple.3,
@@ -766,16 +770,68 @@ mod gas_details_tuple {
 #[cfg(test)]
 mod tests {
 
+    use std::{any::Any, str::FromStr};
+
     use sorella_db_databases::*;
 
     use super::*;
     use crate::test_utils::spawn_db;
 
+    async fn insert_classified_data2_test<T: SpecificMev + serde::Serialize + Row + Clone>(
+        db_client: &ClickhouseClient,
+        mev_detail: Box<dyn Any>,
+        table: &str,
+    ) {
+        let this = (*mev_detail).downcast_ref::<T>().unwrap();
+        db_client.insert_one(this.clone(), table).await.unwrap();
+    }
+
+    async fn insert_classified_data_test(
+        db_client: &ClickhouseClient,
+        mev_details: Vec<(Box<dyn SpecificMev>, MevType)>,
+        table: &str,
+    ) {
+        for (mev, mev_type) in mev_details {
+            let mev = mev.into_any();
+            match mev_type {
+                MevType::Sandwich => {
+                    insert_classified_data2_test::<Sandwich>(db_client, mev, SANDWICH_TABLE).await
+                }
+                MevType::Backrun => {
+                    insert_classified_data2_test::<AtomicBackrun>(db_client, mev, BACKRUN_TABLE)
+                        .await
+                }
+                MevType::JitSandwich => {
+                    insert_classified_data2_test::<JitLiquiditySandwich>(
+                        db_client,
+                        mev,
+                        JIT_SANDWICH_TABLE,
+                    )
+                    .await
+                }
+                MevType::Jit => {
+                    insert_classified_data2_test::<JitLiquidity>(db_client, mev, JIT_TABLE).await
+                }
+                MevType::CexDex => {
+                    insert_classified_data2_test::<CexDex>(db_client, mev, CEX_DEX_TABLE).await
+                }
+                MevType::Liquidation => {
+                    insert_classified_data2_test::<Liquidation>(db_client, mev, LIQUIDATIONS_TABLE)
+                        .await
+                }
+                MevType::Unknown => unimplemented!("none yet"),
+            }
+        }
+
+        //let this = (*mev_detail).downcast_ref::<T>().unwrap();
+        //db_client.insert_one(this.clone(), table).await.unwrap();
+    }
+
     #[tokio::test]
     async fn test_db_mev_block() {
         let test_block = MevBlock::default();
 
-        let db = spawn_db();
+        let db: ClickhouseClient = spawn_db();
 
         db.insert_one(test_block.clone(), MEV_BLOCKS_TABLE)
             .await
@@ -848,11 +904,30 @@ mod tests {
 
     #[tokio::test]
     async fn test_db_jit() {
-        let test_mev = JitLiquidity::default();
+        let mut test_mev: JitLiquidity = JitLiquidity::default();
+        test_mev.jit_mints_index.push(Default::default());
+        test_mev.jit_mints_to.push(Default::default());
+        test_mev.jit_mints_recipient.push(Default::default());
+        test_mev.jit_mints_from.push(Default::default());
+        test_mev.jit_mints_tokens.push(vec![Default::default()]);
+        test_mev.jit_mints_amounts.push(vec![Default::default()]);
+        test_mev.burn_gas_details.coinbase_transfer = None;
+        test_mev.jit_burns_tokens = vec![vec![
+            Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
+            Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+        ]];
+        test_mev.jit_burns_index.push(Default::default());
+        test_mev.jit_burns_to.push(Default::default());
+        test_mev.jit_burns_recipient.push(Default::default());
+        test_mev.jit_burns_from.push(Default::default());
+        test_mev.jit_burns_amounts.push(vec![Default::default()]);
 
         let db = spawn_db();
 
-        db.insert_one(test_mev.clone(), JIT_TABLE).await.unwrap();
+        //db.insert_one(test_mev.clone(), JIT_TABLE).await.unwrap();
+        let t: Box<dyn SpecificMev> = Box::new(test_mev.clone());
+
+        insert_classified_data_test(&db, vec![(t, MevType::Jit)], JIT_TABLE).await;
 
         db.execute(&format!(
             "DELETE FROM {JIT_TABLE} where mint_tx_hash = '{:?}' and burn_tx_hash = '{:?}'",

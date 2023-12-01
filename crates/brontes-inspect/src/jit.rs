@@ -196,7 +196,7 @@ impl JitInspector {
         let jit_details = JitLiquidity {
             mint_tx_hash: txes[0],
             mint_gas_details: searcher_gas_details[0],
-            jit_mints_index: mints.iter().map(|m| m.index).collect(),
+            jit_mints_index: mints.iter().map(|m| m.index as u16).collect(),
             jit_mints_from: mints.iter().map(|m| m.from).collect(),
             jit_mints_to: mints.iter().map(|m| m.to).collect(),
             jit_mints_recipient: mints.iter().map(|m| m.recipient).collect(),
@@ -220,7 +220,7 @@ impl JitInspector {
                 .iter()
                 .map(|s| s.effective_gas_price)
                 .collect_vec(),
-            victim_swaps_index: swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            victim_swaps_index: swaps.iter().map(|s| s.index as u16).collect::<Vec<_>>(),
             victim_swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
             victim_swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
             victim_swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
@@ -229,7 +229,7 @@ impl JitInspector {
             victim_swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
             burn_tx_hash: txes[1],
             burn_gas_details: searcher_gas_details[1],
-            jit_burns_index: burns.iter().map(|m| m.index).collect(),
+            jit_burns_index: burns.iter().map(|m| m.index as u16).collect(),
             jit_burns_from: burns.iter().map(|m| m.from).collect(),
             jit_burns_to: burns.iter().map(|m| m.to).collect(),
             jit_burns_recipient: burns.iter().map(|m| m.recipient).collect(),
