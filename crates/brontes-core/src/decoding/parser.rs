@@ -1,5 +1,9 @@
+#[cfg(feature = "dyn-decode")]
+use std::collections::HashMap;
 use std::sync::Arc;
 
+#[cfg(feature = "dyn-decode")]
+use alloy_json_abi::JsonAbi;
 use brontes_database::database::Database;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
@@ -56,7 +60,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
-            .parse_block(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
+            .fill_metadata(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
             .await;
         #[cfg(not(feature = "dyn-decode"))]
         let traces = self
@@ -74,14 +78,14 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub(crate) async fn trace_block(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TraceResultsWithTransactionHash>>, HashMap<Address, JsonAbi>, BlockStats) {
+    ) -> (Option<Vec<TxTrace>>, HashMap<Address, JsonAbi>, BlockStats) {
         let merged_trace = self
             .tracer
             .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num)))
             .await;
 
         let mut stats = BlockStats::new(block_num, None);
-        let trace = match parity_trace {
+        let trace = match merged_trace {
             Ok(Some(t)) => Some(t),
             Ok(None) => {
                 stats.err = Some(TraceParseErrorKind::TracesMissingBlock);
@@ -97,10 +101,9 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             let addresses = trace
                 .iter()
                 .flat_map(|t| {
-                    t.full_trace
-                        .trace
+                    t.trace
                         .iter()
-                        .filter_map(|inner| match &inner.action {
+                        .filter_map(|inner| match &inner.trace.action {
                             Action::Call(call) => Some(call.to),
                             _ => None,
                         })
@@ -226,7 +229,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         };
 
         #[cfg(feature = "dyn-decode")]
-        tx_trace.trace.iter_mut().for_each(|mut iter| {
+        tx_trace.trace.iter_mut().for_each(|iter| {
             let addr = match iter.trace.action {
                 Action::Call(ref addr) => addr.to,
                 _ => return,
@@ -251,5 +254,38 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         tx_trace.gas_used = gas_used;
 
         (tx_trace, stats)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{str::FromStr, time::SystemTime};
+
+    use brontes_database::database::Database;
+    use brontes_types::test_utils::write_tree_as_json;
+    use serial_test::serial;
+    use tokio::sync::mpsc::unbounded_channel;
+    use tracing::info;
+
+    use super::*;
+    use crate::{init_tracing, test_utils::init_trace_parser};
+
+    #[cfg(feature = "dyn-decode")]
+    #[tokio::test]
+    #[serial]
+    async fn test_dyn_decode() {
+        dotenv::dotenv().ok();
+        init_tracing();
+        let block_num = 18522278;
+
+        let (tx, _rx) = unbounded_channel();
+
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let (trace, stats) = tracer.execute_block(block_num).await.unwrap();
+        let has_decoded = trace
+            .into_iter()
+            .flat_map(|t| t.trace.into_iter().map(|t| t.decoded_data.is_some()))
+            .any(|s| s);
+        info!(ran_dyn = has_decoded);
     }
 }
