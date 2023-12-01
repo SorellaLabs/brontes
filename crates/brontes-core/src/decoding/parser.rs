@@ -265,6 +265,7 @@ mod tests {
     use brontes_types::test_utils::write_tree_as_json;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
+    use tracing::info;
 
     use super::*;
     use crate::{init_tracing, test_utils::init_trace_parser};
@@ -280,7 +281,7 @@ mod tests {
         let (tx, _rx) = unbounded_channel();
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let (trace, stats) = tracer.trace_block(block_num).await;
+        let (trace, stats) = tracer.execute_block(block_num).await;
         info!("{:#?}", trace.unwrap());
     }
 }
