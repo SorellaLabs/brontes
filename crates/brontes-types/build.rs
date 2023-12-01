@@ -21,6 +21,7 @@ const TOKEN_QUERIES: &str =
 
 fn main() {
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
+
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
