@@ -19,6 +19,8 @@ use super::*;
 #[cfg(feature = "dyn-decode")]
 use crate::decoding::dyn_decode::decode_input_with_abi;
 use crate::errors::TraceParseError;
+#[cfg(feature = "dyn-decode")]
+tracing::info;
 
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
