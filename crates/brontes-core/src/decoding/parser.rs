@@ -16,9 +16,9 @@ use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::TransactionReceipt;
 
 use super::*;
-use crate::errors::TraceParseError;
 #[cfg(feature = "dyn-decode")]
-use crate::{decoding::dyn_decode::decode_input_with_abi, errors::TraceParseError};
+use crate::decoding::dyn_decode::decode_input_with_abi;
+use crate::errors::TraceParseError;
 
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
