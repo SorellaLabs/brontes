@@ -62,12 +62,12 @@ pub struct DBTokenPricesDB {
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Row)]
 pub struct TimesFlowDB {
-    pub block_number:    u64,
+    pub block_number:    u32,
     pub block_hash:      String,
     pub relay_time:      u64,
     pub p2p_time:        u64,
     pub proposer_addr:   String,
-    pub proposer_reward: u64,
+    pub proposer_reward: u128,
     pub private_flow:    Vec<String>,
 }
 
@@ -86,12 +86,12 @@ pub struct TimesFlow {
 impl From<TimesFlowDB> for TimesFlow {
     fn from(value: TimesFlowDB) -> Self {
         TimesFlow {
-            block_number:    value.block_number,
+            block_number:    value.block_number as u64,
             block_hash:      B256::from_str(&value.block_hash).unwrap(),
             relay_time:      value.relay_time,
             p2p_time:        value.p2p_time,
             proposer_addr:   Address::from_str(&value.proposer_addr).unwrap_or_default(),
-            proposer_reward: value.proposer_reward,
+            proposer_reward: value.proposer_reward as u64,
             private_flow:    value
                 .private_flow
                 .into_iter()
