@@ -1,5 +1,6 @@
 SELECT 
-	address, abi 
-FROM brontes.protocol_details
-WHERE has([?], address)
+	distinct(a.address), any(c.abi)
+FROM ethereum.addresses a 
+INNER JOIN ethereum.contracts c ON a.hashed_bytecode = c.hashed_bytecode
+WHERE c.abi IS NOT NULL AND has([?], address)
 
