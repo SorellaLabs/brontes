@@ -233,8 +233,8 @@ impl JitInspector {
             jit_burns_from: burns.iter().map(|m| m.from).collect(),
             jit_burns_to: burns.iter().map(|m| m.to).collect(),
             jit_burns_recipient: burns.iter().map(|m| m.recipient).collect(),
-            jit_burns_token: burns.iter().map(|m| m.token.clone()).collect(),
-            jit_burns_amount: burns
+            jit_burns_tokens: burns.iter().map(|m| m.token.clone()).collect(),
+            jit_burns_amounts: burns
                 .iter()
                 .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
                 .collect(),
