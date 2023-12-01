@@ -18,7 +18,7 @@ use sorella_db_databases::{
 };
 use tracing::error;
 
-use self::types::{Abis, DBTokenPrices, TimesFlow, TokenPricesTimeDB};
+use self::types::{Abis, TimesFlow, TokenPricesTimeDB};
 use super::Metadata;
 use crate::database::{const_sql::*, types::TimesFlowDB};
 
