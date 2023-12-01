@@ -271,7 +271,7 @@ mod tests {
     use super::*;
     use crate::{init_tracing, test_utils::init_trace_parser};
 
-    // #[cfg(feature = "dyn-decode")]
+    #[cfg(feature = "dyn-decode")]
     #[tokio::test]
     #[serial]
     async fn test_dyn_decode() {
@@ -283,6 +283,10 @@ mod tests {
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
         let (trace, stats) = tracer.execute_block(block_num).await.unwrap();
-        info!("{:#?}", trace);
+        let has_decoded = trace
+            .into_iter()
+            .flat_map(|t| t.trace.into_iter().map(|t| t.decoded_data.is_some()))
+            .any(|s| *s);
+        info!(ran_dyn = has_decoded);
     }
 }
