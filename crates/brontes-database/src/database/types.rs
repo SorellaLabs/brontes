@@ -7,9 +7,8 @@ use serde_with::{serde_as, DisplayFromStr};
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 #[derive(Debug, Row, Serialize, Deserialize)]
-pub struct TokenPriceTime {
-    pub address: H160,
-    pub price:   f64,
+pub struct TokenPricesTimeDB {
+    token_prices: Vec<(String, (f64, f64))>,
 }
 
 #[derive(Debug, Row, Serialize, Deserialize)]
@@ -61,32 +60,42 @@ pub struct DBTokenPricesDB {
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Row)]
-pub struct RelayInfoDB {
+pub struct TimesFlowDB {
+    pub block_number:    u64,
     pub block_hash:      String,
     pub relay_time:      u64,
     pub p2p_time:        u64,
     pub proposer_addr:   String,
     pub proposer_reward: u64,
+    pub private_flow:    Vec<String>,
 }
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Row)]
-pub struct RelayInfo {
+pub struct TimesFlow {
+    pub block_number:    u64,
     pub block_hash:      H256,
     pub relay_time:      u64,
     pub p2p_time:        u64,
     pub proposer_addr:   H160,
     pub proposer_reward: u64,
+    pub private_flow:    Vec<H256>,
 }
 
-impl From<RelayInfoDB> for RelayInfo {
-    fn from(value: RelayInfoDB) -> Self {
-        RelayInfo {
+impl From<TimesFlowDB> for TimesFlow {
+    fn from(value: TimesFlowDB) -> Self {
+        TimesFlow {
+            block_number:    value.block_number,
             block_hash:      H256::from_str(&value.block_hash).unwrap(),
             relay_time:      value.relay_time,
             p2p_time:        value.p2p_time,
             proposer_addr:   H160::from_str(&value.proposer_addr).unwrap(),
             proposer_reward: value.proposer_reward,
+            private_flow:    value
+                .private_flow
+                .into_iter()
+                .map(|tx| H256::from_str(&tx).unwrap())
+                .collect(),
         }
     }
 }
