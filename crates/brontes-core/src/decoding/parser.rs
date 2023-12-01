@@ -110,6 +110,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                 })
                 .filter(|addr| (self.should_fetch)(addr))
                 .collect::<Vec<Address>>();
+            info!("addresses for dyn decoding: {:#?}", addresses);
             self.database.get_abis(addresses).await
         } else {
             HashMap::default()
