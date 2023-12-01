@@ -90,7 +90,12 @@ impl Row for MevType {
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
 pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static {
-    fn into_any(self: Box<Self>) -> Box<dyn Any>;
+    fn into_any(self: Box<Self>) -> Box<dyn Any>
+    where
+        Self: Sized,
+    {
+        self
+    }
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u64;
     fn bribe(&self) -> u64;
@@ -272,10 +277,6 @@ pub fn compose_sandwich_jit(
 }
 
 impl SpecificMev for Sandwich {
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
-
     fn mev_type(&self) -> MevType {
         MevType::Sandwich
     }
@@ -419,10 +420,6 @@ impl SpecificMev for JitLiquiditySandwich {
         MevType::JitSandwich
     }
 
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
-
     fn priority_fee_paid(&self) -> u64 {
         self.frontrun_gas_details.priority_fee + self.backrun_gas_details.priority_fee
     }
@@ -485,10 +482,6 @@ pub struct CexDex {
 impl SpecificMev for CexDex {
     fn mev_type(&self) -> MevType {
         MevType::CexDex
-    }
-
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
     }
 
     fn priority_fee_paid(&self) -> u64 {
@@ -554,10 +547,6 @@ pub struct Liquidation {
 impl SpecificMev for Liquidation {
     fn mev_type(&self) -> MevType {
         MevType::Liquidation
-    }
-
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
@@ -667,10 +656,6 @@ impl SpecificMev for JitLiquidity {
     fn priority_fee_paid(&self) -> u64 {
         self.mint_gas_details.priority_fee + self.burn_gas_details.priority_fee
     }
-
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
 }
 
 #[serde_as]
@@ -703,10 +688,6 @@ pub struct AtomicBackrun {
 }
 
 impl SpecificMev for AtomicBackrun {
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
-
     fn priority_fee_paid(&self) -> u64 {
         self.gas_details.priority_fee
     }
