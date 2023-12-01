@@ -77,7 +77,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub(crate) async fn trace_block(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TraceResultsWithTransactionHash>>, HashMap<Address, JsonAbi>, BlockStats) {
+    ) -> (Option<Vec<TxTrace>>, HashMap<Address, JsonAbi>, BlockStats) {
         let merged_trace = self
             .tracer
             .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num)))
@@ -100,10 +100,9 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             let addresses = trace
                 .iter()
                 .flat_map(|t| {
-                    t.full_trace
-                        .trace
+                    t.trace
                         .iter()
-                        .filter_map(|inner| match &inner.action {
+                        .filter_map(|inner| match &inner.trace.action {
                             Action::Call(call) => Some(call.to),
                             _ => None,
                         })
