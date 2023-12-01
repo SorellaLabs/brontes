@@ -86,6 +86,8 @@ impl Database {
             error!(?e, "failed to insert block details");
         }
 
+        info!("inserted block details");
+
         join_all(mev_details.into_iter().map(|(classified, specific)| async {
             if let Err(e) = self
                 .client
@@ -94,10 +96,14 @@ impl Database {
             {
                 error!(?e, "failed to insert classified mev");
             }
+
+            info!("inserted classified_mev");
             let table = mev_table_type(&specific);
             if let Err(e) = self.client.insert_one(specific, &table).await {
                 error!(?e, "failed to insert specific mev");
             }
+
+            info!(%table,"inserted specific mev type");
         }))
         .await;
     }
