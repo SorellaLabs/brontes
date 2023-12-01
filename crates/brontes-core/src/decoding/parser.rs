@@ -286,7 +286,7 @@ mod tests {
         let has_decoded = trace
             .into_iter()
             .flat_map(|t| t.trace.into_iter().map(|t| t.decoded_data.is_some()))
-            .any(|s| *s);
+            .any(|s| s);
         info!(ran_dyn = has_decoded);
     }
 }
