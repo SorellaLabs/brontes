@@ -86,3 +86,80 @@ pub(crate) mod vec_vec_u256 {
             .collect())
     }
 }
+
+pub(crate) mod vec_fixed_string {
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+    use sorella_db_databases::fixed_string::FixedString;
+
+    pub fn serialize<S: Serializer>(u: &Vec<Address>, serializer: S) -> Result<S::Ok, S::Error> {
+        u.iter()
+            .map(|a| format!("{:?}", a).into())
+            .collect::<Vec<FixedString>>()
+            .serialize(serializer)
+    }
+
+    #[allow(dead_code)]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Address>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let addresses: Vec<String> = Deserialize::deserialize(deserializer)?;
+
+        Ok(addresses
+            .into_iter()
+            .map(|a| Address::from_str(&a))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(serde::de::Error::custom)?)
+    }
+}
+pub(crate) mod vec_vec_fixed_string {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+    use sorella_db_databases::fixed_string::FixedString;
+
+    pub fn serialize<S: Serializer>(
+        u: &Vec<Vec<Address>>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        u.iter()
+            .map(|addrs| {
+                addrs
+                    .iter()
+                    .map(|a| format!("{:?}", a).into())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<Vec<FixedString>>>()
+            .serialize(serializer)
+    }
+
+    #[allow(dead_code)]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Vec<Address>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let addresses: Vec<Vec<String>> = Deserialize::deserialize(deserializer)?;
+
+        Ok(addresses
+            .into_iter()
+            .map(|addrs| {
+                addrs
+                    .into_iter()
+                    .map(|a| Address::from_str(&a))
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(serde::de::Error::custom)?)
+    }
+}
