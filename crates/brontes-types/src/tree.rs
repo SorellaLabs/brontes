@@ -514,7 +514,6 @@ mod tests {
     use brontes_database::database::Database;
     use reth_primitives::Address;
     use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
-    use reth_tracing::TracingClient;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
