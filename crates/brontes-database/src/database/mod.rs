@@ -1,27 +1,26 @@
 pub mod const_sql;
 pub mod errors;
 pub mod types;
-
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::{any::Any, collections::HashMap, str::FromStr};
 
 use alloy_json_abi::JsonAbi;
-use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
+use brontes_types::classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev, *};
 use futures::future::join_all;
 use malachite::Rational;
-use reth_primitives::{Address, TxHash};
+use reth_primitives::Address;
 use sorella_db_databases::{
     clickhouse::{ClickhouseClient, Credentials},
     config::ClickhouseConfig,
     utils::format_query_array,
-    BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE, JIT_SANDWICH_TABLE, JIT_TABLE,
+    Row, BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE, JIT_SANDWICH_TABLE, JIT_TABLE,
     LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
 };
-use tracing::error;
+use tracing::{error, info};
 
-use self::types::{Abis, DBTokenPrices, TimesFlow, TokenPricesTimeDB};
+use self::{
+    errors::DatabaseError,
+    types::{Abis, TimesFlow, TokenPricesTimeDB},
+};
 use super::Metadata;
 use crate::database::{const_sql::*, types::TimesFlowDB};
 
@@ -76,6 +75,17 @@ impl Database {
         metadata
     }
 
+    async fn insert_singe_classified_data<T: SpecificMev + serde::Serialize + Row + Clone>(
+        db_client: &ClickhouseClient,
+        mev_detail: Box<dyn Any>,
+        table: &str,
+    ) {
+        let this = (*mev_detail).downcast_ref::<T>().unwrap();
+        if let Err(e) = db_client.insert_one(this.clone(), table).await {
+            error!(?e, "failed to insert specific mev");
+        }
+    }
+
     pub async fn insert_classified_data(
         &self,
         block_details: MevBlock,
@@ -89,6 +99,9 @@ impl Database {
             error!(?e, "failed to insert block details");
         }
 
+        info!("inserted block details");
+
+        let db_client = &self.client;
         join_all(mev_details.into_iter().map(|(classified, specific)| async {
             if let Err(e) = self
                 .client
@@ -97,10 +110,37 @@ impl Database {
             {
                 error!(?e, "failed to insert classified mev");
             }
-            let table = mev_table_type(&specific);
-            if let Err(e) = self.client.insert_one(specific, &table).await {
-                error!(?e, "failed to insert specific mev");
-            }
+
+            info!("inserted classified_mev");
+            let table = &mev_table_type(&specific);
+            let mev_type = specific.mev_type();
+            let mev = specific.into_any();
+            match mev_type {
+                MevType::Sandwich => {
+                    Self::insert_singe_classified_data::<Sandwich>(db_client, mev, table).await
+                }
+                MevType::Backrun => {
+                    Self::insert_singe_classified_data::<AtomicBackrun>(db_client, mev, table).await
+                }
+                MevType::JitSandwich => {
+                    Self::insert_singe_classified_data::<JitLiquiditySandwich>(
+                        db_client, mev, table,
+                    )
+                    .await
+                }
+                MevType::Jit => {
+                    Self::insert_singe_classified_data::<JitLiquidity>(db_client, mev, table).await
+                }
+                MevType::CexDex => {
+                    Self::insert_singe_classified_data::<CexDex>(db_client, mev, table).await
+                }
+                MevType::Liquidation => {
+                    Self::insert_singe_classified_data::<Liquidation>(db_client, mev, table).await
+                }
+                MevType::Unknown => unimplemented!("none yet"),
+            };
+
+            info!(%table,"inserted specific mev type");
         }))
         .await;
     }
