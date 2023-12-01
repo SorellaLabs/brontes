@@ -2,16 +2,13 @@ pub mod const_sql;
 pub mod errors;
 pub mod types;
 
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::{collections::HashMap, str::FromStr};
 
 use alloy_json_abi::JsonAbi;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use futures::future::join_all;
 use malachite::Rational;
-use reth_primitives::{Address, TxHash};
+use reth_primitives::Address;
 use sorella_db_databases::{
     clickhouse::{ClickhouseClient, Credentials},
     config::ClickhouseConfig,
