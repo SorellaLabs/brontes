@@ -282,7 +282,7 @@ mod tests {
         let (tx, _rx) = unbounded_channel();
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let (trace, stats) = tracer.execute_block(block_num).await;
-        info!("{:#?}", trace.unwrap());
+        let (trace, stats) = tracer.execute_block(block_num).await.unwrap();
+        info!("{:#?}", trace);
     }
 }
