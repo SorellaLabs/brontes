@@ -22,7 +22,7 @@ WITH
         INNER JOIN ethereum.block_observations AS cb ON cb.block_number = relay_block.block_num
     ),
     private_flow AS (
-        SELECT bt.tx_hash
+        SELECT toString(bt.tx_hash) as tx_hash
         FROM
         (
             SELECT toString(arrayJoin(transaction_hashes)) AS tx_hash
@@ -46,10 +46,10 @@ WITH
     )
 SELECT 
     block_number,
-    relay_p2p.block_hash AS block_hash,
+    toString(relay_p2p.block_hash) AS block_hash,
     relay_p2p.relay_time AS relay_time,
     relay_p2p.p2p_time AS p2p_time,
-    relay_p2p.proposer_addr AS proposer_fee_recipient,
-    relay_p2p.proposer_reward AS proposer_reward
+    toString(relay_p2p.proposer_addr) AS proposer_addr,
+    relay_p2p.proposer_reward AS proposer_reward,
     grouped_private_flow.private_flow
 FROM relay_p2p, grouped_private_flow
