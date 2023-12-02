@@ -102,7 +102,17 @@ impl Classifier {
         // self.try_classify_unknown_exchanges(&mut tree);
         // self.try_classify_flashloans(&mut tree);
 
-        // remove duplicate swaps
+        // avoid double counting
+        self.remove_swap_transfers(&mut tree);
+        self.remove_mint_transfers(&mut tree);
+        self.remove_collect_transfers(&mut tree);
+
+        tree.finalize_tree();
+
+        tree
+    }
+
+    fn remove_swap_transfers(&self, tree: &mut TimeTree<Action>) {
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
             |node| (node.index, node.data.clone()),
@@ -122,30 +132,50 @@ impl Classifier {
                     .collect::<Vec<_>>()
             },
         );
-        // // remove duplicate mints
-        // tree.remove_duplicate_data(
-        //     |node| node.data.is_mint(),
-        //     |other_nodes, node| {
-        //         let Actions::Mint(mint_data) = &node.data else { unreachable!() };
-        //         other_nodes
-        //             .into_iter()
-        //             .filter_map(|(index, data)| {
-        //                 let Actions::Transfer(transfer) = data else { return None };
-        //                 for (amount, token) in
-        // mint_data.amount.iter().zip(&mint_data.token) {
-        // if transfer.amount.eq(amount) && transfer.token.eq(token) {
-        //                         return Some(*index)
-        //                     }
-        //                 }
-        //                 None
-        //             })
-        //             .collect::<Vec<_>>()
-        //     },
-        //     |node| (node.index, node.data.clone()),
-        // );
-        tree.finalize_tree();
+    }
 
-        tree
+    fn remove_mint_transfers(&self, tree: &mut TimeTree<Action>) {
+        tree.remove_duplicate_data(
+            |node| node.data.is_mint(),
+            |other_nodes, node| {
+                let Actions::Mint(mint_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
+                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
+                                return Some(*index)
+                            }
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+            |node| (node.index, node.data.clone()),
+        );
+    }
+
+    fn remove_collect_transfers(&self, tree: &mut TimeTree<Action>) {
+        tree.remove_duplicate_data(
+            |node| node.data.is_collect(),
+            |other_nodes, node| {
+                let Actions::Collect(collect_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {
+                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
+                                return Some(*index)
+                            }
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+            |node| (node.index, node.data.clone()),
+        );
     }
 
     fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u128> {
