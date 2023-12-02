@@ -1,9 +1,12 @@
+use std::{cell::OnceCell, collections::HashMap, sync::OnceLock};
+
 use malachite::{
     num::{arithmetic::traits::Pow, conversion::traits::RoundingFrom},
     rounding_modes::RoundingMode,
     Natural, Rational,
 };
-use reth_primitives::U256;
+use parking_lot::RwLock;
+use reth_primitives::{revm_primitives::SpecId::MUIR_GLACIER, U256};
 
 pub mod classified_mev;
 pub mod normalized_actions;
@@ -14,6 +17,27 @@ pub mod tree;
 pub mod test_utils;
 
 include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
+
+static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
+
+pub fn try_get_decimals(address: &[u8; 20]) -> Option<u8> {
+    if let Some(value) = TOKEN_TO_DECIMALS.get(address) {
+        Some(*value)
+    } else {
+        DYN_MAP
+            .get_or_init(|| RwLock::new(HashMap::new()))
+            .read()
+            .get(address)
+            .copied()
+    }
+}
+
+pub fn cache_decimals(address: [u8; 20], decimals: u8) {
+    DYN_MAP
+        .get_or_init(|| RwLock::new(HashMap::new()))
+        .write()
+        .insert(address, decimals);
+}
 
 pub trait ToScaledRational {
     fn to_scaled_rational(self, decimals: u8) -> Rational;
