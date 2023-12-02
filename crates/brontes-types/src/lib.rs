@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, collections::HashMap, sync::OnceLock};
+use std::{collections::HashMap, sync::OnceLock};
 
 use malachite::{
     num::{arithmetic::traits::Pow, conversion::traits::RoundingFrom},
@@ -6,7 +6,7 @@ use malachite::{
     Natural, Rational,
 };
 use parking_lot::RwLock;
-use reth_primitives::{revm_primitives::SpecId::MUIR_GLACIER, U256};
+use reth_primitives::U256;
 
 pub mod classified_mev;
 pub mod normalized_actions;
