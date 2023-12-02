@@ -5,15 +5,13 @@ pub use uniswap_v3::{SushiSwapV3Classifier, UniswapV3Classifier};
 
 #[macro_export]
 macro_rules! enum_unwrap {
-    ($data:ident, $($exchange:ident),+ $return:ident) => {{
+    ($data:ident, $exchange:ident, $return:ident) => {{
         paste::paste! {
             match $data {
-                $(
-                    StaticReturnBindings::$exchange(val) => match val {
-                        [<$exchange Calls>]::[<$return:lower>](inner) => inner,
-                        _ => unreachable!(),
-                    },
-                )+
+                StaticReturnBindings::$exchange(val) => match val {
+                    [<$exchange Calls>]::[<$return:lower>](inner) => inner,
+                    _ => unreachable!(),
+                },
                 _ => unreachable!(),
             }
         }
