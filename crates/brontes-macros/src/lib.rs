@@ -35,7 +35,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     if give_logs {
         option_parsing.push(quote!(
             let log_data = logs.into_iter().filter_map(|log| {
-                #action_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, true).ok()
+                #action_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, false).ok()
             }).collect::<Vec<_>>();
             let log_data = Some(log_data).filter(|data| !data.is_empty()).map(|mut l| l.remove(0));
         ));
@@ -43,7 +43,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     if give_returns {
         option_parsing.push(quote!(
-                let return_data = #call_type::abi_decode_returns(&return_data, true).unwrap();
+                let return_data = #call_type::abi_decode_returns(&return_data, false).unwrap();
         ));
     }
 
