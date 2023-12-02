@@ -19,7 +19,7 @@ action_impl!(
     V3SwapImpl,
     Swap,
     swapCall,
-    UniswapV3,
+    UniswapV3 | SushiSwapV3,
     return_data: true,
     |index, from_address: Address, target_address: Address, return_data: swapReturn| {
         let token_0_delta = return_data.amount0;
@@ -60,7 +60,7 @@ action_impl!(
     V3MintImpl,
     Mint,
     mintCall,
-    UniswapV3,
+    UniswapV3 | SushiSwapV3,
     return_data: true,
     call_data: true,
     |index,
@@ -90,7 +90,7 @@ action_impl!(
     V3BurnImpl,
     Burn,
     burnCall,
-    UniswapV3,
+    UniswapV3 | SushiSwapV3,
     return_data: true,
     |index, from_address: Address, target_address: Address, return_data: burnReturn| {
         let token_0_delta = return_data.amount0;
@@ -118,7 +118,7 @@ action_impl!(
     V3CollectImpl,
     Collect,
     collectCall,
-    UniswapV3,
+    UniswapV3 | SushiSwapV3,
     call_data: true,
     return_data: true,
     |
