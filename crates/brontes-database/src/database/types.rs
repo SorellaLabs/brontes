@@ -87,7 +87,7 @@ impl From<TimesFlowDB> for TimesFlow {
     fn from(value: TimesFlowDB) -> Self {
         TimesFlow {
             block_number:    value.block_number as u64,
-            block_hash:      B256::from_str(&value.block_hash).unwrap(),
+            block_hash:      B256::from_str(&value.block_hash).unwrap_or_default(),
             relay_time:      value.relay_time,
             p2p_time:        value.p2p_time,
             proposer_addr:   Address::from_str(&value.proposer_addr).unwrap_or_default(),
@@ -95,7 +95,7 @@ impl From<TimesFlowDB> for TimesFlow {
             private_flow:    value
                 .private_flow
                 .into_iter()
-                .map(|tx| B256::from_str(&tx).unwrap())
+                .map(|tx| B256::from_str(&tx).unwrap_or_default())
                 .collect(),
         }
     }
