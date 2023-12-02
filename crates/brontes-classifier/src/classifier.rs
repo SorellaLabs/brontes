@@ -137,6 +137,7 @@ impl Classifier {
     fn remove_mint_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_mint(),
+            |node| (node.index, node.data.clone()),
             |other_nodes, node| {
                 let Actions::Mint(mint_data) = &node.data else { unreachable!() };
                 other_nodes
@@ -152,13 +153,13 @@ impl Classifier {
                     })
                     .collect::<Vec<_>>()
             },
-            |node| (node.index, node.data.clone()),
         );
     }
 
     fn remove_collect_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_collect(),
+            |node| (node.index, node.data.clone()),
             |other_nodes, node| {
                 let Actions::Collect(collect_data) = &node.data else { unreachable!() };
                 other_nodes
@@ -174,7 +175,6 @@ impl Classifier {
                     })
                     .collect::<Vec<_>>()
             },
-            |node| (node.index, node.data.clone()),
         );
     }
 
