@@ -1,7 +1,7 @@
 pub mod const_sql;
 pub mod errors;
 pub mod types;
-use std::{any::Any, collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 
 use alloy_json_abi::JsonAbi;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev, *};
@@ -17,10 +17,7 @@ use sorella_db_databases::{
 };
 use tracing::{error, info};
 
-use self::{
-    errors::DatabaseError,
-    types::{Abis, TimesFlow, TokenPricesTimeDB},
-};
+use self::types::{Abis, TimesFlow, TokenPricesTimeDB};
 use super::Metadata;
 use crate::database::{const_sql::*, types::TimesFlowDB};
 
