@@ -43,7 +43,10 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     if give_returns {
         option_parsing.push(quote!(
-                let return_data = #call_type::abi_decode_returns(&return_data, false).unwrap();
+                let return_data = #call_type::abi_decode_returns(&return_data, false).map_err(|e| {
+                    println!("return data failed to decode {:#?}", return_data);
+                    e
+                }).unwrap();
         ));
     }
 
