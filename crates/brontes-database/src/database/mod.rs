@@ -80,7 +80,8 @@ impl Database {
         mev_detail: Box<dyn SpecificMev>,
         table: &str,
     ) {
-        let this = mev_detail.into_any().downcast_ref::<T>().unwrap();
+        let any = mev_detail.into_any();
+        let this = any.downcast_ref::<T>().unwrap();
         if let Err(e) = db_client.insert_one(this.clone(), table).await {
             error!(?e, "failed to insert specific mev");
         }
