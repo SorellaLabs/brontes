@@ -347,16 +347,12 @@ impl<'a, const N: usize> Composer<'a, N> {
         for (classified, mev_data) in zero_txes {
             let addresses = mev_data.mev_transaction_hashes();
 
-            if let Some((index, _)) = sorted_mev
-                .get(&composable_types[1])
-                .unwrap()
-                .iter()
-                .enumerate()
-                .find(|(_, (_, v))| {
+            if let Some((index, _)) = sorted_mev.get(&composable_types[1]).and_then(|mev_type| {
+                mev_type.iter().enumerate().find(|(_, (_, v))| {
                     let o_addrs = v.mev_transaction_hashes();
                     o_addrs == addresses || addresses.iter().any(|a| o_addrs.contains(a))
                 })
-            {
+            }) {
                 // remove composed type
                 let (classifed_1, mev_data_1) = sorted_mev
                     .get_mut(&composable_types[1])

@@ -37,7 +37,7 @@ impl Classifier {
         let roots = traces
             .into_par_iter()
             .filter_map(|mut trace| {
-                if trace.trace.is_empty() {
+                if trace.trace.is_empty() || !trace.is_success {
                     return None
                 }
 
@@ -69,6 +69,10 @@ impl Classifier {
                 };
 
                 for (index, trace) in trace.trace.into_iter().enumerate() {
+                    if trace.trace.error.is_some() {
+                        continue
+                    }
+
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
@@ -102,7 +106,17 @@ impl Classifier {
         // self.try_classify_unknown_exchanges(&mut tree);
         // self.try_classify_flashloans(&mut tree);
 
-        // remove duplicate swaps
+        // avoid double counting
+        self.remove_swap_transfers(&mut tree);
+        self.remove_mint_transfers(&mut tree);
+        self.remove_collect_transfers(&mut tree);
+
+        tree.finalize_tree();
+
+        tree
+    }
+
+    fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
             |node| (node.index, node.data.clone()),
@@ -122,30 +136,50 @@ impl Classifier {
                     .collect::<Vec<_>>()
             },
         );
-        // // remove duplicate mints
-        // tree.remove_duplicate_data(
-        //     |node| node.data.is_mint(),
-        //     |other_nodes, node| {
-        //         let Actions::Mint(mint_data) = &node.data else { unreachable!() };
-        //         other_nodes
-        //             .into_iter()
-        //             .filter_map(|(index, data)| {
-        //                 let Actions::Transfer(transfer) = data else { return None };
-        //                 for (amount, token) in
-        // mint_data.amount.iter().zip(&mint_data.token) {
-        // if transfer.amount.eq(amount) && transfer.token.eq(token) {
-        //                         return Some(*index)
-        //                     }
-        //                 }
-        //                 None
-        //             })
-        //             .collect::<Vec<_>>()
-        //     },
-        //     |node| (node.index, node.data.clone()),
-        // );
-        tree.finalize_tree();
+    }
 
-        tree
+    fn remove_mint_transfers(&self, tree: &mut TimeTree<Actions>) {
+        tree.remove_duplicate_data(
+            |node| node.data.is_mint(),
+            |node| (node.index, node.data.clone()),
+            |other_nodes, node| {
+                let Actions::Mint(mint_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
+                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
+                                return Some(*index)
+                            }
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+        );
+    }
+
+    fn remove_collect_transfers(&self, tree: &mut TimeTree<Actions>) {
+        tree.remove_duplicate_data(
+            |node| node.data.is_collect(),
+            |node| (node.index, node.data.clone()),
+            |other_nodes, node| {
+                let Actions::Collect(collect_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {
+                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
+                                return Some(*index)
+                            }
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+        );
     }
 
     fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u128> {
@@ -211,7 +245,11 @@ impl Classifier {
     }
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
-        if log.topics.get(0) == Some(&TRANSFER_TOPIC.into()) {
+        if log.topics.len() != 3 {
+            return None
+        }
+
+        if log.topics.get(0) == Some(&TRANSFER_TOPIC) {
             let from = Address::from_slice(&log.topics[1][12..]);
             let to = Address::from_slice(&log.topics[2][12..]);
             let data = U256::try_from_be_slice(&log.data[..]).unwrap();
