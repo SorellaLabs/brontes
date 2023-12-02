@@ -37,7 +37,7 @@ impl Classifier {
         let roots = traces
             .into_par_iter()
             .filter_map(|mut trace| {
-                if trace.trace.is_empty() {
+                if trace.trace.is_empty() || !trace.is_success {
                     return None
                 }
 
@@ -69,6 +69,10 @@ impl Classifier {
                 };
 
                 for (index, trace) in trace.trace.into_iter().enumerate() {
+                    if trace.trace.error.is_some() {
+                        continue
+                    }
+
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
