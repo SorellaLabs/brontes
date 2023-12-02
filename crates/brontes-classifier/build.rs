@@ -200,9 +200,9 @@ fn init_enum(name: &str, is_empty: bool) -> Vec<String> {
     let mut bindings = Vec::new();
     bindings.push("\n#[allow(non_camel_case_types)]".to_string());
     if is_empty {
-        bindings.push(format!("pub enum {} {{", name));
+        bindings.push(format!("#[derive(Debug)]\npub enum {} {{", name));
     } else {
-        bindings.push(format!("pub enum {} {{", name));
+        bindings.push(format!("#[derive(Debug)]\npub enum {} {{", name));
     }
 
     bindings
