@@ -210,12 +210,7 @@ fn init_enum(name: &str, is_empty: bool) -> Vec<String> {
 
 /// generates the string of an individual binding
 fn binding_string(file_path: &str, protocol_name: &str) -> String {
-    let binding = format!(
-        "sol! (
-            #![derive(Debug)]
-            {}, \"{}\");",
-        protocol_name, file_path
-    );
+    let binding = format!("sol! ({}, \"{}\");", protocol_name, file_path);
     binding
 }
 
