@@ -85,6 +85,7 @@ pub struct TxTrace {
     pub gas_used:        u64,
     pub effective_price: u64,
     pub tx_index:        u64,
+    pub is_success:      bool,
 }
 
 impl TxTrace {
@@ -94,7 +95,8 @@ impl TxTrace {
         tx_index: u64,
         gas_used: u64,
         effective_price: u64,
+        is_success: bool,
     ) -> Self {
-        Self { trace, tx_hash, tx_index, effective_price, gas_used }
+        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success}
     }
 }
