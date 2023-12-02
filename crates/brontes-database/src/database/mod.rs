@@ -79,7 +79,7 @@ impl Database {
     ) {
         let any = mev_detail.into_any();
         let this = any.downcast_ref::<T>().unwrap();
-        if let Err(e) = db_client.insert_one(this, table).await {
+        if let Err(e) = db_client.insert_one(this.clone(), table).await {
             error!(?e, "failed to insert specific mev");
         }
     }
