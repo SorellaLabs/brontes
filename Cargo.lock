@@ -1232,6 +1232,7 @@ dependencies = [
  "hyper",
  "hyper-tls",
  "malachite",
+ "parking_lot 0.12.1",
  "phf",
  "phf_codegen",
  "rayon",
