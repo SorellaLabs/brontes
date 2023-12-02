@@ -12,8 +12,7 @@ use sorella_db_databases::{
 use strum::EnumIter;
 
 use crate::{
-    tree::GasDetails, vec_b256, vec_fixed_string, vec_u256, vec_vec_b256, vec_vec_fixed_string,
-    vec_vec_u256,
+    tree::GasDetails, vec_b256, vec_fixed_string, vec_u256, vec_vec_fixed_string, vec_vec_u256,
 };
 
 #[serde_as]
