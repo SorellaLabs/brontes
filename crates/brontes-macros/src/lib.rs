@@ -17,7 +17,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         exchange_name,
         action_type,
         call_type,
-        exchange_mod_name,
+        exchange_mod_names,
         give_logs,
         give_returns,
         call_function,
@@ -28,7 +28,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     if give_calldata {
         option_parsing.push(quote!(
-                let call_data = enum_unwrap!(data, #exchange_mod_name, #action_type);
+                let call_data = enum_unwrap!(data, #(#exchange_mod_names),* #action_type);
         ));
     }
 
@@ -124,12 +124,12 @@ struct MacroParse {
     call_type:     Ident,
 
     /// for call data decoding
-    exchange_mod_name: Ident,
+    exchange_mod_names: Vec<Ident>,
     /// wether we want logs or not
-    give_logs:         bool,
+    give_logs:          bool,
     /// wether we want return data or not
-    give_returns:      bool,
-    give_calldata:     bool,
+    give_returns:       bool,
+    give_calldata:      bool,
 
     /// The closure that we use to construct the normalized type
     call_function: ExprClosure,
@@ -144,7 +144,10 @@ impl Parse for MacroParse {
         let call_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
 
-        let exchange_mod_name: Ident = input.parse()?;
+        let mut exchange_mod_names = vec![input.parse::<Ident>()?];
+        while input.peek(Token![|]) {
+            exchange_mod_names.push(input.parse()?);
+        }
 
         let mut logs = false;
         let mut return_data = false;
@@ -207,7 +210,7 @@ impl Parse for MacroParse {
             call_type,
             action_type,
             exchange_name,
-            exchange_mod_name,
+            exchange_mod_names,
         })
     }
 }
