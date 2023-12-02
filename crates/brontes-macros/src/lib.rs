@@ -145,7 +145,7 @@ impl Parse for MacroParse {
         input.parse::<Token![,]>()?;
 
         let mut exchange_mod_names = vec![input.parse::<Ident>()?];
-        while input.peek(Token![|]) {
+        while let Ok(_) = input.parse::<Token![|]>() {
             exchange_mod_names.push(input.parse()?);
         }
 
