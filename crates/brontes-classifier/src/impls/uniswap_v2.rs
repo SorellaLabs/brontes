@@ -14,7 +14,7 @@ action_impl!(
     V2SwapImpl,
     Swap,
     swapCall,
-    UniswapV2,
+    UniswapV2 | SushiSwapV2,
     logs: true,
     |index, from_address: Address, target_address: Address, data: Option<Swap>| {
         let data = data?;
@@ -48,7 +48,7 @@ action_impl!(
     V2MintImpl,
     Mint,
     mintCall,
-    UniswapV2,
+    UniswapV2 | SushiSwapV2,
     logs: true,
     call_data: true,
     |index,
@@ -73,7 +73,7 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    UniswapV2,
+    UniswapV2 | SushiSwapV2,
     call_data: true,
     logs: true,
     |index,
