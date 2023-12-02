@@ -128,7 +128,7 @@ mod uni {
         UniswapV3,
         return_data: true,
         |index, from_address: Address, target_address: Address, return_data: swapReturn| {
-            V3Swap!(index, from_address, target_address, return_data)
+            V3Swap!(index, from_address, target_address, return_data);
         }
     );
 
@@ -144,7 +144,7 @@ mod uni {
          target_address: Address,
          call_data: mintCall,
          return_data: mintReturn| {
-             V3Mint!(index, from_address, target_address, call_data, return_data)
+             V3Mint!(index, from_address, target_address, call_data, return_data);
         }
     );
 
@@ -155,7 +155,7 @@ mod uni {
         UniswapV3,
         return_data: true,
         |index, from_address: Address, target_address: Address, return_data: burnReturn| {
-             V3Burn!(index, from_address, target_address, return_data)
+             V3Burn!(index, from_address, target_address, return_data);
         }
     );
 
@@ -173,7 +173,7 @@ mod uni {
         call_data: collectCall,
         return_data: collectReturn
         | {
-            V3Collect!(index, from_addr, to_addr, call_data, return_data)
+            V3Collect!(index, from_addr, to_addr, call_data, return_data);
         }
     );
 
@@ -194,7 +194,7 @@ mod sushi {
         SushiSwapV3,
         return_data: true,
         |index, from_address: Address, target_address: Address, return_data: swapReturn| {
-            V3Swap!(index, from_address, target_address, return_data)
+            V3Swap!(index, from_address, target_address, return_data);
         }
     );
 
@@ -210,7 +210,7 @@ mod sushi {
          target_address: Address,
          call_data: mintCall,
          return_data: mintReturn| {
-             V3Mint!(index, from_address, target_address, call_data, return_data)
+             V3Mint!(index, from_address, target_address, call_data, return_data);
         }
     );
 
@@ -221,7 +221,7 @@ mod sushi {
         SushiSwapV3,
         return_data: true,
         |index, from_address: Address, target_address: Address, return_data: burnReturn| {
-             V3Burn!(index, from_address, target_address, return_data)
+             V3Burn!(index, from_address, target_address, return_data);
         }
     );
 
@@ -239,7 +239,7 @@ mod sushi {
         call_data: collectCall,
         return_data: collectReturn
         | {
-            V3Collect!(index, from_addr, to_addr, call_data, return_data)
+            V3Collect!(index, from_addr, to_addr, call_data, return_data);
         }
     );
 
