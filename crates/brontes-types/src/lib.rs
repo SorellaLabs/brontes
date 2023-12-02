@@ -90,7 +90,7 @@ pub(crate) mod vec_vec_u256 {
 pub(crate) mod vec_fixed_string {
     use std::str::FromStr;
 
-    use alloy_primitives::{Address, FixedBytes};
+    use alloy_primitives::Address;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -122,7 +122,7 @@ pub(crate) mod vec_vec_fixed_string {
 
     use std::str::FromStr;
 
-    use alloy_primitives::{Address, FixedBytes};
+    use alloy_primitives::Address;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -167,7 +167,7 @@ pub(crate) mod vec_vec_fixed_string {
 pub(crate) mod vec_b256 {
     use std::str::FromStr;
 
-    use alloy_primitives::{FixedBytes, B256};
+    use alloy_primitives::B256;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -195,11 +195,13 @@ pub(crate) mod vec_b256 {
             .map_err(serde::de::Error::custom)?)
     }
 }
+
+#[allow(dead_code)]
 pub(crate) mod vec_vec_b256 {
 
     use std::str::FromStr;
 
-    use alloy_primitives::{FixedBytes, B256};
+    use alloy_primitives::B256;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -218,7 +220,6 @@ pub(crate) mod vec_vec_b256 {
             .serialize(serializer)
     }
 
-    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Vec<B256>>, D::Error>
     where
         D: Deserializer<'de>,
