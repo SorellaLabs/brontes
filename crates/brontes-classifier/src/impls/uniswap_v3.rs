@@ -62,7 +62,7 @@ macro_rules! V3Mint {
         Some(NormalizedMint {
             $index,
             from: $from_address,
-            recipient: $call_data.recipient,
+            recipient: $calldata.recipient,
             to: $target_address,
             token: vec![token0, token1],
             amount: vec![token_0_delta, token_1_delta],
