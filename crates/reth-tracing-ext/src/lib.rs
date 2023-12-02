@@ -183,6 +183,7 @@ impl TracingInspectorLocal {
             gas_used,
             effective_price: 0,
             tx_index: info.index.unwrap(),
+            is_success: res.is_success(),
         }
     }
 

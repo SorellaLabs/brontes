@@ -10,9 +10,9 @@ macro_rules! enum_unwrap {
             match $data {
                 StaticReturnBindings::$exchange(val) => match val {
                     [<$exchange Calls>]::[<$return:lower>](inner) => inner,
-                    _ => unreachable!("2nd layer no"),
+                    _ => unreachable!(),
                 },
-                _ => unreachable!("1st layer no"),
+                _ => unreachable!(),
             }
         }
     }};
