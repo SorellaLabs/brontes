@@ -8,24 +8,18 @@ use reth_rpc_types::Log;
 
 use crate::{
     enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
-    UniswapV3::{
-        burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
-        swapReturn, UniswapV3Calls,
-    },
     ADDRESS_TO_TOKENS_2_POOL,
 };
 
-action_impl!(
-    V3SwapImpl,
-    Swap,
-    swapCall,
-    UniswapV3 | SushiSwapV3,
-    return_data: true,
-    |index, from_address: Address, target_address: Address, return_data: swapReturn| {
-        let token_0_delta = return_data.amount0;
-        let token_1_delta = return_data.amount1;
+pub use uni::UniswapV3Classifier;
+pub use sushi::SushiSwapV3Classifier;
+
+macro_rules! V3Swap {
+    ($index:ident, $from_address:ident, $target_address:ident, $return_data:ident) => {
+        let token_0_delta = $return_data.amount0;
+        let token_1_delta = $return_data.amount1;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address.0)
+            .get(&*$target_address.0)
             .copied()
             .unwrap();
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
@@ -45,106 +39,214 @@ action_impl!(
         };
 
         Some(NormalizedSwap {
-            index,
-            from: from_address,
-            pool: target_address,
+            $index,
+            from: $from_address,
+            pool: $target_address,
             token_in,
             token_out,
             amount_in,
             amount_out,
         })
-    }
-);
+    };
+}
 
-action_impl!(
-    V3MintImpl,
-    Mint,
-    mintCall,
-    UniswapV3 | SushiSwapV3,
-    return_data: true,
-    call_data: true,
-    |index,
-     from_address: Address,
-     target_address: Address,
-     call_data: mintCall,
-     return_data: mintReturn| {
-        let token_0_delta = return_data.amount0;
-        let token_1_delta = return_data.amount1;
+macro_rules! V3Mint {
+    ($index:ident, $from_address:ident, $target_address:ident, $calldata:ident, $return_data:ident) => {
+        let token_0_delta = $return_data.amount0;
+        let token_1_delta = $return_data.amount1;
         let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address.0)
+            .get(&*$target_address.0)
             .copied()
             .unwrap();
 
         Some(NormalizedMint {
-            index,
-            from: from_address,
-            recipient: call_data.recipient,
-            to: target_address,
+            $index,
+            from: $from_address,
+            recipient: $call_data.recipient,
+            to: $target_address,
             token: vec![token0, token1],
             amount: vec![token_0_delta, token_1_delta],
         })
-    }
-);
+        
+    };
+}
 
-action_impl!(
-    V3BurnImpl,
-    Burn,
-    burnCall,
-    UniswapV3 | SushiSwapV3,
-    return_data: true,
-    |index, from_address: Address, target_address: Address, return_data: burnReturn| {
-        let token_0_delta = return_data.amount0;
-        let token_1_delta = return_data.amount1;
+macro_rules! V3Burn {
+    ($index:ident, $from_address:ident, $target_address:ident, $return_data:ident) => {
+        let token_0_delta = $return_data.amount0;
+        let token_1_delta = $return_data.amount1;
 
-        let token_0_delta: U256 = return_data.amount0;
-        let token_1_delta: U256 = return_data.amount1;
+        let token_0_delta: U256 = $return_data.amount0;
+        let token_1_delta: U256 = $return_data.amount1;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address.0)
+            .get(&*$target_address.0)
             .copied()
             .unwrap();
 
         Some(NormalizedBurn {
-            to: target_address,
-            recipient: target_address,
-            index,
-            from: from_address,
+            to: $target_address,
+            recipient: $target_address,
+            $index,
+            from: $from_address,
             token: vec![token_0, token_1],
             amount: vec![token_0_delta, token_1_delta],
         })
-    }
-);
+        
+    };
+}
 
-action_impl!(
-    V3CollectImpl,
-    Collect,
-    collectCall,
-    UniswapV3 | SushiSwapV3,
-    call_data: true,
-    return_data: true,
-    |
-    index,
-    from_addr: Address,
-    to_addr: Address,
-    call_data: collectCall,
-    return_data: collectReturn
-    | {
+macro_rules! V3Collect {
+    ($index:ident, $from_address:ident, $target_address:ident, $calldata:ident, $return_data:ident) => {
         let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address.0)
+            .get(&*$target_address.0)
             .copied()
             .unwrap();
         Some(NormalizedCollect {
-            index,
-            from: from_addr,
-            recipient: call_data.recipient,
-            to: to_addr,
+            $index,
+            from: $from_address,
+            recipient: $calldata.recipient,
+            to: $target_address,
             token: vec![token0, token1],
-            amount: vec![U256::from(return_data.amount0), U256::from(return_data.amount1)],
+            amount: vec![U256::from($return_data.amount0), U256::from($return_data.amount1)],
         })
-    }
-);
+        
+    };
+}
 
-action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);
-action_dispatch!(SushiSwapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);
+
+mod uni {
+    use super::*;
+    use crate::UniswapV3::{
+        burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
+        swapReturn, UniswapV3Calls,
+    };
+
+    action_impl!(
+        V3SwapImpl,
+        Swap,
+        swapCall,
+        UniswapV3,
+        return_data: true,
+        |index, from_address: Address, target_address: Address, return_data: swapReturn| {
+            V3Swap!(index, from_address, target_address, return_data)
+        }
+    );
+
+    action_impl!(
+        V3MintImpl,
+        Mint,
+        mintCall,
+        UniswapV3,
+        return_data: true,
+        call_data: true,
+        |index,
+         from_address: Address,
+         target_address: Address,
+         call_data: mintCall,
+         return_data: mintReturn| {
+             V3Mint!(index, from_address, target_address, call_data, return_data)
+        }
+    );
+
+    action_impl!(
+        V3BurnImpl,
+        Burn,
+        burnCall,
+        UniswapV3,
+        return_data: true,
+        |index, from_address: Address, target_address: Address, return_data: burnReturn| {
+             V3Burn!(index, from_address, target_address, return_data)
+        }
+    );
+
+    action_impl!(
+        V3CollectImpl,
+        Collect,
+        collectCall,
+        UniswapV3,
+        call_data: true,
+        return_data: true,
+        |
+        index,
+        from_addr: Address,
+        to_addr: Address,
+        call_data: collectCall,
+        return_data: collectReturn
+        | {
+            V3Collect!(index, from_addr, to_addr, call_data, return_data)
+        }
+    );
+
+    action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);
+}
+
+mod sushi {
+    use super::*;
+    use crate::SushiSwapV3::{
+        burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
+        swapReturn, SushiSwapV3Calls,
+    };
+
+    action_impl!(
+        V3SwapImpl,
+        Swap,
+        swapCall,
+        SushiSwapV3,
+        return_data: true,
+        |index, from_address: Address, target_address: Address, return_data: swapReturn| {
+            V3Swap!(index, from_address, target_address, return_data)
+        }
+    );
+
+    action_impl!(
+        V3MintImpl,
+        Mint,
+        mintCall,
+        SushiSwapV3,
+        return_data: true,
+        call_data: true,
+        |index,
+         from_address: Address,
+         target_address: Address,
+         call_data: mintCall,
+         return_data: mintReturn| {
+             V3Mint!(index, from_address, target_address, call_data, return_data)
+        }
+    );
+
+    action_impl!(
+        V3BurnImpl,
+        Burn,
+        burnCall,
+        SushiSwapV3,
+        return_data: true,
+        |index, from_address: Address, target_address: Address, return_data: burnReturn| {
+             V3Burn!(index, from_address, target_address, return_data)
+        }
+    );
+
+    action_impl!(
+        V3CollectImpl,
+        Collect,
+        collectCall,
+        SushiSwapV3,
+        call_data: true,
+        return_data: true,
+        |
+        index,
+        from_addr: Address,
+        to_addr: Address,
+        call_data: collectCall,
+        return_data: collectReturn
+        | {
+            V3Collect!(index, from_addr, to_addr, call_data, return_data)
+        }
+    );
+
+    action_dispatch!(SushiSwapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);
+}
+
+
 
 #[cfg(test)]
 mod tests {
