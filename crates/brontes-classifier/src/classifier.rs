@@ -112,7 +112,7 @@ impl Classifier {
         tree
     }
 
-    fn remove_swap_transfers(&self, tree: &mut TimeTree<Action>) {
+    fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
             |node| (node.index, node.data.clone()),
@@ -134,7 +134,7 @@ impl Classifier {
         );
     }
 
-    fn remove_mint_transfers(&self, tree: &mut TimeTree<Action>) {
+    fn remove_mint_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_mint(),
             |other_nodes, node| {
@@ -156,7 +156,7 @@ impl Classifier {
         );
     }
 
-    fn remove_collect_transfers(&self, tree: &mut TimeTree<Action>) {
+    fn remove_collect_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_collect(),
             |other_nodes, node| {
