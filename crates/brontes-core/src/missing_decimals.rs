@@ -9,7 +9,7 @@ use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
 use brontes_database::database::Database;
 use brontes_types::cache_decimals;
-use futures::{join, stream::FuturesUnordered, Future, StreamExt, future::join};
+use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
 use tracing::warn;
 
 sol!(
@@ -45,7 +45,7 @@ impl<'db> MissingDecimals<'db> {
             let mut tx_req = TransactionRequest::default().to(addr).input(call.into());
 
             self.pending_decimals
-                .push(join(async { addr }, self.provider.call(tx_req, None)));
+                .push(Box::pin(join(async move{ addr }, self.provider.call(tx_req, None))));
         });
     }
 
