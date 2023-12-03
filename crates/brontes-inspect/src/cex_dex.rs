@@ -125,12 +125,11 @@ impl CexDexInspector {
             finalized_bribe_usd: gas_finalized.to_float(),
         };
 
-        let prices = swaps
-            .par_iter()
-            .flatten()
-            .filter_map(|swap| self.rational_prices(swap, &metadata))
+        let prices = futures::stream::iter(swaps.iter()
+            .flatten())
+            .filter_map(|swap| async {self.rational_prices(swap, &metadata).await })
             .map(|(dex_price, _, cex1)| (dex_price.to_float(), cex1.to_float()))
-            .collect::<Vec<_>>();
+            .collect::<Vec<_>>().await;
 
         let flat_swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
 
@@ -228,8 +227,9 @@ impl CexDexInspector {
         swap: &NormalizedSwap,
         metadata: &Metadata,
     ) -> (Option<Rational>, Option<Rational>) {
-        if let Some((dex_price, cex_price1, cex_price2)) =
-            self.rational_prices(&Actions::Swap(swap.clone()), metadata)
+        if let Some((dex_price, cex_price1, cex_price2)) = self
+            .rational_prices(&Actions::Swap(swap.clone()), metadata)
+            .await
         {
             let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1).await;
             let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2).await;
