@@ -19,9 +19,6 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 use tracing::{error, warn};
 
-sol!(
-    function decimals() public view returns (uint8);
-);
 
 #[derive(Debug, Default)]
 pub struct SharedInspectorUtils;
@@ -86,7 +83,7 @@ impl SharedInspectorUtils {
 
             for transfer in transfers.into_iter() {
                 // normalize token decimals
-                let Some(decimals) = try_get_decimals(transfer.token.0 .0) else {
+                let Some(decimals) = try_get_decimals(&transfer.token.0 .0) else {
                     continue;
                 };
 
