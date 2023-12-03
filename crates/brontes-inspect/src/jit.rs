@@ -8,14 +8,17 @@ use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     tree::GasDetails,
-    ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
+    ToFloatNearest, ToScaledRational,
 };
 use itertools::Itertools;
 use malachite::Rational;
 use reth_primitives::{Address, B256, U256};
 use tracing::info;
 
-use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
+use crate::{
+    shared_utils::SharedInspectorUtils, Actions, ClassifiedMev, Inspector, Metadata, SpecificMev,
+    TimeTree,
+};
 
 #[derive(Debug)]
 struct PossibleJit {
@@ -26,7 +29,9 @@ struct PossibleJit {
     pub victims:               Vec<B256>,
 }
 #[derive(Default)]
-pub struct JitInspector;
+pub struct JitInspector {
+    shared_utils: SharedInspectorUtils,
+}
 
 #[async_trait]
 impl Inspector for JitInspector {
@@ -35,8 +40,7 @@ impl Inspector for JitInspector {
         tree: Arc<TimeTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        self.possible_jit_set(tree.clone())
-            .into_iter()
+        futures::stream::iter(self.possible_jit_set(tree.clone()))
             .filter_map(
                 |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
@@ -117,14 +121,16 @@ impl Inspector for JitInspector {
                         victim_actions,
                         victim_gas,
                     )
+                    .await
                 },
             )
             .collect::<Vec<_>>()
+            .await
     }
 }
 
 impl JitInspector {
-    fn calculate_jit(
+    async fn calculate_jit(
         &self,
         eoa: Address,
         mev_addr: Address,
@@ -161,12 +167,15 @@ impl JitInspector {
             return None
         }
 
-        let (jit_fee_pre, jit_fee_post) = self.get_collect_amount(fee_collect, metadata.clone());
+        let (jit_fee_pre, jit_fee_post) =
+            self.get_collect_amount(fee_collect, metadata.clone()).await;
 
-        let (mint_pre, mint_post) = self.get_total_pricing(
-            mints.iter().map(|mint| (&mint.token, &mint.amount)),
-            metadata.clone(),
-        );
+        let (mint_pre, mint_post) = self
+            .get_total_pricing(
+                mints.iter().map(|mint| (&mint.token, &mint.amount)),
+                metadata.clone(),
+            )
+            .await;
 
         let (pre_bribe, post_bribe) = self.get_bribes(metadata.clone(), searcher_gas_details);
 
@@ -304,7 +313,7 @@ impl JitInspector {
         price.get_gas_price_usd(bribe)
     }
 
-    fn get_collect_amount(
+    async fn get_collect_amount(
         &self,
         collect: Vec<NormalizedCollect>,
         metadata: Arc<Metadata>,
@@ -316,12 +325,14 @@ impl JitInspector {
         let amount = amount.into_iter().flatten().collect::<Vec<_>>();
 
         (
-            self.get_liquidity_price(metadata.clone(), &tokens, &amount, |(p, _)| p),
-            self.get_liquidity_price(metadata.clone(), &tokens, &amount, |(_, p)| p),
+            self.get_liquidity_price(metadata.clone(), &tokens, &amount, |(p, _)| p)
+                .await,
+            self.get_liquidity_price(metadata.clone(), &tokens, &amount, |(_, p)| p)
+                .await,
         )
     }
 
-    fn get_total_pricing<'a>(
+    async fn get_total_pricing<'a>(
         &self,
         iter: impl Iterator<Item = (&'a Vec<Address>, &'a Vec<U256>)>,
         metadata: Arc<Metadata>,
@@ -329,15 +340,17 @@ impl JitInspector {
         let (pre, post): (Vec<_>, Vec<_>) = iter
             .map(|(token, amount)| {
                 (
-                    self.get_liquidity_price(metadata.clone(), token, amount, |(p, _)| p),
-                    self.get_liquidity_price(metadata.clone(), token, amount, |(_, p)| p),
+                    self.get_liquidity_price(metadata.clone(), token, amount, |(p, _)| p)
+                        .await,
+                    self.get_liquidity_price(metadata.clone(), token, amount, |(_, p)| p)
+                        .await,
                 )
             })
             .unzip();
         (pre.into_iter().sum(), post.into_iter().sum())
     }
 
-    fn get_liquidity_price(
+    async fn get_liquidity_price(
         &self,
         metadata: Arc<Metadata>,
         token: &Vec<Address>,
@@ -352,7 +365,8 @@ impl JitInspector {
             .filter_map(|(token, amount)| {
                 Some(
                     is_pre(metadata.token_prices.get(token)?)
-                        * amount.to_scaled_rational(*TOKEN_TO_DECIMALS.get(&token.0 .0)?),
+                        * amount
+                            .to_scaled_rational(self.shared_utils.get_decimals(token.0 .0).await?),
                 )
             })
             .sum::<Rational>()

@@ -49,8 +49,7 @@ impl Inspector for SandwichInspector {
             )
         };
 
-        self.get_possible_sandwich(tree.clone())
-            .into_iter()
+        futures::stream::iter(self.get_possible_sandwich(tree.clone()))
             .filter_map(|ps| {
                 let gas = [
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
@@ -85,13 +84,15 @@ impl Inspector for SandwichInspector {
                     victim_actions,
                     victim_gas,
                 )
+                .await
             })
             .collect::<Vec<_>>()
+            .await
     }
 }
 
 impl SandwichInspector {
-    fn calculate_sandwich(
+    async fn calculate_sandwich(
         &self,
         eoa: Address,
         mev_executor_contract: Address,
@@ -108,7 +109,7 @@ impl SandwichInspector {
             return None
         }
 
-        let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
+        let deltas = self.inner.calculate_swap_deltas(&searcher_actions).await;
 
         let appearance_usd_deltas: HashMap<Address, Rational> = self.inner.get_best_usd_deltas(
             deltas.clone(),
