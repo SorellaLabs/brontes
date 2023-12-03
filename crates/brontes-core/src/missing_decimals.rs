@@ -16,7 +16,8 @@ sol!(
     function decimals() public view returns (uint8);
 );
 
-type DecimalQuery<'a> = Pin<Box<dyn Future<Output = TransportResult<Bytes>> + Send + Sync + 'a>>;
+type DecimalQuery<'a> =
+    Pin<Box<dyn Future<Output = (Address, TransportResult<Bytes>)> + Send + Sync + 'a>>;
 
 pub struct MissingDecimals<'db> {
     provider:         Provider<Http<reqwest::Client>>,
@@ -43,11 +44,12 @@ impl<'db> MissingDecimals<'db> {
             let call = decimalsCall::new(()).abi_encode();
             let mut tx_req = TransactionRequest::default().to(addr).input(call.into());
 
-            self.pending_decimals.push(self.provider.call(tx_req, None));
+            self.pending_decimals
+                .push(join!(async { addr }, self.provider.call(tx_req, None)));
         });
     }
 
-    fn on_query_res(&mut self, res: TransportResult<Bytes>) {
+    fn on_query_res(&mut self, addr: Address, res: TransportResult<Bytes>) {
         if let Ok(res) = res {
             let Some(dec) = decimalsCall::abi_decode_returns(&res, true).ok() else {
                 warn!("failed to decode decimal call");
@@ -70,7 +72,7 @@ impl Future for MissingDecimals<'_> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
         while let Poll::Ready(Some(res)) = self.pending_decimals.poll_next_unpin(cx) {
-            self.on_query_res(res);
+            self.on_query_res(res.0, res.1);
         }
 
         while let Poll::Ready(Some(_)) = self.db_future.poll_next_unpin(cx) {}
