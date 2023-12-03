@@ -1222,6 +1222,7 @@ version = "0.1.0"
 dependencies = [
  "alloy-dyn-abi",
  "alloy-primitives",
+ "alloy-sol-macro",
  "alloy-sol-types",
  "auto_impl",
  "brontes-classifier",
