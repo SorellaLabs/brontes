@@ -122,7 +122,7 @@ impl Classifier {
 
         tree.finalize_tree();
 
-        (missing_decimals, tree)
+        (missing_dec.into_iter().flatten().collect::<Vec<_>>().dedup(), tree)
     }
 
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
