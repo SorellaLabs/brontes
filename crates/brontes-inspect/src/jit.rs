@@ -342,7 +342,7 @@ impl JitInspector {
         iter: impl Iterator<Item = (&'a Vec<Address>, &'a Vec<U256>)>,
         metadata: Arc<Metadata>,
     ) -> (Rational, Rational) {
-        let (pre, post): (Vec<_>, Vec<_>) = iter
+        let (pre, post): (Vec<_>, Vec<_>) = futures::stream::iter(iter)
             .map(|(token, amount)| {
                 (
                     self.get_liquidity_price(metadata.clone(), token, amount, |(p, _)| p)
@@ -351,7 +351,7 @@ impl JitInspector {
                         .await,
                 )
             })
-            .unzip();
+            .unzip().await;
 
         (pre.into_iter().sum(), post.into_iter().sum())
     }
