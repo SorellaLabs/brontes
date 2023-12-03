@@ -6,6 +6,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
+    try_get_decimals,
 };
 use hex_literal::hex;
 use parking_lot::RwLock;
@@ -47,7 +48,7 @@ impl Classifier {
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
                 if classification.is_transfer() {
-                    if get_decimals(address.0 .0).is_none() {
+                    if try_get_decimals(&address.0 .0).is_none() {
                         missing_decimals.push(address.clone());
                     }
                 }
@@ -87,7 +88,7 @@ impl Classifier {
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
 
                     if classification.is_transfer() {
-                        if get_decimals(address.0 .0).is_none() {
+                        if try_get_decimals(&address.0 .0).is_none() {
                             missing_decimals.push(address.clone());
                         }
                     }
@@ -122,7 +123,14 @@ impl Classifier {
 
         tree.finalize_tree();
 
-        (missing_dec.into_iter().flatten().collect::<Vec<_>>().dedup(), tree)
+        (
+            missing_dec
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+                .dedup(),
+            tree,
+        )
     }
 
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
@@ -619,7 +627,7 @@ pub mod test {
 
         let (traces, header, metadata) = get_traces_with_meta(&tracer, &db, block_num).await;
 
-        let mut tree = classifier.build_tree(traces, header, &metadata);
+        let mut tree = classifier.build_tree(traces, header);
         let root = tree.roots.remove(30);
 
         let swaps = root.collect(&|node| {
