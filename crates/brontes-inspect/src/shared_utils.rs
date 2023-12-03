@@ -19,7 +19,6 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 use tracing::{error, warn};
 
-
 #[derive(Debug, Default)]
 pub struct SharedInspectorUtils;
 
