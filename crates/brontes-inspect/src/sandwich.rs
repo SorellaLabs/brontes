@@ -10,6 +10,7 @@ use brontes_types::{
     tree::{GasDetails, Node, TimeTree},
     ToFloatNearest,
 };
+use futures::stream::StreamExt;
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
