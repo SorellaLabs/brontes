@@ -22,7 +22,7 @@ type DecimalQuery<'a> =
 pub struct MissingDecimals<'db> {
     provider:         &'db Provider<Http<reqwest::Client>>,
     pending_decimals: FuturesUnordered<DecimalQuery<'db>>,
-    db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()>>>>,
+    db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send>>>,
     database:         &'db Database,
 }
 
