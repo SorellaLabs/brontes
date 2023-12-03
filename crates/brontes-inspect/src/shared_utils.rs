@@ -25,7 +25,7 @@ sol!(
 #[derive(Debug)]
 pub struct SharedInspectorUtils {
     // will update to direct db read later
-    provider: Provider<Http>,
+    provider: Provider<Http<reqwest::Client>>,
 }
 
 impl SharedInspectorUtils {
@@ -137,7 +137,8 @@ impl SharedInspectorUtils {
 
                     return None
                 })
-                .collect::<Vec<_>>().await;
+                .collect::<Vec<_>>()
+                .await;
 
             if changed == false {
                 break
