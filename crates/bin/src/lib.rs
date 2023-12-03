@@ -46,6 +46,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {
         let mut brontes = Self {
+            provider,
             current_block: init_block,
             end_block,
             chain_tip,
@@ -71,6 +72,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
 
     fn spawn_block_inspector(&mut self) {
         let inspector = BlockInspector::new(
+            self.provider,
             self.parser,
             self.database,
             self.classifier,
