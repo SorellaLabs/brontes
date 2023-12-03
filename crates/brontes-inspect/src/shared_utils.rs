@@ -3,21 +3,60 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::FixedBytes;
+use alloy_providers::provider::Provider;
+use alloy_sol_macro::sol;
+use alloy_sol_types::SolCall;
 use brontes_database::Metadata;
-use brontes_types::{normalized_actions::Actions, ToScaledRational, TOKEN_TO_DECIMALS};
+use brontes_types::{
+    cache_decimals, normalized_actions::Actions, try_get_decimals, ToScaledRational,
+    TOKEN_TO_DECIMALS,
+};
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
+use reth_rpc_types::TransactionRequest;
 use tracing::error;
 
+sol!(
+    function decimals() public view returns (uint8);
+);
+
 #[derive(Debug, Default)]
-pub struct SharedInspectorUtils;
+pub struct SharedInspectorUtils {
+    // will update to direct db read later
+    provider: Provider<Http>,
+}
 
 impl SharedInspectorUtils {
+    pub fn new(url: &String) -> Self {
+        Self { provider: Provider::new(url).unwrap() }
+    }
+
+    pub async fn get_decimals(&self, addr: [u8; 20]) -> u8 {
+        if let Some(decimals) = try_get_decimals(&addr) {
+            decimals
+        } else {
+            // query this
+            let call = decimalsCall::new(()).abi_encode();
+            let mut tx_req = TransactionRequest::default()
+                .to(Address(FixedBytes(addr.clone())))
+                .input(call);
+
+            let res = self.provider.call(tx_req, None).await.unwrap();
+            let dec = decimalsCall::abi_decode_returns(&res, false).unwrap()._0;
+            cache_decimals(addr, dec);
+            // insert into db
+            // TODO
+
+            dec
+        }
+    }
+
     /// Calculates the swap deltas. if transfers are also passed in. we also
     /// move those deltas on the map around accordingly.
     /// NOTE: the upper level inspector needs to know if the transfer is related
     /// to the underlying swap. action otherwise you could get misreads
-    pub(crate) fn calculate_swap_deltas(
+    pub(crate) async fn calculate_swap_deltas(
         &self,
         actions: &Vec<Vec<Actions>>,
     ) -> HashMap<Address, HashMap<Address, Rational>> {
