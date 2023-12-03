@@ -116,30 +116,28 @@ impl SharedInspectorUtils {
         // exact delta's are.
         loop {
             let mut changed = false;
+            let mut reuse = Vec::new();
 
-            transfers = futures::stream::iter(transfers)
-                .filter_map(|transfer| async {
-                    // normalize token decimals
-                    let decimals = self.get_decimals(transfer.token.0 .0).await?;
+            for transfer in transfers.into_iter() {
+                // normalize token decimals
+                let decimals = self.get_decimals(transfer.token.0 .0).await?;
 
-                    let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
+                let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
-                    // subtract value from the from address
-                    if let Some(from_token_map) = deltas.get_mut(&transfer.from) {
-                        changed = true;
-                        apply_entry(transfer.token, -adjusted_amount.clone(), from_token_map);
-                    } else {
-                        return Some(transfer)
-                    }
+                // subtract value from the from address
+                if let Some(from_token_map) = deltas.get_mut(&transfer.from) {
+                    changed = true;
+                    apply_entry(transfer.token, -adjusted_amount.clone(), from_token_map);
+                } else {
+                    reuse.push(transfer)
+                }
 
-                    // add value to the destination address
-                    let to_token_map = deltas.entry(transfer.to).or_default();
-                    apply_entry(transfer.token, adjusted_amount, to_token_map);
+                // add value to the destination address
+                let to_token_map = deltas.entry(transfer.to).or_default();
+                apply_entry(transfer.token, adjusted_amount, to_token_map);
+            }
 
-                    return None
-                })
-                .collect::<Vec<_>>()
-                .await;
+            transfers = reuse;
 
             if changed == false {
                 break
