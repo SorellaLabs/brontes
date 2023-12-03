@@ -120,7 +120,7 @@ impl SharedInspectorUtils {
 
             for transfer in transfers.into_iter() {
                 // normalize token decimals
-                let decimals = self.get_decimals(transfer.token.0 .0).await?;
+                let Some(decimals) = self.get_decimals(transfer.token.0 .0).await else { continue; };
 
                 let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
