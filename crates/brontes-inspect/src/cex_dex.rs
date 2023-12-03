@@ -7,6 +7,7 @@ use brontes_types::{
     tree::{GasDetails, TimeTree},
     ToFloatNearest, ToScaledRational,
 };
+use futures::stream::StreamExt;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::{
     iter::{IntoParallelIterator, ParallelIterator},

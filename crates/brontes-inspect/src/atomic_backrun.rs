@@ -7,6 +7,7 @@ use brontes_types::{
     tree::{GasDetails, TimeTree},
     ToFloatNearest,
 };
+use futures::stream::StreamExt;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
@@ -34,7 +35,7 @@ impl Inspector for AtomicBackrunInspector {
         });
 
         futures::stream::iter(intersting_state)
-            .filter_map(|(tx, swaps)| {
+            .filter_map(|(tx, swaps)| async {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
 
