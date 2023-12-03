@@ -122,15 +122,12 @@ impl Classifier {
         self.remove_collect_transfers(&mut tree);
 
         tree.finalize_tree();
+        let mut dec = missing_dec.into_iter().flatten().collect::<Vec<_>>();
+        dec.sort();
+        // needs sort to work
+        dec.dedup();
 
-        (
-            missing_dec
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>()
-                .dedup(),
-            tree,
-        )
+        (dec, tree)
     }
 
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
