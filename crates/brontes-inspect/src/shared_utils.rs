@@ -23,49 +23,17 @@ sol!(
     function decimals() public view returns (uint8);
 );
 
-#[derive(Debug)]
-pub struct SharedInspectorUtils {
-    // will update to direct db read later
-    provider: Provider<Http<reqwest::Client>>,
-}
+#[derive(Debug, Default)]
+pub struct SharedInspectorUtils;
+
 
 impl SharedInspectorUtils {
-    pub fn new(url: &String) -> Self {
-        Self { provider: Provider::new(url).unwrap() }
-    }
-
-    pub async fn get_decimals(&self, addr: [u8; 20]) -> Option<u8> {
-        if let Some(decimals) = try_get_decimals(&addr) {
-            Some(decimals)
-        } else {
-            // query this
-            let call = decimalsCall::new(()).abi_encode();
-            let mut tx_req = TransactionRequest::default()
-                .to(Address(FixedBytes(addr.clone())))
-                .input(call);
-
-            if let Some(res) = self.provider.call(tx_req, None).await.ok() {
-                let Some(dec) = decimalsCall::abi_decode_returns(&res, true).ok() else {
-                    return None
-                };
-                let dec = dec._0;
-                cache_decimals(addr, dec);
-                //TODO: insert into db
-
-                return Some(dec)
-            } else {
-                warn!("Token request failed for token {:?}", addr);
-            }
-
-            None
-        }
-    }
 
     /// Calculates the swap deltas. if transfers are also passed in. we also
     /// move those deltas on the map around accordingly.
     /// NOTE: the upper level inspector needs to know if the transfer is related
     /// to the underlying swap. action otherwise you could get misreads
-    pub(crate) async fn calculate_swap_deltas(
+    pub(crate) fn calculate_swap_deltas(
         &self,
         actions: &Vec<Vec<Actions>>,
     ) -> HashMap<Address, HashMap<Address, Rational>> {
@@ -78,10 +46,11 @@ impl SharedInspectorUtils {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-                let Some(decimals_in) = self.get_decimals(swap.token_in.0 .0).await else {
+
+                let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0)else {
                     continue;
                 };
-                let Some(decimals_out) = self.get_decimals(swap.token_out.0 .0).await else {
+                let Some(decimals_out) = try_get_decimals(&swap.token_out.0 .0) else {
                     continue;
                 };
 
@@ -120,7 +89,7 @@ impl SharedInspectorUtils {
 
             for transfer in transfers.into_iter() {
                 // normalize token decimals
-                let Some(decimals) = self.get_decimals(transfer.token.0 .0).await else { continue; };
+                let Some(decimals) = try_get_decimals(transfer.token.0 .0) else { continue; };
 
                 let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 

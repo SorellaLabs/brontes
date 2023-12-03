@@ -7,13 +7,13 @@ use brontes_types::{
     tree::{GasDetails, TimeTree},
     ToFloatNearest,
 };
-use futures::stream::StreamExt;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
+#[derive(Default)]
 pub struct AtomicBackrunInspector {
     inner: SharedInspectorUtils,
 }
@@ -34,8 +34,9 @@ impl Inspector for AtomicBackrunInspector {
             )
         });
 
-        futures::stream::iter(intersting_state)
-            .filter_map(|(tx, swaps)| async {
+        intersting_state
+            .into_par_iter()
+            .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
 
@@ -47,19 +48,13 @@ impl Inspector for AtomicBackrunInspector {
                     gas_details,
                     vec![swaps],
                 )
-                .await
             })
             .collect::<Vec<_>>()
-            .await
     }
 }
 
 impl AtomicBackrunInspector {
-    pub fn new(rpc_url: &String) -> Self {
-        Self { inner: SharedInspectorUtils::new(rpc_url) }
-    }
-
-    async fn process_swaps(
+    fn process_swaps(
         &self,
         tx_hash: B256,
         eoa: Address,
@@ -68,7 +63,7 @@ impl AtomicBackrunInspector {
         gas_details: GasDetails,
         swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.inner.calculate_swap_deltas(&swaps).await;
+        let deltas = self.inner.calculate_swap_deltas(&swaps);
 
         let appearance = self.inner.get_best_usd_deltas(
             deltas.clone(),
