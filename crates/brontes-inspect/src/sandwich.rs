@@ -50,7 +50,7 @@ impl Inspector for SandwichInspector {
         };
 
         futures::stream::iter(self.get_possible_sandwich(tree.clone()))
-            .filter_map(|ps| {
+            .filter_map(|ps| async move {
                 let gas = [
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
