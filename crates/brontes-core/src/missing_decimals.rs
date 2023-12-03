@@ -45,8 +45,8 @@ impl<'db> MissingDecimals<'db> {
     pub fn on_query_res(&mut self, res: TransportResult<Bytes>) {
         if let Ok(res) = res {
             let Some(dec) = decimalsCall::abi_decode_returns(&res, true).ok() else {
-                    warn!("failed to decode decimal call");
-                    return
+                warn!("failed to decode decimal call");
+                return
             };
             let dec = dec._0;
             cache_decimals(addr, dec);
