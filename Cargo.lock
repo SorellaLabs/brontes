@@ -1018,6 +1018,7 @@ dependencies = [
  "malachite",
  "metrics-process",
  "rayon",
+ "reqwest",
  "reth-beacon-consensus",
  "reth-blockchain-tree",
  "reth-db",
