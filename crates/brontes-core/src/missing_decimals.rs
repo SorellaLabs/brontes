@@ -1,11 +1,15 @@
-use std::task::Poll;
+use std::{pin::Pin, task::Poll};
 
-use alloy_primitives::{Address, Bytes};
+use alloy_primitives::{Address, Bytes, FixedBytes};
 use alloy_providers::provider::Provider;
+use alloy_rpc_types::TransactionRequest;
+use alloy_sol_macro::sol;
 use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
 use brontes_database::database::Database;
+use brontes_types::cache_decimals;
 use futures::{stream::FuturesUnordered, Future, StreamExt};
+use tracing::warn;
 
 sol!(
     function decimals() public view returns (uint8);
@@ -60,7 +64,7 @@ impl<'db> MissingDecimals<'db> {
     }
 }
 
-impl Future for MissingDecimals {
+impl Future for MissingDecimals<'_> {
     type Output = ();
 
     fn poll(
