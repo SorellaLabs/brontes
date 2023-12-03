@@ -1,4 +1,4 @@
-use std::{pin::Pin, task::Poll};
+use std::{pin::Pin, sync::Arc, task::Poll};
 
 use alloy_primitives::{Address, Bytes, FixedBytes};
 use alloy_providers::provider::Provider;
