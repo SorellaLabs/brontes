@@ -5,9 +5,8 @@ use brontes_types::{
     classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, TimeTree},
-    ToFloatNearest, ToScaledRational,
+    ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
 };
-use futures::stream::StreamExt;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::{
     iter::{IntoParallelIterator, ParallelIterator},
@@ -18,6 +17,7 @@ use tracing::error;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
+#[derive(Default)]
 pub struct CexDexInspector {
     inner: SharedInspectorUtils,
 }
@@ -33,8 +33,9 @@ impl Inspector for CexDexInspector {
         let intersting_state =
             tree.inspect_all(|node| node.subactions.iter().any(|action| action.is_swap()));
 
-        futures::stream::iter(intersting_state)
-            .filter_map(|(tx, nested_swaps)| async {
+        intersting_state
+            .into_par_iter()
+            .filter_map(|(tx, nested_swaps)| {
                 let gas_details = tree.get_gas_details(tx)?;
 
                 let root = tree.get_root(tx)?;
@@ -48,19 +49,13 @@ impl Inspector for CexDexInspector {
                     gas_details,
                     nested_swaps,
                 )
-                .await
             })
             .collect::<Vec<_>>()
-            .await
     }
 }
 
 impl CexDexInspector {
-    pub fn new(rpc_url: &String) -> Self {
-        Self { inner: SharedInspectorUtils::new(rpc_url) }
-    }
-
-    async fn process_swaps(
+    fn process_swaps(
         &self,
         hash: B256,
         mev_contract: Address,
@@ -69,23 +64,22 @@ impl CexDexInspector {
         gas_details: &GasDetails,
         swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let swap_sequences: Vec<Vec<(&Actions, (_, _))>> = futures::stream::iter(swaps.clone())
-            .map(|swap_sequence| async {
-                futures::stream::iter(swap_sequence)
-                    .filter_map(|action| async {
+        let swap_sequences: Vec<Vec<(&Actions, (_, _))>> = swaps
+            .iter()
+            .map(|swap_sequence| {
+                swap_sequence
+                    .into_iter()
+                    .filter_map(|action| {
                         if let Actions::Swap(ref normalized_swap) = action {
-                            let (pre, post) =
-                                self.get_cex_dex(normalized_swap, metadata.as_ref()).await;
+                            let (pre, post) = self.get_cex_dex(normalized_swap, metadata.as_ref());
                             Some((action, (pre, post)))
                         } else {
                             None
                         }
                     })
                     .collect()
-                    .await
             })
-            .collect()
-            .await;
+            .collect();
 
         let (profit_sub, profit_finalized) = self.arb_gas_accounting(
             swap_sequences,
@@ -100,7 +94,7 @@ impl CexDexInspector {
         // the swaps in a less generic way, but this is the lowest effort way of getting
         // the collectors for now. Will need to
 
-        let deltas = self.inner.calculate_swap_deltas(&swaps).await;
+        let deltas = self.inner.calculate_swap_deltas(&swaps);
         let mev_profit_collector = self
             .inner
             .get_best_usd_deltas(
@@ -125,11 +119,12 @@ impl CexDexInspector {
             finalized_bribe_usd: gas_finalized.to_float(),
         };
 
-        let prices = futures::stream::iter(swaps.iter().flatten())
-            .filter_map(|swap| async { self.rational_prices(swap, &metadata).await })
+        let prices = swaps
+            .par_iter()
+            .flatten()
+            .filter_map(|swap| self.rational_prices(swap, &metadata))
             .map(|(dex_price, _, cex1)| (dex_price.to_float(), cex1.to_float()))
-            .collect::<Vec<_>>()
-            .await;
+            .collect::<Vec<_>>();
 
         let flat_swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
 
@@ -222,25 +217,22 @@ impl CexDexInspector {
     }
 
     // TODO check correctness + check cleanup potential with shared utils?
-    pub async fn get_cex_dex(
+    pub fn get_cex_dex(
         &self,
         swap: &NormalizedSwap,
         metadata: &Metadata,
     ) -> (Option<Rational>, Option<Rational>) {
-        if let Some((dex_price, cex_price1, cex_price2)) = self
-            .rational_prices(&Actions::Swap(swap.clone()), metadata)
-            .await
-        {
-            let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1).await;
-            let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2).await;
+        self.rational_prices(&Actions::Swap(swap.clone()), metadata)
+            .map(|(dex_price, cex_price1, cex_price2)| {
+                let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1);
+                let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2);
 
-            (profit1.filter(|p| Rational::ZERO.lt(p)), profit2.filter(|p| Rational::ZERO.lt(p)))
-        } else {
-            (None, None)
-        }
+                (profit1.filter(|p| Rational::ZERO.lt(p)), profit2.filter(|p| Rational::ZERO.lt(p)))
+            })
+            .unwrap_or((None, None))
     }
 
-    async fn profit_classifier(
+    fn profit_classifier(
         &self,
         swap: &NormalizedSwap,
         dex_price: &Rational,
@@ -250,27 +242,41 @@ impl CexDexInspector {
         let delta_price = cex_price - dex_price;
 
         // Calculate the potential profit
-        let decimals_in = self.inner.get_decimals(swap.token_in.0 .0).await?;
+        let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0 .0) else {
+            error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            println!("missing token in token to decimal map");
+            return None
+        };
 
         println!(
             "delta price: {}",
-            &delta_price * &swap.amount_in.to_scaled_rational(decimals_in)
+            &delta_price * &swap.amount_in.to_scaled_rational(*decimals_in)
         );
-        Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
+        Some(delta_price * swap.amount_in.to_scaled_rational(*decimals_in))
     }
 
-    pub async fn rational_prices(
+    pub fn rational_prices(
         &self,
         swap: &Actions,
         metadata: &Metadata,
     ) -> Option<(Rational, Rational, Rational)> {
         let Actions::Swap(swap) = swap else { return None };
 
-        let decimals_in = self.inner.get_decimals(swap.token_in.0 .0).await?;
-        let decimals_out = self.inner.get_decimals(swap.token_out.0 .0).await?;
+        let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0 .0) else {
+            error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            println!("missing token in token to decimal map");
+            return None
+        };
+        //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
+        // log it
+        let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0 .0) else {
+            error!(missing_token=?swap.token_out, "missing token out token to decimal map");
+            println!("missing token in token to decimal map");
+            return None
+        };
 
-        let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
-        let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
+        let adjusted_in = swap.amount_in.to_scaled_rational(*decimals_in);
+        let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
 
         let token_out_centralized_price = metadata.token_prices.get(&swap.token_out)?;
         let token_in_centralized_price = metadata.token_prices.get(&swap.token_in)?;
