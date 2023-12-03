@@ -1035,8 +1035,15 @@ name = "brontes-classifier"
 version = "0.1.0"
 dependencies = [
  "alloy-json-abi",
+ "alloy-json-rpc",
+ "alloy-networks",
+ "alloy-providers",
+ "alloy-rpc-client",
+ "alloy-rpc-types",
  "alloy-sol-macro",
  "alloy-sol-types",
+ "alloy-transport",
+ "alloy-transport-http",
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
@@ -1154,6 +1161,17 @@ dependencies = [
 name = "brontes-inspect"
 version = "0.1.0"
 dependencies = [
+ "alloy-json-abi",
+ "alloy-json-rpc",
+ "alloy-networks",
+ "alloy-primitives",
+ "alloy-providers",
+ "alloy-rpc-client",
+ "alloy-rpc-types",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "alloy-transport",
+ "alloy-transport-http",
  "async-scoped",
  "async-trait",
  "auto_impl",
