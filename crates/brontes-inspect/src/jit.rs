@@ -343,7 +343,7 @@ impl JitInspector {
         metadata: Arc<Metadata>,
     ) -> (Rational, Rational) {
         let (pre, post): (Vec<_>, Vec<_>) = futures::stream::iter(iter)
-            .map(|(token, amount)| {
+            .map(|(token, amount)| async {
                 (
                     self.get_liquidity_price(metadata.clone(), token, amount, |(p, _)| p)
                         .await,
