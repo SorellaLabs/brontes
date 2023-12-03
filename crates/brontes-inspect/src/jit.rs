@@ -8,7 +8,7 @@ use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     tree::GasDetails,
-    ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
+    try_get_decimals, ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
 };
 use itertools::Itertools;
 use malachite::Rational;
@@ -352,7 +352,7 @@ impl JitInspector {
             .filter_map(|(token, amount)| {
                 Some(
                     is_pre(metadata.token_prices.get(token)?)
-                        * amount.to_scaled_rational(*TOKEN_TO_DECIMALS.get(&token.0 .0)?),
+                        * amount.to_scaled_rational(try_get_decimals(&token.0 .0)?),
                 )
             })
             .sum::<Rational>()
