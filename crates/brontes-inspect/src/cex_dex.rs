@@ -100,7 +100,7 @@ impl CexDexInspector {
         // the swaps in a less generic way, but this is the lowest effort way of getting
         // the collectors for now. Will need to
 
-        let deltas = self.inner.calculate_swap_deltas(&swaps);
+        let deltas = self.inner.calculate_swap_deltas(&swaps).await;
         let mev_profit_collector = self
             .inner
             .get_best_usd_deltas(
@@ -125,11 +125,11 @@ impl CexDexInspector {
             finalized_bribe_usd: gas_finalized.to_float(),
         };
 
-        let prices = futures::stream::iter(swaps.iter()
-            .flatten())
-            .filter_map(|swap| async {self.rational_prices(swap, &metadata).await })
+        let prices = futures::stream::iter(swaps.iter().flatten())
+            .filter_map(|swap| async { self.rational_prices(swap, &metadata).await })
             .map(|(dex_price, _, cex1)| (dex_price.to_float(), cex1.to_float()))
-            .collect::<Vec<_>>().await;
+            .collect::<Vec<_>>()
+            .await;
 
         let flat_swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
 
@@ -254,9 +254,9 @@ impl CexDexInspector {
 
         println!(
             "delta price: {}",
-            &delta_price * &swap.amount_in.to_scaled_rational(*decimals_in)
+            &delta_price * &swap.amount_in.to_scaled_rational(decimals_in)
         );
-        Some(delta_price * swap.amount_in.to_scaled_rational(*decimals_in))
+        Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
     }
 
     pub async fn rational_prices(
@@ -269,8 +269,8 @@ impl CexDexInspector {
         let decimals_in = self.inner.get_decimals(swap.token_in.0 .0).await?;
         let decimals_out = self.inner.get_decimals(swap.token_out.0 .0).await?;
 
-        let adjusted_in = swap.amount_in.to_scaled_rational(*decimals_in);
-        let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
+        let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
+        let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
         let token_out_centralized_price = metadata.token_prices.get(&swap.token_out)?;
         let token_in_centralized_price = metadata.token_prices.get(&swap.token_in)?;
