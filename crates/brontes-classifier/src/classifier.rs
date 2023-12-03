@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use alloy_providers::provider::Provider;
 use brontes_database::Metadata;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
