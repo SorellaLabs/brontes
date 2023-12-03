@@ -4,6 +4,7 @@ use alloy_primitives::{Address, Bytes, FixedBytes};
 use alloy_providers::provider::Provider;
 use alloy_rpc_types::TransactionRequest;
 use alloy_sol_macro::sol;
+use alloy_sol_types::SolCall;
 use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
 use brontes_database::database::Database;
@@ -19,7 +20,7 @@ type DecimalQuery<'a> = Pin<Box<dyn Future<Output = TransportResult<Bytes>> + Se
 
 pub struct MissingDecimals<'db> {
     provider:         Provider<Http<reqwest::Client>>,
-    pending_decimals: FuturesUnordered<DecimalQuery<'a>>,
+    pending_decimals: FuturesUnordered<DecimalQuery<'db>>,
     db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()>>>>,
     database:         &'db Database,
 }
@@ -40,12 +41,9 @@ impl<'db> MissingDecimals<'db> {
     fn missing_decimals(&mut self, addrs: Vec<Address>) {
         addrs.into_iter().for_each(|addr| {
             let call = decimalsCall::new(()).abi_encode();
-            let mut tx_req = TransactionRequest::default()
-                .to(Address(FixedBytes(addr.clone())))
-                .input(call);
+            let mut tx_req = TransactionRequest::default().to(addr).input(call.into());
 
-            self.pending_decimals
-                .push(self.provider.call(tx_req, None).await);
+            self.pending_decimals.push(self.provider.call(tx_req, None));
         });
     }
 
