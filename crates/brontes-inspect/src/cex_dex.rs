@@ -248,10 +248,7 @@ impl CexDexInspector {
             return None
         };
 
-        println!(
-            "delta price: {}",
-            &delta_price * &swap.amount_in.to_scaled_rational(decimals_in)
-        );
+        println!("delta price: {}", &delta_price * &swap.amount_in.to_scaled_rational(decimals_in));
         Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
     }
 
