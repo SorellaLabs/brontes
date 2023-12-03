@@ -1,4 +1,4 @@
-use std::{pin::Pin, sync::Arc, task::Poll};
+use std::{pin::Pin, task::Poll};
 
 use alloy_primitives::{Address, Bytes, FixedBytes};
 use alloy_providers::provider::Provider;
@@ -20,19 +20,23 @@ type DecimalQuery<'a> =
     Pin<Box<dyn Future<Output = (Address, TransportResult<Bytes>)> + Send + 'a>>;
 
 pub struct MissingDecimals<'db> {
-    provider:         Arc<Provider<Http<reqwest::Client>>>,
+    provider:         &'db Provider<Http<reqwest::Client>>,
     pending_decimals: FuturesUnordered<DecimalQuery<'db>>,
     db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()>>>>,
     database:         &'db Database,
 }
 
 impl<'db> MissingDecimals<'db> {
-    pub fn new(url: &String, db: &'db Database, missing: Vec<Address>) -> Self {
+    pub fn new(
+        provider: &'db Provider<Http<reqwest::Client>>,
+        db: &'db Database,
+        missing: Vec<Address>,
+    ) -> Self {
         let mut this = Self {
-            provider:         Arc::new(Provider::new(url).unwrap()),
+            provider,
             pending_decimals: FuturesUnordered::default(),
-            db_future:        FuturesUnordered::default(),
-            database:         db,
+            db_future: FuturesUnordered::default(),
+            database: db,
         };
         this.missing_decimals(missing);
 

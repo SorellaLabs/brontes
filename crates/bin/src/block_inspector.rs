@@ -24,7 +24,9 @@ use tracing::info;
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
 
 pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
-    block_number:      u64,
+    block_number: u64,
+
+    provider:          &'inspector Provider<Http<reqwest::Client>>,
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier,
     database:          &'inspector Database,
@@ -37,6 +39,7 @@ pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
 
 impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, N, T> {
     pub fn new(
+        provider: &'inspector Provider<Http<reqwest::Client>>,
         parser: &'inspector Parser<'inspector, T>,
         database: &'inspector Database,
         classifier: &'inspector Classifier,
@@ -44,6 +47,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         block_number: u64,
     ) -> Self {
         Self {
+            provider,
             block_number,
             parser,
             database,
@@ -65,7 +69,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
             let (needed_decimals, tree) =
                 self.classifier.build_tree(traces, header, &labeller_data);
 
-            (MissingDecimals::new("", self.database, needed_decimals), tree)
+            (MissingDecimals::new(self.provider, self.database, needed_decimals), tree)
         })
         .map(|(decimals, tree)| async move {
             let (meta, _) = join!(labeller_fut, decimals);
