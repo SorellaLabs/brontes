@@ -250,9 +250,9 @@ impl CexDexInspector {
 
         println!(
             "delta price: {}",
-            &delta_price * &swap.amount_in.to_scaled_rational(*decimals_in)
+            &delta_price * &swap.amount_in.to_scaled_rational(decimals_in)
         );
-        Some(delta_price * swap.amount_in.to_scaled_rational(*decimals_in))
+        Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
     }
 
     pub fn rational_prices(
@@ -275,8 +275,8 @@ impl CexDexInspector {
             return None
         };
 
-        let adjusted_in = swap.amount_in.to_scaled_rational(*decimals_in);
-        let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
+        let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
+        let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
         let token_out_centralized_price = metadata.token_prices.get(&swap.token_out)?;
         let token_in_centralized_price = metadata.token_prices.get(&swap.token_in)?;
