@@ -5,6 +5,7 @@ use std::{
     path::Path,
 };
 
+use alloy_providers::provider::Provider;
 use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
 use brontes_core::decoding::Parser as DParser;
@@ -73,6 +74,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");
+    let provider = Provider::new(url).unwrap();
 
     // init inspectors
     let sandwich = Box::new(SandwichInspector::new(&url)) as Box<dyn Inspector>;
@@ -105,6 +107,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
         command.end_block,
         chain_tip,
         command.max_tasks,
+        &provider,
         &parser,
         &db,
         &classifier,
