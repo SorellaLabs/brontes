@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use brontes_classifier::Classifier;
+use brontes_classifier::{classifier, Classifier};
 use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
@@ -12,27 +12,21 @@ use brontes_database::{database::Database, Metadata};
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    normalized_actions::Actions,
     structured_trace::TxTrace,
+    tree::TimeTree,
 };
 use futures::{join, Future, FutureExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
 use tracing::info;
 
-type CollectionFut<'a> = Pin<
-    Box<
-        dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Metadata)>
-            + Send
-            + 'a,
-    >,
->;
+type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
 
 pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
     block_number:      u64,
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier,
-    // for updating missing decimals
-    missing_decimals:  MissingDecimals<'inspector>,
     database:          &'inspector Database,
     composer:          Composer<'inspector, N>,
     // pending future data
@@ -65,7 +59,21 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let parser_fut = self.parser.execute(self.block_number);
         let labeller_fut = self.database.get_metadata(self.block_number);
 
-        self.classifier_future = Some(Box::pin(async { join!(parser_fut, labeller_fut) }));
+        let classifier_fut = Box::pin(async {
+            let (traces, header) = parser_fut.await.unwrap().unwrap();
+            println!("Got {} traces + header + metadata", traces.len());
+            let (needed_decimals, tree) =
+                self.classifier.build_tree(traces, header, &labeller_data);
+
+            (MissingDecimals::new("", self.database, needed_decimals), tree)
+        })
+        .map(|(decimals, tree)| async move {
+            let (meta, _) = join!(labeller_fut, decimals);
+            tree.eth_prices = meta.eth_prices.clone();
+            (meta, tree)
+        });
+
+        self.classifier_future = Some(classifier_fut);
     }
 
     fn on_inspectors_finish(
