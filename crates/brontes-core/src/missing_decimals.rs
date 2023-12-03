@@ -9,7 +9,7 @@ use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
 use brontes_database::database::Database;
 use brontes_types::cache_decimals;
-use futures::{stream::FuturesUnordered, Future, StreamExt};
+use futures::{join, stream::FuturesUnordered, Future, StreamExt};
 use tracing::warn;
 
 sol!(
@@ -56,7 +56,7 @@ impl<'db> MissingDecimals<'db> {
                 return
             };
             let dec = dec._0;
-            cache_decimals(addr, dec);
+            cache_decimals(**addr, dec);
             self.db_future.push(Box::pin(async {}));
         } else {
             warn!("Token request failed for token");
