@@ -10,7 +10,6 @@ use brontes_types::{
     tree::{GasDetails, Node, TimeTree},
     ToFloatNearest,
 };
-use futures::stream::StreamExt;
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
@@ -18,6 +17,7 @@ use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
+#[derive(Default)]
 pub struct SandwichInspector {
     inner: SharedInspectorUtils,
 }
@@ -49,8 +49,9 @@ impl Inspector for SandwichInspector {
             )
         };
 
-        futures::stream::iter(self.get_possible_sandwich(tree.clone()))
-            .filter_map(|ps| async move {
+        self.get_possible_sandwich(tree.clone())
+            .into_iter()
+            .filter_map(|ps| {
                 let gas = [
                     tree.get_gas_details(ps.tx0).cloned().unwrap(),
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
@@ -84,19 +85,13 @@ impl Inspector for SandwichInspector {
                     victim_actions,
                     victim_gas,
                 )
-                .await
             })
             .collect::<Vec<_>>()
-            .await
     }
 }
 
 impl SandwichInspector {
-    pub fn new(url: &String) -> Self {
-        Self { inner: SharedInspectorUtils::new(url) }
-    }
-
-    async fn calculate_sandwich(
+    fn calculate_sandwich(
         &self,
         eoa: Address,
         mev_executor_contract: Address,
@@ -113,7 +108,7 @@ impl SandwichInspector {
             return None
         }
 
-        let deltas = self.inner.calculate_swap_deltas(&searcher_actions).await;
+        let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
 
         let appearance_usd_deltas: HashMap<Address, Rational> = self.inner.get_best_usd_deltas(
             deltas.clone(),
