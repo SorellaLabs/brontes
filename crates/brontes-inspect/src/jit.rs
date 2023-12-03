@@ -2,6 +2,7 @@ use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     sync::Arc,
 };
+use futures::stream::StreamExt;
 
 use async_trait::async_trait;
 use brontes_types::{
