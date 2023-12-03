@@ -118,7 +118,7 @@ impl SharedInspectorUtils {
             let mut changed = false;
 
             transfers = futures::stream::iter(transfers)
-                .filter_map(|transfer| async move {
+                .filter_map(|transfer| async {
                     // normalize token decimals
                     let decimals = self.get_decimals(transfer.token.0 .0).await?;
 
