@@ -18,7 +18,7 @@ use crate::PROTOCOL_ADDRESS_MAPPING;
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
-/// goes through and classifies all exchanges
+/// goes through and classifies all exchanges as-well as missing data
 #[derive(Debug)]
 pub struct Classifier {
     pub known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
@@ -34,17 +34,26 @@ impl Classifier {
         traces: Vec<TxTrace>,
         header: Header,
         metadata: &Metadata,
-    ) -> TimeTree<Actions> {
-        let roots = traces
+    ) -> (Vec<Address>,TimeTree<Actions>> {
+
+        let (missing_dec, roots): (Vec<_>, Vec<_>) = traces
             .into_par_iter()
             .filter_map(|mut trace| {
                 if trace.trace.is_empty() || !trace.is_success {
                     return None
                 }
 
+                let mut missing_decimals = Vec::new();
                 let root_trace = trace.trace[0].clone();
                 let address = root_trace.get_from_addr();
                 let classification = self.classify_node(trace.trace.remove(0), 0);
+
+                if classification.is_transfer() {
+                    if get_decimals(address.0.0).is_none() {
+                        missing_decimals.push(address.clone());
+                    }
+                    
+                }
 
                 let node = Node {
                     inner: vec![],
@@ -80,6 +89,13 @@ impl Classifier {
                     let from_addr = trace.get_from_addr();
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
 
+                    if classification.is_transfer() {
+                        if get_decimals(address.0.0).is_none() {
+                            missing_decimals.push(address.clone());
+                        }
+                        
+                    }
+
                     let node = Node {
                         index:         (index + 1) as u64,
                         inner:         vec![],
@@ -93,9 +109,8 @@ impl Classifier {
                     root.insert(node);
                 }
 
-                Some(root)
-            })
-            .collect::<Vec<Root<Actions>>>();
+                Some((missing_decimals, root))
+            }).unzip();
 
         let mut tree = TimeTree {
             roots,
