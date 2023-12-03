@@ -2,9 +2,9 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+
 use alloy_providers::provider::Provider;
 use alloy_transport_http::Http;
-
 use brontes_classifier::{classifier, Classifier};
 use brontes_core::{
     decoding::{Parser, TracingProvider},
