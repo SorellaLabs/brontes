@@ -116,8 +116,7 @@ impl SharedInspectorUtils {
         loop {
             let mut changed = false;
 
-            transfers = transfers
-                .into_iter()
+            transfers = futures::stream::iter(transfers)
                 .filter_map(|transfer| {
                     // normalize token decimals
                     let decimals = self.get_decimals(transfer.token.0 .0).await?;
@@ -138,7 +137,7 @@ impl SharedInspectorUtils {
 
                     return None
                 })
-                .collect::<Vec<_>>();
+                .collect::<Vec<_>>().await;
 
             if changed == false {
                 break
