@@ -991,8 +991,15 @@ checksum = "3190f92dfe48224adc92881c620f08ccf37ff62b91a094bb357fe53bd5e84647"
 name = "brontes"
 version = "0.1.0"
 dependencies = [
+ "alloy-json-rpc",
+ "alloy-networks",
+ "alloy-providers",
+ "alloy-rpc-client",
+ "alloy-rpc-types",
  "alloy-sol-macro",
  "alloy-sol-types",
+ "alloy-transport",
+ "alloy-transport-http",
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
