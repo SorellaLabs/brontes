@@ -85,8 +85,8 @@ impl SharedInspectorUtils {
                     continue;
                 };
 
-                let adjusted_in = -swap.amount_in.to_scaled_rational(*decimals_in);
-                let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
+                let adjusted_in = -swap.amount_in.to_scaled_rational(decimals_in);
+                let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
                 // Store the amount_in amount_out deltas for a given from address
                 match deltas.entry(swap.from) {
@@ -118,11 +118,11 @@ impl SharedInspectorUtils {
             let mut changed = false;
 
             transfers = futures::stream::iter(transfers)
-                .filter_map(|transfer| {
+                .filter_map(|transfer| async {
                     // normalize token decimals
                     let decimals = self.get_decimals(transfer.token.0 .0).await?;
 
-                    let adjusted_amount = transfer.amount.to_scaled_rational(*decimals);
+                    let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
                     // subtract value from the from address
                     if let Some(from_token_map) = deltas.get_mut(&transfer.from) {
