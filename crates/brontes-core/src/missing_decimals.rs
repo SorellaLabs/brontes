@@ -20,7 +20,7 @@ type DecimalQuery<'a> =
     Pin<Box<dyn Future<Output = (Address, TransportResult<Bytes>)> + Send + 'a>>;
 
 pub struct MissingDecimals<'db> {
-    provider:         Provider<Http<reqwest::Client>>,
+    provider:         Arc<Provider<Http<reqwest::Client>>>,
     pending_decimals: FuturesUnordered<DecimalQuery<'db>>,
     db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()>>>>,
     database:         &'db Database,
@@ -29,7 +29,7 @@ pub struct MissingDecimals<'db> {
 impl<'db> MissingDecimals<'db> {
     pub fn new(url: &String, db: &'db Database, missing: Vec<Address>) -> Self {
         let mut this = Self {
-            provider:         Provider::new(url).unwrap(),
+            provider:         Arc::new(Provider::new(url).unwrap()),
             pending_decimals: FuturesUnordered::default(),
             db_future:        FuturesUnordered::default(),
             database:         db,
@@ -44,8 +44,9 @@ impl<'db> MissingDecimals<'db> {
             let call = decimalsCall::new(()).abi_encode();
             let mut tx_req = TransactionRequest::default().to(addr).input(call.into());
 
+            let provider = self.provider.clone();
             self.pending_decimals
-                .push(Box::pin(join(async move { addr }, self.provider.call(tx_req, None))));
+                .push(Box::pin(join(async move { addr }, provider.call(tx_req, None))));
         });
     }
 
