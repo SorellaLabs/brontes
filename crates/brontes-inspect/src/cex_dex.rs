@@ -33,7 +33,7 @@ impl Inspector for CexDexInspector {
             tree.inspect_all(|node| node.subactions.iter().any(|action| action.is_swap()));
 
         futures::stream::iter(intersting_state)
-            .filter_map(|(tx, nested_swaps)| {
+            .filter_map(|(tx, nested_swaps)| async {
                 let gas_details = tree.get_gas_details(tx)?;
 
                 let root = tree.get_root(tx)?;
@@ -69,10 +69,9 @@ impl CexDexInspector {
         swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let swap_sequences: Vec<Vec<(&Actions, (_, _))>> = futures::stream::iter(swaps.clone())
-            .map(|swap_sequence| {
-                swap_sequence
-                    .into_iter()
-                    .filter_map(|action| {
+            .map(|swap_sequence| async {
+                futures::stream::iter(swap_sequence)
+                    .filter_map(|action| async {
                         if let Actions::Swap(ref normalized_swap) = action {
                             let (pre, post) =
                                 self.get_cex_dex(normalized_swap, metadata.as_ref()).await;
@@ -82,8 +81,10 @@ impl CexDexInspector {
                         }
                     })
                     .collect()
+                    .await
             })
-            .collect();
+            .collect()
+            .await;
 
         let (profit_sub, profit_finalized) = self.arb_gas_accounting(
             swap_sequences,
@@ -226,14 +227,16 @@ impl CexDexInspector {
         swap: &NormalizedSwap,
         metadata: &Metadata,
     ) -> (Option<Rational>, Option<Rational>) {
-        self.rational_prices(&Actions::Swap(swap.clone()), metadata)
-            .map(|(dex_price, cex_price1, cex_price2)| {
-                let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1).await;
-                let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2).await;
+        if let Some((dex_price, cex_price1, cex_price2)) =
+            self.rational_prices(&Actions::Swap(swap.clone()), metadata)
+        {
+            let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1).await;
+            let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2).await;
 
-                (profit1.filter(|p| Rational::ZERO.lt(p)), profit2.filter(|p| Rational::ZERO.lt(p)))
-            })
-            .unwrap_or((None, None))
+            (profit1.filter(|p| Rational::ZERO.lt(p)), profit2.filter(|p| Rational::ZERO.lt(p)))
+        } else {
+            (None, None)
+        }
     }
 
     async fn profit_classifier(
