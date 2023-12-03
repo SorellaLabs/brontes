@@ -280,9 +280,9 @@ mod tests {
     //         index:     35,
     //         from:      from_address,
     //         token:     vec![
-    //             
+    //
     // Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-    //             
+    //
     // Address::from_str("0xdac17f958d2ee523a2206206994597c13d831ec7").unwrap(),
     //         ],
     //         to:        target_address,
@@ -377,9 +377,9 @@ mod tests {
     //         index:     96,
     //         from:      from_address,
     //         token:     vec![
-    //             
+    //
     // Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-    //             
+    //
     // Address::from_str("0xdac17f958d2ee523a2206206994597c13d831ec7").unwrap(),
     //         ],
     //         to:        target_address,
@@ -419,13 +419,13 @@ mod tests {
     //         address:
     // Address::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(),
     //         topics: vec![
-    //             
+    //
     // B256::from_str("
     // 0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822").
-    // unwrap(),             
+    // unwrap(),
     // B256::from_str("
     // 0x000000000000000000000000cc2687c14915fd68226ccf388842515739a739bd").
-    // unwrap(),             
+    // unwrap(),
     // B256::from_str("
     // 0x000000000000000000000000cc2687c14915fd68226ccf388842515739a739bd").
     // unwrap()         ],

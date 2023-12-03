@@ -22,7 +22,7 @@ sol!(
     function decimals() public view returns (uint8);
 );
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SharedInspectorUtils {
     // will update to direct db read later
     provider: Provider<Http>,
