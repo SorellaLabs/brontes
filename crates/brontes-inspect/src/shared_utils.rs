@@ -5,6 +5,7 @@ use std::{
 
 use alloy_primitives::FixedBytes;
 use alloy_providers::provider::Provider;
+use alloy_rpc_types::TransactionRequest;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use alloy_transport_http::Http;
@@ -16,7 +17,6 @@ use brontes_types::{
 use futures::stream::StreamExt;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
-use alloy_rpc_types::TransactionRequest;
 use tracing::{error, warn};
 
 sol!(
@@ -26,9 +26,7 @@ sol!(
 #[derive(Debug, Default)]
 pub struct SharedInspectorUtils;
 
-
 impl SharedInspectorUtils {
-
     /// Calculates the swap deltas. if transfers are also passed in. we also
     /// move those deltas on the map around accordingly.
     /// NOTE: the upper level inspector needs to know if the transfer is related
@@ -46,8 +44,7 @@ impl SharedInspectorUtils {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-
-                let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0)else {
+                let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0) else {
                     continue;
                 };
                 let Some(decimals_out) = try_get_decimals(&swap.token_out.0 .0) else {
@@ -89,7 +86,9 @@ impl SharedInspectorUtils {
 
             for transfer in transfers.into_iter() {
                 // normalize token decimals
-                let Some(decimals) = try_get_decimals(transfer.token.0 .0) else { continue; };
+                let Some(decimals) = try_get_decimals(transfer.token.0 .0) else {
+                    continue;
+                };
 
                 let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 

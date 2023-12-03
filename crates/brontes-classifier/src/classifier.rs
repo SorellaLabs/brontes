@@ -34,7 +34,7 @@ impl Classifier {
         traces: Vec<TxTrace>,
         header: Header,
         metadata: &Metadata,
-    ) -> (Vec<Address>,TimeTree<Actions>> {
+    ) -> (Vec<Address>,TimeTree<Actions>>) {
 
         let (missing_dec, roots): (Vec<_>, Vec<_>) = traces
             .into_par_iter()
