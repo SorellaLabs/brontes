@@ -4,7 +4,10 @@ use std::{
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
+use brontes_core::{
+    decoding::{Parser, TracingProvider},
+    missing_decimals::MissingDecimals,
+};
 use brontes_database::{database::Database, Metadata};
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_types::{
@@ -28,6 +31,8 @@ pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
     block_number:      u64,
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier,
+    // for updating missing decimals
+    missing_decimals:  MissingDecimals<'inspector>,
     database:          &'inspector Database,
     composer:          Composer<'inspector, N>,
     // pending future data
@@ -73,6 +78,9 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
     }
 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
+        // progress decimal query
+        self.missing_decimals.poll_unpin(cx);
+
         if let Some(mut collection_fut) = self.classifier_future.take() {
             match collection_fut.poll_unpin(cx) {
                 Poll::Ready((parser_data, labeller_data)) => {
