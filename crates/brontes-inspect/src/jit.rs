@@ -42,7 +42,7 @@ impl Inspector for JitInspector {
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         futures::stream::iter(self.possible_jit_set(tree.clone()))
             .filter_map(
-                |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
+                |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| async {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
@@ -351,6 +351,7 @@ impl JitInspector {
                 )
             })
             .unzip();
+
         (pre.into_iter().sum(), post.into_iter().sum())
     }
 
@@ -363,17 +364,17 @@ impl JitInspector {
     ) -> Rational {
         assert_eq!(token.len(), amount.len());
 
-        token
+        futures::stream::iter(token
             .iter()
-            .zip(amount.iter())
-            .filter_map(|(token, amount)| {
+            .zip(amount.iter()))
+            .filter_map(|(token, amount)| async {
                 Some(
                     is_pre(metadata.token_prices.get(token)?)
                         * amount
                             .to_scaled_rational(self.shared_utils.get_decimals(token.0 .0).await?),
                 )
             })
-            .sum::<Rational>()
+            .sum::<Rational>().await
     }
 }
 
