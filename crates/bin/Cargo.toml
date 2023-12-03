@@ -20,6 +20,7 @@ toml = "0.8.2"
 tokio = { workspace = true, features = ["full", "tracing"] }
 futures.workspace = true
 
+reqwest.workspace = true
 # Reth
 reth-tasks.workspace = true
 reth-rpc.workspace = true
