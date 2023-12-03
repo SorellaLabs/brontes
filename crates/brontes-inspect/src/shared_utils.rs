@@ -7,6 +7,7 @@ use alloy_primitives::FixedBytes;
 use alloy_providers::provider::Provider;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
+use alloy_transport_http::Http;
 use brontes_database::Metadata;
 use brontes_types::{
     cache_decimals, normalized_actions::Actions, try_get_decimals, ToScaledRational,
@@ -15,7 +16,7 @@ use brontes_types::{
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 use reth_rpc_types::TransactionRequest;
-use tracing::error;
+use tracing::{error, warn};
 
 sol!(
     function decimals() public view returns (uint8);
@@ -32,9 +33,9 @@ impl SharedInspectorUtils {
         Self { provider: Provider::new(url).unwrap() }
     }
 
-    pub async fn get_decimals(&self, addr: [u8; 20]) -> u8 {
+    pub async fn get_decimals(&self, addr: [u8; 20]) -> Option<u8> {
         if let Some(decimals) = try_get_decimals(&addr) {
-            decimals
+            Some(decimals)
         } else {
             // query this
             let call = decimalsCall::new(()).abi_encode();
@@ -42,13 +43,20 @@ impl SharedInspectorUtils {
                 .to(Address(FixedBytes(addr.clone())))
                 .input(call);
 
-            let res = self.provider.call(tx_req, None).await.unwrap();
-            let dec = decimalsCall::abi_decode_returns(&res, false).unwrap()._0;
-            cache_decimals(addr, dec);
-            // insert into db
-            // TODO
+            if let Some(res) = self.provider.call(tx_req, None).await.ok() {
+                let Some(dec) = decimalsCall::abi_decode_returns(&res, true).ok() else {
+                    return None
+                };
+                let dec = dec._0;
+                cache_decimals(addr, dec);
+                //TODO: insert into db
 
-            dec
+                return Some(dec)
+            } else {
+                warn!("Token request failed for token {:?}", addr);
+            }
+
+            None
         }
     }
 
@@ -69,14 +77,11 @@ impl SharedInspectorUtils {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-                let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0 .0) else {
-                    error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-                    continue
+                let Some(decimals_in) = self.get_decimals(swap.token_in.0 .0).await else {
+                    continue;
                 };
-
-                let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0 .0) else {
-                    error!(missing_token=?swap.token_out, "missing token out token to decimal map");
-                    continue
+                let Some(decimals_out) = self.get_decimals(swap.token_out.0 .0).await else {
+                    continue;
                 };
 
                 let adjusted_in = -swap.amount_in.to_scaled_rational(*decimals_in);
@@ -115,12 +120,9 @@ impl SharedInspectorUtils {
                 .into_iter()
                 .filter_map(|transfer| {
                     // normalize token decimals
-                    let Some(decimals) = TOKEN_TO_DECIMALS.get(&transfer.token.0.0) else {
-                        error!(missing_token=?transfer.token, "missing token in token to decimal map");
-                        return None;
-                    };
-                    let adjusted_amount = transfer.amount.to_scaled_rational(*decimals);
+                    let decimals = self.get_decimals(transfer.token.0 .0).await?;
 
+                    let adjusted_amount = transfer.amount.to_scaled_rational(*decimals);
 
                     // subtract value from the from address
                     if let Some(from_token_map) = deltas.get_mut(&transfer.from) {

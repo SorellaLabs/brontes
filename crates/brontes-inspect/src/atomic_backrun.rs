@@ -34,8 +34,7 @@ impl Inspector for AtomicBackrunInspector {
             )
         });
 
-        intersting_state
-            .into_par_iter()
+        futures::stream::iter(intersting_state)
             .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
@@ -48,13 +47,15 @@ impl Inspector for AtomicBackrunInspector {
                     gas_details,
                     vec![swaps],
                 )
+                .await
             })
             .collect::<Vec<_>>()
+            .await
     }
 }
 
 impl AtomicBackrunInspector {
-    fn process_swaps(
+    async fn process_swaps(
         &self,
         tx_hash: B256,
         eoa: Address,
@@ -63,7 +64,7 @@ impl AtomicBackrunInspector {
         gas_details: GasDetails,
         swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.inner.calculate_swap_deltas(&swaps);
+        let deltas = self.inner.calculate_swap_deltas(&swaps).await;
 
         let appearance = self.inner.get_best_usd_deltas(
             deltas.clone(),
