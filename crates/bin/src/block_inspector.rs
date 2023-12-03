@@ -66,16 +66,15 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             println!("Got {} traces + header + metadata", traces.len());
-            let (needed_decimals, tree) =
-                self.classifier.build_tree(traces, header, &labeller_data);
+            let (needed_decimals, tree) = self.classifier.build_tree(traces, header);
 
             (MissingDecimals::new(self.provider, self.database, needed_decimals), tree)
-        })
+        }
         .map(|(decimals, tree)| async move {
             let (meta, _) = join!(labeller_fut, decimals);
             tree.eth_prices = meta.eth_prices.clone();
             (meta, tree)
-        });
+        }));
 
         self.classifier_future = Some(classifier_fut);
     }
@@ -90,17 +89,10 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
     }
 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
-        // progress decimal query
-        self.missing_decimals.poll_unpin(cx);
-
         if let Some(mut collection_fut) = self.classifier_future.take() {
             match collection_fut.poll_unpin(cx) {
-                Poll::Ready((parser_data, labeller_data)) => {
-                    let (traces, header) = parser_data.unwrap().unwrap();
-                    println!("Got {} traces + header + metadata", traces.len());
-                    let tree = self.classifier.build_tree(traces, header, &labeller_data);
-                    println!("built tree");
-                    self.composer.on_new_tree(tree.into(), labeller_data.into());
+                Poll::Ready((meta_data, tree)) => {
+                    self.composer.on_new_tree(tree.into(), meta_data.into());
                 }
                 Poll::Pending => {
                     self.classifier_future = Some(collection_fut);
