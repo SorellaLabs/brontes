@@ -1,6 +1,6 @@
 use std::task::Poll;
 
-use alloy_primitives::Bytes;
+use alloy_primitives::{Address, Bytes};
 use alloy_providers::provider::Provider;
 use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
@@ -21,16 +21,19 @@ pub struct MissingDecimals<'db> {
 }
 
 impl<'db> MissingDecimals<'db> {
-    pub fn new(url: &String, db: &'db Database) -> Self {
-        Self {
+    pub fn new(url: &String, db: &'db Database, missing: Vec<Address>) -> Self {
+        let mut this = Self {
             provider:         Provider::new(url).unwrap(),
             pending_decimals: FuturesUnordered::default(),
             db_future:        FuturesUnordered::default(),
             database:         db,
-        }
+        };
+        this.missing_decimals(missing);
+
+        this
     }
 
-    pub fn missing_decimals(&mut self, addrs: Vec<Address>) {
+    fn missing_decimals(&mut self, addrs: Vec<Address>) {
         addrs.into_iter().for_each(|addr| {
             let call = decimalsCall::new(()).abi_encode();
             let mut tx_req = TransactionRequest::default()
@@ -42,7 +45,7 @@ impl<'db> MissingDecimals<'db> {
         });
     }
 
-    pub fn on_query_res(&mut self, res: TransportResult<Bytes>) {
+    fn on_query_res(&mut self, res: TransportResult<Bytes>) {
         if let Ok(res) = res {
             let Some(dec) = decimalsCall::abi_decode_returns(&res, true).ok() else {
                 warn!("failed to decode decimal call");
@@ -69,6 +72,11 @@ impl Future for MissingDecimals {
         }
 
         while let Poll::Ready(Some(_)) = self.db_future.poll_next_unpin(cx) {}
-        Poll::Pending
+
+        if self.pending_decimals.is_empty() && self.db_future.is_empty() {
+            Poll::Ready(())
+        } else {
+            Poll::Pending
+        }
     }
 }
