@@ -30,6 +30,7 @@ alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
 
+reqwest.workspace = true
 # async
 async-trait.workspace = true
 rayon.workspace = true
