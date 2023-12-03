@@ -48,9 +48,8 @@ impl<'db> MissingDecimals<'db> {
             let call = decimalsCall::new(()).abi_encode();
             let mut tx_req = TransactionRequest::default().to(addr).input(call.into());
 
-            let provider = self.provider.clone();
             self.pending_decimals
-                .push(Box::pin(join(async move { addr }, provider.call(tx_req, None))));
+                .push(Box::pin(join(async move { addr }, self.provider.call(tx_req, None))));
         });
     }
 
