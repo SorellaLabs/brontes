@@ -2,6 +2,8 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+use alloy_providers::provider::Provider;
+use alloy_transport_http::Http;
 
 use brontes_classifier::{classifier, Classifier};
 use brontes_core::{
@@ -63,18 +65,20 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let parser_fut = self.parser.execute(self.block_number);
         let labeller_fut = self.database.get_metadata(self.block_number);
 
-        let classifier_fut = Box::pin(async {
-            let (traces, header) = parser_fut.await.unwrap().unwrap();
-            println!("Got {} traces + header + metadata", traces.len());
-            let (needed_decimals, tree) = self.classifier.build_tree(traces, header);
+        let classifier_fut = Box::pin(
+            async {
+                let (traces, header) = parser_fut.await.unwrap().unwrap();
+                println!("Got {} traces + header + metadata", traces.len());
+                let (needed_decimals, tree) = self.classifier.build_tree(traces, header);
 
-            (MissingDecimals::new(self.provider, self.database, needed_decimals), tree)
-        }
-        .map(|(decimals, tree)| async move {
-            let (meta, _) = join!(labeller_fut, decimals);
-            tree.eth_prices = meta.eth_prices.clone();
-            (meta, tree)
-        }));
+                (MissingDecimals::new(self.provider, self.database, needed_decimals), tree)
+            }
+            .map(|(decimals, tree)| async move {
+                let (meta, _) = join!(labeller_fut, decimals);
+                tree.eth_prices = meta.eth_prices.clone();
+                (meta, tree)
+            }),
+        );
 
         self.classifier_future = Some(classifier_fut);
     }
