@@ -16,7 +16,7 @@ use brontes_types::{
 use futures::stream::StreamExt;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
-use reth_rpc_types::TransactionRequest;
+use alloy_rpc_types::TransactionRequest;
 use tracing::{error, warn};
 
 sol!(
