@@ -3,6 +3,8 @@ use std::{
     task::{Context, Poll},
 };
 
+use alloy_providers::provider::Provider;
+use alloy_transport_http::Http;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::database::Database;
