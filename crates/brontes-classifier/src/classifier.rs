@@ -33,9 +33,7 @@ impl Classifier {
         &self,
         traces: Vec<TxTrace>,
         header: Header,
-        metadata: &Metadata,
-    ) -> (Vec<Address>,TimeTree<Actions>>) {
-
+    ) -> (Vec<Address>, TimeTree<Actions>) {
         let (missing_dec, roots): (Vec<_>, Vec<_>) = traces
             .into_par_iter()
             .filter_map(|mut trace| {
@@ -49,10 +47,9 @@ impl Classifier {
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
                 if classification.is_transfer() {
-                    if get_decimals(address.0.0).is_none() {
+                    if get_decimals(address.0 .0).is_none() {
                         missing_decimals.push(address.clone());
                     }
-                    
                 }
 
                 let node = Node {
@@ -90,10 +87,9 @@ impl Classifier {
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
 
                     if classification.is_transfer() {
-                        if get_decimals(address.0.0).is_none() {
+                        if get_decimals(address.0 .0).is_none() {
                             missing_decimals.push(address.clone());
                         }
-                        
                     }
 
                     let node = Node {
@@ -110,12 +106,13 @@ impl Classifier {
                 }
 
                 Some((missing_decimals, root))
-            }).unzip();
+            })
+            .unzip();
 
         let mut tree = TimeTree {
             roots,
             header,
-            eth_prices: metadata.eth_prices.clone(),
+            eth_prices: Default::default(),
             avg_priority_fee: 0,
         };
 
@@ -129,7 +126,7 @@ impl Classifier {
 
         tree.finalize_tree();
 
-        tree
+        (missing_decimals, tree)
     }
 
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
