@@ -28,7 +28,7 @@ struct PossibleJit {
     pub mev_executor_contract: Address,
     pub victims:               Vec<B256>,
 }
-#[derive(Default)]
+
 pub struct JitInspector {
     shared_utils: SharedInspectorUtils,
 }
@@ -130,6 +130,10 @@ impl Inspector for JitInspector {
 }
 
 impl JitInspector {
+    pub fn new(rpc_url: &String) -> Self {
+        Self { shared_utils: SharedInspectorUtils::new(rpc_url) }
+    }
+
     async fn calculate_jit(
         &self,
         eoa: Address,

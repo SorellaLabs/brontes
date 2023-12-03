@@ -17,7 +17,6 @@ use tracing::error;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
-#[derive(Default)]
 pub struct CexDexInspector {
     inner: SharedInspectorUtils,
 }
@@ -56,6 +55,10 @@ impl Inspector for CexDexInspector {
 }
 
 impl CexDexInspector {
+    pub fn new(rpc_url: &String) -> Self {
+        Self { inner: SharedInspectorUtils::new(rpc_url) }
+    }
+
     async fn process_swaps(
         &self,
         hash: B256,

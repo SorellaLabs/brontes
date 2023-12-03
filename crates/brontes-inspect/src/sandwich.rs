@@ -17,7 +17,6 @@ use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
-#[derive(Default)]
 pub struct SandwichInspector {
     inner: SharedInspectorUtils,
 }
@@ -92,6 +91,10 @@ impl Inspector for SandwichInspector {
 }
 
 impl SandwichInspector {
+    pub fn new(url: &String) -> Self {
+        Self { inner: SharedInspectorUtils::new(url) }
+    }
+
     async fn calculate_sandwich(
         &self,
         eoa: Address,

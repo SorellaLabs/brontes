@@ -13,7 +13,6 @@ use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
-#[derive(Default)]
 pub struct AtomicBackrunInspector {
     inner: SharedInspectorUtils,
 }
@@ -55,6 +54,10 @@ impl Inspector for AtomicBackrunInspector {
 }
 
 impl AtomicBackrunInspector {
+    pub fn new(rpc_url: &String) -> Self {
+        Self { inner: SharedInspectorUtils::new(rpc_url) }
+    }
+
     async fn process_swaps(
         &self,
         tx_hash: B256,
