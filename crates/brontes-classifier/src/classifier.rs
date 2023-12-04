@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
+use alloy_providers::provider::Provider;
 use brontes_database::Metadata;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
+    try_get_decimals,
 };
 use hex_literal::hex;
 use parking_lot::RwLock;
@@ -17,7 +19,7 @@ use crate::PROTOCOL_ADDRESS_MAPPING;
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
-/// goes through and classifies all exchanges
+/// goes through and classifies all exchanges as-well as missing data
 #[derive(Debug)]
 pub struct Classifier {
     pub known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
@@ -32,18 +34,26 @@ impl Classifier {
         &self,
         traces: Vec<TxTrace>,
         header: Header,
-        metadata: &Metadata,
-    ) -> TimeTree<Actions> {
-        let roots = traces
+    ) -> (Vec<Address>, TimeTree<Actions>) {
+        let (missing_dec, roots): (Vec<_>, Vec<_>) = traces
             .into_par_iter()
             .filter_map(|mut trace| {
                 if trace.trace.is_empty() || !trace.is_success {
                     return None
                 }
 
+                let mut missing_decimals = Vec::new();
                 let root_trace = trace.trace[0].clone();
                 let address = root_trace.get_from_addr();
+                let t_address = root_trace.get_to_address();
+
                 let classification = self.classify_node(trace.trace.remove(0), 0);
+
+                if classification.is_transfer() {
+                    if try_get_decimals(&t_address.0 .0).is_none() {
+                        missing_decimals.push(t_address.clone());
+                    }
+                }
 
                 let node = Node {
                     inner: vec![],
@@ -77,7 +87,14 @@ impl Classifier {
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let from_addr = trace.get_from_addr();
+                    let t_address = root_trace.get_to_address();
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
+
+                    if classification.is_transfer() {
+                        if try_get_decimals(&t_address.0 .0).is_none() {
+                            missing_decimals.push(t_address.clone());
+                        }
+                    }
 
                     let node = Node {
                         index:         (index + 1) as u64,
@@ -92,16 +109,12 @@ impl Classifier {
                     root.insert(node);
                 }
 
-                Some(root)
+                Some((missing_decimals, root))
             })
-            .collect::<Vec<Root<Actions>>>();
+            .unzip();
 
-        let mut tree = TimeTree {
-            roots,
-            header,
-            eth_prices: metadata.eth_prices.clone(),
-            avg_priority_fee: 0,
-        };
+        let mut tree =
+            TimeTree { roots, header, eth_prices: Default::default(), avg_priority_fee: 0 };
 
         // self.try_classify_unknown_exchanges(&mut tree);
         // self.try_classify_flashloans(&mut tree);
@@ -112,8 +125,12 @@ impl Classifier {
         self.remove_collect_transfers(&mut tree);
 
         tree.finalize_tree();
+        let mut dec = missing_dec.into_iter().flatten().collect::<Vec<_>>();
+        dec.sort();
+        // needs sort to work
+        dec.dedup();
 
-        tree
+        (dec, tree)
     }
 
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
@@ -588,7 +605,7 @@ pub mod test {
     use brontes_types::{normalized_actions::Actions, test_utils::force_call_action, tree::Node};
     use reth_primitives::Address;
     use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
-    use reth_tracing::TracingClient;
+    use reth_tracing_ext::TracingClient;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
@@ -610,7 +627,7 @@ pub mod test {
 
         let (traces, header, metadata) = get_traces_with_meta(&tracer, &db, block_num).await;
 
-        let mut tree = classifier.build_tree(traces, header, &metadata);
+        let mut tree = classifier.build_tree(traces, header);
         let root = tree.roots.remove(30);
 
         let swaps = root.collect(&|node| {

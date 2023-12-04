@@ -3,29 +3,32 @@ use std::{
     task::{Context, Poll},
 };
 
-use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
+use alloy_providers::provider::Provider;
+use alloy_transport_http::Http;
+use brontes_classifier::{classifier, Classifier};
+use brontes_core::{
+    decoding::{Parser, TracingProvider},
+    missing_decimals::MissingDecimals,
+};
 use brontes_database::{database::Database, Metadata};
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    normalized_actions::Actions,
     structured_trace::TxTrace,
+    tree::TimeTree,
 };
 use futures::{join, Future, FutureExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
 use tracing::info;
 
-type CollectionFut<'a> = Pin<
-    Box<
-        dyn Future<Output = (Result<Option<(Vec<TxTrace>, Header)>, JoinError>, Metadata)>
-            + Send
-            + 'a,
-    >,
->;
+type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
 
 pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
-    block_number:      u64,
+    block_number: u64,
+
+    provider:          &'inspector Provider<Http<reqwest::Client>>,
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier,
     database:          &'inspector Database,
@@ -38,6 +41,7 @@ pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
 
 impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, N, T> {
     pub fn new(
+        provider: &'inspector Provider<Http<reqwest::Client>>,
         parser: &'inspector Parser<'inspector, T>,
         database: &'inspector Database,
         classifier: &'inspector Classifier,
@@ -45,6 +49,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         block_number: u64,
     ) -> Self {
         Self {
+            provider,
             block_number,
             parser,
             database,
@@ -60,7 +65,21 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let parser_fut = self.parser.execute(self.block_number);
         let labeller_fut = self.database.get_metadata(self.block_number);
 
-        self.classifier_future = Some(Box::pin(async { join!(parser_fut, labeller_fut) }));
+        let classifier_fut = Box::pin(async {
+            let (traces, header) = parser_fut.await.unwrap().unwrap();
+            info!("Got {} traces + header + metadata", traces.len());
+            let (needed_decimals, mut tree) = self.classifier.build_tree(traces, header);
+
+            let (meta, _) = join!(
+                labeller_fut,
+                MissingDecimals::new(self.provider, self.database, needed_decimals)
+            );
+            tree.eth_prices = meta.eth_prices.clone();
+
+            (meta, tree)
+        });
+
+        self.classifier_future = Some(classifier_fut);
     }
 
     fn on_inspectors_finish(
@@ -75,12 +94,8 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
         if let Some(mut collection_fut) = self.classifier_future.take() {
             match collection_fut.poll_unpin(cx) {
-                Poll::Ready((parser_data, labeller_data)) => {
-                    let (traces, header) = parser_data.unwrap().unwrap();
-                    println!("Got {} traces + header + metadata", traces.len());
-                    let tree = self.classifier.build_tree(traces, header, &labeller_data);
-                    println!("built tree");
-                    self.composer.on_new_tree(tree.into(), labeller_data.into());
+                Poll::Ready((meta_data, tree)) => {
+                    self.composer.on_new_tree(tree.into(), meta_data.into());
                 }
                 Poll::Pending => {
                     self.classifier_future = Some(collection_fut);

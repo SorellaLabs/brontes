@@ -5,7 +5,7 @@ use brontes_types::{
     classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, TimeTree},
-    ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
+    try_get_decimals, ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::{
@@ -242,17 +242,14 @@ impl CexDexInspector {
         let delta_price = cex_price - dex_price;
 
         // Calculate the potential profit
-        let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0 .0) else {
+        let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             println!("missing token in token to decimal map");
             return None
         };
 
-        println!(
-            "delta price: {}",
-            &delta_price * &swap.amount_in.to_scaled_rational(*decimals_in)
-        );
-        Some(delta_price * swap.amount_in.to_scaled_rational(*decimals_in))
+        println!("delta price: {}", &delta_price * &swap.amount_in.to_scaled_rational(decimals_in));
+        Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
     }
 
     pub fn rational_prices(
@@ -262,21 +259,21 @@ impl CexDexInspector {
     ) -> Option<(Rational, Rational, Rational)> {
         let Actions::Swap(swap) = swap else { return None };
 
-        let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0 .0) else {
+        let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             println!("missing token in token to decimal map");
             return None
         };
         //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
         // log it
-        let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0 .0) else {
+        let Some(decimals_out) = try_get_decimals(&swap.token_out.0 .0) else {
             error!(missing_token=?swap.token_out, "missing token out token to decimal map");
             println!("missing token in token to decimal map");
             return None
         };
 
-        let adjusted_in = swap.amount_in.to_scaled_rational(*decimals_in);
-        let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
+        let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
+        let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
         let token_out_centralized_price = metadata.token_prices.get(&swap.token_out)?;
         let token_in_centralized_price = metadata.token_prices.get(&swap.token_in)?;

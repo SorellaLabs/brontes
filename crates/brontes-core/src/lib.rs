@@ -3,6 +3,7 @@ pub mod decoding;
 pub mod errors;
 pub mod executor;
 pub mod macros;
+pub mod missing_decimals;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
