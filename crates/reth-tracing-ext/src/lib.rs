@@ -1,5 +1,4 @@
-use std::{ fmt::Debug, path::Path, sync::Arc};
-use revm_primitives::HashMap;
+use std::{fmt::Debug, path::Path, sync::Arc};
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use reth_beacon_consensus::BeaconConsensus;
@@ -39,7 +38,7 @@ use reth_transaction_pool::{
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use revm::interpreter::InstructionResult;
-use revm_primitives::{Account, ExecutionResult, SpecId, KECCAK_EMPTY};
+use revm_primitives::{Account, ExecutionResult, HashMap, SpecId, KECCAK_EMPTY};
 use tokio::runtime::Handle;
 
 pub type Provider = BlockchainProvider<
