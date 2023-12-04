@@ -4,8 +4,8 @@ pub mod errors;
 pub mod executor;
 pub mod macros;
 // TODO: move into own module
-pub mod missing_decimals;
 pub mod dex_price;
+pub mod missing_decimals;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;

@@ -9,10 +9,10 @@ use parking_lot::RwLock;
 use reth_primitives::U256;
 
 pub mod classified_mev;
+pub mod extra_processing;
 pub mod normalized_actions;
 pub mod structured_trace;
 pub mod tree;
-pub mod extra_processing;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
