@@ -12,13 +12,14 @@ pub mod classified_mev;
 pub mod normalized_actions;
 pub mod structured_trace;
 pub mod tree;
+pub mod extra_processing;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
 include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
 
-pub static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
+static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
 
 pub fn try_get_decimals(address: &[u8; 20]) -> Option<u8> {
     if let Some(value) = TOKEN_TO_DECIMALS.get(address) {
