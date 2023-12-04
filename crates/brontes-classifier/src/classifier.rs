@@ -87,7 +87,7 @@ impl Classifier {
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let from_addr = trace.get_from_addr();
-                     let t_address = root_trace.get_to_address();
+                    let t_address = root_trace.get_to_address();
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
 
                     if classification.is_transfer() {

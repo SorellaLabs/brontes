@@ -55,17 +55,13 @@ impl<'db> MissingDecimals<'db> {
 
     fn on_query_res(&mut self, addr: Address, res: TransportResult<Bytes>) {
         if let Ok(res) = res {
-            info!(?res, ?addr);
-            let Some(dec) = decimalsCall::abi_decode_returns(&res, false).ok() else {
-                warn!("failed to decode decimal call");
-                return
-            };
+            let Some(dec) = decimalsCall::abi_decode_returns(&res, false).ok() else { return };
             let dec = dec._0;
             info!(?dec, ?addr, "got new decimal");
             cache_decimals(**addr, dec);
             self.db_future.push(Box::pin(async {}));
         } else {
-            warn!("Token request failed for token");
+            debug!(?addr, "Token request failed for token");
         }
     }
 }
