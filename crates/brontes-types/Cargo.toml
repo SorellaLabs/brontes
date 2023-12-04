@@ -35,7 +35,9 @@ strum = { workspace = true, features = ["derive"] }
 auto_impl.workspace = true
 alloy-primitives = { workspace = true, features = ["serde"] }
 alloy-sol-types.workspace = true
+alloy-sol-macro.workspace = true
 alloy-dyn-abi.workspace = true
+parking_lot.workspace = true
 
 
 [build-dependencies]

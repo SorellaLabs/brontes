@@ -3,11 +3,21 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::FixedBytes;
+use alloy_providers::provider::Provider;
+use alloy_rpc_types::TransactionRequest;
+use alloy_sol_macro::sol;
+use alloy_sol_types::SolCall;
+use alloy_transport_http::Http;
 use brontes_database::Metadata;
-use brontes_types::{normalized_actions::Actions, ToScaledRational, TOKEN_TO_DECIMALS};
+use brontes_types::{
+    cache_decimals, normalized_actions::Actions, try_get_decimals, ToScaledRational,
+    TOKEN_TO_DECIMALS,
+};
+use futures::stream::StreamExt;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
-use tracing::error;
+use tracing::{error, warn};
 
 #[derive(Debug, Default)]
 pub struct SharedInspectorUtils;
@@ -30,18 +40,15 @@ impl SharedInspectorUtils {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-                let Some(decimals_in) = TOKEN_TO_DECIMALS.get(&swap.token_in.0 .0) else {
-                    error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-                    continue
+                let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0) else {
+                    continue;
+                };
+                let Some(decimals_out) = try_get_decimals(&swap.token_out.0 .0) else {
+                    continue;
                 };
 
-                let Some(decimals_out) = TOKEN_TO_DECIMALS.get(&swap.token_out.0 .0) else {
-                    error!(missing_token=?swap.token_out, "missing token out token to decimal map");
-                    continue
-                };
-
-                let adjusted_in = -swap.amount_in.to_scaled_rational(*decimals_in);
-                let adjusted_out = swap.amount_out.to_scaled_rational(*decimals_out);
+                let adjusted_in = -swap.amount_in.to_scaled_rational(decimals_in);
+                let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
                 // Store the amount_in amount_out deltas for a given from address
                 match deltas.entry(swap.from) {
@@ -71,33 +78,30 @@ impl SharedInspectorUtils {
         // exact delta's are.
         loop {
             let mut changed = false;
+            let mut reuse = Vec::new();
 
-            transfers = transfers
-                .into_iter()
-                .filter_map(|transfer| {
-                    // normalize token decimals
-                    let Some(decimals) = TOKEN_TO_DECIMALS.get(&transfer.token.0.0) else {
-                        error!(missing_token=?transfer.token, "missing token in token to decimal map");
-                        return None;
-                    };
-                    let adjusted_amount = transfer.amount.to_scaled_rational(*decimals);
+            for transfer in transfers.into_iter() {
+                // normalize token decimals
+                let Some(decimals) = try_get_decimals(&transfer.token.0 .0) else {
+                    continue;
+                };
 
+                let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
-                    // subtract value from the from address
-                    if let Some(from_token_map) = deltas.get_mut(&transfer.from) {
-                        changed = true;
-                        apply_entry(transfer.token, -adjusted_amount.clone(), from_token_map);
-                    } else {
-                        return Some(transfer)
-                    }
+                // subtract value from the from address
+                if let Some(from_token_map) = deltas.get_mut(&transfer.from) {
+                    changed = true;
+                    apply_entry(transfer.token, -adjusted_amount.clone(), from_token_map);
+                } else {
+                    reuse.push(transfer)
+                }
 
-                    // add value to the destination address
-                    let to_token_map = deltas.entry(transfer.to).or_default();
-                    apply_entry(transfer.token, adjusted_amount, to_token_map);
+                // add value to the destination address
+                let to_token_map = deltas.entry(transfer.to).or_default();
+                apply_entry(transfer.token, adjusted_amount, to_token_map);
+            }
 
-                    return None
-                })
-                .collect::<Vec<_>>();
+            transfers = reuse;
 
             if changed == false {
                 break
