@@ -96,6 +96,8 @@ reth-primitives.workspace = true
 futures.workspace = true
 itertools.workspace = true
 
+
+
 [features]
 default = []
 dyn-decode = []
