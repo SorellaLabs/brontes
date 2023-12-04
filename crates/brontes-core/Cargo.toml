@@ -33,6 +33,7 @@ brontes-database.workspace = true
 tokio = { workspace = true, features = ["full", "tracing"] }
 futures.workspace = true
 async-trait.workspace = true
+malachite.workspace = true
 # alloy
 alloy-sol-types.workspace = true
 alloy-sol-macro.workspace = true
