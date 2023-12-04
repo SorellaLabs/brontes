@@ -15,16 +15,18 @@ use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-const POOLS_QUERY: &str = "SELECT protocol, protocol_subtype, toString(address), arrayMap(x -> toString(x), tokens) AS tokens FROM ethereum.pools WHERE length(tokens) = 2"; 
+const POOLS_QUERY: &str = "SELECT protocol, protocol_subtype, toString(address), arrayMap(x -> \
+                           toString(x), tokens) AS tokens FROM ethereum.pools WHERE \
+                           length(tokens) = 2";
 
 const DEX_PRICE_MAP: &str = "dex_price_map.rs";
 
 #[derive(Debug, Clone, Row, Serialize, Deserialize)]
 pub struct Pools {
-    protocol: String,
+    protocol:         String,
     protocol_subtype: String,
-    address: String,
-    tokens: Vec<String>,
+    address:          String,
+    tokens:           Vec<String>,
 }
 
 fn main() {
@@ -38,7 +40,6 @@ fn main() {
     runtime.block_on(build_dex_pricing_map());
 }
 
-
 pub async fn build_dex_pricing_map() {
     let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap()).join(DEX_PRICE_MAP);
     let mut file = fs::OpenOptions::new()
@@ -50,16 +51,19 @@ pub async fn build_dex_pricing_map() {
     let client = build_db();
     let data: Vec<Pools> = query_db::<Pools>(&client, POOLS_QUERY).await;
 
-    let mut map: HashMap<[u8;40], Vec<(bool, String, String)>> = HashMap::default();
+    let mut map: HashMap<[u8; 40], Vec<(bool, String, String)>> = HashMap::default();
 
     data.into_iter().for_each(|pool| {
-        let token0 = Address::from_str(&pool.tokens[0]).unwrap().0.0;
-        let token1 = Address::from_str(&pool.tokens[1]).unwrap().0.0;
+        let token0 = Address::from_str(&pool.tokens[0]).unwrap().0 .0;
+        let token1 = Address::from_str(&pool.tokens[1]).unwrap().0 .0;
         let protocol = format!("{}{}", pool.protocol, pool.protocol_subtype);
 
-
-        map.entry(combine_slices(token0, token1)).or_default().push((true, pool.address.clone(), protocol.clone()));
-        map.entry(combine_slices(token1, token0)).or_default().push((false, pool.address, protocol));
+        map.entry(combine_slices(token0, token1))
+            .or_default()
+            .push((true, pool.address.clone(), protocol.clone()));
+        map.entry(combine_slices(token1, token0))
+            .or_default()
+            .push((false, pool.address, protocol));
     });
 
     let mut phf_map = phf_codegen::Map::new();
@@ -70,11 +74,11 @@ pub async fn build_dex_pricing_map() {
 
     writeln!(
         file,
-        "pub static DEX_PRICE_MAP: phf::Map<[u8; 40], &[(bool, Address, Lazy<Box<dyn DexPrice>>)]> = \n{};\n",
+        "pub static DEX_PRICE_MAP: phf::Map<[u8; 40], &[(bool, Address, Lazy<Box<dyn \
+         DexPrice>>)]> = \n{};\n",
         phf_map.build()
     )
     .unwrap();
-
 }
 fn combine_slices(slice1: [u8; 20], slice2: [u8; 20]) -> [u8; 40] {
     let mut combined = [0u8; 40];
@@ -92,7 +96,7 @@ fn build_vec_of_details(values: Vec<(bool, String, String)>) -> String {
         start += &format!("({zto},");
         let addr = Address::from_str(&address).unwrap();
         start += "Address(FixedBytes(";
-        start += &format!("{:?}",addr.0.0);
+        start += &format!("{:?}", addr.0 .0);
         start += ")),";
         start += &format!("Lazy::new(|| Box::new({}DexPrice::default()))),", protocol);
     }
@@ -105,7 +109,6 @@ fn build_vec_of_details(values: Vec<(bool, String, String)>) -> String {
 
 async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
-
 }
 
 fn build_db() -> Client {
