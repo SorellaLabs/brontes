@@ -1,6 +1,6 @@
 use reth_primitives::{Address, Bytes, B256};
 use reth_rpc_types::{
-    trace::parity::{Action, CallType, TransactionTrace},
+    trace::parity::{Action, CallType, StateDiff, TransactionTrace},
     Log,
 };
 use serde::{Deserialize, Serialize};
@@ -81,6 +81,7 @@ pub struct TransactionTraceWithLogs {
 #[derive(Debug, Clone)]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
+    pub state_diff:      StateDiff,
     pub tx_hash:         B256,
     pub gas_used:        u64,
     pub effective_price: u64,
@@ -96,7 +97,8 @@ impl TxTrace {
         gas_used: u64,
         effective_price: u64,
         is_success: bool,
+        state_diff: StateDiff,
     ) -> Self {
-        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
+        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success, state_diff }
     }
 }
