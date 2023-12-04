@@ -1,10 +1,9 @@
 #![feature(trait_alias)]
 pub mod decoding;
+pub mod dex_price;
 pub mod errors;
 pub mod executor;
 pub mod macros;
-// TODO: move into own module
-pub mod dex_price;
 pub mod missing_decimals;
 
 #[cfg(feature = "tests")]
