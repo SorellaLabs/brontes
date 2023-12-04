@@ -45,11 +45,13 @@ impl Classifier {
                 let mut missing_decimals = Vec::new();
                 let root_trace = trace.trace[0].clone();
                 let address = root_trace.get_from_addr();
+                let t_address = root_trace.get_to_address();
+
                 let classification = self.classify_node(trace.trace.remove(0), 0);
 
                 if classification.is_transfer() {
-                    if try_get_decimals(&address.0 .0).is_none() {
-                        missing_decimals.push(address.clone());
+                    if try_get_decimals(&t_address.0 .0).is_none() {
+                        missing_decimals.push(t_address.clone());
                     }
                 }
 
@@ -85,11 +87,12 @@ impl Classifier {
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let from_addr = trace.get_from_addr();
+                     let t_address = root_trace.get_to_address();
                     let classification = self.classify_node(trace.clone(), (index + 1) as u64);
 
                     if classification.is_transfer() {
-                        if try_get_decimals(&address.0 .0).is_none() {
-                            missing_decimals.push(address.clone());
+                        if try_get_decimals(&t_address.0 .0).is_none() {
+                            missing_decimals.push(t_address.clone());
                         }
                     }
 
