@@ -1116,6 +1116,7 @@ dependencies = [
  "itertools 0.11.0",
  "lazy_static",
  "log",
+ "malachite",
  "phf",
  "phf_codegen",
  "rayon",
