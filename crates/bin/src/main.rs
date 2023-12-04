@@ -74,13 +74,13 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");
-    let provider = Provider::new(url).unwrap();
+    let provider = Provider::new(&url).unwrap();
 
     // init inspectors
-    let sandwich = Box::new(SandwichInspector::new(&url)) as Box<dyn Inspector>;
-    let cex_dex = Box::new(CexDexInspector::new(&url)) as Box<dyn Inspector>;
-    let jit = Box::new(JitInspector::new(&url)) as Box<dyn Inspector>;
-    let backrun = Box::new(AtomicBackrunInspector::new(&url)) as Box<dyn Inspector>;
+    let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
+    let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
+    let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
+    let backrun = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
 
     let inspectors = &[&sandwich, &cex_dex, &jit, &backrun];
 
