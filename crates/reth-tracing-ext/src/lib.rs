@@ -7,9 +7,7 @@ use reth_blockchain_tree::{
 };
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{
-    alloy_primitives::U256,  Address, BlockId, Bytes, PruneModes, MAINNET, U64,
-};
+use reth_primitives::{alloy_primitives::U256, Address, BlockId, Bytes, PruneModes, MAINNET, U64};
 use reth_provider::{providers::BlockchainProvider, ProviderFactory, StateProvider};
 use reth_revm::{
     database::StateProviderDatabase,
@@ -40,7 +38,7 @@ use reth_transaction_pool::{
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use revm::interpreter::InstructionResult;
-use revm_primitives::{ExecutionResult, SpecId};
+use revm_primitives::{Account, ExecutionResult, SpecId, KECCAK_EMPTY};
 use tokio::runtime::Handle;
 
 pub type Provider = BlockchainProvider<
