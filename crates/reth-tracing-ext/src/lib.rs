@@ -185,7 +185,7 @@ impl TracingInspectorLocal {
         let gas_used = res.gas_used();
 
         let trace = self.build_trace(&info);
-        let diff = StateDiff::default();
+        let mut diff = StateDiff::default();
         let _ = populate_state_diff(&mut diff, db, acc_diff);
 
         TxTrace {
