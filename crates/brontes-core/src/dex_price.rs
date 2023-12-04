@@ -10,6 +10,8 @@ use alloy_transport_http::Http;
 use brontes_database::database::Database;
 use brontes_types::cache_decimals;
 use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
+use reth_rpc_types::trace::parity::StateDiff;
+use malachite::Rational;
 
 pub struct TransactionPoolSwappedTokens {
     pairs:      Vec<(Address, Address)>,
@@ -34,6 +36,6 @@ pub struct DexPricing<'p> {
     provider: &'p Provider<Http<reqwest::Client>>,
 }
 
-impl DexPricing {
+impl DexPricing<'_> {
     pub fn need_prices_for(&mut self, pools_tokens_type: Vec<TransactionPoolSwappedTokens>) {}
 }
