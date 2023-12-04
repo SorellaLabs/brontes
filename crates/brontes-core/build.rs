@@ -50,15 +50,16 @@ pub async fn build_dex_pricing_map() {
     let client = build_db();
     let data: Vec<Pools> = query_db::<Pools>(&client, POOLS_QUERY).await;
 
-    let mut map: HashMap<([u8;20] ,[u8;20]), Vec<(bool, String, String)>> = HashMap::default();
+    let mut map: HashMap<[u8;40], Vec<(bool, String, String)>> = HashMap::default();
 
     data.into_iter().for_each(|pool| {
         let token0 = Address::from_str(&pool.tokens[0]).unwrap().0.0;
         let token1 = Address::from_str(&pool.tokens[1]).unwrap().0.0;
         let protocol = format!("{}{}", pool.protocol, pool.protocol_subtype);
 
-        map.entry((token0, token1)).or_default().push((true, pool.address.clone(), protocol.clone()));
-        map.entry((token1, token0)).or_default().push((false, pool.address, protocol));
+
+        map.entry(combine_slices(token0, token1)).or_default().push((true, pool.address.clone(), protocol.clone()));
+        map.entry(combine_slices(token1, token0)).or_default().push((false, pool.address, protocol));
     });
 
     let mut phf_map = phf_codegen::Map::new();
@@ -69,11 +70,19 @@ pub async fn build_dex_pricing_map() {
 
     writeln!(
         file,
-        "pub static DEX_PRICE_MAP: phf::Map<([u8; 20], [u8; 20]), &[(bool, Address, Lazy<Box<dyn DexPrice>>)]> = \n{};\n",
+        "pub static DEX_PRICE_MAP: phf::Map<[u8; 40], &[(bool, Address, Lazy<Box<dyn DexPrice>>)]> = \n{};\n",
         phf_map.build()
     )
     .unwrap();
 
+}
+fn combine_slices(slice1: [u8; 20], slice2: [u8; 20]) -> [u8; 40] {
+    let mut combined = [0u8; 40];
+
+    combined[..20].copy_from_slice(&slice1);
+    combined[20..].copy_from_slice(&slice2);
+
+    combined
 }
 
 fn build_vec_of_details(values: Vec<(bool, String, String)>) -> String {
