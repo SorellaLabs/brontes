@@ -8,7 +8,7 @@ use reth_blockchain_tree::{
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
 use reth_primitives::{
-    alloy_primitives::U256, Account, Address, BlockId, Bytes, PruneModes, MAINNET, U64,
+    alloy_primitives::U256,  Address, BlockId, Bytes, PruneModes, MAINNET, U64,
 };
 use reth_provider::{providers::BlockchainProvider, ProviderFactory, StateProvider};
 use reth_revm::{
