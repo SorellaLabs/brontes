@@ -1,4 +1,5 @@
-use std::{collections::HashMap, fmt::Debug, path::Path, sync::Arc};
+use std::{ fmt::Debug, path::Path, sync::Arc};
+use revm_primitives::HashMap;
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use reth_beacon_consensus::BeaconConsensus;
