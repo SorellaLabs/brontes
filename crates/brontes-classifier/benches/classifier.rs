@@ -13,7 +13,7 @@ use brontes_types::{
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
-use reth_tracing::TracingClient;
+use reth_tracing_ext::TracingClient;
 use serial_test::serial;
 use tokio::sync::mpsc::unbounded_channel;
 

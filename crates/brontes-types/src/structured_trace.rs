@@ -97,6 +97,6 @@ impl TxTrace {
         effective_price: u64,
         is_success: bool,
     ) -> Self {
-        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success}
+        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
     }
 }

@@ -3,6 +3,8 @@ use std::{
     task::{Context, Poll},
 };
 
+use alloy_providers::provider::Provider;
+use alloy_transport_http::Http;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::database::Database;
@@ -25,6 +27,7 @@ pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     end_block:        Option<u64>,
     chain_tip:        u64,
     max_tasks:        u64,
+    provider:         &'inspector Provider<Http<reqwest::Client>>,
     parser:           &'inspector Parser<'inspector, T>,
     classifier:       &'inspector Classifier,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
@@ -38,12 +41,14 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         end_block: Option<u64>,
         chain_tip: u64,
         max_tasks: u64,
+        provider: &'inspector Provider<Http<reqwest::Client>>,
         parser: &'inspector Parser<'inspector, T>,
         database: &'inspector Database,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {
         let mut brontes = Self {
+            provider,
             current_block: init_block,
             end_block,
             chain_tip,
@@ -69,6 +74,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
 
     fn spawn_block_inspector(&mut self) {
         let inspector = BlockInspector::new(
+            self.provider,
             self.parser,
             self.database,
             self.classifier,

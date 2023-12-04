@@ -20,6 +20,7 @@ toml = "0.8.2"
 tokio = { workspace = true, features = ["full", "tracing"] }
 futures.workspace = true
 
+reqwest.workspace = true
 # Reth
 reth-tasks.workspace = true
 reth-rpc.workspace = true
@@ -38,6 +39,13 @@ reth-interfaces.workspace = true
 # Alloy
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types = { workspace = true, features = ["json"] }
+alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-transport = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-networks = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
 
 # logging
 log.workspace = true

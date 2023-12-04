@@ -11,7 +11,9 @@ pub fn helper_build_tree(
     header: Header,
     metadata: &Metadata,
 ) -> TimeTree<Actions> {
-    classifier.build_tree(traces, header, metadata)
+    let (_, mut tree) = classifier.build_tree(traces, header);
+    tree.eth_prices = metadata.eth_prices.clone();
+    tree
 }
 
 pub async fn build_raw_test_tree<T: TracingProvider>(
@@ -21,7 +23,9 @@ pub async fn build_raw_test_tree<T: TracingProvider>(
 ) -> TimeTree<Actions> {
     let (traces, header, metadata) = get_traces_with_meta(tracer, db, block_number).await;
     let classifier = Classifier::new();
-    classifier.build_tree(traces, header, &metadata)
+    let (_, mut tree) = classifier.build_tree(traces, header);
+    tree.eth_prices = metadata.eth_prices.clone();
+    tree
 }
 
 pub async fn get_traces_with_meta<T: TracingProvider>(

@@ -35,6 +35,7 @@ futures.workspace = true
 async-trait.workspace = true
 # alloy
 alloy-sol-types.workspace = true
+alloy-sol-macro.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
