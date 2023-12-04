@@ -65,7 +65,7 @@ pub async fn build_dex_pricing_map() {
     let mut phf_map = phf_codegen::Map::new();
 
     for (k, v) in map {
-        phf_map.entry(k, build_vec_of_details(v));
+        phf_map.entry(k, &build_vec_of_details(v));
     }
 
     writeln!(
