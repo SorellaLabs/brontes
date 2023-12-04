@@ -39,20 +39,6 @@ pub trait DexPrice: Clone + Send + Sync + Unpin + 'static {
     ) -> Pin<Box<dyn Future<Output = (Rational, Rational)> + Send + Sync>>;
 }
 
-struct V2Pricing;
-
-impl DexPrice for V2Pricing {
-    fn get_price(
-        &self,
-        provider: &Provider<Http<reqwest::Client>>,
-        address: Address,
-        zto: bool,
-        state_diff: StateDiff,
-    ) -> Pin<Box<dyn Future<Output = (Rational, Rational)> + Send + Sync>> {
-        Box::pin(async { todo!() })
-    }
-}
-
 // we will have a static map for (token0, token1) => Vec<address, exchange type>
 // this will then process using async, grab the reserves and process the price.
 // and return that with tvl. with this we can calculate weighted price
