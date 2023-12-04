@@ -1,4 +1,4 @@
-use std::{fmt::Debug, path::Path, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, path::Path, sync::Arc};
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use reth_beacon_consensus::BeaconConsensus;
@@ -7,15 +7,19 @@ use reth_blockchain_tree::{
 };
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{alloy_primitives::U256, BlockId, Bytes, PruneModes, MAINNET, U64};
-use reth_provider::{providers::BlockchainProvider, ProviderFactory};
+use reth_primitives::{
+    alloy_primitives::U256, Account, Address, BlockId, Bytes, PruneModes, MAINNET, U64,
+};
+use reth_provider::{providers::BlockchainProvider, ProviderFactory, StateProvider};
 use reth_revm::{
+    database::StateProviderDatabase,
+    db::CacheDB,
     inspectors::GasInspector,
     tracing::{
         types::{CallKind, CallTraceNode},
         TracingInspectorConfig, *,
     },
-    EvmProcessorFactory,
+    DatabaseRef, EvmProcessorFactory,
 };
 use reth_rpc::{
     eth::{
@@ -480,4 +484,25 @@ where
     }
 
     Ok(())
+}
+
+#[inline]
+pub(crate) fn load_account_code<DB: DatabaseRef>(
+    db: DB,
+    db_acc: &revm::primitives::AccountInfo,
+) -> Option<Bytes> {
+    db_acc
+        .code
+        .as_ref()
+        .map(|code| code.original_bytes())
+        .or_else(|| {
+            if db_acc.code_hash == KECCAK_EMPTY {
+                None
+            } else {
+                db.code_by_hash_ref(db_acc.code_hash)
+                    .ok()
+                    .map(|code| code.original_bytes())
+            }
+        })
+        .map(Into::into)
 }
