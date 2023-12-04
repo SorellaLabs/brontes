@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::HashMap,
     env,
     fs::{self, File},
     io::{BufWriter, Write},
@@ -64,7 +64,7 @@ pub async fn build_dex_pricing_map() {
     let mut phf_map = phf_codegen::Map::new();
 
     for (k, v) in map {
-        phf_map.entry(k, build_map_value(v))
+        phf_map.entry(k, build_vec_of_details(v));
     }
 
     writeln!(
@@ -81,7 +81,7 @@ fn build_vec_of_details(values: Vec<(bool, String, String)>) -> String {
 
     for (zto, address, protocol) in values {
         start += &format!("({zto},");
-        let addr = Address::from_string(&address).unwrap();
+        let addr = Address::from_str(&address).unwrap();
         start += "Address(FixedBytes(";
         start += &format!("{:?}",addr.0.0);
         start += ")),";
