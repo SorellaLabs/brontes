@@ -13,9 +13,46 @@ pub struct Metadata {
     pub p2p_timestamp:          u64,
     pub proposer_fee_recipient: Address,
     pub proposer_mev_reward:    u64,
-    pub token_prices:           HashMap<Address, (Rational, Rational)>,
-    pub eth_prices:             (Rational, Rational),
+    pub cex_quotes:             Quotes,
+    /// Best ask at p2p timestamp
+    pub eth_prices:             Rational,
     pub mempool_flow:           HashSet<TxHash>,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct Pair(Address, Address);
+
+#[derive(Debug, Clone)]
+pub struct Quote {
+    pub timestamp: u64,
+    /// Best Ask & Bid price at p2p timestamp (which is when the block is first
+    /// propagated by the relay / proposer)
+    pub price:     (Rational, Rational),
+}
+#[derive(Debug, Clone)]
+
+/// There should be 1 entry for how the pair is stored on the CEX and the other
+/// order should be the reverse of that
+pub struct Quotes(HashMap<Pair, Quote>);
+
+impl Quotes {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn get_quote(&self, pair: Pair) -> Option<&Vec<Quote>> {
+        self.0.get(&pair)
+    }
+}
+
+impl Trades {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn get_trades(&self, pair: Pair) -> Option<&Vec<Trade>> {
+        self.0.get(&pair)
+    }
 }
 
 impl Metadata {
@@ -26,8 +63,8 @@ impl Metadata {
         p2p_timestamp: u64,
         proposer_fee_recipient: Address,
         proposer_mev_reward: u64,
-        token_prices: HashMap<Address, (Rational, Rational)>,
-        eth_prices: (Rational, Rational),
+        cex_quotes: Quotes,
+        eth_prices: Rational,
         mempool_flow: HashSet<TxHash>,
     ) -> Self {
         Self {
@@ -35,7 +72,7 @@ impl Metadata {
             block_hash,
             relay_timestamp,
             p2p_timestamp,
-            token_prices,
+            cex_quotes,
             eth_prices,
             proposer_fee_recipient,
             proposer_mev_reward,
