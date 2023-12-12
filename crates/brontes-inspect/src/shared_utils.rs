@@ -122,7 +122,7 @@ impl SharedInspectorUtils {
                 let summed_value = tokens
                     .into_iter()
                     .map(|(address, mut value)| {
-                        if let Some(price) = metadata.token_prices.get(&address) {
+                        if let Some(price) = metadata.cex_quotes {
                             value *= time_selector(price);
                             value
                         } else {
