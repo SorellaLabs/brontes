@@ -6,36 +6,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-#[derive(Debug, Row, Serialize, Deserialize)]
-pub struct TokenPricesTimeDB {
-    // (address, (relay time, p2p time))
-    pub token_prices: Vec<(String, (f64, f64))>,
-}
-
-#[derive(Debug, Row, Serialize, Deserialize)]
-pub struct DBP2PRelayTimes {
-    pub relay_timestamp: u64,
-    pub p2p_timestamp:   u64,
-}
-
-#[serde_as]
-#[derive(Debug, Row, Serialize, Deserialize)]
-pub struct DBTokenPrices {
-    pub address: Address,
-    pub price0:  f64,
-    pub price1:  f64,
-}
-
-impl From<DBTokenPricesDB> for DBTokenPrices {
-    fn from(value: DBTokenPricesDB) -> Self {
-        DBTokenPrices {
-            address: Address::from_str(&value.address).unwrap(),
-            price0:  value.price0,
-            price1:  value.price1,
-        }
-    }
-}
-
 #[serde_as]
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct Abis {
@@ -54,9 +24,10 @@ impl From<Abis> for (Address, JsonAbi) {
 #[serde_as]
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct DBTokenPricesDB {
-    pub address: String,
-    pub price0:  f64,
-    pub price1:  f64,
+    /// (base_address, quote_address)
+    pub key: (String, String),
+    /// (timestamp, ask_price, bid_price)
+    pub val: (u64, f64, f64),
 }
 
 #[serde_as]
