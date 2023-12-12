@@ -38,6 +38,14 @@ impl Quote {
     pub fn avg(&self) -> Rational {
         (&self.price.0 + &self.price.1) / Rational::from(2)
     }
+
+    pub fn best_ask(&self) -> Rational {
+        self.price.0.clone()
+    }
+
+    pub fn best_bid(&self) -> Rational {
+        self.price.1.clone()
+    }
 }
 
 impl PartialEq for Quote {
