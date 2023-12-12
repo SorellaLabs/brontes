@@ -14,7 +14,6 @@ use brontes_types::{
     cache_decimals, normalized_actions::Actions, try_get_decimals, ToScaledRational,
     TOKEN_TO_DECIMALS,
 };
-use futures::stream::StreamExt;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 use tracing::{error, warn};

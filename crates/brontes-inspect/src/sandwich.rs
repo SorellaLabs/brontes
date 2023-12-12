@@ -156,124 +156,140 @@ impl SandwichInspector {
             .map(|s| s.force_swap())
             .collect_vec();
 
-        let sandwich = Sandwich {
-            frontrun_tx_hash:          txes[0],
-            frontrun_gas_details:      searcher_gas_details[0],
-            frontrun_swaps_index:      frontrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
-            frontrun_swaps_from:       frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            frontrun_swaps_pool:       frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            frontrun_swaps_token_in:   frontrun_swaps
-                .iter()
-                .map(|s| s.token_in)
-                .collect::<Vec<_>>(),
-            frontrun_swaps_token_out:  frontrun_swaps
-                .iter()
-                .map(|s| s.token_out)
-                .collect::<Vec<_>>(),
-            frontrun_swaps_amount_in:  frontrun_swaps
-                .iter()
-                .map(|s| s.amount_in.to())
-                .collect::<Vec<_>>(),
-            frontrun_swaps_amount_out: frontrun_swaps
-                .iter()
-                .map(|s| s.amount_out.to())
-                .collect::<Vec<_>>(),
+        let sandwich =
+            Sandwich {
+                frontrun_tx_hash:          txes[0],
+                frontrun_gas_details:      searcher_gas_details[0],
+                frontrun_swaps_index:      frontrun_swaps
+                    .iter()
+                    .map(|s| s.index)
+                    .collect::<Vec<_>>(),
+                frontrun_swaps_from:       frontrun_swaps
+                    .iter()
+                    .map(|s| s.from)
+                    .collect::<Vec<_>>(),
+                frontrun_swaps_pool:       frontrun_swaps
+                    .iter()
+                    .map(|s| s.pool)
+                    .collect::<Vec<_>>(),
+                frontrun_swaps_token_in:   frontrun_swaps
+                    .iter()
+                    .map(|s| s.token_in)
+                    .collect::<Vec<_>>(),
+                frontrun_swaps_token_out:  frontrun_swaps
+                    .iter()
+                    .map(|s| s.token_out)
+                    .collect::<Vec<_>>(),
+                frontrun_swaps_amount_in:  frontrun_swaps
+                    .iter()
+                    .map(|s| s.amount_in.to())
+                    .collect::<Vec<_>>(),
+                frontrun_swaps_amount_out: frontrun_swaps
+                    .iter()
+                    .map(|s| s.amount_out.to())
+                    .collect::<Vec<_>>(),
 
-            victim_tx_hashes:        victim_txes.clone(),
-            victim_swaps_tx_hash:    victim_txes,
-            victim_swaps_index:      victim_actions
-                .iter()
-                .flat_map(|swap| {
-                    swap.into_iter()
-                        .filter(|s| s.is_swap())
-                        .map(|s| s.clone().force_swap().index)
-                        .collect_vec()
-                })
-                .collect(),
-            victim_swaps_from:       victim_actions
-                .iter()
-                .flat_map(|swap| {
-                    swap.into_iter()
-                        .filter(|s| s.is_swap())
-                        .map(|s| s.clone().force_swap().from)
-                        .collect_vec()
-                })
-                .collect(),
-            victim_swaps_pool:       victim_actions
-                .iter()
-                .flat_map(|swap| {
-                    swap.into_iter()
-                        .filter(|s| s.is_swap())
-                        .map(|s| s.clone().force_swap().pool)
-                        .collect_vec()
-                })
-                .collect(),
-            victim_swaps_token_in:   victim_actions
-                .iter()
-                .flat_map(|swap| {
-                    swap.into_iter()
-                        .filter(|s| s.is_swap())
-                        .map(|s| s.clone().force_swap().token_in)
-                        .collect_vec()
-                })
-                .collect(),
-            victim_swaps_token_out:  victim_actions
-                .iter()
-                .flat_map(|swap| {
-                    swap.into_iter()
-                        .filter(|s| s.is_swap())
-                        .map(|s| s.clone().force_swap().token_out)
-                        .collect_vec()
-                })
-                .collect(),
-            victim_swaps_amount_in:  victim_actions
-                .iter()
-                .flat_map(|swap| {
-                    swap.into_iter()
-                        .filter(|s| s.is_swap())
-                        .map(|s| s.clone().force_swap().amount_in.to())
-                        .collect_vec()
-                })
-                .collect(),
-            victim_swaps_amount_out: victim_actions
-                .iter()
-                .flat_map(|swap| {
-                    swap.into_iter()
-                        .filter(|s| s.is_swap())
-                        .map(|s| s.clone().force_swap().amount_out.to())
-                        .collect_vec()
-                })
-                .collect(),
+                victim_tx_hashes:        victim_txes.clone(),
+                victim_swaps_tx_hash:    victim_txes,
+                victim_swaps_index:      victim_actions
+                    .iter()
+                    .flat_map(|swap| {
+                        swap.into_iter()
+                            .filter(|s| s.is_swap())
+                            .map(|s| s.clone().force_swap().index)
+                            .collect_vec()
+                    })
+                    .collect(),
+                victim_swaps_from:       victim_actions
+                    .iter()
+                    .flat_map(|swap| {
+                        swap.into_iter()
+                            .filter(|s| s.is_swap())
+                            .map(|s| s.clone().force_swap().from)
+                            .collect_vec()
+                    })
+                    .collect(),
+                victim_swaps_pool:       victim_actions
+                    .iter()
+                    .flat_map(|swap| {
+                        swap.into_iter()
+                            .filter(|s| s.is_swap())
+                            .map(|s| s.clone().force_swap().pool)
+                            .collect_vec()
+                    })
+                    .collect(),
+                victim_swaps_token_in:   victim_actions
+                    .iter()
+                    .flat_map(|swap| {
+                        swap.into_iter()
+                            .filter(|s| s.is_swap())
+                            .map(|s| s.clone().force_swap().token_in)
+                            .collect_vec()
+                    })
+                    .collect(),
+                victim_swaps_token_out:  victim_actions
+                    .iter()
+                    .flat_map(|swap| {
+                        swap.into_iter()
+                            .filter(|s| s.is_swap())
+                            .map(|s| s.clone().force_swap().token_out)
+                            .collect_vec()
+                    })
+                    .collect(),
+                victim_swaps_amount_in:  victim_actions
+                    .iter()
+                    .flat_map(|swap| {
+                        swap.into_iter()
+                            .filter(|s| s.is_swap())
+                            .map(|s| s.clone().force_swap().amount_in.to())
+                            .collect_vec()
+                    })
+                    .collect(),
+                victim_swaps_amount_out: victim_actions
+                    .iter()
+                    .flat_map(|swap| {
+                        swap.into_iter()
+                            .filter(|s| s.is_swap())
+                            .map(|s| s.clone().force_swap().amount_out.to())
+                            .collect_vec()
+                    })
+                    .collect(),
 
-            victim_gas_details_coinbase_transfer: victim_gas
-                .iter()
-                .map(|g| g.coinbase_transfer)
-                .collect(),
-            victim_gas_details_priority_fee: victim_gas.iter().map(|g| g.priority_fee).collect(),
-            victim_gas_details_gas_used: victim_gas.iter().map(|g| g.gas_used).collect(),
-            victim_gas_details_effective_gas_price: victim_gas
-                .iter()
-                .map(|g| g.effective_gas_price)
-                .collect(),
-            backrun_tx_hash: txes[1],
-            backrun_gas_details: searcher_gas_details[1],
-            backrun_swaps_index: backrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
-            backrun_swaps_from: backrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            backrun_swaps_pool: backrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            backrun_swaps_token_in: backrun_swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
-            backrun_swaps_token_out: backrun_swaps
-                .iter()
-                .map(|s| s.token_out)
-                .collect::<Vec<_>>(),
-            backrun_swaps_amount_in: backrun_swaps
-                .iter()
-                .map(|s| s.amount_in.to())
-                .collect::<Vec<_>>(),
-            backrun_swaps_amount_out: backrun_swaps
-                .iter()
-                .map(|s| s.amount_out.to())
-                .collect::<Vec<_>>(),
-        };
+                victim_gas_details_coinbase_transfer: victim_gas
+                    .iter()
+                    .map(|g| g.coinbase_transfer)
+                    .collect(),
+                victim_gas_details_priority_fee: victim_gas
+                    .iter()
+                    .map(|g| g.priority_fee)
+                    .collect(),
+                victim_gas_details_gas_used: victim_gas.iter().map(|g| g.gas_used).collect(),
+                victim_gas_details_effective_gas_price: victim_gas
+                    .iter()
+                    .map(|g| g.effective_gas_price)
+                    .collect(),
+                backrun_tx_hash: txes[1],
+                backrun_gas_details: searcher_gas_details[1],
+                backrun_swaps_index: backrun_swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+                backrun_swaps_from: backrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+                backrun_swaps_pool: backrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+                backrun_swaps_token_in: backrun_swaps
+                    .iter()
+                    .map(|s| s.token_in)
+                    .collect::<Vec<_>>(),
+                backrun_swaps_token_out: backrun_swaps
+                    .iter()
+                    .map(|s| s.token_out)
+                    .collect::<Vec<_>>(),
+                backrun_swaps_amount_in: backrun_swaps
+                    .iter()
+                    .map(|s| s.amount_in.to())
+                    .collect::<Vec<_>>(),
+                backrun_swaps_amount_out: backrun_swaps
+                    .iter()
+                    .map(|s| s.amount_out.to())
+                    .collect::<Vec<_>>(),
+            };
 
         let classified_mev = ClassifiedMev {
             eoa,
@@ -282,8 +298,6 @@ impl SandwichInspector {
             mev_contract: mev_executor_contract,
             block_number: metadata.block_num,
             mev_type: MevType::Sandwich,
-            submission_profit_usd: (appearance_usd - &gas_used_usd_appearance).to_float(),
-            submission_bribe_usd: gas_used_usd_appearance.to_float(),
             finalized_profit_usd: (finalized_usd - &gas_used_usd_finalized).to_float(),
             finalized_bribe_usd: gas_used_usd_finalized.to_float(),
         };
@@ -391,11 +405,6 @@ mod tests {
         // assert!(
         //     mev[0].0.tx_hash
         //         == B256::from_str(
-        //
-        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
-        //         )
-        //         .unwrap()
-        // );
 
         println!("{:#?}", mev);
     }

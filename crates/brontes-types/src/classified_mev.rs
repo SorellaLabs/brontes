@@ -22,7 +22,6 @@ pub struct MevBlock {
     pub block_hash: B256,
     pub block_number: u64,
     pub mev_count: u64,
-    pub submission_eth_price: f64,
     pub finalized_eth_price: f64,
     /// Gas
     pub cumulative_gas_used: u64,
@@ -33,17 +32,14 @@ pub struct MevBlock {
     #[serde_as(as = "FixedString")]
     pub builder_address: Address,
     pub builder_eth_profit: u64,
-    pub builder_submission_profit_usd: f64,
     pub builder_finalized_profit_usd: f64,
     /// Proposer address
     #[serde_as(as = "FixedString")]
     pub proposer_fee_recipient: Address,
     pub proposer_mev_reward: u64,
-    pub proposer_submission_profit_usd: f64,
     pub proposer_finalized_profit_usd: f64,
     // gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
-    pub cumulative_mev_submission_profit_usd: f64,
     pub cumulative_mev_finalized_profit_usd: f64,
 }
 
@@ -51,20 +47,18 @@ pub struct MevBlock {
 #[derive(Debug, Serialize, Row, Clone, Default)]
 pub struct ClassifiedMev {
     // can be multiple for sandwich
-    pub block_number:          u64,
+    pub block_number:         u64,
     #[serde_as(as = "FixedString")]
-    pub tx_hash:               B256,
+    pub tx_hash:              B256,
     #[serde_as(as = "FixedString")]
-    pub eoa:                   Address,
+    pub eoa:                  Address,
     #[serde_as(as = "FixedString")]
-    pub mev_contract:          Address,
+    pub mev_contract:         Address,
     #[serde(with = "vec_fixed_string")]
-    pub mev_profit_collector:  Vec<Address>,
-    pub submission_profit_usd: f64,
-    pub finalized_profit_usd:  f64,
-    pub submission_bribe_usd:  f64,
-    pub finalized_bribe_usd:   f64,
-    pub mev_type:              MevType,
+    pub mev_profit_collector: Vec<Address>,
+    pub finalized_profit_usd: f64,
+    pub finalized_bribe_usd:  f64,
+    pub mev_type:             MevType,
 }
 
 #[derive(
@@ -260,17 +254,14 @@ pub fn compose_sandwich_jit(
     });
 
     let new_classifed = ClassifiedMev {
-        tx_hash:               sandwich.frontrun_tx_hash,
-        mev_type:              MevType::JitSandwich,
-        block_number:          sandwich_classified.block_number,
-        eoa:                   jit_classified.eoa,
-        mev_contract:          sandwich_classified.mev_contract,
-        mev_profit_collector:  sandwich_classified.mev_profit_collector,
-        finalized_bribe_usd:   sandwich_classified.finalized_bribe_usd,
-        submission_bribe_usd:  sandwich_classified.submission_bribe_usd,
-        submission_profit_usd: sandwich_classified.submission_profit_usd
-            + jit_classified.submission_profit_usd,
-        finalized_profit_usd:  sandwich_classified.finalized_profit_usd
+        tx_hash:              sandwich.frontrun_tx_hash,
+        mev_type:             MevType::JitSandwich,
+        block_number:         sandwich_classified.block_number,
+        eoa:                  jit_classified.eoa,
+        mev_contract:         sandwich_classified.mev_contract,
+        mev_profit_collector: sandwich_classified.mev_profit_collector,
+        finalized_bribe_usd:  sandwich_classified.finalized_bribe_usd,
+        finalized_profit_usd: sandwich_classified.finalized_profit_usd
             + jit_classified.finalized_profit_usd,
     };
 
