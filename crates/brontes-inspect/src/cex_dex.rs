@@ -81,12 +81,8 @@ impl CexDexInspector {
             })
             .collect();
 
-        let (profit_sub, profit_finalized) = self.arb_gas_accounting(
-            swap_sequences,
-            gas_details,
-            &metadata.eth_prices.0,
-            &metadata.eth_prices.1,
-        );
+        let (profit_sub, profit_finalized) =
+            self.arb_gas_accounting(swap_sequences, gas_details, &metadata.eth_prices);
 
         let (gas_sub, gas_finalized) = metadata.get_gas_price_usd(gas_details.gas_paid());
 
@@ -113,9 +109,7 @@ impl CexDexInspector {
             eoa,
             block_number: metadata.block_num,
             mev_type: MevType::CexDex,
-            submission_profit_usd: profit_sub?.to_float(),
             finalized_profit_usd: profit_finalized?.to_float(),
-            submission_bribe_usd: gas_sub.to_float(),
             finalized_bribe_usd: gas_finalized.to_float(),
         };
 
@@ -128,58 +122,59 @@ impl CexDexInspector {
 
         let flat_swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
 
-        let cex_dex = CexDex {
-            tx_hash:          hash,
-            gas_details:      gas_details.clone(),
-            swaps_index:      flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().index)
-                .collect::<Vec<_>>(),
-            swaps_from:       flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().from)
-                .collect::<Vec<_>>(),
-            swaps_pool:       flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().pool)
-                .collect::<Vec<_>>(),
-            swaps_token_in:   flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().token_in)
-                .collect::<Vec<_>>(),
-            swaps_token_out:  flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().token_out)
-                .collect::<Vec<_>>(),
-            swaps_amount_in:  flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().amount_in.to())
-                .collect::<Vec<_>>(),
-            swaps_amount_out: flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().amount_out.to())
-                .collect::<Vec<_>>(),
-            prices_kind:      prices
-                .iter()
-                .flat_map(|_| vec![PriceKind::Dex, PriceKind::Cex])
-                .collect(),
-            prices_address:   flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .flat_map(|s| vec![s.clone().force_swap().token_in].repeat(2))
-                .collect(),
-            prices_price:     prices
-                .iter()
-                .flat_map(|(dex, cex)| vec![*dex, *cex])
-                .collect(),
-        };
+        let cex_dex =
+            CexDex {
+                tx_hash:          hash,
+                gas_details:      gas_details.clone(),
+                swaps_index:      flat_swaps
+                    .iter()
+                    .filter(|s| s.is_swap())
+                    .map(|s| s.clone().force_swap().index)
+                    .collect::<Vec<_>>(),
+                swaps_from:       flat_swaps
+                    .iter()
+                    .filter(|s| s.is_swap())
+                    .map(|s| s.clone().force_swap().from)
+                    .collect::<Vec<_>>(),
+                swaps_pool:       flat_swaps
+                    .iter()
+                    .filter(|s| s.is_swap())
+                    .map(|s| s.clone().force_swap().pool)
+                    .collect::<Vec<_>>(),
+                swaps_token_in:   flat_swaps
+                    .iter()
+                    .filter(|s| s.is_swap())
+                    .map(|s| s.clone().force_swap().token_in)
+                    .collect::<Vec<_>>(),
+                swaps_token_out:  flat_swaps
+                    .iter()
+                    .filter(|s| s.is_swap())
+                    .map(|s| s.clone().force_swap().token_out)
+                    .collect::<Vec<_>>(),
+                swaps_amount_in:  flat_swaps
+                    .iter()
+                    .filter(|s| s.is_swap())
+                    .map(|s| s.clone().force_swap().amount_in.to())
+                    .collect::<Vec<_>>(),
+                swaps_amount_out: flat_swaps
+                    .iter()
+                    .filter(|s| s.is_swap())
+                    .map(|s| s.clone().force_swap().amount_out.to())
+                    .collect::<Vec<_>>(),
+                prices_kind:      prices
+                    .iter()
+                    .flat_map(|_| vec![PriceKind::Dex, PriceKind::Cex])
+                    .collect(),
+                prices_address:   flat_swaps
+                    .iter()
+                    .filter(|s| s.is_swap())
+                    .flat_map(|s| vec![s.clone().force_swap().token_in].repeat(2))
+                    .collect(),
+                prices_price:     prices
+                    .iter()
+                    .flat_map(|(dex, cex)| vec![*dex, *cex])
+                    .collect(),
+            };
 
         Some((classified, Box::new(cex_dex)))
     }
@@ -189,7 +184,6 @@ impl CexDexInspector {
         swap_sequences: Vec<Vec<(&Actions, (Option<Rational>, Option<Rational>))>>,
         gas_details: &GasDetails,
         eth_price_pre: &Rational,
-        eth_price_post: &Rational,
     ) -> (Option<Rational>, Option<Rational>) {
         let zero = Rational::ZERO;
         let (total_pre_arb, total_post_arb) = swap_sequences
@@ -347,11 +341,6 @@ mod tests {
         // assert!(
         //     mev[0].0.tx_hash
         //         == B256::from_str(
-        //
-        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
-        //         )
-        //         .unwrap()
-        // );
     }
 
     //Testing for tx:

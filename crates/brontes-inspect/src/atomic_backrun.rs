@@ -96,10 +96,8 @@ impl AtomicBackrunInspector {
             block_number: metadata.block_num,
             mev_profit_collector: profit_collectors,
             eoa,
-            submission_bribe_usd: gas_used_usd_appearance.clone().to_float(),
             finalized_bribe_usd: gas_used_usd_finalized.clone().to_float(),
             finalized_profit_usd: (finalized_usd - gas_used_usd_finalized).to_float(),
-            submission_profit_usd: (appearance_usd - gas_used_usd_appearance).to_float(),
         };
 
         let swaps = swaps
@@ -169,11 +167,6 @@ mod tests {
         // assert!(
         //     mev[0].0.tx_hash
         //         == B256::from_str(
-        //
-        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
-        //         )
-        //         .unwrap()
-        // );
 
         println!("{:#?}", mev);
     }
