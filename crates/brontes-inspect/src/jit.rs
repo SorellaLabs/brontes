@@ -180,9 +180,7 @@ impl JitInspector {
             mev_contract: mev_addr,
             mev_profit_collector: vec![mev_addr],
             mev_type: MevType::Jit,
-            submission_profit_usd: pre_profit.to_float(),
             finalized_profit_usd: post_profit.to_float(),
-            submission_bribe_usd: pre_bribe.to_float(),
             finalized_bribe_usd: post_bribe.to_float(),
         };
 
@@ -351,7 +349,7 @@ impl JitInspector {
             .zip(amount.iter())
             .filter_map(|(token, amount)| {
                 Some(
-                    is_pre(metadata.token_prices.get(token)?)
+                    is_pre(metadata.cex_quotes.get(token)?)
                         * amount.to_scaled_rational(try_get_decimals(&token.0 .0)?),
                 )
             })
@@ -484,10 +482,5 @@ mod tests {
         // assert!(
         //     mev[0].0.tx_hash
         //         == B256::from_str(
-        //
-        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
-        //         )
-        //         .unwrap()
-        // );
     }
 }
