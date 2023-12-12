@@ -10,7 +10,7 @@ use alloy_transport_http::Http;
 use brontes_database::database::Database;
 use brontes_types::cache_decimals;
 use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 sol!(
     function decimals() public view returns (uint8);
@@ -32,12 +32,13 @@ impl<'db> MissingDecimals<'db> {
         db: &'db Database,
         missing: Vec<Address>,
     ) -> Self {
-        let mut this = Self {
-            provider,
-            pending_decimals: FuturesUnordered::default(),
-            db_future: FuturesUnordered::default(),
-            database: db,
-        };
+        let mut this =
+            Self {
+                provider,
+                pending_decimals: FuturesUnordered::default(),
+                db_future: FuturesUnordered::default(),
+                database: db,
+            };
         this.missing_decimals(missing);
 
         this
