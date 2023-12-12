@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use brontes_database::Metadata;
+use brontes_database::{Metadata, Pair};
 use brontes_types::{
     classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
@@ -117,7 +117,7 @@ impl CexDexInspector {
             .par_iter()
             .flatten()
             .filter_map(|swap| self.rational_prices(swap, &metadata))
-            .map(|(dex_price, _, cex1)| (dex_price.to_float(), cex1.to_float()))
+            .map(|(dex_price, cex1)| (dex_price.to_float(), cex1.to_float()))
             .collect::<Vec<_>>();
 
         let flat_swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
@@ -250,7 +250,7 @@ impl CexDexInspector {
         &self,
         swap: &Actions,
         metadata: &Metadata,
-    ) -> Option<(Rational, Rational, Rational)> {
+    ) -> Option<(Rational, Rational)> {
         let Actions::Swap(swap) = swap else { return None };
 
         let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0) else {
@@ -269,14 +269,13 @@ impl CexDexInspector {
         let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
         let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
-        let token_out_centralized_price = metadata.token_prices.get(&swap.token_out)?;
-        let token_in_centralized_price = metadata.token_prices.get(&swap.token_in)?;
+        let cex_best_ask = metadata
+            .cex_quotes
+            .get_quote(Pair::new(&swap.token_in, &swap.token_out))?
+            .price
+            .0;
 
-        Some((
-            (adjusted_out / adjusted_in),
-            &token_out_centralized_price.0 / &token_in_centralized_price.0,
-            &token_out_centralized_price.1 / &token_in_centralized_price.1,
-        ))
+        Some(((adjusted_out / adjusted_in), cex_best_ask))
     }
 }
 
