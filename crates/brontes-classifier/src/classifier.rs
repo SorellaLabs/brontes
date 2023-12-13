@@ -224,17 +224,22 @@ impl Classifier {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
                 let sig = &calldata[0..4];
-                let res = protocol.1.try_decode(&calldata).map(|data| {
-                    classifier.dispatch(
-                        sig,
-                        index,
-                        data,
-                        return_bytes.clone(),
-                        from_address,
-                        target_address,
-                        &trace.logs,
-                    ).ok()
-                }).flatten();
+                let res = protocol
+                    .1
+                    .try_decode(&calldata)
+                    .map(|data| {
+                        classifier
+                            .dispatch(
+                                sig,
+                                index,
+                                data,
+                                return_bytes.clone(),
+                                from_address,
+                                target_address,
+                                &trace.logs,
+                            )
+                    })
+                    .flatten();
 
                 if let Some(res) = res {
                     return res
