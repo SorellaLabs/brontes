@@ -124,6 +124,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     // wait for completion
     tokio::select! {
         _ = &mut brontes => {
+            info!("finnished running brontes, shutting down");
         }
         _ = Pin::new(&mut manager) => {
         }
