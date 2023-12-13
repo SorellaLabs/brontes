@@ -224,18 +224,19 @@ impl Classifier {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
                 let sig = &calldata[0..4];
-                let res = protocol.1.try_decode(&calldata).unwrap();
-                let d = classifier.dispatch(
-                    sig,
-                    index,
-                    res,
-                    return_bytes.clone(),
-                    from_address,
-                    target_address,
-                    &trace.logs,
-                );
+                let res = protocol.1.try_decode(&calldata).map(|data| {
+                    classifier.dispatch(
+                        sig,
+                        index,
+                        data,
+                        return_bytes.clone(),
+                        from_address,
+                        target_address,
+                        &trace.logs,
+                    ).ok()
+                }).flatten();
 
-                if let Some(res) = d {
+                if let Some(res) = res {
                     return res
                 } else {
                     tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
