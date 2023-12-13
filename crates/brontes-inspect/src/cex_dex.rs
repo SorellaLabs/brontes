@@ -216,11 +216,9 @@ impl CexDexInspector {
         // Calculate the potential profit
         let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-            println!("missing token in token to decimal map");
             return None
         };
 
-        println!("delta price: {}", &delta_price * &swap.amount_in.to_scaled_rational(decimals_in));
         Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
     }
 
@@ -233,14 +231,12 @@ impl CexDexInspector {
 
         let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-            println!("missing token in token to decimal map");
             return None
         };
         //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
         // log it
         let Some(decimals_out) = try_get_decimals(&swap.token_out.0 .0) else {
             error!(missing_token=?swap.token_out, "missing token out token to decimal map");
-            println!("missing token in token to decimal map");
             return None
         };
 
