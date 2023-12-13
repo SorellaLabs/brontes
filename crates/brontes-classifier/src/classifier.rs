@@ -79,10 +79,6 @@ impl Classifier {
                 };
 
                 for (index, trace) in trace.trace.into_iter().enumerate() {
-                    if trace.trace.error.is_some() {
-                        continue
-                    }
-
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
@@ -114,7 +110,7 @@ impl Classifier {
             .unzip();
 
         let mut tree =
-            TimeTree { roots, header, eth_prices: Default::default(), avg_priority_fee: 0 };
+            TimeTree { roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
 
         // self.try_classify_unknown_exchanges(&mut tree);
         // self.try_classify_flashloans(&mut tree);
@@ -216,6 +212,9 @@ impl Classifier {
         if trace.is_static_call() {
             return Actions::Unclassified(trace)
         }
+        if trace.trace.error.is_some() {
+            return Actions::Revert
+        }
 
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
@@ -225,18 +224,24 @@ impl Classifier {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
                 let sig = &calldata[0..4];
-                let res = protocol.1.try_decode(&calldata).unwrap();
-                let d = classifier.dispatch(
-                    sig,
-                    index,
-                    res,
-                    return_bytes.clone(),
-                    from_address,
-                    target_address,
-                    &trace.logs,
-                );
+                let res = protocol
+                    .1
+                    .try_decode(&calldata)
+                    .map(|data| {
+                        classifier.dispatch(
+                            sig,
+                            index,
+                            data,
+                            return_bytes.clone(),
+                            from_address,
+                            target_address,
+                            &trace.logs,
+                        )
+                    })
+                    .ok()
+                    .flatten();
 
-                if let Some(res) = d {
+                if let Some(res) = res {
                     return res
                 } else {
                     tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");

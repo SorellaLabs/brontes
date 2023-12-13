@@ -13,6 +13,7 @@ use brontes_types::{
     classified_mev::{compose_sandwich_jit, ClassifiedMev, MevBlock, MevType, SpecificMev},
     normalized_actions::Actions,
     tree::TimeTree,
+    ToScaledRational,
 };
 use futures::FutureExt;
 use lazy_static::lazy_static;
@@ -59,7 +60,7 @@ macro_rules! mev_composability {
 
 mev_composability!(
     // reduce first
-    Sandwich => Backrun;
+    Sandwich => Backrun, CexDex;
     // try compose
     JitSandwich => Sandwich, Jit;
 );
@@ -179,13 +180,8 @@ impl<'a, const N: usize> Composer<'a, N> {
             block_hash: pre_processing.meta_data.block_hash.into(),
             block_number: pre_processing.meta_data.block_num,
             mev_count: orchestra_data.len() as u64,
-            submission_eth_price: f64::rounding_from(
-                &pre_processing.meta_data.eth_prices.0,
-                RoundingMode::Nearest,
-            )
-            .0,
             finalized_eth_price: f64::rounding_from(
-                &pre_processing.meta_data.eth_prices.1,
+                &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )
             .0,
@@ -198,37 +194,25 @@ impl<'a, const N: usize> Composer<'a, N> {
             cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
             builder_address: pre_processing.builder_address,
             builder_eth_profit,
-            builder_submission_profit_usd: f64::rounding_from(
-                Rational::from(builder_eth_profit) * &pre_processing.meta_data.eth_prices.0,
-                RoundingMode::Nearest,
-            )
-            .0,
             builder_finalized_profit_usd: f64::rounding_from(
-                Rational::from(builder_eth_profit) * &pre_processing.meta_data.eth_prices.1,
+                builder_eth_profit.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )
             .0,
             proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
             proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
-            proposer_submission_profit_usd: f64::rounding_from(
-                Rational::from(pre_processing.meta_data.proposer_mev_reward)
-                    * &pre_processing.meta_data.eth_prices.0,
-                RoundingMode::Nearest,
-            )
-            .0,
             proposer_finalized_profit_usd: f64::rounding_from(
-                Rational::from(pre_processing.meta_data.proposer_mev_reward)
-                    * &pre_processing.meta_data.eth_prices.1,
-                RoundingMode::Nearest,
-            )
-            .0,
-            cumulative_mev_submission_profit_usd: f64::rounding_from(
-                Rational::from(cum_mev_priority_fee_paid) * &pre_processing.meta_data.eth_prices.0,
+                pre_processing
+                    .meta_data
+                    .proposer_mev_reward
+                    .to_scaled_rational(18)
+                    * &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )
             .0,
             cumulative_mev_finalized_profit_usd: f64::rounding_from(
-                Rational::from(cum_mev_priority_fee_paid) * &pre_processing.meta_data.eth_prices.1,
+                cum_mev_priority_fee_paid.to_scaled_rational(18)
+                    * &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )
             .0,

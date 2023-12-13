@@ -19,30 +19,30 @@ WITH
             any(relay_block.proposer_addr) AS proposer_addr,
             any(relay_block.proposer_reward) AS proposer_reward
         FROM relay_block
-        INNER JOIN ethereum.block_observations AS cb ON cb.block_number = relay_block.block_num
+        INNER JOIN ethereum.block_observations AS cb ON cb.block_number = relay_block.block_num 
+        WHERE cb.block_hash = relay_block.block_hash
     ),
-    private_flow AS (
-        SELECT toString(bt.tx_hash) as tx_hash
+    private_flow AS
+    (
+        SELECT groupArray(toString(a.tx_hash)) AS flow
         FROM
         (
-            SELECT toString(arrayJoin(transaction_hashes)) AS tx_hash
+            SELECT DISTINCT arrayJoin(transaction_hashes) AS tx_hash
             FROM ethereum.blocks
             WHERE (blocks.block_number = block_number) AND (valid = 1)
-        ) AS bt
-        WHERE bt.tx_hash NOT IN (
-            SELECT DISTINCT um.tx_hash
+        ) AS a
+        LEFT JOIN
+        (
+            SELECT a.tx_hash AS tx_hash
             FROM ethereum.unique_mempool AS um
-            WHERE um.tx_hash IN (
-                SELECT toString(arrayJoin(transaction_hashes)) AS tx_hash
+            INNER JOIN
+            (
+                SELECT DISTINCT arrayJoin(transaction_hashes) AS tx_hash
                 FROM ethereum.blocks
                 WHERE (blocks.block_number = block_number) AND (valid = 1)
-            )
-        )
-    ),
-    grouped_private_flow AS (
-        SELECT 
-            groupArray(tx_hash) AS private_flow
-        FROM private_flow
+            ) AS a ON a.tx_hash = um.tx_hash
+        ) AS pub ON a.tx_hash = pub.tx_hash
+        WHERE (pub.tx_hash = '') OR (pub.tx_hash IS NULL)
     )
 SELECT 
     block_number,
@@ -51,5 +51,8 @@ SELECT
     relay_p2p.p2p_time AS p2p_time,
     toString(relay_p2p.proposer_addr) AS proposer_addr,
     relay_p2p.proposer_reward AS proposer_reward,
-    grouped_private_flow.private_flow
-FROM relay_p2p, grouped_private_flow
+    private_flow.flow
+FROM relay_p2p, private_flow
+
+
+

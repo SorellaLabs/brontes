@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use brontes_database::Metadata;
+use brontes_database::{Metadata, Pair};
 use brontes_types::{
     classified_mev::{MevType, Sandwich, SpecificMev},
     normalized_actions::Actions,
@@ -17,9 +17,14 @@ use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
-#[derive(Default)]
 pub struct SandwichInspector {
     inner: SharedInspectorUtils,
+}
+
+impl SandwichInspector {
+    pub fn new(pair: Pair) -> Self {
+        Self { inner: SharedInspectorUtils::new(pair) }
+    }
 }
 
 #[derive(Debug)]
@@ -108,29 +113,11 @@ impl SandwichInspector {
             return None
         }
 
-        let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
+        let (deltas, mev_collectors) = self.inner.calculate_swap_deltas(&searcher_actions);
 
-        let appearance_usd_deltas: HashMap<Address, Rational> = self.inner.get_best_usd_deltas(
-            deltas.clone(),
-            metadata.clone(),
-            Box::new(|(appearance, _)| appearance),
-        );
+        let rev_usd = self.inner.usd_delta(deltas, metadata.clone());
 
-        let appearance_usd: Rational = appearance_usd_deltas.values().sum();
-
-        println!("appearance_usd_deltas {:#?}", appearance_usd_deltas);
-
-        let mev_collectors = appearance_usd_deltas.keys().copied().collect();
-
-        let finalized_usd_deltas: HashMap<Address, Rational> = self.inner.get_best_usd_deltas(
-            deltas,
-            metadata.clone(),
-            Box::new(|(_, finalized)| finalized),
-        );
-
-        let finalized_usd: Rational = finalized_usd_deltas.values().sum();
-
-        if appearance_usd == Rational::ZERO || finalized_usd == Rational::ZERO {
+        if rev_usd == Rational::ZERO {
             return None
         }
 
@@ -139,8 +126,7 @@ impl SandwichInspector {
             .map(|g| g.gas_paid())
             .sum::<u64>();
 
-        let (gas_used_usd_appearance, gas_used_usd_finalized) =
-            metadata.get_gas_price_usd(gas_used);
+        let gas_used = metadata.get_gas_price_usd(gas_used);
 
         let frontrun_swaps = searcher_actions
             .remove(0)
@@ -282,10 +268,8 @@ impl SandwichInspector {
             mev_contract: mev_executor_contract,
             block_number: metadata.block_num,
             mev_type: MevType::Sandwich,
-            submission_profit_usd: (appearance_usd - &gas_used_usd_appearance).to_float(),
-            submission_bribe_usd: gas_used_usd_appearance.to_float(),
-            finalized_profit_usd: (finalized_usd - &gas_used_usd_finalized).to_float(),
-            finalized_bribe_usd: gas_used_usd_finalized.to_float(),
+            finalized_profit_usd: (rev_usd - &gas_used).to_float(),
+            finalized_bribe_usd: gas_used.to_float(),
         };
 
         Some((classified_mev, Box::new(sandwich)))
@@ -391,11 +375,6 @@ mod tests {
         // assert!(
         //     mev[0].0.tx_hash
         //         == B256::from_str(
-        //
-        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
-        //         )
-        //         .unwrap()
-        // );
 
         println!("{:#?}", mev);
     }
