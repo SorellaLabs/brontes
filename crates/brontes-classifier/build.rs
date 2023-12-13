@@ -16,8 +16,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const TOKEN_MAPPING: &str = "token_to_addresses.rs";
-const TOKEN_QUERIES: &str = "SELECT toString(address), arrayMap(x -> toString(x), tokens) AS 
-                             tokens FROM pools WHERE length(tokens) = ";
+const TOKEN_QUERIES: &str = "SELECT DISTINCT toString(address), arrayMap(x -> toString(x), \
+                             tokens) AS 
+                             tokens FROM ethereum.pools WHERE length(tokens) = ";
 
 const FAILED_ABI_FILE: &str = "../../failed_abis.txt";
 const ABI_DIRECTORY: &str = "./abis/";
@@ -28,6 +29,7 @@ const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
 SELECT 
 	groupArray(address) as addresses, abi, classifier_name
 FROM brontes.protocol_details
+FINAL
 WHERE classifier_name IS NOT NULL
 GROUP BY abi, classifier_name
 "#;

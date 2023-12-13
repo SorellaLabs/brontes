@@ -9,7 +9,10 @@ use alloy_providers::provider::Provider;
 use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::database::Database;
+use brontes_database::{
+    database::{Database, USDT_ADDRESS, WETH_ADDRESS},
+    Pair,
+};
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
     sandwich::SandwichInspector, Inspector,
@@ -76,11 +79,12 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let url = format!("{db_endpoint}:{db_port}");
     let provider = Provider::new(&url).unwrap();
 
+    let pair = Pair(WETH_ADDRESS, USDT_ADDRESS);
     // init inspectors
-    let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
-    let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
-    let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
-    let backrun = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
+    let sandwich = Box::new(SandwichInspector::new(pair)) as Box<dyn Inspector>;
+    let cex_dex = Box::new(CexDexInspector::new(pair)) as Box<dyn Inspector>;
+    let jit = Box::new(JitInspector::new(pair)) as Box<dyn Inspector>;
+    let backrun = Box::new(AtomicBackrunInspector::new(pair)) as Box<dyn Inspector>;
 
     let inspectors = &[&sandwich, &cex_dex, &jit, &backrun];
 
@@ -120,6 +124,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     // wait for completion
     tokio::select! {
         _ = &mut brontes => {
+            info!("finnished running brontes, shutting down");
         }
         _ = Pin::new(&mut manager) => {
         }

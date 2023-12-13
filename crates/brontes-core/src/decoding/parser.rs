@@ -246,15 +246,6 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             }
         });
 
-        let len = tx_trace.trace.len();
-
-        for idx in 0..tx_trace.trace.len() {
-            let stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
-            stat.trace(len);
-            stats.traces.push(stat);
-        }
-
-        stats.trace();
         tx_trace.effective_price = effective_gas_price;
         tx_trace.gas_used = gas_used;
 
