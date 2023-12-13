@@ -228,17 +228,17 @@ impl Classifier {
                     .1
                     .try_decode(&calldata)
                     .map(|data| {
-                        classifier
-                            .dispatch(
-                                sig,
-                                index,
-                                data,
-                                return_bytes.clone(),
-                                from_address,
-                                target_address,
-                                &trace.logs,
-                            )
+                        classifier.dispatch(
+                            sig,
+                            index,
+                            data,
+                            return_bytes.clone(),
+                            from_address,
+                            target_address,
+                            &trace.logs,
+                        )
                     })
+                    .ok()
                     .flatten();
 
                 if let Some(res) = res {
