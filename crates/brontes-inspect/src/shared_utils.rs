@@ -69,14 +69,14 @@ impl SharedInspectorUtils {
                         let pair_out = Pair(swap.token_in, swap.token_out);
                         apply_entry_with_price(
                             pair_out,
-                            (-adjusted_in.clone() / &adjusted_out, adjusted_out.clone()),
+                            (&adjusted_out / -adjusted_in.clone(), adjusted_out.clone()),
                             inner,
                         );
 
                         let pair_in = Pair(swap.token_out, swap.token_in);
                         apply_entry_with_price(
                             pair_in,
-                            (&adjusted_out / -adjusted_in.clone(), adjusted_in),
+                            (-adjusted_in.clone() / &adjusted_out, adjusted_in),
                             inner,
                         );
                     }
@@ -87,7 +87,7 @@ impl SharedInspectorUtils {
                         default.insert(
                             pair_out,
                             (
-                                vec![-adjusted_in.clone() / &adjusted_out],
+                                vec![&adjusted_out / -adjusted_in.clone()],
                                 vec![adjusted_out.clone()],
                             ),
                         );
@@ -95,7 +95,7 @@ impl SharedInspectorUtils {
                         let pair_in = Pair(swap.token_out, swap.token_in);
                         default.insert(
                             pair_in,
-                            (vec![&adjusted_out / -adjusted_in.clone()], vec![adjusted_in]),
+                            (vec![-adjusted_in.clone()/ &adjusted_out], vec![adjusted_in]),
                         );
 
                         v.insert(default);
@@ -221,7 +221,7 @@ impl SharedInspectorUtils {
             .filter_map(|(pair, (mut dex_price, value))| {
                 let Some(weth_price) = metadata.cex_quotes.get_quote(&self.0) else {
                     error!(quote_pair=?self.0, "no price found for the default quote pair");
-                        return None
+                    return None
                 };
 
                 let pair_price = metadata
