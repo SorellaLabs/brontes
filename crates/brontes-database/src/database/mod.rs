@@ -53,7 +53,7 @@ impl Database {
 
         // eth price is in cex_prices
         let eth_prices = cex_prices
-            .get_quote(Pair(
+            .get_quote(&Pair(
                 Address::from_str(WETH_ADDRESS).unwrap(),
                 Address::from_str(USDT_ADDRESS).unwrap(),
             ))
@@ -297,7 +297,7 @@ mod tests {
     fn expected_metadata(cex_prices: Quotes) -> Metadata {
         let mut cex_prices = cex_prices.clone();
         let eth_prices = cex_prices
-            .get_quote(Pair(
+            .get_quote(&Pair(
                 Address::from_str(WETH_ADDRESS).unwrap(),
                 Address::from_str(USDT_ADDRESS).unwrap(),
             ))
@@ -350,7 +350,7 @@ mod tests {
         let cex_prices = db.get_token_prices(1695258708673).await;
 
         let real_prices = cex_prices
-            .get_quote(Pair(
+            .get_quote(&Pair(
                 Address::from_str("0xaea46a60368a7bd060eec7df8cba43b7ef41ad85").unwrap(),
                 Address::from_str("0xb8c77482e45f1f44de1745f52c74426c631bdd52").unwrap(),
             ))
@@ -367,7 +367,7 @@ mod tests {
         assert_eq!(real_prices, queried_prices);
 
         let real_prices = cex_prices
-            .get_quote(Pair(
+            .get_quote(&Pair(
                 Address::from_str("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0").unwrap(),
                 Address::from_str("0xb8c77482e45f1f44de1745f52c74426c631bdd52").unwrap(),
             ))
