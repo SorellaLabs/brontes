@@ -349,7 +349,7 @@ impl JitInspector {
             .zip(amount.iter())
             .filter_map(|(token, amount)| {
                 Some(
-                    self.inner.get_usd_price(*token, metadata.clone())
+                    self.inner.get_usd_price(*token, metadata.clone())?
                         * amount.to_scaled_rational(try_get_decimals(&token.0 .0)?),
                 )
             })
