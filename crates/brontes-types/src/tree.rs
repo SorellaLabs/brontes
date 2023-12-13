@@ -252,17 +252,15 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     pub fn get_all_inner_nodes(&mut self, n: Node<V>, mut trace_addr: Vec<usize>) {
+        let log = trace_addr.clone();
         if trace_addr.len() == 1 {
             self.inner.push(n);
         } else {
-            if self.inner.is_empty() {
-                eprintln!("ERROR: {:?}\n {:?}", self.inner, trace_addr);
-            }
 
             if let Some(inner) = self.inner.get_mut(trace_addr.remove(0)) {
                 inner.get_all_inner_nodes(n, trace_addr)
             } else {
-                eprintln!("ERROR: {:?}", self.inner);
+                eprintln!("ERROR: {:?}\n {:?}", self.inner, log);
             }
         }
     }
