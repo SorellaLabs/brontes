@@ -13,6 +13,7 @@ use brontes_types::{
     classified_mev::{compose_sandwich_jit, ClassifiedMev, MevBlock, MevType, SpecificMev},
     normalized_actions::Actions,
     tree::TimeTree,
+    ToScaledRational,
 };
 use futures::FutureExt;
 use lazy_static::lazy_static;
@@ -194,20 +195,23 @@ impl<'a, const N: usize> Composer<'a, N> {
             builder_address: pre_processing.builder_address,
             builder_eth_profit,
             builder_finalized_profit_usd: f64::rounding_from(
-                Rational::from(builder_eth_profit) * &pre_processing.meta_data.eth_prices,
+                builder_eth_profit.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )
             .0,
             proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
             proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
             proposer_finalized_profit_usd: f64::rounding_from(
-                Rational::from(pre_processing.meta_data.proposer_mev_reward)
+                pre_processing
+                    .meta_data
+                    .proposer_mev_reward
+                    .to_scaled_rational(18)
                     * &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )
             .0,
             cumulative_mev_finalized_profit_usd: f64::rounding_from(
-                Rational::from(cum_mev_priority_fee_paid) * &pre_processing.meta_data.eth_prices,
+                cum_mev_priority_fee_paid.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )
             .0,
