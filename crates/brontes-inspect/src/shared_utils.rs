@@ -266,7 +266,7 @@ impl SharedInspectorUtils {
                         let p_pair0 = weth_price.avg() / p.avg();
                         p_pair0 / pair_price
                     } else if let Some(p) = metadata.cex_quotes.get_quote(&onth_pair_weth) {
-                        weth_price.avg() / p
+                        weth_price.avg() / p.avg()
                     } else {
                         error!(?pair, "pair doesn't have a edge with weth");
                         return None
