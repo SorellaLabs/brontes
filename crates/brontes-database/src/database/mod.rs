@@ -7,7 +7,7 @@ use alloy_json_abi::JsonAbi;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev, *};
 use futures::future::join_all;
 use malachite::Rational;
-use reth_primitives::Address;
+use reth_primitives::{hex, revm_primitives::FixedBytes, Address};
 use sorella_db_databases::{
     clickhouse::{ClickhouseClient, Credentials},
     config::ClickhouseConfig,
@@ -24,8 +24,10 @@ use crate::{
     Pair, Quotes,
 };
 
-const WETH_ADDRESS: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
-const USDT_ADDRESS: &str = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+pub const WETH_ADDRESS: Address =
+    Address(FixedBytes(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")));
+pub const USDT_ADDRESS: Address =
+    Address(FixedBytes(hex!("0xdac17f958d2ee523a2206206994597c13d831ec7")));
 
 pub struct Database {
     client: ClickhouseClient,
@@ -53,10 +55,7 @@ impl Database {
 
         // eth price is in cex_prices
         let eth_prices = cex_prices
-            .get_quote(&Pair(
-                Address::from_str(WETH_ADDRESS).unwrap(),
-                Address::from_str(USDT_ADDRESS).unwrap(),
-            ))
+            .get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
             .unwrap()
             .clone();
         // = cex_prices.get("ETH").unwrap();
@@ -297,10 +296,7 @@ mod tests {
     fn expected_metadata(cex_prices: Quotes) -> Metadata {
         let mut cex_prices = cex_prices.clone();
         let eth_prices = cex_prices
-            .get_quote(&Pair(
-                Address::from_str(WETH_ADDRESS).unwrap(),
-                Address::from_str(USDT_ADDRESS).unwrap(),
-            ))
+            .get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
             .unwrap()
             .clone();
 
