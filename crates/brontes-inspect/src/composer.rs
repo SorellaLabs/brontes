@@ -61,6 +61,7 @@ macro_rules! mev_composability {
 mev_composability!(
     // reduce first
     Sandwich => Backrun;
+    CexDex => Backrun;
     // try compose
     JitSandwich => Sandwich, Jit;
 );
