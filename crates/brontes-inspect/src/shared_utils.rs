@@ -60,6 +60,11 @@ impl SharedInspectorUtils {
                 let adjusted_in = -swap.amount_in.to_scaled_rational(decimals_in);
                 let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
+                if adjusted_out == Rational::ZERO || adjusted_in == Rational::ZERO {
+                    error!(?swap, "amount in | amount out of the swap are zero");
+                    continue;
+                }
+
                 // buying token out amount.
                 // Store the amount_in amount_out deltas for a given from address
                 match deltas.entry(swap.from) {
