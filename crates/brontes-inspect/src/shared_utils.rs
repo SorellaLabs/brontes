@@ -1,15 +1,16 @@
+use core::hash::Hash;
 use std::{
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
 };
 
-use alloy_primitives::FixedBytes;
+use alloy_primitives::{hex, FixedBytes};
 use alloy_providers::provider::Provider;
 use alloy_rpc_types::TransactionRequest;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use alloy_transport_http::Http;
-use brontes_database::Metadata;
+use brontes_database::{Metadata, Pair};
 use brontes_types::{
     cache_decimals, normalized_actions::Actions, try_get_decimals, ToScaledRational,
     TOKEN_TO_DECIMALS,
@@ -18,18 +19,28 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 use tracing::{error, warn};
 
-#[derive(Debug, Default)]
-pub struct SharedInspectorUtils;
+const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
+
+#[derive(Debug)]
+pub struct SharedInspectorUtils(Pair);
 
 impl SharedInspectorUtils {
-    /// Calculates the swap deltas. if transfers are also passed in. we also
-    /// move those deltas on the map around accordingly.
-    /// NOTE: the upper level inspector needs to know if the transfer is related
-    /// to the underlying swap. action otherwise you could get misreads
+    pub fn new(base_pair_weth: Pair) -> SharedInspectorUtils {
+        assert!(base_pair_weth.0 == WETH, "base needs to be WETH");
+
+        SharedInspectorUtils(base_pair_weth)
+    }
+}
+
+type SwapTokenDeltas = HashMap<Pair, Rational>;
+type TokenCollectors = Vec<Address>;
+
+impl SharedInspectorUtils {
+    /// Calculates the swap deltas.
     pub(crate) fn calculate_swap_deltas(
         &self,
         actions: &Vec<Vec<Actions>>,
-    ) -> HashMap<Address, HashMap<Address, Rational>> {
+    ) -> (SwapTokenDeltas, TokenCollectors) {
         let mut transfers = Vec::new();
 
         // Address and there token delta's
@@ -49,22 +60,31 @@ impl SharedInspectorUtils {
                 let adjusted_in = -swap.amount_in.to_scaled_rational(decimals_in);
                 let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
+                // buying token out amount.
                 // Store the amount_in amount_out deltas for a given from address
                 match deltas.entry(swap.from) {
                     Entry::Occupied(mut o) => {
-                        let inner: &mut HashMap<Address, Rational> = o.get_mut();
+                        let inner: &mut HashMap<Pair, Rational> = o.get_mut();
 
-                        apply_entry(swap.token_in, adjusted_in, inner);
-                        apply_entry(swap.token_out, adjusted_out, inner);
+                        let pair_out = Pair(swap.token_in, swap.token_out);
+                        apply_entry(pair_out, adjusted_out, inner);
+
+                        let pair_in = Pair(swap.token_out, swap.token_in);
+                        apply_entry(pair_in, adjusted_in, inner);
                     }
                     Entry::Vacant(v) => {
                         let mut default = HashMap::default();
-                        default.insert(swap.token_in, adjusted_in);
-                        default.insert(swap.token_out, adjusted_out);
+
+                        let pair_out = Pair(swap.token_in, swap.token_out);
+                        default.insert(pair_out, adjusted_out);
+
+                        let pair_in = Pair(swap.token_out, swap.token_in);
+                        default.insert(pair_in, adjusted_in);
 
                         v.insert(default);
                     }
                 }
+
             // If there is a transfer, push to the given transfer addresses.
             } else if let Actions::Transfer(transfer) = action {
                 transfers.push(transfer);
@@ -75,6 +95,7 @@ impl SharedInspectorUtils {
         // need to apply all transfers that occurred. This is to move all the
         // funds to there end account to ensure for a given address what the
         // exact delta's are.
+        let mut token_collectors = HashMap::new();
         loop {
             let mut changed = false;
             let mut reuse = Vec::new();
@@ -87,16 +108,21 @@ impl SharedInspectorUtils {
 
                 let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
-                // subtract value from the from address
-                if let Some(from_token_map) = deltas.get_mut(&transfer.from) {
+                // if deltas has the entry or token_collector does, then we move it
+                if deltas.contains_key(&transfer.from)
+                    || token_collectors.contains_key(&transfer.from)
+                {
                     changed = true;
-                    apply_entry(transfer.token, -adjusted_amount.clone(), from_token_map);
+
+                    let mut inner = token_collectors.entry(transfer.from).or_default();
+                    apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
                 } else {
-                    reuse.push(transfer)
+                    reuse.push(transfer);
+                    continue
                 }
 
                 // add value to the destination address
-                let to_token_map = deltas.entry(transfer.to).or_default();
+                let to_token_map = token_collectors.entry(transfer.to).or_default();
                 apply_entry(transfer.token, adjusted_amount, to_token_map);
             }
 
@@ -106,37 +132,112 @@ impl SharedInspectorUtils {
                 break
             }
         }
-        deltas
+
+        let mut deltas: HashMap<Pair, Rational> =
+            deltas
+                .into_values()
+                .map(|v| v.into_iter())
+                .fold(HashMap::new(), |mut a, b| {
+                    for (k, v) in b {
+                        *a.entry(k).or_default() += v;
+                    }
+
+                    a
+                });
+
+        deltas.retain(|k, v| (*v).ne(&Rational::ZERO));
+
+        let token_collectors = token_collectors
+            .into_iter()
+            .filter(|(addr, inner)| !inner.values().any(|f| f.eq(&Rational::ZERO)))
+            .map(|(addr, _)| addr)
+            .collect::<Vec<_>>();
+
+        (deltas, token_collectors)
+    }
+
+    pub fn get_usd_price(&self, token: Address, metadata: Arc<Metadata>) -> Rational {
+        let Some(weth_price) = metadata.cex_quotes.get_quote(&self.0) else {
+            error!(quote_pair=?self.0, "no price found for the default quote pair");
+            panic!();
+        };
+
+        if token == WETH {
+            return weth_price.avg()
+        }
+
+        // check to see if pair with weth
+        let pair = Pair(WETH, token);
+        if let Some(p) = metadata.cex_quotes.get_quote(&pair) {
+            weth_price.avg() / p.avg()
+        } else {
+            error!(?pair, "pair doesn't have a edge with weth");
+            panic!();
+        }
     }
 
     /// applies usd price to deltas and flattens out the tokens
-    pub(crate) fn get_best_usd_deltas(
+    pub(crate) fn usd_delta(
         &self,
-        deltas: HashMap<Address, HashMap<Address, Rational>>,
+        deltas: HashMap<Pair, Rational>,
         metadata: Arc<Metadata>,
-        time_selector: Box<dyn Fn(&(Rational, Rational)) -> &Rational>,
-    ) -> HashMap<Address, Rational> {
+    ) -> Rational {
         deltas
             .into_iter()
-            .map(|(caller, tokens)| {
-                let summed_value = tokens
-                    .into_iter()
-                    .map(|(address, mut value)| {
-                        if let Some(price) = metadata.cex_quotes {
-                            value *= time_selector(price);
-                            value
-                        } else {
-                            Rational::ZERO
-                        }
-                    })
-                    .sum::<Rational>();
-                (caller, summed_value)
+            .map(|(pair, mut value)| {
+                let Some(weth_price) = metadata.cex_quotes.get_quote(&self.0) else {
+                    error!(quote_pair=?self.0, "no price found for the default quote pair");
+                    panic!();
+                };
+
+                let Some(pair_price) = metadata.cex_quotes.get_quote(&pair) else {
+                    error!(?pair, "no price found for given pair");
+                    panic!();
+                };
+                // we want (quote / pair.1)
+                // this is because (pair.0, pair.1) => amount_out;
+                // so if swap from (eth / bitcoin) => 2,
+                //
+                //  eth / bitcoin = 2
+                //  eth = 2000usd;
+                //
+                //  2000 / bitcoin = 2 => 2 * bitcoin = 2000 => bitcoin = 1000;
+                //
+                //  eth_usd / (eth / bitcoin) = p_bitcoin_usd;
+                let price = if pair.has_quote_edge(WETH) {
+                    weth_price.avg()
+                } else if pair.has_base_edge(WETH) {
+                    weth_price.avg() / pair_price.avg()
+                } else {
+                    // check if one of its base / quote have a pair with eth
+                    // (hex / tt) => 3;
+                    // (eth / hex) = 5;
+                    // eth = 2000usd;
+                    // eth / ( eth / hex ) = p_hex_usd;
+                    // then hex / ( hex /tt ) = p_tt_usd;
+                    //  2000 / 5 = 400;
+                    //  400 / 3 = 133.33;
+                    let zeroth_pair_weth = Pair(WETH, pair.0);
+                    if let Some(p) = metadata.cex_quotes.get_quote(&zeroth_pair_weth) {
+                        let p_pair0 = weth_price.avg() / p.avg();
+                        p_pair0 / pair_price.avg()
+                    } else {
+                        error!(?pair, "pair doesn't have a edge with weth");
+                        panic!();
+                    }
+                };
+
+                value * price
             })
-            .collect()
+            .sum::<Rational>()
     }
 }
 
-fn apply_entry(token: Address, amount: Rational, token_map: &mut HashMap<Address, Rational>) {
+fn apply_entry<K: PartialEq + Hash + Eq>(
+    token: K,
+    amount: Rational,
+    token_map: &mut HashMap<K, Rational>,
+) {
     match token_map.entry(token) {
         Entry::Occupied(mut o) => {
             *o.get_mut() += amount;
