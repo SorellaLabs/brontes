@@ -14,12 +14,12 @@ pub struct TimeTree<V: NormalizedAction> {
     pub header:           Header,
     pub avg_priority_fee: u64,
     /// first is on block submission, second is when the block gets accepted
-    pub eth_prices:       (Rational, Rational),
+    pub eth_price:       Rational,
 }
 
 impl<V: NormalizedAction> TimeTree<V> {
-    pub fn new(header: Header, eth_prices: (Rational, Rational)) -> Self {
-        Self { roots: Vec::with_capacity(150), header, eth_prices, avg_priority_fee: 0 }
+    pub fn new(header: Header, eth_price: Rational) -> Self {
+        Self { roots: Vec::with_capacity(150), header, eth_price, avg_priority_fee: 0 }
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
