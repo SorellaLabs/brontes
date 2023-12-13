@@ -72,12 +72,12 @@ impl AtomicBackrunInspector {
 
         let finalized_usd = self.inner.usd_delta(deltas, metadata.clone());
 
-        if finalized_usd <= Rational::ZERO {
-            return None
-        }
-
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+
+        if &finalized_usd - &gas_used_usd <= Rational::ZERO {
+            return None
+        }
 
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,
