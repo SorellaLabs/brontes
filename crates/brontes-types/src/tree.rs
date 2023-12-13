@@ -14,7 +14,7 @@ pub struct TimeTree<V: NormalizedAction> {
     pub header:           Header,
     pub avg_priority_fee: u64,
     /// first is on block submission, second is when the block gets accepted
-    pub eth_price:       Rational,
+    pub eth_price:        Rational,
 }
 
 impl<V: NormalizedAction> TimeTree<V> {

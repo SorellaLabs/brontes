@@ -32,7 +32,7 @@ impl SharedInspectorUtils {
     }
 }
 
-type SwapTokenDeltas = HashMap<Pair, Rational>;
+type SwapTokenDeltas = HashMap<Pair, (Rational, Rational)>;
 type TokenCollectors = Vec<Address>;
 
 impl SharedInspectorUtils {
@@ -64,22 +64,39 @@ impl SharedInspectorUtils {
                 // Store the amount_in amount_out deltas for a given from address
                 match deltas.entry(swap.from) {
                     Entry::Occupied(mut o) => {
-                        let inner: &mut HashMap<Pair, Rational> = o.get_mut();
+                        let inner: &mut HashMap<Pair, (Vec<Rational>, Vec<Rational>)> = o.get_mut();
 
                         let pair_out = Pair(swap.token_in, swap.token_out);
-                        apply_entry(pair_out, adjusted_out, inner);
+                        apply_entry_with_price(
+                            pair_out,
+                            (-adjusted_in.clone() / &adjusted_out, adjusted_out.clone()),
+                            inner,
+                        );
 
                         let pair_in = Pair(swap.token_out, swap.token_in);
-                        apply_entry(pair_in, adjusted_in, inner);
+                        apply_entry_with_price(
+                            pair_in,
+                            (&adjusted_out / -adjusted_in.clone(), adjusted_in),
+                            inner,
+                        );
                     }
                     Entry::Vacant(v) => {
                         let mut default = HashMap::default();
 
                         let pair_out = Pair(swap.token_in, swap.token_out);
-                        default.insert(pair_out, adjusted_out);
+                        default.insert(
+                            pair_out,
+                            (
+                                vec![-adjusted_in.clone() / &adjusted_out],
+                                vec![adjusted_out.clone()],
+                            ),
+                        );
 
                         let pair_in = Pair(swap.token_out, swap.token_in);
-                        default.insert(pair_in, adjusted_in);
+                        default.insert(
+                            pair_in,
+                            (vec![&adjusted_out / -adjusted_in.clone()], vec![adjusted_in]),
+                        );
 
                         v.insert(default);
                     }
@@ -133,19 +150,36 @@ impl SharedInspectorUtils {
             }
         }
 
-        let mut deltas: HashMap<Pair, Rational> =
-            deltas
-                .into_values()
-                .map(|v| v.into_iter())
-                .fold(HashMap::new(), |mut a, b| {
-                    for (k, v) in b {
-                        *a.entry(k).or_default() += v;
-                    }
+        let mut deltas: HashMap<Pair, (Rational, Rational)> = deltas
+            .into_values()
+            .map(|v| v.into_iter())
+            .fold(HashMap::new(), |mut a, b| {
+                for (k, (ratio, am)) in b {
+                    let weight =
+                        am.iter()
+                            .map(|i| {
+                                if i.lt(&Rational::ZERO) {
+                                    i * Rational::from(-1)
+                                } else {
+                                    i.clone()
+                                }
+                            })
+                            .sum::<Rational>();
 
-                    a
-                });
+                    let weighted_price = ratio
+                        .iter()
+                        .zip(am.iter())
+                        .map(|(ratio, am)| ratio * am)
+                        .sum::<Rational>()
+                        / weight;
 
-        deltas.retain(|k, v| (*v).ne(&Rational::ZERO));
+                    // fetch weighted,
+                    *a.entry(k).or_default() = (weighted_price, am.iter().sum::<Rational>());
+                }
+                a
+            });
+
+        deltas.retain(|k, v| (v.1).ne(&Rational::ZERO));
 
         let token_collectors = token_collectors
             .into_iter()
@@ -179,21 +213,23 @@ impl SharedInspectorUtils {
     /// applies usd price to deltas and flattens out the tokens
     pub(crate) fn usd_delta(
         &self,
-        deltas: HashMap<Pair, Rational>,
+        deltas: HashMap<Pair, (Rational, Rational)>,
         metadata: Arc<Metadata>,
     ) -> Rational {
         deltas
             .into_iter()
-            .map(|(pair, mut value)| {
+            .map(|(pair, (mut dex_price, value))| {
                 let Some(weth_price) = metadata.cex_quotes.get_quote(&self.0) else {
                     error!(quote_pair=?self.0, "no price found for the default quote pair");
                     panic!();
                 };
 
-                let Some(pair_price) = metadata.cex_quotes.get_quote(&pair) else {
-                    error!(?pair, "no price found for given pair");
-                    panic!();
-                };
+                let pair_price = metadata
+                    .cex_quotes
+                    .get_quote(&pair)
+                    .map(|p| p.avg())
+                    .unwrap_or(dex_price);
+
                 // we want (quote / pair.1)
                 // this is because (pair.0, pair.1) => amount_out;
                 // so if swap from (eth / bitcoin) => 2,
@@ -207,7 +243,7 @@ impl SharedInspectorUtils {
                 let price = if pair.has_quote_edge(WETH) {
                     weth_price.avg()
                 } else if pair.has_base_edge(WETH) {
-                    weth_price.avg() / pair_price.avg()
+                    weth_price.avg() / pair_price
                 } else {
                     // check if one of its base / quote have a pair with eth
                     // (hex / tt) => 3;
@@ -220,7 +256,7 @@ impl SharedInspectorUtils {
                     let zeroth_pair_weth = Pair(WETH, pair.0);
                     if let Some(p) = metadata.cex_quotes.get_quote(&zeroth_pair_weth) {
                         let p_pair0 = weth_price.avg() / p.avg();
-                        p_pair0 / pair_price.avg()
+                        p_pair0 / pair_price
                     } else {
                         error!(?pair, "pair doesn't have a edge with weth");
                         panic!();
@@ -230,6 +266,22 @@ impl SharedInspectorUtils {
                 value * price
             })
             .sum::<Rational>()
+    }
+}
+
+fn apply_entry_with_price<K: PartialEq + Hash + Eq>(
+    token: K,
+    amount: (Rational, Rational),
+    token_map: &mut HashMap<K, (Vec<Rational>, Vec<Rational>)>,
+) {
+    match token_map.entry(token) {
+        Entry::Occupied(mut o) => {
+            let (dex_price, am) = o.get_mut();
+            am.push(amount.1);
+        }
+        Entry::Vacant(v) => {
+            v.insert((vec![amount.0], vec![amount.1]));
+        }
     }
 }
 
