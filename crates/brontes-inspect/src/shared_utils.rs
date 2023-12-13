@@ -69,14 +69,14 @@ impl SharedInspectorUtils {
                         let pair_out = Pair(swap.token_in, swap.token_out);
                         apply_entry_with_price(
                             pair_out,
-                            (&adjusted_out / -adjusted_in.clone(), adjusted_out.clone()),
+                            (&adjusted_out / -(adjusted_in.clone()), adjusted_out.clone()),
                             inner,
                         );
 
                         let pair_in = Pair(swap.token_out, swap.token_in);
                         apply_entry_with_price(
                             pair_in,
-                            (-adjusted_in.clone() / &adjusted_out, adjusted_in),
+                            (-(adjusted_in.clone()) / &adjusted_out, adjusted_in),
                             inner,
                         );
                     }
@@ -87,7 +87,7 @@ impl SharedInspectorUtils {
                         default.insert(
                             pair_out,
                             (
-                                vec![&adjusted_out / -adjusted_in.clone()],
+                                vec![&adjusted_out / -(adjusted_in.clone())],
                                 vec![adjusted_out.clone()],
                             ),
                         );
@@ -95,7 +95,7 @@ impl SharedInspectorUtils {
                         let pair_in = Pair(swap.token_out, swap.token_in);
                         default.insert(
                             pair_in,
-                            (vec![-adjusted_in.clone()/ &adjusted_out], vec![adjusted_in]),
+                            (vec![-(adjusted_in.clone()) / &adjusted_out], vec![adjusted_in]),
                         );
 
                         v.insert(default);
@@ -169,6 +169,13 @@ impl SharedInspectorUtils {
                     let weighted_price = ratio
                         .iter()
                         .zip(am.iter())
+                        .map(|(r, i)| {
+                            if i.lt(&Rational::ZERO) {
+                                (r, i * Rational::from(-1))
+                            } else {
+                                (r, i.clone())
+                            }
+                        })
                         .map(|(ratio, am)| ratio * am)
                         .sum::<Rational>()
                         / weight;
@@ -277,6 +284,7 @@ fn apply_entry_with_price<K: PartialEq + Hash + Eq>(
     match token_map.entry(token) {
         Entry::Occupied(mut o) => {
             let (dex_price, am) = o.get_mut();
+            dex_price.push(amount.0);
             am.push(amount.1);
         }
         Entry::Vacant(v) => {
