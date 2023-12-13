@@ -256,7 +256,6 @@ impl<V: NormalizedAction> Node<V> {
         if trace_addr.len() == 1 {
             self.inner.push(n);
         } else {
-
             if let Some(inner) = self.inner.get_mut(trace_addr.remove(0)) {
                 inner.get_all_inner_nodes(n, trace_addr)
             } else {
