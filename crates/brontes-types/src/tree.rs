@@ -255,8 +255,11 @@ impl<V: NormalizedAction> Node<V> {
         if trace_addr.len() == 1 {
             self.inner.push(n);
         } else {
-            let inner = self.inner.get_mut(trace_addr.remove(0)).unwrap();
-            inner.get_all_inner_nodes(n, trace_addr)
+            if let Some(inner) = self.inner.get_mut(trace_addr.remove(0)) {
+                inner.get_all_inner_nodes(n, trace_addr)
+            } else {
+                eprintln!("ERROR: {:?}", self.inner);
+            }
         }
     }
 
