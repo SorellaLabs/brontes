@@ -181,7 +181,7 @@ impl SharedInspectorUtils {
                         / weight;
 
                     // fetch weighted,
-                    *a.entry(k).or_default() = (weighted_price, am.iter().sum::<Rational>());
+                    *a.entry(k).or_default() = (weighted_price, am.into_iter().sum::<Rational>());
                 }
                 a
             });
@@ -252,18 +252,21 @@ impl SharedInspectorUtils {
                 } else if pair.has_base_edge(WETH) {
                     weth_price.avg() / pair_price
                 } else {
-                    // check if one of its base / quote have a pair with eth
-                    // (hex / tt) => 3;
-                    // (eth / hex) = 5;
-                    // eth = 2000usd;
-                    // eth / ( eth / hex ) = p_hex_usd;
-                    // then hex / ( hex /tt ) = p_tt_usd;
-                    //  2000 / 5 = 400;
-                    //  400 / 3 = 133.33;
                     let zeroth_pair_weth = Pair(WETH, pair.0);
+                    let onth_pair_weth = Pair(WETH, pair.1);
                     if let Some(p) = metadata.cex_quotes.get_quote(&zeroth_pair_weth) {
+                        // check if one of its base / quote have a pair with eth
+                        // (hex / tt) => 3;
+                        // (eth / hex) = 5;
+                        // eth = 2000usd;
+                        // eth / ( eth / hex ) = p_hex_usd;
+                        // then hex / ( hex /tt ) = p_tt_usd;
+                        //  2000 / 5 = 400;
+                        //  400 / 3 = 133.33;
                         let p_pair0 = weth_price.avg() / p.avg();
                         p_pair0 / pair_price
+                    } else if let Some(p) = metadata.cex_quotes.get_quote(&onth_pair_weth) {
+                        weth_price.avg() / p
                     } else {
                         error!(?pair, "pair doesn't have a edge with weth");
                         return None
