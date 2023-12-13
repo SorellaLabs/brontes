@@ -190,23 +190,23 @@ impl SharedInspectorUtils {
         (deltas, token_collectors)
     }
 
-    pub fn get_usd_price(&self, token: Address, metadata: Arc<Metadata>) -> Rational {
+    pub fn get_usd_price(&self, token: Address, metadata: Arc<Metadata>) -> Option<Rational> {
         let Some(weth_price) = metadata.cex_quotes.get_quote(&self.0) else {
             error!(quote_pair=?self.0, "no price found for the default quote pair");
-            panic!();
+            return None
         };
 
         if token == WETH {
-            return weth_price.avg()
+            return Some(weth_price.avg())
         }
 
         // check to see if pair with weth
         let pair = Pair(WETH, token);
         if let Some(p) = metadata.cex_quotes.get_quote(&pair) {
-            weth_price.avg() / p.avg()
+            Some(weth_price.avg() / p.avg())
         } else {
             error!(?pair, "pair doesn't have a edge with weth");
-            panic!();
+            return None
         }
     }
 
@@ -218,10 +218,10 @@ impl SharedInspectorUtils {
     ) -> Rational {
         deltas
             .into_iter()
-            .map(|(pair, (mut dex_price, value))| {
+            .filter_map(|(pair, (mut dex_price, value))| {
                 let Some(weth_price) = metadata.cex_quotes.get_quote(&self.0) else {
                     error!(quote_pair=?self.0, "no price found for the default quote pair");
-                    panic!();
+                        return None
                 };
 
                 let pair_price = metadata
@@ -259,11 +259,11 @@ impl SharedInspectorUtils {
                         p_pair0 / pair_price
                     } else {
                         error!(?pair, "pair doesn't have a edge with weth");
-                        panic!();
+                        return None
                     }
                 };
 
-                value * price
+                Some(value * price)
             })
             .sum::<Rational>()
     }
