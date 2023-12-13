@@ -22,19 +22,18 @@ use tracing::info;
 
 use crate::Inspector;
 
-type ComposeFunction =
-    Option<
-        Box<
-            dyn Fn(
-                    Box<dyn Any + 'static>,
-                    Box<dyn Any + 'static>,
-                    ClassifiedMev,
-                    ClassifiedMev,
-                ) -> (ClassifiedMev, Box<dyn SpecificMev>)
-                + Send
-                + Sync,
-        >,
-    >;
+type ComposeFunction = Option<
+    Box<
+        dyn Fn(
+                Box<dyn Any + 'static>,
+                Box<dyn Any + 'static>,
+                ClassifiedMev,
+                ClassifiedMev,
+            ) -> (ClassifiedMev, Box<dyn SpecificMev>)
+            + Send
+            + Sync,
+    >,
+>;
 
 /// we use this to define a filter that we can iterate over such that
 /// everything is ordered properly and we have already composed lower level
@@ -124,17 +123,16 @@ impl<'a, const N: usize> Composer<'a, N> {
             unsafe { Scope::create() };
 
         println!("inspectors to run: {}", self.orchestra.len());
-        self.orchestra.iter().for_each(
-            |inspector| scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
-        );
+        self.orchestra.iter().for_each(|inspector| {
+            scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
+        });
 
-        let fut =
-            Box::pin(async move {
-                scope
-                    .collect()
-                    .map(|r| r.into_iter().flatten().flatten().collect::<Vec<_>>())
-                    .await
-            });
+        let fut = Box::pin(async move {
+            scope
+                .collect()
+                .map(|r| r.into_iter().flatten().flatten().collect::<Vec<_>>())
+                .await
+        });
 
         self.inspectors_execution = Some(fut);
 
@@ -223,20 +221,17 @@ impl<'a, const N: usize> Composer<'a, N> {
         info!("starting to compose classified mev");
         let header = self.build_mev_header(&orchestra_data);
 
-        let mut sorted_mev =
-            orchestra_data
-                .into_iter()
-                .map(|(classified_mev, specific)| {
-                    (classified_mev.mev_type, (classified_mev, specific))
-                })
-                .fold(
-                    HashMap::default(),
-                    |mut acc: HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
-                     (mev_type, v)| {
-                        acc.entry(mev_type).or_default().push(v);
-                        acc
-                    },
-                );
+        let mut sorted_mev = orchestra_data
+            .into_iter()
+            .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
+            .fold(
+                HashMap::default(),
+                |mut acc: HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
+                 (mev_type, v)| {
+                    acc.entry(mev_type).or_default().push(v);
+                    acc
+                },
+            );
 
         MEV_FILTER
             .iter()
@@ -331,23 +326,27 @@ impl<'a, const N: usize> Composer<'a, N> {
         for (classified, mev_data) in zero_txes {
             let addresses = mev_data.mev_transaction_hashes();
 
-            if let Some((index, _)) =
-                sorted_mev.get(&composable_types[1]).and_then(|mev_type| {
-                    mev_type.iter().enumerate().find(|(_, (_, v))| {
-                        let o_addrs = v.mev_transaction_hashes();
-                        o_addrs == addresses || addresses.iter().any(|a| o_addrs.contains(a))
-                    })
+            if let Some((index, _)) = sorted_mev.get(&composable_types[1]).and_then(|mev_type| {
+                mev_type.iter().enumerate().find(|(_, (_, v))| {
+                    let o_addrs = v.mev_transaction_hashes();
+                    o_addrs == addresses || addresses.iter().any(|a| o_addrs.contains(a))
                 })
-            {
+            }) {
                 // remove composed type
                 let (classifed_1, mev_data_1) = sorted_mev
                     .get_mut(&composable_types[1])
                     .unwrap()
                     .remove(index);
                 // insert new type
-                sorted_mev.entry(*parent_mev_type).or_default().push(
-                    compose(mev_data.into_any(), mev_data_1.into_any(), classified, classifed_1)
-                );
+                sorted_mev
+                    .entry(*parent_mev_type)
+                    .or_default()
+                    .push(compose(
+                        mev_data.into_any(),
+                        mev_data_1.into_any(),
+                        classified,
+                        classifed_1,
+                    ));
             } else {
                 // if no prev match, then add back old type
                 sorted_mev

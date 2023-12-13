@@ -23,8 +23,18 @@ pub struct Metadata {
     pub mempool_flow:           HashSet<TxHash>,
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct Pair(Address, Address);
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub struct Pair(pub Address, pub Address);
+
+impl Pair {
+    pub fn has_base_edge(&self, addr: Address) -> bool {
+        self.0 == addr
+    }
+
+    pub fn has_quote_edge(&self, addr: Address) -> bool {
+        self.1 == addr
+    }
+}
 
 #[derive(Debug, Clone, Default, Eq)]
 pub struct Quote {
@@ -46,6 +56,15 @@ impl Quote {
     pub fn best_bid(&self) -> Rational {
         self.price.1.clone()
     }
+
+    /// inverses the prices
+    pub fn inverse_price(&mut self) {
+        let (num, denom) = self.price.0.numerator_and_denominator_ref();
+        self.price.0 = Rational::from_naturals_ref(denom, num);
+
+        let (num, denom) = self.price.1.numerator_and_denominator_ref();
+        self.price.1 = Rational::from_naturals_ref(denom, num);
+    }
 }
 
 impl PartialEq for Quote {
@@ -59,7 +78,6 @@ impl PartialEq for Quote {
 }
 
 #[derive(Debug, Clone)]
-
 /// There should be 1 entry for how the pair is stored on the CEX and the other
 /// order should be the reverse of that
 pub struct Quotes(HashMap<Pair, Quote>);
@@ -69,8 +87,8 @@ impl Quotes {
         Self(HashMap::new())
     }
 
-    pub fn get_quote(&self, pair: Pair) -> Option<&Quote> {
-        self.0.get(&pair)
+    pub fn get_quote(&self, pair: &Pair) -> Option<&Quote> {
+        self.0.get(pair)
     }
 }
 
@@ -126,9 +144,9 @@ impl Metadata {
 }
 
 impl Metadata {
-    pub fn get_gas_price_usd(&self, gas_used: u64) -> (Rational, Rational) {
+    pub fn get_gas_price_usd(&self, gas_used: u64) -> Rational {
         let gas_used_rational = Rational::from_unsigneds(gas_used, 10u64.pow(18));
 
-        (&self.eth_prices * &gas_used_rational, &self.eth_prices * gas_used_rational)
+        &self.eth_prices * gas_used_rational
     }
 }
