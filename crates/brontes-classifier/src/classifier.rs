@@ -79,10 +79,6 @@ impl Classifier {
                 };
 
                 for (index, trace) in trace.trace.into_iter().enumerate() {
-                    if trace.trace.error.is_some() {
-                        continue
-                    }
-
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
@@ -215,6 +211,9 @@ impl Classifier {
         // we don't classify static calls
         if trace.is_static_call() {
             return Actions::Unclassified(trace)
+        }
+        if trace.trace.error.is_some() {
+            return Actions::Revert
         }
 
         let from_address = trace.get_from_addr();
