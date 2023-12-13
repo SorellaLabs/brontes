@@ -74,7 +74,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
                 labeller_fut,
                 MissingDecimals::new(self.provider, self.database, needed_decimals)
             );
-            tree.eth_prices = meta.eth_prices.clone();
+            tree.eth_price = meta.eth_prices.clone();
 
             (meta, tree)
         });
@@ -86,7 +86,10 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         &mut self,
         results: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>),
     ) {
-        info!(block_number = self.block_number, results=?results, "inserting the collected results");
+        info!(
+            block_number = self.block_number,
+            "inserting the collected results \n {:#?}", results
+        );
         self.insertion_future =
             Some(Box::pin(self.database.insert_classified_data(results.0, results.1)));
     }

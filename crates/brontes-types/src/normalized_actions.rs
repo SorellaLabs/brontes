@@ -15,6 +15,7 @@ pub enum Actions {
     Burn(NormalizedBurn),
     Collect(NormalizedCollect),
     Unclassified(TransactionTraceWithLogs),
+    Revert,
 }
 
 impl InsertRow for Actions {
@@ -25,7 +26,7 @@ impl InsertRow for Actions {
             Actions::Mint(_) => NormalizedMint::COLUMN_NAMES,
             Actions::Burn(_) => NormalizedBurn::COLUMN_NAMES,
             Actions::Collect(_) => NormalizedCollect::COLUMN_NAMES,
-            Actions::Unclassified(..) => panic!(),
+            Actions::Unclassified(..) | Actions::Revert => panic!(),
         }
     }
 }
@@ -42,6 +43,7 @@ impl Serialize for Actions {
             Actions::Burn(b) => b.serialize(serializer),
             Actions::Collect(c) => c.serialize(serializer),
             Actions::Unclassified(trace) => (trace).serialize(serializer),
+            _ => unreachable!(),
         }
     }
 }
@@ -81,6 +83,7 @@ impl Actions {
                 reth_rpc_types::trace::parity::Action::Reward(_) => Address::ZERO,
                 reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address,
             },
+            _ => unreachable!(),
         }
     }
 
@@ -216,6 +219,7 @@ impl NormalizedAction for Actions {
             Self::Transfer(t) => t.index,
             Self::Collect(c) => c.index,
             Self::Unclassified(u) => u.trace_idx,
+            _ => unreachable!(),
         }
     }
 }

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use brontes_database::Metadata;
+use brontes_database::{Metadata, Pair};
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::Actions,
@@ -13,9 +13,14 @@ use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
-#[derive(Default)]
 pub struct AtomicBackrunInspector {
     inner: SharedInspectorUtils,
+}
+
+impl AtomicBackrunInspector {
+    pub fn new(pair: Pair) -> Self {
+        Self { inner: SharedInspectorUtils::new(pair) }
+    }
 }
 
 #[async_trait::async_trait]
@@ -63,31 +68,16 @@ impl AtomicBackrunInspector {
         gas_details: GasDetails,
         swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.inner.calculate_swap_deltas(&swaps);
+        let (deltas, profit_collectors) = self.inner.calculate_swap_deltas(&swaps);
 
-        let appearance = self.inner.get_best_usd_deltas(
-            deltas.clone(),
-            metadata.clone(),
-            Box::new(|(appearance, _)| appearance),
-        );
-
-        let profit_collectors = appearance.keys().copied().collect();
-        let appearance_usd: Rational = appearance.values().sum();
-
-        let finalized = self.inner.get_best_usd_deltas(
-            deltas,
-            metadata.clone(),
-            Box::new(|(_, finalized)| finalized),
-        );
-        let finalized_usd: Rational = finalized.values().sum();
-
-        if appearance_usd <= Rational::ZERO || finalized_usd <= Rational::ZERO {
-            return None
-        }
+        let finalized_usd = self.inner.usd_delta(deltas, metadata.clone());
 
         let gas_used = gas_details.gas_paid();
-        let (gas_used_usd_appearance, gas_used_usd_finalized) =
-            metadata.get_gas_price_usd(gas_used);
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+
+        if &finalized_usd - &gas_used_usd <= Rational::ZERO {
+            return None
+        }
 
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,
@@ -96,10 +86,8 @@ impl AtomicBackrunInspector {
             block_number: metadata.block_num,
             mev_profit_collector: profit_collectors,
             eoa,
-            submission_bribe_usd: gas_used_usd_appearance.clone().to_float(),
-            finalized_bribe_usd: gas_used_usd_finalized.clone().to_float(),
-            finalized_profit_usd: (finalized_usd - gas_used_usd_finalized).to_float(),
-            submission_profit_usd: (appearance_usd - gas_used_usd_appearance).to_float(),
+            finalized_bribe_usd: gas_used_usd.clone().to_float(),
+            finalized_profit_usd: (finalized_usd - gas_used_usd).to_float(),
         };
 
         let swaps = swaps
@@ -154,7 +142,7 @@ mod tests {
         let metadata = db.get_metadata(block_num).await;
 
         let tx = block.0.clone().into_iter().take(60).collect::<Vec<_>>();
-        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+        let tree = Arc::new(classifier.build_tree(tx, block.1));
 
         // write_tree_as_json(&tree, "./tree.json").await;
 
@@ -169,11 +157,6 @@ mod tests {
         // assert!(
         //     mev[0].0.tx_hash
         //         == B256::from_str(
-        //
-        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
-        //         )
-        //         .unwrap()
-        // );
 
         println!("{:#?}", mev);
     }
