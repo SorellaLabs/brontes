@@ -212,7 +212,7 @@ impl SharedInspectorUtils {
         if let Some(p) = metadata.cex_quotes.get_quote(&pair) {
             Some(weth_price.avg() / p.avg())
         } else {
-            error!(?pair, "pair doesn't have a edge with weth");
+            error!(?pair, "token doesn't have a edge with weth");
             return None
         }
     }
@@ -268,7 +268,10 @@ impl SharedInspectorUtils {
                     } else if let Some(p) = metadata.cex_quotes.get_quote(&onth_pair_weth) {
                         weth_price.avg() / p.avg()
                     } else {
-                        error!(?pair, "pair doesn't have a edge with weth");
+                        error!(
+                            ?pair,
+                            "pair doesn't have a edge with weth while calcuating usd delta"
+                        );
                         return None
                     }
                 };
