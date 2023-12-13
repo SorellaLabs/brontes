@@ -27,7 +27,7 @@ use crate::{
 pub const WETH_ADDRESS: Address =
     Address(FixedBytes(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")));
 pub const USDT_ADDRESS: Address =
-    Address(FixedBytes(hex!("0xdac17f958d2ee523a2206206994597c13d831ec7")));
+    Address(FixedBytes(hex!("dac17f958d2ee523a2206206994597c13d831ec7")));
 
 pub struct Database {
     client: ClickhouseClient,
