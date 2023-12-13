@@ -17,9 +17,14 @@ use tracing::error;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
-#[derive(Default)]
 pub struct CexDexInspector {
     inner: SharedInspectorUtils,
+}
+
+impl CexDexInspector {
+    pub fn new(pair: Pair) -> Self {
+        Self { inner: SharedInspectorUtils::new(pair) }
+    }
 }
 
 #[async_trait::async_trait]
@@ -64,15 +69,14 @@ impl CexDexInspector {
         gas_details: &GasDetails,
         swaps: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let swap_sequences: Vec<Vec<(&Actions, (_, _))>> = swaps
+        let swap_sequences: Vec<Vec<(&Actions, _)>> = swaps
             .iter()
             .map(|swap_sequence| {
                 swap_sequence
                     .into_iter()
                     .filter_map(|action| {
                         if let Actions::Swap(ref normalized_swap) = action {
-                            let (pre, post) = self.get_cex_dex(normalized_swap, metadata.as_ref());
-                            Some((action, (pre, post)))
+                            Some((action, self.get_cex_dex(normalized_swap, metadata.as_ref())))
                         } else {
                             None
                         }
@@ -81,26 +85,16 @@ impl CexDexInspector {
             })
             .collect();
 
-        let (profit_sub, profit_finalized) =
+        let profit_finalized =
             self.arb_gas_accounting(swap_sequences, gas_details, &metadata.eth_prices);
 
-        let (gas_sub, gas_finalized) = metadata.get_gas_price_usd(gas_details.gas_paid());
+        let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
 
         // TODO: feels unecessary to do this again, given we have already looped through
         // the swaps in a less generic way, but this is the lowest effort way of getting
         // the collectors for now. Will need to
 
-        let deltas = self.inner.calculate_swap_deltas(&swaps);
-        let mev_profit_collector = self
-            .inner
-            .get_best_usd_deltas(
-                deltas.clone(),
-                metadata.clone(),
-                Box::new(|(appearance, _)| appearance),
-            )
-            .keys()
-            .copied()
-            .collect();
+        let (deltas, mev_profit_collector) = self.inner.calculate_swap_deltas(&swaps);
 
         let classified = ClassifiedMev {
             mev_profit_collector,
@@ -122,108 +116,92 @@ impl CexDexInspector {
 
         let flat_swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
 
-        let cex_dex =
-            CexDex {
-                tx_hash:          hash,
-                gas_details:      gas_details.clone(),
-                swaps_index:      flat_swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|s| s.clone().force_swap().index)
-                    .collect::<Vec<_>>(),
-                swaps_from:       flat_swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|s| s.clone().force_swap().from)
-                    .collect::<Vec<_>>(),
-                swaps_pool:       flat_swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|s| s.clone().force_swap().pool)
-                    .collect::<Vec<_>>(),
-                swaps_token_in:   flat_swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|s| s.clone().force_swap().token_in)
-                    .collect::<Vec<_>>(),
-                swaps_token_out:  flat_swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|s| s.clone().force_swap().token_out)
-                    .collect::<Vec<_>>(),
-                swaps_amount_in:  flat_swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|s| s.clone().force_swap().amount_in.to())
-                    .collect::<Vec<_>>(),
-                swaps_amount_out: flat_swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|s| s.clone().force_swap().amount_out.to())
-                    .collect::<Vec<_>>(),
-                prices_kind:      prices
-                    .iter()
-                    .flat_map(|_| vec![PriceKind::Dex, PriceKind::Cex])
-                    .collect(),
-                prices_address:   flat_swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .flat_map(|s| vec![s.clone().force_swap().token_in].repeat(2))
-                    .collect(),
-                prices_price:     prices
-                    .iter()
-                    .flat_map(|(dex, cex)| vec![*dex, *cex])
-                    .collect(),
-            };
+        let cex_dex = CexDex {
+            tx_hash:          hash,
+            gas_details:      gas_details.clone(),
+            swaps_index:      flat_swaps
+                .iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().index)
+                .collect::<Vec<_>>(),
+            swaps_from:       flat_swaps
+                .iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().from)
+                .collect::<Vec<_>>(),
+            swaps_pool:       flat_swaps
+                .iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().pool)
+                .collect::<Vec<_>>(),
+            swaps_token_in:   flat_swaps
+                .iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().token_in)
+                .collect::<Vec<_>>(),
+            swaps_token_out:  flat_swaps
+                .iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().token_out)
+                .collect::<Vec<_>>(),
+            swaps_amount_in:  flat_swaps
+                .iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().amount_in.to())
+                .collect::<Vec<_>>(),
+            swaps_amount_out: flat_swaps
+                .iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().amount_out.to())
+                .collect::<Vec<_>>(),
+            prices_kind:      prices
+                .iter()
+                .flat_map(|_| vec![PriceKind::Dex, PriceKind::Cex])
+                .collect(),
+            prices_address:   flat_swaps
+                .iter()
+                .filter(|s| s.is_swap())
+                .flat_map(|s| vec![s.clone().force_swap().token_in].repeat(2))
+                .collect(),
+            prices_price:     prices
+                .iter()
+                .flat_map(|(dex, cex)| vec![*dex, *cex])
+                .collect(),
+        };
 
         Some((classified, Box::new(cex_dex)))
     }
 
     fn arb_gas_accounting(
         &self,
-        swap_sequences: Vec<Vec<(&Actions, (Option<Rational>, Option<Rational>))>>,
+        swap_sequences: Vec<Vec<(&Actions, Option<Rational>)>>,
         gas_details: &GasDetails,
         eth_price_pre: &Rational,
-    ) -> (Option<Rational>, Option<Rational>) {
+    ) -> Option<Rational> {
         let zero = Rational::ZERO;
-        let (total_pre_arb, total_post_arb) = swap_sequences
+        let total_arb = swap_sequences
             .iter()
             .flat_map(|sequence| sequence)
-            .fold((Rational::ZERO, Rational::ZERO), |(acc_pre, acc_post), (_, (pre, post))| {
-                (acc_pre + pre.as_ref().unwrap_or(&zero), acc_post + post.as_ref().unwrap_or(&zero))
-            });
+            .fold(Rational::ZERO, |acc, (_, v)| acc + v.as_ref().unwrap_or(&zero));
 
-        let gas_cost_pre =
+        let gas_cost =
             Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) * eth_price_pre;
-        let gas_cost_post =
-            Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) * eth_price_post;
 
-        let profit_pre =
-            if total_pre_arb > gas_cost_pre { Some(total_pre_arb - gas_cost_pre) } else { None };
-
-        let profit_post = if total_post_arb > gas_cost_post {
-            Some(total_post_arb - gas_cost_post)
+        if total_arb > gas_cost {
+            Some(total_arb - gas_cost)
         } else {
             None
-        };
-
-        (profit_pre, profit_post)
+        }
     }
 
     // TODO check correctness + check cleanup potential with shared utils?
-    pub fn get_cex_dex(
-        &self,
-        swap: &NormalizedSwap,
-        metadata: &Metadata,
-    ) -> (Option<Rational>, Option<Rational>) {
+    pub fn get_cex_dex(&self, swap: &NormalizedSwap, metadata: &Metadata) -> Option<Rational> {
         self.rational_prices(&Actions::Swap(swap.clone()), metadata)
-            .map(|(dex_price, cex_price1, cex_price2)| {
-                let profit1 = self.profit_classifier(swap, &dex_price, &cex_price1);
-                let profit2 = self.profit_classifier(swap, &dex_price, &cex_price2);
-
-                (profit1.filter(|p| Rational::ZERO.lt(p)), profit2.filter(|p| Rational::ZERO.lt(p)))
+            .map(|(dex_price, cex_price1)| {
+                self.profit_classifier(swap, &dex_price, &cex_price1)
+                    .filter(|p| Rational::ZERO.lt(p))
             })
-            .unwrap_or((None, None))
+            .unwrap_or_default()
     }
 
     fn profit_classifier(
@@ -270,10 +248,10 @@ impl CexDexInspector {
         let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
         let cex_best_ask = metadata
+            .clone()
             .cex_quotes
-            .get_quote(Pair::new(&swap.token_in, &swap.token_out))?
-            .price
-            .0;
+            .get_quote(&Pair(swap.token_in, swap.token_out))?
+            .best_ask();
 
         Some(((adjusted_out / adjusted_in), cex_best_ask))
     }

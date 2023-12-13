@@ -32,13 +32,12 @@ impl<'db> MissingDecimals<'db> {
         db: &'db Database,
         missing: Vec<Address>,
     ) -> Self {
-        let mut this =
-            Self {
-                provider,
-                pending_decimals: FuturesUnordered::default(),
-                db_future: FuturesUnordered::default(),
-                database: db,
-            };
+        let mut this = Self {
+            provider,
+            pending_decimals: FuturesUnordered::default(),
+            db_future: FuturesUnordered::default(),
+            database: db,
+        };
         this.missing_decimals(missing);
 
         this
