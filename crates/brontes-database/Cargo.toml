@@ -27,7 +27,7 @@ serde_with = { workspace = true, features = ["macros"] }
 thiserror.workspace = true
 
 # numbers
-malachite.workspace = true
+malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # web
 hyper-tls.workspace = true
