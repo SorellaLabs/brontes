@@ -62,7 +62,7 @@ impl SharedInspectorUtils {
 
                 if adjusted_out == Rational::ZERO || adjusted_in == Rational::ZERO {
                     error!(?swap, "amount in | amount out of the swap are zero");
-                    continue;
+                    continue
                 }
 
                 // buying token out amount.
@@ -217,7 +217,7 @@ impl SharedInspectorUtils {
         if let Some(p) = metadata.cex_quotes.get_quote(&pair) {
             Some(weth_price.avg() / p.avg())
         } else {
-            error!(?pair, "token doesn't have a edge with weth");
+            error!(?token, "token doesn't have a edge with weth");
             return None
         }
     }
