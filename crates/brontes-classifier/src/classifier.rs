@@ -114,7 +114,7 @@ impl Classifier {
             .unzip();
 
         let mut tree =
-            TimeTree { roots, header, eth_prices: Default::default(), avg_priority_fee: 0 };
+            TimeTree { roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
 
         // self.try_classify_unknown_exchanges(&mut tree);
         // self.try_classify_flashloans(&mut tree);
