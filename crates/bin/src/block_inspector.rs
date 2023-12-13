@@ -74,7 +74,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
                 labeller_fut,
                 MissingDecimals::new(self.provider, self.database, needed_decimals)
             );
-            tree.eth_prices = meta.eth_prices.clone();
+            tree.eth_price = meta.eth_prices.clone();
 
             (meta, tree)
         });
