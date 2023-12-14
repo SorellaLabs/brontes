@@ -20,7 +20,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils(Address);
@@ -224,13 +224,15 @@ impl SharedInspectorUtils {
                     return Some(dex_price * value)
                 }
 
-                let search_pair_0 = Pair(pair.1, self.0);
-                let search_pair_1 = Pair(pair.0, self.0);
+                let search_pair_0 = Pair(self.0, pair.1);
+                let search_pair_1 = Pair(self.0, pair.0);
 
                 if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_0) {
+                    info!(?search_pair_0, ?res);
                     Some(value * res.avg())
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
-                    Some(value * res.avg() / dex_price)
+                    info!(?search_pair_1, ?res, ?dex_price);
+                    Some(value * res.avg() * dex_price)
                 } else {
                     error!(?pair, "was unable to find a price");
                     return None
