@@ -17,6 +17,7 @@ use petgraph::{
     prelude::*,
     visit::{EdgeCount, IntoEdges, VisitMap, Visitable},
 };
+use tracing::info;
 
 use crate::{Pair, Quote, Quotes};
 
