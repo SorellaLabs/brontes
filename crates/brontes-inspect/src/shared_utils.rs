@@ -19,16 +19,12 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 use tracing::{error, warn};
 
-const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
-
 #[derive(Debug)]
-pub struct SharedInspectorUtils(Pair);
+pub struct SharedInspectorUtils(Address);
 
 impl SharedInspectorUtils {
-    pub fn new(base_pair_weth: Pair) -> SharedInspectorUtils {
-        assert!(base_pair_weth.0 == WETH, "base needs to be WETH");
-
-        SharedInspectorUtils(base_pair_weth)
+    pub fn new(quote_address: Address) -> SharedInspectorUtils {
+        SharedInspectorUtils(quote_address)
     }
 }
 
