@@ -235,13 +235,13 @@ impl SharedInspectorUtils {
                 let search_pair_1 = Pair(pair.0, self.0);
 
                 if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_0) {
-                    let res = Some(value * res.avg());
-                    info!(?pair, ?res, "search pair 0");
+                    let res = Some(&value * res.avg());
+                    info!(?pair, ?value, ?res, "search pair 0");
                     res
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
-                    let price = res.avg() / dex_price;
-                    let res = Some(value * price);
-                    info!(?pair, ?res, "search pair 1");
+                    let price = res.avg() / &dex_price;
+                    let res = Some(&value * price);
+                    info!(?pair, ?value, ?dex_price, ?res, "search pair 1");
                     res
                 } else {
                     error!(?pair, "was unable to find a price");
