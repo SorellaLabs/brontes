@@ -11,6 +11,7 @@ use alloy_primitives::Address;
 use malachite::{num::basic::traits::Zero, Rational};
 use petgraph::{
     algo::Measure,
+    data::Build,
     graph::{self, UnGraph},
     prelude::*,
     visit::{IntoEdges, VisitMap, Visitable},
@@ -20,6 +21,7 @@ use crate::{Pair, Quote, Quotes};
 
 type QuoteWithQuoteAsset = (Quote, Address);
 
+#[derive(Debug, Clone)]
 pub struct PriceGraph {
     graph:         UnGraph<(), QuoteWithQuoteAsset, usize>,
     addr_to_index: HashMap<Address, usize>,
@@ -35,32 +37,31 @@ impl PriceGraph {
             HashMap::new();
 
         for (pair, quote) in quotes.0.clone() {
-            // pair 0
-            let add0 = graph.add_node(()).index();
-            // pair 1
-            let add1 = graph.add_node(()).index();
+            // crate node if doesn't exist for addr or get node otherwise
+            let addr0 = *addr_to_index
+                .entry(pair.0)
+                .or_insert(graph.add_node(()).index());
+            // crate node if doesn't exist for addr or get node otherwise
+            let addr1 = *addr_to_index
+                .entry(pair.1)
+                .or_insert(graph.add_node(()).index());
+
             let quote = (quote, pair.1);
 
-            // if tokens are new, then
-            if !addr_to_index.contains_key(&pair.0) {
-                addr_to_index.insert(pair.0, add0);
-            }
-            if !addr_to_index.contains_key(&pair.1) {
-                addr_to_index.insert(pair.1, add1);
-            }
+            //TODO: pretty sure we can do this without needing the addr
 
             // insert token0
-            let e = connections.entry(pair.0).or_insert_with(|| (add0, vec![]));
+            let e = connections.entry(pair.0).or_insert_with(|| (addr0, vec![]));
             // if we don't have this edge, then add it
             if e.1.iter().map(|i| i.0).any(|addr| addr != pair.1) {
-                e.1.push((pair.1, add1, quote.clone()));
+                e.1.push((pair.1, addr1, quote.clone()));
             }
 
             // insert token1
-            let e = connections.entry(pair.1).or_insert_with(|| (add1, vec![]));
+            let e = connections.entry(pair.1).or_insert_with(|| (addr1, vec![]));
             // if we don't have this edge, then add it
             if e.1.iter().map(|i| i.0).any(|addr| addr != pair.0) {
-                e.1.push((pair.0, add0, quote));
+                e.1.push((pair.0, addr0, quote));
             }
         }
 
@@ -73,8 +74,12 @@ impl PriceGraph {
         Self { quotes, graph, addr_to_index }
     }
 
+    pub fn has_token(&self, address: &Address) -> bool {
+        self.addr_to_index.contains_key(address)
+    }
+
     // returns the quote for the given pair
-    pub fn get_quote_in(&self, pair: Pair) -> Option<Quote> {
+    pub fn get_quote(&self, pair: &Pair) -> Option<Quote> {
         // if we have a native pair use that
         if let Some(quote) = self.quotes.get_quote(&pair) {
             return Some(quote.clone())
@@ -96,23 +101,19 @@ impl PriceGraph {
             let t1 = path[i + 1];
 
             let edge = self.graph.find_edge(t0, t1).unwrap();
-
             let (quote, quote_addr) = self.graph.edge_weight(edge).unwrap();
-
             let index = *self.addr_to_index.get(quote_addr).unwrap();
-            // quote / token_out = token_out_price
-            // t1 is the quote asset
-            // t0 / t1
             let mut q = quote.clone();
+
             if index == t1.index() {
                 q.inverse_price();
-                if res.is_defualt() {
+                if res.is_default() {
                     res = q;
                 } else {
                     res *= q;
                 }
             } else if index == t0.index() {
-                if res.is_defualt() {
+                if res.is_default() {
                     res = q;
                 } else {
                     res *= q;
@@ -189,6 +190,7 @@ where
     }
     // add prev
     path.push(prev);
+    // make start to finish
     path.reverse();
 
     Some(path)

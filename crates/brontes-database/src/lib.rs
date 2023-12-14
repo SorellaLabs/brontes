@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
 };
 
+use graph::PriceGraph;
 use malachite::{
     num::{arithmetic::traits::Floor, basic::traits::Zero},
     Rational,
@@ -22,7 +23,7 @@ pub struct Metadata {
     pub p2p_timestamp:          u64,
     pub proposer_fee_recipient: Address,
     pub proposer_mev_reward:    u64,
-    pub cex_quotes:             Quotes,
+    pub cex_quotes:             PriceGraph,
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
     pub mempool_flow:           HashSet<TxHash>,
@@ -71,7 +72,7 @@ impl Quote {
         self.price.1 = Rational::from_naturals_ref(denom, num);
     }
 
-    pub fn is_defualt(&self) -> bool {
+    pub fn is_default(&self) -> bool {
         self.timestamp == 0 && self.price.0 == Rational::ZERO && self.price.1 == Rational::ZERO
     }
 }
@@ -141,7 +142,7 @@ impl Metadata {
         p2p_timestamp: u64,
         proposer_fee_recipient: Address,
         proposer_mev_reward: u64,
-        cex_quotes: Quotes,
+        cex_quotes: PriceGraph,
         eth_prices: Rational,
         mempool_flow: HashSet<TxHash>,
     ) -> Self {
