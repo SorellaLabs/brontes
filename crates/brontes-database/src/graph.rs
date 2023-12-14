@@ -131,6 +131,8 @@ impl PriceGraph {
             }
         }
 
+        info!(?pair, ?res, "graph gave us");
+
         Some(res)
     }
 }
@@ -254,5 +256,3 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
         }
     }
 }
-
-

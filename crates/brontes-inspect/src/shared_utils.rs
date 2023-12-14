@@ -64,20 +64,18 @@ impl SharedInspectorUtils {
                     continue
                 }
 
-                // buying token out amount.
-                // Store the amount_in amount_out deltas for a given from address
                 match deltas.entry(swap.from) {
                     Entry::Occupied(mut o) => {
                         let inner: &mut HashMap<Pair, (Vec<Rational>, Vec<Rational>)> = o.get_mut();
 
-                        let pair_out = Pair(swap.token_in, swap.token_out);
+                        let pair_out = Pair(swap.token_out, swap.token_in);
                         apply_entry_with_price(
                             pair_out,
                             (-(adjusted_in.clone()) / &adjusted_out, adjusted_out.clone()),
                             inner,
                         );
 
-                        let pair_in = Pair(swap.token_out, swap.token_in);
+                        let pair_in = Pair(swap.token_in, swap.token_out);
                         apply_entry_with_price(
                             pair_in,
                             (&adjusted_out / -(adjusted_in.clone()), adjusted_in),
@@ -87,7 +85,7 @@ impl SharedInspectorUtils {
                     Entry::Vacant(v) => {
                         let mut default = HashMap::default();
 
-                        let pair_out = Pair(swap.token_in, swap.token_out);
+                        let pair_out = Pair(swap.token_out, swap.token_in);
                         default.insert(
                             pair_out,
                             (
@@ -96,7 +94,7 @@ impl SharedInspectorUtils {
                             ),
                         );
 
-                        let pair_in = Pair(swap.token_out, swap.token_in);
+                        let pair_in = Pair(swap.token_in, swap.token_out);
                         default.insert(
                             pair_in,
                             (vec![&adjusted_out / -(adjusted_in.clone())], vec![adjusted_in]),
@@ -217,27 +215,29 @@ impl SharedInspectorUtils {
         metadata: Arc<Metadata>,
     ) -> Rational {
         println!("{:#?}", deltas);
+
         deltas
             .into_iter()
             .filter_map(|(pair, (dex_price, value))| {
-                // if the pair has a edge with our quote, then just use the given price
-                if pair.0 == self.0 {
-                    return Some(&dex_price * value)
-                }
-                if pair.1 == self.0 {
-                    return Some(&dex_price * value)
-                }
+                let search_pair_0 = Pair(pair.0, self.0);
+                let search_pair_1 = Pair(pair.1, self.0);
 
-                let search_pair_0 = Pair(pair.1, self.0);
-                let search_pair_1 = Pair(pair.0, self.0);
-
+                // token_out / quote
                 if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_0) {
                     Some(value * res.avg())
+                // let pair_out = Pair(swap.token_out, swap.token_in);
+                // apply_entry_with_price(
+                //     pair_out,
+                //     (-(adjusted_in.clone()) / &adjusted_out,
+                // adjusted_out.clone()),
+                // );
+                //
+                // (token_in / quote) /  (token_in / token_out) => quote /
+                // token_out =>
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
-                    // pair.0 / pair.1 * pair.0 / usd 
-                    let (num, denom) = dex_price.into_numerator_and_denominator();
-                    let price = Rational::from_naturals(denom, num) * res.avg();
-                    let (num, denom) = price.into_numerator_and_denominator();
+                    let mid_op = res.avg() / dex_price;
+
+                    let (num, denom) = mid_op.into_numerator_and_denominator();
                     let price = Rational::from_naturals(denom, num);
 
                     Some(value * price)
