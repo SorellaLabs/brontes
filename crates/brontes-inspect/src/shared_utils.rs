@@ -218,13 +218,15 @@ impl SharedInspectorUtils {
     ) -> Rational {
         deltas
             .into_iter()
-            .filter_map(|(pair, (mut dex_price, value))| {
+            .filter_map(|(pair, (dex_price, value))| {
                 // if the pair has a edge with our base, then just use the given price
                 if pair.0 == self.0 {
+                    // usd / x
+                    info!(?pair, ?dex_price, "pair.0 == self.0");
                     return Some(dex_price * value)
                 } else if pair.1 == self.0 {
-                    let (num, denom) = dex_price.into_numerator_and_denominator();
-                    return Some(Rational::from_naturals(denom, num) * value)
+                    info!(?pair, ?dex_price, "pair.1 == self.0");
+                    return Some(dex_price * value)
                 }
 
                 let search_pair_0 = Pair(pair.1, self.0);
