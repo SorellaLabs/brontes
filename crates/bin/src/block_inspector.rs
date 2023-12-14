@@ -67,7 +67,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
-            info!("Got {} traces + header + metadata", traces.len());
+            info!("Got {} traces + header", traces.len());
             let (needed_decimals, mut tree) = self.classifier.build_tree(traces, header);
 
             let (meta, _) = join!(
