@@ -221,6 +221,8 @@ impl SharedInspectorUtils {
             .filter_map(|(pair, (dex_price, value))| {
                 // if the pair has a edge with our base, then just use the given price
                 if pair.0 == self.0 {
+                    let (num, denom) = dex_price.into_numerator_and_denominator();
+                    let dex_price = Rational::from_naturals(denom, num);
                     // want price of pair.1, which we have since pair.0 is our quote
                     let res = Some(&dex_price * value);
                     info!(?pair, ?res, ?dex_price, "pair.0 == self.0");
