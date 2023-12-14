@@ -232,13 +232,23 @@ impl SharedInspectorUtils {
                 //
                 // (token_in / quote) /  (token_in / token_out) => quote /
                 // token_out => token_out / quote * amount_out
+                //
+                //  Pair(
+                //     0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2,
+                //     0x43d7e65b8ff49698d9550a7f315c87e67344fb59,
+                // ): (
+                //     175000000000000000000/81944160547615673,
+                //     81944160547615673/250000000000000000,
+                // ),
+                // Pair(
+                //     0x43d7e65b8ff49698d9550a7f315c87e67344fb59,
+                //     0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2,
+                // ): (
+                //     81944160547615673/175000000000000000000,
+                //     -700,
+                // ),
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
-                    let mid_op = res.avg() / dex_price;
-
-                    let (num, denom) = mid_op.into_numerator_and_denominator();
-                    let price = Rational::from_naturals(denom, num);
-
-                    Some(value * price)
+                    Some(value * res * dex_price)
                 } else {
                     error!(?pair, "was unable to find a price");
                     return None
