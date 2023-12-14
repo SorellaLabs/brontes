@@ -243,7 +243,7 @@ impl SharedInspectorUtils {
                     let price = res.avg() / &dex_price;
                     let result = Some(&value * price);
                     info!(?pair, ?value, ?dex_price, ?res, "search pair 1");
-                    res
+                    result
                 } else {
                     error!(?pair, "was unable to find a price");
                     return None
