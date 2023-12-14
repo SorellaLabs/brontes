@@ -21,7 +21,7 @@ use self::types::{Abis, DBTokenPricesDB, TimesFlow};
 use super::Metadata;
 use crate::{
     database::{const_sql::*, types::TimesFlowDB},
-    Pair, Quotes,
+    Pair, PriceGraph, Quotes,
 };
 
 pub const WETH_ADDRESS: Address =
@@ -51,7 +51,7 @@ impl Database {
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {
         let times_flow = self.get_times_flow_info(block_num).await;
-        let cex_prices = self.get_token_prices(times_flow.p2p_time).await;
+        let cex_prices = PriceGraph::from_quotes(self.get_token_prices(times_flow.p2p_time).await);
 
         // eth price is in cex_prices
         let eth_prices = cex_prices
