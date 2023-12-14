@@ -5,6 +5,7 @@ use std::{
         BinaryHeap, HashMap,
     },
     hash::Hash,
+    time::SystemTime,
 };
 
 use alloy_primitives::Address;
@@ -14,7 +15,7 @@ use petgraph::{
     data::Build,
     graph::{self, UnGraph},
     prelude::*,
-    visit::{IntoEdges, VisitMap, Visitable},
+    visit::{EdgeCount, IntoEdges, VisitMap, Visitable},
 };
 
 use crate::{Pair, Quote, Quotes};
@@ -70,6 +71,8 @@ impl PriceGraph {
                 .into_iter()
                 .map(move |(_, adjacent, value)| (node0, adjacent, value))
         }));
+
+        info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph");
 
         Self { quotes, graph, addr_to_index }
     }
