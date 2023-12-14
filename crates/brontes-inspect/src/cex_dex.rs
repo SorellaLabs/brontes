@@ -22,8 +22,8 @@ pub struct CexDexInspector {
 }
 
 impl CexDexInspector {
-    pub fn new(pair: Pair) -> Self {
-        Self { inner: SharedInspectorUtils::new(pair) }
+    pub fn new(quote: Address) -> Self {
+        Self { inner: SharedInspectorUtils::new(quote) }
     }
 }
 
