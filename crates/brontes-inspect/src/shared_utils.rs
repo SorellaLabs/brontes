@@ -230,7 +230,7 @@ impl SharedInspectorUtils {
                     return Some(&dex_price / value)
                 }
 
-                let search_pair_0 = Pair(pair.1, self.0);
+                let search_pair_0 = Pair(self.0, pair.1);
                 let search_pair_1 = Pair(pair.0, self.0);
 
                 if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_0) {
