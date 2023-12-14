@@ -223,12 +223,12 @@ impl SharedInspectorUtils {
                 if pair.0 == self.0 {
                     let res = Some(dex_price / value);
                     info!(?pair, ?res, "pair.0 == self.0");
-                    res
+                    return res
                 }
                 if pair.1 == self.0 {
-                    let res = return Some(dex_price * value);
+                    let res = Some(dex_price * value);
                     info!(?pair, ?res, "pair.1 == self.0");
-                    res
+                    return res
                 }
 
                 let search_pair_0 = Pair(pair.1, self.0);
