@@ -117,7 +117,7 @@ impl SandwichInspector {
 
         let rev_usd = self.inner.usd_delta(deltas, metadata.clone());
 
-        if rev_usd == Rational::ZERO {
+        if rev_usd.le(&Rational::ZERO) {
             return None
         }
 
