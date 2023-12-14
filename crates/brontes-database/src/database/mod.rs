@@ -21,7 +21,7 @@ use self::types::{Abis, DBTokenPricesDB, TimesFlow};
 use super::Metadata;
 use crate::{
     database::{const_sql::*, types::TimesFlowDB},
-    Pair, PriceGraph, Quotes,
+    Pair, PriceGraph, QuotesMap,
 };
 
 pub const WETH_ADDRESS: Address =
@@ -184,7 +184,7 @@ impl Database {
         val.into()
     }
 
-    async fn get_token_prices(&self, p2p_time: u64) -> Quotes {
+    async fn get_token_prices(&self, p2p_time: u64) -> QuotesMap{
         let token_prices = self
             .client
             .query_all_params::<u64, DBTokenPricesDB>(PRICES, vec![p2p_time])
