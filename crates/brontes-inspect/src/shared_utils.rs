@@ -200,7 +200,7 @@ impl SharedInspectorUtils {
 
     pub fn get_usd_price(&self, token: Address, metadata: Arc<Metadata>) -> Option<Rational> {
         let pair = Pair(token, self.0);
-        metadata.cex_quotes.get_quote(&pair)
+        metadata.cex_quotes.get_quote(&pair).map(|v| v.avg())
     }
 
     /// applies usd price to deltas and flattens out the tokens
