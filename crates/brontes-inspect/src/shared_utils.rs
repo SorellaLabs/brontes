@@ -223,29 +223,21 @@ impl SharedInspectorUtils {
                 if pair.0 == self.0 {
                     let (num, denom) = dex_price.into_numerator_and_denominator();
                     let dex_price = Rational::from_naturals(denom, num);
-                    // want price of pair.1, which we have since pair.0 is our quote
-                    let res = Some(&dex_price * value);
-                    info!(?pair, ?res, ?dex_price, "pair.0 == self.0");
-                    return res
+                    return Some(&dex_price * value)
                 }
                 if pair.1 == self.0 {
-                    let res = Some(&dex_price / value);
-                    info!(?pair, ?res, ?dex_price, "pair.1 == self.0");
-                    return res
+                    return Some(&dex_price / value)
                 }
 
                 let search_pair_0 = Pair(pair.1, self.0);
                 let search_pair_1 = Pair(pair.0, self.0);
 
                 if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_0) {
-                    let result = Some(&value * res.avg());
-                    info!(?pair, ?value, ?res, "search pair 0");
-                    result
+                    Some(&value * res.avg())
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
                     let (num, denom) = dex_price.into_numerator_and_denominator();
                     let price = Rational::from_naturals(denom, num) * res.avg();
-                    let result = Some(&value * price);
-                    result
+                    Some(&value * price)
                 } else {
                     error!(?pair, "was unable to find a price");
                     return None
