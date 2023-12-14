@@ -222,7 +222,7 @@ impl SharedInspectorUtils {
                 // if the pair has a edge with our base, then just use the given price
                 if pair.0 == self.0 {
                     return Some(dex_price * value)
-                } else if pair.1 == self.1 {
+                } else if pair.1 == self.0 {
                     let (num, denom) = dex_price.into_numerator_and_denominator();
                     return Some(Rational::from_naturals(denom, num) * value)
                 }
