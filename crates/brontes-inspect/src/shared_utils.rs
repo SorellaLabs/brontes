@@ -221,13 +221,14 @@ impl SharedInspectorUtils {
             .filter_map(|(pair, (dex_price, value))| {
                 // if the pair has a edge with our base, then just use the given price
                 if pair.0 == self.0 {
-                    let res = Some(dex_price / value);
-                    info!(?pair, ?res, "pair.0 == self.0");
+                    let res = Some(&dex_price / value);
+                    info!(?pair, ?res, ?dex_price, "pair.0 == self.0");
                     return res
                 }
                 if pair.1 == self.0 {
-                    let res = Some(dex_price * value);
-                    info!(?pair, ?res, "pair.1 == self.0");
+                    // fucked
+                    let res = Some(&dex_price * value);
+                    info!(?pair, ?res, ?dex_price, "pair.1 == self.0");
                     return res
                 }
 
@@ -235,12 +236,12 @@ impl SharedInspectorUtils {
                 let search_pair_1 = Pair(pair.0, self.0);
 
                 if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_0) {
-                    let res = Some(&value * res.avg());
+                    let result = Some(&value * res.avg());
                     info!(?pair, ?value, ?res, "search pair 0");
-                    res
+                    result
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
                     let price = res.avg() / &dex_price;
-                    let res = Some(&value * price);
+                    let result = Some(&value * price);
                     info!(?pair, ?value, ?dex_price, ?res, "search pair 1");
                     res
                 } else {
