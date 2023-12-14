@@ -243,7 +243,6 @@ impl SharedInspectorUtils {
                     let (num, denom) = dex_price.into_numerator_and_denominator();
                     let price = Rational::from_naturals(denom, num) * res.avg();
                     let result = Some(&value * price);
-                    info!(?pair, ?value, ?dex_price, ?res, "search pair 1");
                     result
                 } else {
                     error!(?pair, "was unable to find a price");
