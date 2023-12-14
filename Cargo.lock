@@ -1156,6 +1156,7 @@ dependencies = [
  "futures",
  "hyper",
  "hyper-tls",
+ "itertools 0.12.0",
  "malachite",
  "petgraph",
  "reth-primitives",

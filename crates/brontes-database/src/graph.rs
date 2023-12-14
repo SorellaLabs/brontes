@@ -9,6 +9,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use petgraph::{
     algo::Measure,
@@ -55,14 +56,14 @@ impl PriceGraph {
             // insert token0
             let e = connections.entry(pair.0).or_insert_with(|| (addr0, vec![]));
             // if we don't have this edge, then add it
-            if e.1.iter().map(|i| i.0).any(|addr| addr != pair.1) {
+            if !e.1.iter().map(|i| i.0).any(|addr| addr == pair.1) {
                 e.1.push((pair.1, addr1, quote.clone()));
             }
 
             // insert token1
             let e = connections.entry(pair.1).or_insert_with(|| (addr1, vec![]));
             // if we don't have this edge, then add it
-            if e.1.iter().map(|i| i.0).any(|addr| addr != pair.0) {
+            if !e.1.iter().map(|i| i.0).any(|addr| addr == pair.0) {
                 e.1.push((pair.0, addr0, quote));
             }
         }
