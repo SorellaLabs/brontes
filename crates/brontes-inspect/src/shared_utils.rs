@@ -221,6 +221,7 @@ impl SharedInspectorUtils {
             .filter_map(|(pair, (dex_price, value))| {
                 // if the pair has a edge with our base, then just use the given price
                 if pair.0 == self.0 || pair.1 == self.0 {
+                    info!(?dex_price, ?value, "has edge with quote");
                     return Some(dex_price * value)
                 }
 
@@ -231,8 +232,6 @@ impl SharedInspectorUtils {
                     Some(value * res.avg())
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
                     let price = res.avg() / dex_price;
-                    info!(?pair, ?price);
-
                     Some(value * price)
                 } else {
                     error!(?pair, "was unable to find a price");
