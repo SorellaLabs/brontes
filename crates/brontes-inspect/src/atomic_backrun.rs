@@ -70,7 +70,7 @@ impl AtomicBackrunInspector {
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let (deltas, profit_collectors) = self.inner.calculate_swap_deltas(&swaps);
 
-        let finalized_usd = self.inner.usd_delta(deltas, metadata.clone());
+        let finalized_usd = self.inner.usd_delta(deltas.clone(), metadata.clone());
 
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
@@ -78,6 +78,12 @@ impl AtomicBackrunInspector {
         if &finalized_usd - &gas_used_usd <= Rational::ZERO {
             return None
         }
+
+        println!("{:#?}", deltas);
+
+
+
+
 
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,

@@ -214,7 +214,6 @@ impl SharedInspectorUtils {
         deltas: HashMap<Pair, (Rational, Rational)>,
         metadata: Arc<Metadata>,
     ) -> Rational {
-
         deltas
             .into_iter()
             .filter_map(|(pair, (dex_price, value))| {
@@ -232,7 +231,7 @@ impl SharedInspectorUtils {
                 // );
                 //
                 // (token_in / quote) /  (token_in / token_out) => quote /
-                // token_out =>
+                // token_out => token_out / quote * amount_out
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
                     let mid_op = res.avg() / dex_price;
 
