@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 # brontes
 brontes-types.workspace = true
+petgraph = "0.6.4"
+alloy-primitives.workspace = true
 
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
 

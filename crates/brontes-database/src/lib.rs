@@ -1,13 +1,18 @@
 use std::{
     collections::{HashMap, HashSet},
+    ops::MulAssign,
     str::FromStr,
 };
 
-use malachite::{num::arithmetic::traits::Floor, Rational};
+use malachite::{
+    num::{arithmetic::traits::Floor, basic::traits::Zero},
+    Rational,
+};
 use reth_primitives::{Address, TxHash, U256};
 
 use crate::database::types::DBTokenPricesDB;
 pub mod database;
+pub mod graph;
 
 #[derive(Debug, Clone)]
 pub struct Metadata {
@@ -65,6 +70,10 @@ impl Quote {
         let (num, denom) = self.price.1.numerator_and_denominator_ref();
         self.price.1 = Rational::from_naturals_ref(denom, num);
     }
+
+    pub fn is_defualt(&self) -> bool {
+        self.timestamp == 0 && self.price.0 == Rational::ZERO && self.price.1 == Rational::ZERO
+    }
 }
 
 impl PartialEq for Quote {
@@ -74,6 +83,13 @@ impl PartialEq for Quote {
                 == (other.price.0.clone() * Rational::try_from(1000000000).unwrap()).floor()
             && (self.price.1.clone() * Rational::try_from(1000000000).unwrap()).floor()
                 == (other.price.1.clone() * Rational::try_from(1000000000).unwrap()).floor()
+    }
+}
+
+impl MulAssign<Quote> for Quote {
+    fn mul_assign(&mut self, rhs: Quote) {
+        self.price.0 *= rhs.price.0;
+        self.price.1 *= rhs.price.1;
     }
 }
 
