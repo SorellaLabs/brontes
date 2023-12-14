@@ -97,9 +97,9 @@ impl MulAssign<Quote> for Quote {
 #[derive(Debug, Clone)]
 /// There should be 1 entry for how the pair is stored on the CEX and the other
 /// order should be the reverse of that
-pub struct Quotes(HashMap<Pair, Quote>);
+pub struct QuotesMap(HashMap<Pair, Quote>);
 
-impl Quotes {
+impl QuotesMap {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
@@ -109,7 +109,7 @@ impl Quotes {
     }
 }
 
-impl From<Vec<DBTokenPricesDB>> for Quotes {
+impl From<Vec<DBTokenPricesDB>> for QuotesMap {
     fn from(value: Vec<DBTokenPricesDB>) -> Self {
         let map = value
             .into_iter()
@@ -130,7 +130,7 @@ impl From<Vec<DBTokenPricesDB>> for Quotes {
             })
             .collect::<HashMap<Pair, Quote>>();
 
-        Quotes(map)
+        QuotesMap(map)
     }
 }
 
