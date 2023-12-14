@@ -33,6 +33,7 @@ pub struct PriceGraph {
 
 impl PriceGraph {
     pub fn from_quotes(quotes: Quotes) -> Self {
+        let t0 = SystemTime::now();
         let mut graph = UnGraph::<(), QuoteWithQuoteAsset, usize>::default();
 
         let mut addr_to_index = HashMap::default();
@@ -73,8 +74,10 @@ impl PriceGraph {
                 .into_iter()
                 .map(move |(_, adjacent, value)| (node0, adjacent, value))
         }));
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
 
-        info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph");
+        info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph in {}us", delta);
 
         Self { quotes, graph, addr_to_index }
     }
@@ -251,3 +254,5 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
         }
     }
 }
+
+
