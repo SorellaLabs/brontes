@@ -199,23 +199,8 @@ impl SharedInspectorUtils {
     }
 
     pub fn get_usd_price(&self, token: Address, metadata: Arc<Metadata>) -> Option<Rational> {
-        let Some(weth_price) = metadata.cex_quotes.get_quote(&self.0) else {
-            error!(quote_pair=?self.0, "no price found for the default quote pair");
-            return None
-        };
-
-        if token == WETH {
-            return Some(weth_price.avg())
-        }
-
-        // check to see if pair with weth
-        let pair = Pair(WETH, token);
-        if let Some(p) = metadata.cex_quotes.get_quote(&pair) {
-            Some(weth_price.avg() / p.avg())
-        } else {
-            error!(?token, "token doesn't have a edge with weth");
-            return None
-        }
+        let pair = Pair(token, self.0);
+        metadata.cex_quotes.get_quote(&pair)
     }
 
     /// applies usd price to deltas and flattens out the tokens
@@ -227,57 +212,16 @@ impl SharedInspectorUtils {
         deltas
             .into_iter()
             .filter_map(|(pair, (mut dex_price, value))| {
-                let Some(weth_price) = metadata.cex_quotes.get_quote(&self.0) else {
-                    error!(quote_pair=?self.0, "no price found for the default quote pair");
-                    return None
-                };
-
-                let pair_price = metadata
-                    .cex_quotes
-                    .get_quote(&pair)
-                    .map(|p| p.avg())
-                    .unwrap_or(dex_price);
-
-                // we want (quote / pair.1)
-                // this is because (pair.0, pair.1) => amount_out;
-                // so if swap from (eth / bitcoin) => 2,
-                //
-                //  eth / bitcoin = 2
-                //  eth = 2000usd;
-                //
-                //  2000 / bitcoin = 2 => 2 * bitcoin = 2000 => bitcoin = 1000;
-                //
-                //  eth_usd / (eth / bitcoin) = p_bitcoin_usd;
-                let price = if pair.has_quote_edge(WETH) {
-                    weth_price.avg()
-                } else if pair.has_base_edge(WETH) {
-                    weth_price.avg() / pair_price
+                let search_pair_0 = Pair(pair.1, self.0);
+                let search_pair_1 = Pair(pair.0, self.0);
+                if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_0) {
+                    Some(value * res.avg())
+                } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
+                    Some(value * res.avg() / dex_price)
                 } else {
-                    let zeroth_pair_weth = Pair(WETH, pair.0);
-                    let onth_pair_weth = Pair(WETH, pair.1);
-                    if let Some(p) = metadata.cex_quotes.get_quote(&zeroth_pair_weth) {
-                        // check if one of its base / quote have a pair with eth
-                        // (hex / tt) => 3;
-                        // (eth / hex) = 5;
-                        // eth = 2000usd;
-                        // eth / ( eth / hex ) = p_hex_usd;
-                        // then hex / ( hex /tt ) = p_tt_usd;
-                        //  2000 / 5 = 400;
-                        //  400 / 3 = 133.33;
-                        let p_pair0 = weth_price.avg() / p.avg();
-                        p_pair0 / pair_price
-                    } else if let Some(p) = metadata.cex_quotes.get_quote(&onth_pair_weth) {
-                        weth_price.avg() / p.avg()
-                    } else {
-                        error!(
-                            ?pair,
-                            "pair doesn't have a edge with weth while calcuating usd delta"
-                        );
-                        return None
-                    }
-                };
-
-                Some(value * price)
+                    error!(?pair, "was unable to find a price");
+                    return None
+                }
             })
             .sum::<Rational>()
     }
