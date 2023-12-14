@@ -10,7 +10,10 @@ use std::{
 
 use alloy_primitives::Address;
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::basic::traits::{One, Zero},
+    Rational,
+};
 use petgraph::{
     algo::Measure,
     data::Build,
@@ -96,6 +99,13 @@ impl PriceGraph {
         // generate the pair using the graph
         let base = pair.0;
         let quote = pair.1;
+
+        // if base and quote are the same then its just 1
+        if base == quote {
+            let mut q = Quote::default();
+            q.price = (Rational::ONE, Rational::ONE);
+            return Some(q)
+        }
 
         let start_idx = self.addr_to_index.get(&quote)?;
         let end_idx = self.addr_to_index.get(&base)?;
