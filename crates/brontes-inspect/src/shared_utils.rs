@@ -248,7 +248,7 @@ impl SharedInspectorUtils {
                 //     -700,
                 // ),
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
-                    Some(value * res * dex_price)
+                    Some(value * res.avg() * dex_price)
                 } else {
                     error!(?pair, "was unable to find a price");
                     return None
