@@ -267,22 +267,20 @@ impl<'a, const N: usize> Composer<'a, N> {
     ) {
         let Some(head_mev) = sorted_mev.get(head_mev_type) else { return };
 
-        let mut remove_count: HashMap<MevType, usize> = HashMap::new();
-
         let flattend_indexes = head_mev
             .iter()
             .flat_map(|(_, specific)| {
                 let hashes = specific.mev_transaction_hashes();
                 let mut remove_data: Vec<(MevType, usize)> = Vec::new();
                 for dep in deps {
+                    let mut remove_count = 0;
                     let Some(dep_mev) = sorted_mev.get(dep) else { continue };
                     for (i, (_, specific)) in dep_mev.iter().enumerate() {
                         let dep_hashes = specific.mev_transaction_hashes();
                         // verify both match
                         if dep_hashes == hashes {
-                            let adjustment = remove_count.entry(*dep).or_default();
-                            remove_data.push((*dep, i - *adjustment));
-                            *adjustment += 1;
+                            remove_data.push((*dep, i - remove_count));
+                            remove_count += 1;
                         }
                         // we only want one match
                         else if dep_hashes
@@ -290,9 +288,8 @@ impl<'a, const N: usize> Composer<'a, N> {
                             .map(|hash| hashes.contains(hash))
                             .any(|f| f)
                         {
-                            let adjustment = remove_count.entry(*dep).or_default();
-                            remove_data.push((*dep, i + *adjustment));
-                            *adjustment += 1;
+                            remove_data.push((*dep, i - remove_count));
+                            remove_count += 1;
                         }
                     }
                 }
