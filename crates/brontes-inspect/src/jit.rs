@@ -35,8 +35,8 @@ pub struct JitInspector {
 }
 
 impl JitInspector {
-    pub fn new(pair: Pair) -> Self {
-        Self { inner: SharedInspectorUtils::new(pair) }
+    pub fn new(quote: Address) -> Self {
+        Self { inner: SharedInspectorUtils::new(quote) }
     }
 }
 
@@ -110,7 +110,6 @@ impl Inspector for JitInspector {
                                 .any(|s| liquidity_addresses.contains(&s.force_swap_ref().pool))
                         })
                         .unzip();
-
 
                     let victim_gas = victims
                         .iter()
