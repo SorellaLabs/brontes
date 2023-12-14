@@ -23,7 +23,7 @@ use petgraph::{
 };
 use tracing::info;
 
-use crate::{Pair, Quote, Quotes};
+use crate::{Pair, Quote, QuotesMap};
 
 type QuoteWithQuoteAsset = (Quote, Address);
 
@@ -31,11 +31,11 @@ type QuoteWithQuoteAsset = (Quote, Address);
 pub struct PriceGraph {
     graph:         UnGraph<(), QuoteWithQuoteAsset, usize>,
     addr_to_index: HashMap<Address, usize>,
-    quotes:        Quotes,
+    quotes:        QuotesMap,
 }
 
 impl PriceGraph {
-    pub fn from_quotes(quotes: Quotes) -> Self {
+    pub fn from_quotes(quotes: QuotesMap) -> Self {
         let t0 = SystemTime::now();
         let mut graph = UnGraph::<(), QuoteWithQuoteAsset, usize>::default();
 
