@@ -216,6 +216,7 @@ impl SharedInspectorUtils {
         deltas: HashMap<Pair, (Rational, Rational)>,
         metadata: Arc<Metadata>,
     ) -> Rational {
+        println!("{:#?}", deltas);
         deltas
             .into_iter()
             .filter_map(|(pair, (dex_price, value))| {
