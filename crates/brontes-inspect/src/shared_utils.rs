@@ -220,25 +220,29 @@ impl SharedInspectorUtils {
         deltas
             .into_iter()
             .filter_map(|(pair, (dex_price, value))| {
-                // if the pair has a edge with our base, then just use the given price
+                // if the pair has a edge with our quote, then just use the given price
                 if pair.0 == self.0 {
                     let (num, denom) = dex_price.into_numerator_and_denominator();
                     let dex_price = Rational::from_naturals(denom, num);
                     return Some(&dex_price * value)
                 }
                 if pair.1 == self.0 {
-                    return Some(&dex_price / value)
+                    return Some(&dex_price * value)
                 }
 
-                let search_pair_0 = Pair(self.0, pair.1);
+                let search_pair_0 = Pair(pair.1, self.0);
                 let search_pair_1 = Pair(pair.0, self.0);
 
                 if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_0) {
-                    Some(&value * res.avg())
+                    Some(value * res.avg())
                 } else if let Some(res) = metadata.cex_quotes.get_quote(&search_pair_1) {
+                    // pair.0 / usd  * pair.1 / pair.0 
                     let (num, denom) = dex_price.into_numerator_and_denominator();
                     let price = Rational::from_naturals(denom, num) * res.avg();
-                    Some(&value * price)
+                    let (num, denom) = price.into_numerator_and_denominator();
+                    let price = Rational::from_naturals(denom, num);
+
+                    Some(value * price)
                 } else {
                     error!(?pair, "was unable to find a price");
                     return None
