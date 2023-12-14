@@ -20,7 +20,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-use tracing::{error, warn, info};
+use tracing::{error, warn};
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils(Address);
@@ -220,12 +220,7 @@ impl SharedInspectorUtils {
             .into_iter()
             .filter_map(|(pair, (dex_price, value))| {
                 // if the pair has a edge with our base, then just use the given price
-                if pair.0 == self.0 {
-                    // usd / x
-                    info!(?pair, ?dex_price, "pair.0 == self.0");
-                    return Some(dex_price * value)
-                } else if pair.1 == self.0 {
-                    info!(?pair, ?dex_price, "pair.1 == self.0");
+                if pair.0 == self.0 || pair.1 == self.0 {
                     return Some(dex_price * value)
                 }
 
