@@ -111,7 +111,6 @@ impl Inspector for JitInspector {
                         })
                         .unzip();
 
-
                     let victim_gas = victims
                         .iter()
                         .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
