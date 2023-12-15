@@ -29,32 +29,37 @@ sol!(UniswapV3, "./abis/UniswapV3.json");
 sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
 
 #[cfg(feature = "libmdbx")]
-sol!(
+sol!{
+    #![sol(all_derives = true)]
     UniswapV2,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/UniswapV2.json"
-);
+};
 #[cfg(feature = "libmdbx")]
-sol!(
+sol!{
+    #![sol(all_derives = true)]
     SushiSwapV2,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/SushiSwapV2.json"
-);
+};
 #[cfg(feature = "libmdbx")]
-sol!(
+sol!{
+    #![sol(all_derives = true)]
     UniswapV3,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/UniswapV3.json"
-);
+};
 #[cfg(feature = "libmdbx")]
-sol!(
+sol!{
+    #![sol(all_derives = true)]
     SushiSwapV3,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/SushiSwapV3.json"
-);
+};
 
 
 #[allow(non_camel_case_types)]
+#[derive(Debug, Clone,  PartialEq, Eq)]
 pub enum StaticBindings {
     UniswapV2(UniswapV2_Enum),
     SushiSwapV2(SushiSwapV2_Enum),
@@ -107,6 +112,7 @@ impl Into<String> for &StaticBindings {
 }
  
 #[allow(non_camel_case_types)]
+#[derive(Debug, Clone,  PartialEq, Eq)]
 pub enum StaticReturnBindings {
     UniswapV2(UniswapV2::UniswapV2Calls),
     SushiSwapV2(SushiSwapV2::SushiSwapV2Calls),
@@ -115,24 +121,28 @@ pub enum StaticReturnBindings {
 }
 
 #[allow(non_camel_case_types)]
+#[derive(Debug, Clone,  PartialEq, Eq)]
 pub enum UniswapV2_Enum {
     None,
 }
 impl_decode_sol!(UniswapV2_Enum, UniswapV2::UniswapV2Calls);
 
 #[allow(non_camel_case_types)]
+#[derive(Debug, Clone,  PartialEq, Eq)]
 pub enum SushiSwapV2_Enum {
     None,
 }
 impl_decode_sol!(SushiSwapV2_Enum, SushiSwapV2::SushiSwapV2Calls);
 
 #[allow(non_camel_case_types)]
+#[derive(Debug, Clone,  PartialEq, Eq)]
 pub enum UniswapV3_Enum {
     None,
 }
 impl_decode_sol!(UniswapV3_Enum, UniswapV3::UniswapV3Calls);
 
 #[allow(non_camel_case_types)]
+#[derive(Debug, Clone,  PartialEq, Eq)]
 pub enum SushiSwapV3_Enum {
     None,
 }
