@@ -11,4 +11,4 @@ pub mod test_utils;
 #[cfg(feature = "tests")]
 pub use test_utils::*;
 
-include!(concat!(env!("ABI_BUILD_DIR"), "/dex_price_map.rs"));
+// include!(concat!(env!("ABI_BUILD_DIR"), "/dex_price_map.rs"));
