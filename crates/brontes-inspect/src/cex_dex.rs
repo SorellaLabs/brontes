@@ -347,7 +347,7 @@ mod tests {
         let amount_in = Rational::from_sci_string("5055369263000000000000e-18").unwrap();
         let amount_out = Rational::from_sci_string("8421308582396e-6").unwrap();
 
-        dex_price = amount_out / amount_in;
+        let dex_price = amount_out / amount_in;
 
         let price_delta = metadata
             .cex_quotes
@@ -356,7 +356,7 @@ mod tests {
             .best_ask()
             - dex_price;
 
-        let expected_profit = price_delta * swap.amount_in;
+        let expected_profit = price_delta * swap.amount_in.to_scaled_rational(6);
 
         let profit = inspector.get_cex_dex(&swap, &metadata);
 
@@ -423,7 +423,7 @@ mod tests {
             priority_fee:        0,
             gas_used:            20_000,
             // 20 gwei
-            effective_gas_price: 20 * 10_u64.pow(9),
+            effective_gas_price: 20 * 10_u128.pow(9),
         };
 
         let swap = NormalizedSwap::default();
