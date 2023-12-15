@@ -1073,6 +1073,7 @@ dependencies = [
  "serial_test",
  "tokio",
  "tracing",
+ "unstringify",
 ]
 
 [[package]]
@@ -7150,6 +7151,12 @@ dependencies = [
  "generic-array",
  "subtle",
 ]
+
+[[package]]
+name = "unstringify"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9612d66420ead229348915b911ad9689e79dfc347fe7a876a82551c8eab36b5e"
 
 [[package]]
 name = "untrusted"
