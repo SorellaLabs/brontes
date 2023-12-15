@@ -302,7 +302,7 @@ mod tests {
         );
 
         let t0 = SystemTime::now();
-        print!("starting cex-dex inspector": )
+        print!("starting cex-dex inspector");
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
