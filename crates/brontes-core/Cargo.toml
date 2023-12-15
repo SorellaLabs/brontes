@@ -83,7 +83,7 @@ brontes-core = { workspace = true, features = ["tests"] }
 dotenv.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true
-criterion = { version = "0.5", features = ["async"] }
+criterion = { version = "0.5", features = ["async", "async_tokio"] }
 
 
 [build-dependencies]
