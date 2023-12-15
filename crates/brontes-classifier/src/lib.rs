@@ -19,11 +19,39 @@ include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
 include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_addr_set.rs"));
 //include!(concat!(env!("ABI_BUILD_DIR"), "/bindings.rs"));
 
-const abi_dir: &'static str = concat!(env!("ABI_BUILD_DIR"), "/../crates/brontes-classifier/");
+#[cfg(not(feature = "libmdbx"))]
 sol!(UniswapV2, "./abis/UniswapV2.json");
+#[cfg(not(feature = "libmdbx"))]
 sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
+#[cfg(not(feature = "libmdbx"))]
 sol!(UniswapV3, "./abis/UniswapV3.json");
+#[cfg(not(feature = "libmdbx"))]
 sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
+
+#[cfg(feature = "libmdbx")]
+sol!(
+    UniswapV2,
+    "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
+     abisUniswapV2.json"
+);
+#[cfg(feature = "libmdbx")]
+sol!(
+    SushiSwapV2,
+    "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
+     abisSushiSwapV2.json"
+);
+#[cfg(feature = "libmdbx")]
+sol!(
+    UniswapV3,
+    "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
+     abisUniswapV3.json"
+);
+#[cfg(feature = "libmdbx")]
+sol!(
+    SushiSwapV3,
+    "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
+     abisSushiSwapV3.json"
+);
 
 #[allow(non_camel_case_types)]
 pub enum StaticBindings {
