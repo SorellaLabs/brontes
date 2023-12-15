@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use alloy_rpc_types::txpool;
 use brontes_database::{Metadata, Pair};
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
@@ -44,8 +45,10 @@ impl Inspector for AtomicBackrunInspector {
             .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
+                let prev_tx = tree.get_prev_tx(root.tx_hash);
 
                 self.process_swaps(
+                    prev_tx,
                     tx,
                     root.head.address,
                     root.head.data.get_to_address(),
@@ -61,6 +64,7 @@ impl Inspector for AtomicBackrunInspector {
 impl AtomicBackrunInspector {
     fn process_swaps(
         &self,
+        prev_tx: B256,
         tx_hash: B256,
         eoa: Address,
         mev_contract: Address,
@@ -70,7 +74,9 @@ impl AtomicBackrunInspector {
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let (deltas, profit_collectors) = self.inner.calculate_swap_deltas(&swaps);
 
-        let finalized_usd = self.inner.usd_delta(deltas.clone(), metadata.clone());
+        let finalized_usd =
+            self.inner
+                .usd_delta_dex_avg(&prev_tx, &tx_hash, deltas.clone(), metadata.clone());
 
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
