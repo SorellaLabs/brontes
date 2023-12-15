@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 
 # brontes
-brontes-classifier.workspace = true
 brontes-database.workspace = true
 
 
