@@ -158,8 +158,8 @@ pub fn init_trace_parser<'a>(
         let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
         let db_port = env::var("RETH_PORT").expect("No DB port.env");
         let url = format!("{db_endpoint}:{db_port}");
-        Box::new(alloy_providers::provider::Provider::new(url).unwrap())
-            as Box<dyn TracingProvider>;
+        Box::new(alloy_providers::provider::Provider::new(&url).unwrap())
+            as Box<dyn TracingProvider>
     };
 
     #[cfg(not(feature = "local"))]
