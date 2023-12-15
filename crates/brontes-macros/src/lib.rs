@@ -6,7 +6,7 @@ use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 /// the action impl macro deals with automatically parsing the data needed for
 /// underlying actions. The use is as followed
 /// ```rust
-/// action_impl!(ExchangeName, ReturnAction, LogType, CallType, ExchangeModName, [logs: bool , call_data: bool, return_data: bool])
+/// action_impl!(ExchangeName, ReturnAction, CallType, LogType, ExchangeModName, [logs: bool , call_data: bool, return_data: bool])
 /// ```
 /// Where GiveLogs, GiveReturns are bools, and CallFn is a closure that takes
 /// ```rust
@@ -16,8 +16,8 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let MacroParse {
         exchange_name,
         action_type,
-        log_type,
         call_type,
+        log_type,
         exchange_mod_name,
         give_logs,
         give_returns,
