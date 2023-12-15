@@ -1,11 +1,9 @@
-
-use alloy_primitives::FixedBytes;
+use alloy_primitives::{hex, FixedBytes};
 use alloy_sol_types::{SolCall, SolEvent};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{Actions, NormalizedSwap};
 use reth_primitives::{Address, Bytes, U256};
 use reth_rpc_types::Log;
-use alloy_primitives::hex;
 
 use crate::{
     enum_unwrap, ActionCollection,
