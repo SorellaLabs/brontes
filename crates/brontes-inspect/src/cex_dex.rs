@@ -350,7 +350,7 @@ mod tests {
 
         let profit = inspector.get_cex_dex(&swap, &metadata);
 
-        assert_eq!(profit, (Some(Rational::from) None));
+        assert_eq!(profit.unwrap(), (Rational::from_str("12499/1250").unwrap()));
     }
 
     #[tokio::test]
