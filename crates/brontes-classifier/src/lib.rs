@@ -53,6 +53,7 @@ sol!(
      abis/SushiSwapV3.json"
 );
 
+
 #[allow(non_camel_case_types)]
 pub enum StaticBindings {
     UniswapV2(UniswapV2_Enum),
@@ -82,6 +83,28 @@ impl StaticBindings {
     }
 }
 
+impl From<String> for StaticBindings {
+    fn from(value: String) -> Self {
+        match &value {
+            "UniswapV2" => StaticBindings::UniswapV2(UniswapV2_Enum::None),
+            "SushiSwapV2" => StaticBindings::SushiSwapV2(SushiSwapV2_Enum::None),
+            "UniswapV3" => StaticBindings::UniswapV3(UniswapV3_Enum::None),
+            "SushiSwapV3" => StaticBindings::SushiSwapV3(SushiSwapV3_Enum::None),
+        }
+    }
+}
+
+impl Into<String> for &StaticBindings {
+    fn into(self) -> String {
+        match self {
+            StaticBindings::UniswapV2(_) => "UniswapV2".to_string(),
+            StaticBindings::SushiSwapV2(_) => "SushiSwapV2".to_string(),
+            StaticBindings::UniswapV3(_) => "UniswapV3".to_string(),
+            StaticBindings::SushiSwapV3(_) =>"SushiSwapV3".to_string(),
+        }
+    }
+}
+ 
 #[allow(non_camel_case_types)]
 pub enum StaticReturnBindings {
     UniswapV2(UniswapV2::UniswapV2Calls),
