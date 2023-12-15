@@ -1,4 +1,4 @@
-use proc_macro::TokenStream;
+use proc_macro::{Span, TokenStream};
 use quote::quote;
 use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 
@@ -6,7 +6,7 @@ use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 /// the action impl macro deals with automatically parsing the data needed for
 /// underlying actions. The use is as followed
 /// ```rust
-/// action_impl!(ExchagneName, ActionDecodeType, ActionCallType, Option<ExchangeModName>, GiveLogs, GiveReturns, CallFn)
+/// action_impl!(ExchangeName, ReturnAction, LogType, CallType, ExchangeModName, [logs: bool , call_data: bool, return_data: bool])
 /// ```
 /// Where GiveLogs, GiveReturns are bools, and CallFn is a closure that takes
 /// ```rust
@@ -16,6 +16,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let MacroParse {
         exchange_name,
         action_type,
+        log_type,
         call_type,
         exchange_mod_name,
         give_logs,
@@ -26,16 +27,19 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     let mut option_parsing = Vec::new();
 
+    let a = call_type.to_string().to_lowercase();
+    let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
+
     if give_calldata {
         option_parsing.push(quote!(
-                let call_data = enum_unwrap!(data, #exchange_mod_name, #action_type);
+                let call_data = enum_unwrap!(data, #exchange_mod_name, #decalled);
         ));
     }
 
     if give_logs {
         option_parsing.push(quote!(
             let log_data = logs.into_iter().filter_map(|log| {
-                #action_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, false).ok()
+                #log_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, false).ok()
             }).collect::<Vec<_>>();
             let log_data = Some(log_data).filter(|data| !data.is_empty()).map(|mut l| l.remove(0));
         ));
@@ -124,6 +128,7 @@ struct MacroParse {
     // required for all
     exchange_name: Ident,
     action_type:   Ident,
+    log_type:      Ident,
     call_type:     Ident,
 
     /// for call data decoding
@@ -143,6 +148,8 @@ impl Parse for MacroParse {
         let exchange_name: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
         let action_type: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let log_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
         let call_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
@@ -204,6 +211,7 @@ impl Parse for MacroParse {
 
         Ok(Self {
             give_returns: return_data,
+            log_type,
             call_function,
             give_logs: logs,
             give_calldata: call_data,
