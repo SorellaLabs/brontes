@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
-use brontes_database::database::Database;
+use brontes_database::clickhouse::Clickhouse;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -27,7 +27,7 @@ use crate::errors::TraceParseError;
 //#[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider> {
     #[allow(unused)]
-    database:              &'db Database,
+    database:              &'db Clickhouse,
     #[allow(unused)]
     should_fetch:          Box<dyn Fn(&Address) -> bool + Send + Sync>,
     pub tracer:            Arc<T>,
@@ -36,7 +36,7 @@ pub struct TraceParser<'db, T: TracingProvider> {
 
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
-        database: &'db Database,
+        database: &'db Clickhouse,
         should_fetch: Box<dyn Fn(&Address) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,

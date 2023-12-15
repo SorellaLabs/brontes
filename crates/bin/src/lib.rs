@@ -7,7 +7,7 @@ use alloy_providers::provider::Provider;
 use alloy_transport_http::Http;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::database::Database;
+use brontes_database::clickhouse::Clickhouse;
 use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, StreamExt};
 use tracing::info;
@@ -31,7 +31,7 @@ pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     parser:           &'inspector Parser<'inspector, T>,
     classifier:       &'inspector Classifier,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
-    database:         &'inspector Database,
+    database:         &'inspector Clickhouse,
     block_inspectors: FuturesUnordered<BlockInspector<'inspector, N, T>>,
 }
 
@@ -43,7 +43,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         max_tasks: u64,
         provider: &'inspector Provider<Http<reqwest::Client>>,
         parser: &'inspector Parser<'inspector, T>,
-        database: &'inspector Database,
+        database: &'inspector Clickhouse,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {

@@ -830,10 +830,13 @@ mod tests {
             .await
             .unwrap();
 
-        db.execute(&format!(
-            "DELETE FROM {MEV_BLOCKS_TABLE} where block_hash = '{:?}' and block_number = {}",
-            test_block.block_hash, test_block.block_number
-        ))
+        db.execute(
+            &format!(
+                "DELETE FROM {MEV_BLOCKS_TABLE} where block_hash = '{:?}' and block_number = {}",
+                test_block.block_hash, test_block.block_number
+            ),
+            &(),
+        )
         .await
         .unwrap();
     }
@@ -848,10 +851,13 @@ mod tests {
             .await
             .unwrap();
 
-        db.execute(&format!(
-            "DELETE FROM {CLASSIFIED_MEV_TABLE} where tx_hash = '{:?}' and block_number = {}",
-            test_mev.tx_hash, test_mev.block_number
-        ))
+        db.execute(
+            &format!(
+                "DELETE FROM {CLASSIFIED_MEV_TABLE} where tx_hash = '{:?}' and block_number = {}",
+                test_mev.tx_hash, test_mev.block_number
+            ),
+            &(),
+        )
         .await
         .unwrap();
     }
@@ -866,11 +872,15 @@ mod tests {
             .await
             .unwrap();
 
-        db.execute(&format!(
-            "DELETE FROM {SANDWICH_TABLE} where frontrun_tx_hash = '{:?}' and backrun_tx_hash = 
+        db.execute(
+            &format!(
+                "DELETE FROM {SANDWICH_TABLE} where frontrun_tx_hash = '{:?}' and backrun_tx_hash \
+                 = 
          '{:?}'",
-            test_mev.frontrun_tx_hash, test_mev.backrun_tx_hash
-        ))
+                test_mev.frontrun_tx_hash, test_mev.backrun_tx_hash
+            ),
+            &(),
+        )
         .await
         .unwrap();
     }
@@ -885,12 +895,15 @@ mod tests {
             .await
             .unwrap();
 
-        db.execute(&format!(
-            "DELETE FROM {JIT_SANDWICH_TABLE} where frontrun_tx_hash = '{:?}' and backrun_tx_hash \
-             = 
+        db.execute(
+            &format!(
+                "DELETE FROM {JIT_SANDWICH_TABLE} where frontrun_tx_hash = '{:?}' and \
+                 backrun_tx_hash = 
          '{:?}'",
-            test_mev.frontrun_tx_hash, test_mev.backrun_tx_hash
-        ))
+                test_mev.frontrun_tx_hash, test_mev.backrun_tx_hash
+            ),
+            &(),
+        )
         .await
         .unwrap();
     }
@@ -922,10 +935,13 @@ mod tests {
 
         insert_classified_data_test(&db, vec![(t, MevType::Jit)], JIT_TABLE).await;
 
-        db.execute(&format!(
-            "DELETE FROM {JIT_TABLE} where mint_tx_hash = '{:?}' and burn_tx_hash = '{:?}'",
-            test_mev.mint_tx_hash, test_mev.burn_tx_hash
-        ))
+        db.execute(
+            &format!(
+                "DELETE FROM {JIT_TABLE} where mint_tx_hash = '{:?}' and burn_tx_hash = '{:?}'",
+                test_mev.mint_tx_hash, test_mev.burn_tx_hash
+            ),
+            &(),
+        )
         .await
         .unwrap();
     }
@@ -940,11 +956,14 @@ mod tests {
             .await
             .unwrap();
 
-        db.execute(&format!(
-            "DELETE FROM {LIQUIDATIONS_TABLE} where liquidation_tx_hash = '{:?}' and trigger = \
-             '{:?}'",
-            test_mev.liquidation_tx_hash, test_mev.trigger
-        ))
+        db.execute(
+            &format!(
+                "DELETE FROM {LIQUIDATIONS_TABLE} where liquidation_tx_hash = '{:?}' and trigger \
+                 = '{:?}'",
+                test_mev.liquidation_tx_hash, test_mev.trigger
+            ),
+            &(),
+        )
         .await
         .unwrap();
     }
@@ -959,10 +978,10 @@ mod tests {
             .await
             .unwrap();
 
-        db.execute(&format!(
-            "DELETE FROM {BACKRUN_TABLE} where tx_hash = '{:?}'",
-            test_mev.tx_hash
-        ))
+        db.execute(
+            &format!("DELETE FROM {BACKRUN_TABLE} where tx_hash = '{:?}'", test_mev.tx_hash),
+            &(),
+        )
         .await
         .unwrap();
     }
@@ -977,10 +996,10 @@ mod tests {
             .await
             .unwrap();
 
-        db.execute(&format!(
-            "DELETE FROM {CEX_DEX_TABLE} where tx_hash = '{:?}'",
-            test_mev.tx_hash
-        ))
+        db.execute(
+            &format!("DELETE FROM {CEX_DEX_TABLE} where tx_hash = '{:?}'", test_mev.tx_hash),
+            &(),
+        )
         .await
         .unwrap();
     }

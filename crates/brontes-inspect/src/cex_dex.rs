@@ -261,7 +261,7 @@ mod tests {
 
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
-    use brontes_database::{database::Database, graph::PriceGraph, Quote, QuotesMap};
+    use brontes_database::{clickhouse::Clickhouse, graph::PriceGraph, Quote, QuotesMap};
     use malachite::num::conversion::traits::FromSciString;
     use reth_primitives::U256;
     use serial_test::serial;
@@ -284,7 +284,7 @@ mod tests {
         let (tx, _rx) = unbounded_channel();
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
+        let db = Clickhouse::default();
         let classifier = Classifier::new();
 
         let block = tracer.execute_block(block_num).await.unwrap();
