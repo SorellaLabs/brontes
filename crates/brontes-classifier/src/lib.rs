@@ -12,6 +12,7 @@ pub mod test_utils;
 
 mod impls;
 use alloy_sol_types::{sol, SolInterface};
+pub use brontes_static;
 use brontes_static::PROTOCOL_ADDRESS_MAPPING;
 use brontes_types::normalized_actions::Actions;
 pub use impls::*;
