@@ -333,8 +333,6 @@ mod tests {
 
         let metadata = get_metadata();
 
-        let (tx, _rx) = unbounded_channel();
-
         // Quote token is USDC here
         let inspector = CexDexInspector::new(
             Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
