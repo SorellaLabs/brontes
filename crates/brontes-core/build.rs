@@ -7,13 +7,10 @@ use std::{
     str::FromStr,
 };
 
-use alloy_json_abi::JsonAbi;
 use clickhouse::{Client, Row};
 use hyper_tls::HttpsConnector;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 const POOLS_QUERY: &str = "SELECT protocol, protocol_subtype, toString(address), arrayMap(x -> \
                            toString(x), tokens) AS tokens FROM ethereum.pools WHERE \
