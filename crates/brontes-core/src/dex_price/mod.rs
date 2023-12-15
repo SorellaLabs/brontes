@@ -1,4 +1,4 @@
-use std::{collections::HashMap, pin::Pin, task::Poll};
+use std::{collections::HashMap, ops::Index, pin::Pin, task::Poll};
 
 use alloy_primitives::{Address, Bytes, FixedBytes};
 use alloy_providers::provider::Provider;
@@ -7,12 +7,14 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
-use brontes_database::{database::Database, Pair};
+use brontes_database::{database::Database, graph::PriceGraph, DexQuote, Pair, QuotesMap};
 use brontes_types::cache_decimals;
 use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
+use itertools::Itertools;
 use malachite::Rational;
 use once_cell::sync::Lazy;
 use phf::phf_map;
+use reth_primitives::revm_primitives::HashMap;
 use reth_rpc_types::trace::parity::StateDiff;
 use tokio::sync::futures;
 
@@ -32,6 +34,8 @@ pub trait DexPrice: Clone + Send + Sync + Unpin + 'static {
     ) -> Pin<Box<dyn Future<Output = (Rational, Rational)> + Send + Sync>>;
 }
 
+static DEX_TOKEN_MAP: phf::Map<Pair, ()> = phf_map!();
+
 // we will have a static map for (token0, token1) => Vec<address, exchange type>
 // this will then process using async, grab the reserves and process the price.
 // and return that with tvl. with this we can calculate weighted price
@@ -40,7 +44,7 @@ pub struct DexPricing<T: TracingProvider> {
     futures: FuturesUnordered<
         Pin<Box<dyn Future<Output = (usize, HashMap<Pair, Rational>)> + Send + Sync>>,
     >,
-    res:      PriceGraph<DexPrice>,
+    res:      HashMap<usize, HashMap<Pair, Rational>>,
 }
 
 impl<T: TracingProvider> DexPricing<T> {
@@ -83,6 +87,43 @@ impl<T: TracingProvider> DexPricing<T> {
 
         this
     }
+
+    fn back_fill(&mut self) {
+        let map = self.res.drain().collect::<Vec<_>>();
+        let mut res: HashMap<Pair, Vec<(usize, Rational)>> = HashMap::new();
+        for (block, pairs) in map {
+            pairs
+                .into_iter()
+                .for_each(|(pair, price)| res.entry(pair).or_default().push((block, price)))
+        }
+
+        // extend out to fill in non state change blocks
+        let res = res
+            .into_iter()
+            .map(|(k, mut v)| {
+                let mut res = HashMap::new();
+                for i in 0..v.len() {
+                    let (cur_idx, p) = v[i];
+                    if let Some((next_idx, _)) = v.get(i + 1) {
+                        for i in cur_idx..*next_idx {
+                            res.insert(i, p.clone());
+                        }
+                    }
+                }
+
+                (k, DexQuote(res))
+            })
+            .collect();
+        let map = QuotesMap::wrap(res);
+
+        let (disjointed, graph) = PriceGraph::from_quotes_disjoint(map);
+        let dummy_graph =
+            PriceGraph::from_quotes(QuotesMap::wrap(DEX_TOKEN_MAP.into_iter().collect()));
+
+        let combos = disjointed.into_iter().combinations(2).collect::<Vec<_>>();
+
+        for combo in combos {}
+    }
 }
 
 impl<T: TracingProvider> Future for DexPricing<T> {
@@ -97,6 +138,7 @@ impl<T: TracingProvider> Future for DexPricing<T> {
         }
 
         if self.futures.is_empty() {
+            self.back_fill();
             return Poll::Ready(self.res.drain().collect())
         } else {
             Poll::Pending
