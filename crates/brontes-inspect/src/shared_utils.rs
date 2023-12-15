@@ -98,8 +98,7 @@ impl SharedInspectorUtils {
 
     pub fn get_usd_price_dex_avg(
         &self,
-        prev_tx: &B256,
-        curr_tx: &B256,
+        block_position: usize,
         token_address: Address,
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {
@@ -111,14 +110,13 @@ impl SharedInspectorUtils {
         metadata
             .dex_quotes
             .get_quote(&pair)
-            .map(|q| (q.get_price(prev_tx) + q.get_price(curr_tx)) / Rational::from(2))
+            .map(|q| q.get_price(block_position))
     }
 
     /// applies usd price to deltas and flattens out the tokens
     pub fn usd_delta_dex_avg(
         &self,
-        prev_tx: &B256,
-        current_tx: &B256,
+        block_position: usize,
         deltas: HashMap<Address, Rational>,
         metadata: Arc<Metadata>,
     ) -> Rational {
@@ -129,12 +127,7 @@ impl SharedInspectorUtils {
                 metadata
                     .dex_quotes
                     .get_quote(&pair)
-                    .map(|q| {
-                        Some(
-                            (q.get_price(prev_tx) + q.get_price(current_tx)) / Rational::from(2)
-                                * value,
-                        )
-                    })
+                    .map(|q| Some(q.get_price(block_position) * value))
                     .unwrap_or_else(|| {
                         error!(?pair, "was unable to find a price");
                         None
