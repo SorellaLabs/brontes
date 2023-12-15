@@ -243,7 +243,7 @@ impl CexDexInspector {
         let cex_best_ask = metadata
             .clone()
             .cex_quotes
-            .get_quote(&Pair(swap.token_in, swap.token_out))?
+            .get_quote(&Pair(swap.token_out, swap.token_in))?
             .best_ask();
 
         Some(((adjusted_out / adjusted_in), cex_best_ask))
@@ -334,10 +334,6 @@ mod tests {
         let metadata = get_metadata();
 
         let (tx, _rx) = unbounded_channel();
-
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
-        let classifier = Classifier::new();
 
         // Quote token is USDC here
         let inspector = CexDexInspector::new(
