@@ -197,6 +197,7 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
     pub async fn get_latest_block_number(&self) -> ProviderResult<u64> {
         self.parser.tracer.best_block_number().await
     }
+
     pub fn get_tracer(&self) -> Arc<T> {
         self.parser.get_tracer()
     }
