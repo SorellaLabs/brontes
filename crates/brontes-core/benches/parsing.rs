@@ -10,8 +10,9 @@ pub fn bench_tx_trace_parse(c: &mut Criterion) {
         .enable_all()
         .build()
         .unwrap();
+
+    let block = 18793182;
     let tracer = rt.block_on(async move {
-        let block = 18793182;
         let (tx, _rx) = unbounded_channel();
         init_trace_parser(tokio::runtime::Handle::current().clone(), tx)
     });
