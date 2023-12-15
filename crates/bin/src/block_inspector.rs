@@ -5,7 +5,7 @@ use std::{
 
 use alloy_providers::provider::Provider;
 use alloy_transport_http::Http;
-use brontes_classifier::{classifier, Classifier};
+use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
@@ -15,12 +15,9 @@ use brontes_inspect::{composer::Composer, Inspector};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
-    structured_trace::TxTrace,
     tree::TimeTree,
 };
 use futures::{join, Future, FutureExt};
-use reth_primitives::Header;
-use tokio::task::JoinError;
 use tracing::info;
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
@@ -67,14 +64,14 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
-            info!("Got {} traces + header + metadata", traces.len());
-            let (needed_decimals, mut tree) = self.classifier.build_tree(traces, header);
+            info!("Got {} traces + header", traces.len());
+            let (tokens_missing_decimals, mut tree) = self.classifier.build_tree(traces, header);
 
             let (meta, _) = join!(
                 labeller_fut,
-                MissingDecimals::new(self.provider, self.database, needed_decimals)
+                MissingDecimals::new(self.provider, self.database, tokens_missing_decimals)
             );
-            tree.eth_prices = meta.eth_prices.clone();
+            tree.eth_price = meta.eth_prices.clone();
 
             (meta, tree)
         });
@@ -86,7 +83,10 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         &mut self,
         results: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>),
     ) {
-        info!(block_number = self.block_number, results=?results, "inserting the collected results");
+        info!(
+            block_number = self.block_number,
+            "inserting the collected results \n {:#?}", results
+        );
         self.insertion_future =
             Some(Box::pin(self.database.insert_classified_data(results.0, results.1)));
     }

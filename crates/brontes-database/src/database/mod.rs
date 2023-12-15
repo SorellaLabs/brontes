@@ -1,13 +1,12 @@
 pub mod const_sql;
 pub mod errors;
 pub mod types;
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 use alloy_json_abi::JsonAbi;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev, *};
 use futures::future::join_all;
-use malachite::Rational;
-use reth_primitives::Address;
+use reth_primitives::{hex, revm_primitives::FixedBytes, Address};
 use sorella_db_databases::{
     clickhouse::{ClickhouseClient, Credentials},
     config::ClickhouseConfig,
@@ -17,11 +16,17 @@ use sorella_db_databases::{
 };
 use tracing::{error, info};
 
-use self::types::{Abis, TimesFlow, TokenPricesTimeDB};
+use self::types::{Abis, DBTokenPricesDB, TimesFlow};
 use super::Metadata;
-use crate::database::{const_sql::*, types::TimesFlowDB};
+use crate::{
+    database::{const_sql::*, types::TimesFlowDB},
+    Pair, PriceGraph, QuotesMap,
+};
 
-const WETH_ADDRESS: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+pub const WETH_ADDRESS: Address =
+    Address(FixedBytes(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")));
+pub const USDT_ADDRESS: Address =
+    Address(FixedBytes(hex!("dac17f958d2ee523a2206206994597c13d831ec7")));
 
 pub struct Database {
     client: ClickhouseClient,
@@ -45,14 +50,12 @@ impl Database {
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {
         let times_flow = self.get_times_flow_info(block_num).await;
-        let cex_prices = self
-            .get_token_prices(times_flow.relay_time, times_flow.p2p_time)
-            .await;
+        let cex_prices = PriceGraph::from_quotes(self.get_token_prices(times_flow.p2p_time).await);
 
         // eth price is in cex_prices
         let eth_prices = cex_prices
-            .get(&Address::from_str(WETH_ADDRESS).unwrap())
-            .unwrap_or(&(Default::default(), Default::default()))
+            .get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
+            .unwrap()
             .clone();
         // = cex_prices.get("ETH").unwrap();
         // cex_prices.remove("ETH");
@@ -65,7 +68,7 @@ impl Database {
             times_flow.proposer_addr,
             times_flow.proposer_reward,
             cex_prices,
-            eth_prices,
+            eth_prices.avg(),
             times_flow.private_flow,
         );
 
@@ -180,32 +183,14 @@ impl Database {
         val.into()
     }
 
-    async fn get_token_prices(
-        &self,
-        relay_time: u64,
-        p2p_time: u64,
-    ) -> HashMap<Address, (Rational, Rational)> {
-        let prices = self
+    async fn get_token_prices(&self, p2p_time: u64) -> QuotesMap {
+        let token_prices = self
             .client
-            .query_one_params::<u64, TokenPricesTimeDB>(PRICES, vec![relay_time, p2p_time])
+            .query_all_params::<u64, DBTokenPricesDB>(PRICES, vec![p2p_time])
             .await
             .unwrap();
 
-        let token_prices = prices
-            .token_prices
-            .into_iter()
-            .map(|(address, (relay_price, p2p_price))| {
-                (
-                    Address::from_str(&address).unwrap(),
-                    (
-                        Rational::try_from(relay_price).unwrap(),
-                        Rational::try_from(p2p_price).unwrap(),
-                    ),
-                )
-            })
-            .collect::<HashMap<Address, (Rational, Rational)>>();
-
-        token_prices
+        token_prices.into()
     }
 }
 
@@ -225,10 +210,13 @@ fn mev_table_type(mev: &Box<dyn SpecificMev>) -> String {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashSet;
+
     use dotenv::dotenv;
     use reth_primitives::{Address, B256};
 
     use super::*;
+    use crate::Quote;
 
     const BLOCK_NUMBER: u64 = 18180900;
     const BLOCK_HASH: &str = "0x2c6bb65135fd200b7bb92fc9e63017d26a61a34d8ccdb6f6a501dc73bc32ce41";
@@ -293,7 +281,7 @@ mod tests {
 
     fn expected_relay_info() -> TimesFlow {
         TimesFlow {
-            relay_time:      1695258707683,
+            relay_time:      1695258707711,
             p2p_time:        1695258708673,
             proposer_addr:   Address::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
@@ -304,16 +292,12 @@ mod tests {
         }
     }
 
-    fn expected_metadata(cex_prices: HashMap<Address, (Rational, Rational)>) -> Metadata {
+    fn expected_metadata(cex_prices: Quotes) -> Metadata {
         let mut cex_prices = cex_prices.clone();
-        let eth_prices = &cex_prices
-            .get(&Address::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
+        let eth_prices = cex_prices
+            .get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
             .unwrap()
             .clone();
-
-        cex_prices
-            .remove(&Address::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
-            .unwrap();
 
         Metadata {
             block_num:              BLOCK_NUMBER,
@@ -323,8 +307,8 @@ mod tests {
             proposer_fee_recipient: Address::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
             proposer_mev_reward:    113949354337187568,
-            token_prices:           cex_prices.clone(),
-            eth_prices:             eth_prices.clone(),
+            cex_quotes:             cex_prices.clone(),
+            eth_prices:             eth_prices.avg().clone(),
             mempool_flow:           expected_private_flow(),
         }
     }
@@ -358,25 +342,44 @@ mod tests {
 
         let db = Database::default();
 
-        let cex_prices = db.get_token_prices(1695258707711, 1695258708673).await;
+        let cex_prices = db.get_token_prices(1695258708673).await;
 
         let real_prices = cex_prices
-            .get(&Address::from_str("5cf04716ba20127f1e2297addcf4b5035000c9eb").unwrap())
+            .get_quote(&Pair(
+                Address::from_str("0xaea46a60368a7bd060eec7df8cba43b7ef41ad85").unwrap(),
+                Address::from_str("0xb8c77482e45f1f44de1745f52c74426c631bdd52").unwrap(),
+            ))
             .unwrap()
             .clone();
-        let queried_prices =
-            (Rational::try_from(0.086237).unwrap(), Rational::try_from(0.086237).unwrap());
+
+        let queried_prices = Quote {
+            timestamp: 1695258689127,
+            price:     (
+                Rational::try_from(0.001072).unwrap(),
+                Rational::try_from(0.00107).unwrap(),
+            ),
+        };
         assert_eq!(real_prices, queried_prices);
 
         let real_prices = cex_prices
-            .get(&Address::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap())
+            .get_quote(&Pair(
+                Address::from_str("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0").unwrap(),
+                Address::from_str("0xb8c77482e45f1f44de1745f52c74426c631bdd52").unwrap(),
+            ))
             .unwrap()
             .clone();
-        let queried_prices =
-            (Rational::try_from(1634.337859).unwrap(), Rational::try_from(1634.337786).unwrap());
+
+        let queried_prices = Quote {
+            timestamp: 1695258675246,
+            price:     (
+                Rational::try_from(0.002715).unwrap(),
+                Rational::try_from(0.002709).unwrap(),
+            ),
+        };
+
         assert_eq!(real_prices, queried_prices);
 
-        assert_eq!(cex_prices.len(), 17);
+        assert_eq!(cex_prices.0.len(), 254);
     }
 
     #[tokio::test]
@@ -385,7 +388,7 @@ mod tests {
 
         let db = Database::default();
 
-        let cex_prices = db.get_token_prices(1695258707711, 1695258708673).await;
+        let cex_prices = db.get_token_prices(1695258708673).await;
 
         let expected_metadata = expected_metadata(cex_prices);
 

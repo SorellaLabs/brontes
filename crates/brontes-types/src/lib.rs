@@ -52,6 +52,14 @@ impl ToScaledRational for U256 {
     }
 }
 
+impl ToScaledRational for u64 {
+    fn to_scaled_rational(self, decimals: u8) -> Rational {
+        let top = Natural::from(self);
+
+        Rational::from_naturals(top, Natural::from(10u8).pow(decimals as u64))
+    }
+}
+
 pub trait ToFloatNearest {
     fn to_float(self) -> f64;
 }
