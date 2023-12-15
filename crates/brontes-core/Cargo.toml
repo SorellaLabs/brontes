@@ -7,7 +7,7 @@ edition = "2021"
 
 [[bench]]
 name = "parsing"
-test_harness = false
+harness = false
 
 
 [dependencies]
