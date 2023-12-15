@@ -69,7 +69,7 @@ impl ToFloatNearest for Rational {
     }
 }
 
-pub(crate) mod vec_u256 {
+pub mod vec_u256 {
     use alloy_primitives::U256;
     use serde::{
         de::{Deserialize, Deserializer},

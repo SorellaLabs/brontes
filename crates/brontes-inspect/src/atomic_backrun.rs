@@ -81,10 +81,6 @@ impl AtomicBackrunInspector {
 
         println!("{:#?}", deltas);
 
-
-
-
-
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,
             tx_hash,
