@@ -49,7 +49,8 @@ async fn build_classifier_map() {
     let mut phf_map = phf_codegen::Map::new();
     for name in names {
         let classified_name = name.name.clone() + "Classifier";
-        phf_map.entry(name.name.as_str(), &format!("Lazy::new(|| Box::new({}::default()))", classified_name));
+        phf_map
+            .entry(name.name, &format!("Lazy::new(|| Box::new({}::default()))", classified_name));
     }
 
     writeln!(
