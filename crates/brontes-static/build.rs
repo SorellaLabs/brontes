@@ -26,12 +26,21 @@ const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 
 const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
-SELECT 
-	groupArray(address) as addresses, abi, classifier_name
-FROM brontes.protocol_details
-FINAL
-WHERE classifier_name IS NOT NULL
-GROUP BY abi, classifier_name
+SELECT
+    addresses,
+    abi,
+    classifier_name
+FROM
+(
+    SELECT
+        groupArray(address) AS addresses,
+        any(abi) AS abi,
+        classifier_name
+    FROM brontes.protocol_details
+    FINAL
+    WHERE classifier_name IS NOT NULL
+    GROUP BY classifier_name
+)
 "#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default, PartialEq, Eq, Hash)]
