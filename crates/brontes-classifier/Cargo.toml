@@ -53,7 +53,6 @@ brontes-core = { workspace = true, optional = true }
 default = []
 tests = ["reth-tracing-ext", "brontes-core"]
 local = ["brontes-core/local"]
-libmdbx = []
 
 [dev-dependencies]
 dotenv.workspace = true
