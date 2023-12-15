@@ -33,6 +33,17 @@ impl<V: NormalizedAction> TimeTree<V> {
             .map(|root| &root.gas_details)
     }
 
+    pub fn get_prev_tx(&self, hash: B256) -> B256 {
+        let (index, _) = self
+            .roots
+            .iter()
+            .enumerate()
+            .find(|(_, h)| h.tx_hash == hash)
+            .unwrap();
+
+        self.roots[index - 1].tx_hash
+    }
+
     pub fn insert_root(&mut self, root: Root<V>) {
         self.roots.push(root);
     }

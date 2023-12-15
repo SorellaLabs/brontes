@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
 };
 
+use alloy_primitives::B256;
 use database::types::PoolReservesDB;
 use graph::PriceGraph;
 use malachite::{
@@ -52,13 +53,19 @@ pub trait Quote: MulAssign<Self> + std::fmt::Debug + Clone + Send + Sync + 'stat
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct DexQuote(HashMap<Address, Rational>);
+pub struct DexQuote(HashMap<B256, Rational>);
 
 impl Quote for DexQuote {
     fn inverse_price(&mut self) {
         for v in self.0.values_mut() {
             v.reciprocal_assign()
         }
+    }
+}
+
+impl DexQuote {
+    pub fn get_price(&self, prev_tx: &B256) -> Rational {
+        self.0.get(prev_tx).unwrap().clone()
     }
 }
 
@@ -91,7 +98,7 @@ impl From<Vec<PoolReservesDB>> for QuotesMap<DexQuote> {
                             Rational::try_from(price).unwrap(),
                         )
                     });
-                (Address::from_str(&pool_reserve.post_tx_hash.to_string()).unwrap(), pair_w_price)
+                (B256::from_str(&pool_reserve.post_tx_hash.to_string()).unwrap(), pair_w_price)
             })
             .fold(QuotesMap(HashMap::new()), |mut map, (post_tx, pair_w_price)| {
                 for (pair, price) in pair_w_price {
