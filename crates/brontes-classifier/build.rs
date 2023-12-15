@@ -43,7 +43,7 @@ async fn build_classifier_map() {
         .to_str()
         .unwrap();
 
-    let mut file = BufWriter::new(File::create(&path).unwrap());
+    let mut file = BufWriter::new(File::create(path).unwrap());
     let names = query_db::<ProtocolName>(&clickhouse_client, PROTOCOLS).await;
 
     let mut phf_map = phf_codegen::Map::new();
