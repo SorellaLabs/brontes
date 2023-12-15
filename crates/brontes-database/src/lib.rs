@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
 };
 
+pub use brontes_types::extra_processing::Pair;
 use graph::PriceGraph;
 use malachite::{
     num::{arithmetic::traits::Floor, basic::traits::Zero},
@@ -27,19 +28,6 @@ pub struct Metadata {
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
     pub mempool_flow:           HashSet<TxHash>,
-}
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub struct Pair(pub Address, pub Address);
-
-impl Pair {
-    pub fn has_base_edge(&self, addr: Address) -> bool {
-        self.0 == addr
-    }
-
-    pub fn has_quote_edge(&self, addr: Address) -> bool {
-        self.1 == addr
-    }
 }
 
 #[derive(Debug, Clone, Default, Eq)]
