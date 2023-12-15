@@ -5,7 +5,7 @@ use brontes_types::{
     classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{GasDetails, TimeTree},
-    try_get_decimals, ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
+    try_get_decimals, ToFloatNearest, ToScaledRational,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::{
@@ -94,7 +94,7 @@ impl CexDexInspector {
         // the swaps in a less generic way, but this is the lowest effort way of getting
         // the collectors for now. Will need to
 
-        let (deltas, mev_profit_collector) = self.inner.calculate_swap_deltas(&swaps);
+        let (_deltas, mev_profit_collector) = self.inner.calculate_swap_deltas(&swaps);
 
         let classified = ClassifiedMev {
             mev_profit_collector,
@@ -176,7 +176,7 @@ impl CexDexInspector {
         &self,
         swap_sequences: Vec<Vec<(&Actions, Option<Rational>)>>,
         gas_details: &GasDetails,
-        eth_price_pre: &Rational,
+        eth_price: &Rational,
     ) -> Option<Rational> {
         let zero = Rational::ZERO;
         let total_arb = swap_sequences
@@ -184,8 +184,7 @@ impl CexDexInspector {
             .flat_map(|sequence| sequence)
             .fold(Rational::ZERO, |acc, (_, v)| acc + v.as_ref().unwrap_or(&zero));
 
-        let gas_cost =
-            Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) * eth_price_pre;
+        let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) * eth_price;
 
         if total_arb > gas_cost {
             Some(total_arb - gas_cost)
@@ -258,16 +257,14 @@ mod tests {
 
     use std::{
         collections::{HashMap, HashSet},
-        env,
         str::FromStr,
         time::SystemTime,
     };
 
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
-    use brontes_database::database::Database;
-    use brontes_types::test_utils::write_tree_as_json;
-    use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
+    use brontes_database::{database::Database, graph::PriceGraph, Quote, QuotesMap};
+    use malachite::num::conversion::traits::FromSciString;
     use reth_primitives::U256;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
@@ -280,8 +277,10 @@ mod tests {
     async fn test_cex_dex() {
         init_tracing();
 
-        info!(target: "brontes", "we got it");
+        info!(target: "brontes", "starting cex-dex test");
+
         dotenv::dotenv().ok();
+
         let block_num = 18264694;
 
         let (tx, _rx) = unbounded_channel();
@@ -289,19 +288,20 @@ mod tests {
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
         let db = Database::default();
         let classifier = Classifier::new();
-        println!("{:?}", db.credentials());
 
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        println!("{:#?}", metadata);
+        println!("{:#?}", metadata.cex_quotes.quotes);
 
         let tx = block.0.clone().into_iter().take(40).collect::<Vec<_>>();
-        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+        let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
+        let tree = Arc::new(tree);
 
-        //write_tree_as_json(&tree, "./tree.json").await;
-
-        let inspector = CexDexInspector::default();
+        // Quote token is USDC here
+        let inspector = CexDexInspector::new(
+            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+        );
 
         let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
@@ -309,7 +309,7 @@ mod tests {
         let delta = t1.duration_since(t0).unwrap().as_micros();
         println!("{:#?}", mev);
 
-        println!("cex-dex inspector took: {} us", delta);
+        info!("cex-dex inspector took: {} us", delta);
 
         // assert!(
         //     mev[0].0.tx_hash
@@ -335,74 +335,7 @@ mod tests {
             amount_out: "8421308582396".parse().unwrap(),
         };
 
-        // ETH Sold = 5,055.369263
-        // USDC bought = 8 421 308.582396
-        // price = $1665.8147297
-        // See Chart: https://www.tradingview.com/x/eLfjxI9h
-        //
-        // We need to integrate more granular data because otherwise I think the binance
-        // quotes are out of whack at that time TBD
-
-        let metadata = Metadata {
-            block_num:              18264694,
-            block_hash:             U256::from_str_radix(
-                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
-                16,
-            )
-            .unwrap(),
-            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
-            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
-            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
-                .unwrap(),
-            proposer_mev_reward:    11769128921907366414,
-            token_prices:           {
-                let mut prices = HashMap::new();
-
-                // By looking at the chart, and comparing it to the binance quote we can see
-                // that our quotes are lagging:
-                // - 1: If we can get a chart that shows us 1s time frames we can tell if quotes
-                //   are out of whack but I doubt this is the problem
-                // - 2: Most likely that the quotes are correct, their signals are forward
-                //   looking by definition so we need to get CEX quotes at tx time + time frame.
-
-                // At 18:39:23 UTC (time of submission) the price is $1682.268937
-                // At 18:40 UTC (lowest level granularity I could get from the ) the price is
-                // $1682.081816
-
-                // See chart: https://www.tradingview.com/x/5uG0Zxdq
-                prices.insert(
-                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-                    (
-                        Rational::from_str("7398697029111485/4398046511104").unwrap(),  // WETH = $1682.268937
-                        Rational::from_str("924734257781285/549755813888").unwrap(), // WETH = $1682.081816
-                    ),
-                );
-
-                // USDC = $1
-                prices.insert(
-                    Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),// USDC 
-                    (
-                        Rational::from_str("1").unwrap(), // Assuming 1 USDC = 1 USD for simplicity, replace with actual values
-                        Rational::from_str("1").unwrap(),
-                    ),
-                );
-                prices
-            },
-            eth_prices:             (
-                Rational::from_str("7398697029111485/4398046511104").unwrap(),
-                Rational::from_str("924734257781285/549755813888").unwrap(),
-            ),
-            mempool_flow:           {
-                let mut private = HashSet::new();
-                private.insert(
-                    B256::from_str(
-                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
-                    )
-                    .unwrap(),
-                );
-                private
-            },
-        };
+        let metadata = get_metadata();
 
         let (tx, _rx) = unbounded_channel();
 
@@ -410,7 +343,11 @@ mod tests {
         let db = Database::default();
         let classifier = Classifier::new();
 
-        let inspector = CexDexInspector::default();
+        // Quote token is USDC here
+        let inspector = CexDexInspector::new(
+            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+        );
+
         let profit = inspector.get_cex_dex(&swap, &metadata);
 
         //assert_eq!(profit, (Some(Rational::from) None));
@@ -430,61 +367,13 @@ mod tests {
             amount_out: U256::from_str("8421308582396").unwrap(),
         };
 
-        // ETH Sold = 5,055.369263
-        // USDC bought = 8 421 308.582396
-        // price = $1665.8147297
+        let metadata = get_metadata();
 
-        let metadata = Metadata {
-            block_num:              18264694,
-            block_hash:             U256::from_str_radix(
-                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
-                16,
-            )
-            .unwrap(),
-            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
-            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
-            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
-                .unwrap(),
-            proposer_mev_reward:    11769128921907366414,
-            token_prices:           {
-                let mut prices = HashMap::new();
+        // Quote token is USDC here
+        let inspector = CexDexInspector::new(
+            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+        );
 
-                // WETH = $1682.268937
-                prices.insert(
-                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-                    (
-                        Rational::from_str("7398697029111485/4398046511104").unwrap(),
-                        Rational::from_str("924734257781285/549755813888").unwrap(),
-                    ),
-                );
-
-                // USDC = $1
-                prices.insert(
-                    Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),// USDC 
-                    (
-                        Rational::from_str("1").unwrap(), // Assuming 1 USDC = 1 USD for simplicity, replace with actual values
-                        Rational::from_str("1").unwrap(),
-                    ),
-                );
-                prices
-            },
-            eth_prices:             (
-                Rational::from_str("7398697029111485/4398046511104").unwrap(),
-                Rational::from_str("924734257781285/549755813888").unwrap(),
-            ),
-            mempool_flow:           {
-                let mut private = HashSet::new();
-                private.insert(
-                    B256::from_str(
-                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
-                    )
-                    .unwrap(),
-                );
-                private
-            },
-        };
-
-        let inspector = CexDexInspector::default();
         let rational_prices = inspector.rational_prices(&Actions::Swap(swap.clone()), &metadata);
 
         let amount_in = Rational::from_sci_string("5055369263000000000000e-18").unwrap();
@@ -496,39 +385,22 @@ mod tests {
             expected_dex_price,
             rational_prices
                 .as_ref()
-                .unwrap_or(&(Rational::ZERO, Rational::ZERO, Rational::ZERO))
+                .unwrap_or(&(Rational::ZERO, Rational::ZERO))
                 .0,
             "Dex price did not match"
         );
 
-        let expected_cex_price1 = metadata
-            .token_prices
-            .get(&swap.token_out)
+        let cex_best_ask = metadata
+            .cex_quotes
+            .get_quote(&Pair(swap.token_in, swap.token_out))
             .unwrap()
-            .0
-            .clone()
-            / metadata.token_prices.get(&swap.token_in).unwrap().0.clone();
+            .best_ask();
 
         assert_eq!(
-            expected_cex_price1,
+            cex_best_ask,
             rational_prices.as_ref().unwrap().1,
             "Pre cex price did not match {}",
             rational_prices.as_ref().unwrap().1
-        );
-
-        let expected_cex_price2 = metadata
-            .token_prices
-            .get(&swap.token_out)
-            .unwrap()
-            .1
-            .clone()
-            / metadata.token_prices.get(&swap.token_in).unwrap().1.clone();
-
-        assert_eq!(
-            expected_cex_price2,
-            rational_prices.as_ref().unwrap().2,
-            "Post cex price did not match {}",
-            rational_prices.as_ref().unwrap().2
         );
     }
 
@@ -540,31 +412,97 @@ mod tests {
             coinbase_transfer:   None,
             priority_fee:        0,
             gas_used:            20_000,
-            // 20 gewi
+            // 20 gwei
             effective_gas_price: 20 * 10_u64.pow(9),
         };
 
         let swap = NormalizedSwap::default();
 
-        let pre_0 = Rational::from(10);
         let post_0 = Rational::from(10);
-        let swaped = Actions::Swap(swap.clone());
-        let inner_0 = vec![(&swaped, (Some(pre_0), Some(post_0)))];
+        let swapped = Actions::Swap(swap.clone());
+        let inner_0 = vec![(&swapped, (Some(post_0)))];
         swaps.push(inner_0);
 
-        let inspector = CexDexInspector::default();
-        let eth_price_pre = Rational::from(1);
-        let eth_price_post = Rational::from(2);
+        // Quote token is USDC here
+        let inspector = CexDexInspector::new(
+            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+        );
 
-        let (pre, post) =
-            inspector.arb_gas_accounting(swaps, &gas_details, &eth_price_pre, &eth_price_post);
+        let eth_price = Rational::from(2);
 
-        let pre = pre.unwrap();
-        let post = post.unwrap();
-        let pre_result = Rational::from_str("24999/2500").unwrap();
-        let post_result = Rational::from_str("12499/1250").unwrap();
+        let profit = inspector
+            .arb_gas_accounting(swaps, &gas_details, &eth_price)
+            .unwrap();
 
-        assert_eq!(pre, pre_result);
-        assert_eq!(post, post_result);
+        let result = Rational::from_str("12499/1250").unwrap();
+
+        assert_eq!(profit, result);
+    }
+
+    pub fn get_metadata() -> Metadata {
+        Metadata {
+            // ETH Sold = 5,055.369263
+            // USDC bought = 8 421 308.582396
+            // price = $1665.8147297
+            // See Chart: https://www.tradingview.com/x/eLfjxI9h
+            //
+            // We need to integrate more granular data because otherwise I think the binance
+            // quotes are out of whack at that time TBD
+            block_num:              18264694,
+            block_hash:             U256::from_str_radix(
+                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
+                16,
+            )
+            .unwrap(),
+            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
+            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
+            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
+                .unwrap(),
+            proposer_mev_reward:    11769128921907366414,
+            cex_quotes:             {
+                let mut prices = HashMap::new();
+
+                // By looking at the chart, and comparing it to the binance quote we can see
+                // that our quotes are lagging:
+                // - 1: If we can get a chart that shows us 1s time frames we can tell if quotes
+                //   are out of whack but I doubt this is the problem
+                // - 2: Most likely that the quotes are correct, their signals are forward
+                //   looking by definition so we need to get CEX quotes at tx time + time frame.
+
+                // At 18:39:23 UTC (time of submission) the price is $1682.268937
+                // At 18:40 UTC (lowest level granularity I could get from the ) the price is
+                // $1682.081816
+
+                // See chart: https://www.tradingview.com/x/5uG0Zxdq
+                prices.insert(
+                    Pair(
+                        Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+                        Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+                    ),
+                    Quote {
+                        timestamp: 1696271964134,
+                        price:     (
+                            Rational::from_str("7398697029111485/4398046511104").unwrap()
+                                / Rational::from_str("1").unwrap(),
+                            Rational::from_str("7398697029111485/4398046511104").unwrap()
+                                / Rational::from_str("1").unwrap(),
+                            // WETH = $1682.268937
+                        ),
+                    },
+                );
+                PriceGraph::from_quotes(QuotesMap::wrap(prices))
+            },
+            eth_prices:             (Rational::from_str("924734257781285/549755813888").unwrap()),
+            mempool_flow:           {
+                let mut private = HashSet::new();
+                private.insert(
+                    B256::from_str(
+                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
+                    )
+                    .unwrap(),
+                );
+                private
+            },
+        }
     }
 }

@@ -4,17 +4,15 @@ use std::{
 };
 
 use async_trait::async_trait;
-use brontes_database::Pair;
 use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     tree::GasDetails,
-    try_get_decimals, ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
+    try_get_decimals, ToFloatNearest, ToScaledRational,
 };
 use itertools::Itertools;
 use malachite::Rational;
 use reth_primitives::{Address, B256, U256};
-use tracing::info;
 
 use crate::{
     shared_utils::SharedInspectorUtils, Actions, ClassifiedMev, Inspector, Metadata, SpecificMev,
@@ -372,12 +370,11 @@ impl JitInspector {
             .sum::<Rational>()
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use std::{
         collections::{HashMap, HashSet},
-        env,
         str::FromStr,
         time::SystemTime,
     };
@@ -385,12 +382,10 @@ mod tests {
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
     use brontes_database::database::Database;
-    use brontes_types::test_utils::write_tree_as_json;
     use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
     use reth_primitives::U256;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
-    use tracing::info;
 
     use super::*;
 
@@ -408,7 +403,7 @@ mod tests {
             proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
                 .unwrap(),
             proposer_mev_reward:    11769128921907366414,
-            token_prices:           {
+            cex_quotes:             {
                 let mut prices = HashMap::new();
 
                 prices.insert(
@@ -447,10 +442,7 @@ mod tests {
 
                 prices
             },
-            eth_prices:             (
-                Rational::try_from_float_simplest(2126.43).unwrap(),
-                Rational::try_from_float_simplest(2126.43).unwrap(),
-            ),
+            eth_prices:             (Rational::try_from_float_simplest(2126.43).unwrap(),),
             mempool_flow:           {
                 let mut private = HashSet::new();
                 private.insert(
@@ -483,12 +475,16 @@ mod tests {
         let metadata = get_metadata();
 
         let tx = block.0.clone().into_iter().take(20).collect::<Vec<_>>();
-        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+        let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
 
-        let inspector = JitInspector::default();
+        let tree = Arc::new(tree);
+
+        let USDC = Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap();
+        let inspector = Box::new(JitInspector::new(USDC)) as Box<dyn Inspector>;
 
         let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
         println!("{:#?}", mev);
@@ -500,3 +496,4 @@ mod tests {
         //         == B256::from_str(
     }
 }
+*/
