@@ -243,7 +243,7 @@ impl CexDexInspector {
         let cex_best_ask = metadata
             .clone()
             .cex_quotes
-            .get_quote(&Pair(swap.token_out, swap.token_in))?
+            .get_quote(&Pair(swap.token_in, swap.token_out))?
             .best_ask();
 
         Some(((adjusted_out / adjusted_in), cex_best_ask))
@@ -291,6 +291,8 @@ mod tests {
         let metadata = db.get_metadata(block_num).await;
 
         let tx = block.0.clone().into_iter().take(1).collect::<Vec<_>>();
+
+        println!("tx: {:#?}", tx);
         let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
         let tree = Arc::new(tree);
 
@@ -300,6 +302,7 @@ mod tests {
         );
 
         let t0 = SystemTime::now();
+        print!("starting cex-dex inspector": )
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
