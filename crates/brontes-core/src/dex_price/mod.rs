@@ -2,7 +2,7 @@ use std::{collections::HashMap, pin::Pin, task::Poll};
 
 use alloy_primitives::{Address, Bytes, FixedBytes};
 use alloy_providers::provider::Provider;
-use alloy_rpc_types::TransactionRequest;
+use alloy_rpc_types::{state::AccountOverride, TransactionRequest};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use alloy_transport::TransportResult;
@@ -16,21 +16,22 @@ use phf::phf_map;
 use reth_rpc_types::trace::parity::StateDiff;
 use tokio::sync::futures;
 
+use crate::TracingProvider;
+
 pub mod uniswap_v2;
 pub mod uniswap_v3;
 
-static DEX_PRICE_MAP: phf::Map<Pair, &[(bool, Address, Lazy<Box<dyn DexPrice>>)]> = phf::phf_map!();
-
 pub struct TransactionPoolSwappedTokens {
     tx_idx:     usize,
-    pairs:      Vec<(Address, Address)>,
+    pairs:      Vec<Pair>,
     state_diff: StateDiff,
 }
 
 pub trait DexPrice: Clone + Send + Sync + Unpin + 'static {
-    fn get_price(
+    fn get_price<T: TracingProvider>(
         &self,
-        provider: &Provider<Http<reqwest::Client>>,
+        provider: Arc<T>,
+        block: u64,
         address: Address,
         zto: bool,
         state_diff: StateDiff,
@@ -40,17 +41,18 @@ pub trait DexPrice: Clone + Send + Sync + Unpin + 'static {
 // we will have a static map for (token0, token1) => Vec<address, exchange type>
 // this will then process using async, grab the reserves and process the price.
 // and return that with tvl. with this we can calculate weighted price
-pub struct DexPricing<'p> {
-    provider: &'p Provider<Http<reqwest::Client>>,
+pub struct DexPricing<T: TracingProvider> {
+    provider: Arc<T>,
     futures: FuturesUnordered<
         Pin<Box<dyn Future<Output = (usize, HashMap<Pair, Rational>)> + Send + Sync>>,
     >,
     res:      HashMap<usize, HashMap<Pair, Rational>>,
 }
 
-impl<'p> DexPricing<'p> {
+impl<T: TracingProvider> DexPricing<T> {
     pub fn new(
-        provider: &'p Provider<Http<reqwest::Client>>,
+        provider: Arc<T>,
+        block: u64,
         pools_tokens_type: Vec<TransactionPoolSwappedTokens>,
     ) -> Self {
         let mut this =
@@ -60,15 +62,14 @@ impl<'p> DexPricing<'p> {
             this.futures.push(Box::pin(async {
                 let mut result = HashMap::new();
 
-                for (t0, t1) in transaction.pairs {
-                    let key = combine_slices(t0.0 .0, t1.0 .0);
-                    let Some(pairs) = DEX_PRICE_MAP.get(&key) else {
+                for pair in transaction.pairs {
+                    let Some(dex) = DEX_PRICE_MAP.get(&pair) else {
                         continue;
                     };
 
                     let price_tvl: Vec<(Rational, Rational)> =
                         join_all(pair.into_iter().map(|(zto, addr, dex)| {
-                            dex.get_price(self.provider, zto, addr, transaction.state_diff)
+                            dex.get_price(self.provider, block, zto, addr, transaction.state_diff)
                         }))
                         .await;
 
@@ -90,7 +91,7 @@ impl<'p> DexPricing<'p> {
     }
 }
 
-impl Future for DexPricing<'_> {
+impl<T: TracingProvider> Future for DexPricing<T> {
     type Output = HashMap<usize, HashMap<Pair, Rational>>;
 
     fn poll(
@@ -109,11 +110,53 @@ impl Future for DexPricing<'_> {
     }
 }
 
-fn combine_slices(slice1: [u8; 20], slice2: [u8; 20]) -> Pair {
-    let mut combined = [0u8; 40];
+async fn make_call_request<C: SolCall, T: TracingProvider>(
+    call: C,
+    provider: Arc<T>,
+    state: Option<StateOverride>,
+    to: Address,
+    block: u64,
+) -> C::Return {
+    let encoded = call.abi_encode();
+    let req =
+        CallRequest { to: Some(to), input: CallInput::new(encoded.into()), ..Default::default() };
 
-    combined[..20].copy_from_slice(&slice1);
-    combined[20..].copy_from_slice(&slice2);
+    let res = provider
+        .eth_call(req, Some(block), state, None)
+        .await
+        .unwrap();
+    C::abi_decode_returns(&res, false).unwrap()
+}
 
-    combined
+fn into_state_overrides(state_diff: StateDiff) -> AccountOverride {
+    state_diff
+        .0
+        .into_iter()
+        .map(|(k, v)| {
+            let overrides = AccountOverride {
+                nonce:      None,
+                code:       None,
+                state:      Some(
+                    v.storage
+                        .into_iter()
+                        .filter_map(|(k, v)| {
+                            Some((
+                                k,
+                                match v {
+                                    Delta::Unchanged => return None,
+                                    Delta::Added(a) => a,
+                                    Delta::Removed(r) => return None,
+                                    Delta::Changed(t) => t.to,
+                                },
+                            ))
+                        })
+                        .collect(),
+                ),
+                state_diff: None,
+                balance:    None,
+            };
+
+            (k, overrides)
+        })
+        .collect::<HashMap<_, _>>()
 }
