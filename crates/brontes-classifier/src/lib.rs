@@ -90,6 +90,7 @@ impl From<String> for StaticBindings {
             "SushiSwapV2" => StaticBindings::SushiSwapV2(SushiSwapV2_Enum::None),
             "UniswapV3" => StaticBindings::UniswapV3(UniswapV3_Enum::None),
             "SushiSwapV3" => StaticBindings::SushiSwapV3(SushiSwapV3_Enum::None),
+            _ => unreachable!("")
         }
     }
 }
