@@ -74,12 +74,15 @@ impl Inspector for SandwichInspector {
                     .map(|victim| tree.collect(*victim, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
 
+                let prev_tx = [tree.get_prev_tx(ps.tx0), tree.get_prev_tx(ps.tx1)];
+
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .map(|tx| tree.collect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
 
                 self.calculate_sandwich(
+                    prev_tx,
                     ps.eoa,
                     ps.mev_executor_contract,
                     meta_data.clone(),
@@ -98,6 +101,7 @@ impl Inspector for SandwichInspector {
 impl SandwichInspector {
     fn calculate_sandwich(
         &self,
+        prev_tx: [B256; 2],
         eoa: Address,
         mev_executor_contract: Address,
         metadata: Arc<Metadata>,
@@ -112,10 +116,23 @@ impl SandwichInspector {
         if searcher_actions.len() < 2 {
             return None
         }
+        let (frontrun, backrun) = (
+            vec![searcher_actions.get(0).unwrap().clone()],
+            vec![searcher_actions.get(1).unwrap().clone()],
+        );
 
-        let (deltas, mev_collectors) = self.inner.calculate_swap_deltas(&searcher_actions);
+        let (front_deltas, _) = self.inner.calculate_swap_deltas(&frontrun);
 
-        let rev_usd = self.inner.usd_delta(deltas, metadata.clone());
+        let front_run_rev =
+            self.inner
+                .usd_delta_dex_avg(&prev_tx[0], &txes[0], front_deltas, metadata.clone());
+
+        let (backrun, mev_collectors) = self.inner.calculate_swap_deltas(&backrun);
+        let back_run_rev =
+            self.inner
+                .usd_delta_dex_avg(&prev_tx[1], &txes[1], backrun, metadata.clone());
+
+        let rev_usd = back_run_rev + front_run_rev;
 
         if rev_usd.le(&Rational::ZERO) {
             return None
@@ -331,8 +348,6 @@ impl SandwichInspector {
     }
 }
 
-/*
-
 #[cfg(test)]
 mod tests {
     use std::{collections::HashSet, str::FromStr, time::SystemTime};
@@ -383,74 +398,6 @@ mod tests {
         println!("{:#?}", mev);
     }
 
-    /*
-    fn get_metadata() -> Metadata {
-        // 2126.43
-        Metadata {
-            block_num:              18539312,
-            block_hash:             U256::from_str_radix(
-                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
-                16,
-            )
-            .unwrap(),
-            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
-            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
-            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
-                .unwrap(),
-            proposer_mev_reward:    11769128921907366414,
-            cex_quotes:             {
-                let mut prices = HashMap::new();
-
-                prices.insert(
-                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-                    (
-                        Rational::try_from_float_simplest(2126.43).unwrap(),
-                        Rational::try_from_float_simplest(2126.43).unwrap(),
-                    ),
-                );
-
-                // SMT
-                prices.insert(
-                    Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
-                    (
-                        Rational::try_from_float_simplest(0.09081931).unwrap(),
-                        Rational::try_from_float_simplest(0.09081931).unwrap(),
-                    ),
-                );
-
-                // APX
-                prices.insert(
-                    Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
-                    (
-                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
-                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
-                    ),
-                );
-                // FTT
-                prices.insert(
-                    Address::from_str("0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9").unwrap(),
-                    (
-                        Rational::try_from_float_simplest(1.9358).unwrap(),
-                        Rational::try_from_float_simplest(1.9358).unwrap(),
-                    ),
-                );
-
-                prices
-            },
-            eth_prices:             (Rational::try_from_float_simplest(2126.43).unwrap()),
-            mempool_flow:           {
-                let mut private = HashSet::new();
-                private.insert(
-                    B256::from_str(
-                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
-                    )
-                    .unwrap(),
-                );
-                private
-            },
-        }
-    }*/
-
     #[tokio::test]
     #[serial]
     async fn test_complex_sandwich() {
@@ -465,7 +412,8 @@ mod tests {
         let classifier = Classifier::new();
 
         let block = tracer.execute_block(block_num).await.unwrap();
-        let metadata = get_metadata();
+
+        let metadata = db.get_metadata(block_num).await;
 
         let (tokens_missing_decimals, tree) = classifier.build_tree(block.0, block.1);
         let tree = Arc::new(tree);
@@ -483,92 +431,107 @@ mod tests {
         println!("{:#?}", mev);
     }
 
-    fn test_process_sandwich() {
-        // let expected_sandwich = Sandwich {
-        //     frontrun_tx_hash: B256::from_str(
-        //         "0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5",
-        //     )
-        //     .unwrap(),
-        //     frontrun_gas_details: GasDetails {
-        //         coinbase_transfer:   0, //todo
-        //         priority_fee:        0,
-        //         gas_used:            87336,
-        //         effective_gas_price: 18.990569622,
-        //     },
-        //     frontrun_swaps_index: 0,
-        //     frontrun_swaps_from: vec![
-        //         Address::from_str("
-        // 0xcc2687c14915fd68226ccf388842515739a739bd"). unwrap()     ],
-        //     frontrun_swaps_pool: vec![
-        //         Address::from_str("
-        // 0xde55ec8002d6a3480be27e0b9755ef987ad6e151"). unwrap()     ],
-        //     frontrun_swaps_token_in: vec![Address::from_str(
-        //         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-        //     )
-        //     .unwrap()],
-        //     frontrun_swaps_token_out: vec![Address::from_str(
-        //         "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
-        //     )
-        //     .unwrap()],
-        //     frontrun_swaps_amount_in: vec![454788265862552718],
-        //     frontrun_swaps_amount_out: vec![111888798809177],
-        //     victim_tx_hashes: vec![B256::from_str(
-        //         "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
-        //     )
-        //     .unwrap()],
-        //     victim_swaps_tx_hash: vec![B256::from_str(
-        //         "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
-        //     )
-        //     .unwrap()],
-        //     victim_swaps_index: vec![1],
-        //     victim_swaps_from: vec![
-        //         Address::from_str("
-        // 0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad"). unwrap()     ],
-        //     victim_swaps_pool: vec![
-        //         Address::from_str("
-        // 0xde55ec8002d6a3480be27e0b9755ef987ad6e151"). unwrap()     ],
-        //     victim_swaps_token_in: vec![Address::from_str(
-        //         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-        //     )
-        //     .unwrap()],
-        //     victim_swaps_token_out: vec![Address::from_str(
-        //         "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
-        //     )
-        //     .unwrap()],
-        //     victim_swaps_amount_in: vec![1000000000000000000],
-        //     victim_swaps_amount_out: vec![206486606721996],
-        //     victim_gas_details_coinbase_transfer: vec![0], //todo
-        //     victim_gas_details_priority_fee: vec![100000000],
-        //     victim_gas_details_gas_used: vec![100073],
-        //     victim_gas_details_effective_gas_price: vec![18990569622],
-        //     backrun_tx_hash: B256::from_str(
-        //         "0x4479723b447600b2d577bf02bd409efab249985840463c8f7088e6b5a724c667",
-        //     )
-        //     .unwrap(),
-        //     backrun_gas_details: GasDetails {
-        //         coinbase_transfer:   0, //todo
-        //         priority_fee:        0,
-        //         gas_used:            84461,
-        //         effective_gas_price: 18990569622,
-        //     },
-        //     backrun_swaps_index: 2,
-        //     backrun_swaps_from: vec![
-        //         Address::from_str("
-        // 0xcc2687c14915fd68226ccf388842515739a739bd"). unwrap()     ],
-        //     backrun_swaps_pool: vec![
-        //         Address::from_str("
-        // 0xde55ec8002d6a3480be27e0b9755ef987ad6e151"). unwrap()     ],
-        //     backrun_swaps_token_in: vec![Address::from_str(
-        //         "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
-        //     )
-        //     .unwrap()],
-        //     backrun_swaps_token_out: vec![Address::from_str(
-        //         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-        //     )
-        //     .unwrap()],
-        //     backrun_swaps_amount_in: vec![111888798809177],
-        //     backrun_swaps_amount_out: vec![567602104693849332],
-        // };
-    }
+    // fn test_process_sandwich() {
+    //     let expected_sandwich = Sandwich {
+    //         frontrun_tx_hash: B256::from_str(
+    //
+    // "0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5",
+    //         )
+    //         .unwrap(),
+    //         frontrun_gas_details: GasDetails {
+    //             coinbase_transfer:   0, //todo
+    //             priority_fee:        0,
+    //             gas_used:            87336,
+    //             effective_gas_price: 18.990569622,
+    //         },
+    //         frontrun_swaps_index: 0,
+    //         frontrun_swaps_from: vec![Address::from_str(
+    //             "
+    //     0xcc2687c14915fd68226ccf388842515739a739bd",
+    //         )
+    //         .unwrap()],
+    //         frontrun_swaps_pool: vec![Address::from_str(
+    //             "
+    //     0xde55ec8002d6a3480be27e0b9755ef987ad6e151",
+    //         )
+    //         .unwrap()],
+    //         frontrun_swaps_token_in: vec![Address::from_str(
+    //             "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+    //         )
+    //         .unwrap()],
+    //         frontrun_swaps_token_out: vec![Address::from_str(
+    //             "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
+    //         )
+    //         .unwrap()],
+    //         frontrun_swaps_amount_in: vec![454788265862552718],
+    //         frontrun_swaps_amount_out: vec![111888798809177],
+    //         victim_tx_hashes: vec![B256::from_str(
+    //
+    // "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
+    //         )
+    //         .unwrap()],
+    //         victim_swaps_tx_hash: vec![B256::from_str(
+    //
+    // "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
+    //         )
+    //         .unwrap()],
+    //         victim_swaps_index: vec![1],
+    //         victim_swaps_from: vec![Address::from_str(
+    //             "
+    //     0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+    //         )
+    //         .unwrap()],
+    //         victim_swaps_pool: vec![Address::from_str(
+    //             "
+    //     0xde55ec8002d6a3480be27e0b9755ef987ad6e151",
+    //         )
+    //         .unwrap()],
+    //         victim_swaps_token_in: vec![Address::from_str(
+    //             "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+    //         )
+    //         .unwrap()],
+    //         victim_swaps_token_out: vec![Address::from_str(
+    //             "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
+    //         )
+    //         .unwrap()],
+    //         victim_swaps_amount_in: vec![1000000000000000000],
+    //         victim_swaps_amount_out: vec![206486606721996],
+    //         victim_gas_details_coinbase_transfer: vec![0], //todo
+    //         victim_gas_details_priority_fee: vec![100000000],
+    //         victim_gas_details_gas_used: vec![100073],
+    //         victim_gas_details_effective_gas_price: vec![18990569622],
+    //         backrun_tx_hash: B256::from_str(
+    //
+    // "0x4479723b447600b2d577bf02bd409efab249985840463c8f7088e6b5a724c667",
+    //         )
+    //         .unwrap(),
+    //         backrun_gas_details: GasDetails {
+    //             coinbase_transfer:   0, //todo
+    //             priority_fee:        0,
+    //             gas_used:            84461,
+    //             effective_gas_price: 18990569622,
+    //         },
+    //         backrun_swaps_index: 2,
+    //         backrun_swaps_from: vec![Address::from_str(
+    //             "
+    //     0xcc2687c14915fd68226ccf388842515739a739bd",
+    //         )
+    //         .unwrap()],
+    //         backrun_swaps_pool: vec![Address::from_str(
+    //             "
+    //     0xde55ec8002d6a3480be27e0b9755ef987ad6e151",
+    //         )
+    //         .unwrap()],
+    //         backrun_swaps_token_in: vec![Address::from_str(
+    //             "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
+    //         )
+    //         .unwrap()],
+    //         backrun_swaps_token_out: vec![Address::from_str(
+    //             "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+    //         )
+    //         .unwrap()],
+    //         backrun_swaps_amount_in: vec![111888798809177],
+    //         backrun_swaps_amount_out: vec![567602104693849332],
+    //     };
+    // }
 }
- */
