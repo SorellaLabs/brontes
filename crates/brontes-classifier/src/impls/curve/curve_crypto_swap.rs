@@ -1,10 +1,11 @@
-use std::str::FromStr;
 
+use alloy_primitives::FixedBytes;
 use alloy_sol_types::{SolCall, SolEvent};
 use brontes_macros::{action_dispatch, action_impl};
-use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
+use brontes_types::normalized_actions::{Actions, NormalizedSwap};
 use reth_primitives::{Address, Bytes, U256};
 use reth_rpc_types::Log;
+use alloy_primitives::hex;
 
 use crate::{
     enum_unwrap, ActionCollection,
@@ -15,8 +16,8 @@ use crate::{
     IntoAction, StaticReturnBindings, ADDRESS_TO_TOKENS_2_POOL,
 };
 
-pub const ETH: Address = Address::from_str("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE").unwrap();
-pub const WETH: Address = Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap();
+pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
+pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
 action_impl!(
     CurveCryptoExchange0,
     Swap,
@@ -63,7 +64,7 @@ action_impl!(
     |index, from_address: Address, target_address: Address, call_data: exchange_1Call, log_data: Option<TokenExchange>| {
 
         let log = log_data?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+        let [mut token_0, mut token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
 
         let is_eth = call_data.use_eth;
 
@@ -110,7 +111,7 @@ CurveCryptoSwap,
 logs: true,
 |index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>| {
         let log = log_data?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+        let [mut token_0, mut token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
 
 
          // Replace WETH with ETH for token_in or token_out
