@@ -21,12 +21,6 @@ use crate::TracingProvider;
 pub mod uniswap_v2;
 pub mod uniswap_v3;
 
-pub struct TransactionPoolSwappedTokens {
-    tx_idx:     usize,
-    pairs:      Vec<Pair>,
-    state_diff: StateDiff,
-}
-
 pub trait DexPrice: Clone + Send + Sync + Unpin + 'static {
     fn get_price<T: TracingProvider>(
         &self,

@@ -41,6 +41,7 @@ sol! (
     function balanceOf(address owner) external view returns (uint);
 );
 
+#[derive(Default)]
 struct V3Pricing;
 
 impl DexPrice for V3Pricing {

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use brontes_types::{
+    extra_processing::{ExtraProcessing, Pair, TransactionPoolSwappedTokens},
     normalized_actions::{Actions, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
@@ -8,7 +9,7 @@ use brontes_types::{
 };
 use hex_literal::hex;
 use parking_lot::RwLock;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 
@@ -32,10 +33,11 @@ impl Classifier {
         &self,
         traces: Vec<TxTrace>,
         header: Header,
-    ) -> (Vec<Address>, TimeTree<Actions>) {
+    ) -> (ExtraProcessing, TimeTree<Actions>) {
         let (missing_dec, roots): (Vec<_>, Vec<_>) = traces
             .into_par_iter()
-            .filter_map(|mut trace| {
+            .enumerate()
+            .filter_map(|(tx_idx, mut trace)| {
                 if trace.trace.is_empty() || !trace.is_success {
                     return None
                 }
@@ -76,13 +78,19 @@ impl Classifier {
                     },
                 };
 
+                let mut tx_pairs = Vec::new();
                 for (index, trace) in trace.trace.into_iter().enumerate() {
                     root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let from_addr = trace.get_from_addr();
                     let t_address = root_trace.get_to_address();
-                    let classification = self.classify_node(trace.clone(), (index + 1) as u64);
+                    let (pair, classification) =
+                        self.classify_node(trace.clone(), (index + 1) as u64);
+
+                    if let Some(pair) = pair {
+                        tx_pairs.push(pair);
+                    }
 
                     if classification.is_transfer() {
                         if try_get_decimals(&t_address.0 .0).is_none() {
@@ -102,8 +110,19 @@ impl Classifier {
 
                     root.insert(node);
                 }
+                let needed_prices = TransactionPoolSwappedTokens {
+                    tx_idx,
+                    pairs: tx_pairs,
+                    state_diff: trace.state_diff,
+                };
 
-                Some((missing_decimals, root))
+                Some((
+                    ExtraProcessing {
+                        tokens_decimal_fill: missing_decimals,
+                        prices:              needed_prices,
+                    },
+                    root,
+                ))
             })
             .unzip();
 
@@ -137,8 +156,12 @@ impl Classifier {
                     .into_iter()
                     .filter_map(|(index, data)| {
                         let Actions::Transfer(transfer) = data else { return None };
-                        if transfer.amount == swap_data.amount_in
+                        if (transfer.amount == swap_data.amount_in
                             && transfer.token == swap_data.token_in
+                            && transfer.to == swap_data.pool)
+                            || (transfer.amount == swap_data.amount_out
+                                && transfer.token == swap_data.token_out
+                                && transfer.from == swap_data.pool)
                         {
                             return Some(*index)
                         }
@@ -205,13 +228,17 @@ impl Classifier {
         }
     }
 
-    fn classify_node(&self, trace: TransactionTraceWithLogs, index: u64) -> Actions {
+    fn classify_node(
+        &self,
+        trace: TransactionTraceWithLogs,
+        index: u64,
+    ) -> (Option<Pair>, Actions) {
         // we don't classify static calls
         if trace.is_static_call() {
-            return Actions::Unclassified(trace)
+            return (None, Actions::Unclassified(trace))
         }
         if trace.trace.error.is_some() {
-            return Actions::Revert
+            return (None, Actions::Revert)
         }
 
         let from_address = trace.get_from_addr();
@@ -222,7 +249,7 @@ impl Classifier {
                 let calldata = trace.get_calldata();
                 let return_bytes = trace.get_return_calldata();
                 let sig = &calldata[0..4];
-                let res = protocol
+                let res: Option<Actions> = protocol
                     .1
                     .try_decode(&calldata)
                     .map(|data| {
@@ -240,7 +267,13 @@ impl Classifier {
                     .flatten();
 
                 if let Some(res) = res {
-                    return res
+                    let tokens = if let Actions::Swap(swap) = &res {
+                        Some(Pair(swap.token_in, swap.token_out))
+                    } else {
+                        None
+                    };
+
+                    return (pair, res)
                 } else {
                     tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
                 }
@@ -251,17 +284,20 @@ impl Classifier {
         // don't want to classify it
         if trace.logs.len() == 1 {
             if let Some((addr, from, to, value)) = self.decode_transfer(&trace.logs[0]) {
-                return Actions::Transfer(NormalizedTransfer {
-                    index,
-                    to,
-                    from,
-                    token: addr,
-                    amount: value,
-                })
+                return (
+                    None,
+                    Actions::Transfer(NormalizedTransfer {
+                        index,
+                        to,
+                        from,
+                        token: addr,
+                        amount: value,
+                    }),
+                )
             }
         }
 
-        Actions::Unclassified(trace)
+        (None, Actions::Unclassified(trace))
     }
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
