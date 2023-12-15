@@ -1,0 +1,55 @@
+[package]
+name = "brontes-static"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# alloy
+alloy-sol-types.workspace = true
+alloy-sol-macro = { workspace = true, features = ["json"] }
+alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-transport = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-networks = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
+
+# reth
+reth-rpc-types.workspace = true
+reth-primitives.workspace = true
+
+# tracing
+tracing.workspace = true
+
+# misc
+hex-literal.workspace = true
+rayon.workspace = true
+lazy_static.workspace = true
+once_cell.workspace = true
+malachite.workspace = true
+serde_json.workspace = true
+parking_lot.workspace = true
+paste = "1.0.14"
+phf.workspace = true
+itertools.workspace = true
+
+
+[build-dependencies]
+tokio.workspace = true
+clickhouse.workspace = true
+hyper.workspace = true
+hyper-tls.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+phf_codegen.workspace = true
+rayon.workspace = true
+alloy-json-abi = { workspace = true, features = ["serde_json"] }
+reth-rpc-types.workspace = true
+reth-primitives.workspace = true
+futures.workspace = true
+itertools.workspace = true
+dotenv.workspace = true
+reth-tracing-ext.workspace = true

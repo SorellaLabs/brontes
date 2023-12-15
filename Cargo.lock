@@ -1240,6 +1240,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "brontes-static"
+version = "0.1.0"
+dependencies = [
+ "alloy-json-abi",
+ "alloy-json-rpc",
+ "alloy-networks",
+ "alloy-providers",
+ "alloy-rpc-client",
+ "alloy-rpc-types",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "alloy-transport",
+ "alloy-transport-http",
+ "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
+ "dotenv",
+ "futures",
+ "hex-literal",
+ "hyper",
+ "hyper-tls",
+ "itertools 0.11.0",
+ "lazy_static",
+ "malachite",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "paste",
+ "phf",
+ "phf_codegen",
+ "rayon",
+ "reth-primitives",
+ "reth-rpc-types",
+ "reth-tracing-ext",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "brontes-tracing"
 version = "0.1.0"
 dependencies = [

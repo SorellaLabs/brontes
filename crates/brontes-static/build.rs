@@ -15,8 +15,24 @@ use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-const PROTOCOLS: &str = "select distinct concat(protocol, protocol_subtype) from ethereum.pools";
+const TOKEN_MAPPING: &str = "token_to_addresses.rs";
+const TOKEN_QUERIES: &str = "SELECT DISTINCT toString(address), arrayMap(x -> toString(x), \
+                             tokens) AS 
+                             tokens FROM ethereum.pools WHERE length(tokens) = ";
 
+const FAILED_ABI_FILE: &str = "../../failed_abis.txt";
+const ABI_DIRECTORY: &str = "./abis/";
+const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
+const BINDINGS_PATH: &str = "bindings.rs";
+
+const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
+SELECT 
+	groupArray(address) as addresses, abi, classifier_name
+FROM brontes.protocol_details
+FINAL
+WHERE classifier_name IS NOT NULL
+GROUP BY abi, classifier_name
+"#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default, PartialEq, Eq, Hash)]
 struct ProtocolDetails {
