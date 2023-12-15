@@ -12,10 +12,10 @@ pub fn bench_tx_trace_parse(c: &mut Criterion) {
         .unwrap();
 
     let block = 18793182;
-    let tracer = rt.block_on(async move {
-        let (tx, _rx) = unbounded_channel();
-        init_trace_parser(tokio::runtime::Handle::current().clone(), tx)
-    });
+    let (tx, _rx) = unbounded_channel();
+    let tracer = rt
+        .block_on(async move { init_trace_parser(tokio::runtime::Handle::current().clone(), tx) });
+
     println!("running bench");
     c.bench_function("29,995,104 gas block", move |b| {
         b.to_async(&rt)
