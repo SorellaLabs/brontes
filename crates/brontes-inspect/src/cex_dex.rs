@@ -292,7 +292,7 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        println!("{:#?}", metadata);
+        println!("{:#?}", metadata.cex_quotes.quotes);
 
         let tx = block.0.clone().into_iter().take(40).collect::<Vec<_>>();
         let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
