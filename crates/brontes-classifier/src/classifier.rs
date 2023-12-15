@@ -72,7 +72,7 @@ impl Classifier {
                         gas_used:            trace.gas_used,
                         effective_gas_price: trace.effective_price,
                         priority_fee:        trace.effective_price
-                            - header.base_fee_per_gas.unwrap(),
+                            - (header.base_fee_per_gas.unwrap() as u128),
                     },
                 };
 
