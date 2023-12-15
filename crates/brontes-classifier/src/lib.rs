@@ -34,28 +34,28 @@ sol!{
     UniswapV2,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/UniswapV2.json"
-};
+}
 #[cfg(feature = "libmdbx")]
 sol!{
     #![sol(all_derives = true)]
     SushiSwapV2,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/SushiSwapV2.json"
-};
+}
 #[cfg(feature = "libmdbx")]
 sol!{
     #![sol(all_derives = true)]
     UniswapV3,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/UniswapV3.json"
-};
+}
 #[cfg(feature = "libmdbx")]
 sol!{
     #![sol(all_derives = true)]
     SushiSwapV3,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/SushiSwapV3.json"
-};
+}
 
 
 #[allow(non_camel_case_types)]
