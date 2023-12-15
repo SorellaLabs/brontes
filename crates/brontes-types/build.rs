@@ -20,6 +20,7 @@ const TOKEN_QUERIES: &str =
     "SELECT toString(address) AS address, decimals FROM ethereum.dex_tokens LIMIT 1"; // unchange from limit 1
 
 fn main() {
+    return;
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
 
     let runtime = tokio::runtime::Builder::new_current_thread()
