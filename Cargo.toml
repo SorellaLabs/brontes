@@ -32,31 +32,31 @@ reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/tracing" }
 
 # Reth
-reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "b34b0d3" }
-reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "b34b0d3" }
-reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "b34b0d3" }
-reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "b34b0d3" }
-reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "b34b0d3" }
-reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "b34b0d3" }
-reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "b34b0d3" }
-reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "b34b0d3" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "b34b0d3" }
+reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
 reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", features = [
   "test-utils",
-], rev = "b34b0d3" }
-reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "b34b0d3" }
-reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "b34b0d3" }
-reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "b34b0d3" }
+], rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", features = [
   "test-utils",
-], rev = "b34b0d3" }
+], rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
 reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = [
   "test-utils",
-], rev = "b34b0d3" }
-reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "b34b0d3" }
-reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "b34b0d3" }
-reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "b34b0d3" }
-reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "b34b0d3" }
+], rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
+reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "a8e2518aa0f4b14e79e8f90391686402f231a450" }
 
 # ruint
 ruint = "1.9.0"
