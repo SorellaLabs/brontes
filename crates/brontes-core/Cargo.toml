@@ -74,6 +74,7 @@ phf.workspace = true
 lazy_static.workspace = true
 auto_impl.workspace = true
 dotenv.workspace = true
+itertools.workspace = true
 
 [dev-dependencies]
 serial_test.workspace = true
