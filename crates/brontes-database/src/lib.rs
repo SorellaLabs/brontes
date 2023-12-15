@@ -67,10 +67,6 @@ impl MulAssign for DexQuote {
     }
 }
 
-impl From<HashMap<usize, HashMap<Pair, Rational>>> for QuotesMap<DexQuote> {
-    fn from(value: HashMap<usize, HashMap<Pair, Rational>>) -> Self {}
-}
-
 #[derive(Debug, Clone, Hash, Eq, Default)]
 pub struct CexQuote {
     pub timestamp: u64,
