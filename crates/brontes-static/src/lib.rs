@@ -2,7 +2,12 @@ include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
 include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_addr_set.rs"));
 include!(concat!(env!("ABI_BUILD_DIR"), "/bindings.rs"));
 
-use alloy_sol_macro::sol;
+use std::fmt::Debug;
+
+use alloy_sol_types::{sol, SolInterface};
+use once_cell::sync::Lazy;
+use reth_primitives::{alloy_primitives::FixedBytes, Address, Bytes};
+use reth_rpc_types::Log;
 
 pub trait TryDecodeSol {
     type DecodingType;
