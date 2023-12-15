@@ -32,25 +32,25 @@ sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
 sol!(
     UniswapV2,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
-     abisUniswapV2.json"
+     abis/UniswapV2.json"
 );
 #[cfg(feature = "libmdbx")]
 sol!(
     SushiSwapV2,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
-     abisSushiSwapV2.json"
+     abis/SushiSwapV2.json"
 );
 #[cfg(feature = "libmdbx")]
 sol!(
     UniswapV3,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
-     abisUniswapV3.json"
+     abis/UniswapV3.json"
 );
 #[cfg(feature = "libmdbx")]
 sol!(
     SushiSwapV3,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
-     abisSushiSwapV3.json"
+     abis/SushiSwapV3.json"
 );
 
 #[allow(non_camel_case_types)]
