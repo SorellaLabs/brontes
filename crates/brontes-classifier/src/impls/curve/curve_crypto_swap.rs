@@ -1,12 +1,17 @@
+use std::str::FromStr;
+
 use alloy_sol_types::{SolCall, SolEvent};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_primitives::{Address, Bytes, U256};
 use reth_rpc_types::Log;
-use std::str::FromStr;
+
 use crate::{
     enum_unwrap, ActionCollection,
-    CurveCryptoSwap::{exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call,exchange_underlying_1Call, TokenExchange, CurveCryptoSwapCalls},
+    CurveCryptoSwap::{
+        exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call,
+        exchange_underlying_1Call, CurveCryptoSwapCalls, TokenExchange,
+    },
     IntoAction, StaticReturnBindings, ADDRESS_TO_TOKENS_2_POOL,
 };
 
@@ -50,12 +55,12 @@ action_impl!(
 action_impl!(
     CurveCryptoExchange1,
     Swap,
-    exchange_1Call, 
+    exchange_1Call,
     TokenExchange,
     CurveCryptoSwap,
     logs: true,
     call_data: true,
-    |index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>, call_data: exchange_1Call | {
+    |index, from_address: Address, target_address: Address, call_data: exchange_1Call, log_data: Option<TokenExchange>| {
 
         let log = log_data?;
         let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
@@ -99,8 +104,8 @@ action_impl!(
 action_impl!(
 CurveCryptoExchangeUnderlying,
 Swap,
-TokenExchange,
 exchange_underlying_0Call,
+TokenExchange,
 CurveCryptoSwap,
 logs: true,
 |index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>| {
