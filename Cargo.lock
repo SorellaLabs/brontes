@@ -1108,6 +1108,7 @@ dependencies = [
  "lazy_static",
  "log",
  "malachite",
+ "once_cell",
  "phf",
  "phf_codegen",
  "rayon",

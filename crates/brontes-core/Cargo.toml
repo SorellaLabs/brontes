@@ -28,6 +28,8 @@ brontes-metrics.workspace = true
 brontes-tracing.workspace = true
 brontes-database.workspace = true
 
+once_cell.workspace = true
+
 # async
 
 tokio = { workspace = true, features = ["full", "tracing"] }
