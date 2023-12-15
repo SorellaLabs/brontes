@@ -74,12 +74,15 @@ impl Inspector for SandwichInspector {
                     .map(|victim| tree.collect(*victim, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
 
+                let prev_tx = [tree.get_prev_tx(ps.tx0), tree.get_prev_tx(ps.tx1)];
+
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .map(|tx| tree.collect(tx, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
 
                 self.calculate_sandwich(
+                    prev_tx,
                     ps.eoa,
                     ps.mev_executor_contract,
                     meta_data.clone(),
@@ -98,6 +101,7 @@ impl Inspector for SandwichInspector {
 impl SandwichInspector {
     fn calculate_sandwich(
         &self,
+        prev_tx: [B256; 2],
         eoa: Address,
         mev_executor_contract: Address,
         metadata: Arc<Metadata>,
@@ -112,10 +116,23 @@ impl SandwichInspector {
         if searcher_actions.len() < 2 {
             return None
         }
+        let (frontrun, backrun) = (
+            vec![searcher_actions.get(0).unwrap().clone()],
+            vec![searcher_actions.get(1).unwrap().clone()],
+        );
 
-        let (deltas, mev_collectors) = self.inner.calculate_swap_deltas(&searcher_actions);
+        let (front_deltas, _) = self.inner.calculate_swap_deltas(&frontrun);
 
-        let rev_usd = self.inner.usd_delta(deltas, metadata.clone());
+        let front_run_rev =
+            self.inner
+                .usd_delta_dex_avg(&prev_tx[0], &txes[0], front_deltas, metadata.clone());
+
+        let (backrun, mev_collectors) = self.inner.calculate_swap_deltas(&backrun);
+        let back_run_rev =
+            self.inner
+                .usd_delta_dex_avg(&prev_tx[1], &txes[1], backrun, metadata.clone());
+
+        let rev_usd = back_run_rev + front_run_rev;
 
         if rev_usd.le(&Rational::ZERO) {
             return None
