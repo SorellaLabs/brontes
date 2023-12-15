@@ -85,8 +85,7 @@ impl CexDexInspector {
             })
             .collect();
 
-        let profit_finalized =
-            self.arb_gas_accounting(swap_sequences, gas_details, &metadata.eth_prices);
+        let profit = self.arb_gas_accounting(swap_sequences, gas_details, &metadata.eth_prices);
 
         let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
 
@@ -103,7 +102,7 @@ impl CexDexInspector {
             eoa,
             block_number: metadata.block_num,
             mev_type: MevType::CexDex,
-            finalized_profit_usd: profit_finalized?.to_float(),
+            finalized_profit_usd: profit?.to_float(),
             finalized_bribe_usd: gas_finalized.to_float(),
         };
 
@@ -184,7 +183,7 @@ impl CexDexInspector {
             .flat_map(|sequence| sequence)
             .fold(Rational::ZERO, |acc, (_, v)| acc + v.as_ref().unwrap_or(&zero));
 
-        let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) * eth_price;
+        let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u128.pow(18)) * eth_price;
 
         if total_arb > gas_cost {
             Some(total_arb - gas_cost)
@@ -193,11 +192,10 @@ impl CexDexInspector {
         }
     }
 
-    // TODO check correctness + check cleanup potential with shared utils?
     pub fn get_cex_dex(&self, swap: &NormalizedSwap, metadata: &Metadata) -> Option<Rational> {
         self.rational_prices(&Actions::Swap(swap.clone()), metadata)
-            .map(|(dex_price, cex_price1)| {
-                self.profit_classifier(swap, &dex_price, &cex_price1)
+            .map(|(dex_price, best_ask)| {
+                self.profit_classifier(swap, &dex_price, &best_ask)
                     .filter(|p| Rational::ZERO.lt(p))
             })
             .unwrap_or_default()
@@ -292,8 +290,6 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        println!("{:#?}", metadata.cex_quotes.quotes);
-
         let tx = block.0.clone().into_iter().take(40).collect::<Vec<_>>();
         let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
         let tree = Arc::new(tree);
@@ -348,9 +344,23 @@ mod tests {
             Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
         );
 
+        let amount_in = Rational::from_sci_string("5055369263000000000000e-18").unwrap();
+        let amount_out = Rational::from_sci_string("8421308582396e-6").unwrap();
+
+        dex_price = amount_out / amount_in;
+
+        let price_delta = metadata
+            .cex_quotes
+            .get_quote(&Pair(swap.token_in, swap.token_out))
+            .unwrap()
+            .best_ask()
+            - dex_price;
+
+        let expected_profit = price_delta * swap.amount_in;
+
         let profit = inspector.get_cex_dex(&swap, &metadata);
 
-        assert_eq!(profit.unwrap(), (Rational::from_str("12499/1250").unwrap()));
+        assert_eq!(profit.unwrap(), expected_profit);
     }
 
     #[tokio::test]
