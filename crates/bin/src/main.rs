@@ -9,10 +9,7 @@ use alloy_providers::provider::Provider;
 use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::{
-    database::{Database, USDT_ADDRESS},
-    Pair,
-};
+use brontes_database::database::{Database, USDT_ADDRESS};
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
     sandwich::SandwichInspector, Inspector,

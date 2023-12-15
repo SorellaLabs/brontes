@@ -9,17 +9,12 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use itertools::Itertools;
-use malachite::{
-    num::basic::traits::{One, Zero},
-    Rational,
-};
+use malachite::{num::basic::traits::One, Rational};
 use petgraph::{
     algo::Measure,
-    data::Build,
-    graph::{self, UnGraph},
+    graph::UnGraph,
     prelude::*,
-    visit::{EdgeCount, IntoEdges, VisitMap, Visitable},
+    visit::{IntoEdges, VisitMap, Visitable},
 };
 use tracing::info;
 

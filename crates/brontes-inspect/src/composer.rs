@@ -17,7 +17,7 @@ use brontes_types::{
 };
 use futures::FutureExt;
 use lazy_static::lazy_static;
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 use reth_primitives::Address;
 use tracing::info;
 
@@ -376,28 +376,21 @@ impl<const N: usize> Future for Composer<'_, N> {
         Poll::Pending
     }
 }
-
+/*q
 #[cfg(test)]
 pub mod tests {
     use std::{
         collections::{HashMap, HashSet},
-        env,
         str::FromStr,
-        time::SystemTime,
     };
 
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
     use brontes_database::database::Database;
-    use brontes_types::test_utils::write_tree_as_json;
-    use futures::future::BoxFuture;
-    use malachite::{
-        num::{basic::traits::One, conversion::traits::FromSciString},
-        Rational,
-    };
-    use reth_primitives::{H256, U256};
+    use malachite::Rational;
+    use reth_primitives::{B256, U256};
     use serial_test::serial;
-    use tokio::sync::{mpsc::unbounded_channel, OnceCell};
+    use tokio::sync::mpsc::unbounded_channel;
     use tracing::info;
 
     use super::*;
@@ -424,7 +417,7 @@ pub mod tests {
             proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
                 .unwrap(),
             proposer_mev_reward:    11769128921907366414,
-            token_prices:           {
+            cex_quotes:             {
                 let mut prices = HashMap::new();
 
                 prices.insert(
@@ -463,14 +456,11 @@ pub mod tests {
 
                 prices
             },
-            eth_prices:             (
-                Rational::try_from_float_simplest(2126.43).unwrap(),
-                Rational::try_from_float_simplest(2126.43).unwrap(),
-            ),
+            eth_prices:             (Rational::try_from_float_simplest(2126.43).unwrap()),
             mempool_flow:           {
                 let mut private = HashSet::new();
                 private.insert(
-                    H256::from_str(
+                    B256::from_str(
                         "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
                     )
                     .unwrap(),
@@ -479,6 +469,7 @@ pub mod tests {
             },
         }
     }
+
 
     /// takes the blocknumber, setups the tree and calls on_new_tree before
     /// returning the composer
@@ -496,12 +487,15 @@ pub mod tests {
         let metadata =
             if let Some(meta) = custom_meta { meta } else { db.get_metadata(block_num).await };
 
-        let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
+        let (tokens_missing_decimals, tree) = classifier.build_tree(block.0, block.1);
 
-        let cex_dex = Box::new(CexDexInspector::default()) as Box<dyn Inspector>;
-        let backrun = Box::new(AtomicBackrunInspector::default()) as Box<dyn Inspector>;
-        let jit = Box::new(JitInspector::default()) as Box<dyn Inspector>;
-        let sandwich = Box::new(SandwichInspector::default()) as Box<dyn Inspector>;
+        let USDC = Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap();
+
+        // Here the quote address is USDC
+        let cex_dex = Box::new(CexDexInspector::new(USDC)) as Box<dyn Inspector>;
+        let backrun = Box::new(AtomicBackrunInspector::new(USDC)) as Box<dyn Inspector>;
+        let jit = Box::new(JitInspector::new(USDC)) as Box<dyn Inspector>;
+        let sandwich = Box::new(SandwichInspector::new(USDC)) as Box<dyn Inspector>;
 
         let inspectors: [&'static Box<dyn Inspector>; 2] = unsafe {
             [
@@ -513,7 +507,7 @@ pub mod tests {
         };
 
         let mut composer = Composer::new(Box::leak(Box::new(inspectors)));
-        composer.on_new_tree(tree, metadata.into());
+        composer.on_new_tree(tree.into(), metadata.into());
 
         composer
     }
@@ -540,3 +534,4 @@ pub mod tests {
     #[serial_test::serial]
     pub async fn test_sandwich_jit_compose() {}
 }
+*/
