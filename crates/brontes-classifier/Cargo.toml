@@ -12,6 +12,7 @@ harness = false
 brontes-database.workspace = true
 brontes-types.workspace = true
 brontes-macros.workspace = true
+brontes-static.workspace = true
 
 # alloy
 alloy-sol-types.workspace = true

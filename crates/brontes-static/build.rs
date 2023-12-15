@@ -312,8 +312,8 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             writeln!(
                 &mut file,
                 "
-                pub static {}: Lazy<(Option<Box<dyn ActionCollection>>,StaticBindings)> = \
-                 Lazy::new(|| (None, StaticBindings::{}({}_Enum::None)));
+                pub static {}: Lazy<(Option<&'static str>,StaticBindings)> = Lazy::new(|| (None, \
+                 StaticBindings::{}({}_Enum::None)));
                 ",
                 name.to_uppercase(),
                 name,
@@ -333,13 +333,12 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
             }
         } else {
             let name = &map.classifier_name.as_ref().unwrap().clone();
-            let classified_name = map.classifier_name.as_ref().unwrap().clone() + "Classifier";
             writeln!(
                 &mut file,
-                "pub static {}: Lazy<(Option<Box<dyn ActionCollection>>,StaticBindings)> = \
-                 Lazy::new(|| (Some(Box::new({}::default())), StaticBindings::{}({}_Enum::None)));",
+                "pub static {}: Lazy<(Option<&'static str>, StaticBindings)> = Lazy::new(|| \
+                 (Some({}), StaticBindings::{}({}_Enum::None)));",
                 name.to_uppercase(),
-                classified_name,
+                name,
                 name,
                 name
             )
@@ -360,8 +359,8 @@ fn address_abi_mapping(mapping: Vec<(ProtocolDetails, bool, bool)>) {
 
     writeln!(
         &mut file,
-        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<[u8; 20], &'static Lazy<(Option<Box<dyn \
-         ActionCollection>>,StaticBindings)>> = \n{};\n",
+        "pub static PROTOCOL_ADDRESS_MAPPING: phf::Map<[u8; 20], &'static Lazy<(Option<&'static \
+         str>,StaticBindings)>> = \n{};\n",
         phf_map.build()
     )
     .unwrap();

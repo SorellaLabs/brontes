@@ -10,7 +10,8 @@ members = [
   "crates/tracing",
   "crates/brontes-database",
   "crates/brontes-macros",
-  "tests", "crates/brontes-static",
+  "tests",
+  "crates/brontes-static",
 ]
 
 resolver = "2"
@@ -30,6 +31,7 @@ brontes-database = { path = "./crates/brontes-database/" }
 brontes-macros = { path = "./crates/brontes-macros/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/tracing" }
+brontes-static = { path = "./crates/tracing/" }
 
 # Reth
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "3d291ea" }

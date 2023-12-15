@@ -12,18 +12,13 @@ pub mod test_utils;
 
 mod impls;
 use alloy_sol_types::{sol, SolInterface};
+use brontes_static::PROTOCOL_ADDRESS_MAPPING;
 use brontes_types::normalized_actions::Actions;
+
 pub use impls::*;
 
-include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
-include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_addr_set.rs"));
-include!(concat!(env!("ABI_BUILD_DIR"), "/bindings.rs"));
+include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_classifier_map.rs"));
 
-pub trait TryDecodeSol {
-    type DecodingType;
-
-    fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error>;
-}
 
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
@@ -36,6 +31,12 @@ pub trait ActionCollection: Sync + Send {
         target_address: Address,
         logs: &Vec<Log>,
     ) -> Option<Actions>;
+}
+
+pub trait TryDecodeSol {
+    type DecodingType;
+
+    fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error>;
 }
 
 /// implements the above trait for decoding on the different binding enums
