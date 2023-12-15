@@ -5,6 +5,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tokio::sync::mpsc::unbounded_channel;
 
 pub fn bench_tx_trace_parse(c: &mut Criterion) {
+    println!("getting called");
+    init_tracing();
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -20,5 +22,5 @@ pub fn bench_tx_trace_parse(c: &mut Criterion) {
     });
 }
 
-criterion_group!(parsing, bench_tx_trace_parse);
-criterion_main!(parsing);
+criterion_group!(parse, bench_tx_trace_parse);
+criterion_main!(parse);
