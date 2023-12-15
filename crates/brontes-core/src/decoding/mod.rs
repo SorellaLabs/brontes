@@ -1,6 +1,7 @@
 use std::{pin::Pin, sync::Arc};
 
 use alloy_providers::provider::Provider;
+use alloy_rpc_types::{state::StateOverride, BlockId, BlockOverrides, CallRequest};
 use alloy_transport_http::Http;
 use brontes_database::database::Database;
 use brontes_types::structured_trace::TxTrace;
@@ -38,6 +39,14 @@ use reth_rpc_types::TransactionReceipt;
 #[async_trait::async_trait]
 #[auto_impl::auto_impl(&, Arc, Box)]
 pub trait TracingProvider: Send + Sync + 'static {
+    async fn eth_call(
+        &self,
+        request: CallRequest,
+        block_number: Option<BlockId>,
+        state_overrides: Option<StateOverride>,
+        block_overrides: Option<Box<BlockOverrides>>,
+    ) -> RpcResult<Bytes>;
+
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>>;
 
     #[cfg(not(feature = "local"))]
@@ -59,6 +68,16 @@ pub trait TracingProvider: Send + Sync + 'static {
 
 #[async_trait::async_trait]
 impl TracingProvider for Provider<Http<Client>> {
+    async fn eth_call(
+        &self,
+        request: CallRequest,
+        block_number: Option<BlockId>,
+        state_overrides: Option<StateOverride>,
+        block_overrides: Option<Box<BlockOverrides>>,
+    ) -> RpcResult<Bytes> {
+        todo!()
+    }
+
     async fn block_hash_for_id(&self, _block_num: u64) -> ProviderResult<Option<B256>> {
         todo!()
     }
@@ -94,6 +113,17 @@ impl TracingProvider for Provider<Http<Client>> {
 
 #[async_trait::async_trait]
 impl TracingProvider for TracingClient {
+    async fn eth_call(
+        &self,
+        request: CallRequest,
+        block_number: Option<BlockId>,
+        state_overrides: Option<StateOverride>,
+        block_overrides: Option<Box<BlockOverrides>>,
+    ) -> RpcResult<Bytes> {
+        self.api.call(request, block_number, overrides)
+        todo!()
+    }
+
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
         self.trace
             .provider()
