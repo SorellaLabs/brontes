@@ -6,12 +6,50 @@ use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 /// the action impl macro deals with automatically parsing the data needed for
 /// underlying actions. The use is as followed
 /// ```rust
-/// action_impl!(ExchangeName, ReturnAction, CallType, LogType, ExchangeModName, [logs: bool , call_data: bool, return_data: bool])
+/// action_impl!(ExchangeName, NormalizedAction, CallType, LogType, ExchangeModName, [logs: bool , call_data: bool, return_data: bool])
 /// ```
-/// Where GiveLogs, GiveReturns are bools, and CallFn is a closure that takes
+///
+///  ## Examples
 /// ```rust
+/// action_impl!(
+///     V2SwapImpl,
+///     Swap,
+///     swapCall,
+///     Swap,
+///     UniswapV2,
+///     logs: true,
+///     |index, from_address: Address, target_address: Address, data: Option<Swap>| { <body> });
+///
+/// action_impl!(
+///     V2MintImpl,
+///     Mint,
+///     mintCall,
+///     Mint,
+///     UniswapV2,
+///     logs: true,
+///     call_data: true,
+///     |index,
+///      from_address: Address,
+///      target_address: Address,
+///      call_data: mintCall,
+///      log_data: Option<Mint>|  { <body> });
+///
 /// |index, from_address, target_address, call_data, return_data, log_data| { <body> }
 /// ```
+///
+/// the fields `call_data`, `return_data` and `log_data` are only put into the
+/// closure if specified they are always in this order, for example if you put
+///  
+///  ```return_data: true```
+///  then then the closure would be as followed
+///  ```|index, from_address, target_address, return_data|```
+///
+/// for
+///  ```
+///  log_data: true,
+///  call_data: true
+///  ````
+///  ```|index, from_address, target_address, return_data, log_data|```
 pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let MacroParse {
         exchange_name,
@@ -149,9 +187,9 @@ impl Parse for MacroParse {
         input.parse::<Token![,]>()?;
         let action_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let log_type: Ident = input.parse()?;
-        input.parse::<Token![,]>()?;
         let call_type: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let log_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
 
         let exchange_mod_name: Ident = input.parse()?;
