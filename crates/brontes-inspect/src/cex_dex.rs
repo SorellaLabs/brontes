@@ -350,7 +350,7 @@ mod tests {
 
         let profit = inspector.get_cex_dex(&swap, &metadata);
 
-        //assert_eq!(profit, (Some(Rational::from) None));
+        assert_eq!(profit, (Some(Rational::from) None));
     }
 
     #[tokio::test]
@@ -471,7 +471,7 @@ mod tests {
 
                 // At 18:39:23 UTC (time of submission) the price is $1682.268937
                 // At 18:40 UTC (lowest level granularity I could get from the ) the price is
-                // $1682.081816
+                // $1688.1
 
                 // See chart: https://www.tradingview.com/x/5uG0Zxdq
                 prices.insert(
@@ -480,19 +480,31 @@ mod tests {
                         Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
                     ),
                     Quote {
-                        timestamp: 1696271964134,
+                        timestamp: 1696271964130,
                         price:     (
-                            Rational::from_str("7398697029111485/4398046511104").unwrap()
-                                / Rational::from_str("1").unwrap(),
-                            Rational::from_str("7398697029111485/4398046511104").unwrap()
-                                / Rational::from_str("1").unwrap(),
-                            // WETH = $1682.268937
+                            Rational::from_str("3712171157697331/2199023255552").unwrap(),
+                            Rational::from_str("7423594647487775/4398046511104").unwrap(),
                         ),
                     },
                 );
+
+                prices.insert(
+                    Pair(
+                        Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+                        Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+                    ),
+                    Quote {
+                        timestamp: 1696271964130,
+                        price:     (
+                            Rational::from_str("1364711005559649/2305843009213693952").unwrap(),
+                            Rational::from_str("5459748799445213/9223372036854775808").unwrap(),
+                        ),
+                    },
+                );
+
                 PriceGraph::from_quotes(QuotesMap::wrap(prices))
             },
-            eth_prices:             (Rational::from_str("924734257781285/549755813888").unwrap()),
+            eth_prices:             (Rational::from_str("3712171157697331/2199023255552").unwrap()),
             mempool_flow:           {
                 let mut private = HashSet::new();
                 private.insert(
