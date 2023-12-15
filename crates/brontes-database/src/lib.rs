@@ -72,7 +72,7 @@ impl MulAssign for DexQuote {
     }
 }
 
-impl From<Vec<PoolReservesDB>> for Quotes<DexQuote> {
+impl From<Vec<PoolReservesDB>> for QuotesMap<DexQuote> {
     fn from(value: Vec<PoolReservesDB>) -> Self {
         value
             .into_iter()
@@ -93,7 +93,7 @@ impl From<Vec<PoolReservesDB>> for Quotes<DexQuote> {
                     });
                 (Address::from_str(&pool_reserve.post_tx_hash.to_string()).unwrap(), pair_w_price)
             })
-            .fold(Quotes(HashMap::new()), |mut map, (post_tx, pair_w_price)| {
+            .fold(QuotesMap(HashMap::new()), |mut map, (post_tx, pair_w_price)| {
                 for (pair, price) in pair_w_price {
                     assert!(map
                         .0
@@ -158,9 +158,9 @@ impl MulAssign for CexQuote {
 #[derive(Debug, Clone)]
 /// There should be 1 entry for how the pair is stored on the CEX and the other
 /// order should be the reverse of that
-pub struct Quotes<Q: Quote>(HashMap<Pair, Q>);
+pub struct QuotesMap<Q: Quote>(HashMap<Pair, Q>);
 
-impl<Q: Quote> Quotes<Q> {
+impl<Q: Quote> QuotesMap<Q> {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
@@ -170,7 +170,7 @@ impl<Q: Quote> Quotes<Q> {
     }
 }
 
-impl From<Vec<DBTokenPricesDB>> for Quotes<CexQuote> {
+impl From<Vec<DBTokenPricesDB>> for QuotesMap<CexQuote> {
     fn from(value: Vec<DBTokenPricesDB>) -> Self {
         let map = value
             .into_iter()
@@ -191,7 +191,7 @@ impl From<Vec<DBTokenPricesDB>> for Quotes<CexQuote> {
             })
             .collect::<HashMap<Pair, CexQuote>>();
 
-        Quotes(map)
+        QuotesMap(map)
     }
 }
 
