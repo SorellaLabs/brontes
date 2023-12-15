@@ -1,7 +1,11 @@
-pub mod uniswap_v2;
-pub mod uniswap_v3;
-pub use uniswap_v2::{SushiSwapV2Classifier, UniswapV2Classifier};
-pub use uniswap_v3::{SushiSwapV3Classifier, UniswapV3Classifier};
+pub mod uniswap;
+pub use uniswap::{UniswapV2Classifier, UniswapV3Classifier};
+
+pub mod sushiswap;
+pub use sushiswap::{SushiSwapV2Classifier, SushiSwapV3Classifier};
+
+pub mod curve;
+pub use curve::CurveCryptoSwapClassifier;
 
 #[macro_export]
 macro_rules! enum_unwrap {
