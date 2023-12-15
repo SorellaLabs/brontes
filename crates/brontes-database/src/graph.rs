@@ -14,6 +14,7 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
 use petgraph::{
     algo::Measure,
+    data::Build,
     graph::{self, UnGraph},
     prelude::*,
     unionfind::UnionFind,
@@ -54,6 +55,11 @@ where
         );
 
         Self { quotes, graph }
+    }
+
+    pub fn add_new_pair(&mut self, pair: Pair, quote: Q) -> bool {
+        let value = (quote, pair.1);
+        self.graph.add_node((pair.0, pair.1), value)
     }
 
     /// grabs a token that is disjoint and queries for it
@@ -201,8 +207,27 @@ where
         Self { graph, addr_to_index, index_to_addr }
     }
 
+    // returns false if there was a duplicate
+    pub fn add_node(&mut self, pair: (K, K), value: V) -> bool {
+        let node_0 = *self
+            .addr_to_index
+            .entry(pair.0)
+            .or_insert(self.graph.add_node(()).index());
+        let node_1 = *self
+            .addr_to_index
+            .entry(pair.1)
+            .or_insert(self.graph.add_node(()).index());
+
+        if self.graph.contains_edge(node_0, node_1) {
+            return false
+        }
+
+        self.graph.add_edge(node_0, node_1, value);
+        true
+    }
+
     // fetches the path from start to end if it exists returning none if not
-    pub fn get_path(&self, start: K, end: K) -> Option<Vec<V>> {
+    pub fn get_path(&self, start: K, end: K) -> Option<Vec<K>> {
         let start_idx = self.addr_to_index.get(&start)?;
         let end_idx = self.addr_to_index.get(&end)?;
 
