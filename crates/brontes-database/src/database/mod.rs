@@ -21,7 +21,7 @@ use self::types::{Abis, DBTokenPricesDB, PoolReservesDB, TimesFlow};
 use super::Metadata;
 use crate::{
     database::{const_sql::*, types::TimesFlowDB},
-    CexQuote, DexQuote, Pair, PriceGraph, Quotes,
+    CexQuote, DexQuote, Pair, PriceGraph, QuotesMap,
 };
 
 pub const WETH_ADDRESS: Address =
@@ -185,7 +185,7 @@ impl Database {
             .into()
     }
 
-    async fn get_dex_token_prices(&self, block: u64) -> Quotes<DexQuote> {
+    async fn get_dex_token_prices(&self, block: u64) -> QuotesMap<DexQuote> {
         self.client
             .query_all_params::<u64, PoolReservesDB>(DEX_PRICES, vec![block])
             .await
@@ -193,7 +193,7 @@ impl Database {
             .into()
     }
 
-    async fn get_cex_token_prices(&self, p2p_time: u64) -> Quotes<CexQuote> {
+    async fn get_cex_token_prices(&self, p2p_time: u64) -> QuotesMap<CexQuote> {
         self.client
             .query_all_params::<u64, DBTokenPricesDB>(PRICES, vec![p2p_time])
             .await
