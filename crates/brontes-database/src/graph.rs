@@ -26,7 +26,7 @@ type QuoteWithQuoteAsset = (Quote, Address);
 pub struct PriceGraph {
     graph:         UnGraph<(), QuoteWithQuoteAsset, usize>,
     addr_to_index: HashMap<Address, usize>,
-    quotes:        QuotesMap,
+    pub quotes:    QuotesMap,
 }
 
 impl PriceGraph {
