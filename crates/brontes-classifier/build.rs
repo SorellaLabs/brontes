@@ -39,9 +39,7 @@ fn main() {
 async fn build_classifier_map() {
     let clickhouse_client = build_db();
     let path = Path::new(&env::var("ABI_BUILD_DIR").unwrap())
-        .join(PROTOCOL_CLASSIFICATION_LOCATION)
-        .to_str()
-        .unwrap();
+        .join(PROTOCOL_CLASSIFICATION_LOCATION);
 
     let mut file = BufWriter::new(File::create(path).unwrap());
     let names = query_db::<ProtocolName>(&clickhouse_client, PROTOCOLS).await;
