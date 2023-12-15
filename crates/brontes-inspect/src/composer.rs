@@ -82,8 +82,8 @@ fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
 
 pub struct BlockPreprocessing {
     meta_data:           Arc<Metadata>,
-    cumulative_gas_used: u64,
-    cumulative_gas_paid: u64,
+    cumulative_gas_used: u128,
+    cumulative_gas_paid: u128,
     builder_address:     Address,
 }
 
@@ -146,13 +146,13 @@ impl<'a, const N: usize> Composer<'a, N> {
             .roots
             .iter()
             .map(|root| root.gas_details.gas_used)
-            .sum::<u64>();
+            .sum::<u128>();
 
         let cumulative_gas_paid = tree
             .roots
             .iter()
             .map(|root| root.gas_details.effective_gas_price * root.gas_details.gas_used)
-            .sum::<u64>();
+            .sum::<u128>();
 
         self.pre_processing = Some(BlockPreprocessing {
             meta_data,
@@ -170,11 +170,11 @@ impl<'a, const N: usize> Composer<'a, N> {
         let cum_mev_priority_fee_paid = orchestra_data
             .iter()
             .map(|(_, mev)| mev.priority_fee_paid())
-            .sum::<u64>();
+            .sum::<u128>();
 
         let total_bribe = 0;
-
-        let builder_eth_profit = total_bribe + pre_processing.cumulative_gas_paid;
+        //TODO: need to substract proposer payement + fees paid for gas
+        let builder_eth_profit = total_bribe + pre_processing.cumulative_gas_paid as i128;
 
         MevBlock {
             block_hash: pre_processing.meta_data.block_hash.into(),
@@ -190,7 +190,7 @@ impl<'a, const N: usize> Composer<'a, N> {
             total_bribe: orchestra_data
                 .iter()
                 .map(|(_, mev)| mev.bribe())
-                .sum::<u64>(),
+                .sum::<u128>(),
             cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
             builder_address: pre_processing.builder_address,
             builder_eth_profit,
