@@ -48,8 +48,7 @@ async fn build_classifier_map() {
 
     let mut phf_map = phf_codegen::Map::new();
     for name in names {
-        let name = &map.classifier_name.as_ref().unwrap().clone();
-        let classified_name = map.classifier_name.as_ref().unwrap().clone() + "Classifier";
+        let classified_name = name.name.clone() + "Classifier";
         phf_map.entry(name, &format!("Lazy::new(|| Box::new({}::default()))", classified_name));
     }
 
@@ -61,7 +60,6 @@ async fn build_classifier_map() {
     )
     .unwrap();
 }
-
 
 /// builds the clickhouse database client
 fn build_db() -> Client {
@@ -124,4 +122,3 @@ fn parse_filtered_addresses(file: &str) -> HashSet<String> {
 async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
 }
-
