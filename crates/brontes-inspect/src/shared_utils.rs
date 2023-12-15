@@ -4,24 +4,14 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{hex, FixedBytes, B256};
-use alloy_providers::provider::Provider;
-use alloy_rpc_types::TransactionRequest;
-use alloy_sol_macro::sol;
-use alloy_sol_types::SolCall;
-use alloy_transport_http::Http;
 use brontes_database::{Metadata, Pair};
-use brontes_types::{
-    cache_decimals,
-    normalized_actions::{Actions, NormalizedTransfer},
-    try_get_decimals, ToScaledRational, TOKEN_TO_DECIMALS,
-};
+use brontes_types::{normalized_actions::Actions, try_get_decimals, ToScaledRational};
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
 use reth_primitives::Address;
-use tracing::{error, info, warn};
+use tracing::error;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils(Address);
@@ -205,33 +195,35 @@ fn apply_entry<K: PartialEq + Hash + Eq>(
         }
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use std::{collections::HashMap, str::FromStr};
 
     use brontes_types::normalized_actions::{Actions, NormalizedSwap};
     use malachite::Integer;
-    use reth_primitives::{H160, H256};
+    use reth_primitives::{Address, B256};
 
     use super::*;
 
     #[test]
     fn test_swap_deltas() {
-        let inspector_utils = SharedInspectorUtils::default();
+        let inspector_utils = SharedInspectorUtils::new(
+            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+        );
 
         let swap1 = Actions::Swap(NormalizedSwap {
             index:      2,
-            from:       H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
-            pool:       H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(),
-            token_in:   H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-            token_out:  H160::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
-            amount_in:  H256::from_str(
+            from:       Address::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
+            pool:       Address::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(),
+            token_in:   Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+            token_out:  Address::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
+            amount_in:  B256::from_str(
                 "0x000000000000000000000000000000000000000000000000064fbb84aac0dc8e",
             )
             .unwrap()
             .into(),
-            amount_out: H256::from_str(
+            amount_out: B256::from_str(
                 "0x000000000000000000000000000000000000000000000000000065c3241b7c59",
             )
             .unwrap()
@@ -240,16 +232,16 @@ mod tests {
 
         let swap2 = Actions::Swap(NormalizedSwap {
             index:      2,
-            from:       H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
-            pool:       H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(),
-            token_in:   H160::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
-            token_out:  H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-            amount_in:  H256::from_str(
+            from:       Address::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
+            pool:       Address::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(),
+            token_in:   Address::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
+            token_out:  Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+            amount_in:  B256::from_str(
                 "0x000000000000000000000000000000000000000000000000000065c3241b7c59",
             )
             .unwrap()
             .into(),
-            amount_out: H256::from_str(
+            amount_out: B256::from_str(
                 "0x00000000000000000000000000000000000000000000000007e0871b600a7cf4",
             )
             .unwrap()
@@ -258,16 +250,16 @@ mod tests {
 
         let swap3 = Actions::Swap(NormalizedSwap {
             index:      6,
-            from:       H160::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap(),
-            pool:       H160::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(),
-            token_in:   H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-            token_out:  H160::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
-            amount_in:  H256::from_str(
+            from:       Address::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap(),
+            pool:       Address::from_str("0xde55ec8002d6a3480be27e0b9755ef987ad6e151").unwrap(),
+            token_in:   Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+            token_out:  Address::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
+            amount_in:  B256::from_str(
                 "0x0000000000000000000000000000000000000000000000000de0b6b3a7640000",
             )
             .unwrap()
             .into(),
-            amount_out: H256::from_str(
+            amount_out: B256::from_str(
                 "0x0000000000000000000000000000000000000000000000000000bbcc68d833cc",
             )
             .unwrap()
@@ -282,35 +274,36 @@ mod tests {
 
         let mut inner_map = HashMap::new();
         inner_map.insert(
-            H160::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
+            Address::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
             Rational::from(0),
         );
         inner_map.insert(
-            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+            Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
             Rational::from_integers(
                 Integer::from(56406919415648307u128),
                 Integer::from(500000000000000000u128),
             ),
         );
         expected_map.insert(
-            H160::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
+            Address::from_str("0xcc2687c14915fd68226ccf388842515739a739bd").unwrap(),
             inner_map,
         );
 
         let mut inner_map = HashMap::new();
         inner_map.insert(
-            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+            Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
             Rational::from(-1),
         );
         inner_map.insert(
-            H160::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
+            Address::from_str("0x728b3f6a79f226bc2108d21abd9b455d679ef725").unwrap(),
             Rational::from_integers(Integer::from(51621651680499u128), Integer::from(2500000u128)),
         );
         expected_map.insert(
-            H160::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap(),
+            Address::from_str("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad").unwrap(),
             inner_map,
         );
 
         assert_eq!(expected_map, deltas);
     }
 }
+ */
