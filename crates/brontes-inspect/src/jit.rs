@@ -114,13 +114,16 @@ impl Inspector for JitInspector {
                         .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                         .collect::<Vec<_>>();
 
-                    let prev_tx = [tree.get_prev_tx(frontrun_tx), tree.get_prev_tx(backrun_tx)];
+                    let idxs = [
+                        tree.get_root(frontrun_tx).unwrap().get_block_position(),
+                        tree.get_root(backrun_tx).unwrap().get_block_position(),
+                    ];
 
                     self.calculate_jit(
                         eoa,
                         mev_executor_contract,
                         metadata.clone(),
-                        prev_tx,
+                        idxs,
                         [frontrun_tx, backrun_tx],
                         gas,
                         searcher_actions,
@@ -140,7 +143,7 @@ impl JitInspector {
         eoa: Address,
         mev_addr: Address,
         metadata: Arc<Metadata>,
-        pre_txs: [B256; 2],
+        idxs: [usize; 2],
         txes: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,
@@ -173,11 +176,10 @@ impl JitInspector {
             return None
         }
 
-        let jit_fee = self.get_collect_amount(&pre_txs[1], &txes[1], fee_collect, metadata.clone());
+        let jit_fee = self.get_collect_amount(idxs[1], fee_collect, metadata.clone());
 
         let mint = self.get_total_pricing(
-            &pre_txs[0],
-            &txes[0],
+            idxs[0],
             mints.iter().map(|mint| (&mint.token, &mint.amount)),
             metadata.clone(),
         );
@@ -317,8 +319,7 @@ impl JitInspector {
 
     fn get_collect_amount(
         &self,
-        prev_tx: &B256,
-        current_tx: &B256,
+        idx: usize,
         collect: Vec<NormalizedCollect>,
         metadata: Arc<Metadata>,
     ) -> Rational {
@@ -328,26 +329,22 @@ impl JitInspector {
         let tokens = tokens.into_iter().flatten().collect::<Vec<_>>();
         let amount = amount.into_iter().flatten().collect::<Vec<_>>();
 
-        self.get_liquidity_price(prev_tx, current_tx, metadata.clone(), &tokens, &amount)
+        self.get_liquidity_price(idx, metadata.clone(), &tokens, &amount)
     }
 
     fn get_total_pricing<'a>(
         &self,
-        prev_tx: &B256,
-        current_tx: &B256,
+        idx: usize,
         iter: impl Iterator<Item = (&'a Vec<Address>, &'a Vec<U256>)>,
         metadata: Arc<Metadata>,
     ) -> Rational {
-        iter.map(|(token, amount)| {
-            self.get_liquidity_price(prev_tx, current_tx, metadata.clone(), token, amount)
-        })
-        .sum()
+        iter.map(|(token, amount)| self.get_liquidity_price(idx, metadata.clone(), token, amount))
+            .sum()
     }
 
     fn get_liquidity_price(
         &self,
-        prev_tx: &B256,
-        current_tx: &B256,
+        idx: usize,
         metadata: Arc<Metadata>,
         token: &Vec<Address>,
         amount: &Vec<U256>,
@@ -359,12 +356,9 @@ impl JitInspector {
             .zip(amount.iter())
             .filter_map(|(token, amount)| {
                 Some(
-                    self.inner.get_usd_price_dex_avg(
-                        prev_tx,
-                        current_tx,
-                        *token,
-                        metadata.clone(),
-                    )? * amount.to_scaled_rational(try_get_decimals(&token.0 .0)?),
+                    self.inner
+                        .get_usd_price_dex_avg(idx, token, metadata.clone())?
+                        * amount.to_scaled_rational(try_get_decimals(&token.0 .0)?),
                 )
             })
             .sum::<Rational>()
