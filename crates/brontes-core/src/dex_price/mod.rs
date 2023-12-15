@@ -40,7 +40,7 @@ pub struct DexPricing<T: TracingProvider> {
     futures: FuturesUnordered<
         Pin<Box<dyn Future<Output = (usize, HashMap<Pair, Rational>)> + Send + Sync>>,
     >,
-    res:      HashMap<usize, HashMap<Pair, Rational>>,
+    res:      PriceGraph<DexPrice>,
 }
 
 impl<T: TracingProvider> DexPricing<T> {
