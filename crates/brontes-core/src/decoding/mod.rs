@@ -1,5 +1,7 @@
 use std::{pin::Pin, sync::Arc};
 
+use alloy_json_rpc::RpcResult;
+use alloy_primitives::Bytes;
 use alloy_providers::provider::Provider;
 use alloy_rpc_types::{state::StateOverride, BlockId, BlockOverrides, CallRequest};
 use alloy_transport_http::Http;
@@ -8,7 +10,7 @@ use brontes_types::structured_trace::TxTrace;
 use futures::Future;
 use reqwest::Client;
 use reth_interfaces::provider::ProviderResult;
-use reth_primitives::{Address, BlockId, BlockNumber, BlockNumberOrTag, Header, B256};
+use reth_primitives::{Address, BlockNumber, BlockNumberOrTag, Header, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
 use reth_tracing_ext::TracingClient;
@@ -45,7 +47,7 @@ pub trait TracingProvider: Send + Sync + 'static {
         block_number: Option<BlockId>,
         state_overrides: Option<StateOverride>,
         block_overrides: Option<Box<BlockOverrides>>,
-    ) -> RpcResult<Bytes>;
+    ) -> ProviderResult<Bytes>;
 
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>>;
 
@@ -74,7 +76,7 @@ impl TracingProvider for Provider<Http<Client>> {
         block_number: Option<BlockId>,
         state_overrides: Option<StateOverride>,
         block_overrides: Option<Box<BlockOverrides>>,
-    ) -> RpcResult<Bytes> {
+    ) -> ProviderResult<Bytes> {
         todo!()
     }
 
@@ -119,9 +121,12 @@ impl TracingProvider for TracingClient {
         block_number: Option<BlockId>,
         state_overrides: Option<StateOverride>,
         block_overrides: Option<Box<BlockOverrides>>,
-    ) -> RpcResult<Bytes> {
-        self.api.call(request, block_number, overrides)
-        todo!()
+    ) -> ProviderResult<Bytes> {
+        Ok(self
+            .api
+            .call(request, block_number, state_overrides, block_overrides)
+            .await
+            .unwrap())
     }
 
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
