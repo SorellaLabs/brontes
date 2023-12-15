@@ -13,6 +13,7 @@ use crate::{
 action_impl!(
     V2SwapImpl,
     Swap,
+    Swap,
     swapCall,
     SushiSwapV2,
     logs: true,
@@ -46,6 +47,7 @@ action_impl!(
 action_impl!(
     V2MintImpl,
     Mint,
+    Mint,
     mintCall,
     SushiSwapV2,
     logs: true,
@@ -69,6 +71,7 @@ action_impl!(
 );
 action_impl!(
     V2BurnImpl,
+    Burn,
     Burn,
     burnCall,
     SushiSwapV2,
