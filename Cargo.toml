@@ -9,6 +9,7 @@ members = [
   "crates/brontes-metrics",
   "crates/tracing",
   "crates/brontes-database",
+  "crates/brontes-database/libmdbx",
   "crates/brontes-macros",
   "tests",
 ]
@@ -27,6 +28,7 @@ brontes-types = { path = "./crates/brontes-types/" }
 brontes-classifier = { path = "./crates/brontes-classifier/" }
 brontes-metrics = { path = "./crates/brontes-metrics/" }
 brontes-database = { path = "./crates/brontes-database/" }
+brontes-database-libmdbx = { path = "./crates/brontes-database/libmdbx" }
 brontes-macros = { path = "./crates/brontes-macros/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/tracing" }
@@ -41,9 +43,7 @@ reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-p
 reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "3d291ea" }
 reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "3d291ea" }
 reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "3d291ea" }
-reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", features = [
-  "test-utils",
-], rev = "3d291ea" }
+reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "3d291ea" }
 reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "3d291ea" }
 reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "3d291ea" }
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "3d291ea" }
@@ -54,9 +54,12 @@ reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-sta
   "test-utils",
 ], rev = "3d291ea" }
 reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "3d291ea" }
+reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "3d291ea" }
 reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "3d291ea" }
 reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "3d291ea" }
 reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "3d291ea" }
+reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "3d291ea" }
+codecs-derive = { git = "https://github.com/paradigmxyz/reth", package = "codecs-derive", rev = "3d291ea" }
 
 # ruint
 ruint = "1.9.0"
@@ -70,6 +73,7 @@ alloy-primitives = "0.5.0"
 alloy-json-abi = "0.5.0"
 alloy-sol-macro = "0.5.0"
 alloy-dyn-abi = "0.5.0"
+alloy-rlp = "0.3"
 
 # Async
 tokio = "1.13.0"

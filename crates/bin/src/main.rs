@@ -9,7 +9,8 @@ use alloy_providers::provider::Provider;
 use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::database::{Database, USDT_ADDRESS};
+use brontes_database::clickhouse::{Clickhouse, USDT_ADDRESS};
+use brontes_database_libmdbx::Libmbdx;
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
     sandwich::SandwichInspector, Inspector,
@@ -71,7 +72,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
     let metrics_listener = PoirotMetricsListener::new(metrics_rx);
 
-    let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
+    let db_endpoint = env::var("RETH_ENDPOINT").expect("No RETH_DB Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");
     let provider = Provider::new(&url).unwrap();
@@ -84,7 +85,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
     let inspectors = &[&sandwich, &cex_dex, &jit, &backrun];
 
-    let db = Database::default();
+    let db = Clickhouse::default();
 
     let (mut manager, tracer) =
         TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current());
@@ -101,6 +102,9 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let chain_tip = parser.get_latest_block_number().unwrap();
     #[cfg(feature = "local")]
     let chain_tip = parser.get_latest_block_number().await.unwrap();
+
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    let Clickhouse = Libmbdx::init_db(brontes_db_endpoint, None);
 
     let brontes = Brontes::new(
         command.start_block,
