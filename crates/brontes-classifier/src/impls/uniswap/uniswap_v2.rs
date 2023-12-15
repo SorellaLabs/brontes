@@ -13,8 +13,8 @@ use crate::{
 action_impl!(
     V2SwapImpl,
     Swap,
-    Swap,
     swapCall,
+    Swap,
     UniswapV2,
     logs: true,
     |index, from_address: Address, target_address: Address, data: Option<Swap>| {
@@ -48,8 +48,8 @@ action_impl!(
 action_impl!(
     V2MintImpl,
     Mint,
-    Mint,
     mintCall,
+    Mint,
     UniswapV2,
     logs: true,
     call_data: true,
@@ -73,8 +73,8 @@ action_impl!(
 action_impl!(
     V2BurnImpl,
     Burn,
-    Burn,
     burnCall,
+    Burn,
     UniswapV2,
     call_data: true,
     logs: true,
