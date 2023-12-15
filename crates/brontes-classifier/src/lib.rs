@@ -29,33 +29,29 @@ sol!(UniswapV3, "./abis/UniswapV3.json");
 sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
 
 #[cfg(feature = "libmdbx")]
-sol!{
-    #![sol(all_derives = true)]
+sol!(
     UniswapV2,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/UniswapV2.json"
-}
+);
 #[cfg(feature = "libmdbx")]
-sol!{
-    #![sol(all_derives = true)]
+sol!(
     SushiSwapV2,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/SushiSwapV2.json"
-}
+);
 #[cfg(feature = "libmdbx")]
-sol!{
-    #![sol(all_derives = true)]
+sol!(
     UniswapV3,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/UniswapV3.json"
-}
+);
 #[cfg(feature = "libmdbx")]
-sol!{
-    #![sol(all_derives = true)]
+sol!(
     SushiSwapV3,
     "/Users/josephnoorchashm/Desktop/SorellaLabs/GitHub/brontes/crates/brontes-classifier/\
      abis/SushiSwapV3.json"
-}
+);
 
 
 #[allow(non_camel_case_types)]
@@ -112,7 +108,6 @@ impl Into<String> for &StaticBindings {
 }
  
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone,  PartialEq, Eq)]
 pub enum StaticReturnBindings {
     UniswapV2(UniswapV2::UniswapV2Calls),
     SushiSwapV2(SushiSwapV2::SushiSwapV2Calls),
