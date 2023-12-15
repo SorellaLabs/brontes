@@ -291,15 +291,17 @@ mod tests {
         let metadata = db.get_metadata(block_num).await;
 
         let tx = block.0.clone().into_iter().take(1).collect::<Vec<_>>();
+
         let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
         let tree = Arc::new(tree);
-
+        println!("tree: {:#?}", tree);
         // Quote token is USDC here
         let inspector = CexDexInspector::new(
             Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
         );
 
         let t0 = SystemTime::now();
+        print!("starting cex-dex inspector");
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
@@ -307,9 +309,11 @@ mod tests {
 
         info!("cex-dex inspector took: {} us", delta);
 
-        // assert!(
-        //     mev[0].0.tx_hash
-        //         == B256::from_str(
+        assert_eq!(
+            mev[0].0.tx_hash,
+            B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
+                .unwrap()
+        );
     }
 
     //Testing for tx:
@@ -332,12 +336,6 @@ mod tests {
         };
 
         let metadata = get_metadata();
-
-        let (tx, _rx) = unbounded_channel();
-
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
-        let classifier = Classifier::new();
 
         // Quote token is USDC here
         let inspector = CexDexInspector::new(
