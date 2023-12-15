@@ -68,15 +68,9 @@ impl ToScaledRational for u128 {
 
 impl ToScaledRational for i128 {
     fn to_scaled_rational(self, decimals: u8) -> Rational {
-        let top = Natural::from(self);
-        let bottom = Natural::from(10u8).pow(decimals as u64);
-        let rational = Rational::from_naturals(top, bottom);
-
-        if self.is_negative() {
-            -rational
-        } else {
-            rational
-        }
+        let top = Rational::from(self);
+        let bottom = Rational::from(10u8).pow(decimals as u64);
+        top / bottom
     }
 }
 

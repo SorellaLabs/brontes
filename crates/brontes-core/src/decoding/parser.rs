@@ -221,8 +221,8 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         block_num: u64,
         tx_hash: B256,
         tx_idx: u64,
-        gas_used: u64,
-        effective_gas_price: u64,
+        gas_used: u128,
+        effective_gas_price: u128,
     ) -> (TxTrace, TransactionStats) {
         init_trace!(tx_hash, tx_idx, tx_trace.trace.len());
         let stats = TransactionStats {
