@@ -22,5 +22,5 @@ pub fn bench_tx_trace_parse(c: &mut Criterion) {
     });
 }
 
-criterion_group!(parse, bench_tx_trace_parse);
 criterion_main!(parse);
+criterion_group!(parse, bench_tx_trace_parse);
