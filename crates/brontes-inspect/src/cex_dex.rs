@@ -309,9 +309,11 @@ mod tests {
 
         info!("cex-dex inspector took: {} us", delta);
 
-        // assert!(
-        //     mev[0].0.tx_hash
-        //         == B256::from_str(
+        assert_eq!(
+            mev[0].0.tx_hash,
+            B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
+                .unwrap()
+        );
     }
 
     //Testing for tx:
