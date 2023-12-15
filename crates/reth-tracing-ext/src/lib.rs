@@ -178,12 +178,13 @@ impl TracingInspectorLocal {
         let trace = self.build_trace(&info);
 
         TxTrace {
-            trace: trace.unwrap_or(vec![]),
-            tx_hash: info.hash.unwrap(),
-            gas_used,
+            trace:    trace.unwrap_or(vec![]),
+            tx_hash:  info.hash.unwrap(),
+            gas_used: gas_used.into(),
+
             effective_price: 0,
-            tx_index: info.index.unwrap(),
-            is_success: res.is_success(),
+            tx_index:        info.index.unwrap(),
+            is_success:      res.is_success(),
         }
     }
 

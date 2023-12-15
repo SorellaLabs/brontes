@@ -82,8 +82,8 @@ pub struct TransactionTraceWithLogs {
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
     pub tx_hash:         B256,
-    pub gas_used:        u64,
-    pub effective_price: u64,
+    pub gas_used:        u128,
+    pub effective_price: u128,
     pub tx_index:        u64,
     pub is_success:      bool,
 }
@@ -93,8 +93,8 @@ impl TxTrace {
         trace: Vec<TransactionTraceWithLogs>,
         tx_hash: B256,
         tx_index: u64,
-        gas_used: u64,
-        effective_price: u64,
+        gas_used: u128,
+        effective_price: u128,
         is_success: bool,
     ) -> Self {
         Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
