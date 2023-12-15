@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use brontes_database::{Metadata, Pair};
+use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::Actions,
@@ -81,10 +81,6 @@ impl AtomicBackrunInspector {
 
         println!("{:#?}", deltas);
 
-
-
-
-
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,
             tx_hash,
@@ -125,7 +121,6 @@ mod tests {
     use brontes_classifier::Classifier;
     use brontes_core::{init_tracing, test_utils::init_trace_parser};
     use brontes_database::database::Database;
-    use brontes_types::test_utils::write_tree_as_json;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
@@ -148,11 +143,12 @@ mod tests {
         let metadata = db.get_metadata(block_num).await;
 
         let tx = block.0.clone().into_iter().take(60).collect::<Vec<_>>();
-        let tree = Arc::new(classifier.build_tree(tx, block.1));
+        let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
+        let tree = Arc::new(tree);
 
-        // write_tree_as_json(&tree, "./tree.json").await;
+        let USDC = Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap();
 
-        let inspector = AtomicBackrunInspector::default();
+        let inspector = Box::new(AtomicBackrunInspector::new(USDC)) as Box<dyn Inspector>;
 
         let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;

@@ -5,7 +5,7 @@ use std::{
 
 use alloy_providers::provider::Provider;
 use alloy_transport_http::Http;
-use brontes_classifier::{classifier, Classifier};
+use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
@@ -15,12 +15,9 @@ use brontes_inspect::{composer::Composer, Inspector};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
-    structured_trace::TxTrace,
     tree::TimeTree,
 };
 use futures::{join, Future, FutureExt};
-use reth_primitives::Header;
-use tokio::task::JoinError;
 use tracing::info;
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
@@ -68,11 +65,11 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (needed_decimals, mut tree) = self.classifier.build_tree(traces, header);
+            let (tokens_missing_decimals, mut tree) = self.classifier.build_tree(traces, header);
 
             let (meta, _) = join!(
                 labeller_fut,
-                MissingDecimals::new(self.provider, self.database, needed_decimals)
+                MissingDecimals::new(self.provider, self.database, tokens_missing_decimals)
             );
             tree.eth_price = meta.eth_prices.clone();
 
