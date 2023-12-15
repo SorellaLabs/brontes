@@ -13,7 +13,6 @@ use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
 use malachite::Rational;
 use once_cell::sync::Lazy;
 use phf::phf_map;
-use reth_primitives::revm_primitives::HashMap;
 use reth_rpc_types::trace::parity::StateDiff;
 use tokio::sync::futures;
 
