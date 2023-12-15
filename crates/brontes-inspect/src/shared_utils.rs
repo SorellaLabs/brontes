@@ -4,8 +4,12 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::B256;
 use brontes_database::{Metadata, Pair};
-use brontes_types::{normalized_actions::Actions, try_get_decimals, ToScaledRational};
+use brontes_types::{
+    normalized_actions::{Actions, NormalizedTransfer},
+    try_get_decimals, ToScaledRational,
+};
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
@@ -79,7 +83,7 @@ impl SharedInspectorUtils {
         let deltas = deltas
             .into_iter()
             .map(|(_, mut v)| {
-                v.retain(|k, rational| (*rational).ne(&Rational::ZERO));
+                v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
                 v
             })
             .fold(HashMap::new(), |mut map, inner| {
@@ -126,7 +130,10 @@ impl SharedInspectorUtils {
                     .dex_quotes
                     .get_quote(&pair)
                     .map(|q| {
-                        Some((q.get_price(prev_tx) + q.get_price(current_tx)) / Rational::from(2))
+                        Some(
+                            (q.get_price(prev_tx) + q.get_price(current_tx)) / Rational::from(2)
+                                * value,
+                        )
                     })
                     .unwrap_or_else(|| {
                         error!(?pair, "was unable to find a price");
