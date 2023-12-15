@@ -127,6 +127,7 @@ impl Classifier {
         (dec, tree)
     }
 
+    //TODO: need to deal with other direction + eth based transfers.
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
