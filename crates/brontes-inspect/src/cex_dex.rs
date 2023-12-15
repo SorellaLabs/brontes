@@ -290,9 +290,7 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        let tx = block.0.clone().into_iter().take(1).collect::<Vec<_>>();
-
-        let (_missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
+        let (_missing_token_decimals, tree) = classifier.build_tree(block.0, block.1);
         let tree = Arc::new(tree);
         // Quote token is USDC here
         let inspector = CexDexInspector::new(
