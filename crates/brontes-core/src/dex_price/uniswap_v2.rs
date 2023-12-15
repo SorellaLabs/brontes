@@ -23,6 +23,7 @@ sol!(
     }
 );
 
+#[derive(Default)]
 struct V2Pricing;
 
 impl DexPrice for V2Pricing {
@@ -71,11 +72,7 @@ impl DexPrice for V2Pricing {
             let r0_scaled = r0.to_scaled_rational(dec0);
             let r1_scaled = r1.to_scaled_rational(dec1);
 
-            let price = if zto {
-                &r1_scaled / &r0_scaled
-            } else {
-                &r0_scaled / &r1_scaled
-            };
+            let price = if zto { &r1_scaled / &r0_scaled } else { &r0_scaled / &r1_scaled };
 
             (price, r0_scaled * r1_scaled)
         })
