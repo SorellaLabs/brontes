@@ -4,10 +4,15 @@ use std::{
     str::FromStr,
 };
 
+use alloy_primitives::B256;
 pub use brontes_types::extra_processing::Pair;
+use database::types::PoolReservesDB;
 use graph::PriceGraph;
 use malachite::{
-    num::{arithmetic::traits::Floor, basic::traits::Zero},
+    num::{
+        arithmetic::traits::{Floor, Reciprocal, ReciprocalAssign},
+        basic::traits::Zero,
+    },
     Rational,
 };
 use reth_primitives::{Address, TxHash, U256};
@@ -24,21 +29,97 @@ pub struct Metadata {
     pub p2p_timestamp:          u64,
     pub proposer_fee_recipient: Address,
     pub proposer_mev_reward:    u64,
-    pub cex_quotes:             PriceGraph,
+    pub cex_quotes:             PriceGraph<CexQuote>,
+    pub dex_quotes:             PriceGraph<DexQuote>,
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
     pub mempool_flow:           HashSet<TxHash>,
 }
 
-#[derive(Debug, Clone, Default, Eq)]
-pub struct Quote {
+pub trait Quote: MulAssign<Self> + std::fmt::Debug + Clone + Send + Sync + 'static {
+    fn inverse_price(&mut self);
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DexQuote(HashMap<B256, Rational>);
+
+impl Quote for DexQuote {
+    fn inverse_price(&mut self) {
+        for v in self.0.values_mut() {
+            v.reciprocal_assign()
+        }
+    }
+}
+
+impl DexQuote {
+    pub fn get_price(&self, prev_tx: &B256) -> Rational {
+        self.0.get(prev_tx).unwrap().clone()
+    }
+}
+
+impl MulAssign for DexQuote {
+    fn mul_assign(&mut self, rhs: Self) {
+        assert!(self.0.len() == rhs.0.len(), "rhs.len() != lhs.len()");
+
+        for (k, v) in rhs.0 {
+            *self.0.get_mut(&k).unwrap() *= v;
+        }
+    }
+}
+
+impl From<Vec<PoolReservesDB>> for QuotesMap<DexQuote> {
+    fn from(value: Vec<PoolReservesDB>) -> Self {
+        value
+            .into_iter()
+            .map(|pool_reserve| {
+                let pair_w_price = pool_reserve
+                    .prices_base_addr
+                    .into_iter()
+                    .zip(pool_reserve.prices_quote_addr.into_iter())
+                    .zip(pool_reserve.prices_price.into_iter())
+                    .map(|((base, quote), price)| {
+                        (
+                            Pair(
+                                Address::from_str(&base.to_string()).unwrap(),
+                                Address::from_str(&quote.to_string()).unwrap(),
+                            ),
+                            Rational::try_from(price).unwrap(),
+                        )
+                    });
+                (B256::from_str(&pool_reserve.post_tx_hash.to_string()).unwrap(), pair_w_price)
+            })
+            .fold(QuotesMap(HashMap::new()), |mut map, (post_tx, pair_w_price)| {
+                for (pair, price) in pair_w_price {
+                    assert!(map
+                        .0
+                        .entry(pair)
+                        .or_default()
+                        .0
+                        .insert(post_tx, price)
+                        .is_none());
+                }
+
+                map
+            })
+    }
+}
+
+#[derive(Debug, Clone, Hash, Eq, Default)]
+pub struct CexQuote {
     pub timestamp: u64,
     /// Best Ask & Bid price at p2p timestamp (which is when the block is first
     /// propagated by the relay / proposer)
     pub price:     (Rational, Rational),
 }
 
-impl Quote {
+impl Quote for CexQuote {
+    fn inverse_price(&mut self) {
+        self.price.0.reciprocal_assign();
+        self.price.1.reciprocal_assign();
+    }
+}
+
+impl CexQuote {
     pub fn avg(&self) -> Rational {
         (&self.price.0 + &self.price.1) / Rational::from(2)
     }
@@ -50,22 +131,9 @@ impl Quote {
     pub fn best_bid(&self) -> Rational {
         self.price.1.clone()
     }
-
-    /// inverses the prices
-    pub fn inverse_price(&mut self) {
-        let (num, denom) = self.price.0.numerator_and_denominator_ref();
-        self.price.0 = Rational::from_naturals_ref(denom, num);
-
-        let (num, denom) = self.price.1.numerator_and_denominator_ref();
-        self.price.1 = Rational::from_naturals_ref(denom, num);
-    }
-
-    pub fn is_default(&self) -> bool {
-        self.timestamp == 0 && self.price.0 == Rational::ZERO && self.price.1 == Rational::ZERO
-    }
 }
 
-impl PartialEq for Quote {
+impl PartialEq for CexQuote {
     fn eq(&self, other: &Self) -> bool {
         self.timestamp == other.timestamp
             && (self.price.0.clone() * Rational::try_from(1000000000).unwrap()).floor()
@@ -75,8 +143,8 @@ impl PartialEq for Quote {
     }
 }
 
-impl MulAssign<Quote> for Quote {
-    fn mul_assign(&mut self, rhs: Quote) {
+impl MulAssign for CexQuote {
+    fn mul_assign(&mut self, rhs: Self) {
         self.price.0 *= rhs.price.0;
         self.price.1 *= rhs.price.1;
     }
@@ -85,23 +153,23 @@ impl MulAssign<Quote> for Quote {
 #[derive(Debug, Clone)]
 /// There should be 1 entry for how the pair is stored on the CEX and the other
 /// order should be the reverse of that
-pub struct QuotesMap(HashMap<Pair, Quote>);
+pub struct QuotesMap<Q: Quote>(HashMap<Pair, Q>);
 
-impl QuotesMap {
+impl<Q: Quote> QuotesMap<Q> {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub fn wrap(map: HashMap<Pair, Quote>) -> Self {
+    pub fn wrap(map: HashMap<Pair, Q>) -> Self {
         Self(map)
     }
 
-    pub fn get_quote(&self, pair: &Pair) -> Option<&Quote> {
+    pub fn get_quote(&self, pair: &Pair) -> Option<&Q> {
         self.0.get(pair)
     }
 }
 
-impl From<Vec<DBTokenPricesDB>> for QuotesMap {
+impl From<Vec<DBTokenPricesDB>> for QuotesMap<CexQuote> {
     fn from(value: Vec<DBTokenPricesDB>) -> Self {
         let map = value
             .into_iter()
@@ -111,7 +179,7 @@ impl From<Vec<DBTokenPricesDB>> for QuotesMap {
                         Address::from_str(&token_info.key.0).unwrap(),
                         Address::from_str(&token_info.key.1).unwrap(),
                     ),
-                    Quote {
+                    CexQuote {
                         timestamp: token_info.val.0,
                         price:     (
                             Rational::try_from(token_info.val.1).unwrap(),
@@ -120,7 +188,7 @@ impl From<Vec<DBTokenPricesDB>> for QuotesMap {
                     },
                 )
             })
-            .collect::<HashMap<Pair, Quote>>();
+            .collect::<HashMap<Pair, CexQuote>>();
 
         QuotesMap(map)
     }
@@ -134,7 +202,8 @@ impl Metadata {
         p2p_timestamp: u64,
         proposer_fee_recipient: Address,
         proposer_mev_reward: u64,
-        cex_quotes: PriceGraph,
+        cex_quotes: PriceGraph<CexQuote>,
+        dex_quotes: PriceGraph<DexQuote>,
         eth_prices: Rational,
         mempool_flow: HashSet<TxHash>,
     ) -> Self {
@@ -144,6 +213,7 @@ impl Metadata {
             relay_timestamp,
             p2p_timestamp,
             cex_quotes,
+            dex_quotes,
             eth_prices,
             proposer_fee_recipient,
             proposer_mev_reward,

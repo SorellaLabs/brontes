@@ -5,6 +5,7 @@ use std::{
         BinaryHeap, HashMap,
     },
     hash::Hash,
+    ops::MulAssign,
     time::SystemTime,
 };
 
@@ -20,23 +21,28 @@ use tracing::info;
 
 use crate::{Pair, Quote, QuotesMap};
 
-type QuoteWithQuoteAsset = (Quote, Address);
+type QuoteWithQuoteAsset<Q> = (Q, Address);
 
 #[derive(Debug, Clone)]
-pub struct PriceGraph {
-    graph:         UnGraph<(), QuoteWithQuoteAsset, usize>,
+pub struct PriceGraph<Q: Quote> {
+    graph:         UnGraph<(), QuoteWithQuoteAsset<Q>, usize>,
     addr_to_index: HashMap<Address, usize>,
-    pub quotes:    QuotesMap,
+    quotes:        QuotesMap<Q>,
 }
 
-impl PriceGraph {
-    pub fn from_quotes(quotes: QuotesMap) -> Self {
+impl<Q> PriceGraph<Q>
+where
+    Q: Quote + Default,
+{
+    pub fn from_quotes(quotes: QuotesMap<Q>) -> Self {
         let t0 = SystemTime::now();
-        let mut graph = UnGraph::<(), QuoteWithQuoteAsset, usize>::default();
+        let mut graph = UnGraph::<(), QuoteWithQuoteAsset<Q>, usize>::default();
 
         let mut addr_to_index = HashMap::default();
-        let mut connections: HashMap<Address, (usize, Vec<(Address, usize, QuoteWithQuoteAsset)>)> =
-            HashMap::new();
+        let mut connections: HashMap<
+            Address,
+            (usize, Vec<(Address, usize, QuoteWithQuoteAsset<Q>)>),
+        > = HashMap::new();
 
         for (pair, quote) in quotes.0.clone() {
             // crate node if doesn't exist for addr or get node otherwise
@@ -85,7 +91,7 @@ impl PriceGraph {
     }
 
     // returns the quote for the given pair
-    pub fn get_quote(&self, pair: &Pair) -> Option<Quote> {
+    pub fn get_quote(&self, pair: &Pair) -> Option<Q> {
         // if we have a native pair use that
         if let Some(quote) = self.quotes.get_quote(&pair) {
             return Some(quote.clone())
@@ -97,9 +103,7 @@ impl PriceGraph {
 
         // if base and quote are the same then its just 1
         if base == quote {
-            let mut q = Quote::default();
-            q.price = (Rational::ONE, Rational::ONE);
-            return Some(q)
+            return Some(Q::default())
         }
 
         let start_idx = self.addr_to_index.get(&quote)?;
@@ -107,7 +111,7 @@ impl PriceGraph {
 
         let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into(), |_| 1)?;
 
-        let mut res = Quote::default();
+        let mut res: Option<Q> = None;
 
         for i in 0..path.len() - 1 {
             let t0 = path[i];
@@ -120,16 +124,16 @@ impl PriceGraph {
 
             if index == t1.index() {
                 q.inverse_price();
-                if res.is_default() {
-                    res = q;
+                if let Some(res) = &mut res {
+                    *res *= q;
                 } else {
-                    res *= q;
+                    res = Some(q);
                 }
             } else if index == t0.index() {
-                if res.is_default() {
-                    res = q;
+                if let Some(res) = &mut res {
+                    *res *= q;
                 } else {
-                    res *= q;
+                    res = Some(q);
                 }
             } else {
                 unreachable!()
@@ -137,8 +141,7 @@ impl PriceGraph {
         }
 
         info!(?pair, ?res, "graph gave us");
-
-        Some(res)
+        res
     }
 }
 
