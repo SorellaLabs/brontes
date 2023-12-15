@@ -108,8 +108,7 @@ where
 
         // if base and quote are the same then its just 1
         if base == quote {
-            let mut q = Q::default();
-            return Some(q)
+            return Some(Q::default())
         }
 
         let start_idx = self.addr_to_index.get(&quote)?;
