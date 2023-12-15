@@ -5,16 +5,14 @@ use std::{
 };
 
 /// sql file directory
-const SQL_FILE_DIRECTORY: &str = "./src/clickhouse/queries/";
+const SQL_FILE_DIRECTORY: &str = "./src/tables/queries/";
 
 fn main() {
     write_sql();
 }
 
-/// writes the sql file as a string to ./src/const_sql.rs
-/// '?' are parameters that need to be bound to
 fn write_sql() {
-    let dest_path = Path::new("./src/clickhouse/const_sql.rs");
+    let dest_path = Path::new("./src/tables/const_sql.rs");
     let mut f = File::create(dest_path).unwrap();
 
     for entry in fs::read_dir(SQL_FILE_DIRECTORY).unwrap() {
@@ -24,7 +22,7 @@ fn write_sql() {
         if path.extension().unwrap() == "sql" {
             let sql_string = read_sql(path.to_str().unwrap());
 
-            let const_name = path.file_stem().unwrap().to_str().unwrap().to_uppercase();
+            let const_name = path.file_stem().unwrap().to_str().unwrap();
             writeln!(f, "pub const {}: &str = r#\"{}\"#;\n", const_name, sql_string).unwrap();
         }
     }

@@ -10,7 +10,7 @@ use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
 };
-use brontes_database::{database::Database, Metadata};
+use brontes_database::{clickhouse::Clickhouse, Metadata};
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
@@ -28,7 +28,7 @@ pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
     provider:          &'inspector Provider<Http<reqwest::Client>>,
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier,
-    database:          &'inspector Database,
+    database:          &'inspector Clickhouse,
     composer:          Composer<'inspector, N>,
     // pending future data
     classifier_future: Option<CollectionFut<'inspector>>,
@@ -40,7 +40,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
     pub fn new(
         provider: &'inspector Provider<Http<reqwest::Client>>,
         parser: &'inspector Parser<'inspector, T>,
-        database: &'inspector Database,
+        database: &'inspector Clickhouse,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
         block_number: u64,

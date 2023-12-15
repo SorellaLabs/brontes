@@ -517,8 +517,7 @@ mod tests {
 
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
-    use brontes_database::database::Database;
-    use reth_primitives::Address;
+    use reth_primitives::{revm_primitives::db::Database, Address};
     use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
@@ -577,7 +576,7 @@ mod tests {
         let (tx, _rx) = unbounded_channel();
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
+        let db = Clickhouse::default();
         let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
 
         // let mut transaction_traces = tracer

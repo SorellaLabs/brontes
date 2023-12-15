@@ -2,7 +2,7 @@ use std::{pin::Pin, sync::Arc};
 
 use alloy_providers::provider::Provider;
 use alloy_transport_http::Http;
-use brontes_database::database::Database;
+use brontes_database::clickhouse::Clickhouse;
 use brontes_types::structured_trace::TxTrace;
 use futures::Future;
 use reqwest::Client;
@@ -146,7 +146,7 @@ pub struct Parser<'a, T: TracingProvider> {
 impl<'a, T: TracingProvider> Parser<'a, T> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
-        database: &'a Database,
+        database: &'a Clickhouse,
         tracing: T,
         should_fetch: Box<dyn Fn(&Address) -> bool + Send + Sync>,
     ) -> Self {

@@ -41,3 +41,5 @@ crates/brontes-inspect/abis/**.json
 /crates/brontes-classifier/abi_cache/sources/*
 
 .cargo/
+
+data/db/*
