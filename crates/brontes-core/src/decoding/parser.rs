@@ -6,7 +6,7 @@ use std::sync::Arc;
 use alloy_json_abi::JsonAbi;
 use brontes_database::database::Database;
 use brontes_metrics::{
-    trace::types::{BlockStats, TraceParseErrorKind, TraceStats, TransactionStats},
+    trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
 };
 use futures::future::join_all;
@@ -225,7 +225,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         effective_gas_price: u64,
     ) -> (TxTrace, TransactionStats) {
         init_trace!(tx_hash, tx_idx, tx_trace.trace.len());
-        let mut stats = TransactionStats {
+        let stats = TransactionStats {
             block_num,
             tx_hash,
             tx_idx: tx_idx as u16,
@@ -246,15 +246,6 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             }
         });
 
-        let len = tx_trace.trace.len();
-
-        for idx in 0..tx_trace.trace.len() {
-            let stat = TraceStats::new(block_num, tx_hash, tx_idx as u16, idx as u16, None);
-            stat.trace(len);
-            stats.traces.push(stat);
-        }
-
-        stats.trace();
         tx_trace.effective_price = effective_gas_price;
         tx_trace.gas_used = gas_used;
 

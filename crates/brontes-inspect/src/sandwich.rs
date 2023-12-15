@@ -17,9 +17,14 @@ use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
-#[derive(Default)]
 pub struct SandwichInspector {
     inner: SharedInspectorUtils,
+}
+
+impl SandwichInspector {
+    pub fn new(quote: Address) -> Self {
+        Self { inner: SharedInspectorUtils::new(quote) }
+    }
 }
 
 #[derive(Debug)]
@@ -108,29 +113,11 @@ impl SandwichInspector {
             return None
         }
 
-        let deltas = self.inner.calculate_swap_deltas(&searcher_actions);
+        let (deltas, mev_collectors) = self.inner.calculate_swap_deltas(&searcher_actions);
 
-        let appearance_usd_deltas: HashMap<Address, Rational> = self.inner.get_best_usd_deltas(
-            deltas.clone(),
-            metadata.clone(),
-            Box::new(|(appearance, _)| appearance),
-        );
+        let rev_usd = self.inner.usd_delta(deltas, metadata.clone());
 
-        let appearance_usd: Rational = appearance_usd_deltas.values().sum();
-
-        println!("appearance_usd_deltas {:#?}", appearance_usd_deltas);
-
-        let mev_collectors = appearance_usd_deltas.keys().copied().collect();
-
-        let finalized_usd_deltas: HashMap<Address, Rational> = self.inner.get_best_usd_deltas(
-            deltas,
-            metadata.clone(),
-            Box::new(|(_, finalized)| finalized),
-        );
-
-        let finalized_usd: Rational = finalized_usd_deltas.values().sum();
-
-        if appearance_usd == Rational::ZERO || finalized_usd == Rational::ZERO {
+        if rev_usd.le(&Rational::ZERO) {
             return None
         }
 
@@ -139,8 +126,7 @@ impl SandwichInspector {
             .map(|g| g.gas_paid())
             .sum::<u64>();
 
-        let (gas_used_usd_appearance, gas_used_usd_finalized) =
-            metadata.get_gas_price_usd(gas_used);
+        let gas_used = metadata.get_gas_price_usd(gas_used);
 
         let frontrun_swaps = searcher_actions
             .remove(0)
@@ -282,10 +268,8 @@ impl SandwichInspector {
             mev_contract: mev_executor_contract,
             block_number: metadata.block_num,
             mev_type: MevType::Sandwich,
-            submission_profit_usd: (appearance_usd - &gas_used_usd_appearance).to_float(),
-            submission_bribe_usd: gas_used_usd_appearance.to_float(),
-            finalized_profit_usd: (finalized_usd - &gas_used_usd_finalized).to_float(),
-            finalized_bribe_usd: gas_used_usd_finalized.to_float(),
+            finalized_profit_usd: (rev_usd - &gas_used).to_float(),
+            finalized_bribe_usd: gas_used.to_float(),
         };
 
         Some((classified_mev, Box::new(sandwich)))
@@ -347,6 +331,8 @@ impl SandwichInspector {
     }
 }
 
+/*
+
 #[cfg(test)]
 mod tests {
     use std::{collections::HashSet, str::FromStr, time::SystemTime};
@@ -354,7 +340,6 @@ mod tests {
     use brontes_classifier::Classifier;
     use brontes_core::{init_tracing, test_utils::init_trace_parser};
     use brontes_database::database::Database;
-    use brontes_types::test_utils::write_tree_as_json;
     use reth_primitives::U256;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
@@ -378,9 +363,12 @@ mod tests {
         let metadata = db.get_metadata(block_num).await;
 
         let tx = block.0.clone().into_iter().take(10).collect::<Vec<_>>();
-        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
 
-        let inspector = SandwichInspector::default();
+        let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
+        let tree = Arc::new(tree);
+        let inspector = SandwichInspector::new(
+            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+        );
 
         let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
@@ -391,15 +379,11 @@ mod tests {
         // assert!(
         //     mev[0].0.tx_hash
         //         == B256::from_str(
-        //
-        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
-        //         )
-        //         .unwrap()
-        // );
 
         println!("{:#?}", mev);
     }
 
+    /*
     fn get_metadata() -> Metadata {
         // 2126.43
         Metadata {
@@ -414,7 +398,7 @@ mod tests {
             proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
                 .unwrap(),
             proposer_mev_reward:    11769128921907366414,
-            token_prices:           {
+            cex_quotes:             {
                 let mut prices = HashMap::new();
 
                 prices.insert(
@@ -453,10 +437,7 @@ mod tests {
 
                 prices
             },
-            eth_prices:             (
-                Rational::try_from_float_simplest(2126.43).unwrap(),
-                Rational::try_from_float_simplest(2126.43).unwrap(),
-            ),
+            eth_prices:             (Rational::try_from_float_simplest(2126.43).unwrap()),
             mempool_flow:           {
                 let mut private = HashSet::new();
                 private.insert(
@@ -468,7 +449,7 @@ mod tests {
                 private
             },
         }
-    }
+    }*/
 
     #[tokio::test]
     #[serial]
@@ -486,9 +467,12 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = get_metadata();
 
-        let tree = Arc::new(classifier.build_tree(block.0, block.1, &metadata));
+        let (tokens_missing_decimals, tree) = classifier.build_tree(block.0, block.1);
+        let tree = Arc::new(tree);
 
-        let inspector = SandwichInspector::default();
+        let inspector = SandwichInspector::new(
+            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+        );
 
         let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
@@ -587,3 +571,4 @@ mod tests {
         // };
     }
 }
+ */

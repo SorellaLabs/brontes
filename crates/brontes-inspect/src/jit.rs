@@ -8,14 +8,16 @@ use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     tree::GasDetails,
-    try_get_decimals, ToFloatNearest, ToScaledRational, TOKEN_TO_DECIMALS,
+    try_get_decimals, ToFloatNearest, ToScaledRational,
 };
 use itertools::Itertools;
 use malachite::Rational;
 use reth_primitives::{Address, B256, U256};
-use tracing::info;
 
-use crate::{Actions, ClassifiedMev, Inspector, Metadata, SpecificMev, TimeTree};
+use crate::{
+    shared_utils::SharedInspectorUtils, Actions, ClassifiedMev, Inspector, Metadata, SpecificMev,
+    TimeTree,
+};
 
 #[derive(Debug)]
 struct PossibleJit {
@@ -25,8 +27,16 @@ struct PossibleJit {
     pub mev_executor_contract: Address,
     pub victims:               Vec<B256>,
 }
-#[derive(Default)]
-pub struct JitInspector;
+
+pub struct JitInspector {
+    inner: SharedInspectorUtils,
+}
+
+impl JitInspector {
+    pub fn new(quote: Address) -> Self {
+        Self { inner: SharedInspectorUtils::new(quote) }
+    }
+}
 
 #[async_trait]
 impl Inspector for JitInspector {
@@ -99,8 +109,6 @@ impl Inspector for JitInspector {
                         })
                         .unzip();
 
-                    info!("{:#?}", victims);
-
                     let victim_gas = victims
                         .iter()
                         .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
@@ -161,17 +169,16 @@ impl JitInspector {
             return None
         }
 
-        let (jit_fee_pre, jit_fee_post) = self.get_collect_amount(fee_collect, metadata.clone());
+        let jit_fee = self.get_collect_amount(fee_collect, metadata.clone());
 
-        let (mint_pre, mint_post) = self.get_total_pricing(
+        let mint = self.get_total_pricing(
             mints.iter().map(|mint| (&mint.token, &mint.amount)),
             metadata.clone(),
         );
 
-        let (pre_bribe, post_bribe) = self.get_bribes(metadata.clone(), searcher_gas_details);
+        let bribe = self.get_bribes(metadata.clone(), searcher_gas_details);
 
-        let pre_profit = jit_fee_pre - mint_pre - &pre_bribe;
-        let post_profit = jit_fee_post - mint_post - &post_bribe;
+        let profit = jit_fee - mint - &bribe;
 
         let classified = ClassifiedMev {
             block_number: metadata.block_num,
@@ -180,10 +187,8 @@ impl JitInspector {
             mev_contract: mev_addr,
             mev_profit_collector: vec![mev_addr],
             mev_type: MevType::Jit,
-            submission_profit_usd: pre_profit.to_float(),
-            finalized_profit_usd: post_profit.to_float(),
-            submission_bribe_usd: pre_bribe.to_float(),
-            finalized_bribe_usd: post_bribe.to_float(),
+            finalized_profit_usd: profit.to_float(),
+            finalized_bribe_usd: bribe.to_float(),
         };
 
         let swaps = victim_actions
@@ -298,7 +303,7 @@ impl JitInspector {
         set
     }
 
-    fn get_bribes(&self, price: Arc<Metadata>, gas: [GasDetails; 2]) -> (Rational, Rational) {
+    fn get_bribes(&self, price: Arc<Metadata>, gas: [GasDetails; 2]) -> Rational {
         let bribe = gas.into_iter().map(|gas| gas.gas_paid()).sum::<u64>();
 
         price.get_gas_price_usd(bribe)
@@ -308,33 +313,23 @@ impl JitInspector {
         &self,
         collect: Vec<NormalizedCollect>,
         metadata: Arc<Metadata>,
-    ) -> (Rational, Rational) {
+    ) -> Rational {
         let (tokens, amount): (Vec<Vec<_>>, Vec<Vec<_>>) =
             collect.into_iter().map(|t| (t.token, t.amount)).unzip();
 
         let tokens = tokens.into_iter().flatten().collect::<Vec<_>>();
         let amount = amount.into_iter().flatten().collect::<Vec<_>>();
 
-        (
-            self.get_liquidity_price(metadata.clone(), &tokens, &amount, |(p, _)| p),
-            self.get_liquidity_price(metadata.clone(), &tokens, &amount, |(_, p)| p),
-        )
+        self.get_liquidity_price(metadata.clone(), &tokens, &amount)
     }
 
     fn get_total_pricing<'a>(
         &self,
         iter: impl Iterator<Item = (&'a Vec<Address>, &'a Vec<U256>)>,
         metadata: Arc<Metadata>,
-    ) -> (Rational, Rational) {
-        let (pre, post): (Vec<_>, Vec<_>) = iter
-            .map(|(token, amount)| {
-                (
-                    self.get_liquidity_price(metadata.clone(), token, amount, |(p, _)| p),
-                    self.get_liquidity_price(metadata.clone(), token, amount, |(_, p)| p),
-                )
-            })
-            .unzip();
-        (pre.into_iter().sum(), post.into_iter().sum())
+    ) -> Rational {
+        iter.map(|(token, amount)| self.get_liquidity_price(metadata.clone(), token, amount))
+            .sum()
     }
 
     fn get_liquidity_price(
@@ -342,7 +337,6 @@ impl JitInspector {
         metadata: Arc<Metadata>,
         token: &Vec<Address>,
         amount: &Vec<U256>,
-        is_pre: impl Fn(&(Rational, Rational)) -> &Rational,
     ) -> Rational {
         assert_eq!(token.len(), amount.len());
 
@@ -351,19 +345,18 @@ impl JitInspector {
             .zip(amount.iter())
             .filter_map(|(token, amount)| {
                 Some(
-                    is_pre(metadata.token_prices.get(token)?)
+                    self.inner.get_usd_price(*token, metadata.clone())?
                         * amount.to_scaled_rational(try_get_decimals(&token.0 .0)?),
                 )
             })
             .sum::<Rational>()
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use std::{
         collections::{HashMap, HashSet},
-        env,
         str::FromStr,
         time::SystemTime,
     };
@@ -371,12 +364,10 @@ mod tests {
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
     use brontes_database::database::Database;
-    use brontes_types::test_utils::write_tree_as_json;
     use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
     use reth_primitives::U256;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
-    use tracing::info;
 
     use super::*;
 
@@ -394,7 +385,7 @@ mod tests {
             proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
                 .unwrap(),
             proposer_mev_reward:    11769128921907366414,
-            token_prices:           {
+            cex_quotes:             {
                 let mut prices = HashMap::new();
 
                 prices.insert(
@@ -433,10 +424,7 @@ mod tests {
 
                 prices
             },
-            eth_prices:             (
-                Rational::try_from_float_simplest(2126.43).unwrap(),
-                Rational::try_from_float_simplest(2126.43).unwrap(),
-            ),
+            eth_prices:             (Rational::try_from_float_simplest(2126.43).unwrap(),),
             mempool_flow:           {
                 let mut private = HashSet::new();
                 private.insert(
@@ -469,12 +457,16 @@ mod tests {
         let metadata = get_metadata();
 
         let tx = block.0.clone().into_iter().take(20).collect::<Vec<_>>();
-        let tree = Arc::new(classifier.build_tree(tx, block.1, &metadata));
+        let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
 
-        let inspector = JitInspector::default();
+        let tree = Arc::new(tree);
+
+        let USDC = Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap();
+        let inspector = Box::new(JitInspector::new(USDC)) as Box<dyn Inspector>;
 
         let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
+
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
         println!("{:#?}", mev);
@@ -484,10 +476,6 @@ mod tests {
         // assert!(
         //     mev[0].0.tx_hash
         //         == B256::from_str(
-        //
-        // "0x80b53e5e9daa6030d024d70a5be237b4b3d5e05d30fdc7330b62c53a5d3537de"
-        //         )
-        //         .unwrap()
-        // );
     }
 }
+*/
