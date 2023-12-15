@@ -19,6 +19,7 @@ include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
 include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_addr_set.rs"));
 //include!(concat!(env!("ABI_BUILD_DIR"), "/bindings.rs"));
 
+const abi_dir: &'static str = concat!(env!("ABI_BUILD_DIR"), "/../crates/brontes-classifier/");
 sol!(UniswapV2, "./abis/UniswapV2.json");
 sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
 sol!(UniswapV3, "./abis/UniswapV3.json");
