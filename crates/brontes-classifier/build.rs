@@ -48,7 +48,7 @@ async fn build_classifier_map() {
     for name in names {
         let classified_name = name.name.clone() + "Classifier";
         phf_map
-            .entry(name.name, &format!("Lazy::new(|| Box::new({}::default()))", classified_name));
+            .entry(format!(r#""{}""#,name.name), &format!("Lazy::new(|| Box::new({}::default()))", classified_name));
     }
 
     writeln!(
