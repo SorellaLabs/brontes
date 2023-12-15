@@ -292,10 +292,9 @@ mod tests {
 
         let tx = block.0.clone().into_iter().take(1).collect::<Vec<_>>();
 
-        println!("tx: {:#?}", tx);
         let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
         let tree = Arc::new(tree);
-
+        println!("tree: {:#?}", tree);
         // Quote token is USDC here
         let inspector = CexDexInspector::new(
             Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
