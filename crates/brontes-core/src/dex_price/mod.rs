@@ -7,7 +7,7 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
-use brontes_database::database::Database;
+use brontes_database::{database::Database, Pair};
 use brontes_types::cache_decimals;
 use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
 use malachite::Rational;
@@ -19,8 +19,7 @@ use tokio::sync::futures;
 pub mod uniswap_v2;
 pub mod uniswap_v3;
 
-static DEX_PRICE_MAP: phf::Map<[u8; 40], &[(bool, Address, Lazy<Box<dyn DexPrice>>)]> =
-    phf::phf_map!();
+static DEX_PRICE_MAP: phf::Map<Pair, &[(bool, Address, Lazy<Box<dyn DexPrice>>)]> = phf::phf_map!();
 
 pub struct TransactionPoolSwappedTokens {
     tx_idx:     usize,
@@ -44,9 +43,9 @@ pub trait DexPrice: Clone + Send + Sync + Unpin + 'static {
 pub struct DexPricing<'p> {
     provider: &'p Provider<Http<reqwest::Client>>,
     futures: FuturesUnordered<
-        Pin<Box<dyn Future<Output = (usize, HashMap<[u8; 40], Rational>)> + Send + Sync>>,
+        Pin<Box<dyn Future<Output = (usize, HashMap<Pair, Rational>)> + Send + Sync>>,
     >,
-    res:      HashMap<usize, HashMap<[u8; 40], Rational>>,
+    res:      HashMap<usize, HashMap<Pair, Rational>>,
 }
 
 impl<'p> DexPricing<'p> {
@@ -92,7 +91,7 @@ impl<'p> DexPricing<'p> {
 }
 
 impl Future for DexPricing<'_> {
-    type Output = HashMap<usize, HashMap<[u8; 40], Rational>>;
+    type Output = HashMap<usize, HashMap<Pair, Rational>>;
 
     fn poll(
         mut self: std::pin::Pin<&mut Self>,
@@ -110,7 +109,7 @@ impl Future for DexPricing<'_> {
     }
 }
 
-fn combine_slices(slice1: [u8; 20], slice2: [u8; 20]) -> [u8; 40] {
+fn combine_slices(slice1: [u8; 20], slice2: [u8; 20]) -> Pair {
     let mut combined = [0u8; 40];
 
     combined[..20].copy_from_slice(&slice1);
