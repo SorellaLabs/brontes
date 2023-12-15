@@ -172,7 +172,7 @@ impl<Q: Quote> QuotesMap<Q> {
         Self(HashMap::new())
     }
 
-    pub fn wrap(map: HashMap<Pair, Quote>) -> Self {
+    pub fn wrap(map: HashMap<Pair, Q>) -> Self {
         Self(map)
     }
 
