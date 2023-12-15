@@ -1,6 +1,6 @@
 use std::{env, path::Path, sync::Arc};
 
-use brontes_database::database::Database;
+use brontes_database::clickhouse::Clickhouse;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use log::Level;
@@ -170,7 +170,7 @@ pub fn init_trace_parser<'a>(
         Box::new(client) as Box<dyn TracingProvider>
     };
 
-    let db = Box::new(Database::default());
+    let db = Box::new(Clickhouse::default());
     let leaked = Box::leak(db);
     let call = Box::new(|_: &_| true);
 

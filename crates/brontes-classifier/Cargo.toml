@@ -9,9 +9,9 @@ harness = false
 
 [dependencies]
 # brontes
-brontes-database.workspace = true
 brontes-types.workspace = true
 brontes-macros.workspace = true
+brontes-database.workspace = true
 
 # alloy
 alloy-sol-types.workspace = true
@@ -62,6 +62,7 @@ brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
 criterion = "0.5"
+
 
 [build-dependencies]
 tokio.workspace = true
