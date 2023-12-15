@@ -61,3 +61,67 @@ async fn build_classifier_map() {
     )
     .unwrap();
 }
+
+
+/// builds the clickhouse database client
+fn build_db() -> Client {
+    dotenv::dotenv().ok();
+    // clickhouse path
+    let clickhouse_path = format!(
+        "{}:{}",
+        &env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
+        &env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env")
+    );
+
+    // builds the https connector
+    let https = HttpsConnector::new();
+    let https_client = hyper::Client::builder().build::<_, hyper::Body>(https);
+
+    // builds the clickhouse client
+
+    Client::with_http_client(https_client)
+        .with_url(clickhouse_path)
+        .with_user(env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env"))
+        .with_password(env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env"))
+        .with_database(
+            env::var("CLICKHOUSE_DATABASE").expect("CLICKHOUSE_DATABASE not found in .env"),
+        )
+}
+
+//
+//
+// ------------------------ FILE UTILS ------------------------
+//
+//
+
+/// generates a file path as <DIRECTORY>/<FILENAME><SUFFIX>
+fn get_file_path(directory: &str, file_name: &str, suffix: &str) -> String {
+    let mut file_path = directory.to_string();
+    file_path.push_str(file_name);
+    file_path.push_str(suffix);
+    file_path
+}
+
+/// returns a writeable file
+fn write_file(file_path: &str, create: bool) -> File {
+    if create {
+        File::create(file_path).unwrap();
+    }
+
+    fs::OpenOptions::new()
+        .write(true)
+        .read(true)
+        .open(file_path)
+        .expect("could not open file")
+}
+
+fn parse_filtered_addresses(file: &str) -> HashSet<String> {
+    std::fs::read_to_string(file)
+        .map(|data| data.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_default()
+}
+
+async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
+    db.query(query).fetch_all::<T>().await.unwrap()
+}
+
