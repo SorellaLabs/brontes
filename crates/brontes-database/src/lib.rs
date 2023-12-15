@@ -104,6 +104,10 @@ impl QuotesMap {
         Self(HashMap::new())
     }
 
+    pub fn wrap(map: HashMap<Pair, Quote>) -> Self {
+        Self(map)
+    }
+
     pub fn get_quote(&self, pair: &Pair) -> Option<&Quote> {
         self.0.get(pair)
     }

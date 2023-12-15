@@ -1,6 +1,6 @@
 use std::{pin::Pin, task::Poll};
 
-use alloy_primitives::{Address, Bytes, FixedBytes};
+use alloy_primitives::{Address, Bytes};
 use alloy_providers::provider::Provider;
 use alloy_rpc_types::TransactionRequest;
 use alloy_sol_macro::sol;
@@ -9,8 +9,8 @@ use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
 use brontes_database::database::Database;
 use brontes_types::cache_decimals;
-use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
-use tracing::{debug, info, warn};
+use futures::{future::join, stream::FuturesUnordered, Future, StreamExt};
+use tracing::{debug, info};
 
 sol!(
     function decimals() public view returns (uint8);
@@ -23,7 +23,7 @@ pub struct MissingDecimals<'db> {
     provider:         &'db Provider<Http<reqwest::Client>>,
     pending_decimals: FuturesUnordered<DecimalQuery<'db>>,
     db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
-    database:         &'db Database,
+    _database:        &'db Database,
 }
 
 impl<'db> MissingDecimals<'db> {
@@ -36,7 +36,7 @@ impl<'db> MissingDecimals<'db> {
             provider,
             pending_decimals: FuturesUnordered::default(),
             db_future: FuturesUnordered::default(),
-            database: db,
+            _database: db,
         };
         this.missing_decimals(missing);
 
@@ -46,7 +46,7 @@ impl<'db> MissingDecimals<'db> {
     fn missing_decimals(&mut self, addrs: Vec<Address>) {
         addrs.into_iter().for_each(|addr| {
             let call = decimalsCall::new(()).abi_encode();
-            let mut tx_req = TransactionRequest::default().to(addr).input(call.into());
+            let tx_req = TransactionRequest::default().to(addr).input(call.into());
 
             self.pending_decimals
                 .push(Box::pin(join(async move { addr }, self.provider.call(tx_req, None))));
