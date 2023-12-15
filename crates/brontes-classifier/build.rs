@@ -106,11 +106,6 @@ async fn run_classifier_mapping() {
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
-        .filter(|contract: &ProtocolDetails| {
-            let addrs: HashSet<String> = contract.addresses.clone().into_iter().collect();
-            contract.abi.is_some()
-                && (!failed_abi_addresses.is_subset(&addrs) || failed_abi_addresses.is_empty())
-        })
         .filter_map(|contract: ProtocolDetails| {
             match JsonAbi::from_json_str(contract.abi.as_ref().unwrap()) {
                 Ok(c) => Some((c, contract)),
