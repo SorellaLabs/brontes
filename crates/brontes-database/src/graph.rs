@@ -15,7 +15,7 @@ use petgraph::{
     algo::Measure,
     graph::UnGraph,
     prelude::*,
-    visit::{IntoEdges, VisitMap, Visitable},
+    visit::{depth_first_search, IntoEdges, VisitMap, Visitable},
 };
 use tracing::info;
 
@@ -34,7 +34,7 @@ impl<Q> PriceGraph<Q>
 where
     Q: Quote + Default,
 {
-    pub fn from_quotes(quotes: QuotesMap<Q>) -> Self {
+    pub fn from_quotes_disjoint(quotes: QuotesMap<Q>) -> (Vec<Address>, Self) {
         let t0 = SystemTime::now();
         let mut graph = UnGraph::<(), QuoteWithQuoteAsset<Q>, usize>::default();
 
@@ -78,12 +78,21 @@ where
                 .into_iter()
                 .map(move |(_, adjacent, value)| (node0, adjacent, value))
         }));
+
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
 
         info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph in {}us", delta);
 
         Self { quotes, graph, addr_to_index }
+    }
+
+    pub fn from_quotes(quotes: QuotesMap<Q>) -> Self {
+        Self::from_quotes_disjoint(quotes).1
+    }
+
+    pub fn get_disjoint_tokens(&self) -> Vec<Address> {
+        depth_first_search(graph, starts, visitor)
     }
 
     pub fn has_token(&self, address: &Address) -> bool {
