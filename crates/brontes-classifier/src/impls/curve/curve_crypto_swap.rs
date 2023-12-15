@@ -12,7 +12,8 @@ use crate::{
 
 action_impl!(
     CurveCryptoExchange0,
-    Exchange0,
+    Swap,
+    TokenExchange,
     exchange_0Call,
     CurveCryptoSwap,
     logs: true,
@@ -47,7 +48,8 @@ action_impl!(
 
 action_impl!(
     CurveCryptoExchange1,
-    Exchange1,
+    Swap,
+    TokenExchange,
     exchange_1Call,
     CurveCryptoSwap,
     logs: true,
@@ -82,8 +84,9 @@ action_impl!(
 /// I don't know who coded this contract, but I wish them great harm.
 action_impl!(
 CurveCryptoExchangeUnderlying,
-Exchangeunderlying,
-exchange_underlying_Call,
+Swap,
+TokenExchange,
+exchange_underlyingCall,
 CurveCryptoSwap,
 logs: true,
 |index, from_address: Address, target_address: Address, log_data: Option<TokenExchange> | {

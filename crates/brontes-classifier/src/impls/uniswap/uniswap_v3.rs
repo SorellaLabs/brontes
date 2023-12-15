@@ -18,6 +18,7 @@ use crate::{
 action_impl!(
     V3SwapImpl,
     Swap,
+    Swap,
     swapCall,
     UniswapV3,
     return_data: true,
@@ -57,6 +58,7 @@ action_impl!(
 action_impl!(
     V3MintImpl,
     Mint,
+    Mint,
     mintCall,
     UniswapV3,
     return_data: true,
@@ -86,6 +88,7 @@ action_impl!(
 action_impl!(
     V3BurnImpl,
     Burn,
+    Burn,
     burnCall,
     UniswapV3,
     return_data: true,
@@ -112,6 +115,7 @@ action_impl!(
 );
 action_impl!(
     V3CollectImpl,
+    Collect,
     Collect,
     collectCall,
     UniswapV3,
