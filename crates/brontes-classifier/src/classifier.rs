@@ -12,7 +12,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 
-use crate::PROTOCOL_ADDRESS_MAPPING;
+use crate::fetch_classifier;
 
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -217,33 +217,30 @@ impl Classifier {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0 .0) {
-            if let Some(classifier) = &protocol.0 {
-                let calldata = trace.get_calldata();
-                let return_bytes = trace.get_return_calldata();
-                let sig = &calldata[0..4];
-                let res = protocol
-                    .1
-                    .try_decode(&calldata)
-                    .map(|data| {
-                        classifier.dispatch(
-                            sig,
-                            index,
-                            data,
-                            return_bytes.clone(),
-                            from_address,
-                            target_address,
-                            &trace.logs,
-                        )
-                    })
-                    .ok()
-                    .flatten();
+        if let Some((classifier, binding)) = fetch_classifier(target_address) {
+            let calldata = trace.get_calldata();
+            let return_bytes = trace.get_return_calldata();
+            let sig = &calldata[0..4];
+            let res = binding
+                .try_decode(&calldata)
+                .map(|data| {
+                    classifier.dispatch(
+                        sig,
+                        index,
+                        data,
+                        return_bytes.clone(),
+                        from_address,
+                        target_address,
+                        &trace.logs,
+                    )
+                })
+                .ok()
+                .flatten();
 
-                if let Some(res) = res {
-                    return res
-                } else {
-                    tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
-                }
+            if let Some(res) = res {
+                return res
+            } else {
+                tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
             }
         }
 

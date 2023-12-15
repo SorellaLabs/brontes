@@ -14,11 +14,20 @@ mod impls;
 use alloy_sol_types::{sol, SolInterface};
 use brontes_static::PROTOCOL_ADDRESS_MAPPING;
 use brontes_types::normalized_actions::Actions;
-
 pub use impls::*;
 
 include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_classifier_map.rs"));
 
+pub fn fetch_classifier(
+    address: Address,
+) -> Option<(Lazy<Box<dyn ActionCollection>>, StaticReturnBindings)> {
+    let (protocol, binding) = PROTOCOL_ADDRESS_MAPPING.get(&address.0 .0)?;
+    let proto = protocol?;
+
+    let classifier = PROTOCOL_CLASSIFIER_MAPPING.get(proto).expect("unreachable");
+
+    Some((classifier, binding))
+}
 
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
