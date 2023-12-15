@@ -66,6 +66,7 @@ impl Classifier {
                 };
 
                 let mut root = Root {
+                    position:    tx_idx,
                     head:        node,
                     tx_hash:     trace.tx_hash,
                     private:     false,

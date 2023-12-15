@@ -41,7 +41,7 @@ pub trait Quote: MulAssign<Self> + std::fmt::Debug + Clone + Send + Sync + 'stat
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct DexQuote(HashMap<B256, Rational>);
+pub struct DexQuote(HashMap<usize, Rational>);
 
 impl Quote for DexQuote {
     fn inverse_price(&mut self) {
@@ -52,7 +52,7 @@ impl Quote for DexQuote {
 }
 
 impl DexQuote {
-    pub fn get_price(&self, prev_tx: &B256) -> Rational {
+    pub fn get_price(&self, block_position: usize) -> Rational {
         self.0.get(prev_tx).unwrap().clone()
     }
 }
@@ -67,42 +67,12 @@ impl MulAssign for DexQuote {
     }
 }
 
-impl From<Vec<PoolReservesDB>> for QuotesMap<DexQuote> {
-    fn from(value: Vec<PoolReservesDB>) -> Self {
-        value
-            .into_iter()
-            .map(|pool_reserve| {
-                let pair_w_price = pool_reserve
-                    .prices_base_addr
-                    .into_iter()
-                    .zip(pool_reserve.prices_quote_addr.into_iter())
-                    .zip(pool_reserve.prices_price.into_iter())
-                    .map(|((base, quote), price)| {
-                        (
-                            Pair(
-                                Address::from_str(&base.to_string()).unwrap(),
-                                Address::from_str(&quote.to_string()).unwrap(),
-                            ),
-                            Rational::try_from(price).unwrap(),
-                        )
-                    });
-                (B256::from_str(&pool_reserve.post_tx_hash.to_string()).unwrap(), pair_w_price)
-            })
-            .fold(QuotesMap(HashMap::new()), |mut map, (post_tx, pair_w_price)| {
-                for (pair, price) in pair_w_price {
-                    assert!(map
-                        .0
-                        .entry(pair)
-                        .or_default()
-                        .0
-                        .insert(post_tx, price)
-                        .is_none());
-                }
+impl From<HashMap<usize, HashMap<Pair, Rational>>> for QuotesMap<DexQuote> {
+    fn from(value: HashMap<usize, HashMap<Pair, Rational>>) -> Self {
 
-                map
-            })
     }
 }
+
 
 #[derive(Debug, Clone, Hash, Eq, Default)]
 pub struct CexQuote {
