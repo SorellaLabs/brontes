@@ -85,7 +85,7 @@ impl StaticBindings {
 
 impl From<String> for StaticBindings {
     fn from(value: String) -> Self {
-        match &value {
+        match value.as_str() {
             "UniswapV2" => StaticBindings::UniswapV2(UniswapV2_Enum::None),
             "SushiSwapV2" => StaticBindings::SushiSwapV2(SushiSwapV2_Enum::None),
             "UniswapV3" => StaticBindings::UniswapV3(UniswapV3_Enum::None),
