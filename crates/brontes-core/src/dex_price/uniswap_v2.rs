@@ -72,10 +72,8 @@ impl DexPrice for V2Pricing {
             let r1_scaled = r1.to_scaled_rational(dec1);
 
             let price = if zto {
-                // out / in
                 &r1_scaled / &r0_scaled
             } else {
-                //f
                 &r0_scaled / &r1_scaled
             };
 
