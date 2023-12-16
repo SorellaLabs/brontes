@@ -28,9 +28,8 @@ pub struct Metadata {
     pub relay_timestamp:        u64,
     pub p2p_timestamp:          u64,
     pub proposer_fee_recipient: Address,
-    pub proposer_mev_reward:    u64,
-    pub cex_quotes:             PriceGraph<CexQuote>,
-    pub dex_quotes:             PriceGraph<DexQuote>,
+    pub proposer_mev_reward:    u128,
+    pub cex_quotes:             PriceGraph,
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
     pub mempool_flow:           HashSet<TxHash>,
@@ -164,7 +163,7 @@ impl Metadata {
         relay_timestamp: u64,
         p2p_timestamp: u64,
         proposer_fee_recipient: Address,
-        proposer_mev_reward: u64,
+        proposer_mev_reward: u128,
         cex_quotes: PriceGraph<CexQuote>,
         dex_quotes: PriceGraph<DexQuote>,
         eth_prices: Rational,
@@ -186,8 +185,8 @@ impl Metadata {
 }
 
 impl Metadata {
-    pub fn get_gas_price_usd(&self, gas_used: u64) -> Rational {
-        let gas_used_rational = Rational::from_unsigneds(gas_used, 10u64.pow(18));
+    pub fn get_gas_price_usd(&self, gas_used: u128) -> Rational {
+        let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
 
         &self.eth_prices * gas_used_rational
     }

@@ -12,7 +12,7 @@ use crate::normalized_actions::NormalizedAction;
 pub struct TimeTree<V: NormalizedAction> {
     pub roots:            Vec<Root<V>>,
     pub header:           Header,
-    pub avg_priority_fee: u64,
+    pub avg_priority_fee: u128,
     /// first is on block submission, second is when the block gets accepted
     pub eth_price:        Rational,
 }
@@ -52,9 +52,11 @@ impl<V: NormalizedAction> TimeTree<V> {
         self.avg_priority_fee = self
             .roots
             .iter()
-            .map(|tx| tx.gas_details.effective_gas_price - self.header.base_fee_per_gas.unwrap())
-            .sum::<u64>()
-            / self.roots.len() as u64;
+            .map(|tx| {
+                tx.gas_details.effective_gas_price - self.header.base_fee_per_gas.unwrap() as u128
+            })
+            .sum::<u128>()
+            / self.roots.len() as u128;
 
         self.roots.iter_mut().for_each(|root| root.finalize());
     }
@@ -214,23 +216,23 @@ impl<V: NormalizedAction> Root<V> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
 pub struct GasDetails {
     pub coinbase_transfer:   Option<u128>,
-    pub priority_fee:        u64,
-    pub gas_used:            u64,
-    pub effective_gas_price: u64,
+    pub priority_fee:        u128,
+    pub gas_used:            u128,
+    pub effective_gas_price: u128,
 }
 
 impl GasDetails {
-    pub fn gas_paid(&self) -> u64 {
+    pub fn gas_paid(&self) -> u128 {
         let mut gas = self.gas_used * self.effective_gas_price;
 
         if let Some(coinbase) = self.coinbase_transfer {
-            gas += coinbase as u64
+            gas += coinbase
         }
 
         gas
     }
 
-    pub fn priority_fee(&self, base_fee: u64) -> u64 {
+    pub fn priority_fee(&self, base_fee: u128) -> u128 {
         self.effective_gas_price - base_fee
     }
 }

@@ -24,19 +24,19 @@ pub struct MevBlock {
     pub mev_count: u64,
     pub finalized_eth_price: f64,
     /// Gas
-    pub cumulative_gas_used: u64,
-    pub cumulative_gas_paid: u64,
-    pub total_bribe: u64,
-    pub cumulative_mev_priority_fee_paid: u64,
+    pub cumulative_gas_used: u128,
+    pub cumulative_gas_paid: u128,
+    pub total_bribe: u128,
+    pub cumulative_mev_priority_fee_paid: u128,
     /// Builder address (recipient of coinbase.transfers)
     #[serde_as(as = "FixedString")]
     pub builder_address: Address,
-    pub builder_eth_profit: u64,
+    pub builder_eth_profit: i128,
     pub builder_finalized_profit_usd: f64,
     /// Proposer address
     #[serde_as(as = "FixedString")]
     pub proposer_fee_recipient: Address,
-    pub proposer_mev_reward: u64,
+    pub proposer_mev_reward: u128,
     pub proposer_finalized_profit_usd: f64,
     // gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
@@ -88,8 +88,8 @@ impl Row for MevType {
 pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static {
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync>;
     fn mev_type(&self) -> MevType;
-    fn priority_fee_paid(&self) -> u64;
-    fn bribe(&self) -> u64;
+    fn priority_fee_paid(&self) -> u128;
+    fn bribe(&self) -> u128;
     fn mev_transaction_hashes(&self) -> Vec<B256>;
 }
 
@@ -163,11 +163,11 @@ pub struct Sandwich {
     #[serde(rename = "victim_gas_details.coinbase_transfer")]
     pub victim_gas_details_coinbase_transfer: Vec<Option<u128>>,
     #[serde(rename = "victim_gas_details.priority_fee")]
-    pub victim_gas_details_priority_fee: Vec<u64>,
+    pub victim_gas_details_priority_fee: Vec<u128>,
     #[serde(rename = "victim_gas_details.gas_used")]
-    pub victim_gas_details_gas_used: Vec<u64>,
+    pub victim_gas_details_gas_used: Vec<u128>,
     #[serde(rename = "victim_gas_details.effective_gas_price")]
-    pub victim_gas_details_effective_gas_price: Vec<u64>,
+    pub victim_gas_details_effective_gas_price: Vec<u128>,
     #[serde_as(as = "FixedString")]
     pub backrun_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
@@ -277,13 +277,13 @@ impl SpecificMev for Sandwich {
         MevType::Sandwich
     }
 
-    fn priority_fee_paid(&self) -> u64 {
+    fn priority_fee_paid(&self) -> u128 {
         self.frontrun_gas_details.priority_fee + self.backrun_gas_details.priority_fee
     }
 
-    fn bribe(&self) -> u64 {
-        (self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
-            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)) as u64
+    fn bribe(&self) -> u128 {
+        self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
+            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
@@ -366,11 +366,11 @@ pub struct JitLiquiditySandwich {
     #[serde(rename = "victim_gas_details.coinbase_transfer")]
     pub victim_gas_details_coinbase_transfer: Vec<Option<u128>>,
     #[serde(rename = "victim_gas_details.priority_fee")]
-    pub victim_gas_details_priority_fee: Vec<u64>,
+    pub victim_gas_details_priority_fee: Vec<u128>,
     #[serde(rename = "victim_gas_details.gas_used")]
-    pub victim_gas_details_gas_used: Vec<u64>,
+    pub victim_gas_details_gas_used: Vec<u128>,
     #[serde(rename = "victim_gas_details.effective_gas_price")]
-    pub victim_gas_details_effective_gas_price: Vec<u64>,
+    pub victim_gas_details_effective_gas_price: Vec<u128>,
     #[serde_as(as = "FixedString")]
     pub backrun_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
@@ -423,13 +423,13 @@ impl SpecificMev for JitLiquiditySandwich {
         MevType::JitSandwich
     }
 
-    fn priority_fee_paid(&self) -> u64 {
+    fn priority_fee_paid(&self) -> u128 {
         self.frontrun_gas_details.priority_fee + self.backrun_gas_details.priority_fee
     }
 
-    fn bribe(&self) -> u64 {
-        (self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
-            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)) as u64
+    fn bribe(&self) -> u128 {
+        self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
+            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
@@ -491,7 +491,7 @@ impl SpecificMev for CexDex {
         MevType::CexDex
     }
 
-    fn priority_fee_paid(&self) -> u64 {
+    fn priority_fee_paid(&self) -> u128 {
         self.gas_details.priority_fee
     }
 
@@ -499,8 +499,8 @@ impl SpecificMev for CexDex {
         vec![self.tx_hash]
     }
 
-    fn bribe(&self) -> u64 {
-        self.gas_details.coinbase_transfer.unwrap_or(0) as u64
+    fn bribe(&self) -> u128 {
+        self.gas_details.coinbase_transfer.unwrap_or(0)
     }
 }
 
@@ -564,12 +564,12 @@ impl SpecificMev for Liquidation {
         vec![self.liquidation_tx_hash]
     }
 
-    fn priority_fee_paid(&self) -> u64 {
+    fn priority_fee_paid(&self) -> u128 {
         self.gas_details.priority_fee
     }
 
-    fn bribe(&self) -> u64 {
-        self.gas_details.coinbase_transfer.unwrap_or(0) as u64
+    fn bribe(&self) -> u128 {
+        self.gas_details.coinbase_transfer.unwrap_or(0)
     }
 }
 
@@ -625,11 +625,11 @@ pub struct JitLiquidity {
     #[serde(rename = "victim_gas_details.coinbase_transfer")]
     pub victim_gas_details_coinbase_transfer: Vec<Option<u128>>,
     #[serde(rename = "victim_gas_details.priority_fee")]
-    pub victim_gas_details_priority_fee: Vec<u64>,
+    pub victim_gas_details_priority_fee: Vec<u128>,
     #[serde(rename = "victim_gas_details.gas_used")]
-    pub victim_gas_details_gas_used: Vec<u64>,
+    pub victim_gas_details_gas_used: Vec<u128>,
     #[serde(rename = "victim_gas_details.effective_gas_price")]
-    pub victim_gas_details_effective_gas_price: Vec<u64>,
+    pub victim_gas_details_effective_gas_price: Vec<u128>,
     #[serde_as(as = "FixedString")]
     pub burn_tx_hash: B256,
     #[serde(with = "gas_details_tuple")]
@@ -662,16 +662,16 @@ impl SpecificMev for JitLiquidity {
         vec![self.mint_tx_hash, self.burn_tx_hash]
     }
 
-    fn bribe(&self) -> u64 {
-        (self.mint_gas_details.coinbase_transfer.unwrap_or(0)
-            + self.burn_gas_details.coinbase_transfer.unwrap_or(0)) as u64
+    fn bribe(&self) -> u128 {
+        self.mint_gas_details.coinbase_transfer.unwrap_or(0)
+            + self.burn_gas_details.coinbase_transfer.unwrap_or(0)
     }
 
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
         self
     }
 
-    fn priority_fee_paid(&self) -> u64 {
+    fn priority_fee_paid(&self) -> u128 {
         self.mint_gas_details.priority_fee + self.burn_gas_details.priority_fee
     }
 }
@@ -710,12 +710,12 @@ impl SpecificMev for AtomicBackrun {
         self
     }
 
-    fn priority_fee_paid(&self) -> u64 {
+    fn priority_fee_paid(&self) -> u128 {
         self.gas_details.priority_fee
     }
 
-    fn bribe(&self) -> u64 {
-        self.gas_details.coinbase_transfer.unwrap_or(0) as u64
+    fn bribe(&self) -> u128 {
+        self.gas_details.coinbase_transfer.unwrap_or(0)
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
@@ -750,7 +750,7 @@ mod gas_details_tuple {
     where
         D: Deserializer<'de>,
     {
-        let tuple = <(Option<u128>, u64, u64, u64)>::deserialize(deserializer)?;
+        let tuple = <(Option<u128>, u128, u128, u128)>::deserialize(deserializer)?;
         Ok(GasDetails {
             coinbase_transfer:   tuple.0.map(Into::into),
             priority_fee:        tuple.1,

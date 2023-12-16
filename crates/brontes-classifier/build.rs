@@ -26,12 +26,21 @@ const PROTOCOL_ADDRESS_SET_PATH: &str = "protocol_addr_set.rs";
 const BINDINGS_PATH: &str = "bindings.rs";
 
 const CLASSIFIED_ONLY_DATA_QUERY: &str = r#"
-SELECT 
-	groupArray(address) as addresses, abi, classifier_name
-FROM brontes.protocol_details
-FINAL
-WHERE classifier_name IS NOT NULL
-GROUP BY abi, classifier_name
+SELECT
+    addresses,
+    abi,
+    classifier_name
+FROM
+(
+    SELECT
+        groupArray(address) AS addresses,
+        any(abi) AS abi,
+        classifier_name
+    FROM brontes.protocol_details
+    FINAL
+    WHERE classifier_name IS NOT NULL
+    GROUP BY classifier_name
+)
 "#;
 
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default, PartialEq, Eq, Hash)]
@@ -106,11 +115,6 @@ async fn run_classifier_mapping() {
 
     let protocol_abis: Vec<(ProtocolDetails, bool, bool)> = protocol_abis
         .into_par_iter()
-        .filter(|contract: &ProtocolDetails| {
-            let addrs: HashSet<String> = contract.addresses.clone().into_iter().collect();
-            contract.abi.is_some()
-                && (!failed_abi_addresses.is_subset(&addrs) || failed_abi_addresses.is_empty())
-        })
         .filter_map(|contract: ProtocolDetails| {
             match JsonAbi::from_json_str(contract.abi.as_ref().unwrap()) {
                 Ok(c) => Some((c, contract)),

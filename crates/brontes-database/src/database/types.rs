@@ -70,7 +70,7 @@ pub struct TimesFlow {
     pub relay_time:      u64,
     pub p2p_time:        u64,
     pub proposer_addr:   Address,
-    pub proposer_reward: u64,
+    pub proposer_reward: u128,
     pub private_flow:    HashSet<B256>,
 }
 
@@ -82,7 +82,7 @@ impl From<TimesFlowDB> for TimesFlow {
             relay_time:      value.relay_time,
             p2p_time:        value.p2p_time,
             proposer_addr:   Address::from_str(&value.proposer_addr).unwrap_or_default(),
-            proposer_reward: value.proposer_reward as u64,
+            proposer_reward: value.proposer_reward,
             private_flow:    value
                 .private_flow
                 .into_iter()
