@@ -1,29 +1,26 @@
-use std::{collections::HashMap, ops::Index, pin::Pin, task::Poll};
+use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc, task::Poll};
 
-use alloy_primitives::{Address, Bytes, FixedBytes};
-use alloy_providers::provider::Provider;
-use alloy_rpc_types::{state::AccountOverride, TransactionRequest};
-use alloy_sol_macro::sol;
+use ::futures::{future::join_all, stream::FuturesUnordered};
+use alloy_primitives::Address;
+use alloy_rpc_types::state::AccountOverride;
 use alloy_sol_types::SolCall;
-use alloy_transport::TransportResult;
-use alloy_transport_http::Http;
 use brontes_database::{
-    database::Database,
     graph::{PriceGraph, TrackableGraph},
-    DexQuote, Pair, QuotesMap,
+    DexQuote, Pair,
 };
-use brontes_types::cache_decimals;
-use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
+use brontes_types::extra_processing::TransactionPoolSwappedTokens;
 use itertools::Itertools;
 use malachite::Rational;
-use once_cell::sync::Lazy;
 use phf::phf_map;
-use reth_primitives::revm_primitives::{HashMap, HashSet};
-use reth_rpc_types::trace::parity::StateDiff;
-use tokio::sync::futures;
+use reth_primitives::revm_primitives::HashSet;
+use reth_rpc_types::{
+    state::StateOverride,
+    trace::parity::{Delta, StateDiff},
+    CallInput, CallRequest,
+};
 use tracing::error;
 
-use crate::TracingProvider;
+use crate::decoding::TracingProvider;
 
 pub mod uniswap_v2;
 pub mod uniswap_v3;

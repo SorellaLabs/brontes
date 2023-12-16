@@ -36,8 +36,6 @@ pub trait Quote: MulAssign<Self> + std::fmt::Debug + Clone + Send + Sync + 'stat
 }
 
 #[derive(Debug, Clone)]
-/// There should be 1 entry for how the pair is stored on the CEX and the other
-/// order should be the reverse of that
 pub struct DexQuotesMap<Q: Quote>(HashMap<Pair, Q>);
 
 impl<Q: Quote> DexQuotesMap<Q> {

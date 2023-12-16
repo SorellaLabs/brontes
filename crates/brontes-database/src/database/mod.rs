@@ -16,12 +16,12 @@ use sorella_db_databases::{
 };
 use tracing::{error, info};
 
-use self::types::{Abis, DBTokenPricesDB, PoolReservesDB, TimesFlow};
+use self::types::{Abis, DBTokenPricesDB, TimesFlow};
 use super::Metadata;
 use crate::{
     cex::CexPriceMap,
     database::{const_sql::*, types::TimesFlowDB},
-    CexQuote, DexQuote, DexQuotesMap, Pair, PriceGraph,
+    DexQuote, DexQuotesMap, Pair, PriceGraph,
 };
 
 pub const WETH_ADDRESS: Address =
