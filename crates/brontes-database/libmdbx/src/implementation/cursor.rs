@@ -20,14 +20,14 @@ use super::utils::{decode_one, decode_value, decoder, uncompressable_ref_util};
 
 /// Cursor wrapper to access KV items.
 #[derive(Debug)]
-pub struct LibmbdxCursor<T: Table, K: TransactionKind> {
+pub struct LibmdbxCursor<T: Table, K: TransactionKind> {
     /// Inner `libmdbx` cursor.
     pub(crate) inner: reth_libmdbx::Cursor<K>,
     /// Phantom data to enforce encoding/decoding.
     _dbi:             PhantomData<T>,
 }
 
-impl<T: Table, K: TransactionKind> LibmbdxCursor<T, K> {
+impl<T: Table, K: TransactionKind> LibmdbxCursor<T, K> {
     pub(crate) fn new(inner: reth_libmdbx::Cursor<K>) -> Self {
         Self { inner, _dbi: PhantomData }
     }
@@ -43,7 +43,7 @@ macro_rules! decode {
     };
 }
 
-impl<T: Table, K: TransactionKind> DbCursorRO<T> for LibmbdxCursor<T, K> {
+impl<T: Table, K: TransactionKind> DbCursorRO<T> for LibmdbxCursor<T, K> {
     fn first(&mut self) -> PairResult<T> {
         decode!(self.inner.first())
     }
@@ -117,7 +117,7 @@ impl<T: Table, K: TransactionKind> DbCursorRO<T> for LibmbdxCursor<T, K> {
     }
 }
 
-impl<T: DupSort, K: TransactionKind> DbDupCursorRO<T> for LibmbdxCursor<T, K> {
+impl<T: DupSort, K: TransactionKind> DbDupCursorRO<T> for LibmdbxCursor<T, K> {
     /// Returns the next `(key, value)` pair of a DUPSORT table.
     fn next_dup(&mut self) -> PairResult<T> {
         decode!(self.inner.next_dup())
@@ -195,7 +195,7 @@ impl<T: DupSort, K: TransactionKind> DbDupCursorRO<T> for LibmbdxCursor<T, K> {
     }
 }
 
-impl<T: Table> DbCursorRW<T> for LibmbdxCursor<T, RW> {
+impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
     /// Database operation that will update an existing row if a specified value
     /// already exists in a table, and insert a new row if the specified
     /// value doesn't already exist
@@ -260,7 +260,7 @@ impl<T: Table> DbCursorRW<T> for LibmbdxCursor<T, RW> {
     }
 }
 
-impl<T: DupSort> DbDupCursorRW<T> for LibmbdxCursor<T, RW> {
+impl<T: DupSort> DbDupCursorRW<T> for LibmdbxCursor<T, RW> {
     fn delete_current_duplicates(&mut self) -> Result<(), DatabaseError> {
         self.inner
             .del(WriteFlags::NO_DUP_DATA)

@@ -1,122 +1,106 @@
-use std::{default::Default, str::FromStr};
-
 use alloy_rlp::{Decodable, Encodable};
-use reth_codecs::{main_codec, Compact};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
-use reth_primitives::{bytes, Address, BufMut};
+use reth_primitives::{Address, BufMut};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
 
-use super::{utils::pool_tokens, LibmbdxData};
-use crate::{clickhouse::serde::address_string, libmdbx::tables::AddressToProtocol};
+use crate::{
+    tables::AddressToProtocol,
+    types::utils::{address_string, static_bindings},
+    LibmdbxData,
+};
 
 #[serde_as]
-#[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct AddressToProtocolData {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Row)]
+pub struct AddressToProtocolData {
     #[serde(with = "address_string")]
-    address: Address,
-    #[serde(with = "pool_tokens")]
-    tokens:  StaticBindings,
+    pub address: Address,
+
+    #[serde(with = "static_bindings")]
+    pub classifier_name: StaticBindingsDb,
 }
 
-impl LibmbdxData<AddressToProtocol> for AddressToProtocolData {
+impl LibmdbxData<AddressToProtocol> for AddressToProtocolData {
     fn into_key_val(
         &self,
     ) -> (
         <AddressToProtocol as reth_db::table::Table>::Key,
         <AddressToProtocol as reth_db::table::Table>::Value,
     ) {
-        (self.address, self.tokens.clone())
+        (self.address, self.classifier_name.clone())
     }
 }
 
-#[derive(Debug, Default, PartialEq, Clone, Eq)]
-#[main_codec(rlp)]
-pub struct PoolTokens2 {
-    token0: Address,
-    token1: Address,
-    token2: Option<Address>,
-    token3: Option<Address>,
-    token4: Option<Address>,
+#[allow(non_camel_case_types)]
+#[derive(Debug, PartialEq, Clone, Eq, Serialize, Deserialize)]
+pub enum StaticBindingsDb {
+    UniswapV2,
+    SushiSwapV2,
+    UniswapV3,
+    SushiSwapV3,
 }
 
-impl IntoIterator for PoolTokens2 {
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-    type Item = Address;
-
-    fn into_iter(self) -> Self::IntoIter {
-        vec![Some(self.token0), Some(self.token1), self.token2, self.token3, self.token4]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>()
-            .into_iter()
-    }
-}
-
-impl From<Vec<String>> for PoolTokens2 {
-    fn from(value: Vec<String>) -> Self {
-        let mut iter = value.into_iter();
-        PoolTokens2 {
-            token0: Address::from_str(&iter.next().unwrap()).unwrap(),
-            token1: Address::from_str(&iter.next().unwrap()).unwrap(),
-            token2: iter.next().map(|a| Address::from_str(&a).ok()).flatten(),
-            token3: iter.next().map(|a| Address::from_str(&a).ok()).flatten(),
-            token4: iter.next().map(|a| Address::from_str(&a).ok()).flatten(),
+impl From<String> for StaticBindingsDb {
+    fn from(value: String) -> Self {
+        println!("VALUE: {}", value);
+        if value == "UniswapV2".to_string() {
+            StaticBindingsDb::UniswapV2
+        } else if value == "SushiSwapV2".to_string() {
+            StaticBindingsDb::SushiSwapV2
+        } else if value == "UniswapV3".to_string() {
+            StaticBindingsDb::UniswapV3
+        } else if value == "SushiSwapV3".to_string() {
+            StaticBindingsDb::SushiSwapV3
+        } else {
+            //StaticBindingsDb::SushiSwapV3
+            unreachable!("no value from str: {value}");
         }
     }
 }
 
-impl Into<Vec<String>> for PoolTokens2 {
-    fn into(self) -> Vec<String> {
-        vec![Some(self.token0), Some(self.token1), self.token2, self.token3, self.token4]
-            .into_iter()
-            .map(|addr| addr.map(|a| format!("{:?}", a)))
-            .flatten()
-            .collect::<Vec<_>>()
+impl Into<String> for StaticBindingsDb {
+    fn into(self) -> String {
+        match self {
+            StaticBindingsDb::UniswapV2 => "UniswapV2".to_string(),
+            StaticBindingsDb::SushiSwapV2 => "SushiSwapV2".to_string(),
+            StaticBindingsDb::UniswapV3 => "UniswapV3".to_string(),
+            StaticBindingsDb::SushiSwapV3 => "SushiSwapV3".to_string(),
+        }
     }
 }
 
-impl Encodable for PoolTokens2 {
+impl Encodable for StaticBindingsDb {
     fn encode(&self, out: &mut dyn BufMut) {
-        self.token0.encode(out);
-        self.token1.encode(out);
-        self.token2.unwrap_or_default().encode(out);
-        self.token3.unwrap_or_default().encode(out);
-        self.token4.unwrap_or_default().encode(out);
+        match self {
+            StaticBindingsDb::UniswapV2 => 0u64.encode(out),
+            StaticBindingsDb::SushiSwapV2 => 1u64.encode(out),
+            StaticBindingsDb::UniswapV3 => 2u64.encode(out),
+            StaticBindingsDb::SushiSwapV3 => 3u64.encode(out),
+        }
     }
 }
 
-impl Decodable for PoolTokens2 {
+impl Decodable for StaticBindingsDb {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let mut this = Self {
-            token0: Address::decode(buf)?,
-            token1: Address::decode(buf)?,
-            token2: Some(Address::decode(buf)?),
-            token3: Some(Address::decode(buf)?),
-            token4: Some(Address::decode(buf)?),
+        let self_int = u64::decode(buf)?;
+
+        let this = match self_int {
+            0 => StaticBindingsDb::UniswapV2,
+            1 => StaticBindingsDb::SushiSwapV2,
+            2 => StaticBindingsDb::UniswapV3,
+            3 => StaticBindingsDb::SushiSwapV3,
+            _ => unreachable!("no enum variant"),
         };
-
-        if this.token2.as_ref().unwrap().is_zero() {
-            this.token2 = None;
-        }
-
-        if this.token3.as_ref().unwrap().is_zero() {
-            this.token3 = None;
-        }
-
-        if this.token4.as_ref().unwrap().is_zero() {
-            this.token4 = None;
-        }
 
         Ok(this)
     }
 }
 
-impl Compress for PoolTokens2 {
+impl Compress for StaticBindingsDb {
     type Compressed = Vec<u8>;
 
     fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
@@ -126,10 +110,10 @@ impl Compress for PoolTokens2 {
     }
 }
 
-impl Decompress for PoolTokens2 {
+impl Decompress for StaticBindingsDb {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
         let buf = &mut binding.as_slice();
-        Ok(PoolTokens2::decode(buf).map_err(|_| DatabaseError::Decode)?)
+        Ok(StaticBindingsDb::decode(buf).map_err(|_| DatabaseError::Decode)?)
     }
 }
