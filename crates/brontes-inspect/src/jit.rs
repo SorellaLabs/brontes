@@ -357,7 +357,7 @@ impl JitInspector {
             .filter_map(|(token, amount)| {
                 Some(
                     self.inner
-                        .get_usd_price_dex_avg(idx, token, metadata.clone())?
+                        .get_usd_price_dex_avg(idx, *token, metadata.clone())?
                         * amount.to_scaled_rational(try_get_decimals(&token.0 .0)?),
                 )
             })

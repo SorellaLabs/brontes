@@ -41,9 +41,10 @@ pub trait DexPrice: Clone + Send + Sync + Unpin + 'static {
 
 static DEX_TOKEN_MAP: phf::Map<Pair, ()> = phf_map!();
 
-// we will have a static map for (token0, token1) => Vec<address, exchange type>
-// this will then process using async, grab the reserves and process the price.
-// and return that with tvl. with this we can calculate weighted price
+// we have a table in libmdbx that maps (token0, token1) => Vec<address,
+// exchange type> this will then process using async, grab the reserves and
+// process the price. and return that with tvl. with this we can calculate
+// weighted price
 pub struct DexPricing<T: TracingProvider> {
     provider: Arc<T>,
     futures: FuturesUnordered<

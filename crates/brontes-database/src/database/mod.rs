@@ -19,8 +19,9 @@ use tracing::{error, info};
 use self::types::{Abis, DBTokenPricesDB, PoolReservesDB, TimesFlow};
 use super::Metadata;
 use crate::{
+    cex::CexPriceMap,
     database::{const_sql::*, types::TimesFlowDB},
-    CexQuote, DexQuote, Pair, PriceGraph, QuotesMap,
+    CexQuote, DexQuote, DexQuotesMap, Pair, PriceGraph,
 };
 
 pub const WETH_ADDRESS: Address =
@@ -50,10 +51,10 @@ impl Database {
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {
         let times_flow = self.get_times_flow_info(block_num).await;
-        let cex_prices =
-            PriceGraph::from_quotes(self.get_cex_token_prices(times_flow.p2p_time).await);
-        let dex_prices =
-            PriceGraph::from_quotes(self.get_dex_token_prices(times_flow.p2p_time).await);
+        let cex_prices = CexPriceMap::from(self.get_cex_token_prices(times_flow.p2p_time).await);
+
+        //TODO: you were calling clickhouse, so now just making it empty here
+        let dex_prices = PriceGraph::from_quotes(DexQuotesMap::<DexQuote>::new());
 
         // eth price is in cex_prices
         let eth_prices = cex_prices
@@ -184,15 +185,7 @@ impl Database {
             .into()
     }
 
-    async fn get_dex_token_prices(&self, block: u64) -> QuotesMap<DexQuote> {
-        self.client
-            .query_all_params::<u64, PoolReservesDB>(DEX_PRICES, vec![block])
-            .await
-            .unwrap()
-            .into()
-    }
-
-    async fn get_cex_token_prices(&self, p2p_time: u64) -> QuotesMap<CexQuote> {
+    async fn get_cex_token_prices(&self, p2p_time: u64) -> CexPriceMap {
         self.client
             .query_all_params::<u64, DBTokenPricesDB>(PRICES, vec![p2p_time])
             .await
