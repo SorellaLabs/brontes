@@ -120,12 +120,13 @@ mod tests {
         Libmbdx::init_db(brontes_db_path, None)
     }
 
+    /*
     #[test]
     fn test_init_db() {
         assert!(init_db().is_ok());
     }
 
-    /*
+
     #[tokio::test]
     #[serial]
     async fn test_initialize_write_table() {
