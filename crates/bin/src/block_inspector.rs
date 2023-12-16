@@ -8,7 +8,6 @@ use alloy_transport_http::Http;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
-    dex_price::DexPricing,
     missing_decimals::MissingDecimals,
 };
 use brontes_database::{clickhouse::Clickhouse, Metadata};
@@ -66,20 +65,11 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (extra_processing, mut tree) = self.classifier.build_tree(traces, header);
+            let (extra_data, mut tree) = self.classifier.build_tree(traces, header);
 
-            let (meta, dex_prices, _) = join!(
+            let (meta, _) = join!(
                 labeller_fut,
-                DexPricing::new(
-                    self.parser.get_tracer(),
-                    self.block_number,
-                    extra_processing.prices,
-                ),
-                MissingDecimals::new(
-                    self.provider,
-                    self.database,
-                    extra_processing.tokens_decimal_fill
-                )
+                MissingDecimals::new(self.provider, self.database, extra_data.tokens_decimal_fill)
             );
             tree.eth_price = meta.eth_prices.clone();
 
