@@ -13,7 +13,6 @@ use brontes_types::extra_processing::Pair;
 use itertools::Itertools;
 use petgraph::{
     algo::Measure,
-    data::{Build, DataMap},
     graph::UnGraph,
     prelude::*,
     visit::{IntoEdges, VisitMap, Visitable},
@@ -24,7 +23,6 @@ use tracing::info;
 pub struct PairGraph {
     graph:         UnGraph<(), HashSet<Address>, usize>,
     addr_to_index: HashMap<Address, usize>,
-    index_to_addr: HashMap<usize, Address>,
 }
 
 impl PairGraph {
@@ -33,7 +31,6 @@ impl PairGraph {
         let mut graph = UnGraph::<(), HashSet<Address>, usize>::default();
 
         let mut addr_to_index = HashMap::default();
-        let mut index_to_addr = HashMap::default();
         let mut connections: HashMap<Address, (usize, Vec<(Address, Vec<Address>, usize)>)> =
             HashMap::new();
 
@@ -43,12 +40,10 @@ impl PairGraph {
                 .entry(pair.0)
                 .or_insert(graph.add_node(()).index());
 
-            index_to_addr.insert(addr0, pair.0);
             // crate node if doesn't exist for addr or get node otherwise
             let addr1 = *addr_to_index
                 .entry(pair.1)
                 .or_insert(graph.add_node(()).index());
-            index_to_addr.insert(addr1, pair.1);
 
             // insert token0
             let e = connections.entry(pair.0).or_insert_with(|| (addr0, vec![]));
@@ -83,11 +78,23 @@ impl PairGraph {
 
         info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph in {}us", delta);
 
-        Self { graph, addr_to_index, index_to_addr }
+        Self { graph, addr_to_index }
     }
 
-    pub fn get_all_pools(&self, pair: Pair) -> Vec<Address> {
-        todo!()
+    pub fn get_all_pools(&self, pair: Pair) -> Box<dyn Iterator<Item = Address>> {
+        let Some(node0) = self.addr_to_index.get(&pair.0) else {
+            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = Address>>
+        };
+        let Some(node1) = self.addr_to_index.get(&pair.1) else {
+            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = Address>>
+        };
+
+        let Some(edge) = self.graph.find_edge((*node0).into(), (*node1).into()) else {
+            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = Address>>
+        };
+
+        Box::new(self.graph.edge_weight(edge).unwrap().clone().into_iter())
+            as Box<dyn Iterator<Item = Address>>
     }
 
     // returns false if there was a duplicate
