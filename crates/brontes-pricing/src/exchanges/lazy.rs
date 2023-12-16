@@ -6,7 +6,7 @@ use reth_primitives::revm_primitives::HashMap;
 
 use crate::{types::PoolState, PoolUpdate};
 pub struct LazyExchangeLoader {
-    pool_buf:          HashMap<Address, VecDeque<PoolUpdate>>,
+    pool_buf:          HashMap<Address, Vec<PoolUpdate>>,
     pool_load_futures: FuturesUnordered<Pin<Box<dyn Future<Output = (Address, PoolState)>>>>,
 }
 
@@ -23,12 +23,16 @@ impl LazyExchangeLoader {
         self.pool_buf
             .get_mut(k)
             .expect("buffered lazy exchange when no exchange future was found")
-            .push_back(update);
+            .push(update);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.pool_buf.is_empty()
     }
 }
 
 impl Stream for LazyExchangeLoader {
-    type Item = (PoolState, VecDeque<PoolUpdate>);
+    type Item = (PoolState, Vec<PoolUpdate>);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,

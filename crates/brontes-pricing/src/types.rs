@@ -14,8 +14,8 @@ pub struct PoolKey {
 }
 
 pub struct DexPrices {
-    quotes: DexQuotes,
-    state:  Arc<HashMap<PoolKey, PoolState>>,
+    pub(crate) quotes: DexQuotes,
+    pub(crate) state:  Arc<HashMap<PoolKey, PoolStateSnapShot>>,
 }
 
 impl DexPrices {
@@ -56,6 +56,14 @@ impl PoolState {
         self.variant.increment_state(state);
         (self.update_nonce, self.variant.clone().into_snapshot())
     }
+
+    pub fn into_snapshot(&self) -> PoolStateSnapShot {
+        self.variant.clone().into_snapshot()
+    }
+
+    pub fn address(&self) -> Address {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +82,7 @@ impl PoolVariants {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct PoolUpdate {
     pub block:  u64,
     pub tx_idx: usize,
