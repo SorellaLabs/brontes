@@ -33,7 +33,7 @@ abi-builds/*
 # But not bindings.rs
 !abi-builds/bindings.rs
 abi-builds/**.txt
-
+!abi-builds/token_mapping.rs
 stuff
 
 
