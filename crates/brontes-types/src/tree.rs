@@ -515,9 +515,12 @@ impl<V: NormalizedAction> Node<V> {
 #[cfg(test)]
 mod tests {
 
+    use std::env;
+
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
     use brontes_database::clickhouse::Clickhouse;
+    use brontes_database_libmdbx::Libmdbx;
     use reth_primitives::{revm_primitives::db::Database, Address};
     use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
     use serial_test::serial;
@@ -575,8 +578,10 @@ mod tests {
         dotenv::dotenv().ok();
 
         let (tx, _rx) = unbounded_channel();
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
         let db = Clickhouse::default();
         let mut tree = build_raw_test_tree(&tracer, &db, block_num).await;
 
