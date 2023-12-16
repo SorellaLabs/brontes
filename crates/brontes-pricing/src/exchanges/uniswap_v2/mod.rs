@@ -3,6 +3,10 @@ pub mod factory;
 
 use std::sync::Arc;
 
+use amms::{
+    amm::AutomatedMarketMaker,
+    errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
+};
 use async_trait::async_trait;
 use ethers::{
     abi::{ethabi::Bytes, RawLog, Token},
@@ -14,10 +18,6 @@ use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 
 use self::factory::PAIR_CREATED_EVENT_SIGNATURE;
-use crate::{
-    amm::AutomatedMarketMaker,
-    errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
-};
 
 abigen!(
     IUniswapV2Pair,
@@ -219,7 +219,7 @@ impl UniswapV2Pool {
         pool.populate_data(None, middleware.clone()).await?;
 
         if !pool.data_is_populated() {
-            return Err(AMMError::PoolDataError);
+            return Err(AMMError::PoolDataError)
         }
 
         Ok(pool)
@@ -373,7 +373,7 @@ impl UniswapV2Pool {
         tracing::trace!(?amount_in, ?reserve_in, ?reserve_out);
 
         if amount_in.is_zero() || reserve_in.is_zero() || reserve_out.is_zero() {
-            return U256::zero();
+            return U256::zero()
         }
         let fee = (10000 - (self.fee / 10)) / 10; //Fee of 300 => (10,000 - 30) / 10  = 997
         let amount_in_with_fee = amount_in * U256::from(fee);
@@ -469,7 +469,7 @@ pub fn div_uu(x: U256, y: U256) -> Result<u128, ArithmeticError> {
         }
 
         if answer > U256_0XFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF {
-            return Err(ArithmeticError::ShadowOverflow(answer));
+            return Err(ArithmeticError::ShadowOverflow(answer))
         }
 
         let hi = answer * (y >> U256_128);
@@ -492,13 +492,13 @@ pub fn div_uu(x: U256, y: U256) -> Result<u128, ArithmeticError> {
         xl = xl.overflowing_sub(lo).0;
 
         if xh != hi >> U256_128 {
-            return Err(ArithmeticError::RoundingError);
+            return Err(ArithmeticError::RoundingError)
         }
 
         answer += xl / y;
 
         if answer > U256_0XFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF {
-            return Err(ArithmeticError::ShadowOverflow(answer));
+            return Err(ArithmeticError::ShadowOverflow(answer))
         }
 
         Ok(answer.as_u128())
