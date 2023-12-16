@@ -1377,6 +1377,7 @@ dependencies = [
  "erased-serde",
  "ethers",
  "futures",
+ "itertools 0.12.0",
  "malachite",
  "num-bigfloat",
  "parking_lot 0.12.1",
