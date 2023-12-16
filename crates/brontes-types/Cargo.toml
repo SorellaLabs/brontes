@@ -51,20 +51,12 @@ alloy-sol-macro.workspace = true
 alloy-dyn-abi.workspace = true
 alloy-rlp.workspace = true
 parking_lot.workspace = true
-derive_more.workspace = true
-dyn-clone = "1.0.16"
-itertools.workspace = true
-rkyv.workspace = true
-redefined.workspace = true
-bytes.workspace = true
-colored.workspace = true
-indoc = "2"
-zstd = "0.13"
-paste = "1.0.14"
-pin-project = "1.1.4"
-clap.workspace = true
-brontes-macros.workspace = true
-indicatif.workspace = true
+petgraph = "0.6.4"
+derive_more.workspace = true    
+
+[build-dependencies]
+strum = { workspace = true, features = ["derive"] }
+tokio.workspace = true
 hyper.workspace = true
 prettytable-rs = "0.10"
 

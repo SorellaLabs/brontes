@@ -1,18 +1,21 @@
 use std::{collections::HashMap, hash::Hash, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
+use brontes_types::extra_processing::Pair;
 use malachite::{
-    num::arithmetic::traits::{Floor, ReciprocalAssign},
+    num::arithmetic::traits::{Floor, Reciprocal, ReciprocalAssign},
     Rational,
 };
 
-use crate::{DBTokenPricesDB, Pair, Quote};
+use crate::{DBTokenPricesDB, Quote};
 
+/// Each pair is entered into the map with the addresses in order by value:
+/// Ergo if token0 < token1, then the pair is (token0, token1)
+/// So when we query the map we order the addresses in the pair and then query
+/// the quote provides us with the actual token0 so we can interpret the price
+/// in any direction
 #[derive(Debug, Clone)]
 pub struct CexPriceMap(HashMap<Pair, Vec<CexQuote>>);
-
-/// There should be 1 entry for how the pair is stored on the CEX and the other
-/// order should be the reverse of that
 
 impl CexPriceMap {
     pub fn new() -> Self {
@@ -24,29 +27,58 @@ impl CexPriceMap {
     }
 
     /// Assumes binance quote, for retro compatibility
-    pub fn get_quote(&self, pair: &Pair) -> Option<&CexQuote> {
-        self.0.get(pair).and_then(|quotes| quotes.first())
+    pub fn get_quote(&self, pair: &Pair) -> Option<CexQuote> {
+        let ordered_pair = pair.ordered();
+        self.0.get(&ordered_pair).and_then(|quotes| {
+            quotes.first().map(|quote| {
+                if quote.token0 == pair.0 {
+                    quote.clone()
+                } else {
+                    let mut reciprocal_quote = quote.clone();
+                    reciprocal_quote.inverse_price(); // Modify the price to its reciprocal
+                    reciprocal_quote
+                }
+            })
+        })
     }
 
-    pub fn get_binance_quote(&self, pair: &Pair) -> Option<&CexQuote> {
-        self.0.get(pair).and_then(|quotes| quotes.first())
+    pub fn get_binance_quote(&self, pair: &Pair) -> Option<CexQuote> {
+        let ordered_pair = pair.ordered();
+        self.0.get(&ordered_pair).and_then(|quotes| {
+            quotes.first().map(|quote| {
+                if quote.token0 == pair.0 {
+                    quote.clone()
+                } else {
+                    let mut reciprocal_quote = quote.clone();
+                    reciprocal_quote.inverse_price(); // Modify the price to its reciprocal
+                    reciprocal_quote
+                }
+            })
+        })
     }
 
     pub fn get_avg_quote(&self, pair: &Pair) -> Option<CexQuote> {
-        self.0.get(pair).and_then(|quotes| {
+        let ordered_pair = pair.ordered();
+        self.0.get(&ordered_pair).and_then(|quotes| {
             if quotes.is_empty() {
                 None
             } else {
-                let sum_price = quotes
-                    .iter()
-                    .fold((Rational::default(), Rational::default()), |acc, q| {
-                        (acc.0 + q.price.0.clone(), acc.1 + q.price.1.clone())
-                    });
-                let count = Rational::from(quotes.len());
+                let (sum_price, count) = quotes.iter().fold(
+                    ((Rational::default(), Rational::default()), 0),
+                    |(acc, cnt), q| {
+                        let mut quote = q.clone();
+                        if quote.token0 != pair.0 {
+                            quote.inverse_price();
+                        }
+                        ((acc.0 + quote.price.0, acc.1 + quote.price.1), cnt + 1)
+                    },
+                );
+                let count = Rational::from(count);
                 Some(CexQuote {
                     exchange:  None,
                     timestamp: quotes.last().unwrap().timestamp,
                     price:     (sum_price.0 / count.clone(), sum_price.1 / count),
+                    token0:    pair.0,
                 })
             }
         })
@@ -60,15 +92,15 @@ pub struct CexQuote {
     /// Best Ask & Bid price at p2p timestamp (which is when the block is first
     /// propagated by the relay / proposer)
     pub price:     (Rational, Rational),
+    pub token0:    Address,
 }
 
-impl Quote for CexQuote {
+impl CexQuote {
     fn inverse_price(&mut self) {
         self.price.0.reciprocal_assign();
         self.price.1.reciprocal_assign();
     }
 }
-
 impl CexQuote {
     pub fn avg(&self) -> Rational {
         (&self.price.0 + &self.price.1) / Rational::from(2)
@@ -105,7 +137,7 @@ impl From<Vec<DBTokenPricesDB>> for CexPriceMap {
         let mut map: HashMap<Pair, Vec<CexQuote>> = HashMap::new();
 
         for token_info in value {
-            let pair = Pair(
+            let pair = Pair::map_key(
                 Address::from_str(&token_info.key.0).unwrap(),
                 Address::from_str(&token_info.key.1).unwrap(),
             );
@@ -122,6 +154,7 @@ impl From<Vec<DBTokenPricesDB>> for CexPriceMap {
                                                                                 * Rational */
                             Rational::try_from(exchange_price.val.2).unwrap(),
                         ),
+                        token0:    Address::from_str(&token_info.key.0).unwrap(),
                     }
                 })
                 .collect();
