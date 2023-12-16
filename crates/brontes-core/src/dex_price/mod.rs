@@ -6,9 +6,10 @@ use alloy_rpc_types::state::AccountOverride;
 use alloy_sol_types::SolCall;
 use brontes_database::{
     graph::{PriceGraph, TrackableGraph},
-    DexQuote, Pair,
+    DexQuote, DexQuotesMap, Pair,
 };
 use brontes_types::extra_processing::TransactionPoolSwappedTokens;
+use futures::StreamExt;
 use itertools::Itertools;
 use malachite::Rational;
 use phf::phf_map;
@@ -64,13 +65,13 @@ impl<T: TracingProvider> DexPricing<T> {
                 let mut result = HashMap::new();
 
                 for pair in transaction.pairs {
-                    let Some(dex) = DEX_PRICE_MAP.get(&pair) else {
+                    let Some(dex) = DEX_TOKEN_MAP.get(&pair) else {
                         continue;
                     };
 
                     let price_tvl: Vec<(Rational, Rational)> =
                         join_all(pair.into_iter().map(|(zto, addr, dex)| {
-                            dex.get_price(self.provider, block, zto, addr, transaction.state_diff)
+                            dex.get_price(provider, block, zto, addr, transaction.state_diff)
                         }))
                         .await;
 
@@ -118,7 +119,7 @@ impl<T: TracingProvider> DexPricing<T> {
             })
             .collect();
 
-        let map = QuotesMap::wrap(res);
+        let map = DexQuotesMap::wrap(res);
         let (disjointed, graph) = PriceGraph::from_quotes_disjoint(map);
         if disjointed.is_empty() {
             // TODO: quick return here
@@ -189,7 +190,7 @@ async fn make_call_request<C: SolCall, T: TracingProvider>(
         CallRequest { to: Some(to), input: CallInput::new(encoded.into()), ..Default::default() };
 
     let res = provider
-        .eth_call(req, Some(block), state, None)
+        .eth_call(req, Some(block.into()), state, None)
         .await
         .unwrap();
     C::abi_decode_returns(&res, false).unwrap()
