@@ -7,12 +7,13 @@ use alloy_providers::provider::Provider;
 use alloy_transport_http::Http;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::clickhouse::Clickhouse;
+use brontes_database::database::Database;
 use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, StreamExt};
 use tracing::info;
 
 mod block_inspector;
+mod data_batching;
 use block_inspector::BlockInspector;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
@@ -31,7 +32,7 @@ pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     parser:           &'inspector Parser<'inspector, T>,
     classifier:       &'inspector Classifier<'inspector>,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
-    database:         &'inspector Clickhouse,
+    database:         &'inspector Database,
     block_inspectors: FuturesUnordered<BlockInspector<'inspector, N, T>>,
 }
 
@@ -43,7 +44,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         max_tasks: u64,
         provider: &'inspector Provider<Http<reqwest::Client>>,
         parser: &'inspector Parser<'inspector, T>,
-        database: &'inspector Clickhouse,
+        database: &'inspector Database,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {

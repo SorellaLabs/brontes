@@ -39,7 +39,7 @@ impl<'db> Classifier<'db> {
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, TimeTree<Actions>) {
-        let (missing_dec, roots): (Vec<_>, Vec<_>) = traces
+        let (extra, roots): (Vec<_>, Vec<_>) = traces
             .into_par_iter()
             .enumerate()
             .filter_map(|(tx_idx, mut trace)| {
@@ -52,7 +52,7 @@ impl<'db> Classifier<'db> {
                 let address = root_trace.get_from_addr();
                 let t_address = root_trace.get_to_address();
 
-                let classification = self.classify_node(trace.trace.remove(0), 0);
+                let (_, classification) = self.classify_node(trace.trace.remove(0), 0);
 
                 if classification.is_transfer() {
                     if try_get_decimals(&t_address.0 .0).is_none() {
@@ -122,13 +122,7 @@ impl<'db> Classifier<'db> {
                     state_diff: trace.state_diff,
                 };
 
-                Some((
-                    ExtraProcessing {
-                        tokens_decimal_fill: missing_decimals,
-                        prices:              needed_prices,
-                    },
-                    root,
-                ))
+                Some(((missing_decimals, needed_prices), root))
             })
             .unzip();
 
@@ -144,12 +138,14 @@ impl<'db> Classifier<'db> {
         self.remove_collect_transfers(&mut tree);
 
         tree.finalize_tree();
-        let mut dec = missing_dec.into_iter().flatten().collect::<Vec<_>>();
+        let (dec, prices): (Vec<_>, Vec<_>) = extra.into_iter().unzip();
+        let mut dec = dec.into_iter().flatten().collect::<Vec<_>>();
         dec.sort();
         // needs sort to work
         dec.dedup();
+        let processing = ExtraProcessing { tokens_decimal_fill: dec, prices };
 
-        (dec, tree)
+        (processing, tree)
     }
 
     //TODO: need to deal with other direction + eth based transfers.
@@ -284,7 +280,12 @@ impl<'db> Classifier<'db> {
                 .flatten();
 
             if let Some(res) = res {
-                return res
+                let pair = if let Actions::Swap(s) = &res {
+                    Some(Pair(s.token_in, s.token_out))
+                } else {
+                    None
+                };
+                return (pair, res)
             } else {
                 tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
             }
