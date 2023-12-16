@@ -289,7 +289,7 @@ mod tests {
 
         let (tx, _rx) = unbounded_channel();
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
         let db = Clickhouse::default();
         let classifier = Classifier::new(&libmdbx);
 
