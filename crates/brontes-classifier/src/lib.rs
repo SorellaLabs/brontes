@@ -1,11 +1,16 @@
 use std::fmt::Debug;
 
+use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
 use once_cell::sync::Lazy;
+use reth_db::mdbx::RO;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Bytes};
 use reth_rpc_types::Log;
 
 pub mod classifier;
 pub use classifier::*;
+
+pub mod bindings;
+use bindings::*;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
@@ -15,15 +20,15 @@ use alloy_sol_types::{sol, SolInterface};
 use brontes_types::normalized_actions::Actions;
 pub use impls::*;
 
-include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
-include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_addr_set.rs"));
-include!(concat!(env!("ABI_BUILD_DIR"), "/bindings.rs"));
+//include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
+//include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_addr_set.rs"));
+//include!(concat!(env!("ABI_BUILD_DIR"), "/bindings.rs"));
 
-pub trait TryDecodeSol {
-    type DecodingType;
-
-    fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error>;
-}
+sol!(UniswapV2, "./abis/UniswapV2.json");
+sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
+sol!(UniswapV3, "./abis/UniswapV3.json");
+sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
+sol!(CurveCryptoSwap, "./abis/CurveCryptoSwap.json");
 
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
@@ -35,6 +40,7 @@ pub trait ActionCollection: Sync + Send {
         from_address: Address,
         target_address: Address,
         logs: &Vec<Log>,
+        db_tx: &LibmdbxTx<RO>,
     ) -> Option<Actions>;
 }
 
@@ -63,5 +69,6 @@ pub trait IntoAction: Debug + Send + Sync {
         from_address: Address,
         target_address: Address,
         logs: &Vec<Log>,
+        db_tx: &LibmdbxTx<RO>,
     ) -> Option<Actions>;
 }

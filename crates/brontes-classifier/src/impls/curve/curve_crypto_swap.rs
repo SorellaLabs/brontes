@@ -1,7 +1,9 @@
 use alloy_primitives::{hex, FixedBytes};
 use alloy_sol_types::{SolCall, SolEvent};
+use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens, Libmdbx};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{Actions, NormalizedSwap};
+use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_primitives::{Address, Bytes, U256};
 use reth_rpc_types::Log;
 
@@ -11,9 +13,8 @@ use crate::{
         exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call,
         exchange_underlying_1Call, CurveCryptoSwapCalls, TokenExchange,
     },
-    IntoAction, StaticReturnBindings, ADDRESS_TO_TOKENS_2_POOL,
+    IntoAction, StaticReturnBindings,
 };
-
 pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
 pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
 action_impl!(
@@ -23,9 +24,11 @@ action_impl!(
     TokenExchange,
     CurveCryptoSwap,
     logs: true,
-    |index, from_address: Address, target_address: Address, log_data: Option<TokenExchange> | {
+    |index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
         let log = log_data?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         if log.sold_id ==  U256::ZERO {
             return Some(NormalizedSwap {
@@ -59,10 +62,12 @@ action_impl!(
     CurveCryptoSwap,
     logs: true,
     call_data: true,
-    |index, from_address: Address, target_address: Address, call_data: exchange_1Call, log_data: Option<TokenExchange>| {
+    |index, from_address: Address, target_address: Address, call_data: exchange_1Call, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
 
         let log = log_data?;
-        let [mut token_0, mut token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         let is_eth = call_data.use_eth;
 
@@ -107,9 +112,11 @@ exchange_underlying_0Call,
 TokenExchange,
 CurveCryptoSwap,
 logs: true,
-|index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>| {
+|index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
         let log = log_data?;
-        let [mut token_0, mut token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
 
          // Replace WETH with ETH for token_in or token_out

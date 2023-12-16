@@ -121,11 +121,12 @@ impl AtomicBackrunInspector {
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, time::SystemTime};
+    use std::{env, str::FromStr, time::SystemTime};
 
     use brontes_classifier::Classifier;
     use brontes_core::{init_tracing, test_utils::init_trace_parser};
-    use brontes_database::database::Database;
+    use brontes_database::clickhouse::Clickhouse;
+    use brontes_database_libmdbx::Libmdbx;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
@@ -137,12 +138,14 @@ mod tests {
         dotenv::dotenv().ok();
         init_tracing();
         let block_num = 18522278;
-
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
         let (tx, _rx) = unbounded_channel();
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
-        let classifier = Classifier::new();
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
+        let db = Clickhouse::default();
+
+        let classifier = Classifier::new(&libmdbx);
 
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;

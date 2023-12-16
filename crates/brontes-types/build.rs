@@ -1,3 +1,7 @@
+fn main() {}
+
+/*
+
 use std::{
     collections::HashMap,
     env,
@@ -17,9 +21,10 @@ use strum::Display;
 const TOKEN_MAPPING_FILE: &str = "token_mapping.rs";
 #[allow(dead_code)]
 const TOKEN_QUERIES: &str =
-    "SELECT toString(address) AS address, decimals FROM ethereum.dex_tokens";
+    "SELECT toString(address) AS address, decimals FROM ethereum.dex_tokens LIMIT 1"; // unchange from limit 1
 
 fn main() {
+    return;
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
 
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -128,3 +133,6 @@ fn build_db() -> Client {
 async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
 }
+
+
+*/
