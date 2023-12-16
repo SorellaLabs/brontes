@@ -1,13 +1,17 @@
+use std::{pin::Pin, sync::Arc};
+
 use alloy_primitives::Address;
 use alloy_rpc_types::{state::AccountOverride, CallRequest};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
+use brontes_types::try_get_decimals;
+use futures::Future;
 use malachite::Rational;
 use reth_rpc_types::trace::parity::{ChangedType, Delta, StateDiff};
 
 use crate::{
     decoding::TracingProvider,
-    dex_price::{into_state_overrides, make_call_request},
+    dex_price::{into_state_overrides, make_call_request, DexPrice},
 };
 
 sol!(
@@ -23,7 +27,7 @@ sol!(
     }
 );
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct V2Pricing;
 
 impl DexPrice for V2Pricing {
