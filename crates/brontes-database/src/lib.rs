@@ -1,20 +1,15 @@
 use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
-    str::FromStr,
 };
+pub mod cex;
+pub mod dex;
 
-use alloy_primitives::B256;
 pub use brontes_types::extra_processing::Pair;
-use database::types::PoolReservesDB;
+use cex::{CexPriceMap, CexQuote};
+pub use dex::DexQuote;
 use graph::PriceGraph;
-use malachite::{
-    num::{
-        arithmetic::traits::{Floor, Reciprocal, ReciprocalAssign},
-        basic::traits::Zero,
-    },
-    Rational,
-};
+use malachite::Rational;
 use reth_primitives::{Address, TxHash, U256};
 
 use crate::database::types::DBTokenPricesDB;
@@ -29,7 +24,8 @@ pub struct Metadata {
     pub p2p_timestamp:          u64,
     pub proposer_fee_recipient: Address,
     pub proposer_mev_reward:    u128,
-    pub cex_quotes:             PriceGraph,
+    pub cex_quotes:             CexPriceMap,
+    pub dex_quotes:             PriceGraph<DexQuote>,
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
     pub mempool_flow:           HashSet<TxHash>,
@@ -39,85 +35,12 @@ pub trait Quote: MulAssign<Self> + std::fmt::Debug + Clone + Send + Sync + 'stat
     fn inverse_price(&mut self);
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct DexQuote(HashMap<usize, Rational>);
-
-impl Quote for DexQuote {
-    fn inverse_price(&mut self) {
-        for v in self.0.values_mut() {
-            v.reciprocal_assign()
-        }
-    }
-}
-
-impl DexQuote {
-    pub fn get_price(&self, block_position: usize) -> Rational {
-        self.0.get(prev_tx).unwrap().clone()
-    }
-}
-
-impl MulAssign for DexQuote {
-    fn mul_assign(&mut self, rhs: Self) {
-        assert!(self.0.len() == rhs.0.len(), "rhs.len() != lhs.len()");
-
-        for (k, v) in rhs.0 {
-            *self.0.get_mut(&k).unwrap() *= v;
-        }
-    }
-}
-
-#[derive(Debug, Clone, Hash, Eq, Default)]
-pub struct CexQuote {
-    pub timestamp: u64,
-    /// Best Ask & Bid price at p2p timestamp (which is when the block is first
-    /// propagated by the relay / proposer)
-    pub price:     (Rational, Rational),
-}
-
-impl Quote for CexQuote {
-    fn inverse_price(&mut self) {
-        self.price.0.reciprocal_assign();
-        self.price.1.reciprocal_assign();
-    }
-}
-
-impl CexQuote {
-    pub fn avg(&self) -> Rational {
-        (&self.price.0 + &self.price.1) / Rational::from(2)
-    }
-
-    pub fn best_ask(&self) -> Rational {
-        self.price.0.clone()
-    }
-
-    pub fn best_bid(&self) -> Rational {
-        self.price.1.clone()
-    }
-}
-
-impl PartialEq for CexQuote {
-    fn eq(&self, other: &Self) -> bool {
-        self.timestamp == other.timestamp
-            && (self.price.0.clone() * Rational::try_from(1000000000).unwrap()).floor()
-                == (other.price.0.clone() * Rational::try_from(1000000000).unwrap()).floor()
-            && (self.price.1.clone() * Rational::try_from(1000000000).unwrap()).floor()
-                == (other.price.1.clone() * Rational::try_from(1000000000).unwrap()).floor()
-    }
-}
-
-impl MulAssign for CexQuote {
-    fn mul_assign(&mut self, rhs: Self) {
-        self.price.0 *= rhs.price.0;
-        self.price.1 *= rhs.price.1;
-    }
-}
-
 #[derive(Debug, Clone)]
 /// There should be 1 entry for how the pair is stored on the CEX and the other
 /// order should be the reverse of that
-pub struct QuotesMap<Q: Quote>(HashMap<Pair, Q>);
+pub struct DexQuotesMap<Q: Quote>(HashMap<Pair, Q>);
 
-impl<Q: Quote> QuotesMap<Q> {
+impl<Q: Quote> DexQuotesMap<Q> {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
@@ -131,31 +54,6 @@ impl<Q: Quote> QuotesMap<Q> {
     }
 }
 
-impl From<Vec<DBTokenPricesDB>> for QuotesMap<CexQuote> {
-    fn from(value: Vec<DBTokenPricesDB>) -> Self {
-        let map = value
-            .into_iter()
-            .map(|token_info| {
-                (
-                    Pair(
-                        Address::from_str(&token_info.key.0).unwrap(),
-                        Address::from_str(&token_info.key.1).unwrap(),
-                    ),
-                    CexQuote {
-                        timestamp: token_info.val.0,
-                        price:     (
-                            Rational::try_from(token_info.val.1).unwrap(),
-                            Rational::try_from(token_info.val.2).unwrap(),
-                        ),
-                    },
-                )
-            })
-            .collect::<HashMap<Pair, CexQuote>>();
-
-        QuotesMap(map)
-    }
-}
-
 impl Metadata {
     pub fn new(
         block_num: u64,
@@ -164,7 +62,7 @@ impl Metadata {
         p2p_timestamp: u64,
         proposer_fee_recipient: Address,
         proposer_mev_reward: u128,
-        cex_quotes: PriceGraph<CexQuote>,
+        cex_quotes: CexPriceMap,
         dex_quotes: PriceGraph<DexQuote>,
         eth_prices: Rational,
         mempool_flow: HashSet<TxHash>,
