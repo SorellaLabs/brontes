@@ -124,11 +124,12 @@ impl TracingProvider for TracingClient {
         state_overrides: Option<StateOverride>,
         block_overrides: Option<Box<BlockOverrides>>,
     ) -> ProviderResult<Bytes> {
-        Ok(self
-            .api
-            .call(request, block_number, state_overrides, block_overrides)
-            .await
-            .unwrap())
+        // Ok(self
+        //     .api
+        //     .call(request, block_number, state_overrides, block_overrides)
+        //     .await
+        //     .unwrap())
+        todo!()
     }
 
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
