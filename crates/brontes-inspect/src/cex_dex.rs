@@ -85,8 +85,7 @@ impl CexDexInspector {
             })
             .collect();
 
-        let profit_finalized =
-            self.arb_gas_accounting(swap_sequences, gas_details, &metadata.eth_prices);
+        let profit = self.arb_gas_accounting(swap_sequences, gas_details, &metadata.eth_prices);
 
         let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
 
@@ -103,7 +102,7 @@ impl CexDexInspector {
             eoa,
             block_number: metadata.block_num,
             mev_type: MevType::CexDex,
-            finalized_profit_usd: profit_finalized?.to_float(),
+            finalized_profit_usd: profit?.to_float(),
             finalized_bribe_usd: gas_finalized.to_float(),
         };
 
@@ -184,7 +183,7 @@ impl CexDexInspector {
             .flat_map(|sequence| sequence)
             .fold(Rational::ZERO, |acc, (_, v)| acc + v.as_ref().unwrap_or(&zero));
 
-        let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u64.pow(18)) * eth_price;
+        let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u128.pow(18)) * eth_price;
 
         if total_arb > gas_cost {
             Some(total_arb - gas_cost)
@@ -193,11 +192,10 @@ impl CexDexInspector {
         }
     }
 
-    // TODO check correctness + check cleanup potential with shared utils?
     pub fn get_cex_dex(&self, swap: &NormalizedSwap, metadata: &Metadata) -> Option<Rational> {
         self.rational_prices(&Actions::Swap(swap.clone()), metadata)
-            .map(|(dex_price, cex_price1)| {
-                self.profit_classifier(swap, &dex_price, &cex_price1)
+            .map(|(dex_price, best_ask)| {
+                self.profit_classifier(swap, &dex_price, &best_ask)
                     .filter(|p| Rational::ZERO.lt(p))
             })
             .unwrap_or_default()
@@ -257,6 +255,7 @@ mod tests {
 
     use std::{
         collections::{HashMap, HashSet},
+        fs::File,
         str::FromStr,
         time::SystemTime,
     };
@@ -266,6 +265,7 @@ mod tests {
     use brontes_database::{database::Database, graph::PriceGraph, Quote, QuotesMap};
     use malachite::num::conversion::traits::FromSciString;
     use reth_primitives::U256;
+    use serde_json;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
     use tracing::info;
@@ -292,28 +292,30 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        println!("{:#?}", metadata.cex_quotes.quotes);
-
-        let tx = block.0.clone().into_iter().take(40).collect::<Vec<_>>();
-        let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
+        let (_missing_token_decimals, tree) = classifier.build_tree(block.0, block.1);
         let tree = Arc::new(tree);
-
         // Quote token is USDC here
         let inspector = CexDexInspector::new(
             Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
         );
 
         let t0 = SystemTime::now();
+        print!("starting cex-dex inspector");
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
+
         println!("{:#?}", mev);
+
+        serde_json::to_writer_pretty(std::fs::File::create("cex_dex.json").unwrap(), &mev).unwrap();
 
         info!("cex-dex inspector took: {} us", delta);
 
-        // assert!(
-        //     mev[0].0.tx_hash
-        //         == B256::from_str(
+        /*assert_eq!(
+            mev[0].0.tx_hash.is_some(),
+            B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
+                .unwrap()
+        );*/
     }
 
     //Testing for tx:
@@ -323,7 +325,6 @@ mod tests {
     #[serial]
     async fn test_profit_calculation() {
         init_tracing();
-        let block_num = 18264694;
 
         let swap = NormalizedSwap {
             index:      0,
@@ -337,20 +338,28 @@ mod tests {
 
         let metadata = get_metadata();
 
-        let (tx, _rx) = unbounded_channel();
-
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
-        let classifier = Classifier::new();
-
         // Quote token is USDC here
         let inspector = CexDexInspector::new(
             Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
         );
 
+        let amount_in = Rational::from_sci_string("5055369263000000000000e-18").unwrap();
+        let amount_out = Rational::from_sci_string("8421308582396e-6").unwrap();
+
+        let dex_price = amount_out / amount_in;
+
+        let price_delta = metadata
+            .cex_quotes
+            .get_quote(&Pair(swap.token_in, swap.token_out))
+            .unwrap()
+            .best_ask()
+            - dex_price;
+
+        let expected_profit = price_delta * swap.amount_in.to_scaled_rational(6);
+
         let profit = inspector.get_cex_dex(&swap, &metadata);
 
-        assert_eq!(profit, (Some(Rational::from) None));
+        assert_eq!(profit.unwrap(), expected_profit);
     }
 
     #[tokio::test]
@@ -413,7 +422,7 @@ mod tests {
             priority_fee:        0,
             gas_used:            20_000,
             // 20 gwei
-            effective_gas_price: 20 * 10_u64.pow(9),
+            effective_gas_price: 20 * 10_u128.pow(9),
         };
 
         let swap = NormalizedSwap::default();

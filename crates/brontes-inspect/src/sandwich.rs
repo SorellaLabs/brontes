@@ -141,7 +141,7 @@ impl SandwichInspector {
         let gas_used = searcher_gas_details
             .iter()
             .map(|g| g.gas_paid())
-            .sum::<u64>();
+            .sum::<u128>();
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
 

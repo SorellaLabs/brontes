@@ -60,6 +60,21 @@ impl ToScaledRational for u64 {
     }
 }
 
+impl ToScaledRational for u128 {
+    fn to_scaled_rational(self, decimals: u8) -> Rational {
+        let top = Natural::from(self);
+        Rational::from_naturals(top, Natural::from(10u8).pow(decimals as u64))
+    }
+}
+
+impl ToScaledRational for i128 {
+    fn to_scaled_rational(self, decimals: u8) -> Rational {
+        let top = Rational::from(self);
+        let bottom = Rational::from(10u8).pow(decimals as u64);
+        top / bottom
+    }
+}
+
 pub trait ToFloatNearest {
     fn to_float(self) -> f64;
 }

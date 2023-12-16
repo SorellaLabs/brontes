@@ -33,8 +33,8 @@ impl From<TransactionTraceWithLogs> for TestTransactionTraceWithLogs {
 pub struct TestTxTrace {
     pub trace:           Vec<TestTransactionTraceWithLogs>,
     pub tx_hash:         B256,
-    pub gas_used:        u64,
-    pub effective_price: u64,
+    pub gas_used:        u128,
+    pub effective_price: u128,
     pub tx_index:        u64,
 }
 
