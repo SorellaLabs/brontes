@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use alloy_primitives::Address;
-use brontes_types::extra_processing::Pair;
-use brontes_types::normalized_actions::Actions;
+use brontes_types::{extra_processing::Pair, normalized_actions::Actions};
 
 #[derive(Debug, Clone)]
 pub struct PoolKey {
@@ -14,7 +13,6 @@ pub struct PoolKey {
 
 #[derive(Debug, Clone)]
 pub struct DexQuotes(Vec<Option<HashMap<Pair, Vec<Vec<PoolKey>>>>>);
-
 
 pub enum PoolState {
     UniswapV2(),
