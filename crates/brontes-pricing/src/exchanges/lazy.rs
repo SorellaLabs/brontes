@@ -1,20 +1,44 @@
-use futures::Stream;
+use std::{collections::VecDeque, pin::Pin, task::Poll};
 
-use crate::types::PoolState;
+use alloy_primitives::Address;
+use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
+use reth_primitives::revm_primitives::HashMap;
 
-pub struct LazyExchangeLoader {}
+use crate::{types::PoolState, PoolUpdate};
+pub struct LazyExchangeLoader {
+    pool_buf:          HashMap<Address, VecDeque<PoolUpdate>>,
+    pool_load_futures: FuturesUnordered<Pin<Box<dyn Future<Output = (Address, PoolState)>>>>,
+}
 
 impl LazyExchangeLoader {
-    pub fn lazy_load_exchange(&mut self) {}
+    pub fn lazy_load_exchange(&mut self, address: Address, block_number: u64, ex_type: ()) {
+        todo!()
+    }
+
+    pub fn is_loading(&self, k: &Address) -> bool {
+        self.pool_buf.contains_key(k)
+    }
+
+    pub fn buffer_update(&mut self, k: &Address, update: PoolUpdate) {
+        self.pool_buf
+            .get_mut(k)
+            .expect("buffered lazy exchange when no exchange future was found")
+            .push_back(update);
+    }
 }
 
 impl Stream for LazyExchangeLoader {
-    type Item = PoolState;
+    type Item = (PoolState, VecDeque<PoolUpdate>);
 
     fn poll_next(
-        self: std::pin::Pin<&mut Self>,
+        mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        todo!()
+        if let Poll::Ready(Some((pool, state))) = self.pool_load_futures.poll_next_unpin(cx) {
+            let buf = self.pool_buf.remove(&pool).unwrap();
+            return Poll::Ready(Some((state, buf)))
+        } else {
+            Poll::Pending
+        }
     }
 }
