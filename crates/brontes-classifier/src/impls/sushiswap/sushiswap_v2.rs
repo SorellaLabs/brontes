@@ -1,13 +1,14 @@
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::{SolCall, SolEvent};
+use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
+use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_rpc_types::Log;
 
 use crate::{
     enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
     SushiSwapV2::{burnCall, mintCall, swapCall, Burn, Mint, SushiSwapV2Calls, Swap},
-    ADDRESS_TO_TOKENS_2_POOL,
 };
 
 action_impl!(
@@ -17,9 +18,12 @@ action_impl!(
     Swap,
     SushiSwapV2,
     logs: true,
-    |index, from_address: Address, target_address: Address, data: Option<Swap>| {
+    |index, from_address: Address, target_address: Address, data: Option<Swap>, db_tx: &LibmdbxTx<RO>| {
         let data = data?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
+
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
             return Some(NormalizedSwap {
@@ -56,9 +60,10 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
-     log_data: Option<Mint>| {
+     log_data: Option<Mint>, db_tx: &LibmdbxTx<RO>| {
         let log_data = log_data?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedMint {
             recipient: call_data.to,
             from: from_address,
@@ -81,9 +86,10 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: burnCall,
-     log_data: Option<Burn>| {
+     log_data: Option<Burn>, db_tx: &LibmdbxTx<RO>| {
         let log_data = log_data?;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedBurn {
             recipient: call_data.to,
             to: target_address,

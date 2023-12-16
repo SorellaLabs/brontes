@@ -1,3 +1,6 @@
+fn main() {}
+
+/*
 use std::{
     collections::HashSet,
     env,
@@ -15,9 +18,10 @@ use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+
 const TOKEN_MAPPING: &str = "token_to_addresses.rs";
 const TOKEN_QUERIES: &str = "SELECT DISTINCT toString(address), arrayMap(x -> toString(x), \
-                             tokens) AS 
+                             tokens) AS
                              tokens FROM ethereum.pools WHERE length(tokens) = ";
 
 const FAILED_ABI_FILE: &str = "../../failed_abis.txt";
@@ -57,6 +61,8 @@ pub struct DecodedTokens {
 }
 
 fn main() {
+    /*
+    return;
     dotenv::dotenv().ok();
     println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -64,8 +70,9 @@ fn main() {
         .build()
         .unwrap();
 
-    runtime.block_on(build_address_to_token_map());
-    runtime.block_on(run_classifier_mapping());
+    //runtime.block_on(build_address_to_token_map());
+    //runtime.block_on(run_classifier_mapping());
+    */
 }
 
 async fn build_address_to_token_map() {
@@ -127,7 +134,7 @@ async fn run_classifier_mapping() {
         .map(|(abi, contract)| (contract, !abi.functions.is_empty(), !abi.events.is_empty()))
         .collect::<Vec<_>>();
 
-    write_all_abis(&protocol_abis);
+    //write_all_abis(&protocol_abis);
 
     generate(
         Path::new(&env::var("ABI_BUILD_DIR").unwrap())
@@ -138,7 +145,7 @@ async fn run_classifier_mapping() {
     )
     .await;
 
-    address_abi_mapping(protocol_abis)
+    //address_abi_mapping(protocol_abis)
 }
 
 //
@@ -453,3 +460,6 @@ fn to_string_vec(tokens: Vec<String>) -> String {
 
     res
 }
+
+
+*/
