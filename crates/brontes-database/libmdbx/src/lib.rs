@@ -28,7 +28,7 @@ impl Libmbdx {
             std::fs::create_dir_all(rpath).wrap_err_with(|| {
                 format!("Could not create database directory {}", rpath.display())
             })?;
-            //create_db_version_file(rpath)?;
+            create_db_version_file(rpath)?;
         } else {
             match check_db_version_file(rpath) {
                 Ok(_) => (),
