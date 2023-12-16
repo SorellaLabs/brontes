@@ -4,7 +4,8 @@ use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
-use brontes_database::database::Database;
+use brontes_database::clickhouse::Clickhouse;
+use brontes_database_libmdbx::Libmdbx;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -27,21 +28,24 @@ use crate::errors::TraceParseError;
 //#[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider> {
     #[allow(unused)]
-    database:              &'db Database,
+    database:              &'db Clickhouse,
     #[allow(unused)]
-    should_fetch:          Box<dyn Fn(&Address) -> bool + Send + Sync>,
+    libmdbx:               &'db Libmdbx,
+    #[allow(unused)]
+    should_fetch:          Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
-        database: &'db Database,
-        should_fetch: Box<dyn Fn(&Address) -> bool + Send + Sync>,
+        database: &'db Clickhouse,
+        libmdbx: &'db Libmdbx,
+        should_fetch: Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
-        Self { database, tracer, metrics_tx, should_fetch }
+        Self { database, libmdbx, tracer, metrics_tx, should_fetch }
     }
 
     /// executes the tracing of a given block
@@ -99,6 +103,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             }
         };
 
+        let db_tx = self.libmdbx.ro_tx()?;
         let json = if let Some(trace) = &trace {
             let addresses = trace
                 .iter()
@@ -110,7 +115,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                             _ => None,
                         })
                 })
-                .filter(|addr| (self.should_fetch)(addr))
+                .filter(|addr| (self.should_fetch)(addr, &db_tx))
                 .collect::<Vec<Address>>();
             info!("addresses for dyn decoding: {:#?}", addresses);
             self.database.get_abis(addresses).await

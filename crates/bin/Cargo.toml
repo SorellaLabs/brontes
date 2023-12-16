@@ -12,6 +12,7 @@ brontes-inspect.workspace = true
 brontes-types.workspace = true
 brontes-classifier.workspace = true
 brontes-database.workspace = true
+brontes-database-libmdbx.workspace = true
 brontes-metrics.workspace = true
 malachite.workspace = true
 toml = "0.8.2"

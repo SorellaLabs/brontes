@@ -11,8 +11,9 @@ use malachite::{
 };
 use reth_primitives::{Address, TxHash, U256};
 
-use crate::database::types::DBTokenPricesDB;
-pub mod database;
+use crate::clickhouse::types::DBTokenPricesDB;
+pub mod clickhouse;
+
 pub mod graph;
 
 #[derive(Debug, Clone)]

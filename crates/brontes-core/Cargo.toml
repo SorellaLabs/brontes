@@ -32,6 +32,7 @@ brontes-types.workspace = true
 brontes-metrics.workspace = true
 brontes-tracing.workspace = true
 brontes-database.workspace = true
+brontes-database-libmdbx.workspace = true
 
 # async
 
