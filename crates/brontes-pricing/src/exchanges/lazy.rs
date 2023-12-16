@@ -5,12 +5,20 @@ use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_primitives::revm_primitives::HashMap;
 
 use crate::{types::PoolState, PoolUpdate};
+
 pub struct LazyExchangeLoader {
     pool_buf:          HashMap<Address, Vec<PoolUpdate>>,
     pool_load_futures: FuturesUnordered<Pin<Box<dyn Future<Output = (Address, PoolState)>>>>,
 }
 
 impl LazyExchangeLoader {
+    pub fn new() -> Self {
+        Self {
+            pool_buf:          HashMap::default(),
+            pool_load_futures: FuturesUnordered::default(),
+        }
+    }
+
     pub fn lazy_load_exchange(&mut self, address: Address, block_number: u64, ex_type: ()) {
         todo!()
     }
