@@ -282,6 +282,8 @@ mod tests {
         info!(target: "brontes", "starting cex-dex test");
 
         dotenv::dotenv().ok();
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
 
         let block_num = 18264694;
 
@@ -289,8 +291,6 @@ mod tests {
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
         let db = Clickhouse::default();
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
         let classifier = Classifier::new(&libmdbx);
 
         let block = tracer.execute_block(block_num).await.unwrap();
