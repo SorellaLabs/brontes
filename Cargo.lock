@@ -1297,6 +1297,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "brontes-pricing"
+version = "0.1.0"
+dependencies = [
+ "alloy-dyn-abi",
+ "alloy-primitives",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "auto_impl",
+ "brontes-types",
+ "derive_more",
+ "erased-serde",
+ "malachite",
+ "parking_lot 0.12.1",
+ "petgraph",
+ "phf",
+ "rayon",
+ "reth-primitives",
+ "reth-rpc-types",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "serde_with",
+ "strum",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "brontes-tracing"
 version = "0.1.0"
 dependencies = [

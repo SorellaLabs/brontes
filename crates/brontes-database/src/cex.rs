@@ -3,11 +3,11 @@ use std::{collections::HashMap, hash::Hash, ops::MulAssign, str::FromStr};
 use alloy_primitives::Address;
 use brontes_types::extra_processing::Pair;
 use malachite::{
-    num::arithmetic::traits::{Floor, Reciprocal, ReciprocalAssign},
+    num::arithmetic::traits::{Floor, ReciprocalAssign},
     Rational,
 };
 
-use crate::{DBTokenPricesDB, Quote};
+use crate::DBTokenPricesDB;
 
 /// Each pair is entered into the map with the addresses in order by value:
 /// Ergo if token0 < token1, then the pair is (token0, token1)

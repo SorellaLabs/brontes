@@ -11,7 +11,6 @@ use reth_primitives::U256;
 pub mod classified_mev;
 pub mod extra_processing;
 pub mod normalized_actions;
-pub mod pricing;
 pub mod structured_trace;
 pub mod tree;
 
