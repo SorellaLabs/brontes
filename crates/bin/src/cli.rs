@@ -29,6 +29,9 @@ pub struct Cli {
     /// Flush Tardis data loaded into clickhouse upon termination
     #[arg(long, short, default_value = "false")]
     pub flush_tardis: bool,
+    /// initializes libmdbx tables
+    #[arg(long, short, default_value = "false")]
+    pub init_libmdbx: bool,
     /// Will run in test mode, benchmarking the perfomance of the inspectors
     /// against our latest best run
     #[arg(long, short, default_value = "false")]

@@ -1,6 +1,8 @@
 use std::path::Path;
 pub mod initialize;
+use brontes_database::clickhouse::Clickhouse;
 use eyre::Context;
+use initialize::LibmdbxInitializer;
 use reth_db::{
     is_database_empty,
     mdbx::DatabaseFlags,
@@ -10,16 +12,18 @@ use reth_db::{
     DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
 };
 use reth_interfaces::db::LogLevel;
+use reth_libmdbx::RO;
 
-use self::{implementation::tx::LibmbdxTx, tables::Tables, types::LibmbdxData};
+use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
 
-mod implementation;
+pub mod implementation;
 pub mod tables;
 pub mod types;
 
-pub struct Libmbdx(DatabaseEnv);
+#[derive(Debug)]
+pub struct Libmdbx(DatabaseEnv);
 
-impl Libmbdx {
+impl Libmdbx {
     /// Opens up an existing database or creates a new one at the specified
     /// path. Creates tables if necessary. Opens in read/write mode.
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
@@ -28,7 +32,7 @@ impl Libmbdx {
             std::fs::create_dir_all(rpath).wrap_err_with(|| {
                 format!("Could not create database directory {}", rpath.display())
             })?;
-            create_db_version_file(rpath)?;
+            //create_db_version_file(rpath)?;
         } else {
             match check_db_version_file(rpath) {
                 Ok(_) => (),
@@ -47,7 +51,7 @@ impl Libmbdx {
 
     /// Creates all the defined tables, opens if already created
     fn create_tables(&self) -> Result<(), DatabaseError> {
-        let tx = LibmbdxTx::new_rw_tx(&self.0)?;
+        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
 
         for table in Tables::ALL {
             let flags = match table.table_type() {
@@ -65,14 +69,25 @@ impl Libmbdx {
         Ok(())
     }
 
+    pub async fn clear_and_initialize_tables(
+        &self,
+        clickhouse: &Clickhouse,
+        tables: &[Tables],
+    ) -> eyre::Result<()> {
+        let initializer = LibmdbxInitializer::new(self, clickhouse);
+        initializer.initialize(tables).await?;
+
+        Ok(())
+    }
+
     /// Clears a table in the database
     /// Only called on initialization
     pub(crate) fn initialize_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
     where
         T: Table,
-        D: LibmbdxData<T>,
+        D: LibmdbxData<T>,
     {
-        let tx = LibmbdxTx::new_rw_tx(&self.0)?;
+        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
         tx.clear::<T>()?;
         tx.commit()?;
 
@@ -85,9 +100,9 @@ impl Libmbdx {
     pub fn write_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
     where
         T: Table,
-        D: LibmbdxData<T>,
+        D: LibmdbxData<T>,
     {
-        let tx = LibmbdxTx::new_rw_tx(&self.0)?;
+        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
 
         entries
             .into_iter()
@@ -101,6 +116,24 @@ impl Libmbdx {
 
         Ok(())
     }
+
+    /// reads a single value from a table
+    pub fn get_table_one<T>(&self, key: &T::Key) -> eyre::Result<Option<T::Value>>
+    where
+        T: Table,
+        T::Key: Copy,
+    {
+        let tx = LibmdbxTx::new_ro_tx(&self.0)?;
+
+        Ok(tx.get::<T>(*key)?)
+    }
+
+    /// returns a RO transaction
+    pub fn ro_tx(&self) -> eyre::Result<LibmdbxTx<RO>> {
+        let tx = LibmdbxTx::new_ro_tx(&self.0)?;
+
+        Ok(tx)
+    }
 }
 
 #[cfg(test)]
@@ -111,38 +144,19 @@ mod tests {
     use reth_db::cursor::DbCursorRO;
     use serial_test::serial;
 
-    use super::{initialize::LibmbdxInitializer, *};
+    use super::{initialize::LibmdbxInitializer, *};
     use crate::tables::TokenDecimals;
 
-    fn init_db() -> eyre::Result<Libmbdx> {
+    fn init_db() -> eyre::Result<Libmdbx> {
         dotenv::dotenv().ok();
         let brontes_db_path = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        Libmbdx::init_db(brontes_db_path, None)
+        Libmdbx::init_db(brontes_db_path, None)
     }
-
-    /*
-    #[test]
-    fn test_init_db() {
-        assert!(init_db().is_ok());
-    }
-
 
     #[tokio::test]
     #[serial]
-    async fn test_initialize_write_table() {
-        let db = init_db().unwrap();
-        let clickhouse = Clickhouse::default();
-
-        let db_initializer = LibmbdxInitializer::new(&db, &clickhouse);
-
-        db_initializer.initialize(&Tables::ALL).await.unwrap();
-
-        let entries = LibmbdxTx::new_ro_tx(&db.0)
-            .unwrap()
-            .entries::<TokenDecimals>()
-            .unwrap();
-
-        assert_ne!(entries, 0);
+    async fn test_init_db() {
+        init_db().unwrap();
+        assert!(init_db().is_ok());
     }
-    */
 }

@@ -1,6 +1,7 @@
 use std::{env, path::Path, sync::Arc};
 
 use brontes_database::clickhouse::Clickhouse;
+use brontes_database_libmdbx::Libmdbx;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use log::Level;
@@ -172,7 +173,16 @@ pub fn init_trace_parser<'a>(
 
     let db = Box::new(Clickhouse::default());
     let leaked = Box::leak(db);
-    let call = Box::new(|_: &_| true);
+    let call = Box::new(|_: &_, _: &_| true);
 
-    TraceParser::new(leaked, call, Arc::new(tracer), Arc::new(metrics_tx))
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
+
+    TraceParser::new(
+        leaked,
+        Box::leak(Box::new(libmdbx)),
+        call,
+        Arc::new(tracer),
+        Arc::new(metrics_tx),
+    )
 }

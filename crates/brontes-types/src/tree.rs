@@ -517,6 +517,7 @@ mod tests {
 
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
+    use brontes_database::clickhouse::Clickhouse;
     use reth_primitives::{revm_primitives::db::Database, Address};
     use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
     use serial_test::serial;
