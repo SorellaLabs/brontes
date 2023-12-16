@@ -23,12 +23,11 @@ pub async fn setup_data(block_number: u64) -> (Vec<TxTrace>, Header, Metadata) {
 
     dotenv::dotenv().ok();
     let (tx, _rx) = unbounded_channel();
-
-    let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-    let db = Clickhouse::default();
-
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
     let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
+
+    let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
+    let db = Clickhouse::default();
 
     let classifier = Classifier::new(&libmdbx);
 
