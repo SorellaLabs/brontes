@@ -1,13 +1,9 @@
 use alloy_primitives::{Address, U256};
-use alloy_rpc_types::{state::AccountOverride, CallRequest};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::{try_get_decimals, ToScaledRational};
-use malachite::{
-    num::arithmetic::traits::{Reciprocal, ReciprocalAssign},
-    Rational,
-};
-use reth_rpc_types::trace::parity::{ChangedType, Delta, StateDiff};
+use malachite::{num::arithmetic::traits::ReciprocalAssign, Integer, Rational};
+use reth_rpc_types::trace::parity::StateDiff;
 
 use crate::{
     decoding::TracingProvider,
