@@ -13,7 +13,7 @@ use ethers::{
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
-use crate::{
+use amms::{
     amm::{
         factory::{AutomatedMarketMakerFactory, TASK_LIMIT},
         AutomatedMarketMaker, AMM,
