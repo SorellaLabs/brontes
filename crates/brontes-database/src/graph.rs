@@ -2,49 +2,42 @@ use std::{
     cmp::Ordering,
     collections::{
         hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, HashMap,
+        BinaryHeap, HashMap as StdHashMap,
     },
     hash::Hash,
-    ops::MulAssign,
     time::SystemTime,
 };
 
 use alloy_primitives::Address;
-use itertools::Itertools;
-use malachite::{num::basic::traits::One, Rational};
 use petgraph::{
     algo::Measure,
-    data::Build,
-    graph::{self, UnGraph},
+    graph::UnGraph,
     prelude::*,
     unionfind::UnionFind,
-    visit::{
-        depth_first_search, IntoEdges, NodeCompactIndexable, NodeIndexable, VisitMap, Visitable,
-    },
+    visit::{IntoEdges, NodeIndexable, VisitMap, Visitable},
 };
 use reth_primitives::revm_primitives::HashMap;
 use tracing::info;
 
-use crate::{database::WETH_ADDRESS, Pair, Quote, QuotesMap};
-
+use crate::{DexQuotesMap, Pair, Quote};
 type QuoteWithQuoteAsset<Q> = (Q, Address);
 
 #[derive(Debug, Clone)]
 pub struct PriceGraph<Q: Quote> {
     graph:  TrackableGraph<Address, QuoteWithQuoteAsset<Q>>,
-    quotes: QuotesMap<Q>,
+    quotes: DexQuotesMap<Q>,
 }
 
 impl<Q> PriceGraph<Q>
 where
     Q: Quote + Default,
 {
-    pub fn from_quotes_disjoint(quotes: QuotesMap<Q>) -> (Vec<Address>, Self) {
-        let mut this = Self::from_quotes(quotes);
-        (this.get_disjoint_tokens(), this)
+    pub fn from_quotes_disjoint(quotes: DexQuotesMap<Q>) -> (Vec<Address>, Self) {
+        let this = Self::from_quotes(quotes);
+        (this.get_disjoint_token_edges(), this)
     }
 
-    pub fn from_quotes(quotes: QuotesMap<Q>) -> Self {
+    pub fn from_quotes(quotes: DexQuotesMap<Q>) -> Self {
         let graph = TrackableGraph::from_hash_map(
             quotes
                 .0
@@ -69,7 +62,7 @@ where
             let (a, b) = (edge.source(), edge.target());
 
             // union the two vertices of the edge
-            vertex_sets.union(self.graph.to_index(a), self.graph.graph.to_index(b));
+            vertex_sets.union(self.graph.graph.to_index(a), self.graph.graph.to_index(b));
         }
         let mut labels = vertex_sets.into_labeling();
         labels.sort_unstable();
@@ -79,9 +72,9 @@ where
             return vec![]
         }
 
-        lables
-            .into_iter
-            .map(|idx| *self.index_to_addr.get(&idx).unwrap())
+        labels
+            .into_iter()
+            .map(|idx| *self.graph.index_to_addr.get(&idx).unwrap())
             .collect::<Vec<_>>()
     }
 
@@ -92,6 +85,7 @@ where
     // returns the quote for the given pair
     pub fn get_quote(&self, pair: &Pair) -> Option<Q> {
         // if we have a native pair use that
+        //TODO: Change data structure to support multiple quotes for a single pair
         if let Some(quote) = self.quotes.get_quote(&pair) {
             return Some(quote.clone())
         }
@@ -153,7 +147,7 @@ pub struct TrackableGraph<K, V> {
 
 impl<K, V> TrackableGraph<K, V>
 where
-    K: PartialEq + Hash + Eq + Clone,
+    K: PartialEq + Hash + Eq + Clone + Copy,
     V: Clone,
 {
     pub fn from_hash_map(map: HashMap<(K, K), V>) -> Self {
@@ -177,9 +171,10 @@ where
             index_to_addr.insert(addr1, pair.1);
 
             //TODO: pretty sure we can do this without needing the addr
-
+            //TODO: lifetime errors here
             // insert token0
             let e = connections.entry(pair.0).or_insert_with(|| (addr0, vec![]));
+
             // if we don't have this edge, then add it
             if !e.1.iter().map(|i| i.0).any(|addr| addr == pair.1) {
                 e.1.push((pair.1, addr1, v.clone()));
@@ -218,11 +213,11 @@ where
             .entry(pair.1)
             .or_insert(self.graph.add_node(()).index());
 
-        if self.graph.contains_edge(node_0, node_1) {
+        if self.graph.contains_edge(node_0.into(), node_1.into()) {
             return false
         }
 
-        self.graph.add_edge(node_0, node_1, value);
+        self.graph.add_edge(node_0.into(), node_1.into(), value);
         true
     }
 
@@ -234,7 +229,12 @@ where
         Some(
             dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into(), |_| 1)?
                 .into_iter()
-                .map(|k| self.index_to_addr.get(&k.index()).unwrap())
+                .map(|k| {
+                    self.index_to_addr
+                        .get(&k.index())
+                        .expect("Key not found in index_to_addr")
+                        .clone()
+                })
                 .collect(),
         )
     }
@@ -254,8 +254,8 @@ where
     K: Measure + Copy,
 {
     let mut visited = graph.visit_map();
-    let mut scores = HashMap::new();
-    let mut predecessor = HashMap::new();
+    let mut scores = StdHashMap::new();
+    let mut predecessor = StdHashMap::new();
     let mut visit_next = BinaryHeap::new();
     let zero_score = K::default();
     scores.insert(start, zero_score);
