@@ -1,5 +1,6 @@
 pub mod const_sql;
 pub mod errors;
+pub(crate) mod serde;
 pub mod types;
 use std::collections::HashMap;
 
@@ -19,7 +20,7 @@ use tracing::{error, info};
 use self::types::{Abis, DBTokenPricesDB, TimesFlow};
 use super::Metadata;
 use crate::{
-    database::{const_sql::*, types::TimesFlowDB},
+    clickhouse::{const_sql::*, types::TimesFlowDB},
     Pair, PriceGraph, QuotesMap,
 };
 
@@ -28,20 +29,24 @@ pub const WETH_ADDRESS: Address =
 pub const USDT_ADDRESS: Address =
     Address(FixedBytes(hex!("dac17f958d2ee523a2206206994597c13d831ec7")));
 
-pub struct Database {
+pub struct Clickhouse {
     client: ClickhouseClient,
 }
 
-impl Default for Database {
+impl Default for Clickhouse {
     fn default() -> Self {
         Self { client: ClickhouseClient::default() }
     }
 }
 
-impl Database {
+impl Clickhouse {
     pub fn new(config: ClickhouseConfig) -> Self {
         let client = ClickhouseClient::new(config);
         Self { client }
+    }
+
+    pub fn inner(&self) -> &ClickhouseClient {
+        &self.client
     }
 
     pub fn credentials(&self) -> Credentials {
@@ -75,7 +80,9 @@ impl Database {
         metadata
     }
 
-    async fn insert_singe_classified_data<T: SpecificMev + serde::Serialize + Row + Clone>(
+    async fn insert_singe_classified_data<
+        T: SpecificMev + sorella_db_databases::serde::Serialize + Row + Clone,
+    >(
         db_client: &ClickhouseClient,
         mev_detail: Box<dyn SpecificMev>,
         table: &str,
@@ -152,7 +159,7 @@ impl Database {
         let query = format_query_array(&addresses, ABIS);
 
         self.client
-            .query_all::<Abis>(&query)
+            .query_many::<Abis>(&query, &())
             .await
             .unwrap()
             .into_iter()
@@ -177,7 +184,7 @@ impl Database {
     async fn get_times_flow_info(&self, block_num: u64) -> TimesFlow {
         let val: TimesFlowDB = self
             .client
-            .query_one_params(TIMES_FLOW, vec![block_num])
+            .query_one(TIMES_FLOW, &(block_num))
             .await
             .unwrap();
         val.into()
@@ -186,7 +193,7 @@ impl Database {
     async fn get_token_prices(&self, p2p_time: u64) -> QuotesMap {
         let token_prices = self
             .client
-            .query_all_params::<u64, DBTokenPricesDB>(PRICES, vec![p2p_time])
+            .query_many::<DBTokenPricesDB>(PRICES, &(p2p_time))
             .await
             .unwrap();
 
@@ -210,9 +217,10 @@ fn mev_table_type(mev: &Box<dyn SpecificMev>) -> String {
 #[cfg(test)]
 mod tests {
 
-    use std::collections::HashSet;
+    use std::{collections::HashSet, str::FromStr};
 
     use dotenv::dotenv;
+    use malachite::Rational;
     use reth_primitives::{Address, B256};
 
     use super::*;
@@ -292,7 +300,7 @@ mod tests {
         }
     }
 
-    fn expected_metadata(cex_prices: Quotes) -> Metadata {
+    fn expected_metadata(cex_prices: QuotesMap) -> Metadata {
         let mut cex_prices = cex_prices.clone();
         let eth_prices = cex_prices
             .get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
@@ -307,7 +315,7 @@ mod tests {
             proposer_fee_recipient: Address::from_str("0x388C818CA8B9251b393131C08a736A67ccB19297")
                 .unwrap(),
             proposer_mev_reward:    113949354337187568,
-            cex_quotes:             cex_prices.clone(),
+            cex_quotes:             PriceGraph::from_quotes(cex_prices),
             eth_prices:             eth_prices.avg().clone(),
             mempool_flow:           expected_private_flow(),
         }
@@ -325,7 +333,7 @@ mod tests {
     async fn test_get_times_flow_info() {
         dotenv().ok();
 
-        let db = Database::default();
+        let db = Clickhouse::default();
 
         let expected_relay_info = expected_relay_info();
         let relay_info = db.get_times_flow_info(BLOCK_NUMBER).await;
@@ -340,7 +348,7 @@ mod tests {
     async fn test_get_token_prices() {
         dotenv().ok();
 
-        let db = Database::default();
+        let db = Clickhouse::default();
 
         let cex_prices = db.get_token_prices(1695258708673).await;
 
@@ -386,7 +394,7 @@ mod tests {
     async fn test_get_metadata() {
         dotenv().ok();
 
-        let db = Database::default();
+        let db = Clickhouse::default();
 
         let cex_prices = db.get_token_prices(1695258708673).await;
 

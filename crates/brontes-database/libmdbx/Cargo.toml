@@ -1,5 +1,5 @@
 [package]
-name = "brontes-database"
+name = "brontes-database-libmdbx"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,11 +8,7 @@ edition = "2021"
 [dependencies]
 
 # brontes
-brontes-types.workspace = true
-
-
-petgraph = "0.6.4"
-itertools = "0.12.0"
+brontes-database.workspace = true
 
 # alloy
 alloy-primitives = { workspace = true, features = ["rand", "rlp", "arbitrary", "serde"] }
@@ -50,25 +46,17 @@ serde_with = { workspace = true, features = ["macros"] }
 # error handling
 thiserror.workspace = true
 
-# numbers
-malachite = { workspace = true, features = ["naturals_and_integers"] }
-
-# web
-hyper-tls.workspace = true
-hyper.workspace = true
 
 # async
 futures.workspace = true
 tokio.workspace = true
 
-# tracing
-tracing.workspace = true
 
 # misc
-dotenv.workspace = true
 eyre.workspace = true
 paste = "1.0.14"
 parking_lot.workspace = true
+dotenv.workspace = true
 
 
 
@@ -76,5 +64,3 @@ parking_lot.workspace = true
 serial_test.workspace = true
 test-fuzz = "4"
 
-[features]
-tests = []

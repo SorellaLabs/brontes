@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use brontes_database_libmdbx::{
+    tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
+};
 use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
@@ -9,23 +12,25 @@ use brontes_types::{
 use hex_literal::hex;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 
-use crate::PROTOCOL_ADDRESS_MAPPING;
+use crate::*;
 
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 /// goes through and classifies all exchanges as-well as missing data
 #[derive(Debug)]
-pub struct Classifier {
+pub struct Classifier<'db> {
+    pub libmdbx:             &'db Libmdbx,
     pub known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
 }
 
-impl Classifier {
-    pub fn new() -> Self {
-        Self { known_dyn_protocols: RwLock::new(HashMap::default()) }
+impl<'db> Classifier<'db> {
+    pub fn new(libmdbx: &'db Libmdbx) -> Self {
+        Self { libmdbx, known_dyn_protocols: RwLock::new(HashMap::default()) }
     }
 
     pub fn build_tree(
@@ -218,33 +223,42 @@ impl Classifier {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        if let Some(protocol) = PROTOCOL_ADDRESS_MAPPING.get(&target_address.0 .0) {
-            if let Some(classifier) = &protocol.0 {
-                let calldata = trace.get_calldata();
-                let return_bytes = trace.get_return_calldata();
-                let sig = &calldata[0..4];
-                let res = protocol
-                    .1
-                    .try_decode(&calldata)
-                    .map(|data| {
-                        classifier.dispatch(
-                            sig,
-                            index,
-                            data,
-                            return_bytes.clone(),
-                            from_address,
-                            target_address,
-                            &trace.logs,
-                        )
-                    })
-                    .ok()
-                    .flatten();
+        // get rid of these unwraps
+        let db_tx = self.libmdbx.ro_tx().unwrap();
 
-                if let Some(res) = res {
-                    return res
-                } else {
-                    tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
-                }
+        if let Some(protocol) = db_tx.get::<AddressToProtocol>(target_address).unwrap() {
+            let classifier: Box<dyn ActionCollection> = match protocol {
+                StaticBindingsDb::UniswapV2 => Box::new(UniswapV2Classifier::default()),
+                StaticBindingsDb::SushiSwapV2 => Box::new(SushiSwapV2Classifier::default()),
+                StaticBindingsDb::UniswapV3 => Box::new(UniswapV3Classifier::default()),
+                StaticBindingsDb::SushiSwapV3 => Box::new(SushiSwapV3Classifier::default()),
+                StaticBindingsDb::CurveCryptoSwap => Box::new(CurveCryptoSwapClassifier::default()),
+            };
+
+            let calldata = trace.get_calldata();
+            let return_bytes = trace.get_return_calldata();
+            let sig = &calldata[0..4];
+            let res = Into::<StaticBindings>::into(protocol)
+                .try_decode(&calldata)
+                .map(|data| {
+                    classifier.dispatch(
+                        sig,
+                        index,
+                        data,
+                        return_bytes.clone(),
+                        from_address,
+                        target_address,
+                        &trace.logs,
+                        &db_tx,
+                    )
+                })
+                .ok()
+                .flatten();
+
+            if let Some(res) = res {
+                return res
+            } else {
+                tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
             }
         }
 
@@ -601,20 +615,29 @@ impl Classifier {
 
 #[cfg(test)]
 pub mod test {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, env};
 
     use brontes_classifier::test_utils::build_raw_test_tree;
-    use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
-    use brontes_database::database::Database;
-    use brontes_types::{normalized_actions::Actions, test_utils::force_call_action, tree::Node};
-    use reth_primitives::Address;
+    use brontes_core::{
+        decoding::{parser::TraceParser, TracingProvider},
+        test_utils::init_trace_parser,
+    };
+    use brontes_database::{clickhouse::Clickhouse, Metadata};
+    use brontes_database_libmdbx::{types::address_to_protocol::StaticBindingsDb, Libmdbx};
+    use brontes_types::{
+        normalized_actions::Actions,
+        structured_trace::TxTrace,
+        test_utils::force_call_action,
+        tree::{Node, TimeTree},
+    };
+    use reth_primitives::{Address, Header};
     use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
     use reth_tracing_ext::TracingClient;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::test_utils::get_traces_with_meta;
+    use crate::{test_utils::get_traces_with_meta, Classifier};
 
     #[tokio::test]
     #[serial]
@@ -625,13 +648,17 @@ pub mod test {
         let (tx, _rx) = unbounded_channel();
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
+        let db = Clickhouse::default();
 
-        let classifier = Classifier::new();
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
+        let classifier = Classifier::new(&libmdbx);
 
         let (traces, header, metadata) = get_traces_with_meta(&tracer, &db, block_num).await;
 
         let mut tree = classifier.build_tree(traces, header);
+
+        /*
         let root = tree.roots.remove(30);
 
         let swaps = root.collect(&|node| {
@@ -643,6 +670,6 @@ pub mod test {
             )
         });
 
-        println!("{:#?}", swaps);
+        println!("{:#?}", swaps);*/
     }
 }
