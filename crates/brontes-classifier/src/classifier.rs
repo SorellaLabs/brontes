@@ -12,7 +12,7 @@ use brontes_types::{
 };
 use hex_literal::hex;
 use parking_lot::RwLock;
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
@@ -40,7 +40,7 @@ impl<'db> Classifier<'db> {
         header: Header,
     ) -> (ExtraProcessing, TimeTree<Actions>) {
         let (extra, roots): (Vec<_>, Vec<_>) = traces
-            .into_par_iter()
+            .into_iter()
             .enumerate()
             .filter_map(|(tx_idx, mut trace)| {
                 if trace.trace.is_empty() || !trace.is_success {

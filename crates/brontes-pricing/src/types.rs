@@ -40,6 +40,8 @@ impl DexQuotes {
     }
 }
 
+/// a immutable version of pool state that is for a specific post-transition
+/// period
 pub enum PoolStateSnapShot {
     UniswapV2(()),
     UniswapV3(()),
@@ -93,8 +95,15 @@ impl PoolUpdate {
     pub fn get_pool_address(&self) -> Address {
         self.action.get_to_address()
     }
-}
 
-impl PoolState {
-    pub fn update_event(&mut self, action: Actions) {}
+    // we currently only use this in order to fetch the pair for when its new or to
+    // fetch all pairs of it. this
+    pub fn get_pair(&self) -> Option<Pair> {
+        match &self.action {
+            Actions::Swap(s) => Some(Pair(s.token_in, s.token_out)),
+            Actions::Mint(m) => Some(Pair(m.token[0], m.token[1])),
+            Actions::Burn(b) => Some(Pair(b.token[0], b.token[1])),
+            _ => None,
+        }
+    }
 }
