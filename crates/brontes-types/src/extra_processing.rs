@@ -12,7 +12,26 @@ impl Pair {
     pub fn has_quote_edge(&self, addr: Address) -> bool {
         self.1 == addr
     }
+
+    pub fn map_key(addr1: Address, addr2: Address) -> Self {
+        if addr1 <= addr2 {
+            Pair(addr1, addr2)
+        } else {
+            Pair(addr2, addr1)
+        }
+    }
+
+    // Returns an ordered version of the pair
+    pub fn ordered(&self) -> Self {
+        if self.0 <= self.1 {
+            Pair(self.0.clone(), self.1.clone())
+        } else {
+            Pair(self.1.clone(), self.0.clone())
+        }
+    }
 }
+
+impl Pair {}
 
 #[derive(Debug)]
 pub struct ExtraProcessing {

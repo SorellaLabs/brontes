@@ -1,6 +1,5 @@
 use std::{pin::Pin, sync::Arc};
 
-use alloy_json_rpc::RpcResult;
 use alloy_primitives::Bytes;
 use alloy_providers::provider::Provider;
 use alloy_rpc_types::{state::StateOverride, BlockId, BlockOverrides, CallRequest};
