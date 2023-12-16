@@ -1,3 +1,3 @@
-pub struct DataBatching<'db> {
-    parser: &'d Parser<'db, T>,
-}
+// pub struct DataBatching<'db> {
+//     parser: &'d Parser<'db, T>,
+// }

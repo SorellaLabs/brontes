@@ -48,8 +48,7 @@
 //     provider: Arc<T>,
 //     futures: FuturesUnordered<
 //         Pin<Box<dyn Future<Output = (usize, HashMap<Pair, Rational>)> + Send
-// + Sync>>,     >,
-//     res:      HashMap<usize, HashMap<Pair, Rational>>,
+// + Sync>>,     >, res:      HashMap<usize, HashMap<Pair, Rational>>,
 // }
 //
 // impl<T: TracingProvider> DexPricing<T> {
