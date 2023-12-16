@@ -1,13 +1,18 @@
+use std::{future::Future, pin::Pin, sync::Arc};
+
 use alloy_primitives::{Address, U256};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::{try_get_decimals, ToScaledRational};
-use malachite::{num::arithmetic::traits::ReciprocalAssign, Integer, Rational};
+use malachite::{
+    num::arithmetic::traits::{Pow, ReciprocalAssign},
+    Integer, Rational,
+};
 use reth_rpc_types::trace::parity::StateDiff;
 
 use crate::{
     decoding::TracingProvider,
-    dex_price::{into_state_overrides, make_call_request},
+    dex_price::{into_state_overrides, make_call_request, DexPrice},
 };
 
 sol!(
@@ -36,8 +41,7 @@ sol!(
 sol! (
     function balanceOf(address owner) external view returns (uint);
 );
-
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct V3Pricing;
 
 impl DexPrice for V3Pricing {
@@ -90,7 +94,7 @@ impl DexPrice for V3Pricing {
             .await;
 
             let balance1 = make_call_request(
-                balanceOfCall::new((address)),
+                balanceOfCall::new(address),
                 provider.clone(),
                 Some(diff.clone()),
                 token1._0,
@@ -101,13 +105,10 @@ impl DexPrice for V3Pricing {
             let sqrt = slot0.sqrtPriceX96.to::<U256>().to_scaled_rational(0);
             let ratio: Rational = (sqrt / Rational::from(Integer::from(2).pow(96))).pow(2u64);
 
-            let mut price: Rational = ratio
-                / Rational::from(
-                    Integer::from(10).pow(tokens_reserves.0.decimals - tokens_reserves.1.decimals),
-                );
+            let mut price: Rational = ratio / Rational::from(Integer::from(10).pow(dec0 - dec1));
 
             if !zto {
-                first_price.reciprocal_assign();
+                price.reciprocal_assign();
             }
 
             (price, balance1._0.to_scaled_rational(0) * balance0._0.to_scaled_rational(0))

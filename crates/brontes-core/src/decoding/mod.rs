@@ -2,7 +2,7 @@ use std::{pin::Pin, sync::Arc};
 
 use alloy_primitives::Bytes;
 use alloy_providers::provider::Provider;
-use alloy_rpc_types::{state::StateOverride, BlockId, BlockOverrides, CallRequest};
+use alloy_rpc_types::{state::StateOverride, BlockOverrides};
 use alloy_transport_http::Http;
 use brontes_database::database::Database;
 use brontes_types::structured_trace::TxTrace;
@@ -12,6 +12,7 @@ use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{Address, BlockNumber, BlockNumberOrTag, Header, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
+use reth_rpc_types::CallRequest;
 use reth_tracing_ext::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
@@ -33,7 +34,7 @@ pub(crate) const UNKNOWN: &str = "unknown";
 pub(crate) const RECEIVE: &str = "receive";
 #[allow(dead_code)]
 pub(crate) const FALLBACK: &str = "fallback";
-
+use reth_primitives::BlockId;
 use reth_rpc::eth::error::EthResult;
 use reth_rpc_types::TransactionReceipt;
 
