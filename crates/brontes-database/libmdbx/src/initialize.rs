@@ -33,7 +33,7 @@ mod tests {
     use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
     use serial_test::serial;
 
-    use crate::libmdbx::{
+    use crate::{
         implementation::tx::LibmbdxTx,
         initialize::LibmbdxInitializer,
         tables::{AddressToTokens, Tables, TokenDecimals},
@@ -96,6 +96,6 @@ mod tests {
 
         let db = db.unwrap();
         assert!(test_tokens_decimals_table(&db, false).await.is_ok());
-        assert!(test_address_to_tokens_table(&db, true).await.is_ok());
+        assert!(test_address_to_tokens_table(&db, false).await.is_ok());
     }
 }
