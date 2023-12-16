@@ -1,9 +1,6 @@
 use std::{collections::HashMap, ops::MulAssign};
 
-use malachite::{
-    num::arithmetic::traits::{Floor, ReciprocalAssign},
-    Rational,
-};
+use malachite::{num::arithmetic::traits::ReciprocalAssign, Rational};
 
 use crate::{DexQuotesMap, Pair, Quote};
 

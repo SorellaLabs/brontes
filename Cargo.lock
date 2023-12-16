@@ -1255,6 +1255,7 @@ dependencies = [
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
+ "derive_more",
  "dotenv",
  "erased-serde",
  "hyper",
