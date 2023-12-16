@@ -95,42 +95,42 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let fn_call = match (give_calldata, give_logs, give_returns) {
         (true, true, true) => {
             quote!(
-            (#call_function)(index, from_address, target_address, call_data, return_data, log_data)
+            (#call_function)(index, from_address, target_address, call_data, return_data, log_data, db_tx)
             )
         }
         (true, true, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address, call_data, log_data)
+                (#call_function)(index, from_address, target_address, call_data, log_data, db_tx)
             )
         }
         (true, false, true) => {
             quote!(
-                (#call_function)(index, from_address, target_address, call_data, return_data)
+                (#call_function)(index, from_address, target_address, call_data, return_data, db_tx)
             )
         }
         (true, false, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address, call_data)
+                (#call_function)(index, from_address, target_address, call_data, db_tx)
             )
         }
         (false, true, true) => {
             quote!(
-                (#call_function)(index, from_address, target_address, return_data, log_data)
+                (#call_function)(index, from_address, target_address, return_data, log_data, db_tx)
             )
         }
         (false, false, true) => {
             quote!(
-                (#call_function)(index, from_address, target_address, return_data)
+                (#call_function)(index, from_address, target_address, return_data, db_tx)
             )
         }
         (false, true, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address, log_data)
+                (#call_function)(index, from_address, target_address, log_data, db_tx)
             )
         }
         (false, false, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address)
+                (#call_function)(index, from_address, target_address, db_tx)
             )
         }
     };
@@ -153,6 +153,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                 from_address: Address,
                 target_address: Address,
                 logs: &Vec<Log>,
+                db_tx: &LibmdbxTx<RO>,
             ) -> Option<Actions> {
                 #(#option_parsing)*
                 Some(Actions::#action_type(#fn_call?))
@@ -290,6 +291,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 from_address: Address,
                 target_address: Address,
                 logs: &Vec<Log>,
+                db_tx: &LibmdbxTx<RO>,
             ) -> Option<Actions> {
                 if sig == self.0.get_signature() {
                     return
@@ -300,6 +302,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             from_address,
                             target_address,
                             logs,
+                            db_tx
                             )
                 }
 
@@ -311,6 +314,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             from_address,
                             target_address,
                             logs,
+                            db_tx
                         )
                     }
                 )*

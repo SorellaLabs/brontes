@@ -255,6 +255,7 @@ mod tests {
 
     use std::{
         collections::{HashMap, HashSet},
+        env,
         fs::File,
         str::FromStr,
         time::SystemTime,
@@ -262,7 +263,8 @@ mod tests {
 
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
-    use brontes_database::{database::Database, graph::PriceGraph, Quote, QuotesMap};
+    use brontes_database::{clickhouse::Clickhouse, graph::PriceGraph, Quote, QuotesMap};
+    use brontes_database_libmdbx::Libmdbx;
     use malachite::num::conversion::traits::FromSciString;
     use reth_primitives::U256;
     use serde_json;
@@ -280,14 +282,16 @@ mod tests {
         info!(target: "brontes", "starting cex-dex test");
 
         dotenv::dotenv().ok();
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
 
         let block_num = 18264694;
 
         let (tx, _rx) = unbounded_channel();
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
-        let classifier = Classifier::new();
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
+        let db = Clickhouse::default();
+        let classifier = Classifier::new(&libmdbx);
 
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;

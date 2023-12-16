@@ -9,6 +9,7 @@ edition = "2021"
 # brontes
 brontes-types.workspace = true
 brontes-database.workspace = true
+brontes-database-libmdbx.workspace = true
 
 # database
 clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }

@@ -7,7 +7,7 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
-use brontes_database::database::Database;
+use brontes_database::clickhouse::Clickhouse;
 use brontes_types::cache_decimals;
 use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
 use tracing::{debug, info, warn};
@@ -23,13 +23,13 @@ pub struct MissingDecimals<'db> {
     provider:         &'db Provider<Http<reqwest::Client>>,
     pending_decimals: FuturesUnordered<DecimalQuery<'db>>,
     db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
-    _database:        &'db Database,
+    _database:        &'db Clickhouse,
 }
 
 impl<'db> MissingDecimals<'db> {
     pub fn new(
         provider: &'db Provider<Http<reqwest::Client>>,
-        db: &'db Database,
+        db: &'db Clickhouse,
         missing: Vec<Address>,
     ) -> Self {
         let mut this = Self {

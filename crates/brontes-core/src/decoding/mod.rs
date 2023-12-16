@@ -4,10 +4,12 @@ use alloy_primitives::Bytes;
 use alloy_providers::provider::Provider;
 use alloy_rpc_types::{state::StateOverride, BlockOverrides};
 use alloy_transport_http::Http;
-use brontes_database::database::Database;
+use brontes_database::clickhouse::Clickhouse;
+use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
 use brontes_types::structured_trace::TxTrace;
 use futures::Future;
 use reqwest::Client;
+use reth_db::mdbx::RO;
 use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{Address, BlockNumber, BlockNumberOrTag, Header, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
@@ -181,14 +183,20 @@ pub struct Parser<'a, T: TracingProvider> {
 impl<'a, T: TracingProvider> Parser<'a, T> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
-        database: &'a Database,
+        database: &'a Clickhouse,
+        libmdbx: &'a Libmdbx,
         tracing: T,
-        should_fetch: Box<dyn Fn(&Address) -> bool + Send + Sync>,
+        should_fetch: Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
     ) -> Self {
         let executor = Executor::new();
 
-        let parser =
-            TraceParser::new(database, should_fetch, Arc::new(tracing), Arc::new(metrics_tx));
+        let parser = TraceParser::new(
+            database,
+            libmdbx,
+            should_fetch,
+            Arc::new(tracing),
+            Arc::new(metrics_tx),
+        );
 
         Self { executor, parser }
     }
