@@ -9,18 +9,18 @@ use reth_db::{
 use reth_interfaces::db::DatabaseWriteError;
 use reth_libmdbx::{ffi::DBI, Transaction, TransactionKind, WriteFlags, RO, RW};
 
-use super::{cursor::LibmbdxCursor, utils::decode_one};
+use super::{cursor::LibmdbxCursor, utils::decode_one};
 use crate::tables::{Tables, NUM_TABLES};
 
-pub struct LibmbdxTx<K: TransactionKind> {
+pub struct LibmdbxTx<K: TransactionKind> {
     /// Libmdbx-sys transaction.
     pub inner:             Transaction<K>,
     /// Database table handle cache.
     pub(crate) db_handles: Arc<RwLock<[Option<DBI>; NUM_TABLES]>>,
 }
 
-impl LibmbdxTx<RO> {
-    pub(crate) fn new_ro_tx(env: &DatabaseEnv) -> eyre::Result<LibmbdxTx<RO>, DatabaseError> {
+impl LibmdbxTx<RO> {
+    pub(crate) fn new_ro_tx(env: &DatabaseEnv) -> eyre::Result<LibmdbxTx<RO>, DatabaseError> {
         Ok(Self {
             inner:      env
                 .begin_ro_txn()
@@ -30,8 +30,8 @@ impl LibmbdxTx<RO> {
     }
 }
 
-impl LibmbdxTx<RW> {
-    pub(crate) fn new_rw_tx(env: &DatabaseEnv) -> Result<LibmbdxTx<RW>, DatabaseError> {
+impl LibmdbxTx<RW> {
+    pub(crate) fn new_rw_tx(env: &DatabaseEnv) -> Result<LibmdbxTx<RW>, DatabaseError> {
         Ok(Self {
             inner:      env
                 .begin_rw_txn()
@@ -41,7 +41,7 @@ impl LibmbdxTx<RW> {
     }
 }
 
-impl<K: TransactionKind> LibmbdxTx<K> {
+impl<K: TransactionKind> LibmdbxTx<K> {
     /// Gets a table database handle if it exists, otherwise creates it.
     pub fn get_dbi<T: Table>(&self) -> Result<DBI, DatabaseError> {
         let mut handles = self.db_handles.write();
@@ -62,19 +62,19 @@ impl<K: TransactionKind> LibmbdxTx<K> {
     }
 
     /// Create db Cursor
-    pub fn new_cursor<T: Table>(&self) -> Result<LibmbdxCursor<T, K>, DatabaseError> {
+    pub fn new_cursor<T: Table>(&self) -> Result<LibmdbxCursor<T, K>, DatabaseError> {
         let inner = self
             .inner
             .cursor_with_dbi(self.get_dbi::<T>()?)
             .map_err(|e| DatabaseError::InitCursor(e.into()))?;
 
-        Ok(LibmbdxCursor::new(inner))
+        Ok(LibmdbxCursor::new(inner))
     }
 }
 
-impl<K: TransactionKind> DbTx for LibmbdxTx<K> {
-    type Cursor<T: Table> = LibmbdxCursor<T, K>;
-    type DupCursor<T: DupSort> = LibmbdxCursor<T, K>;
+impl<K: TransactionKind> DbTx for LibmdbxTx<K> {
+    type Cursor<T: Table> = LibmdbxCursor<T, K>;
+    type DupCursor<T: DupSort> = LibmdbxCursor<T, K>;
 
     fn get<T: Table>(&self, key: T::Key) -> Result<Option<<T as Table>::Value>, DatabaseError> {
         self.inner
@@ -114,9 +114,9 @@ impl<K: TransactionKind> DbTx for LibmbdxTx<K> {
     }
 }
 
-impl DbTxMut for LibmbdxTx<RW> {
-    type CursorMut<T: Table> = LibmbdxCursor<T, RW>;
-    type DupCursorMut<T: DupSort> = LibmbdxCursor<T, RW>;
+impl DbTxMut for LibmdbxTx<RW> {
+    type CursorMut<T: Table> = LibmdbxCursor<T, RW>;
+    type DupCursorMut<T: DupSort> = LibmdbxCursor<T, RW>;
 
     fn put<T: Table>(&self, key: T::Key, value: T::Value) -> Result<(), DatabaseError> {
         let key = key.encode();

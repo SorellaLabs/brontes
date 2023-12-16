@@ -29,7 +29,7 @@ pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     max_tasks:        u64,
     provider:         &'inspector Provider<Http<reqwest::Client>>,
     parser:           &'inspector Parser<'inspector, T>,
-    classifier:       &'inspector Classifier,
+    classifier:       &'inspector Classifier<'inspector>,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
     database:         &'inspector Clickhouse,
     block_inspectors: FuturesUnordered<BlockInspector<'inspector, N, T>>,

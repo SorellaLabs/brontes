@@ -7,10 +7,13 @@ use std::{
 
 use alloy_providers::provider::Provider;
 use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
-use brontes_classifier::{Classifier, PROTOCOL_ADDRESS_MAPPING};
+use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::{Clickhouse, USDT_ADDRESS};
-use brontes_database_libmdbx::Libmbdx;
+use brontes_database_libmdbx::{
+    tables::{AddressToProtocol, Tables},
+    Libmdbx,
+};
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
     sandwich::SandwichInspector, Inspector,
@@ -18,6 +21,7 @@ use brontes_inspect::{
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
 use metrics_process::Collector;
+use reth_db::transaction::DbTx;
 use reth_tracing_ext::TracingClient;
 use tokio::{pin, sync::mpsc::unbounded_channel};
 use tracing::{error, info, Level};
@@ -72,10 +76,20 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
     let metrics_listener = PoirotMetricsListener::new(metrics_rx);
 
-    let db_endpoint = env::var("RETH_ENDPOINT").expect("No RETH_DB Endpoint in .env");
-    let db_port = env::var("RETH_PORT").expect("No DB port.env");
-    let url = format!("{db_endpoint}:{db_port}");
+    let reth_url = env::var("RETH_ENDPOINT").expect("No RETH_DB Endpoint in .env");
+    let reth_port = env::var("RETH_PORT").expect("No DB port.env");
+    let url = format!("{reth_url}:{reth_port}");
     let provider = Provider::new(&url).unwrap();
+
+    let clickhouse = Clickhouse::default();
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None)?;
+    if command.init_libmdbx {
+        // currently inits all tables
+        libmdbx
+            .clear_and_initialize_tables(&clickhouse, &Tables::ALL)
+            .await?;
+    }
 
     // init inspectors
     let sandwich = Box::new(SandwichInspector::new(USDT_ADDRESS)) as Box<dyn Inspector>;
@@ -85,26 +99,22 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
     let inspectors = &[&sandwich, &cex_dex, &jit, &backrun];
 
-    let db = Clickhouse::default();
-
     let (mut manager, tracer) =
         TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current());
 
     let parser = DParser::new(
         metrics_tx,
-        &db,
+        &clickhouse,
+        &libmdbx,
         tracer,
-        Box::new(|address| !PROTOCOL_ADDRESS_MAPPING.contains_key(&address.0 .0)),
+        Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
-    let classifier = Classifier::new();
+    let classifier = Classifier::new(&libmdbx);
 
     #[cfg(not(feature = "local"))]
     let chain_tip = parser.get_latest_block_number().unwrap();
     #[cfg(feature = "local")]
     let chain_tip = parser.get_latest_block_number().await.unwrap();
-
-    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let Clickhouse = Libmbdx::init_db(brontes_db_endpoint, None);
 
     let brontes = Brontes::new(
         command.start_block,
@@ -113,7 +123,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
         command.max_tasks,
         &provider,
         &parser,
-        &db,
+        &clickhouse,
         &classifier,
         inspectors,
     );

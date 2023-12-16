@@ -27,7 +27,7 @@ pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
 
     provider:          &'inspector Provider<Http<reqwest::Client>>,
     parser:            &'inspector Parser<'inspector, T>,
-    classifier:        &'inspector Classifier,
+    classifier:        &'inspector Classifier<'inspector>,
     database:          &'inspector Clickhouse,
     composer:          Composer<'inspector, N>,
     // pending future data

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, env};
 
 use brontes_classifier::{
     test_utils::{build_raw_test_tree, get_traces_with_meta},
@@ -6,6 +6,7 @@ use brontes_classifier::{
 };
 use brontes_core::{decoding::parser::TraceParser, init_tracing, test_utils::init_trace_parser};
 use brontes_database::{clickhouse::Clickhouse, Metadata};
+use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
     normalized_actions::Actions, structured_trace::TxTrace, test_utils::force_call_action,
     tree::Node,
@@ -24,9 +25,12 @@ pub async fn setup_data(block_number: u64) -> (Vec<TxTrace>, Header, Metadata) {
     let (tx, _rx) = unbounded_channel();
 
     let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-    let db = Database::default();
+    let db = Clickhouse::default();
 
-    let classifier = Classifier::new();
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
+
+    let classifier = Classifier::new(&libmdbx);
 
     get_traces_with_meta(&tracer, &db, block_number).await
 }
@@ -41,10 +45,12 @@ fn bench_tree_building(c: &mut Criterion) {
     // https://etherscan.io/block/18672183
     let block_number = 18672183;
     let (traces, header, metadata) = rt.block_on(setup_data(block_number));
-    let classifier = Classifier::new();
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
+    let classifier = Classifier::new(&libmdbx);
 
     c.bench_function("build 28m gas tree", |b| {
-        b.iter(|| black_box(classifier.build_tree(traces.clone(), header.clone(), &metadata)))
+        b.iter(|| black_box(classifier.build_tree(traces.clone(), header.clone())))
     });
 }
 

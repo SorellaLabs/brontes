@@ -5,12 +5,14 @@ use reth_primitives::{Address, Bytes, U256};
 use reth_rpc_types::Log;
 pub use sushi::SushiSwapV2Classifier;
 pub use uni::UniswapV2Classifier;
-
+use brontes_database_libmdbx::implementation::tx::LibmdbxTx;
 use crate::{
-    enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings, ADDRESS_TO_TOKENS_2_POOL,
-};
-
+    enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
+};use reth_db::mdbx::RO;
+use brontes_database_libmdbx::Libmdbx;
 mod uni {
+    use brontes_database_libmdbx::tables::AddressToTokens;
+
     use super::*;
     use crate::UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, UniswapV2Calls};
 
@@ -20,9 +22,10 @@ mod uni {
         swapCall,
         UniswapV2,
         logs: true,
-        |index, from_address: Address, target_address: Address, data: Option<Swap>| {
+        |index, from_address: Address, target_address: Address, data: Option<Swap>, libmdbx: &Libmdbx| {
             let data = data?;
-            let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+            let tokens = libmdbx.get_table_one::<AddressToTokens>(&target_address).ok()??;
+            let [token_0, token_1] = [tokens.token0, tokens.token1];
             let amount_0_in: U256 = data.amount0In;
             if amount_0_in == U256::ZERO {
                 return Some(NormalizedSwap {
@@ -59,9 +62,10 @@ mod uni {
          from_address: Address,
          target_address: Address,
          call_data: mintCall,
-         log_data: Option<Mint>| {
+         log_data: Option<Mint>, libmdbx: &Libmdbx| {
             let log_data = log_data?;
-            let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+            let tokens = libmdbx.get_table_one::<AddressToTokens>(&target_address).ok()??;
+            let [token_0, token_1] = [tokens.token0, tokens.token1];
             Some(NormalizedMint {
                 recipient: call_data.to,
                 from: from_address,
@@ -83,9 +87,10 @@ mod uni {
          from_address: Address,
          target_address: Address,
          call_data: burnCall,
-         log_data: Option<Burn>| {
+         log_data: Option<Burn>, libmdbx: &Libmdbx| {
             let log_data = log_data?;
-            let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+            let tokens = libmdbx.get_table_one::<AddressToTokens>(&target_address).ok()??;
+            let [token_0, token_1] = [tokens.token0, tokens.token1];
             Some(NormalizedBurn {
                 recipient: call_data.to,
                 to: target_address,
@@ -101,6 +106,8 @@ mod uni {
 }
 
 mod sushi {
+    use brontes_database_libmdbx::tables::AddressToTokens;
+
     use super::*;
     use crate::SushiSwapV2::{burnCall, mintCall, swapCall, Burn, Mint, SushiSwapV2Calls, Swap};
 
@@ -110,9 +117,10 @@ mod sushi {
         swapCall,
         SushiSwapV2,
         logs: true,
-        |index, from_address: Address, target_address: Address, data: Option<Swap>| {
+        |index, from_address: Address, target_address: Address, data: Option<Swap>,libmdbx: &Libmdbx| {
             let data = data?;
-            let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+                        let tokens = libmdbx.get_table_one::<AddressToTokens>(&target_address).ok()??;
+            let [token_0, token_1] = [tokens.token0, tokens.token1];
             let amount_0_in: U256 = data.amount0In;
             if amount_0_in == U256::ZERO {
                 return Some(NormalizedSwap {
@@ -148,9 +156,10 @@ mod sushi {
          from_address: Address,
          target_address: Address,
          call_data: mintCall,
-         log_data: Option<Mint>| {
+         log_data: Option<Mint>,libmdbx: &Libmdbx| {
             let log_data = log_data?;
-            let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+                        let tokens = libmdbx.get_table_one::<AddressToTokens>(&target_address).ok()??;
+            let [token_0, token_1] = [tokens.token0, tokens.token1];
             Some(NormalizedMint {
                 recipient: call_data.to,
                 from: from_address,
@@ -172,9 +181,10 @@ mod sushi {
          from_address: Address,
          target_address: Address,
          call_data: burnCall,
-         log_data: Option<Burn>| {
+         log_data: Option<Burn>,libmdbx: &Libmdbx| {
             let log_data = log_data?;
-            let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL.get(&*target_address.0).copied()?;
+                        let tokens = libmdbx.get_table_one::<AddressToTokens>(&target_address).ok()??;
+            let [token_0, token_1] = [tokens.token0, tokens.token1];
             Some(NormalizedBurn {
                 recipient: call_data.to,
                 to: target_address,

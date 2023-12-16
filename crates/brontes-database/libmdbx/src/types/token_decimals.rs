@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
 
-use super::LibmbdxData;
+use super::LibmdbxData;
 use crate::{tables::TokenDecimals, types::utils::address_string};
 
 #[serde_as]
@@ -14,7 +14,7 @@ pub(crate) struct TokenDecimalsData {
     decimals: u8,
 }
 
-impl LibmbdxData<TokenDecimals> for TokenDecimalsData {
+impl LibmdbxData<TokenDecimals> for TokenDecimalsData {
     fn into_key_val(
         &self,
     ) -> (
