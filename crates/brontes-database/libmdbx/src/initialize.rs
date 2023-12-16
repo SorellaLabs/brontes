@@ -113,6 +113,6 @@ mod tests {
         let db = db.unwrap();
         assert!(test_tokens_decimals_table(&db, false).await.is_ok());
         assert!(test_address_to_tokens_table(&db, false).await.is_ok());
-        assert!(test_address_to_protocols_table(&db, true).await.is_ok());
+        assert!(test_address_to_protocols_table(&db, false).await.is_ok());
     }
 }
