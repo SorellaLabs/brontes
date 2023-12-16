@@ -8,8 +8,8 @@ use malachite::Rational;
 #[derive(Debug, Clone)]
 pub struct PoolKey {
     pub pool:   Address,
-    pub run:    u128,
-    pub batch:  u128,
+    pub run:    u64,
+    pub batch:  u64,
     pub tx_idx: usize,
 }
 
@@ -40,10 +40,17 @@ impl DexQuotes {
     }
 }
 
+pub enum PoolStateSnapShot {
+    UniswapV2(()),
+    UniswapV3(()),
+}
+
 pub enum PoolState {
     UniswapV2(()),
     UniswapV3(()),
 }
+
+impl PoolState {}
 
 pub enum PairPriceMessage {
     Update(PoolUpdate),
@@ -51,9 +58,9 @@ pub enum PairPriceMessage {
 }
 
 pub struct PoolUpdate {
-    block:  u64,
-    tx_idx: usize,
-    action: Actions,
+    pub block:  u64,
+    pub tx_idx: usize,
+    pub action: Actions,
 }
 
 impl PoolState {
