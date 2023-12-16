@@ -312,7 +312,7 @@ impl JitInspector {
     }
 
     fn get_bribes(&self, price: Arc<Metadata>, gas: [GasDetails; 2]) -> Rational {
-        let bribe = gas.into_iter().map(|gas| gas.gas_paid()).sum::<u64>();
+        let bribe = gas.into_iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe)
     }
