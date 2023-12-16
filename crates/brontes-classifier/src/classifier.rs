@@ -75,7 +75,7 @@ impl Classifier {
                         gas_used:            trace.gas_used,
                         effective_gas_price: trace.effective_price,
                         priority_fee:        trace.effective_price
-                            - header.base_fee_per_gas.unwrap(),
+                            - (header.base_fee_per_gas.unwrap() as u128),
                     },
                 };
 
@@ -147,6 +147,7 @@ impl Classifier {
         (dec, tree)
     }
 
+    //TODO: need to deal with other direction + eth based transfers.
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
