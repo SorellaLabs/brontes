@@ -28,6 +28,7 @@ sol!(UniswapV2, "./abis/UniswapV2.json");
 sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
 sol!(UniswapV3, "./abis/UniswapV3.json");
 sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
+sol!(CurveCryptoSwap, "./abis/CurveCryptoSwap.json");
 
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
@@ -39,7 +40,7 @@ pub trait ActionCollection: Sync + Send {
         from_address: Address,
         target_address: Address,
         logs: &Vec<Log>,
-        libmdbx: &Libmdbx,
+        db_tx: &LibmdbxTx<RO>,
     ) -> Option<Actions>;
 }
 
@@ -68,6 +69,6 @@ pub trait IntoAction: Debug + Send + Sync {
         from_address: Address,
         target_address: Address,
         logs: &Vec<Log>,
-        libmdbx: &Libmdbx,
+        db_tx: &LibmdbxTx<RO>,
     ) -> Option<Actions>;
 }

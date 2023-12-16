@@ -1,3 +1,7 @@
+fn main() {}
+
+/*
+
 use std::{
     collections::HashMap,
     env,
@@ -129,3 +133,6 @@ fn build_db() -> Client {
 async fn query_db<T: Row + for<'a> Deserialize<'a> + Send>(db: &Client, query: &str) -> Vec<T> {
     db.query(query).fetch_all::<T>().await.unwrap()
 }
+
+
+*/

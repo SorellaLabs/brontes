@@ -42,22 +42,18 @@ pub enum StaticBindingsDb {
     SushiSwapV2,
     UniswapV3,
     SushiSwapV3,
+    CurveCryptoSwap,
 }
 
 impl From<String> for StaticBindingsDb {
     fn from(value: String) -> Self {
-        println!("VALUE: {}", value);
-        if value == "UniswapV2".to_string() {
-            StaticBindingsDb::UniswapV2
-        } else if value == "SushiSwapV2".to_string() {
-            StaticBindingsDb::SushiSwapV2
-        } else if value == "UniswapV3".to_string() {
-            StaticBindingsDb::UniswapV3
-        } else if value == "SushiSwapV3".to_string() {
-            StaticBindingsDb::SushiSwapV3
-        } else {
-            //StaticBindingsDb::SushiSwapV3
-            unreachable!("no value from str: {value}");
+        match value.as_str() {
+            "UniswapV2" => StaticBindingsDb::UniswapV2,
+            "SushiSwapV2" => StaticBindingsDb::SushiSwapV2,
+            "UniswapV3" => StaticBindingsDb::UniswapV3,
+            "SushiSwapV3" => StaticBindingsDb::SushiSwapV3,
+            "CurveCryptoSwap" => StaticBindingsDb::CurveCryptoSwap,
+            _ => unreachable!("no value from str: {value}"),
         }
     }
 }
@@ -69,6 +65,7 @@ impl Into<String> for StaticBindingsDb {
             StaticBindingsDb::SushiSwapV2 => "SushiSwapV2".to_string(),
             StaticBindingsDb::UniswapV3 => "UniswapV3".to_string(),
             StaticBindingsDb::SushiSwapV3 => "SushiSwapV3".to_string(),
+            StaticBindingsDb::CurveCryptoSwap => "CurveCryptoSwap".to_string(),
         }
     }
 }
@@ -80,6 +77,7 @@ impl Encodable for StaticBindingsDb {
             StaticBindingsDb::SushiSwapV2 => 1u64.encode(out),
             StaticBindingsDb::UniswapV3 => 2u64.encode(out),
             StaticBindingsDb::SushiSwapV3 => 3u64.encode(out),
+            StaticBindingsDb::CurveCryptoSwap => 4u64.encode(out),
         }
     }
 }
@@ -93,6 +91,7 @@ impl Decodable for StaticBindingsDb {
             1 => StaticBindingsDb::SushiSwapV2,
             2 => StaticBindingsDb::UniswapV3,
             3 => StaticBindingsDb::SushiSwapV3,
+            4 => StaticBindingsDb::CurveCryptoSwap,
             _ => unreachable!("no enum variant"),
         };
 

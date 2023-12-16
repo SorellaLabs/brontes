@@ -1,3 +1,6 @@
+fn main() {}
+
+/*
 use std::{
     collections::HashSet,
     env,
@@ -15,9 +18,10 @@ use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+
 const TOKEN_MAPPING: &str = "token_to_addresses.rs";
 const TOKEN_QUERIES: &str = "SELECT DISTINCT toString(address), arrayMap(x -> toString(x), \
-                             tokens) AS 
+                             tokens) AS
                              tokens FROM ethereum.pools WHERE length(tokens) = ";
 
 const FAILED_ABI_FILE: &str = "../../failed_abis.txt";
@@ -456,3 +460,6 @@ fn to_string_vec(tokens: Vec<String>) -> String {
 
     res
 }
+
+
+*/
