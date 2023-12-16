@@ -32,10 +32,17 @@
 # Juptyer Notebook 
 /notebook/** 
 
-.cargo/
+**/const_sql.rs
+
+# Ignore everything in abi-builds
+abi-builds/*
+
+# But not bindings.rs
+!abi-builds/bindings.rs
+abi-builds/**.txt
 
 stuff
-abi-builds/**.rs
+
 
 
 /crates/brontes-core/abi_cache/sources/*
