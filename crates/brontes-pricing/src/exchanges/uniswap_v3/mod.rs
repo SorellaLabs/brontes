@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{
+use amms::{
     amm::AutomatedMarketMaker,
     errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
 };
