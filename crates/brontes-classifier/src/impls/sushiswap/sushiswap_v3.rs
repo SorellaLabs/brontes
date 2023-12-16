@@ -1,9 +1,11 @@
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::SolCall;
+use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens, Libmdbx};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{
     Actions, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
+use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_rpc_types::Log;
 
 use crate::{
@@ -12,7 +14,6 @@ use crate::{
         burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
         swapReturn, SushiSwapV3Calls,
     },
-    ADDRESS_TO_TOKENS_2_POOL,
 };
 
 action_impl!(
@@ -22,13 +23,11 @@ action_impl!(
     Swap,
     SushiSwapV3,
     return_data: true,
-    |index, from_address: Address, target_address: Address, return_data: swapReturn| {
+    |index, from_address: Address, target_address: Address, return_data: swapReturn,  db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address.0)
-            .copied()
-            .unwrap();
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
             (
                 U256::from_be_bytes(token_1_delta.to_be_bytes::<32>()),
@@ -68,20 +67,18 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
-     return_data: mintReturn| {
+     return_data: mintReturn,  db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address.0)
-            .copied()
-            .unwrap();
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         Some(NormalizedMint {
             index,
             from: from_address,
             recipient: call_data.recipient,
             to: target_address,
-            token: vec![token0, token1],
+            token: vec![token_0, token_1],
             amount: vec![token_0_delta, token_1_delta],
         })
     }
@@ -93,16 +90,14 @@ action_impl!(
     Burn,
     SushiSwapV3,
     return_data: true,
-    |index, from_address: Address, target_address: Address, return_data: burnReturn| {
+    |index, from_address: Address, target_address: Address, return_data: burnReturn,  db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
 
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
-        let [token_0, token_1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address.0)
-            .copied()
-            .unwrap();
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         Some(NormalizedBurn {
             to: target_address,
@@ -127,18 +122,16 @@ action_impl!(
     from_addr: Address,
     to_addr: Address,
     call_data: collectCall,
-    return_data: collectReturn
+    return_data: collectReturn,  db_tx: &LibmdbxTx<RO>
     | {
-        let [token0, token1] = ADDRESS_TO_TOKENS_2_POOL
-            .get(&*target_address.0)
-            .copied()
-            .unwrap();
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedCollect {
             index,
             from: from_addr,
             recipient: call_data.recipient,
             to: to_addr,
-            token: vec![token0, token1],
+            token: vec![token_0, token_1],
             amount: vec![U256::from(return_data.amount0), U256::from(return_data.amount1)],
         })
     }
