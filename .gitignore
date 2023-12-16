@@ -33,10 +33,10 @@ abi-builds/*
 # But not bindings.rs
 !abi-builds/bindings.rs
 abi-builds/**.txt
-!abi-builds/token_mapping.rs
+
 stuff
 
-
+!abi-builds/protocol_addr_sets.rs
 crates/brontes-classifier/abis/**.json
 crates/brontes-inspect/abis/**.json
 
