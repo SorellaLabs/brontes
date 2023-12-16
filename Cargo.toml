@@ -12,6 +12,7 @@ members = [
   "crates/brontes-database/libmdbx",
   "crates/brontes-macros",
   "tests",
+  "crates/brontes-pricing",
 ]
 
 resolver = "2"
