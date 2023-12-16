@@ -13,6 +13,7 @@ brontes-types.workspace = true
 brontes-macros.workspace = true
 brontes-database.workspace = true
 brontes-database-libmdbx.workspace = true
+alloy-primitives.workspace = true
 
 # alloy
 alloy-sol-types.workspace = true

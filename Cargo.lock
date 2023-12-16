@@ -1037,6 +1037,7 @@ dependencies = [
  "alloy-json-abi",
  "alloy-json-rpc",
  "alloy-networks",
+ "alloy-primitives",
  "alloy-providers",
  "alloy-rlp",
  "alloy-rpc-client",
@@ -1105,6 +1106,7 @@ dependencies = [
  "brontes-types",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
  "colored",
+ "criterion",
  "dotenv",
  "eyre",
  "futures",
@@ -1256,6 +1258,7 @@ dependencies = [
  "reth-primitives",
  "reth-rpc-types",
  "serde",
+ "serde_json",
  "serde_with",
  "serial_test",
  "strum",
@@ -1756,6 +1759,7 @@ dependencies = [
  "ciborium",
  "clap",
  "criterion-plot",
+ "futures",
  "is-terminal",
  "itertools 0.10.5",
  "num-traits",
@@ -1768,6 +1772,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "tinytemplate",
+ "tokio",
  "walkdir",
 ]
 
@@ -2832,11 +2837,11 @@ dependencies = [
 
 [[package]]
 name = "home"
-version = "0.5.5"
+version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5444c27eef6923071f7ebcc33e3444508466a76f7a2b93da00ed6e19f30c1ddb"
+checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -6319,7 +6324,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b5fd3e01b6fbf8cc77c0c03ecf643c14dfe98ad3"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#a42cada427cb4fc1fb8d6283976108a910b24891"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -6344,7 +6349,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b5fd3e01b6fbf8cc77c0c03ecf643c14dfe98ad3"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#a42cada427cb4fc1fb8d6283976108a910b24891"
 dependencies = [
  "eyre",
  "futures",
@@ -6361,7 +6366,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b5fd3e01b6fbf8cc77c0c03ecf643c14dfe98ad3"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#a42cada427cb4fc1fb8d6283976108a910b24891"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -6373,7 +6378,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b5fd3e01b6fbf8cc77c0c03ecf643c14dfe98ad3"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#a42cada427cb4fc1fb8d6283976108a910b24891"
 dependencies = [
  "serde",
  "serde_json",
@@ -6670,18 +6675,18 @@ checksum = "a38c90d48152c236a3ab59271da4f4ae63d678c5d7ad6b7714d7cb9760be5e4b"
 
 [[package]]
 name = "thiserror"
-version = "1.0.50"
+version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9a7210f5c9a7156bb50aa36aed4c95afb51df0df00713949448cf9e97d382d2"
+checksum = "f11c217e1416d6f036b870f14e0413d480dbf28edbee1f877abaf0206af43bb7"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.50"
+version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "266b2e40bc00e5a6c09c3584011e08b06f123c00362c92b975ba9843aaaa14b8"
+checksum = "01742297787513b79cf8e29d1056ede1313e2420b7b3b15d0a768b4921f549df"
 dependencies = [
  "proc-macro2",
  "quote",

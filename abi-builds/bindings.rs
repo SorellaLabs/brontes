@@ -1,16 +1,10 @@
-use alloy_rlp::{Decodable, Encodable};
-use brontes_database_libmdbx::types::address_to_protocol::StaticBindingsDb;
-use reth_db::{
-    table::{Compress, Decompress},
-    DatabaseError,
-};
-use reth_primitives::{Address, BufMut};
-use serde::{Deserialize, Serialize};
-
-use crate::*;
+sol!(UniswapV2, "./abis/UniswapV2.json");
+sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
+sol!(UniswapV3, "./abis/UniswapV3.json");
+sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
+sol!(CurveCryptoSwap, "./abis/CurveCryptoSwap.json");
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StaticBindings {
     UniswapV2(UniswapV2_Enum),
     SushiSwapV2(SushiSwapV2_Enum),
@@ -43,20 +37,6 @@ impl StaticBindings {
     }
 }
 
-impl From<StaticBindingsDb> for StaticBindings {
-    fn from(value: StaticBindingsDb) -> Self {
-        match value {
-            StaticBindingsDb::UniswapV2 => StaticBindings::UniswapV2(UniswapV2_Enum::None),
-            StaticBindingsDb::SushiSwapV2 => StaticBindings::SushiSwapV2(SushiSwapV2_Enum::None),
-            StaticBindingsDb::UniswapV3 => StaticBindings::UniswapV3(UniswapV3_Enum::None),
-            StaticBindingsDb::SushiSwapV3 => StaticBindings::SushiSwapV3(SushiSwapV3_Enum::None),
-            StaticBindingsDb::CurveCryptoSwap => {
-                StaticBindings::CurveCryptoSwap(CurveCryptoSwap_Enum::None)
-            }
-        }
-    }
-}
-
 #[allow(non_camel_case_types)]
 pub enum StaticReturnBindings {
     UniswapV2(UniswapV2::UniswapV2Calls),
@@ -67,41 +47,30 @@ pub enum StaticReturnBindings {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UniswapV2_Enum {
     None,
 }
 impl_decode_sol!(UniswapV2_Enum, UniswapV2::UniswapV2Calls);
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SushiSwapV2_Enum {
     None,
 }
 impl_decode_sol!(SushiSwapV2_Enum, SushiSwapV2::SushiSwapV2Calls);
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UniswapV3_Enum {
     None,
 }
 impl_decode_sol!(UniswapV3_Enum, UniswapV3::UniswapV3Calls);
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SushiSwapV3_Enum {
     None,
 }
 impl_decode_sol!(SushiSwapV3_Enum, SushiSwapV3::SushiSwapV3Calls);
 
-pub trait TryDecodeSol {
-    type DecodingType;
-
-    fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error>;
-}
-
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CurveCryptoSwap_Enum {
     None,
 }

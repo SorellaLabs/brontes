@@ -117,17 +117,6 @@ impl Libmdbx {
         Ok(())
     }
 
-    /// reads a single value from a table
-    pub fn get_table_one<T>(&self, key: &T::Key) -> eyre::Result<Option<T::Value>>
-    where
-        T: Table,
-        T::Key: Copy,
-    {
-        let tx = LibmdbxTx::new_ro_tx(&self.0)?;
-
-        Ok(tx.get::<T>(*key)?)
-    }
-
     /// returns a RO transaction
     pub fn ro_tx(&self) -> eyre::Result<LibmdbxTx<RO>> {
         let tx = LibmdbxTx::new_ro_tx(&self.0)?;
