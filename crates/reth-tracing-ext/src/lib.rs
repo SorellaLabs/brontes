@@ -182,7 +182,7 @@ impl TracingInspectorLocal {
         acc_diff: &HashMap<Address, Account>,
         db: &CacheDB<StateProviderDatabase<Box<dyn StateProvider>>>,
     ) -> TxTrace {
-        let gas_used = res.gas_used();
+        let gas_used = res.gas_used().into();
 
         let trace = self.build_trace(&info);
         let mut diff = StateDiff::default();

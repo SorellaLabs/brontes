@@ -41,13 +41,23 @@ pub struct PoolReservesDB {
     pub prices_price:      Vec<f64>,
 }
 
+//TODO: (Joe): Fix the query now that I have added support for multiple
+// exchanges, thank you
+
 #[serde_as]
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct DBTokenPricesDB {
-    /// (base_address, quote_address)
     pub key: (String, String),
+    pub val: Vec<ExchangePriceDB>,
+}
+
+#[serde_as]
+#[derive(Debug, Row, Serialize, Deserialize)]
+pub struct ExchangePriceDB {
+    pub exchange: String,
+    /// (base_address, quote_address)
     /// (timestamp, ask_price, bid_price)
-    pub val: (u64, f64, f64),
+    pub val:      (u64, f64, f64),
 }
 
 #[serde_as]
