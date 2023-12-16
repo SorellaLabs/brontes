@@ -9,9 +9,10 @@ harness = false
 
 [dependencies]
 # brontes
-brontes-database.workspace = true
 brontes-types.workspace = true
 brontes-macros.workspace = true
+brontes-database.workspace = true
+brontes-database-libmdbx.workspace = true
 alloy-primitives.workspace = true
 
 # alloy
@@ -24,13 +25,22 @@ alloy-networks = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rlp.workspace = true
 
 # reth
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
+reth-db.workspace = true
 
 # tracing
 tracing.workspace = true
+
+# libmdbx stuff
+
+
+# serde
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 
 # misc
 hex-literal.workspace = true
@@ -38,10 +48,10 @@ rayon.workspace = true
 lazy_static.workspace = true
 once_cell.workspace = true
 malachite.workspace = true
-serde_json.workspace = true
 parking_lot.workspace = true
 paste = "1.0.14"
 phf.workspace = true
+unstringify = "0.1.4"
 itertools.workspace = true
 
 # tests feature (unique)
@@ -64,6 +74,7 @@ brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
 criterion = "0.5"
 
+
 [build-dependencies]
 tokio.workspace = true
 clickhouse.workspace = true
@@ -80,3 +91,4 @@ futures.workspace = true
 itertools.workspace = true
 dotenv.workspace = true
 reth-tracing-ext.workspace = true
+
