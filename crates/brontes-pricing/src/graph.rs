@@ -2,7 +2,7 @@ use std::{
     cmp::Ordering,
     collections::{
         hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, HashMap,
+        BinaryHeap, HashMap, HashSet,
     },
     hash::Hash,
     time::SystemTime,
@@ -13,30 +13,31 @@ use brontes_types::extra_processing::Pair;
 use itertools::Itertools;
 use petgraph::{
     algo::Measure,
+    data::{Build, DataMap},
     graph::UnGraph,
     prelude::*,
     visit::{IntoEdges, VisitMap, Visitable},
 };
-use reth_primitives::revm_primitives::HashSet;
 use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct PairGraph {
-    graph:         UnGraph<(), i32, usize>,
+    graph:         UnGraph<(), HashSet<Address>, usize>,
     addr_to_index: HashMap<Address, usize>,
     index_to_addr: HashMap<usize, Address>,
 }
 
 impl PairGraph {
-    pub fn init_from_hashset(map: HashSet<Pair>) -> Self {
+    pub fn init_from_hashset(map: HashMap<Address, Pair>) -> Self {
         let t0 = SystemTime::now();
-        let mut graph = UnGraph::<(), i32, usize>::default();
+        let mut graph = UnGraph::<(), HashSet<Address>, usize>::default();
 
         let mut addr_to_index = HashMap::default();
         let mut index_to_addr = HashMap::default();
-        let mut connections: HashMap<Address, (usize, Vec<(Address, usize)>)> = HashMap::new();
+        let mut connections: HashMap<Address, (usize, Vec<(Address, Vec<Address>, usize)>)> =
+            HashMap::new();
 
-        for pair in map.clone() {
+        for (pool, pair) in map.clone() {
             // crate node if doesn't exist for addr or get node otherwise
             let addr0 = *addr_to_index
                 .entry(pair.0)
@@ -52,23 +53,29 @@ impl PairGraph {
             // insert token0
             let e = connections.entry(pair.0).or_insert_with(|| (addr0, vec![]));
 
-            // if we don't have this edge, then add it
-            if !e.1.iter().map(|i| i.0).any(|addr| addr == pair.1) {
-                e.1.push((pair.1, addr1));
+            // if we find a already inserted edge, we append the address otherwise we insert
+            // both
+            if let Some(inner) = e.1.iter_mut().find(|addr| addr.0 == pair.1) {
+                inner.1.push(pool);
+            } else {
+                e.1.push((pair.1, vec![pool], addr1));
             }
 
             // insert token1
             let e = connections.entry(pair.1).or_insert_with(|| (addr1, vec![]));
-            // if we don't have this edge, then add it
-            if !e.1.iter().map(|i| i.0).any(|addr| addr == pair.0) {
-                e.1.push((pair.0, addr0));
+            // if we find a already inserted edge, we append the address otherwise we insert
+            // both
+            if let Some(inner) = e.1.iter_mut().find(|addr| addr.0 == pair.0) {
+                inner.1.push(pool);
+            } else {
+                e.1.push((pair.0, vec![pool], addr0));
             }
         }
 
         graph.extend_with_edges(connections.into_values().flat_map(|(node0, edges)| {
-            edges
-                .into_iter()
-                .map(move |(_, adjacent)| (node0, adjacent))
+            edges.into_iter().map(move |(_, pools, adjacent)| {
+                (node0, adjacent, pools.into_iter().collect::<HashSet<_>>())
+            })
         }));
 
         let t1 = SystemTime::now();
@@ -79,8 +86,12 @@ impl PairGraph {
         Self { graph, addr_to_index, index_to_addr }
     }
 
+    pub fn get_all_pools(&self, pair: Pair) -> Vec<Address> {
+        todo!()
+    }
+
     // returns false if there was a duplicate
-    pub fn add_node(&mut self, pair: Pair) -> bool {
+    pub fn add_node(&mut self, pair: Pair, pool_addr: Address) {
         let node_0 = *self
             .addr_to_index
             .entry(pair.0)
@@ -90,37 +101,34 @@ impl PairGraph {
             .entry(pair.1)
             .or_insert(self.graph.add_node(()).index());
 
-        if self.graph.contains_edge(node_0.into(), node_1.into()) {
-            return false
-        }
+        if let Some(edge) = self.graph.find_edge(node_0.into(), node_1.into()) {
+            let mut pools = self.graph.edge_weight(edge).unwrap().clone();
+            pools.insert(pool_addr);
+            self.graph.update_edge(node_0.into(), node_1.into(), pools);
+        } else {
+            let mut set = HashSet::new();
+            set.insert(pool_addr);
 
-        self.graph.add_edge(node_0.into(), node_1.into(), 0);
-        true
+            self.graph.add_edge(node_0.into(), node_1.into(), set);
+        }
     }
 
     // fetches the path from start to end if it exists returning none if not
-    pub fn get_path(&self, start: Address, end: Address) -> Option<Vec<Pair>> {
-        let start_idx = self.addr_to_index.get(&start)?;
-        let end_idx = self.addr_to_index.get(&end)?;
+    pub fn get_path(&self, start: Address, end: Address) -> impl Iterator<Item = Address> + '_ {
+        let start_idx = self.addr_to_index.get(&start).unwrap();
+        let end_idx = self.addr_to_index.get(&end).unwrap();
 
-        Some(
-            dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into(), |_| 1)?
-                .into_iter()
-                .tuple_windows()
-                .map(|(base, quote)| {
-                    Pair(
-                        self.index_to_addr
-                            .get(&base.index())
-                            .expect("Key not found in index_to_addr")
-                            .clone(),
-                        self.index_to_addr
-                            .get(&quote.index())
-                            .expect("Key not found in index_to_addr")
-                            .clone(),
-                    )
-                })
-                .collect(),
-        )
+        dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into(), |_| 1)
+            .unwrap()
+            .into_iter()
+            .tuple_windows()
+            .flat_map(|(base, quote)| {
+                self.graph
+                    .edge_weight(self.graph.find_edge(base, quote).unwrap())
+                    .unwrap()
+                    .into_iter()
+                    .map(|i| *i)
+            })
     }
 }
 
