@@ -16,6 +16,7 @@ pub enum StaticBindings {
     SushiSwapV2(SushiSwapV2_Enum),
     UniswapV3(UniswapV3_Enum),
     SushiSwapV3(SushiSwapV3_Enum),
+    CurveCryptoSwap(CurveCryptoSwap_Enum),
 }
 impl StaticBindings {
     pub fn try_decode(
@@ -35,6 +36,9 @@ impl StaticBindings {
             StaticBindings::SushiSwapV3(_) => {
                 Ok(StaticReturnBindings::SushiSwapV3(SushiSwapV3_Enum::try_decode(call_data)?))
             }
+            StaticBindings::CurveCryptoSwap(_) => Ok(StaticReturnBindings::CurveCryptoSwap(
+                CurveCryptoSwap_Enum::try_decode(call_data)?,
+            )),
         }
     }
 }
@@ -46,75 +50,10 @@ impl From<StaticBindingsDb> for StaticBindings {
             StaticBindingsDb::SushiSwapV2 => StaticBindings::SushiSwapV2(SushiSwapV2_Enum::None),
             StaticBindingsDb::UniswapV3 => StaticBindings::UniswapV3(UniswapV3_Enum::None),
             StaticBindingsDb::SushiSwapV3 => StaticBindings::SushiSwapV3(SushiSwapV3_Enum::None),
+            StaticBindingsDb::CurveCryptoSwap => {
+                StaticBindings::CurveCryptoSwap(CurveCryptoSwap_Enum::None)
+            }
         }
-    }
-}
-
-impl From<String> for StaticBindings {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "UniswapV2" => StaticBindings::UniswapV2(UniswapV2_Enum::None),
-            "SushiSwapV2" => StaticBindings::SushiSwapV2(SushiSwapV2_Enum::None),
-            "UniswapV3" => StaticBindings::UniswapV3(UniswapV3_Enum::None),
-            "SushiSwapV3" => StaticBindings::SushiSwapV3(SushiSwapV3_Enum::None),
-            _ => unreachable!("no value from str: {value}"),
-        }
-    }
-}
-
-impl Into<String> for StaticBindings {
-    fn into(self) -> String {
-        match self {
-            StaticBindings::UniswapV2(_) => "UniswapV2".to_string(),
-            StaticBindings::SushiSwapV2(_) => "SushiSwapV2".to_string(),
-            StaticBindings::UniswapV3(_) => "UniswapV3".to_string(),
-            StaticBindings::SushiSwapV3(_) => "SushiSwapV3".to_string(),
-        }
-    }
-}
-
-impl Encodable for StaticBindings {
-    fn encode(&self, out: &mut dyn BufMut) {
-        match self {
-            StaticBindings::UniswapV2(_) => 0u64.encode(out),
-            StaticBindings::SushiSwapV2(_) => 1u64.encode(out),
-            StaticBindings::UniswapV3(_) => 2u64.encode(out),
-            StaticBindings::SushiSwapV3(_) => 3u64.encode(out),
-        }
-    }
-}
-
-impl Decodable for StaticBindings {
-    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let self_int = u64::decode(buf)?;
-
-        let this = match self_int {
-            0 => StaticBindings::UniswapV2(UniswapV2_Enum::None),
-            1 => StaticBindings::SushiSwapV2(SushiSwapV2_Enum::None),
-            2 => StaticBindings::UniswapV3(UniswapV3_Enum::None),
-            3 => StaticBindings::SushiSwapV3(SushiSwapV3_Enum::None),
-            _ => unreachable!("no enum variant"),
-        };
-
-        Ok(this)
-    }
-}
-
-impl Compress for StaticBindings {
-    type Compressed = Vec<u8>;
-
-    fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-        let mut encoded = Vec::new();
-        self.encode(&mut encoded);
-        buf.put_slice(&encoded);
-    }
-}
-
-impl Decompress for StaticBindings {
-    fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-        let binding = value.as_ref().to_vec();
-        let buf = &mut binding.as_slice();
-        Ok(StaticBindings::decode(buf).map_err(|_| DatabaseError::Decode)?)
     }
 }
 
@@ -124,6 +63,7 @@ pub enum StaticReturnBindings {
     SushiSwapV2(SushiSwapV2::SushiSwapV2Calls),
     UniswapV3(UniswapV3::UniswapV3Calls),
     SushiSwapV3(SushiSwapV3::SushiSwapV3Calls),
+    CurveCryptoSwap(CurveCryptoSwap::CurveCryptoSwapCalls),
 }
 
 #[allow(non_camel_case_types)]
@@ -159,3 +99,10 @@ pub trait TryDecodeSol {
 
     fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error>;
 }
+
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CurveCryptoSwap_Enum {
+    None,
+}
+impl_decode_sol!(CurveCryptoSwap_Enum, CurveCryptoSwap::CurveCryptoSwapCalls);

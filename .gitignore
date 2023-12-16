@@ -27,11 +27,15 @@ crates/tracing/src/main.rs
 
 **/const_sql.rs
 
-abi-builds/**.rs
+# Ignore everything in abi-builds
+abi-builds/*
+
+# But not bindings.rs
+!abi-builds/bindings.rs
 abi-builds/**.txt
 
 stuff
-abi-builds/**.rs
+
 
 crates/brontes-classifier/abis/**.json
 crates/brontes-inspect/abis/**.json

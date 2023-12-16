@@ -1,4 +1,4 @@
-use proc_macro::TokenStream;
+use proc_macro::{Span, TokenStream};
 use quote::quote;
 use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 
@@ -6,17 +6,56 @@ use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 /// the action impl macro deals with automatically parsing the data needed for
 /// underlying actions. The use is as followed
 /// ```rust
-/// action_impl!(ExchagneName, ActionDecodeType, ActionCallType, Option<ExchangeModName>, GiveLogs, GiveReturns, CallFn)
+/// action_impl!(ExchangeName, NormalizedAction, CallType, LogType, ExchangeModName, [logs: bool , call_data: bool, return_data: bool])
 /// ```
-/// Where GiveLogs, GiveReturns are bools, and CallFn is a closure that takes
+///
+///  ## Examples
 /// ```rust
+/// action_impl!(
+///     V2SwapImpl,
+///     Swap,
+///     swapCall,
+///     Swap,
+///     UniswapV2,
+///     logs: true,
+///     |index, from_address: Address, target_address: Address, data: Option<Swap>| { <body> });
+///
+/// action_impl!(
+///     V2MintImpl,
+///     Mint,
+///     mintCall,
+///     Mint,
+///     UniswapV2,
+///     logs: true,
+///     call_data: true,
+///     |index,
+///      from_address: Address,
+///      target_address: Address,
+///      call_data: mintCall,
+///      log_data: Option<Mint>|  { <body> });
+///
 /// |index, from_address, target_address, call_data, return_data, log_data| { <body> }
 /// ```
+///
+/// the fields `call_data`, `return_data` and `log_data` are only put into the
+/// closure if specified they are always in this order, for example if you put
+///  
+///  ```return_data: true```
+///  then then the closure would be as followed
+///  ```|index, from_address, target_address, return_data|```
+///
+/// for
+///  ```
+///  log_data: true,
+///  call_data: true
+///  ````
+///  ```|index, from_address, target_address, return_data, log_data|```
 pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let MacroParse {
         exchange_name,
         action_type,
         call_type,
+        log_type,
         exchange_mod_name,
         give_logs,
         give_returns,
@@ -26,16 +65,19 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     let mut option_parsing = Vec::new();
 
+    let a = call_type.to_string().to_lowercase();
+    let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
+
     if give_calldata {
         option_parsing.push(quote!(
-                let call_data = enum_unwrap!(data, #exchange_mod_name, #action_type);
+                let call_data = enum_unwrap!(data, #exchange_mod_name, #decalled);
         ));
     }
 
     if give_logs {
         option_parsing.push(quote!(
             let log_data = logs.into_iter().filter_map(|log| {
-                #action_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, false).ok()
+                #log_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, false).ok()
             }).collect::<Vec<_>>();
             let log_data = Some(log_data).filter(|data| !data.is_empty()).map(|mut l| l.remove(0));
         ));
@@ -53,42 +95,42 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let fn_call = match (give_calldata, give_logs, give_returns) {
         (true, true, true) => {
             quote!(
-            (#call_function)(index, from_address, target_address, call_data, return_data, log_data, libmdbx)
+            (#call_function)(index, from_address, target_address, call_data, return_data, log_data, db_tx)
             )
         }
         (true, true, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address, call_data, log_data, libmdbx)
+                (#call_function)(index, from_address, target_address, call_data, log_data, db_tx)
             )
         }
         (true, false, true) => {
             quote!(
-                (#call_function)(index, from_address, target_address, call_data, return_data, libmdbx)
+                (#call_function)(index, from_address, target_address, call_data, return_data, db_tx)
             )
         }
         (true, false, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address, call_data, libmdbx)
+                (#call_function)(index, from_address, target_address, call_data, db_tx)
             )
         }
         (false, true, true) => {
             quote!(
-                (#call_function)(index, from_address, target_address, return_data, log_data, libmdbx)
+                (#call_function)(index, from_address, target_address, return_data, log_data, db_tx)
             )
         }
         (false, false, true) => {
             quote!(
-                (#call_function)(index, from_address, target_address, return_data, libmdbx)
+                (#call_function)(index, from_address, target_address, return_data, db_tx)
             )
         }
         (false, true, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address, log_data, libmdbx)
+                (#call_function)(index, from_address, target_address, log_data, db_tx)
             )
         }
         (false, false, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address, libmdbx)
+                (#call_function)(index, from_address, target_address, db_tx)
             )
         }
     };
@@ -111,7 +153,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                 from_address: Address,
                 target_address: Address,
                 logs: &Vec<Log>,
-                libmdbx: &Libmdbx
+                db_tx: &LibmdbxTx<RO>,
             ) -> Option<Actions> {
                 #(#option_parsing)*
                 Some(Actions::#action_type(#fn_call?))
@@ -125,6 +167,7 @@ struct MacroParse {
     // required for all
     exchange_name: Ident,
     action_type:   Ident,
+    log_type:      Ident,
     call_type:     Ident,
 
     /// for call data decoding
@@ -146,6 +189,8 @@ impl Parse for MacroParse {
         let action_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
         let call_type: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let log_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
 
         let exchange_mod_name: Ident = input.parse()?;
@@ -205,6 +250,7 @@ impl Parse for MacroParse {
 
         Ok(Self {
             give_returns: return_data,
+            log_type,
             call_function,
             give_logs: logs,
             give_calldata: call_data,
@@ -245,7 +291,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 from_address: Address,
                 target_address: Address,
                 logs: &Vec<Log>,
-                libmdbx: &Libmdbx
+                db_tx: &LibmdbxTx<RO>,
             ) -> Option<Actions> {
                 if sig == self.0.get_signature() {
                     return
@@ -256,7 +302,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             from_address,
                             target_address,
                             logs,
-                            libmdbx
+                            db_tx
                             )
                 }
 
@@ -268,7 +314,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             from_address,
                             target_address,
                             logs,
-                            libmdbx
+                            db_tx
                         )
                     }
                 )*

@@ -12,6 +12,7 @@ use brontes_types::{
 use hex_literal::hex;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
 
@@ -131,6 +132,7 @@ impl<'db> Classifier<'db> {
         (dec, tree)
     }
 
+    //TODO: need to deal with other direction + eth based transfers.
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
@@ -221,17 +223,16 @@ impl<'db> Classifier<'db> {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        // get rid of this unwrap
-        if let Some(protocol) = self
-            .libmdbx
-            .get_table_one::<AddressToProtocol>(&target_address)
-            .unwrap()
-        {
+        // get rid of these unwraps
+        let db_tx = self.libmdbx.ro_tx().unwrap();
+
+        if let Some(protocol) = db_tx.get::<AddressToProtocol>(target_address).unwrap() {
             let classifier: Box<dyn ActionCollection> = match protocol {
                 StaticBindingsDb::UniswapV2 => Box::new(UniswapV2Classifier::default()),
                 StaticBindingsDb::SushiSwapV2 => Box::new(SushiSwapV2Classifier::default()),
                 StaticBindingsDb::UniswapV3 => Box::new(UniswapV3Classifier::default()),
                 StaticBindingsDb::SushiSwapV3 => Box::new(SushiSwapV3Classifier::default()),
+                StaticBindingsDb::CurveCryptoSwap => Box::new(CurveCryptoSwapClassifier::default()),
             };
 
             let calldata = trace.get_calldata();
@@ -248,7 +249,7 @@ impl<'db> Classifier<'db> {
                         from_address,
                         target_address,
                         &trace.logs,
-                        &self.libmdbx,
+                        &db_tx,
                     )
                 })
                 .ok()
