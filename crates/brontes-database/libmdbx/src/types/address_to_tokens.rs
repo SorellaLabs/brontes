@@ -14,19 +14,19 @@ use sorella_db_databases::{clickhouse, Row};
 use crate::{
     tables::AddressToTokens,
     types::utils::{address_string, pool_tokens},
-    LibmbdxData,
+    LibmdbxData,
 };
 
 #[serde_as]
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct AddressToTokensData {
     #[serde(with = "address_string")]
-    address: Address,
+    pub address: Address,
     #[serde(with = "pool_tokens")]
-    tokens:  PoolTokens,
+    pub tokens:  PoolTokens,
 }
 
-impl LibmbdxData<AddressToTokens> for AddressToTokensData {
+impl LibmdbxData<AddressToTokens> for AddressToTokensData {
     fn into_key_val(
         &self,
     ) -> (
@@ -40,11 +40,11 @@ impl LibmbdxData<AddressToTokens> for AddressToTokensData {
 #[derive(Debug, Default, PartialEq, Clone, Eq)]
 #[main_codec(rlp)]
 pub struct PoolTokens {
-    token0: Address,
-    token1: Address,
-    token2: Option<Address>,
-    token3: Option<Address>,
-    token4: Option<Address>,
+    pub token0: Address,
+    pub token1: Address,
+    pub token2: Option<Address>,
+    pub token3: Option<Address>,
+    pub token4: Option<Address>,
 }
 
 impl IntoIterator for PoolTokens {

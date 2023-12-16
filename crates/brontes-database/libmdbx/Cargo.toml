@@ -10,7 +10,6 @@ edition = "2021"
 # brontes
 brontes-database.workspace = true
 
-
 # alloy
 alloy-primitives = { workspace = true, features = ["rand", "rlp", "arbitrary", "serde"] }
 alloy-rlp = { workspace = true, features = ["arrayvec"] }

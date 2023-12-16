@@ -12,28 +12,35 @@ use sorella_db_databases::Row;
 
 use crate::{
     types::{
-        // address_to_protocol::AddressToProtocolData,
+        address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
         address_to_tokens::{AddressToTokensData, PoolTokens},
+
         *,
     },
-    Libmbdx,
+    Libmdbx,
 };
 
-pub(crate) const NUM_TABLES: usize = 2;
+pub const NUM_TABLES: usize = 3;
 
 pub enum Tables {
     TokenDecimals,
     AddressToTokens,
+    AddressToProtocol,
 }
 
 impl Tables {
-    pub(crate) const ALL: [Tables; NUM_TABLES] = [Tables::TokenDecimals, Tables::AddressToTokens];
+    pub const ALL: [Tables; NUM_TABLES] = [
+        Tables::TokenDecimals,
+        Tables::AddressToTokens,
+        Tables::AddressToProtocol,
+    ];
 
     /// type of table
     pub(crate) const fn table_type(&self) -> TableType {
         match self {
             Tables::TokenDecimals => TableType::Table,
             Tables::AddressToTokens => TableType::Table,
+            Tables::AddressToProtocol => TableType::Table,
         }
     }
 
@@ -41,17 +48,19 @@ impl Tables {
         match self {
             Tables::TokenDecimals => TokenDecimals::NAME,
             Tables::AddressToTokens => AddressToTokens::NAME,
+            Tables::AddressToProtocol => AddressToProtocol::NAME,
         }
     }
 
     pub(crate) fn initialize_table<'a>(
         &'a self,
-        libmdbx: &'a Libmbdx,
+        libmdbx: &'a Libmdbx,
         clickhouse: &'a Clickhouse,
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
         match self {
             Tables::TokenDecimals => TokenDecimals::initialize_table(libmdbx, clickhouse),
             Tables::AddressToTokens => AddressToTokens::initialize_table(libmdbx, clickhouse),
+            Tables::AddressToProtocol => AddressToProtocol::initialize_table(libmdbx, clickhouse),
         }
     }
 }
@@ -62,7 +71,8 @@ impl FromStr for Tables {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             TokenDecimals::NAME => return Ok(Tables::TokenDecimals),
-            AddressToTokens::NAME => return Ok(Tables::TokenDecimals),
+            AddressToTokens::NAME => return Ok(Tables::AddressToTokens),
+            AddressToProtocol::NAME => return Ok(Tables::AddressToProtocol),
             _ => return Err("Unknown table".to_string()),
         }
     }
@@ -90,7 +100,7 @@ macro_rules! table {
             }
         }
 
-        impl<'a> InitializeTable<'a, paste::paste! {[<$table_name Data>]}> for $table_name {
+        impl<'fut, 'db: 'fut> InitializeTable<'fut, 'db, paste::paste! {[<$table_name Data>]}> for $table_name {
             fn initialize_query() -> &'static str {
                 paste::paste! {[<$table_name InitQuery>]}
             }
@@ -108,22 +118,22 @@ table!(
     ( AddressToTokens ) Address | PoolTokens
 );
 
-/*
 table!(
     /// Address -> Static protocol enum
-    ( AddressToProtocol ) Address | StaticBindings
+    ( AddressToProtocol ) Address | StaticBindingsDb
 );
-*/
-pub(crate) trait InitializeTable<'a, D>: reth_db::table::Table + Sized + 'a
+
+pub(crate) trait InitializeTable<'fut, 'db: 'fut, D>:
+    reth_db::table::Table + Sized + 'db
 where
-    D: LibmbdxData<Self> + Row + for<'b> Deserialize<'b> + Send + Sync,
+    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync,
 {
     fn initialize_query() -> &'static str;
 
     fn initialize_table(
-        libmdbx: &'a Libmbdx,
-        db_client: &'a Clickhouse,
-    ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
+        libmdbx: &'db Libmdbx,
+        db_client: &'db Clickhouse,
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'fut>> {
         Box::pin(async move {
             let data = db_client
                 .inner()
