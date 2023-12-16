@@ -175,6 +175,248 @@ impl TracingClient {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct TracingInspectorLocal {
+    /// Configures what and how the inspector records traces.
+    pub _config:                TracingInspectorConfig,
+    /// Records all call traces
+    pub traces:                 CallTraceArena,
+    /// Tracks active calls
+    pub _trace_stack:           Vec<usize>,
+    /// Tracks active steps
+    pub _step_stack:            Vec<StackStep>,
+    /// Tracks the return value of the last call
+    pub _last_call_return_data: Option<Bytes>,
+    /// The gas inspector used to track remaining gas.
+    pub _gas_inspector:         GasInspector,
+    /// The spec id of the EVM.
+    ///
+    /// This is filled during execution.
+    pub _spec_id:               Option<SpecId>,
+}
+
+impl TracingInspectorLocal {
+    pub fn into_trace_results(
+        self,
+        info: TransactionInfo,
+        res: &ExecutionResult,
+        acc_diff: &HashMap<Address, Account>,
+        db: &CacheDB<StateProviderDatabase<Box<dyn StateProvider>>>,
+    ) -> TxTrace {
+        let gas_used = res.gas_used().into();
+
+        let trace = self.build_trace(&info);
+        let mut diff = StateDiff::default();
+        let _ = populate_state_diff(&mut diff, db, acc_diff);
+
+        TxTrace {
+            trace: trace.unwrap_or(vec![]),
+            state_diff: diff,
+            tx_hash: info.hash.unwrap(),
+            gas_used,
+            effective_price: 0,
+            tx_index: info.index.unwrap(),
+            is_success: res.is_success(),
+        }
+    }
+
+    fn iter_traceable_nodes(&self) -> impl Iterator<Item = &CallTraceNode> {
+        self.traces
+            .nodes()
+            .into_iter()
+            .filter(|node| !node.trace.maybe_precompile.unwrap_or(false))
+    }
+
+    /// Returns the tracing types that are configured in the set.
+    ///
+    /// Warning: if [TraceType::StateDiff] is provided this does __not__ fill
+    /// the state diff, since this requires access to the account diffs.
+    ///
+    /// See [Self::into_trace_results_with_state] and [populate_state_diff].
+    pub fn build_trace(&self, info: &TransactionInfo) -> Option<Vec<TransactionTraceWithLogs>> {
+        if self.traces.nodes().is_empty() {
+            return None
+        }
+
+        let mut traces = Vec::with_capacity(self.traces.nodes().len());
+
+        for node in self.iter_traceable_nodes() {
+            let trace_address = self.trace_address(self.traces.nodes(), node.idx);
+
+            let trace = self.build_tx_trace(node, trace_address);
+            let logs = node
+                .logs
+                .iter()
+                .map(|alloy_log| reth_rpc_types::Log {
+                    data:              alloy_log.data.clone(),
+                    topics:            alloy_log.topics().to_vec(),
+                    log_index:         None,
+                    block_hash:        info.block_hash,
+                    transaction_hash:  info.hash,
+                    block_number:      info.block_number.map(|i| U256::from(i)),
+                    transaction_index: info.index.map(|i| U256::from(i)),
+                    removed:           false,
+                    address:           node.trace.address,
+                })
+                .collect::<Vec<_>>();
+
+            traces.push(TransactionTraceWithLogs {
+                trace,
+                logs,
+                decoded_data: None,
+                trace_idx: node.idx as u64,
+            });
+
+            // check if the trace node is a selfdestruct
+            if node.trace.status == InstructionResult::SelfDestruct {
+                // selfdestructs are not recorded as individual call traces but are derived from
+                // the call trace and are added as additional `TransactionTrace` objects in the
+                // trace array
+                let addr = {
+                    let last = traces.last_mut().expect("exists");
+                    let mut addr = last.trace.trace_address.clone();
+                    addr.push(last.trace.subtraces);
+                    // need to account for the additional selfdestruct trace
+                    last.trace.subtraces += 1;
+                    addr
+                };
+
+                if let Some(trace) = self.parity_selfdestruct_trace(node, addr) {
+                    traces.push(TransactionTraceWithLogs {
+                        trace,
+                        logs: vec![],
+                        decoded_data: None,
+                        trace_idx: node.idx as u64,
+                    });
+                }
+            }
+        }
+
+        Some(traces)
+    }
+
+    fn trace_address(&self, nodes: &[CallTraceNode], idx: usize) -> Vec<usize> {
+        if idx == 0 {
+            // root call has empty traceAddress
+            return vec![]
+        }
+        let mut graph = vec![];
+        let mut node = &nodes[idx];
+        if node.trace.maybe_precompile.unwrap_or(false) {
+            return graph
+        }
+        while let Some(parent) = node.parent {
+            // the index of the child call in the arena
+            let child_idx = node.idx;
+            node = &nodes[parent];
+            // find the index of the child call in the parent node
+            let call_idx = node
+                .children
+                .iter()
+                .position(|child| *child == child_idx)
+                .expect("non precompile child call exists in parent");
+            graph.push(call_idx);
+        }
+        graph.reverse();
+        graph
+    }
+
+    pub(crate) fn parity_selfdestruct_trace(
+        &self,
+        node: &CallTraceNode,
+        trace_address: Vec<usize>,
+    ) -> Option<TransactionTrace> {
+        let trace = self.parity_selfdestruct_action(node)?;
+        Some(TransactionTrace {
+            action: trace,
+            error: None,
+            result: None,
+            trace_address,
+            subtraces: 0,
+        })
+    }
+
+    pub(crate) fn parity_selfdestruct_action(&self, node: &CallTraceNode) -> Option<Action> {
+        if node.trace.selfdestruct_refund_target.is_some() {
+            Some(Action::Selfdestruct(SelfdestructAction {
+                address:        node.trace.address,
+                refund_address: node.trace.selfdestruct_refund_target.unwrap_or_default(),
+                balance:        node.trace.value,
+            }))
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn parity_action(&self, node: &CallTraceNode) -> Action {
+        match node.trace.kind {
+            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
+                Action::Call(CallAction {
+                    from:      node.trace.caller,
+                    to:        node.trace.address,
+                    value:     node.trace.value,
+                    gas:       U64::from(node.trace.gas_limit),
+                    input:     node.trace.data.clone(),
+                    call_type: node.trace.kind.into(),
+                })
+            }
+            CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
+                from:  node.trace.caller,
+                value: node.trace.value,
+                gas:   U64::from(node.trace.gas_limit),
+                init:  node.trace.data.clone(),
+            }),
+        }
+    }
+
+    pub(crate) fn parity_trace_output(&self, node: &CallTraceNode) -> TraceOutput {
+        match node.trace.kind {
+            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
+                TraceOutput::Call(CallOutput {
+                    gas_used: U64::from(node.trace.gas_used),
+                    output:   node.trace.output.clone(),
+                })
+            }
+            CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
+                gas_used: U64::from(node.trace.gas_used),
+                code:     node.trace.output.clone(),
+                address:  node.trace.address,
+            }),
+        }
+    }
+
+    /// Returns the error message if it is an erroneous result.
+    pub(crate) fn as_error_msg(&self, node: &CallTraceNode) -> Option<String> {
+        // See also <https://github.com/ethereum/go-ethereum/blob/34d507215951fb3f4a5983b65e127577989a6db8/eth/tracers/native/call_flat.go#L39-L55>
+        node.trace.is_error().then(|| match node.trace.status {
+            InstructionResult::Revert => "execution reverted".to_string(),
+            InstructionResult::OutOfGas | InstructionResult::MemoryOOG => "out of gas".to_string(),
+            InstructionResult::OpcodeNotFound => "invalid opcode".to_string(),
+            InstructionResult::StackOverflow => "Out of stack".to_string(),
+            InstructionResult::InvalidJump => "invalid jump destination".to_string(),
+            InstructionResult::PrecompileError => "precompiled failed".to_string(),
+            status => format!("{:?}", status),
+        })
+    }
+
+    pub fn build_tx_trace(
+        &self,
+        node: &CallTraceNode,
+        trace_address: Vec<usize>,
+    ) -> TransactionTrace {
+        let action = self.parity_action(&node);
+        let result = if node.trace.is_error() && !node.trace.is_revert() {
+            // if the trace is a selfdestruct or an error that is not a revert, the result
+            // is None
+            None
+        } else {
+            Some(self.parity_trace_output(&node))
+        };
+        let error = self.as_error_msg(node);
+        TransactionTrace { action, error, result, trace_address, subtraces: node.children.len() }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct StackStep {
     _trace_idx: usize,
