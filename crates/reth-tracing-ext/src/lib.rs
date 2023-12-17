@@ -7,15 +7,17 @@ use reth_blockchain_tree::{
 };
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{alloy_primitives::U256, BlockId, Bytes, PruneModes, MAINNET, U64};
-use reth_provider::{providers::BlockchainProvider, ProviderFactory};
+use reth_primitives::{alloy_primitives::U256, Address, BlockId, Bytes, PruneModes, MAINNET, U64};
+use reth_provider::{providers::BlockchainProvider, ProviderFactory, StateProvider};
 use reth_revm::{
+    database::StateProviderDatabase,
+    db::CacheDB,
     inspectors::GasInspector,
     tracing::{
         types::{CallKind, CallTraceNode},
         TracingInspectorConfig, *,
     },
-    EvmProcessorFactory,
+    DatabaseRef, EvmProcessorFactory,
 };
 use reth_rpc::{
     eth::{
@@ -36,7 +38,7 @@ use reth_transaction_pool::{
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use revm::interpreter::InstructionResult;
-use revm_primitives::{ExecutionResult, SpecId};
+use revm_primitives::{Account, ExecutionResult, HashMap, SpecId, KECCAK_EMPTY};
 use tokio::runtime::Handle;
 
 pub type Provider = BlockchainProvider<
@@ -133,7 +135,7 @@ impl TracingClient {
         let config = TracingInspectorConfig {
             record_logs:              true,
             record_steps:             false,
-            record_state_diff:        false,
+            record_state_diff:        true,
             record_stack_snapshots:   reth_revm::tracing::StackSnapshotType::None,
             record_memory_snapshots:  false,
             record_call_return_data:  true,
@@ -141,11 +143,12 @@ impl TracingClient {
         };
 
         self.api
-            .trace_block_with(block_id, config, move |tx_info, inspector, res, _state, _db| {
+            .trace_block_with(block_id, config, move |tx_info, inspector, res, state, db| {
                 // this is safe as there the exact same memory layout. This is needed as we need
                 // access to the internal fields of the struct that arent public
                 let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
-                Ok(localized.into_trace_results(tx_info, &res))
+
+                Ok(localized.into_trace_results(tx_info, &res, state, db))
             })
             .await
     }
@@ -172,19 +175,27 @@ pub struct TracingInspectorLocal {
 }
 
 impl TracingInspectorLocal {
-    pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
-        let gas_used = res.gas_used();
+    pub fn into_trace_results(
+        self,
+        info: TransactionInfo,
+        res: &ExecutionResult,
+        acc_diff: &HashMap<Address, Account>,
+        db: &CacheDB<StateProviderDatabase<Box<dyn StateProvider>>>,
+    ) -> TxTrace {
+        let gas_used = res.gas_used().into();
 
         let trace = self.build_trace(&info);
+        let mut diff = StateDiff::default();
+        let _ = populate_state_diff(&mut diff, db, acc_diff);
 
         TxTrace {
-            trace:    trace.unwrap_or(vec![]),
-            tx_hash:  info.hash.unwrap(),
-            gas_used: gas_used.into(),
-
+            trace: trace.unwrap_or(vec![]),
+            state_diff: diff,
+            tx_hash: info.hash.unwrap(),
+            gas_used,
             effective_price: 0,
-            tx_index:        info.index.unwrap(),
-            is_success:      res.is_success(),
+            tx_index: info.index.unwrap(),
+            is_success: res.is_success(),
         }
     }
 
@@ -394,4 +405,103 @@ pub struct StackStep {
 /// Opens up an existing database at the specified path.
 pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
     reth_db::open_db(path.as_ref(), None)
+}
+
+pub fn populate_state_diff<'a, DB, I>(
+    state_diff: &mut StateDiff,
+    db: DB,
+    account_diffs: I,
+) -> Result<(), DB::Error>
+where
+    I: IntoIterator<Item = (&'a Address, &'a Account)>,
+    DB: DatabaseRef,
+{
+    for (addr, changed_acc) in account_diffs.into_iter() {
+        if changed_acc.is_selfdestructed() && changed_acc.is_created() {
+            continue
+        }
+
+        let addr = *addr;
+        let entry = state_diff.entry(addr).or_default();
+
+        if changed_acc.is_created() || changed_acc.is_loaded_as_not_existing() {
+            entry.balance = Delta::Added(changed_acc.info.balance);
+            entry.nonce = Delta::Added(U64::from(changed_acc.info.nonce));
+
+            let account_code = load_account_code(&db, &changed_acc.info).unwrap_or_default();
+            entry.code = Delta::Added(account_code);
+
+            for (key, slot) in changed_acc
+                .storage
+                .iter()
+                .filter(|(_, slot)| slot.is_changed())
+            {
+                entry
+                    .storage
+                    .insert((*key).into(), Delta::Added(slot.present_value.into()));
+            }
+        } else {
+            let db_acc = db.basic_ref(addr)?.unwrap_or_default();
+
+            for (key, slot) in changed_acc
+                .storage
+                .iter()
+                .filter(|(_, slot)| slot.is_changed())
+            {
+                entry.storage.insert(
+                    (*key).into(),
+                    Delta::changed(
+                        slot.previous_or_original_value.into(),
+                        slot.present_value.into(),
+                    ),
+                );
+            }
+
+            if entry.storage.is_empty()
+                && db_acc == changed_acc.info
+                && !changed_acc.is_selfdestructed()
+            {
+                state_diff.remove(&addr);
+                continue
+            }
+
+            entry.balance = if db_acc.balance == changed_acc.info.balance {
+                Delta::Unchanged
+            } else {
+                Delta::Changed(ChangedType { from: db_acc.balance, to: changed_acc.info.balance })
+            };
+
+            entry.nonce = if db_acc.nonce == changed_acc.info.nonce {
+                Delta::Unchanged
+            } else {
+                Delta::Changed(ChangedType {
+                    from: U64::from(db_acc.nonce),
+                    to:   U64::from(changed_acc.info.nonce),
+                })
+            };
+        }
+    }
+
+    Ok(())
+}
+
+#[inline]
+pub(crate) fn load_account_code<DB: DatabaseRef>(
+    db: DB,
+    db_acc: &revm::primitives::AccountInfo,
+) -> Option<Bytes> {
+    db_acc
+        .code
+        .as_ref()
+        .map(|code| code.original_bytes())
+        .or_else(|| {
+            if db_acc.code_hash == KECCAK_EMPTY {
+                None
+            } else {
+                db.code_by_hash_ref(db_acc.code_hash)
+                    .ok()
+                    .map(|code| code.original_bytes())
+            }
+        })
+        .map(Into::into)
 }

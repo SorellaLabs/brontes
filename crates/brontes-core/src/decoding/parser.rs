@@ -48,6 +48,10 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         Self { database, libmdbx, tracer, metrics_tx, should_fetch }
     }
 
+    pub fn get_tracer(&self) -> Arc<T> {
+        self.tracer.clone()
+    }
+
     /// executes the tracing of a given block
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         let parity_trace = self.trace_block(block_num).await;

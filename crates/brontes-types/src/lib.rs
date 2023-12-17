@@ -9,6 +9,7 @@ use parking_lot::RwLock;
 use reth_primitives::U256;
 
 pub mod classified_mev;
+pub mod extra_processing;
 pub mod normalized_actions;
 pub mod structured_trace;
 pub mod tree;
@@ -16,20 +17,21 @@ pub mod tree;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
+// include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
 
-pub static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
+static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
 
 pub fn try_get_decimals(address: &[u8; 20]) -> Option<u8> {
-    if let Some(value) = TOKEN_TO_DECIMALS.get(address) {
-        Some(*value)
-    } else {
-        DYN_MAP
-            .get_or_init(|| RwLock::new(HashMap::new()))
-            .read()
-            .get(address)
-            .copied()
-    }
+    // if let Some(value) = TOKEN_TO_DECIMALS.get(address) {
+    //     Some(*value)
+    // } else {
+    //     DYN_MAP
+    //         .get_or_init(|| RwLock::new(HashMap::new()))
+    //         .read()
+    //         .get(address)
+    //         .copied()
+    // }
+    None
 }
 
 pub fn cache_decimals(address: [u8; 20], decimals: u8) {
@@ -84,7 +86,7 @@ impl ToFloatNearest for Rational {
     }
 }
 
-pub(crate) mod vec_u256 {
+pub mod vec_u256 {
     use alloy_primitives::U256;
     use serde::{
         de::{Deserialize, Deserializer},

@@ -1,18 +1,15 @@
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::{SolCall, SolEvent};
+use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens, Libmdbx};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
+use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_rpc_types::Log;
-use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
-use brontes_database_libmdbx::Libmdbx;
-use reth_db::mdbx::RO;
 
 use crate::{
     enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
-    UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, UniswapV2Calls, Swap},
-
+    UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, UniswapV2Calls},
 };
-use reth_db::transaction::DbTx;
 action_impl!(
     V2SwapImpl,
     Swap,
