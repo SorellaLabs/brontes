@@ -1,5 +1,5 @@
 use std::{
-    cmp::Ordering,
+    cmp::{max, Ordering},
     collections::{
         hash_map::Entry::{Occupied, Vacant},
         BinaryHeap, HashMap, HashSet,
@@ -12,7 +12,6 @@ use alloy_primitives::Address;
 use brontes_types::extra_processing::Pair;
 use itertools::Itertools;
 use petgraph::{
-    algo::Measure,
     graph::UnGraph,
     prelude::*,
     visit::{IntoEdges, VisitMap, Visitable},
@@ -125,7 +124,7 @@ impl PairGraph {
         let start_idx = self.addr_to_index.get(&start).unwrap();
         let end_idx = self.addr_to_index.get(&end).unwrap();
 
-        dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into(), |_| 1)
+        dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
             .unwrap()
             .into_iter()
             .tuple_windows()
@@ -139,24 +138,19 @@ impl PairGraph {
     }
 }
 
-/// returns the path from start to end if it exists where idx[0] == start
-pub fn dijkstra_path<G, F, K>(
-    graph: G,
-    start: G::NodeId,
-    goal: G::NodeId,
-    mut edge_cost: F,
-) -> Option<Vec<G::NodeId>>
+/// This modification to dijkstra weights the distance between nodes based of of
+/// a max(0, 6 - connectivity). this is to favour better connected nodes as
+/// there price will be more accurate
+pub fn dijkstra_path<G>(graph: G, start: G::NodeId, goal: G::NodeId) -> Option<Vec<G::NodeId>>
 where
     G: IntoEdges + Visitable,
     G::NodeId: Eq + Hash,
-    F: FnMut(G::EdgeRef) -> K,
-    K: Measure + Copy,
 {
     let mut visited = graph.visit_map();
     let mut scores = HashMap::new();
     let mut predecessor = HashMap::new();
     let mut visit_next = BinaryHeap::new();
-    let zero_score = K::default();
+    let zero_score = 0isize;
     scores.insert(start, zero_score);
     visit_next.push(MinScored(zero_score, start));
     while let Some(MinScored(node_score, node)) = visit_next.pop() {
@@ -167,12 +161,24 @@ where
             break
         }
 
+        // grab the connectivity of the
+        let edges = graph.edges(node).collect::<Vec<_>>();
+        let connectivity = edges.len();
+
         for edge in graph.edges(node) {
             let next = edge.target();
             if visited.is_visited(&next) {
                 continue
             }
-            let next_score = node_score + edge_cost(edge);
+
+            // Nodes that are more connected are given a shorter length. This
+            // is done as we want to prioritize routing through a
+            // commonly used token as the liquidity and pricing will
+            // be more accurate than routing though a shit-coin. This will also
+            // help as nodes with better connectivity will be searched more than low
+            // connectivity nodes
+            let next_score = node_score + max(0, 6 - connectivity as isize);
+
             match scores.entry(next) {
                 Occupied(ent) => {
                     if next_score < *ent.get() {

@@ -13,7 +13,10 @@ brontes-types.workspace = true
 brontes-macros.workspace = true
 brontes-database.workspace = true
 brontes-database-libmdbx.workspace = true
+brontes-pricing.workspace = true
 alloy-primitives.workspace = true
+
+tokio.workspace = true
 
 # alloy
 alloy-sol-types.workspace = true
@@ -91,4 +94,3 @@ futures.workspace = true
 itertools.workspace = true
 dotenv.workspace = true
 reth-tracing-ext.workspace = true
-
