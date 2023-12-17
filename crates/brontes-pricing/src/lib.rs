@@ -21,15 +21,12 @@ pub struct BrontesBatchPricer {
     quote_asset: Address,
     run:         u64,
     batch_id:    u64,
-
-    // all token pairs that we have classified that existed at the given
-    // point in time
-    pair_graph: PairGraph,
-
     update_rx:   Receiver<PoolUpdate>,
-    /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader: LazyExchangeLoader,
 
+    /// holds all token pairs for the given chunk.
+    pair_graph:      PairGraph,
+    /// lazy loads dex pairs so we only fetch init state that is needed
+    lazy_loader:     LazyExchangeLoader,
     /// mutable version of the pool. used for producing deltas
     mut_state:       HashMap<Address, PoolState>,
     /// tracks the last updated key for the given pool
@@ -52,12 +49,12 @@ impl BrontesBatchPricer {
             quote_asset,
             run,
             batch_id,
+            update_rx,
             pair_graph,
             finalized_state: HashMap::default(),
             dex_quotes: HashMap::default(),
             lazy_loader: LazyExchangeLoader::new(),
             mut_state: HashMap::default(),
-            update_rx,
             last_update: HashMap::default(),
         }
     }
@@ -69,11 +66,11 @@ impl BrontesBatchPricer {
         } else if self.lazy_loader.is_loading(&addr) {
             self.lazy_loader.buffer_update(&addr, msg)
         } else {
-            self.on_new_pair(msg)
+            self.on_new_pool(msg)
         }
     }
 
-    fn on_new_pair(&mut self, msg: PoolUpdate) {
+    fn on_new_pool(&mut self, msg: PoolUpdate) {
         let pair = msg
             .get_pair()
             .expect("got a non exchange state related update");
