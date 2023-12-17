@@ -36,7 +36,7 @@ abi-builds/**.txt
 
 stuff
 
-
+!abi-builds/protocol_addr_sets.rs
 crates/brontes-classifier/abis/**.json
 crates/brontes-inspect/abis/**.json
 

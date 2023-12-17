@@ -5,7 +5,7 @@ use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{
     Actions, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
-use reth_db::mdbx::RO;
+use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_rpc_types::Log;
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
         burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
         swapReturn, SushiSwapV3Calls,
     },
-};use reth_db::transaction::DbTx;
+};
 
 action_impl!(
     V3SwapImpl,
