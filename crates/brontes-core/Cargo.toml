@@ -34,11 +34,14 @@ brontes-tracing.workspace = true
 brontes-database.workspace = true
 brontes-database-libmdbx.workspace = true
 
+once_cell.workspace = true
+
 # async
 
 tokio = { workspace = true, features = ["full", "tracing"] }
 futures.workspace = true
 async-trait.workspace = true
+malachite.workspace = true
 # alloy
 alloy-sol-types.workspace = true
 alloy-sol-macro.workspace = true
@@ -77,6 +80,7 @@ phf.workspace = true
 lazy_static.workspace = true
 auto_impl.workspace = true
 dotenv.workspace = true
+itertools.workspace = true
 
 [dev-dependencies]
 serial_test.workspace = true
@@ -105,6 +109,7 @@ reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 futures.workspace = true
 itertools.workspace = true
+
 
 [features]
 default = []

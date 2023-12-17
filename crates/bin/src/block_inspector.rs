@@ -65,11 +65,11 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (tokens_missing_decimals, mut tree) = self.classifier.build_tree(traces, header);
+            let (extra_data, mut tree) = self.classifier.build_tree(traces, header);
 
             let (meta, _) = join!(
                 labeller_fut,
-                MissingDecimals::new(self.provider, self.database, tokens_missing_decimals)
+                MissingDecimals::new(self.provider, self.database, extra_data.tokens_decimal_fill)
             );
             tree.eth_price = meta.eth_prices.clone();
 
