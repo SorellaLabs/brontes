@@ -12,6 +12,7 @@ members = [
   "crates/brontes-database/libmdbx",
   "crates/brontes-macros",
   "tests",
+  "crates/brontes-pricing",
 ]
 
 resolver = "2"
@@ -30,6 +31,7 @@ brontes-metrics = { path = "./crates/brontes-metrics/" }
 brontes-database = { path = "./crates/brontes-database/" }
 brontes-database-libmdbx = { path = "./crates/brontes-database/libmdbx" }
 brontes-macros = { path = "./crates/brontes-macros/" }
+brontes-pricing= { path = "./crates/brontes-pricing/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/tracing" }
 
@@ -138,7 +140,7 @@ toml = "0.8.2"
 auto_impl = "1.1.0"
 strum = "0.25.0"
 serial_test = "2.0.0"
-
+derive_more = "0.99.17"
 
 [profile.dev]
 opt-level = 0           # No optimizations
