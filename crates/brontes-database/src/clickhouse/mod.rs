@@ -22,7 +22,7 @@ use super::Metadata;
 use crate::{
     cex::CexPriceMap,
     clickhouse::{const_sql::*, types::TimesFlowDB},
-    DexQuote, DexQuotesMap, Pair, PriceGraph,
+    Pair,
 };
 
 pub const WETH_ADDRESS: Address =
@@ -58,9 +58,6 @@ impl Clickhouse {
         let times_flow = self.get_times_flow_info(block_num).await;
         let cex_prices = CexPriceMap::from(self.get_cex_token_prices(times_flow.p2p_time).await);
 
-        //TODO: you were calling clickhouse, so now just making it empty here
-        let dex_prices = PriceGraph::from_quotes(DexQuotesMap::<DexQuote>::new());
-
         // eth price is in cex_prices
         let eth_prices = cex_prices
             .get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
@@ -75,7 +72,6 @@ impl Clickhouse {
             times_flow.proposer_addr,
             times_flow.proposer_reward,
             cex_prices,
-            dex_prices,
             eth_prices.avg(),
             times_flow.private_flow,
         );
