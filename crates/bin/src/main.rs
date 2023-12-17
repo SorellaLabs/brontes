@@ -109,7 +109,8 @@ async fn run() -> Result<(), Box<dyn Error>> {
         tracer,
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
-    let classifier = Classifier::new(&libmdbx);
+    let (tx, rx) = tokio::sync::mpsc::channel(5);
+    let classifier = Classifier::new(&libmdbx, tx.clone());
 
     #[cfg(not(feature = "local"))]
     let chain_tip = parser.get_latest_block_number().unwrap();

@@ -14,7 +14,6 @@ use crate::{
     types::{
         address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
         address_to_tokens::{AddressToTokensData, PoolTokens},
-
         *,
     },
     Libmdbx,
@@ -29,11 +28,8 @@ pub enum Tables {
 }
 
 impl Tables {
-    pub const ALL: [Tables; NUM_TABLES] = [
-        Tables::TokenDecimals,
-        Tables::AddressToTokens,
-        Tables::AddressToProtocol,
-    ];
+    pub const ALL: [Tables; NUM_TABLES] =
+        [Tables::TokenDecimals, Tables::AddressToTokens, Tables::AddressToProtocol];
 
     /// type of table
     pub(crate) const fn table_type(&self) -> TableType {

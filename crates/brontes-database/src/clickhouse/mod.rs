@@ -20,8 +20,9 @@ use tracing::{error, info};
 use self::types::{Abis, DBTokenPricesDB, TimesFlow};
 use super::Metadata;
 use crate::{
+    cex::CexPriceMap,
     clickhouse::{const_sql::*, types::TimesFlowDB},
-    Pair, PriceGraph, QuotesMap,
+    DexQuote, DexQuotesMap, Pair, PriceGraph,
 };
 
 pub const WETH_ADDRESS: Address =
@@ -55,15 +56,16 @@ impl Clickhouse {
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {
         let times_flow = self.get_times_flow_info(block_num).await;
-        let cex_prices = PriceGraph::from_quotes(self.get_token_prices(times_flow.p2p_time).await);
+        let cex_prices = CexPriceMap::from(self.get_cex_token_prices(times_flow.p2p_time).await);
+
+        //TODO: you were calling clickhouse, so now just making it empty here
+        let dex_prices = PriceGraph::from_quotes(DexQuotesMap::<DexQuote>::new());
 
         // eth price is in cex_prices
         let eth_prices = cex_prices
             .get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
             .unwrap()
             .clone();
-        // = cex_prices.get("ETH").unwrap();
-        // cex_prices.remove("ETH");
 
         let metadata = Metadata::new(
             block_num,
@@ -73,6 +75,7 @@ impl Clickhouse {
             times_flow.proposer_addr,
             times_flow.proposer_reward,
             cex_prices,
+            dex_prices,
             eth_prices.avg(),
             times_flow.private_flow,
         );
@@ -182,22 +185,19 @@ impl Clickhouse {
        }
     */
     async fn get_times_flow_info(&self, block_num: u64) -> TimesFlow {
-        let val: TimesFlowDB = self
-            .client
-            .query_one(TIMES_FLOW, &(block_num))
+        self.client
+            .query_one::<TimesFlowDB>(TIMES_FLOW, &(block_num))
             .await
-            .unwrap();
-        val.into()
+            .unwrap()
+            .into()
     }
 
-    async fn get_token_prices(&self, p2p_time: u64) -> QuotesMap {
-        let token_prices = self
-            .client
+    async fn get_cex_token_prices(&self, p2p_time: u64) -> CexPriceMap {
+        self.client
             .query_many::<DBTokenPricesDB>(PRICES, &(p2p_time))
             .await
-            .unwrap();
-
-        token_prices.into()
+            .unwrap()
+            .into()
     }
 }
 
