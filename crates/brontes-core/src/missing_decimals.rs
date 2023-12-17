@@ -9,8 +9,8 @@ use alloy_transport::TransportResult;
 use alloy_transport_http::Http;
 use brontes_database::clickhouse::Clickhouse;
 use brontes_types::cache_decimals;
-use futures::{future::join, stream::FuturesUnordered, Future, StreamExt};
-use tracing::{debug, info};
+use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
+use tracing::{debug, info, warn};
 
 sol!(
     function decimals() public view returns (uint8);

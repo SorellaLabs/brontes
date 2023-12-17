@@ -13,6 +13,7 @@ use futures::{stream::FuturesUnordered, Future, StreamExt};
 use tracing::info;
 
 mod block_inspector;
+mod data_batching;
 use block_inspector::BlockInspector;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];

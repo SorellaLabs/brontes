@@ -54,13 +54,12 @@ pub(crate) mod pool_tokens {
 
 pub(crate) mod static_bindings {
 
-    use crate::types::address_to_protocol::StaticBindingsDb;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
 
-
+    use crate::types::address_to_protocol::StaticBindingsDb;
 
     pub fn serialize<S: Serializer>(
         u: &StaticBindingsDb,

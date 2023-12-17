@@ -1,10 +1,15 @@
 use std::{collections::HashSet, str::FromStr};
 
 use alloy_json_abi::JsonAbi;
-use reth_primitives::{Address, B256};
+use brontes_types::vec_u256;
+use malachite::Rational;
+use reth_primitives::{Address, B256, U256};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, clickhouse::Row};
+use sorella_db_databases::{
+    clickhouse,
+    clickhouse::{fixed_string::FixedString, Row},
+};
 
 #[serde_as]
 #[derive(Debug, Row, Serialize, Deserialize)]
@@ -21,13 +26,38 @@ impl From<Abis> for (Address, JsonAbi) {
     }
 }
 
+#[derive(Row, Deserialize, Debug, Clone, PartialEq)]
+pub struct PoolReservesDB {
+    pub address:           FixedString,
+    pub block_number:      u64,
+    pub post_tx_hash:      FixedString,
+    #[serde(with = "vec_u256")]
+    pub reserves:          Vec<U256>,
+    #[serde(rename = "prices.quote_addr")]
+    pub prices_quote_addr: Vec<FixedString>,
+    #[serde(rename = "prices.base_addr")]
+    pub prices_base_addr:  Vec<FixedString>,
+    #[serde(rename = "prices.price")]
+    pub prices_price:      Vec<f64>,
+}
+
+//TODO: (Joe): Fix the query now that I have added support for multiple
+// exchanges, thank you
+
 #[serde_as]
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct DBTokenPricesDB {
-    /// (base_address, quote_address)
     pub key: (String, String),
+    pub val: Vec<ExchangePriceDB>,
+}
+
+#[serde_as]
+#[derive(Debug, Row, Serialize, Deserialize)]
+pub struct ExchangePriceDB {
+    pub exchange: String,
+    /// (base_address, quote_address)
     /// (timestamp, ask_price, bid_price)
-    pub val: (u64, f64, f64),
+    pub val:      (u64, f64, f64),
 }
 
 #[serde_as]
