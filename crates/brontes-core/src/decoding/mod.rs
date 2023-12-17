@@ -1,6 +1,8 @@
 use std::{pin::Pin, sync::Arc};
 
+use alloy_primitives::Bytes;
 use alloy_providers::provider::Provider;
+use alloy_rpc_types::{state::StateOverride, BlockOverrides};
 use alloy_transport_http::Http;
 use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
@@ -9,9 +11,10 @@ use futures::Future;
 use reqwest::Client;
 use reth_db::mdbx::RO;
 use reth_interfaces::provider::ProviderResult;
-use reth_primitives::{Address, BlockId, BlockNumber, BlockNumberOrTag, Header, B256};
+use reth_primitives::{Address, BlockNumber, BlockNumberOrTag, Header, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
+use reth_rpc_types::CallRequest;
 use reth_tracing_ext::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
@@ -33,13 +36,21 @@ pub(crate) const UNKNOWN: &str = "unknown";
 pub(crate) const RECEIVE: &str = "receive";
 #[allow(dead_code)]
 pub(crate) const FALLBACK: &str = "fallback";
-
+use reth_primitives::BlockId;
 use reth_rpc::eth::error::EthResult;
 use reth_rpc_types::TransactionReceipt;
 
 #[async_trait::async_trait]
 #[auto_impl::auto_impl(&, Arc, Box)]
 pub trait TracingProvider: Send + Sync + 'static {
+    async fn eth_call(
+        &self,
+        request: CallRequest,
+        block_number: Option<BlockId>,
+        state_overrides: Option<StateOverride>,
+        block_overrides: Option<Box<BlockOverrides>>,
+    ) -> ProviderResult<Bytes>;
+
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>>;
 
     #[cfg(not(feature = "local"))]
@@ -61,6 +72,16 @@ pub trait TracingProvider: Send + Sync + 'static {
 
 #[async_trait::async_trait]
 impl TracingProvider for Provider<Http<Client>> {
+    async fn eth_call(
+        &self,
+        request: CallRequest,
+        block_number: Option<BlockId>,
+        state_overrides: Option<StateOverride>,
+        block_overrides: Option<Box<BlockOverrides>>,
+    ) -> ProviderResult<Bytes> {
+        todo!()
+    }
+
     async fn block_hash_for_id(&self, _block_num: u64) -> ProviderResult<Option<B256>> {
         todo!()
     }
@@ -96,6 +117,21 @@ impl TracingProvider for Provider<Http<Client>> {
 
 #[async_trait::async_trait]
 impl TracingProvider for TracingClient {
+    async fn eth_call(
+        &self,
+        request: CallRequest,
+        block_number: Option<BlockId>,
+        state_overrides: Option<StateOverride>,
+        block_overrides: Option<Box<BlockOverrides>>,
+    ) -> ProviderResult<Bytes> {
+        // Ok(self
+        //     .api
+        //     .call(request, block_number, state_overrides, block_overrides)
+        //     .await
+        //     .unwrap())
+        todo!()
+    }
+
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
         self.trace
             .provider()
@@ -169,6 +205,10 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
     #[cfg(feature = "local")]
     pub async fn get_latest_block_number(&self) -> ProviderResult<u64> {
         self.parser.tracer.best_block_number().await
+    }
+
+    pub fn get_tracer(&self) -> Arc<T> {
+        self.parser.get_tracer()
     }
 
     #[cfg(not(feature = "local"))]
