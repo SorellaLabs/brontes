@@ -3,19 +3,14 @@ use std::{
     ops::MulAssign,
 };
 pub mod cex;
-pub mod dex;
 
 pub use brontes_types::extra_processing::Pair;
 use cex::{CexPriceMap, CexQuote};
-pub use dex::DexQuote;
-use graph::PriceGraph;
 use malachite::Rational;
 use reth_primitives::{Address, TxHash, U256};
 
 use crate::clickhouse::types::DBTokenPricesDB;
 pub mod clickhouse;
-
-pub mod graph;
 
 #[derive(Debug, Clone)]
 pub struct Metadata {
@@ -26,31 +21,9 @@ pub struct Metadata {
     pub proposer_fee_recipient: Address,
     pub proposer_mev_reward:    u128,
     pub cex_quotes:             CexPriceMap,
-    pub dex_quotes:             PriceGraph<DexQuote>,
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
     pub mempool_flow:           HashSet<TxHash>,
-}
-
-pub trait Quote: MulAssign<Self> + std::fmt::Debug + Clone + Send + Sync + 'static {
-    fn inverse_price(&mut self);
-}
-
-#[derive(Debug, Clone)]
-pub struct DexQuotesMap<Q: Quote>(HashMap<Pair, Q>);
-
-impl<Q: Quote> DexQuotesMap<Q> {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    pub fn wrap(map: HashMap<Pair, Q>) -> Self {
-        Self(map)
-    }
-
-    pub fn get_quote(&self, pair: &Pair) -> Option<&Q> {
-        self.0.get(pair)
-    }
 }
 
 impl Metadata {
@@ -62,7 +35,6 @@ impl Metadata {
         proposer_fee_recipient: Address,
         proposer_mev_reward: u128,
         cex_quotes: CexPriceMap,
-        dex_quotes: PriceGraph<DexQuote>,
         eth_prices: Rational,
         mempool_flow: HashSet<TxHash>,
     ) -> Self {
@@ -72,7 +44,6 @@ impl Metadata {
             relay_timestamp,
             p2p_timestamp,
             cex_quotes,
-            dex_quotes,
             eth_prices,
             proposer_fee_recipient,
             proposer_mev_reward,
