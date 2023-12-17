@@ -31,6 +31,7 @@ brontes-metrics = { path = "./crates/brontes-metrics/" }
 brontes-database = { path = "./crates/brontes-database/" }
 brontes-database-libmdbx = { path = "./crates/brontes-database/libmdbx" }
 brontes-macros = { path = "./crates/brontes-macros/" }
+brontes-pricing= { path = "./crates/brontes-pricing/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/tracing" }
 

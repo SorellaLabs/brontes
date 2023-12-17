@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
 };
+use brontes_pricing::types::PoolUpdate;
 use brontes_types::{
     extra_processing::{ExtraProcessing, Pair, TransactionPoolSwappedTokens},
     normalized_actions::{Actions, NormalizedTransfer},
@@ -16,6 +17,7 @@ use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
+use tokio::sync::mpsc::Sender;
 
 use crate::*;
 
@@ -25,13 +27,13 @@ const TRANSFER_TOPIC: B256 =
 /// goes through and classifies all exchanges as-well as missing data
 #[derive(Debug)]
 pub struct Classifier<'db> {
-    pub libmdbx:             &'db Libmdbx,
-    pub known_dyn_protocols: RwLock<HashMap<Address, (Address, Address)>>,
+    libmdbx: &'db Libmdbx,
+    sender:  Sender<PoolUpdate>,
 }
 
 impl<'db> Classifier<'db> {
-    pub fn new(libmdbx: &'db Libmdbx) -> Self {
-        Self { libmdbx, known_dyn_protocols: RwLock::new(HashMap::default()) }
+    pub fn new(libmdbx: &'db Libmdbx, sender: Sender<PoolUpdate>) -> Self {
+        Self { libmdbx, sender }
     }
 
     pub fn build_tree(
