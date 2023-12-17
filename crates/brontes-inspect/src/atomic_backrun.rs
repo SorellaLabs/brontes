@@ -44,9 +44,11 @@ impl Inspector for AtomicBackrunInspector {
             .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
+                let idx = root.get_block_position();
 
                 self.process_swaps(
                     tx,
+                    idx,
                     root.head.address,
                     root.head.data.get_to_address(),
                     meta_data.clone(),
@@ -62,6 +64,7 @@ impl AtomicBackrunInspector {
     fn process_swaps(
         &self,
         tx_hash: B256,
+        idx: usize,
         eoa: Address,
         mev_contract: Address,
         metadata: Arc<Metadata>,
@@ -70,7 +73,9 @@ impl AtomicBackrunInspector {
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let (deltas, profit_collectors) = self.inner.calculate_swap_deltas(&swaps);
 
-        let finalized_usd = self.inner.usd_delta(deltas.clone(), metadata.clone());
+        let finalized_usd = self
+            .inner
+            .usd_delta_dex_avg(idx, deltas.clone(), metadata.clone());
 
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
