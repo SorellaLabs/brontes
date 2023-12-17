@@ -1270,6 +1270,7 @@ dependencies = [
  "dotenv",
  "eyre",
  "futures",
+ "malachite",
  "modular-bitfield",
  "parity-scale-codec",
  "parking_lot 0.12.1",
@@ -1412,6 +1413,7 @@ version = "0.1.0"
 dependencies = [
  "alloy-dyn-abi",
  "alloy-primitives",
+ "alloy-rlp",
  "alloy-sol-macro",
  "alloy-sol-types",
  "auto_impl",

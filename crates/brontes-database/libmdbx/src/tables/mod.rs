@@ -14,22 +14,29 @@ use crate::{
     types::{
         address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
         address_to_tokens::{AddressToTokensData, PoolTokens},
+        cex_price::{CexPriceData, CexPriceMap},
+
         *,
     },
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 3;
+pub const NUM_TABLES: usize = 4;
 
 pub enum Tables {
     TokenDecimals,
     AddressToTokens,
     AddressToProtocol,
+    CexPrice
 }
 
 impl Tables {
-    pub const ALL: [Tables; NUM_TABLES] =
-        [Tables::TokenDecimals, Tables::AddressToTokens, Tables::AddressToProtocol];
+    pub const ALL: [Tables; NUM_TABLES] = [
+        Tables::TokenDecimals,
+        Tables::AddressToTokens,
+        Tables::AddressToProtocol,
+        Tables::CexPrice
+    ];
 
     /// type of table
     pub(crate) const fn table_type(&self) -> TableType {
@@ -37,6 +44,7 @@ impl Tables {
             Tables::TokenDecimals => TableType::Table,
             Tables::AddressToTokens => TableType::Table,
             Tables::AddressToProtocol => TableType::Table,
+            Tables::CexPrice => TableType::Table,
         }
     }
 
@@ -45,6 +53,7 @@ impl Tables {
             Tables::TokenDecimals => TokenDecimals::NAME,
             Tables::AddressToTokens => AddressToTokens::NAME,
             Tables::AddressToProtocol => AddressToProtocol::NAME,
+            Tables::CexPrice => CexPrice::NAME,
         }
     }
 
@@ -57,6 +66,7 @@ impl Tables {
             Tables::TokenDecimals => TokenDecimals::initialize_table(libmdbx, clickhouse),
             Tables::AddressToTokens => AddressToTokens::initialize_table(libmdbx, clickhouse),
             Tables::AddressToProtocol => AddressToProtocol::initialize_table(libmdbx, clickhouse),
+            Tables::CexPrice => CexPrice::initialize_table(libmdbx, clickhouse),
         }
     }
 }
@@ -69,6 +79,7 @@ impl FromStr for Tables {
             TokenDecimals::NAME => return Ok(Tables::TokenDecimals),
             AddressToTokens::NAME => return Ok(Tables::AddressToTokens),
             AddressToProtocol::NAME => return Ok(Tables::AddressToProtocol),
+            CexPrice::NAME => return Ok(Tables::CexPrice),
             _ => return Err("Unknown table".to_string()),
         }
     }
@@ -117,6 +128,11 @@ table!(
 table!(
     /// Address -> Static protocol enum
     ( AddressToProtocol ) Address | StaticBindingsDb
+);
+
+table!(
+    /// Address -> Static protocol enum
+    ( CexPrice ) u64 | CexPriceMap
 );
 
 pub(crate) trait InitializeTable<'fut, 'db: 'fut, D>:

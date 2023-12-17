@@ -35,6 +35,8 @@ modular-bitfield = "0.11.2"
 bytes = "1.5"
 
 
+# numbers
+malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
 sorella-db-databases.workspace = true
