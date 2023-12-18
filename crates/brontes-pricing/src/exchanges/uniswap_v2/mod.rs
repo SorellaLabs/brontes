@@ -3,10 +3,6 @@ pub mod factory;
 
 use std::sync::Arc;
 
-use amms::{
-    amm::AutomatedMarketMaker,
-    errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
-};
 use async_trait::async_trait;
 use ethers::{
     abi::{ethabi::Bytes, RawLog, Token},
@@ -18,6 +14,11 @@ use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 
 use self::factory::PAIR_CREATED_EVENT_SIGNATURE;
+use crate::{
+    errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
+    factory::AutomatedMarketMakerFactory,
+    AutomatedMarketMaker,
+};
 
 abigen!(
     IUniswapV2Pair,

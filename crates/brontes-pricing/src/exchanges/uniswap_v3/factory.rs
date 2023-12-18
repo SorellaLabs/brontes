@@ -13,15 +13,12 @@ use ethers::{
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
-use amms::{
-    amm::{
-        factory::{AutomatedMarketMakerFactory, TASK_LIMIT},
-        AutomatedMarketMaker, AMM,
-    },
-    errors::{AMMError, EventLogError},
-};
-
 use super::{batch_request, UniswapV3Pool, BURN_EVENT_SIGNATURE, MINT_EVENT_SIGNATURE};
+use crate::{
+    errors::{AMMError, EventLogError},
+    factory::{AutomatedMarketMakerFactory, TASK_LIMIT},
+    AutomatedMarketMaker, AMM,
+};
 
 abigen!(
     IUniswapV3Factory,
@@ -40,7 +37,7 @@ pub const POOL_CREATED_EVENT_SIGNATURE: H256 = H256([
 
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct UniswapV3Factory {
-    pub address: H160,
+    pub address:        H160,
     pub creation_block: u64,
 }
 
@@ -74,7 +71,7 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
                 .await?,
             ))
         } else {
-            return Err(AMMError::BlockNumberNotFound);
+            return Err(AMMError::BlockNumberNotFound)
         }
     }
 
@@ -87,7 +84,7 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
         if let Some(block) = to_block {
             self.get_all_pools_from_logs(block, step, middleware).await
         } else {
-            return Err(AMMError::BlockNumberNotFound);
+            return Err(AMMError::BlockNumberNotFound)
         }
     }
 
@@ -108,7 +105,7 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
                 .await?;
             }
         } else {
-            return Err(AMMError::BlockNumberNotFound);
+            return Err(AMMError::BlockNumberNotFound)
         }
 
         Ok(())
@@ -118,38 +115,37 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
         let pool_created_event = PoolCreatedFilter::decode_log(&RawLog::from(log))?;
 
         Ok(AMM::UniswapV3Pool(UniswapV3Pool {
-            address: pool_created_event.pool,
-            token_a: pool_created_event.token_0,
-            token_b: pool_created_event.token_1,
+            address:          pool_created_event.pool,
+            token_a:          pool_created_event.token_0,
+            token_b:          pool_created_event.token_1,
             token_a_decimals: 0,
             token_b_decimals: 0,
-            fee: pool_created_event.fee,
-            liquidity: 0,
-            sqrt_price: U256::zero(),
-            tick_spacing: 0,
-            tick: 0,
-            tick_bitmap: HashMap::new(),
-            ticks: HashMap::new(),
+            fee:              pool_created_event.fee,
+            liquidity:        0,
+            sqrt_price:       U256::zero(),
+            tick_spacing:     0,
+            tick:             0,
+            tick_bitmap:      HashMap::new(),
+            ticks:            HashMap::new(),
         }))
     }
 }
 
 impl UniswapV3Factory {
     pub fn new(address: H160, creation_block: u64) -> UniswapV3Factory {
-        UniswapV3Factory {
-            address,
-            creation_block,
-        }
+        UniswapV3Factory { address, creation_block }
     }
 
-    //Function to get all pair created events for a given Dex factory address and sync pool data
+    //Function to get all pair created events for a given Dex factory address and
+    // sync pool data
     pub async fn get_all_pools_from_logs<M: 'static + Middleware>(
         self,
         to_block: u64,
         step: u64,
         middleware: Arc<M>,
     ) -> Result<Vec<AMM>, AMMError<M>> {
-        //Unwrap can be used here because the creation block was verified within `Dex::new()`
+        //Unwrap can be used here because the creation block was verified within
+        // `Dex::new()`
         let mut from_block = self.creation_block;
         let mut aggregated_amms: HashMap<H160, AMM> = HashMap::new();
         let mut ordered_logs: BTreeMap<U64, Vec<Log>> = BTreeMap::new();
@@ -188,7 +184,8 @@ impl UniswapV3Factory {
             from_block += step;
 
             tasks += 1;
-            //Here we are limiting the number of green threads that can be spun up to not have the node time out
+            //Here we are limiting the number of green threads that can be spun up to not
+            // have the node time out
             if tasks == TASK_LIMIT {
                 self.process_logs_from_handles(handles, &mut ordered_logs)
                     .await?;
@@ -204,7 +201,8 @@ impl UniswapV3Factory {
             for log in log_group {
                 let event_signature = log.topics[0];
 
-                //If the event sig is the pool created event sig, then the log is coming from the factory
+                //If the event sig is the pool created event sig, then the log is coming from
+                // the factory
                 if event_signature == POOL_CREATED_EVENT_SIGNATURE {
                     if log.address == self.address {
                         let mut new_pool = self.new_empty_amm_from_log(log)?;
@@ -236,7 +234,8 @@ impl UniswapV3Factory {
         handles: Vec<JoinHandle<Result<Vec<Log>, AMMError<M>>>>,
         ordered_logs: &mut BTreeMap<U64, Vec<Log>>,
     ) -> Result<(), AMMError<M>> {
-        // group the logs from each thread by block number and then sync the logs in chronological order
+        // group the logs from each thread by block number and then sync the logs in
+        // chronological order
         for handle in handles {
             let logs = handle.await??;
 
@@ -248,7 +247,7 @@ impl UniswapV3Factory {
                         ordered_logs.insert(log_block_number, vec![log]);
                     }
                 } else {
-                    return Err(EventLogError::LogBlockNumberNotFound)?;
+                    return Err(EventLogError::LogBlockNumberNotFound)?
                 }
             }
         }
