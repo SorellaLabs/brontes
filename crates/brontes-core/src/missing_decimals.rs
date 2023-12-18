@@ -16,18 +16,17 @@ sol!(
     function decimals() public view returns (uint8);
 );
 
-type DecimalQuery<'a> =
-    Pin<Box<dyn Future<Output = (Address, Result<Bytes, ProviderError>)> + Send + 'a>>;
+type DecimalQuery = Pin<Box<dyn Future<Output = (Address, Result<Bytes, ProviderError>)> + Send>>;
 
 pub struct MissingDecimals<'db, T: TracingProvider + 'db> {
-    provider:         &'db Arc<T>,
-    pending_decimals: FuturesUnordered<DecimalQuery<'db>>,
+    provider:         Arc<T>,
+    pending_decimals: FuturesUnordered<DecimalQuery>,
     db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
     _database:        &'db Clickhouse,
 }
 
 impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
-    pub fn new(provider: &'db Arc<T>, db: &'db Clickhouse, missing: Vec<Address>) -> Self {
+    pub fn new(provider: Arc<T>, db: &'db Clickhouse, missing: Vec<Address>) -> Self {
         let mut this = Self {
             provider,
             pending_decimals: FuturesUnordered::default(),
@@ -47,10 +46,11 @@ impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
             tx_req.to = Some(addr);
             tx_req.input = CallInput::new(call.into());
 
-            self.pending_decimals.push(Box::pin(join(
-                async move { addr },
-                self.provider.eth_call(tx_req, None, None, None),
-            )));
+            let p = self.provider.clone();
+            self.pending_decimals
+                .push(Box::pin(join(async move { addr }, async move {
+                    p.eth_call(tx_req, None, None, None).await
+                })));
         });
     }
 
