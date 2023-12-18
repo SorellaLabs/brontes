@@ -113,7 +113,6 @@ pub fn mul_div_rounding_up(
 ) -> Result<U256, UniswapV3MathError> {
     let result = mul_div(a, b, denominator)?;
 
-
     if a.mul_mod(b, denominator) > RUINT_ZERO {
         if result == U256::MAX {
             Err(UniswapV3MathError::ResultIsU256MAX)

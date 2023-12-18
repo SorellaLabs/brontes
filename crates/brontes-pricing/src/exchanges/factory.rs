@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
-
-use brontes_types::traits::TracingProvider;
 use async_trait::async_trait;
-use ethers::{
-    types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U64},
-};
+use brontes_types::traits::TracingProvider;
+use ethers::types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U64};
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
@@ -27,14 +24,14 @@ pub trait AutomatedMarketMakerFactory {
         to_block: Option<u64>,
         middleware: Arc<M>,
         step: u64,
-    ) -> Result<Vec<AMM>, AMMError<M>>;
+    ) -> Result<Vec<AMM>, AmmError>;
 
     async fn populate_amm_data<M: TracingProvider>(
         &self,
         amms: &mut [AMM],
         block_number: Option<u64>,
         middleware: Arc<M>,
-    ) -> Result<(), AMMError<M>>;
+    ) -> Result<(), AmmError>;
 
     fn amm_created_event_signature(&self) -> H256;
 
@@ -44,7 +41,7 @@ pub trait AutomatedMarketMakerFactory {
         &self,
         log: Log,
         middleware: Arc<M>,
-    ) -> Result<AMM, AMMError<M>>;
+    ) -> Result<AMM, AmmError>;
 
     fn new_empty_amm_from_log(&self, log: Log) -> Result<AMM, ethers::abi::Error>;
 }
@@ -75,7 +72,7 @@ impl AutomatedMarketMakerFactory for Factory {
         &self,
         log: Log,
         middleware: Arc<M>,
-    ) -> Result<AMM, AMMError<M>> {
+    ) -> Result<AMM, AmmError> {
         match self {
             Factory::UniswapV2Factory(factory) => factory.new_amm_from_log(log, middleware).await,
             Factory::UniswapV3Factory(factory) => factory.new_amm_from_log(log, middleware).await,
@@ -94,7 +91,7 @@ impl AutomatedMarketMakerFactory for Factory {
         to_block: Option<u64>,
         middleware: Arc<M>,
         step: u64,
-    ) -> Result<Vec<AMM>, AMMError<M>> {
+    ) -> Result<Vec<AMM>, AmmError> {
         match self {
             Factory::UniswapV2Factory(factory) => {
                 factory.get_all_amms(to_block, middleware, step).await
@@ -110,7 +107,7 @@ impl AutomatedMarketMakerFactory for Factory {
         amms: &mut [AMM],
         block_number: Option<u64>,
         middleware: Arc<M>,
-    ) -> Result<(), AMMError<M>> {
+    ) -> Result<(), AmmError> {
         match self {
             Factory::UniswapV2Factory(factory) => {
                 factory.populate_amm_data(amms, None, middleware).await
@@ -138,7 +135,7 @@ impl Factory {
     //     to_block: u64,
     //     step: u64,
     //     middleware: Arc<M>,
-    // ) -> Result<Vec<AMM>, AMMError<M>> {
+    // ) -> Result<Vec<AMM>, AmmError> {
     //     let factory_address = self.address();
     //     let amm_created_event_signature = self.amm_created_event_signature();
     //     let mut log_group = vec![];
@@ -157,15 +154,15 @@ impl Factory {
     //             let logs = middleware
     //                 .get_logs(
     //                     &Filter::new()
-    //                         .topic0(ValueOrArray::Value(amm_created_event_signature))
-    //                         .address(factory_address)
-    //                         .from_block(BlockNumber::Number(U64([from_block])))
-    //                         .to_block(BlockNumber::Number(U64([target_block]))),
-    //                 )
+    //
+    // .topic0(ValueOrArray::Value(amm_created_event_signature))
+    // .address(factory_address)
+    // .from_block(BlockNumber::Number(U64([from_block])))
+    // .to_block(BlockNumber::Number(U64([target_block]))),                 )
     //                 .await
     //                 .map_err(AMMError::TracingProviderError)?;
     //
-    //             Ok::<Vec<Log>, AMMError<M>>(logs)
+    //             Ok::<Vec<Log>, AmmError>(logs)
     //         }));
     //
     //         from_block += step;
@@ -191,9 +188,9 @@ impl Factory {
     //
     // async fn process_logs_from_handles<M: TracingProvider>(
     //     &self,
-    //     handles: Vec<JoinHandle<Result<Vec<Log>, AMMError<M>>>>,
+    //     handles: Vec<JoinHandle<Result<Vec<Log>, AmmError>>>,
     //     log_group: &mut Vec<Log>,
-    // ) -> Result<(), AMMError<M>> {
+    // ) -> Result<(), AmmError> {
     //     for handle in handles {
     //         let logs = handle.await??;
     //         for log in logs {

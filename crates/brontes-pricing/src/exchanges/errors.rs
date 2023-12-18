@@ -8,13 +8,11 @@ use ethers::{
 };
 use thiserror::Error;
 use tokio::task::JoinError;
-use uniswap_v3_math::error::UniswapV3MathError;
+
+use crate::exchanges::uniswap_v3_math::error::UniswapV3MathError;
 
 #[derive(Error, Debug)]
-pub enum AMMError<M>
-where
-    M: TracingProvider,
-{
+pub enum AMMError {
     #[error("Provider error")]
     ProviderError(#[from] ProviderError),
     #[error("ABI Codec error")]
