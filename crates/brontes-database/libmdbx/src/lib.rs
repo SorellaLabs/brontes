@@ -1,6 +1,7 @@
 use std::path::Path;
 pub mod initialize;
-use brontes_database::clickhouse::Clickhouse;
+use brontes_database::{clickhouse::Clickhouse, MetadataDB};
+use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use eyre::Context;
 use initialize::LibmdbxInitializer;
 use reth_db::{
@@ -15,7 +16,6 @@ use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
 
 use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
-
 pub mod implementation;
 pub mod tables;
 pub mod types;
@@ -78,6 +78,19 @@ impl Libmdbx {
         initializer.initialize(tables).await?;
 
         Ok(())
+    }
+
+    //TODO: Joe - implement
+    pub async fn get_metadata(&self, block_num: u64) -> MetadataDB {
+        todo!()
+    }
+
+    pub async fn insert_classified_data(
+        &self,
+        block_details: MevBlock,
+        mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+    ) {
+        todo!()
     }
 
     /// Clears a table in the database

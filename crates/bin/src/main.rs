@@ -32,6 +32,8 @@ mod cli;
 use banner::print_banner;
 use cli::{Commands, Opts};
 
+//TODO: Wire in price fetcher + Metadata fetcher
+
 fn main() {
     print_banner();
     dotenv::dotenv().ok();
@@ -126,7 +128,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
         command.max_tasks,
         &provider,
         &parser,
-        &clickhouse,
+        &libmdbx,
         &classifier,
         inspectors,
     );
