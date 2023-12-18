@@ -18,7 +18,7 @@ use sorella_db_databases::{
 use tracing::{error, info};
 
 use self::types::{Abis, DBTokenPricesDB, TimesFlow};
-use super::Metadata;
+use super::MetadataDB;
 use crate::{
     cex::CexPriceMap,
     clickhouse::{const_sql::*, types::TimesFlowDB},
@@ -54,7 +54,7 @@ impl Clickhouse {
         self.client.credentials()
     }
 
-    pub async fn get_metadata(&self, block_num: u64) -> Metadata {
+    pub async fn get_metadata(&self, block_num: u64) -> MetadataDB {
         let times_flow = self.get_times_flow_info(block_num).await;
         let cex_prices = CexPriceMap::from(self.get_cex_token_prices(times_flow.p2p_time).await);
 
@@ -64,7 +64,7 @@ impl Clickhouse {
             .unwrap()
             .clone();
 
-        let metadata = Metadata::new(
+        let metadata = MetadataDB::new(
             block_num,
             times_flow.block_hash.into(),
             times_flow.relay_time,
