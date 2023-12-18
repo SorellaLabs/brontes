@@ -2,6 +2,8 @@ use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
+
+use brontes_pricing::types::DexPrices;
 pub mod cex;
 
 pub use brontes_types::extra_processing::Pair;
@@ -12,8 +14,16 @@ use reth_primitives::{Address, TxHash, U256};
 use crate::clickhouse::types::DBTokenPricesDB;
 pub mod clickhouse;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, derive_more::Deref, derive_more::AsRef)]
 pub struct Metadata {
+    #[deref]
+    #[as_ref]
+    pub db:         MetadataDB,
+    pub dex_quotes: DexPrices,
+}
+
+#[derive(Debug, Clone)]
+pub struct MetadataDB {
     pub block_num:              u64,
     pub block_hash:             U256,
     pub relay_timestamp:        u64,
@@ -26,7 +36,7 @@ pub struct Metadata {
     pub mempool_flow:           HashSet<TxHash>,
 }
 
-impl Metadata {
+impl MetadataDB {
     pub fn new(
         block_num: u64,
         block_hash: U256,
@@ -50,9 +60,13 @@ impl Metadata {
             mempool_flow,
         }
     }
+
+    pub fn into_finalized_metadata(self, prices: DexPrices) -> Metadata {
+        Metadata { db: self, dex_quotes: prices }
+    }
 }
 
-impl Metadata {
+impl MetadataDB {
     pub fn get_gas_price_usd(&self, gas_used: u128) -> Rational {
         let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
 
