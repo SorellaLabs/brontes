@@ -62,7 +62,7 @@ pub fn get_next_sqrt_price_from_amount_0_rounding_up(
         return Ok(sqrt_price_x_96)
     }
 
-    let numerator_1 = U256::from(liquidity) << 96;
+    let numerator_1: U256 = U256::from(liquidity) << 96;
     let amount = amount;
     let sqrt_price_x_96 = sqrt_price_x_96;
 
@@ -102,7 +102,7 @@ pub fn get_next_sqrt_price_from_amount_1_rounding_down(
 ) -> Result<U256, UniswapV3MathError> {
     if add {
         let quotient = if amount <= MAX_U160 {
-            (amount << FIXED_POINT_96_RESOLUTION) / liquidity
+            (amount << FIXED_POINT_96_RESOLUTION) / U256::from(liquidity)
         } else {
             mul_div(amount, Q96, U256::from(liquidity))?
         };
@@ -171,13 +171,13 @@ pub fn _get_amount_1_delta(
         mul_div_rounding_up(
             U256::from(liquidity),
             sqrt_ratio_b_x_96 - sqrt_ratio_a_x_96,
-            U256::from("0x1000000000000000000000000"),
+            U256::from(0x1000000000000000000000000),
         )
     } else {
         mul_div(
             U256::from(liquidity),
             sqrt_ratio_b_x_96 - sqrt_ratio_a_x_96,
-            U256::from("0x1000000000000000000000000"),
+            U256::from(0x1000000000000000000000000),
         )
     }
 }
@@ -350,7 +350,8 @@ mod test {
         assert_eq!(result.unwrap_err().to_string(), "Sqrt price is 0");
 
         //fails if liquidity is zero
-        let result = get_next_sqrt_price_from_output(U256::from(1), 0, U256::from(1000000000), false);
+        let result =
+            get_next_sqrt_price_from_output(U256::from(1), 0, U256::from(1000000000), false);
         assert_eq!(result.unwrap_err().to_string(), "Liquidity is 0");
 
         //fails if output amount is exactly the virtual reserves of token0

@@ -31,7 +31,7 @@ pub fn mul_div(a: U256, b: U256, mut denominator: U256) -> Result<U256, UniswapV
         if denominator == RUINT_ZERO {
             return Err(UniswapV3MathError::DenominatorIsZero)
         }
-        return Ok(U256::from_little_endian(&prod_0.div(denominator).as_le_bytes()))
+        return Ok(prod_0.div(denominator))
     }
 
     // Make sure the result is less than 2**256.
@@ -103,7 +103,7 @@ pub fn mul_div(a: U256, b: U256, mut denominator: U256) -> Result<U256, UniswapV
     // We don't need to compute the high bits of the result and prod1
     // is no longer required.
 
-    Ok(U256::from_little_endian(&(prod_0 * inv).as_le_bytes()))
+    Ok(prod_0 * inv)
 }
 
 pub fn mul_div_rounding_up(
@@ -117,7 +117,7 @@ pub fn mul_div_rounding_up(
         if result == U256::MAX {
             Err(UniswapV3MathError::ResultIsU256MAX)
         } else {
-            Ok(result + 1)
+            Ok(result + U256::from(1))
         }
     } else {
         Ok(result)

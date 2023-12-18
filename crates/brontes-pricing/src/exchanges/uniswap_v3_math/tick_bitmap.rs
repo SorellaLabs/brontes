@@ -41,7 +41,7 @@ pub fn next_initialized_tick_within_one_word(
     if lte {
         let (word_pos, bit_pos) = position(compressed);
 
-        let mask = (U256::from(1) << bit_pos) - 1 + (U256::from(1) << bit_pos);
+        let mask = (U256::from(1) << bit_pos) - U256::from(1) + (U256::from(1) << bit_pos);
 
         let masked = *tick_bitmap.get(&word_pos).unwrap_or(&U256::ZERO) & mask;
 

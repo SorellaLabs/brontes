@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
 use self::factory::POOL_CREATED_EVENT_SIGNATURE;
-use super::factory::TASK_LIMIT;
+use super::{factory::TASK_LIMIT, make_call_request};
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
     exchanges::uniswap_v3::batch_request::get_uniswap_v3_tick_data_batch_request,
@@ -164,8 +164,11 @@ impl AutomatedMarketMaker for UniswapV3Pool {
 
         //Set sqrt_price_limit_x_96 to the max or min sqrt price in the pool depending
         // on zero_for_one
-        let sqrt_price_limit_x_96 =
-            if zero_for_one { MIN_SQRT_RATIO + 1 } else { MAX_SQRT_RATIO - 1 };
+        let sqrt_price_limit_x_96 = if zero_for_one {
+            MIN_SQRT_RATIO + U256::from(1)
+        } else {
+            MAX_SQRT_RATIO - U256::from(1)
+        };
 
         //Initialize a mutable state state struct to hold the dynamic simulated state
         // of the pool
@@ -292,7 +295,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
     ) -> Result<U256, SwapSimulationError> {
         tracing::info!(?token_in, ?amount_in, "simulating swap");
 
-        if amount_in.is_ZERO {
+        if amount_in.is_zero() {
             return Ok(U256::ZERO);
         }
 
@@ -300,8 +303,11 @@ impl AutomatedMarketMaker for UniswapV3Pool {
 
         //Set sqrt_price_limit_x_96 to the max or min sqrt price in the pool depending
         // on zero_for_one
-        let sqrt_price_limit_x_96 =
-            if zero_for_one { MIN_SQRT_RATIO + 1 } else { MAX_SQRT_RATIO - 1 };
+        let sqrt_price_limit_x_96 = if zero_for_one {
+            MIN_SQRT_RATIO + U256::from(1)
+        } else {
+            MAX_SQRT_RATIO - U256::from(1)
+        };
 
         //Initialize a mutable state state struct to hold the dynamic simulated state
         // of the pool
@@ -470,7 +476,7 @@ impl UniswapV3Pool {
     // Creates a new instance of the pool from the pair address
     pub async fn new_from_address<M: 'static + TracingProvider>(
         pair_address: Address,
-        creation_block: u64,
+        block_number: u64,
         middleware: Arc<M>,
     ) -> Result<Self, AmmError> {
         let mut pool = UniswapV3Pool {
@@ -490,17 +496,13 @@ impl UniswapV3Pool {
 
         //We need to get tick spacing before populating tick data because tick spacing
         // can not be uninitialized when syncing burn and mint logs
-        pool.tick_spacing = pool.get_tick_spacing(middleware.clone()).await?;
+        pool.sync_ticks_around_current(block_number, 100, middleware.clone())
+            .await;
 
-        let synced_block = pool
-            .populate_tick_data(creation_block, middleware.clone())
-            .await?;
-
-        //TODO: break this into two threads so it can happen concurrently
-        pool.populate_data(Some(synced_block), middleware).await?;
+        pool.populate_data(Some(block_number), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AMMError::PoolDataError);
+            return Err(AmmError::PoolDataError);
         }
 
         Ok(pool)
@@ -514,6 +516,10 @@ impl UniswapV3Pool {
     ) {
         if tick_amount.is_negative() {
             return
+        }
+
+        if self.tick == 0 {
+            self.tick = self.get_tick(provider.clone(), block).await.unwrap();
         }
 
         let cur_tick = self.tick;
@@ -531,7 +537,7 @@ impl UniswapV3Pool {
             &self,
             start_tick,
             true,
-            am,
+            am as u16,
             Some(block),
             provider,
         )
@@ -691,7 +697,7 @@ impl UniswapV3Pool {
     }
 
     pub fn data_is_populated(&self) -> bool {
-        !(self.token_a.is_ZERO || self.token_b.is_ZERO)
+        !(self.token_a.is_zero() || self.token_b.is_zero())
     }
 
     // pub async fn get_tick_word<M: TracingProvider>(
@@ -716,17 +722,22 @@ impl UniswapV3Pool {
     //     Ok(v3_pool.tick_bitmap(word_position).call().await?)
     // }
     //
-    // pub async fn get_tick_spacing<M: TracingProvider>(
-    //     &self,
-    //     middleware: Arc<M>,
-    // ) -> Result<i32, AmmError> {
-    //     let v3_pool = IUniswapV3Pool::new(self.address, middleware);
-    //     Ok(v3_pool.tick_spacing().call().await?)
-    // }
-    //
-    // pub async fn get_tick<M: TracingProvider>(&self, middleware: Arc<M>) ->
-    // Result<i32, AmmError> {     Ok(self.get_slot_0(middleware).await?.1)
-    // }
+    pub async fn get_tick_spacing<M: TracingProvider>(
+        &self,
+        middleware: Arc<M>,
+    ) -> Result<i32, AmmError> {
+        let call = IUniswapV3Pool::tickSpacingCall::new(());
+        let res = make_call_request(call, middleware, self.address, None).await;
+        Ok(res._0)
+    }
+
+    pub async fn get_tick<M: TracingProvider>(
+        &self,
+        middleware: Arc<M>,
+        block: u64,
+    ) -> Result<i32, AmmError> {
+        Ok(self.get_slot_0(middleware, block).await?._1)
+    }
 
     // pub async fn get_tick_info<M: TracingProvider>(
     //     &self,
@@ -767,13 +778,20 @@ impl UniswapV3Pool {
     //     Ok(tick_info.7)
     // }
     //
-    // pub async fn get_slot_0<M: TracingProvider>(
-    //     &self,
-    //     middleware: Arc<M>,
-    // ) -> Result<(U256, i32, u16, u16, u16, u8, bool), AmmError> {
-    //     let v3_pool = IUniswapV3Pool::new(self.address, middleware);
-    //     Ok(v3_pool.slot_0().call().await?)
-    // }
+    pub async fn get_slot_0<M: TracingProvider>(
+        &self,
+        middleware: Arc<M>,
+        block: u64,
+    ) -> Result<IUniswapV3Pool::slot0Return, AmmError> {
+        Ok(make_call_request(
+            IUniswapV3Pool::slot0Call::new(()),
+            middleware,
+            self.address,
+            Some(block),
+        )
+        .await)
+    }
+
     //
     // pub async fn get_liquidity<M: TracingProvider>(
     //     &self,
@@ -986,7 +1004,7 @@ impl UniswapV3Pool {
         let sqrt_price = BigFloat::from_f64(price.sqrt());
         let liquidity = BigFloat::from_u128(self.liquidity);
 
-        let (reserve_0, reserve_1) = if !sqrt_price.is_ZERO {
+        let (reserve_0, reserve_1) = if !sqrt_price.is_zero() {
             let reserve_x = liquidity.div(&sqrt_price);
             let reserve_y = liquidity.mul(&sqrt_price);
 

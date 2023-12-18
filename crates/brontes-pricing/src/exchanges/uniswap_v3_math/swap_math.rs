@@ -23,7 +23,7 @@ pub fn compute_swap_step(
     fee_pips: u32,
 ) -> Result<(U256, U256, U256, U256), UniswapV3MathError> {
     let zero_for_one = sqrt_ratio_current_x_96 >= sqrt_ratio_target_x_96;
-    let exact_in = amount_remaining >= I256::zero();
+    let exact_in = amount_remaining >= I256::ZERO;
 
     let sqrt_ratio_next_x_96: U256;
     let mut amount_in = U256::ZERO;
