@@ -12,6 +12,7 @@ pub mod classified_mev;
 pub mod extra_processing;
 pub mod normalized_actions;
 pub mod structured_trace;
+pub mod traits;
 pub mod tree;
 
 #[cfg(feature = "tests")]
