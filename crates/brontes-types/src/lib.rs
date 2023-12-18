@@ -18,7 +18,8 @@ pub mod tree;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
 pub enum Dexes {
     UniswapV2,
     UniswapV3,
