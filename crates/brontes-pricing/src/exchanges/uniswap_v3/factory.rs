@@ -16,7 +16,7 @@ use tokio::task::JoinHandle;
 
 use super::{batch_request, UniswapV3Pool};
 use crate::{
-    errors::{AMMError, EventLogError},
+    errors::{AmmError, EventLogError},
     factory::{AutomatedMarketMakerFactory, TASK_LIMIT},
     AutomatedMarketMaker, AMM,
 };
@@ -133,7 +133,7 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
             token_b_decimals: 0,
             fee:              pool_created_event.fee,
             liquidity:        0,
-            sqrt_price:       U256::zero(),
+            sqrt_price:       U256::ZERO,
             tick_spacing:     0,
             tick:             0,
             tick_bitmap:      HashMap::new(),

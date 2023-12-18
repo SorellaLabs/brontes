@@ -11,8 +11,6 @@ brontes-types.workspace = true
 
 itertools = "0.12.0"
 
-amms = { git = "https://github.com/darkforestry/amms-rs.git" }
-
 futures.workspace = true
 thiserror.workspace = true
 

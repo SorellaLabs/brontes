@@ -10,7 +10,7 @@ use ethers::{
 use serde::{Deserialize, Serialize};
 
 use super::{batch_request, UniswapV2Pool};
-use crate::{errors::AMMError, factory::AutomatedMarketMakerFactory, AMM};
+use crate::{errors::AmmError, factory::AutomatedMarketMakerFactory, AMM};
 
 abigen!(
     IUniswapV2Factory,
@@ -53,7 +53,7 @@ impl UniswapV2Factory {
         //
         // let mut pairs = vec![];
         // let step = 766; //max batch size for this call until codesize is too large
-        // let mut idx_from = U256::zero();
+        // let mut idx_from = U256::ZERO;
         // let mut idx_to =
         //     if step > pairs_length.as_usize() { pairs_length } else {
         // U256::from(step) };

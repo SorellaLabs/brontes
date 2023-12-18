@@ -26,8 +26,8 @@ pub fn compute_swap_step(
     let exact_in = amount_remaining >= I256::zero();
 
     let sqrt_ratio_next_x_96: U256;
-    let mut amount_in = U256::zero();
-    let mut amount_out = U256::zero();
+    let mut amount_in = U256::ZERO;
+    let mut amount_out = U256::ZERO;
 
     if exact_in {
         let amount_remaining_less_fee = mul_div(
@@ -121,6 +121,7 @@ pub fn compute_swap_step(
     }
 }
 
+#[cfg(test)]
 mod test {
     #[allow(unused)]
     use ethers::types::{I256, U256};
@@ -331,7 +332,7 @@ mod test {
         let (sqrt_p, amount_in, amount_out, fee_amount) =
             compute_swap_step(price, price_target, liquidity, amount_remaining, fee).unwrap();
 
-        assert_eq!(amount_out, U256::zero());
+        assert_eq!(amount_out, U256::ZERO);
         assert_eq!(sqrt_p, price_target);
         assert_eq!(amount_in, U256::from(26215));
         assert_eq!(fee_amount, U256::from(79));
@@ -353,7 +354,7 @@ mod test {
 
         assert_eq!(amount_out, U256::from(26214));
         assert_eq!(sqrt_p, price_target);
-        assert_eq!(amount_in, U256::one());
-        assert_eq!(fee_amount, U256::one());
+        assert_eq!(amount_in, U256::from(1));
+        assert_eq!(fee_amount, U256::from(1));
     }
 }
