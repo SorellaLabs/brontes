@@ -311,6 +311,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                         let pool_update = PoolUpdate {
                             block,
                             tx_idx,
+                            logs: logs.clone(),
                             action: res.clone()
                         };
                         let _ = tx.try_send(pool_update);
@@ -330,6 +331,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                     );
                         if let Some(res) = &res {
                             let pool_update = PoolUpdate {
+                                logs: logs.clone(),
                                 block,
                                 tx_idx,
                                 action: res.clone()
