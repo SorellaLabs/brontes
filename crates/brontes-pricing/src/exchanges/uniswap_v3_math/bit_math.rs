@@ -16,22 +16,22 @@ pub fn most_significant_bit(mut x: U256) -> Result<u8, UniswapV3MathError> {
         r += 128;
     }
 
-    if x >= U256::from(0x10000000000000000) {
+    if x >= U256::from(0x10000000000000000 as u128) {
         x.shr_assign(64);
         r += 64;
     }
 
-    if x >= U256::from(0x100000000) {
+    if x >= U256::from(0x100000000 as usize) {
         x.shr_assign(32);
         r += 32;
     }
 
-    if x >= U256::from(0x10000) {
+    if x >= U256::from(0x10000 as usize) {
         x.shr_assign(16);
         r += 16;
     }
 
-    if x >= U256::from(0x100) {
+    if x >= U256::from(0x100 as usize) {
         x.shr_assign(8);
         r += 8;
     }
