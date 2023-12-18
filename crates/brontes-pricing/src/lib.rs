@@ -23,6 +23,7 @@ pub struct BrontesBatchPricer {
     batch_id:    u64,
     update_rx:   Receiver<PoolUpdate>,
 
+
     /// holds all token pairs for the given chunk.
     pair_graph:      PairGraph,
     /// lazy loads dex pairs so we only fetch init state that is needed
@@ -90,6 +91,7 @@ impl BrontesBatchPricer {
             .collect::<HashSet<_>>();
 
         for pool in new_pair_set {
+
             self.lazy_loader.lazy_load_exchange(pool, msg.block - 1, ())
         }
     }

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::Address;
-use brontes_types::{extra_processing::Pair, normalized_actions::Actions};
+use brontes_types::{extra_processing::Pair, normalized_actions::Actions, Dexes};
 // use crate::exchanges::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
 use malachite::Rational;
 
@@ -96,6 +96,7 @@ impl PoolVariants {
 pub struct PoolUpdate {
     pub block:  u64,
     pub tx_idx: usize,
+    pub dex:  Dexes,
     pub action: Actions,
 }
 
