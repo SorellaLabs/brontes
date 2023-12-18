@@ -17,27 +17,10 @@ use serde::{Deserialize, Serialize};
 
 use self::factory::PAIR_CREATED_EVENT_SIGNATURE;
 use crate::{
-    errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
+    errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
     factory::AutomatedMarketMakerFactory,
     AutomatedMarketMaker,
 };
-
-abigen!(
-    IUniswapV2Pair,
-    r#"[
-        function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)
-        function token0() external view returns (address)
-        function token1() external view returns (address)
-        function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data);
-        event Sync(uint112 reserve0, uint112 reserve1)
-    ]"#;
-
-    IErc20,
-    r#"[
-        function balanceOf(address account) external view returns (uint256)
-        function decimals() external view returns (uint8)
-    ]"#;
-);
 
 sol!(
     interface IUniswapV2Pair {
@@ -85,10 +68,10 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 
     async fn populate_data<M: TracingProvider>(
         &mut self,
-        _block_number: Option<u64>,
+        block_number: Option<u64>,
         middleware: Arc<M>,
     ) -> Result<(), AmmError> {
-        batch_request::get_v2_pool_data_batch_request(self, middleware.clone()).await?;
+        batch_request::get_v2_pool_data(self, block_number, middleware.clone()).await?;
 
         Ok(())
     }
@@ -390,7 +373,7 @@ impl UniswapV2Pool {
         tracing::trace!(?amount_in, ?reserve_in, ?reserve_out);
 
         if amount_in.is_zero() || reserve_in.is_zero() || reserve_out.is_zero() {
-            return U256::zero()
+            return U256::ZERO
         }
         let fee = (10000 - (self.fee / 10)) / 10; //Fee of 300 => (10,000 - 30) / 10  = 997
         let amount_in_with_fee = amount_in * U256::from(fee);
@@ -478,11 +461,11 @@ pub fn div_uu(x: U256, y: U256) -> Result<u128, ArithmeticError> {
             }
 
             if xc >= U256_2 {
-                msb += U256::one();
+                msb += U256::from(1);
             }
 
             answer =
-                (x << (U256_255 - msb)) / (((y - U256::one()) >> (msb - U256_191)) + U256::one());
+                (x << (U256_255 - msb)) / (((y - U256::from(1)) >> (msb - U256_191)) + U256::from(1));
         }
 
         if answer > U256_0XFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF {
@@ -496,14 +479,14 @@ pub fn div_uu(x: U256, y: U256) -> Result<u128, ArithmeticError> {
         let mut xl = x << U256_64;
 
         if xl < lo {
-            xh -= U256::one();
+            xh -= U256::from(1);
         }
 
         xl = xl.overflowing_sub(lo).0;
         lo = hi << U256_128;
 
         if xl < lo {
-            xh -= U256::one();
+            xh -= U256::from(1);
         }
 
         xl = xl.overflowing_sub(lo).0;
@@ -549,7 +532,7 @@ mod tests {
 
         let _calldata = uniswap_v2_pool.swap_calldata(
             U256::from(123456789),
-            U256::zero(),
+            U256::ZERO,
             Address::from_str("0x41c36f504BE664982e7519480409Caf36EE4f008")?,
             vec![],
         );

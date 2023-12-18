@@ -61,49 +61,49 @@ pub fn least_significant_bit(mut x: U256) -> Result<u8, UniswapV3MathError> {
 
     //TODO: update this to use constants for each U256 comparison
 
-    if x & U256::from(u128::MAX) > U256::zero() {
+    if x & U256::from(u128::MAX) > U256::ZERO {
         r -= 128;
     } else {
         x >>= 128;
     }
 
-    if x & U256::from(u64::MAX) > U256::zero() {
+    if x & U256::from(u64::MAX) > U256::ZERO {
         r -= 64;
     } else {
         x >>= 64;
     }
 
-    if x & U256::from(u32::MAX) > U256::zero() {
+    if x & U256::from(u32::MAX) > U256::ZERO {
         r -= 32;
     } else {
         x >>= 32;
     }
 
-    if x & U256::from(u16::MAX) > U256::zero() {
+    if x & U256::from(u16::MAX) > U256::ZERO {
         r -= 16;
     } else {
         x >>= 16;
     }
 
-    if x & U256::from(u8::MAX) > U256::zero() {
+    if x & U256::from(u8::MAX) > U256::ZERO {
         r -= 8;
     } else {
         x >>= 8;
     }
 
-    if x & U256::from("0xf") > U256::zero() {
+    if x & U256::from("0xf") > U256::ZERO {
         r -= 4;
     } else {
         x >>= 4;
     }
 
-    if x & U256::from("0x3") > U256::zero() {
+    if x & U256::from("0x3") > U256::ZERO {
         r -= 2;
     } else {
         x >>= 2;
     }
 
-    if x & U256::from("0x1") > U256::zero() {
+    if x & U256::from("0x1") > U256::ZERO {
         r -= 1;
     }
 
@@ -121,14 +121,14 @@ mod test {
     #[test]
     fn test_most_significant_bit() {
         //0
-        let result = most_significant_bit(U256::zero());
+        let result = most_significant_bit(U256::ZERO);
         assert_eq!(
             result.unwrap_err().to_string(),
             "Can not get most significant bit or least significant bit on zero value"
         );
 
         //1
-        let result = most_significant_bit(U256::one());
+        let result = most_significant_bit(U256::from(1));
         assert_eq!(result.unwrap(), 0);
 
         //2
@@ -154,14 +154,14 @@ mod test {
     #[test]
     fn test_least_significant_bit() {
         //0
-        let result = least_significant_bit(U256::zero());
+        let result = least_significant_bit(U256::ZERO);
         assert_eq!(
             result.unwrap_err().to_string(),
             "Can not get most significant bit or least significant bit on zero value"
         );
 
         //1
-        let result = least_significant_bit(U256::one());
+        let result = least_significant_bit(U256::from(1));
         assert_eq!(result.unwrap(), 0);
 
         //2

@@ -3,17 +3,11 @@ use std::{sync::Arc, vec};
 use alloy_primitives::FixedBytes;
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolValue};
-use amms::sync::populate_amms;
 use brontes_types::traits::TracingProvider;
-use ethers::{
-    abi::{ParamType, Token},
-    prelude::abigen,
-    types::{Bytes, I256, U256, U64},
-};
 use reth_rpc_types::{CallInput, CallRequest};
 
 use super::UniswapV3Pool;
-use crate::{errors::AMMError, AutomatedMarketMaker, AMM};
+use crate::{errors::AmmError, AutomatedMarketMaker, AMM};
 sol!(
     IGetUniswapV3PoolDataBatchRequest,
     "./src/exchanges/uniswap_v3/batch_request/GetUniswapV3PoolDataBatchRequestABI.json"

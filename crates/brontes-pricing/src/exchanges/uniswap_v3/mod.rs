@@ -24,7 +24,7 @@ use tokio::task::JoinHandle;
 use self::factory::POOL_CREATED_EVENT_SIGNATURE;
 use super::factory::TASK_LIMIT;
 use crate::{
-    errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
+    errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
     exchanges::uniswap_v3::batch_request::get_uniswap_v3_tick_data_batch_request,
     factory::AutomatedMarketMakerFactory,
     uniswap_v3_math, AutomatedMarketMaker,
@@ -900,7 +900,7 @@ impl UniswapV3Pool {
 
     pub fn flip_tick(&mut self, tick: i32, tick_spacing: i32) {
         let (word_pos, bit_pos) = uniswap_v3_math::tick_bitmap::position(tick / tick_spacing);
-        let mask = U256::one() << bit_pos;
+        let mask = U256::from(1) << bit_pos;
 
         if let Some(word) = self.tick_bitmap.get_mut(&word_pos) {
             *word ^= mask;
