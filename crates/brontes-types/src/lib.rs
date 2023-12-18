@@ -21,7 +21,7 @@ pub mod test_utils;
 
 static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
 
-pub fn try_get_decimals(address: &[u8; 20]) -> Option<u8> {
+pub fn try_get_decimals(_address: &[u8; 20]) -> Option<u8> {
     // if let Some(value) = TOKEN_TO_DECIMALS.get(address) {
     //     Some(*value)
     // } else {
