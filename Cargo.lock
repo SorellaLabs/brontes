@@ -1398,7 +1398,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "uniswap_v3_math",
 ]
 
 [[package]]

@@ -12,7 +12,6 @@ brontes-types.workspace = true
 itertools = "0.12.0"
 
 amms = { git = "https://github.com/darkforestry/amms-rs.git" }
-uniswap_v3_math = { git = "https://github.com/0xKitsune/uniswap-v3-math.git", branch = "main" }
 
 futures.workspace = true
 thiserror.workspace = true

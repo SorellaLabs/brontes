@@ -180,24 +180,6 @@
 //     }
 // }
 //
-// async fn make_call_request<C: SolCall, T: TracingProvider>(
-//     call: C,
-//     provider: Arc<T>,
-//     state: Option<StateOverride>,
-//     to: Address,
-//     block: u64,
-// ) -> C::Return {
-//     let encoded = call.abi_encode();
-//     let req =
-//         CallRequest { to: Some(to), input: CallInput::new(encoded.into()),
-// ..Default::default() };
-//
-//     let res = provider
-//         .eth_call(req, Some(block.into()), state, None)
-//         .await
-//         .unwrap();
-//     C::abi_decode_returns(&res, false).unwrap()
-// }
 //
 // fn into_state_overrides(state_diff: StateDiff) -> AccountOverride {
 //     state_diff
