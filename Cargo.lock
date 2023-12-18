@@ -1225,6 +1225,7 @@ dependencies = [
  "brontes-types",
  "bytes",
  "codecs-derive",
+ "derive_more",
  "dotenv",
  "eyre",
  "futures",
