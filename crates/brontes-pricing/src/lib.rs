@@ -1,6 +1,7 @@
 pub mod exchanges;
 mod graph;
 pub mod types;
+pub use exchanges::*;
 
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
