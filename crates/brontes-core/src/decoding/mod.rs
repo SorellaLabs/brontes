@@ -2,7 +2,6 @@ use std::{pin::Pin, sync::Arc};
 
 use alloy_primitives::Bytes;
 use alloy_providers::provider::Provider;
-use alloy_rpc_types::{state::StateOverride, BlockOverrides};
 use alloy_transport_http::Http;
 use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
@@ -14,7 +13,7 @@ use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{Address, BlockNumber, BlockNumberOrTag, Header, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::CallRequest;
+use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest};
 use reth_tracing_ext::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
@@ -124,12 +123,10 @@ impl TracingProvider for TracingClient {
         state_overrides: Option<StateOverride>,
         block_overrides: Option<Box<BlockOverrides>>,
     ) -> ProviderResult<Bytes> {
-        // Ok(self
-        //     .api
-        //     .call(request, block_number, state_overrides, block_overrides)
-        //     .await
-        //     .unwrap())
-        todo!()
+        // NOTE: these types are equivalent, however we want ot
+        Ok(EthApiServer::call(&self.api, request, block_number, state_overrides, block_overrides)
+            .await
+            .unwrap())
     }
 
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
