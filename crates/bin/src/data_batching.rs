@@ -23,7 +23,7 @@ pub struct DataBatching<'db, T: TracingProvider> {
 impl<T: TracingProvider> Future for DataBatching<'_, T> {
     type Output = HashMap<u64, DexPrices>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         Poll::Pending
     }
 }

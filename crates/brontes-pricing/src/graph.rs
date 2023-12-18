@@ -22,6 +22,7 @@ use tracing::info;
 pub struct PairGraph {
     graph:         UnGraph<(), HashSet<Address>, usize>,
     addr_to_index: HashMap<Address, usize>,
+    known_pairs:   HashMap<Pair, Vec<Address>>,
 }
 
 impl PairGraph {
@@ -33,7 +34,11 @@ impl PairGraph {
         let mut connections: HashMap<Address, (usize, Vec<(Address, Vec<Address>, usize)>)> =
             HashMap::new();
 
+        let mut known_pairs = HashMap::new();
+
         for (pool, pair) in map.clone() {
+            known_pairs.insert(pair, vec![pool]);
+
             // crate node if doesn't exist for addr or get node otherwise
             let addr0 = *addr_to_index
                 .entry(pair.0)
@@ -77,7 +82,7 @@ impl PairGraph {
 
         info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph in {}us", delta);
 
-        Self { graph, addr_to_index }
+        Self { graph, addr_to_index, known_pairs }
     }
 
     pub fn get_all_pools(&self, pair: Pair) -> Box<dyn Iterator<Item = Address>> {
@@ -98,6 +103,8 @@ impl PairGraph {
 
     // returns false if there was a duplicate
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address) {
+        self.known_pairs.insert(pair, vec![pool_addr]);
+
         let node_0 = *self
             .addr_to_index
             .entry(pair.0)
@@ -119,13 +126,18 @@ impl PairGraph {
         }
     }
 
-    // fetches the path from start to end if it exists returning none if not
-    pub fn get_path(&self, start: Address, end: Address) -> impl Iterator<Item = Address> + '_ {
+    // fetches the path from start to end
+    pub fn get_path(&mut self, start: Address, end: Address) -> Vec<Address> {
+        let pair = Pair(start, end);
+        if let Some(pools) = self.known_pairs.get(&pair) {
+            return pools.clone()
+        }
+
         let start_idx = self.addr_to_index.get(&start).unwrap();
         let end_idx = self.addr_to_index.get(&end).unwrap();
 
-        dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
-            .unwrap()
+        let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
+            .expect("no path found, gotta make this into a option")
             .into_iter()
             .tuple_windows()
             .flat_map(|(base, quote)| {
@@ -135,6 +147,11 @@ impl PairGraph {
                     .into_iter()
                     .map(|i| *i)
             })
+            .collect::<Vec<_>>();
+
+        self.known_pairs.insert(pair, path.clone());
+
+        path
     }
 }
 
