@@ -1417,6 +1417,7 @@ dependencies = [
  "alloy-primitives",
  "alloy-sol-macro",
  "alloy-sol-types",
+ "async-trait",
  "auto_impl",
  "brontes-classifier",
  "brontes-core",
@@ -1433,7 +1434,9 @@ dependencies = [
  "phf",
  "phf_codegen",
  "rayon",
+ "reth-interfaces",
  "reth-primitives",
+ "reth-rpc",
  "reth-rpc-types",
  "reth-tracing-ext",
  "serde",
@@ -6457,6 +6460,7 @@ dependencies = [
 name = "reth-tracing-ext"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bitflags 2.4.1",
  "brontes-types",
  "eyre",
