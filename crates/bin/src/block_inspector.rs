@@ -5,7 +5,7 @@ use std::{
 
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{clickhouse::Clickhouse, Metadata};
+use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_pricing::types::DexPrices;
@@ -14,7 +14,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::TimeTree,
 };
-use futures::{join, Future, FutureExt};
+use futures::{Future, FutureExt};
 use tracing::info;
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
@@ -59,7 +59,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (extra_data, mut tree) = self.classifier.build_tree(traces, header);
+            let (_extra_data, mut tree) = self.classifier.build_tree(traces, header);
 
             let meta = labeller_fut.await;
             tree.eth_price = meta.eth_prices.clone();

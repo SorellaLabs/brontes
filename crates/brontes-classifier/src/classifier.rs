@@ -26,6 +26,7 @@ const TRANSFER_TOPIC: B256 =
 #[derive(Debug)]
 pub struct Classifier<'db> {
     libmdbx: &'db Libmdbx,
+    #[allow(dead_code)]
     sender:  Sender<PoolUpdate>,
 }
 

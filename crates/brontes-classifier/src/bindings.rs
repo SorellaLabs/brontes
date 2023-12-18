@@ -1,11 +1,4 @@
-use alloy_rlp::{Decodable, Encodable};
 use brontes_database_libmdbx::types::address_to_protocol::StaticBindingsDb;
-use reth_db::{
-    table::{Compress, Decompress},
-    DatabaseError,
-};
-use reth_primitives::{Address, BufMut};
-use serde::{Deserialize, Serialize};
 
 use crate::*;
 
