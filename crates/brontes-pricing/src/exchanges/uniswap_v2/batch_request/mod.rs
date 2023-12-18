@@ -9,7 +9,7 @@ use ethers::{
 };
 
 use super::UniswapV2Pool;
-use crate::{errors::AMMError,  AutomatedMarketMaker, AMM};
+use crate::{errors::AMMError, AutomatedMarketMaker, AMM};
 
 abigen!(
 
@@ -38,7 +38,7 @@ sol!(
 //     from: U256,
 //     step: U256,
 //     middleware: Arc<M>,
-// ) -> Result<Vec<H160>, AMMError<M>> {
+// ) -> Result<Vec<H160>, AmmError> {
 //     tracing::info!("getting pairs {}-{}", from, step);
 //
 //     let mut pairs = vec![];
@@ -87,7 +87,7 @@ fn populate_pool_data_from_tokens(
 pub async fn get_amm_data_batch_request<M: TracingProvider>(
     amms: &mut [UniswapV2Pool],
     middleware: Arc<M>,
-) -> Result<(), AMMError<M>> {
+) -> Result<(), AmmError> {
     tracing::info!("getting data for {} AMMs", amms.len());
 
     let mut target_addresses = vec![];
@@ -149,7 +149,7 @@ pub async fn get_amm_data_batch_request<M: TracingProvider>(
 pub async fn get_v2_pool_data_batch_request<M: TracingProvider>(
     pool: &mut UniswapV2Pool,
     middleware: Arc<M>,
-) -> Result<(), AMMError<M>> {
+) -> Result<(), AmmError> {
     tracing::info!(?pool.address, "getting pool data");
     let constructor_args = Token::Tuple(vec![Token::Array(vec![Token::Address(pool.address)])]);
 

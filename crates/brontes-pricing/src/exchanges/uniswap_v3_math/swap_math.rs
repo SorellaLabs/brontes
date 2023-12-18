@@ -37,19 +37,9 @@ pub fn compute_swap_step(
         )?;
 
         amount_in = if zero_for_one {
-            _get_amount_0_delta(
-                sqrt_ratio_target_x_96,
-                sqrt_ratio_current_x_96,
-                liquidity,
-                true,
-            )?
+            _get_amount_0_delta(sqrt_ratio_target_x_96, sqrt_ratio_current_x_96, liquidity, true)?
         } else {
-            _get_amount_1_delta(
-                sqrt_ratio_current_x_96,
-                sqrt_ratio_target_x_96,
-                liquidity,
-                true,
-            )?
+            _get_amount_1_delta(sqrt_ratio_current_x_96, sqrt_ratio_target_x_96, liquidity, true)?
         };
 
         if amount_remaining_less_fee >= amount_in {
@@ -64,19 +54,9 @@ pub fn compute_swap_step(
         }
     } else {
         amount_out = if zero_for_one {
-            _get_amount_1_delta(
-                sqrt_ratio_target_x_96,
-                sqrt_ratio_current_x_96,
-                liquidity,
-                false,
-            )?
+            _get_amount_1_delta(sqrt_ratio_target_x_96, sqrt_ratio_current_x_96, liquidity, false)?
         } else {
-            _get_amount_0_delta(
-                sqrt_ratio_current_x_96,
-                sqrt_ratio_target_x_96,
-                liquidity,
-                false,
-            )?
+            _get_amount_0_delta(sqrt_ratio_current_x_96, sqrt_ratio_target_x_96, liquidity, false)?
         };
 
         sqrt_ratio_next_x_96 = if (-amount_remaining).into_raw() >= amount_out {
@@ -95,12 +75,8 @@ pub fn compute_swap_step(
 
     if zero_for_one {
         if !max || !exact_in {
-            amount_in = _get_amount_0_delta(
-                sqrt_ratio_next_x_96,
-                sqrt_ratio_current_x_96,
-                liquidity,
-                true,
-            )?
+            amount_in =
+                _get_amount_0_delta(sqrt_ratio_next_x_96, sqrt_ratio_current_x_96, liquidity, true)?
         }
 
         if !max || exact_in {
@@ -113,12 +89,8 @@ pub fn compute_swap_step(
         }
     } else {
         if !max || !exact_in {
-            amount_in = _get_amount_1_delta(
-                sqrt_ratio_current_x_96,
-                sqrt_ratio_next_x_96,
-                liquidity,
-                true,
-            )?
+            amount_in =
+                _get_amount_1_delta(sqrt_ratio_current_x_96, sqrt_ratio_next_x_96, liquidity, true)?
         }
 
         if !max || exact_in {
@@ -151,11 +123,12 @@ pub fn compute_swap_step(
 
 mod test {
     #[allow(unused)]
+    use ethers::types::{I256, U256};
+
+    #[allow(unused)]
     use crate::sqrt_price_math::{get_next_sqrt_price_from_input, get_next_sqrt_price_from_output};
     #[allow(unused)]
     use crate::swap_math::compute_swap_step;
-    #[allow(unused)]
-    use ethers::types::{I256, U256};
 
     #[test]
     fn test_compute_swap_step() {
@@ -172,10 +145,7 @@ mod test {
         let (sqrt_p, amount_in, amount_out, fee_amount) =
             compute_swap_step(price, price_target, liquidity, amount, fee).unwrap();
 
-        assert_eq!(
-            sqrt_p,
-            U256::from_dec_str("79623317895830914510639640423").unwrap()
-        );
+        assert_eq!(sqrt_p, U256::from_dec_str("79623317895830914510639640423").unwrap());
 
         assert_eq!(amount_in, U256::from_dec_str("9975124224178055").unwrap());
         assert_eq!(fee_amount, U256::from_dec_str("5988667735148").unwrap());
@@ -239,10 +209,7 @@ mod test {
 
         assert_eq!(amount_in, U256::from_dec_str("999400000000000000").unwrap());
         assert_eq!(fee_amount, U256::from_dec_str("600000000000000").unwrap());
-        assert_eq!(
-            amount_out,
-            U256::from_dec_str("666399946655997866").unwrap()
-        );
+        assert_eq!(amount_out, U256::from_dec_str("666399946655997866").unwrap());
         assert_eq!(amount_in + fee_amount, amount.into_raw());
 
         let price_after_whole_input_amount_less_fee = get_next_sqrt_price_from_input(
@@ -269,10 +236,7 @@ mod test {
         let (sqrt_p, amount_in, amount_out, fee_amount) =
             compute_swap_step(price, price_target, liquidity, amount, fee).unwrap();
 
-        assert_eq!(
-            amount_in,
-            U256::from_dec_str("2000000000000000000").unwrap()
-        );
+        assert_eq!(amount_in, U256::from_dec_str("2000000000000000000").unwrap());
         assert_eq!(fee_amount, U256::from_dec_str("1200720432259356").unwrap());
         assert_eq!(amount_out, (amount * -I256::one()).into_raw());
 
@@ -285,7 +249,8 @@ mod test {
         .unwrap();
         //sqrtPrice 158456325028528675187087900672
         //price_after_whole_output_amount Should be: 158456325028528675187087900672
-        // sqrtp: 158456325028528675187087900672, price_after_whole output amount: 118842243771396506390315925504
+        // sqrtp: 158456325028528675187087900672, price_after_whole output amount:
+        // 118842243771396506390315925504
 
         assert!(sqrt_p < price_target);
         //TODO:FIXME: failing
@@ -310,10 +275,7 @@ mod test {
         assert_eq!(amount_in, U256::from_dec_str("1").unwrap());
         assert_eq!(fee_amount, U256::from_dec_str("1").unwrap());
         assert_eq!(amount_out, U256::from_dec_str("1").unwrap());
-        assert_eq!(
-            sqrt_p,
-            U256::from_dec_str("417332158212080721273783715441581").unwrap()
-        );
+        assert_eq!(sqrt_p, U256::from_dec_str("417332158212080721273783715441581").unwrap());
 
         //------------------------------------------------------------
 
@@ -327,14 +289,8 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(
-            amount_in,
-            U256::from_dec_str("39614081257132168796771975168").unwrap()
-        );
-        assert_eq!(
-            fee_amount,
-            U256::from_dec_str("39614120871253040049813").unwrap()
-        );
+        assert_eq!(amount_in, U256::from_dec_str("39614081257132168796771975168").unwrap());
+        assert_eq!(fee_amount, U256::from_dec_str("39614120871253040049813").unwrap());
         assert!(
             amount_in + fee_amount
                 < U256::from_dec_str("3915081100057732413702495386755767").unwrap()
