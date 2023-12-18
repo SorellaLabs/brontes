@@ -4,7 +4,6 @@ use alloy_primitives::Bytes;
 use alloy_providers::provider::Provider;
 use alloy_rpc_types::{state::StateOverride, BlockOverrides};
 use alloy_transport_http::Http;
-use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
 use brontes_types::structured_trace::TxTrace;
 use futures::Future;
@@ -71,13 +70,15 @@ pub trait TracingProvider: Send + Sync + 'static {
 }
 
 #[async_trait::async_trait]
+#[allow(dead_code)]
 impl TracingProvider for Provider<Http<Client>> {
+    #[allow(dead_code)]
     async fn eth_call(
         &self,
-        request: CallRequest,
-        block_number: Option<BlockId>,
-        state_overrides: Option<StateOverride>,
-        block_overrides: Option<Box<BlockOverrides>>,
+        _request: CallRequest,
+        _block_number: Option<BlockId>,
+        _state_overrides: Option<StateOverride>,
+        _block_overrides: Option<Box<BlockOverrides>>,
     ) -> ProviderResult<Bytes> {
         todo!()
     }
@@ -117,12 +118,13 @@ impl TracingProvider for Provider<Http<Client>> {
 
 #[async_trait::async_trait]
 impl TracingProvider for TracingClient {
+    #[allow(dead_code)]
     async fn eth_call(
         &self,
-        request: CallRequest,
-        block_number: Option<BlockId>,
-        state_overrides: Option<StateOverride>,
-        block_overrides: Option<Box<BlockOverrides>>,
+        _request: CallRequest,
+        _block_number: Option<BlockId>,
+        _state_overrides: Option<StateOverride>,
+        _block_overrides: Option<Box<BlockOverrides>>,
     ) -> ProviderResult<Bytes> {
         // Ok(self
         //     .api
