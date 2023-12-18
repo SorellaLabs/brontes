@@ -1221,6 +1221,7 @@ dependencies = [
  "alloy-primitives",
  "alloy-rlp",
  "arbitrary",
+ "brontes-pricing",
  "brontes-types",
  "bytes",
  "codecs-derive",
