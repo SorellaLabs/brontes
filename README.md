@@ -22,15 +22,17 @@ Once a block is traced, Brontes constructs a tree of all transactions within tha
 - Centralized exchange pricing
 - Private transaction set (using chainbound's mempool indexing) huge s/o to [chainbound](https://www.chainbound.io/) they are the best people to talk to for any p2p / mempool needs!
 
+Initially, this metadata is downloaded via Sorella's API. Subsequently, it's stored locally in Libmdbx for rapid access in future analyses. Optionally, Dex pricing can be computed locally, this comes in very handy when adding support for new dexes.
+
 ### 3. Normalization
 
 The tree is then classified, transaction traces are grouped into normalized actions such as:
 
-- 'NormalizedSwap'
-- 'NormalizedMint'
-- 'NormalizedTransfer'
-- 'NormalizedLiquidation'
-- 'NormalizedFlashLoan'
+- NormalizedSwap
+- NormalizedMint
+- NormalizedTransfer
+- NormalizedLiquidation
+- NormalizedFlashLoan
 
 This step enables us to flatten out various idiosyncrasies of the different DeFi protocol implementations, so we can generalize them into a single action type.
 
@@ -45,6 +47,19 @@ Today we have inspectors for:
 - liquidation
 - atomic arbitrage
 - JIT
+
+The inspectors in Brontes are highly modular. By implementing the Inspector trait, developers & researchers can easily integrate additional inspectors into the system.
+
+```rust
+#[async_trait::async_trait]
+pub trait Inspector: Send + Sync {
+    async fn process_tree(
+        &self,
+        tree: Arc<TimeTree<Actions>>,
+        metadata: Arc<Metadata>,
+    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)>;
+}
+```
 
 ### 5. Composition
 
