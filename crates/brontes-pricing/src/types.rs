@@ -5,7 +5,7 @@ use brontes_types::{extra_processing::Pair, normalized_actions::Actions, Dexes};
 // use crate::exchanges::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
 use malachite::Rational;
 
-use crate::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
+use crate::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, AutomatedMarketMaker};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
 pub struct PoolKey {
@@ -61,9 +61,13 @@ pub struct PoolState {
 }
 
 impl PoolState {
+    pub fn new(variant: PoolVariants) -> Self {
+        Self { variant, update_nonce: 0 }
+    }
+
     pub fn increment_state(&mut self, state: PoolUpdate) -> (u16, PoolStateSnapShot) {
         self.update_nonce += 1;
-        self.variant.increment_state(state);
+        self.variant.increment_state(state.action);
         (self.update_nonce, self.variant.clone().into_snapshot())
     }
 
@@ -72,7 +76,10 @@ impl PoolState {
     }
 
     pub fn address(&self) -> Address {
-        todo!()
+        match &self.variant {
+            PoolVariants::UniswapV2(v) => v.address(),
+            PoolVariants::UniswapV3(v) => v.address(),
+        }
     }
 }
 
@@ -83,12 +90,18 @@ pub enum PoolVariants {
 }
 
 impl PoolVariants {
-    fn increment_state(&mut self, state: PoolUpdate) {
-        todo!()
+    fn increment_state(&mut self, action: Actions) {
+        match self {
+            PoolVariants::UniswapV3(a) => a.sync_from_action(action).unwrap(),
+            PoolVariants::UniswapV2(a) => a.sync_from_action(action).unwrap(),
+        }
     }
 
     fn into_snapshot(self) -> PoolStateSnapShot {
-        todo!()
+        match self {
+            Self::UniswapV2(v) => PoolStateSnapShot::UniswapV2(v),
+            Self::UniswapV3(v) => PoolStateSnapShot::UniswapV3(v),
+        }
     }
 }
 
