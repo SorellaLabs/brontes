@@ -1,6 +1,5 @@
 use std::{env, path::Path, sync::Arc};
 
-use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
