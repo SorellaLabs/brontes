@@ -21,12 +21,10 @@ use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
-use self::factory::POOL_CREATED_EVENT_SIGNATURE;
-use super::{factory::TASK_LIMIT, make_call_request};
+use super::make_call_request;
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
     exchanges::uniswap_v3::batch_request::get_uniswap_v3_tick_data_batch_request,
-    factory::AutomatedMarketMakerFactory,
     uniswap_v3_math, AutomatedMarketMaker,
 };
 sol!(
@@ -59,6 +57,8 @@ sol!(
         function decimals() external view returns (uint8);
     }
 );
+
+const TASK_LIMIT: usize = 10;
 
 pub const MIN_SQRT_RATIO: U256 = U256::from_limbs([4295128739, 0, 0, 0]);
 pub const MAX_SQRT_RATIO: U256 =

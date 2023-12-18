@@ -28,6 +28,8 @@ impl DexPrices {
     }
 
     pub fn price_after(&self, pair: Pair, tx: usize) -> Rational {
+        let keys = self.quotes.get_pair_keys(pair, tx);
+
         // self.quotes
         todo!()
     }
@@ -54,6 +56,19 @@ impl DexQuotes {
 pub enum PoolStateSnapShot {
     UniswapV2(UniswapV2Pool),
     UniswapV3(UniswapV3Pool),
+}
+
+impl PoolStateSnapShot {
+    pub fn get_price(&self, base: Address) -> Rational {
+        match self {
+            PoolStateSnapShot::UniswapV2(v) => {
+                Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
+            }
+            PoolStateSnapShot::UniswapV3(v) => {
+                Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
+            }
+        }
+    }
 }
 
 pub struct PoolState {
