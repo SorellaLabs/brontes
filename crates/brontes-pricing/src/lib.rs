@@ -75,10 +75,18 @@ impl BrontesBatchPricer {
             .get_pair()
             .expect("got a non exchange state related update");
 
+        // we add support for fetching the pair as well as each individual token with
+        // the given quote asset
         let new_pair_set = self
             .pair_graph
             .get_path(pair.0, self.quote_asset)
-            .chain(self.pair_graph.get_path(pair.1, self.quote_asset))
+            .into_iter()
+            .chain(
+                self.pair_graph
+                    .get_path(pair.1, self.quote_asset)
+                    .into_iter(),
+            )
+            .chain(self.pair_graph.get_path(pair.0, pair.1).into_iter())
             .collect::<HashSet<_>>();
 
         for pool in new_pair_set {
