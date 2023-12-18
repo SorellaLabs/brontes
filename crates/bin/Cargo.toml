@@ -39,6 +39,7 @@ reth-beacon-consensus.workspace = true
 reth-interfaces.workspace = true
 
 # Alloy
+alloy-primitives.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types = { workspace = true, features = ["json"] }
 alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
@@ -61,6 +62,7 @@ colored.workspace = true
 # misc
 eyre.workspace = true
 dotenv.workspace = true
+num_cpus.workspace = true
 
 # http/rpc
 hyper.workspace = true

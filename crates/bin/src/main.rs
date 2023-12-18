@@ -5,11 +5,11 @@ use std::{
     path::Path,
 };
 
-use alloy_providers::provider::Provider;
+use alloy_primitives::Address;
 use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::clickhouse::{Clickhouse, USDT_ADDRESS};
+use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::{
     tables::{AddressToProtocol, Tables},
     Libmdbx,
@@ -30,7 +30,33 @@ mod banner;
 mod cli;
 
 use banner::print_banner;
-use cli::{Commands, Opts};
+use cli::{Args, Commands, Init, Run};
+
+type Inspectors<'a> = [&'a Box<dyn Inspector>; 4];
+
+struct InspectorHolder {
+    sandwich: Box<dyn Inspector>,
+    cex_dex:  Box<dyn Inspector>,
+    jit:      Box<dyn Inspector>,
+    backrun:  Box<dyn Inspector>,
+}
+
+impl InspectorHolder {
+    fn new(quote_token: Address) -> Self {
+        Self {
+            sandwich: Box::new(SandwichInspector::new(quote_token)),
+            cex_dex:  Box::new(CexDexInspector::new(quote_token)),
+            jit:      Box::new(JitInspector::new(quote_token)),
+            backrun:  Box::new(AtomicBackrunInspector::new(quote_token)),
+        }
+    }
+
+    fn get_inspectors(&self) -> Inspectors {
+        [&self.sandwich, &self.cex_dex, &self.jit, &self.backrun]
+    }
+}
+
+//TODO: Wire in price fetcher + Metadata fetcher
 
 fn main() {
     print_banner();
@@ -65,52 +91,43 @@ fn main() {
 }
 
 async fn run() -> Result<(), Box<dyn Error>> {
-    // parse cli
-    let opt = Opts::parse();
-    let Commands::Brontes(command) = opt.sub;
-
     initalize_prometheus().await;
+    // parse cli
+    let opt = Args::parse();
 
+    match opt.command {
+        Commands::Run(command) => run_brontes(command).await,
+        Commands::Init(command) => init_brontes(command).await,
+    }
+}
+
+async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
     // Fetch required environment variables.
     let db_path = get_env_vars()?;
+
+    let max_tasks = determine_max_tasks(&run_config);
 
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
     let metrics_listener = PoirotMetricsListener::new(metrics_rx);
 
-    let reth_url = env::var("RETH_ENDPOINT").expect("No RETH_DB Endpoint in .env");
-    let reth_port = env::var("RETH_PORT").expect("No DB port.env");
-    let url = format!("{reth_url}:{reth_port}");
-    let provider = Provider::new(&url).unwrap();
-
-    let clickhouse = Clickhouse::default();
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
     let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None)?;
-    if command.init_libmdbx {
-        // currently inits all tables
-        libmdbx
-            .clear_and_initialize_tables(&clickhouse, &Tables::ALL)
-            .await?;
-    }
+    let clickhouse = Clickhouse::default();
 
-    // init inspectors
-    let sandwich = Box::new(SandwichInspector::new(USDT_ADDRESS)) as Box<dyn Inspector>;
-    let cex_dex = Box::new(CexDexInspector::new(USDT_ADDRESS)) as Box<dyn Inspector>;
-    let jit = Box::new(JitInspector::new(USDT_ADDRESS)) as Box<dyn Inspector>;
-    let backrun = Box::new(AtomicBackrunInspector::new(USDT_ADDRESS)) as Box<dyn Inspector>;
-
-    let inspectors = &[&sandwich, &cex_dex, &jit, &backrun];
+    let inspector_holder = InspectorHolder::new(run_config.quote_asset.parse().unwrap());
+    let inspectors: Inspectors = inspector_holder.get_inspectors();
 
     let (mut manager, tracer) =
-        TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current());
+        TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), max_tasks);
 
     let parser = DParser::new(
         metrics_tx,
-        &clickhouse,
         &libmdbx,
         tracer,
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
+
     let (tx, _rx) = tokio::sync::mpsc::channel(5);
     let classifier = Classifier::new(&libmdbx, tx.clone());
 
@@ -120,15 +137,15 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let chain_tip = parser.get_latest_block_number().await.unwrap();
 
     let brontes = Brontes::new(
-        command.start_block,
-        command.end_block,
+        run_config.start_block,
+        run_config.end_block,
         chain_tip,
-        command.max_tasks,
-        &provider,
+        max_tasks.into(),
         &parser,
         &clickhouse,
+        &libmdbx,
         &classifier,
-        inspectors,
+        &inspectors,
     );
 
     pin!(brontes);
@@ -147,6 +164,34 @@ async fn run() -> Result<(), Box<dyn Error>> {
     manager.graceful_shutdown();
 
     Ok(())
+}
+
+async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+
+    let clickhouse = Clickhouse::default();
+
+    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None)?;
+    if init_config.init_libmdbx {
+        // currently inits all tables
+        libmdbx
+            .clear_and_initialize_tables(&clickhouse, &Tables::ALL)
+            .await?;
+    }
+
+    //TODO: Joe, have it download the full range of metadata from the MEV DB so
+    // they can run everything in parallel
+    Ok(())
+}
+
+fn determine_max_tasks(run_config: &Run) -> u32 {
+    match run_config.max_tasks {
+        Some(max_tasks) => max_tasks as u32,
+        None => {
+            let cpus = num_cpus::get_physical();
+            (cpus as f32 * 0.8) as u32 // 80% of physical cores
+        }
+    }
 }
 
 async fn initalize_prometheus() {
@@ -169,3 +214,12 @@ fn get_env_vars() -> Result<String, Box<dyn Error>> {
 
     Ok(db_path)
 }
+
+/*
+fn get_reth_provider<T>() -> Result<Provider<T>, Box<dyn Error>> {
+    let reth_url = env::var("RETH_ENDPOINT").expect("No RETH_DB Endpoint in .env");
+    let reth_port = env::var("RETH_PORT").expect("No DB port.env");
+    let url = format!("{reth_url}:{reth_port}");
+    Provider::new(&url).unwrap()
+}
+ */
