@@ -1,6 +1,5 @@
 use std::{env, path::Path, sync::Arc};
 
-use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
@@ -152,6 +151,7 @@ pub fn init_trace_parser<'a>(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &'a Libmdbx,
+    max_tasks: u32,
 ) -> TraceParser<'a, Box<dyn TracingProvider>> {
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
@@ -166,15 +166,13 @@ pub fn init_trace_parser<'a>(
 
     #[cfg(not(feature = "local"))]
     let tracer = {
-        let (t_handle, client) = TracingClient::new(Path::new(&db_path), handle.clone());
+        let (t_handle, client) = TracingClient::new(Path::new(&db_path), handle.clone(), max_tasks);
         handle.spawn(t_handle);
 
         Box::new(client) as Box<dyn TracingProvider>
     };
 
-    let db = Box::new(Clickhouse::default());
-    let leaked = Box::leak(db);
     let call = Box::new(|_: &_, _: &_| true);
 
-    TraceParser::new(leaked, libmdbx, call, Arc::new(tracer), Arc::new(metrics_tx))
+    TraceParser::new(libmdbx, call, Arc::new(tracer), Arc::new(metrics_tx))
 }

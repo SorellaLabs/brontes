@@ -2,11 +2,10 @@ use std::{pin::Pin, sync::Arc};
 
 use alloy_primitives::Bytes;
 use alloy_providers::provider::Provider;
-use alloy_rpc_types::{state::StateOverride, BlockOverrides};
 use alloy_transport_http::Http;
-use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
 use brontes_types::structured_trace::TxTrace;
+pub use brontes_types::traits::TracingProvider;
 use futures::Future;
 use reqwest::Client;
 use reth_db::mdbx::RO;
@@ -14,7 +13,7 @@ use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{Address, BlockNumber, BlockNumberOrTag, Header, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::CallRequest;
+use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest};
 use reth_tracing_ext::TracingClient;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
@@ -40,138 +39,50 @@ use reth_primitives::BlockId;
 use reth_rpc::eth::error::EthResult;
 use reth_rpc_types::TransactionReceipt;
 
-#[async_trait::async_trait]
-#[auto_impl::auto_impl(&, Arc, Box)]
-pub trait TracingProvider: Send + Sync + 'static {
-    async fn eth_call(
-        &self,
-        request: CallRequest,
-        block_number: Option<BlockId>,
-        state_overrides: Option<StateOverride>,
-        block_overrides: Option<Box<BlockOverrides>>,
-    ) -> ProviderResult<Bytes>;
-
-    async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>>;
-
-    #[cfg(not(feature = "local"))]
-    fn best_block_number(&self) -> ProviderResult<u64>;
-
-    #[cfg(feature = "local")]
-    async fn best_block_number(&self) -> ProviderResult<u64>;
-
-    async fn replay_block_transactions(&self, block_id: BlockId)
-        -> EthResult<Option<Vec<TxTrace>>>;
-
-    async fn block_receipts(
-        &self,
-        number: BlockNumberOrTag,
-    ) -> ProviderResult<Option<Vec<TransactionReceipt>>>;
-
-    async fn header_by_number(&self, number: BlockNumber) -> ProviderResult<Option<Header>>;
-}
-
-#[async_trait::async_trait]
-impl TracingProvider for Provider<Http<Client>> {
-    async fn eth_call(
-        &self,
-        request: CallRequest,
-        block_number: Option<BlockId>,
-        state_overrides: Option<StateOverride>,
-        block_overrides: Option<Box<BlockOverrides>>,
-    ) -> ProviderResult<Bytes> {
-        todo!()
-    }
-
-    async fn block_hash_for_id(&self, _block_num: u64) -> ProviderResult<Option<B256>> {
-        todo!()
-    }
-
-    #[cfg(not(feature = "local"))]
-    fn best_block_number(&self) -> ProviderResult<u64> {
-        todo!()
-    }
-
-    #[cfg(feature = "local")]
-    async fn best_block_number(&self) -> ProviderResult<u64> {
-        todo!()
-    }
-
-    async fn replay_block_transactions(
-        &self,
-        _block_id: BlockId,
-    ) -> EthResult<Option<Vec<TxTrace>>> {
-        todo!()
-    }
-
-    async fn block_receipts(
-        &self,
-        _number: BlockNumberOrTag,
-    ) -> ProviderResult<Option<Vec<TransactionReceipt>>> {
-        todo!()
-    }
-
-    async fn header_by_number(&self, _number: BlockNumber) -> ProviderResult<Option<Header>> {
-        todo!()
-    }
-}
-
-#[async_trait::async_trait]
-impl TracingProvider for TracingClient {
-    async fn eth_call(
-        &self,
-        request: CallRequest,
-        block_number: Option<BlockId>,
-        state_overrides: Option<StateOverride>,
-        block_overrides: Option<Box<BlockOverrides>>,
-    ) -> ProviderResult<Bytes> {
-        // Ok(self
-        //     .api
-        //     .call(request, block_number, state_overrides, block_overrides)
-        //     .await
-        //     .unwrap())
-        todo!()
-    }
-
-    async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
-        self.trace
-            .provider()
-            .block_hash_for_id(BlockId::Number(BlockNumberOrTag::Number(block_num.into())))
-    }
-
-    #[cfg(not(feature = "local"))]
-    fn best_block_number(&self) -> ProviderResult<u64> {
-        self.trace.provider().best_block_number()
-    }
-
-    #[cfg(feature = "local")]
-    async fn best_block_number(&self) -> ProviderResult<u64> {
-        self.trace.provider().best_block_number()
-    }
-
-    async fn replay_block_transactions(
-        &self,
-        block_id: BlockId,
-    ) -> EthResult<Option<Vec<TxTrace>>> {
-        self.replay_block_transactions(block_id).await
-    }
-
-    async fn block_receipts(
-        &self,
-        number: BlockNumberOrTag,
-    ) -> ProviderResult<Option<Vec<TransactionReceipt>>> {
-        Ok(Some(
-            self.api
-                .block_receipts(BlockId::Number(number))
-                .await
-                .unwrap()
-                .unwrap(),
-        ))
-    }
-
-    async fn header_by_number(&self, number: BlockNumber) -> ProviderResult<Option<Header>> {
-        self.trace.provider().header_by_number(number)
-    }
-}
+// #[async_trait::async_trait]
+// impl TracingProvider for Provider<Http<Client>> {
+//     async fn eth_call(
+//         &self,
+//         request: CallRequest,
+//         block_number: Option<BlockId>,
+//         state_overrides: Option<StateOverride>,
+//         block_overrides: Option<Box<BlockOverrides>>,
+//     ) -> ProviderResult<Bytes> {
+//         todo!()
+//     }
+//
+//     async fn block_hash_for_id(&self, _block_num: u64) ->
+// ProviderResult<Option<B256>> {         todo!()
+//     }
+//
+//     #[cfg(not(feature = "local"))]
+//     fn best_block_number(&self) -> ProviderResult<u64> {
+//         todo!()
+//     }
+//
+//     #[cfg(feature = "local")]
+//     async fn best_block_number(&self) -> ProviderResult<u64> {
+//         todo!()
+//     }
+//
+//     async fn replay_block_transactions(
+//         &self,
+//         _block_id: BlockId,
+//     ) -> EthResult<Option<Vec<TxTrace>>> {
+//         todo!()
+//     }
+//
+//     async fn block_receipts(
+//         &self,
+//         _number: BlockNumberOrTag,
+//     ) -> ProviderResult<Option<Vec<TransactionReceipt>>> {
+//         todo!()
+//     }
+//
+//     async fn header_by_number(&self, _number: BlockNumber) ->
+// ProviderResult<Option<Header>> {         todo!()
+//     }
+// }
 
 pub type ParserFuture<'a> =
     Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
@@ -184,20 +95,14 @@ pub struct Parser<'a, T: TracingProvider> {
 impl<'a, T: TracingProvider> Parser<'a, T> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
-        database: &'a Clickhouse,
         libmdbx: &'a Libmdbx,
         tracing: T,
         should_fetch: Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
     ) -> Self {
         let executor = Executor::new();
 
-        let parser = TraceParser::new(
-            database,
-            libmdbx,
-            should_fetch,
-            Arc::new(tracing),
-            Arc::new(metrics_tx),
-        );
+        let parser =
+            TraceParser::new(libmdbx, should_fetch, Arc::new(tracing), Arc::new(metrics_tx));
 
         Self { executor, parser }
     }

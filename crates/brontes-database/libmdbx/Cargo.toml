@@ -12,7 +12,12 @@ brontes-database.workspace = true
 brontes-types.workspace = true
 
 # alloy
-alloy-primitives = { workspace = true, features = ["rand", "rlp", "arbitrary", "serde"] }
+alloy-primitives = { workspace = true, features = [
+  "rand",
+  "rlp",
+  "arbitrary",
+  "serde",
+] }
 alloy-rlp = { workspace = true, features = ["arrayvec"] }
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
 
@@ -25,7 +30,7 @@ reth-db.workspace = true
 
 # libmdbx deps
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
-reth-codecs = { workspace = true, features = ["arbitrary"] }
+reth-codecs.workspace = true
 codecs-derive.workspace = true
 proptest = "1.4"
 proptest-derive = "0.4"
@@ -62,8 +67,6 @@ parking_lot.workspace = true
 dotenv.workspace = true
 
 
-
 [dev-dependencies]
 serial_test.workspace = true
 test-fuzz = "4"
-

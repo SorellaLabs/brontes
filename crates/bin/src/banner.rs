@@ -1,5 +1,6 @@
 use indoc::indoc;
 
+#[allow(dead_code)]
 pub fn print_banner() {
     // Read the content of the file
     let ascii_art = indoc! {r#"
