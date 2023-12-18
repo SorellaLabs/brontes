@@ -113,6 +113,7 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
 
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
     let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None)?;
+    let clickhouse = Clickhouse::default();
 
     let inspector_holder = InspectorHolder::new(run_config.quote_asset.parse().unwrap());
     let inspectors: Inspectors = inspector_holder.get_inspectors();
@@ -141,6 +142,7 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
         chain_tip,
         max_tasks.into(),
         &parser,
+        &clickhouse,
         &libmdbx,
         &classifier,
         &inspectors,

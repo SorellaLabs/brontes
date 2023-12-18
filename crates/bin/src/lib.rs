@@ -5,6 +5,7 @@ use std::{
 
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
+use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
@@ -34,6 +35,7 @@ pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     parser:           &'inspector Parser<'inspector, T>,
     classifier:       &'inspector Classifier<'inspector>,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
+    clickhouse:       &'inspector Clickhouse,
     database:         &'inspector Libmdbx,
     block_inspectors: FuturesUnordered<BlockInspector<'inspector, N, T>>,
     tip_inspector:    Option<TipInspector<'inspector, N, T>>,
@@ -46,6 +48,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         chain_tip: u64,
         max_tasks: u64,
         parser: &'inspector Parser<'inspector, T>,
+        clickhouse: &'inspector Clickhouse,
         database: &'inspector Libmdbx,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
@@ -57,6 +60,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
             mode: Mode::Historical,
             max_tasks,
             parser,
+            clickhouse,
             database,
             classifier,
             inspectors,
@@ -92,6 +96,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
     fn spawn_tip_inspector(&mut self) {
         let inspector = TipInspector::new(
             self.parser,
+            self.clickhouse,
             self.database,
             self.classifier,
             self.inspectors,

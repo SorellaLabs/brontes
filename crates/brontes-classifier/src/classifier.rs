@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
 };
