@@ -1,6 +1,6 @@
 #![allow(non_upper_case_globals)]
 
-use std::{pin::Pin, str::FromStr};
+use std::{pin::Pin, str::FromStr, fmt::Debug};
 mod const_sql;
 use alloy_primitives::Address;
 use brontes_database::clickhouse::Clickhouse;
@@ -9,25 +9,25 @@ use futures::Future;
 use reth_db::{dupsort, table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::Row;
-
 use crate::{
     types::{
         address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
         address_to_tokens::{AddressToTokensData, PoolTokens},
         cex_price::{CexPriceData, CexPriceMap},
 
-        *,
+        *, metadata::{MetadataData, MetadataInner},
     },
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 4;
+pub const NUM_TABLES: usize = 5;
 
 pub enum Tables {
     TokenDecimals,
     AddressToTokens,
     AddressToProtocol,
-    CexPrice
+    CexPrice,
+    Metadata
 }
 
 impl Tables {
@@ -35,7 +35,8 @@ impl Tables {
         Tables::TokenDecimals,
         Tables::AddressToTokens,
         Tables::AddressToProtocol,
-        Tables::CexPrice
+        Tables::CexPrice,
+        Tables::Metadata
     ];
 
     /// type of table
@@ -45,6 +46,7 @@ impl Tables {
             Tables::AddressToTokens => TableType::Table,
             Tables::AddressToProtocol => TableType::Table,
             Tables::CexPrice => TableType::Table,
+            Tables::Metadata => TableType::Table
         }
     }
 
@@ -54,6 +56,7 @@ impl Tables {
             Tables::AddressToTokens => AddressToTokens::NAME,
             Tables::AddressToProtocol => AddressToProtocol::NAME,
             Tables::CexPrice => CexPrice::NAME,
+            Tables::Metadata => Metadata::NAME
         }
     }
 
@@ -67,6 +70,7 @@ impl Tables {
             Tables::AddressToTokens => AddressToTokens::initialize_table(libmdbx, clickhouse),
             Tables::AddressToProtocol => AddressToProtocol::initialize_table(libmdbx, clickhouse),
             Tables::CexPrice => CexPrice::initialize_table(libmdbx, clickhouse),
+            Tables::Metadata => Metadata::initialize_table(libmdbx, clickhouse),
         }
     }
 }
@@ -80,6 +84,7 @@ impl FromStr for Tables {
             AddressToTokens::NAME => return Ok(Tables::AddressToTokens),
             AddressToProtocol::NAME => return Ok(Tables::AddressToProtocol),
             CexPrice::NAME => return Ok(Tables::CexPrice),
+            Metadata::NAME => return Ok(Tables::Metadata),
             _ => return Err("Unknown table".to_string()),
         }
     }
@@ -131,14 +136,19 @@ table!(
 );
 
 table!(
-    /// Address -> Static protocol enum
+    /// block num -> cex prices
     ( CexPrice ) u64 | CexPriceMap
+);
+
+table!(
+    /// block num -> metadata
+    ( Metadata ) u64 | MetadataInner
 );
 
 pub(crate) trait InitializeTable<'fut, 'db: 'fut, D>:
     reth_db::table::Table + Sized + 'db
 where
-    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync,
+    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug,
 {
     fn initialize_query() -> &'static str;
 
@@ -150,8 +160,22 @@ where
             let data = db_client
                 .inner()
                 .query_many::<D>(Self::initialize_query(), &())
-                .await?;
-            libmdbx.initialize_table(&data)
+                .await;
+
+                /* 
+            let data = match data {
+                Ok(dd) =>  {
+                    for d in &dd {
+                        println!("DATA: {:?}\n\n\n", d);
+                    };
+                    Ok(dd)
+                },
+                Err(e) => {println!("DB: ERROR: {:?}", e); Err(e)}
+            };
+*/
+
+
+            libmdbx.initialize_table(&data?)
         })
     }
 }
