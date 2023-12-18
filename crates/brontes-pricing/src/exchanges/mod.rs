@@ -7,11 +7,10 @@ pub mod uniswap_v3_math;
 
 use std::sync::Arc;
 
-use alloy_primitives::{Address, B256, U256};
+use alloy_primitives::{Address, Log, B256, U256};
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
-use ethers::types::Log;
 use reth_rpc_types::{CallInput, CallRequest};
 use serde::{Deserialize, Serialize};
 
