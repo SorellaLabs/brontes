@@ -9,7 +9,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{clickhouse::Clickhouse, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
-use brontes_pricing::types::DexPrices;
+use brontes_pricing::{types::DexPrices, BrontesBatchPricer};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
