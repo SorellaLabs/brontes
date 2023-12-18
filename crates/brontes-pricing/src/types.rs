@@ -13,12 +13,17 @@ pub struct PoolKey {
     pub update_nonce: u16,
 }
 
+#[derive(Debug, Clone)]
 pub struct DexPrices {
     pub(crate) quotes: DexQuotes,
     pub(crate) state:  Arc<HashMap<PoolKey, PoolStateSnapShot>>,
 }
 
 impl DexPrices {
+    pub fn new() -> Self {
+        todo!()
+    }
+
     pub fn price_after(&self, pair: Pair, tx: usize) -> Rational {
         // self.quotes
         todo!()
@@ -42,6 +47,7 @@ impl DexQuotes {
 
 /// a immutable version of pool state that is for a specific post-transition
 /// period
+#[derive(Debug, Clone)]
 pub enum PoolStateSnapShot {
     UniswapV2(()),
     UniswapV3(()),

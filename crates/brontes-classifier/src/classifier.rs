@@ -12,8 +12,6 @@ use brontes_types::{
     try_get_decimals,
 };
 use hex_literal::hex;
-use parking_lot::RwLock;
-use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};

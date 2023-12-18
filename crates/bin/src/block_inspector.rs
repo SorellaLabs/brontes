@@ -12,6 +12,7 @@ use brontes_core::{
 };
 use brontes_database::{clickhouse::Clickhouse, Metadata};
 use brontes_inspect::{composer::Composer, Inspector};
+use brontes_pricing::types::DexPrices;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
@@ -72,8 +73,9 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
                 MissingDecimals::new(self.provider, self.database, extra_data.tokens_decimal_fill)
             );
             tree.eth_price = meta.eth_prices.clone();
+            let tmp_meta = meta.into_finalized_metadata(DexPrices::new());
 
-            (meta, tree)
+            (tmp_meta, tree)
         });
 
         self.classifier_future = Some(classifier_fut);
