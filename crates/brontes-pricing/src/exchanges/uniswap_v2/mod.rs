@@ -77,18 +77,19 @@ impl AutomatedMarketMaker for UniswapV2Pool {
     }
 
     fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {
-        let event_signature = log.topics[0];
-
-        if event_signature == SYNC_EVENT_SIGNATURE {
-            let sync_event = SyncFilter::decode_log(&RawLog::from(log))?;
-
-            self.reserve_0 = sync_event.reserve_0;
-            self.reserve_1 = sync_event.reserve_1;
-
-            Ok(())
-        } else {
-            Err(EventLogError::InvalidEventSignature)
-        }
+        // let event_signature = log.topics[0];
+        //
+        // if event_signature == SYNC_EVENT_SIGNATURE {
+        //     let sync_event = SyncFilter::decode_log(&RawLog::from(log))?;
+        //
+        //     self.reserve_0 = sync_event.reserve_0;
+        //     self.reserve_1 = sync_event.reserve_1;
+        //
+        //     Ok(())
+        // } else {
+        //     Err(EventLogError::InvalidEventSignature)
+        // }
+        todo!();
     }
 
     //Calculates base/quote, meaning the price of base token per quote (ie.
@@ -140,8 +141,8 @@ impl AutomatedMarketMaker for UniswapV2Pool {
             tracing::trace!(?amount_out);
             tracing::trace!(?self.reserve_0, ?self.reserve_1, "pool reserves before");
 
-            self.reserve_0 += amount_in.as_u128();
-            self.reserve_1 -= amount_out.as_u128();
+            self.reserve_0 += amount_in.to::<u128>();
+            self.reserve_1 -= amount_out.to::<u128>();
 
             tracing::trace!(?self.reserve_0, ?self.reserve_1, "pool reserves after");
 
@@ -156,8 +157,8 @@ impl AutomatedMarketMaker for UniswapV2Pool {
             tracing::trace!(?amount_out);
             tracing::trace!(?self.reserve_0, ?self.reserve_1, "pool reserves before");
 
-            self.reserve_0 -= amount_out.as_u128();
-            self.reserve_1 += amount_in.as_u128();
+            self.reserve_0 -= amount_out.to::<u128>();
+            self.reserve_1 += amount_in.to::<u128>();
 
             tracing::trace!(?self.reserve_0, ?self.reserve_1, "pool reserves after");
 
@@ -207,9 +208,9 @@ impl UniswapV2Pool {
     ) -> Result<Self, AmmError> {
         let mut pool = UniswapV2Pool {
             address: pair_address,
-            token_a: Address::zero(),
+            token_a: Address::ZERO,
             token_a_decimals: 0,
-            token_b: Address::zero(),
+            token_b: Address::ZERO,
             token_b_decimals: 0,
             reserve_0: 0,
             reserve_1: 0,
@@ -219,7 +220,7 @@ impl UniswapV2Pool {
         pool.populate_data(None, middleware.clone()).await?;
 
         if !pool.data_is_populated() {
-            return Err(AMMError::PoolDataError)
+            return Err(AmmError::PoolDataError)
         }
 
         Ok(pool)
@@ -230,35 +231,39 @@ impl UniswapV2Pool {
         fee: u32,
         middleware: Arc<M>,
     ) -> Result<Self, AmmError> {
-        let event_signature = log.topics[0];
-
-        if event_signature == PAIR_CREATED_EVENT_SIGNATURE {
-            let pair_created_event = factory::PairCreatedFilter::decode_log(&RawLog::from(log))?;
-            UniswapV2Pool::new_from_address(pair_created_event.pair, fee, middleware).await
-        } else {
-            Err(EventLogError::InvalidEventSignature)?
-        }
+        // let event_signature = log.topics[0];
+        //
+        // if event_signature == PAIR_CREATED_EVENT_SIGNATURE {
+        //     let pair_created_event =
+        // factory::PairCreatedFilter::decode_log(&RawLog::from(log))?;
+        //     UniswapV2Pool::new_from_address(pair_created_event.pair, fee,
+        // middleware).await } else {
+        //     Err(EventLogError::InvalidEventSignature)?
+        // }
+        todo!()
     }
 
     pub fn new_empty_pool_from_log(log: Log) -> Result<Self, EventLogError> {
-        let event_signature = log.topics[0];
-
-        if event_signature == PAIR_CREATED_EVENT_SIGNATURE {
-            let pair_created_event = factory::PairCreatedFilter::decode_log(&RawLog::from(log))?;
-
-            Ok(UniswapV2Pool {
-                address:          pair_created_event.pair,
-                token_a:          pair_created_event.token_0,
-                token_b:          pair_created_event.token_1,
-                token_a_decimals: 0,
-                token_b_decimals: 0,
-                reserve_0:        0,
-                reserve_1:        0,
-                fee:              0,
-            })
-        } else {
-            Err(EventLogError::InvalidEventSignature)?
-        }
+        // let event_signature = log.topics[0];
+        //
+        // if event_signature == PAIR_CREATED_EVENT_SIGNATURE {
+        //     let pair_created_event =
+        // factory::PairCreatedFilter::decode_log(&RawLog::from(log))?;
+        //
+        //     Ok(UniswapV2Pool {
+        //         address:          pair_created_event.pair,
+        //         token_a:          pair_created_event.token_0,
+        //         token_b:          pair_created_event.token_1,
+        //         token_a_decimals: 0,
+        //         token_b_decimals: 0,
+        //         reserve_0:        0,
+        //         reserve_1:        0,
+        //         fee:              0,
+        //     })
+        // } else {
+        //     Err(EventLogError::InvalidEventSignature)?
+        // }
+        todo!()
     }
 
     pub fn fee(&self) -> u32 {
@@ -384,25 +389,6 @@ impl UniswapV2Pool {
 
         numerator / denominator
     }
-
-    pub fn swap_calldata(
-        &self,
-        amount_0_out: U256,
-        amount_1_out: U256,
-        to: Address,
-        calldata: Vec<u8>,
-    ) -> Result<Bytes, ethers::abi::Error> {
-        let input_tokens = vec![
-            Token::Uint(amount_0_out),
-            Token::Uint(amount_1_out),
-            Token::Address(to),
-            Token::Bytes(calldata),
-        ];
-
-        IUNISWAPV2PAIR_ABI
-            .function("swap")?
-            .encode_input(&input_tokens)
-    }
 }
 
 pub const U256_0XFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF: U256 =
@@ -464,8 +450,8 @@ pub fn div_uu(x: U256, y: U256) -> Result<u128, ArithmeticError> {
                 msb += U256::from(1);
             }
 
-            answer =
-                (x << (U256_255 - msb)) / (((y - U256::from(1)) >> (msb - U256_191)) + U256::from(1));
+            answer = (x << (U256_255 - msb))
+                / (((y - U256::from(1)) >> (msb - U256_191)) + U256::from(1));
         }
 
         if answer > U256_0XFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF {
@@ -501,7 +487,7 @@ pub fn div_uu(x: U256, y: U256) -> Result<u128, ArithmeticError> {
             return Err(ArithmeticError::ShadowOverflow(answer))
         }
 
-        Ok(answer.as_u128())
+        Ok(answer.to::<u128>())
     } else {
         Err(ArithmeticError::YIsZero)
     }
