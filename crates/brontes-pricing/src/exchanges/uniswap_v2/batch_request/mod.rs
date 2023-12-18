@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use alloy_sol_macro::sol;
+use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
 use ethers::{
     abi::{ParamType, Token},
@@ -12,13 +13,9 @@ use reth_rpc_types::{CallInput, CallRequest};
 use super::UniswapV2Pool;
 use crate::{errors::AmmError, AutomatedMarketMaker, AMM};
 
-abigen!(
-
-    IGetUniswapV2PairsBatchRequest,
-        "./crates/brontes-pricing/src/exchanges/uniswap_v2/batch_request/GetUniswapV2PairsBatchRequestABI.json";
-
+sol!(
     IGetUniswapV2PoolDataBatchRequest,
-        "./crates/brontes-pricing/src/exchanges/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json";
+    "./src/exchanges/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json"
 );
 
 sol!(
@@ -77,7 +74,7 @@ fn populate_pool_data_from_tokens(mut pool: UniswapV2Pool, pool_data: PoolData) 
     pool.token_b = pool_data.tokenB;
     pool.token_b_decimals = pool_data.tokenBDecimals;
     pool.reserve_0 = pool_data.reserve0;
-    pool.reserve_1 = pool_data.reserve_1;
+    pool.reserve_1 = pool_data.reserve1;
 
     pool
 }
@@ -88,18 +85,19 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
     let mut bytecode = IGetUniswapV2PoolDataBatchRequest::BYTECODE.to_vec();
-    let data = data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
+    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
     let req =
         CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
 
     let res = middleware
-        .eth_call(req, block_number.map(|i| i.into()), None, None)
+        .eth_call(req, block.map(|i| i.into()), None, None)
         .await
         .unwrap();
 
     let mut return_data = data_constructorCall::abi_decode_returns(&*res, false).unwrap();
     *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
+    Ok(())
 }
 
 pub async fn get_amm_data_batch_request<M: TracingProvider>(
@@ -146,7 +144,7 @@ pub async fn get_amm_data_batch_request<M: TracingProvider>(
     //                             .expect("Pool idx should be in bounds")
     //                         {
     //                             if let Some(pool) =
-    // populate_pool_data_from_tokens(                                 
+    // populate_pool_data_from_tokens(
     // uniswap_v2_pool.to_owned(),                                 pool_data,
     //                             ) {
     //                                 tracing::trace!(?pool);
@@ -198,7 +196,7 @@ pub async fn get_v2_pool_data_batch_request<M: TracingProvider>(
     //                 .ok_or(AMMError::BatchRequestError(pool.address))?;
     //
     //             *pool = populate_pool_data_from_tokens(pool.to_owned(),
-    // pool_data)                 
+    // pool_data)
     // .ok_or(AMMError::BatchRequestError(pool.address))?;         }
     //     }
     // }

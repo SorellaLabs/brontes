@@ -21,16 +21,6 @@ use crate::{
     AutomatedMarketMaker, AMM,
 };
 
-abigen!(
-    IUniswapV3Factory,
-    r#"[
-        function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool)
-        event PoolCreated(address indexed token0, address indexed token1, uint24 indexed fee, int24 tickSpacing, address pool)
-        function parameters() returns (address, address, uint24, int24)
-        function feeAmountTickSpacing(uint24) returns (int24)
-        ]"#;
-);
-
 sol!(
     interface IUniswapV3Factory {
         function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool);
@@ -70,19 +60,21 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
         log: Log,
         middleware: Arc<M>,
     ) -> Result<AMM, AmmError> {
-        if let Some(block_number) = log.block_number {
-            let pool_created_filter = PoolCreatedFilter::decode_log(&RawLog::from(log))?;
-            Ok(AMM::UniswapV3Pool(
-                UniswapV3Pool::new_from_address(
-                    pool_created_filter.pool,
-                    block_number.as_u64(),
-                    middleware,
-                )
-                .await?,
-            ))
-        } else {
-            return Err(AMMError::BlockNumberNotFound)
-        }
+        // if let Some(block_number) = log.block_number {
+        //     let pool_created_filter =
+        // PoolCreatedFilter::decode_log(&RawLog::from(log))?;
+        //     Ok(AMM::UniswapV3Pool(
+        //         UniswapV3Pool::new_from_address(
+        //             pool_created_filter.pool,
+        //             block_number.as_u64(),
+        //             middleware,
+        //         )
+        //         .await?,
+        //     ))
+        // } else {
+        //     return Err(AMMError::BlockNumberNotFound)
+        // }
+        todo!()
     }
 
     async fn get_all_amms<M: 'static + TracingProvider>(
@@ -91,11 +83,12 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
         middleware: Arc<M>,
         step: u64,
     ) -> Result<Vec<AMM>, AmmError> {
-        if let Some(block) = to_block {
-            self.get_all_pools_from_logs(block, step, middleware).await
-        } else {
-            return Err(AMMError::BlockNumberNotFound)
-        }
+        // if let Some(block) = to_block {
+        //     self.get_all_pools_from_logs(block, step, middleware).await
+        // } else {
+        //     return Err(AMMError::BlockNumberNotFound)
+        // }
+        todo!()
     }
 
     async fn populate_amm_data<M: TracingProvider>(
@@ -123,22 +116,24 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
     }
 
     fn new_empty_amm_from_log(&self, log: Log) -> Result<AMM, ethers::abi::Error> {
-        let pool_created_event = PoolCreatedFilter::decode_log(&RawLog::from(log))?;
-
-        Ok(AMM::UniswapV3Pool(UniswapV3Pool {
-            address:          pool_created_event.pool,
-            token_a:          pool_created_event.token_0,
-            token_b:          pool_created_event.token_1,
-            token_a_decimals: 0,
-            token_b_decimals: 0,
-            fee:              pool_created_event.fee,
-            liquidity:        0,
-            sqrt_price:       U256::ZERO,
-            tick_spacing:     0,
-            tick:             0,
-            tick_bitmap:      HashMap::new(),
-            ticks:            HashMap::new(),
-        }))
+        todo!()
+        // let pool_created_event =
+        // PoolCreatedFilter::decode_log(&RawLog::from(log))?;
+        //
+        // Ok(AMM::UniswapV3Pool(UniswapV3Pool {
+        //     address:          pool_created_event.pool,
+        //     token_a:          pool_created_event.token_0,
+        //     token_b:          pool_created_event.token_1,
+        //     token_a_decimals: 0,
+        //     token_b_decimals: 0,
+        //     fee:              pool_created_event.fee,
+        //     liquidity:        0,
+        //     sqrt_price:       U256::ZERO,
+        //     tick_spacing:     0,
+        //     tick:             0,
+        //     tick_bitmap:      HashMap::new(),
+        //     ticks:            HashMap::new(),
+        // }))
     }
 }
 
