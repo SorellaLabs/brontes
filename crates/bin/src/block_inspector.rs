@@ -3,14 +3,10 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_providers::provider::Provider;
-use alloy_transport_http::Http;
 use brontes_classifier::Classifier;
-use brontes_core::{
-    decoding::{Parser, TracingProvider},
-    missing_decimals::MissingDecimals,
-};
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{clickhouse::Clickhouse, Metadata};
+use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_pricing::types::DexPrices;
 use brontes_types::{
@@ -26,10 +22,9 @@ type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions
 pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
     block_number: u64,
 
-    provider:          &'inspector Provider<Http<reqwest::Client>>,
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier<'inspector>,
-    database:          &'inspector Clickhouse,
+    database:          &'inspector Libmdbx,
     composer:          Composer<'inspector, N>,
     // pending future data
     classifier_future: Option<CollectionFut<'inspector>>,
@@ -39,15 +34,13 @@ pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
 
 impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, N, T> {
     pub fn new(
-        provider: &'inspector Provider<Http<reqwest::Client>>,
         parser: &'inspector Parser<'inspector, T>,
-        database: &'inspector Clickhouse,
+        database: &'inspector Libmdbx,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
         block_number: u64,
     ) -> Self {
         Self {
-            provider,
             block_number,
             parser,
             database,
@@ -68,10 +61,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
             info!("Got {} traces + header", traces.len());
             let (extra_data, mut tree) = self.classifier.build_tree(traces, header);
 
-            let (meta, _) = join!(
-                labeller_fut,
-                MissingDecimals::new(self.provider, self.database, extra_data.tokens_decimal_fill)
-            );
+            let meta = labeller_fut.await;
             tree.eth_price = meta.eth_prices.clone();
             let tmp_meta = meta.into_finalized_metadata(DexPrices::new());
 
