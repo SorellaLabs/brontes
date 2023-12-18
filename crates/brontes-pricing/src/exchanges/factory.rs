@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use amms::errors::{AMMError, EventLogError};
 use async_trait::async_trait;
 use ethers::{
     providers::Middleware,
@@ -10,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
 use super::{
+    errors::{AMMError, EventLogError},
     uniswap_v2::factory::{UniswapV2Factory, PAIR_CREATED_EVENT_SIGNATURE},
     uniswap_v3::factory::{UniswapV3Factory, POOL_CREATED_EVENT_SIGNATURE},
     AMM,

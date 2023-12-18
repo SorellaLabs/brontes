@@ -1,8 +1,6 @@
 pub mod exchanges;
 mod graph;
 pub mod types;
-pub use exchanges::*;
-
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     sync::Arc,
@@ -11,6 +9,7 @@ use std::{
 
 use alloy_primitives::Address;
 use exchanges::lazy::LazyExchangeLoader;
+pub use exchanges::*;
 use futures::{Future, StreamExt};
 use graph::PairGraph;
 use tokio::sync::mpsc::Receiver;
