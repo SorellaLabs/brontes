@@ -63,7 +63,7 @@
 //     fn amm_created_event_signature(&self) -> H256 {
 //         match self {
 //             Factory::UniswapV2Factory(factory) =>
-// factory.amm_created_event_signature(),             
+// factory.amm_created_event_signature(),
 // Factory::UniswapV3Factory(factory) => factory.amm_created_event_signature(),
 //         }
 //     }
@@ -75,7 +75,7 @@
 //     ) -> Result<AMM, AmmError> {
 //         match self {
 //             Factory::UniswapV2Factory(factory) =>
-// factory.new_amm_from_log(log, middleware).await,             
+// factory.new_amm_from_log(log, middleware).await,
 // Factory::UniswapV3Factory(factory) => factory.new_amm_from_log(log,
 // middleware).await,         }
 //     }
@@ -83,7 +83,7 @@
 //     fn new_empty_amm_from_log(&self, log: Log) -> Result<AMM,
 // ethers::abi::Error> {         match self {
 //             Factory::UniswapV2Factory(factory) =>
-// factory.new_empty_amm_from_log(log),             
+// factory.new_empty_amm_from_log(log),
 // Factory::UniswapV3Factory(factory) => factory.new_empty_amm_from_log(log),
 //         }
 //     }
@@ -125,7 +125,7 @@
 //     fn creation_block(&self) -> u64 {
 //         match self {
 //             Factory::UniswapV2Factory(uniswap_v2_factory) =>
-// uniswap_v2_factory.creation_block,             
+// uniswap_v2_factory.creation_block,
 // Factory::UniswapV3Factory(uniswap_v3_factory) =>
 // uniswap_v3_factory.creation_block,         }
 //     }

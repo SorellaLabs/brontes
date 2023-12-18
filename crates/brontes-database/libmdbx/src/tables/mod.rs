@@ -6,7 +6,7 @@ use alloy_primitives::Address;
 use brontes_database::clickhouse::Clickhouse;
 use const_sql::*;
 use futures::Future;
-use reth_db::{dupsort, table::Table, TableType};
+use reth_db::{table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::Row;
 

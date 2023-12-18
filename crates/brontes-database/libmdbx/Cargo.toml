@@ -21,6 +21,9 @@ alloy-rlp = { workspace = true, features = ["arrayvec"] }
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
 
 
+brontes-types.workspace = true
+
+
 # reth
 reth-primitives.workspace = true
 reth-interfaces.workspace = true
