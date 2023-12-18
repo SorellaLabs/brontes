@@ -4,7 +4,7 @@ use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
 use brontes_pricing::types::PoolUpdate;
 use once_cell::sync::Lazy;
 use reth_db::mdbx::RO;
-use reth_primitives::{alloy_primitives::FixedBytes, Address, Bytes};
+use reth_primitives::{Address, Bytes};
 use reth_rpc_types::Log;
 use tokio::sync::mpsc::Sender;
 

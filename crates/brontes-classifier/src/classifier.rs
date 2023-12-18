@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
 };
@@ -26,6 +24,7 @@ const TRANSFER_TOPIC: B256 =
 #[derive(Debug)]
 pub struct Classifier<'db> {
     libmdbx: &'db Libmdbx,
+    #[allow(dead_code)]
     sender:  Sender<PoolUpdate>,
 }
 

@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::B256;
 use brontes_database::{Metadata, Pair};
 use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
@@ -15,7 +14,6 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-use tracing::error;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils(Address);
@@ -119,7 +117,7 @@ impl SharedInspectorUtils {
     ) -> Rational {
         deltas
             .into_iter()
-            .map(|(token_out, value)| {
+            .map(|(token_out, _value)| {
                 let pair = Pair(token_out, self.0);
                 metadata.dex_quotes.price_after(pair, block_position)
             })
@@ -165,7 +163,7 @@ impl SharedInspectorUtils {
 
         deltas
             .iter()
-            .filter(|(addr, inner)| !inner.values().all(|f| f.eq(&Rational::ZERO)))
+            .filter(|(_addr, inner)| !inner.values().all(|f| f.eq(&Rational::ZERO)))
             .map(|(addr, _)| *addr)
             .collect::<Vec<_>>()
     }
