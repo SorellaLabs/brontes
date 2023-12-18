@@ -141,7 +141,7 @@ impl BrontesBatchPricer {
                 Entry::Vacant(v) => {
                     // pad the vec to the tx index
                     let mut vec = Vec::new();
-                    for _ in 0..tx_idx {
+                    for _ in 0..=tx_idx {
                         vec.push(None);
                     }
                     // insert
