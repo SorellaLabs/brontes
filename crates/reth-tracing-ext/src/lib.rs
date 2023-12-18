@@ -60,7 +60,7 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, handle: Handle) -> (TaskManager, Self) {
+    pub fn new(db_path: &Path, handle: Handle, max_tasks: u32) -> (TaskManager, Self) {
         let task_manager = TaskManager::new(handle);
         let task_executor: reth_tasks::TaskExecutor = task_manager.executor();
 
@@ -120,8 +120,6 @@ impl TracingClient {
             fee_history,
         );
 
-        let cpus = num_cpus::get_physical();
-        let max_tasks = (cpus as f32 * 0.8) as u32; // 80% of physical cores
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks);
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
