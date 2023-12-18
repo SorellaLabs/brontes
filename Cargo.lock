@@ -1049,6 +1049,7 @@ version = "0.1.0"
 dependencies = [
  "alloy-json-rpc",
  "alloy-networks",
+ "alloy-primitives",
  "alloy-providers",
  "alloy-rpc-client",
  "alloy-rpc-types",
@@ -1075,6 +1076,7 @@ dependencies = [
  "log",
  "malachite",
  "metrics-process",
+ "num_cpus",
  "rayon",
  "reqwest",
  "reth-beacon-consensus",

@@ -3,11 +3,8 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_providers::provider::Provider;
-use alloy_transport_http::Http;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, StreamExt};
@@ -15,9 +12,7 @@ use tracing::info;
 
 mod banner;
 mod block_inspector;
-mod data_batching;
 
-use banner::print_banner;
 use block_inspector::BlockInspector;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
@@ -41,7 +36,6 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         end_block: Option<u64>,
         chain_tip: u64,
         max_tasks: u64,
-        provider: &'inspector Provider<Http<reqwest::Client>>,
         parser: &'inspector Parser<'inspector, T>,
         database: &'inspector Libmdbx,
         classifier: &'inspector Classifier,
