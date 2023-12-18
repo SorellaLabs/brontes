@@ -2,11 +2,11 @@
 
 # Brontes
 
-Sorella's bespoke mev tracing system for Ethereum (and other EVM-compatible chains).
-
-Brontes is a blazingly fast MEV tracing system developed by Sorella Labs, for Ethereum and other EVM-compatible blockchains. It can be run locally or remotely, and is capable of detecting mev in real-time.
+Brontes is a blazingly fast MEV tracing system developed by Sorella Labs, for Ethereum and other EVM-compatible blockchains. It can be run locally or remotely, and is capable of following the chain tip.
 
 ## How Brontes Works
+
+---
 
 Brontes' runs a pipeline for each bock consisting of the following steps:
 
@@ -26,7 +26,7 @@ Initially, this metadata is downloaded via Sorella's API. Subsequently, it's sto
 
 ### 3. Normalization
 
-The tree is then classified, transaction traces are grouped into normalized actions such as:
+The tree is then classified, transaction traces are grouped into normalized actions:
 
 - NormalizedSwap
 - NormalizedMint
@@ -42,11 +42,11 @@ Utilizing the normalized data, our inspectors process the classified block tree 
 
 Today we have inspectors for:
 
-- cex-dex
-- sandwich
-- liquidation
-- atomic arbitrage
-- JIT
+- **cex-dex**
+- **sandwich**
+- **liquidation**
+- **atomic arbitrage**
+- **JIT**
 
 The inspectors in Brontes are highly modular. By implementing the Inspector trait, developers & researchers can easily integrate additional inspectors into the system.
 
@@ -68,3 +68,15 @@ Finally, the individual inspectors results are collected by the composer, a high
 Such as:
 
 - JIT + sandwich
+
+## Installation
+
+---
+
+### Method 1: install from source
+
+```bash
+git clone https://github.com/SorellaLabs/brontes
+cd brontes
+cargo install --path ./crates/cli
+```
