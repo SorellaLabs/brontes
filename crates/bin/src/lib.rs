@@ -3,36 +3,42 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_providers::provider::Provider;
-use alloy_transport_http::Http;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::clickhouse::Clickhouse;
+use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::Inspector;
-use futures::{stream::FuturesUnordered, Future, StreamExt};
+use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use tracing::info;
 
 mod banner;
 mod block_inspector;
-mod data_batching;
+mod tip_inspector;
 
-use banner::print_banner;
 use block_inspector::BlockInspector;
+use tip_inspector::TipInspector;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
+
+enum Mode {
+    Historical,
+    Tip,
+}
 
 pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     current_block:    u64,
     end_block:        Option<u64>,
     chain_tip:        u64,
+    mode:             Mode,
     max_tasks:        u64,
-    provider:         &'inspector Provider<Http<reqwest::Client>>,
     parser:           &'inspector Parser<'inspector, T>,
     classifier:       &'inspector Classifier<'inspector>,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
-    database:         &'inspector Clickhouse,
+    clickhouse:       &'inspector Clickhouse,
+    database:         &'inspector Libmdbx,
     block_inspectors: FuturesUnordered<BlockInspector<'inspector, N, T>>,
+    tip_inspector:    Option<TipInspector<'inspector, N, T>>,
 }
 
 impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
@@ -41,23 +47,25 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         end_block: Option<u64>,
         chain_tip: u64,
         max_tasks: u64,
-        provider: &'inspector Provider<Http<reqwest::Client>>,
         parser: &'inspector Parser<'inspector, T>,
-        database: &'inspector Clickhouse,
+        clickhouse: &'inspector Clickhouse,
+        database: &'inspector Libmdbx,
         classifier: &'inspector Classifier,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {
         let mut brontes = Self {
-            provider,
             current_block: init_block,
             end_block,
             chain_tip,
+            mode: Mode::Historical,
             max_tasks,
             parser,
+            clickhouse,
             database,
             classifier,
             inspectors,
             block_inspectors: FuturesUnordered::new(),
+            tip_inspector: None,
         };
 
         let max_blocks = match end_block {
@@ -74,7 +82,6 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
 
     fn spawn_block_inspector(&mut self) {
         let inspector = BlockInspector::new(
-            self.provider,
             self.parser,
             self.database,
             self.classifier,
@@ -84,6 +91,19 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         info!(block_number = self.current_block, "started new block inspector");
         self.current_block += 1;
         self.block_inspectors.push(inspector);
+    }
+
+    fn spawn_tip_inspector(&mut self) {
+        let inspector = TipInspector::new(
+            self.parser,
+            self.clickhouse,
+            self.database,
+            self.classifier,
+            self.inspectors,
+            self.chain_tip,
+        );
+        info!(block_number = self.chain_tip, "Finished historical inspectors, now tracking tip");
+        self.tip_inspector = Some(inspector);
     }
 
     fn start_block_inspector(&mut self) -> bool {
@@ -97,10 +117,13 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         #[cfg(not(feature = "local"))]
         if self.current_block >= self.chain_tip {
             if let Ok(chain_tip) = self.parser.get_latest_block_number() {
-                self.chain_tip = chain_tip;
-            } else {
-                // no new block ready
-                return false
+                if chain_tip > self.chain_tip {
+                    self.chain_tip = chain_tip;
+                } else {
+                    self.mode = Mode::Tip;
+                    self.spawn_tip_inspector();
+                    return false
+                }
             }
         }
 
@@ -145,15 +168,29 @@ impl<const N: usize, T: TracingProvider> Future for Brontes<'_, N, T> {
         // And tokio's docs on cooperative scheduling <https://docs.rs/tokio/latest/tokio/task/#cooperative-scheduling>
         let mut iters = 1024;
         loop {
-            if Some(self.current_block) >= self.end_block && self.block_inspectors.is_empty() {
-                return Poll::Ready(())
-            }
+            match self.mode {
+                Mode::Historical => {
+                    if Some(self.current_block) >= self.end_block
+                        && self.block_inspectors.is_empty()
+                    {
+                        return Poll::Ready(())
+                    }
 
-            if self.start_block_inspector() {
-                self.spawn_block_inspector();
-            }
+                    if self.start_block_inspector() {
+                        self.spawn_block_inspector();
+                    }
 
-            self.progress_block_inspectors(cx);
+                    self.progress_block_inspectors(cx);
+                }
+                Mode::Tip => {
+                    if let Some(tip_inspector) = self.tip_inspector.as_mut() {
+                        match tip_inspector.poll_unpin(cx) {
+                            Poll::Ready(()) => return Poll::Ready(()),
+                            Poll::Pending => {}
+                        }
+                    }
+                }
+            }
 
             iters -= 1;
             if iters == 0 {

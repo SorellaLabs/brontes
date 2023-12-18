@@ -12,16 +12,26 @@ pub mod classified_mev;
 pub mod extra_processing;
 pub mod normalized_actions;
 pub mod structured_trace;
+pub mod traits;
 pub mod tree;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum Dexes {
+    UniswapV2,
+    UniswapV3,
+    SushiSwapV2,
+    SushiSwapV3,
+    CurveCryptoSwap,
+}
 // include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
 
 static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
 
-pub fn try_get_decimals(address: &[u8; 20]) -> Option<u8> {
+pub fn try_get_decimals(_address: &[u8; 20]) -> Option<u8> {
     // if let Some(value) = TOKEN_TO_DECIMALS.get(address) {
     //     Some(*value)
     // } else {

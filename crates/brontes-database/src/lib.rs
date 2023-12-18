@@ -7,7 +7,7 @@ use brontes_pricing::types::DexPrices;
 pub mod cex;
 
 pub use brontes_types::extra_processing::Pair;
-use cex::{CexPriceMap, CexQuote};
+use cex::CexPriceMap;
 use malachite::Rational;
 use reth_primitives::{Address, TxHash, U256};
 

@@ -9,6 +9,10 @@ edition = "2021"
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 
+
+async-trait.workspace = true
+reth-interfaces.workspace = true
+reth-rpc.workspace = true
 # tracing
 tracing.workspace = true
 
@@ -40,7 +44,7 @@ alloy-dyn-abi.workspace = true
 alloy-rlp.workspace = true
 parking_lot.workspace = true
 petgraph = "0.6.4"
-derive_more.workspace = true    
+derive_more.workspace = true
 
 [build-dependencies]
 strum = { workspace = true, features = ["derive"] }
