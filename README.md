@@ -4,6 +4,14 @@
 
 Brontes is a blazingly fast MEV tracing system developed by Sorella Labs, for Ethereum and other EVM-compatible blockchains. It can be run locally or remotely, and is capable of following the chain tip.
 
+1. [How Brontes Works](#how-brontes-works)
+   1. [Block Tracing](#1-block-tracing)
+   2. [Tree Building & Meta-Data Fetching](#2-tree-building--meta-data-fetching)
+   3. [Normalization](#3-normalization)
+   4. [Inspection](#4-inspection)
+   5. [Composition](#5-composition)
+2. [Installation](#installation)
+
 ## How Brontes Works
 
 ---
