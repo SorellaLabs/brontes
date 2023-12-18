@@ -7,7 +7,7 @@ use brontes_types::traits::TracingProvider;
 use reth_rpc_types::{CallInput, CallRequest};
 
 use super::UniswapV3Pool;
-use crate::{errors::AmmError, AutomatedMarketMaker, AMM};
+use crate::{errors::AmmError, AutomatedMarketMaker};
 sol!(
     IGetUniswapV3PoolDataBatchRequest,
     "./src/exchanges/uniswap_v3/batch_request/GetUniswapV3PoolDataBatchRequestABI.json"
@@ -74,7 +74,7 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
 ) -> Result<(), AmmError> {
     tracing::info!(?pool.address, "getting pool data");
     let mut bytecode = IGetUniswapV3PoolDataBatchRequest::BYTECODE.to_vec();
-    let data = data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
+    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
     let req =
         CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };

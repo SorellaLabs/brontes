@@ -11,10 +11,8 @@ use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 
-use self::factory::PAIR_CREATED_EVENT_SIGNATURE;
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
-    factory::AutomatedMarketMakerFactory,
     AutomatedMarketMaker,
 };
 

@@ -1,3 +1,4 @@
+#![allow(unused)]
 pub mod exchanges;
 mod graph;
 pub mod types;

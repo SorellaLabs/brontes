@@ -3,15 +3,10 @@ use std::sync::Arc;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
-use ethers::{
-    abi::{ParamType, Token},
-    prelude::abigen,
-    types::{Bytes, H160, U256},
-};
 use reth_rpc_types::{CallInput, CallRequest};
 
 use super::UniswapV2Pool;
-use crate::{errors::AmmError, AutomatedMarketMaker, AMM};
+use crate::{errors::AmmError, AutomatedMarketMaker};
 
 sol!(
     IGetUniswapV2PoolDataBatchRequest,
