@@ -3,12 +3,14 @@ pub mod factory;
 
 use std::sync::Arc;
 
+use brontes_types::normalized_actions::Actions;
+use alloy_primitives::{Address, B256, U256, FixedBytes};
 use async_trait::async_trait;
+use brontes_types::traits::TracingProvider;
 use ethers::{
     abi::{ethabi::Bytes, RawLog, Token},
     prelude::{abigen, EthEvent},
-    providers::Middleware,
-    types::{Log, H160, H256, U256},
+    types::{ Log},
 };
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
@@ -19,6 +21,7 @@ use crate::{
     factory::AutomatedMarketMakerFactory,
     AutomatedMarketMaker,
 };
+use alloy_sol_macro::sol;
 
 abigen!(
     IUniswapV2Pair,
@@ -37,18 +40,34 @@ abigen!(
     ]"#;
 );
 
+sol!(
+    interface IUniswapV2Pair {
+        function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+        function token0() external view returns (address);
+        function token1() external view returns (address);
+        function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data);
+        event Sync(uint112 reserve0, uint112 reserve1);
+    }
+);
+
+sol!(
+    interface IErc20 {
+        function balanceOf(address account) external view returns (uint256);
+        function decimals() external view returns (uint8);
+    }
+);
 pub const U128_0X10000000000000000: u128 = 18446744073709551616;
-pub const SYNC_EVENT_SIGNATURE: H256 = H256([
+pub const SYNC_EVENT_SIGNATURE: B256 = FixedBytes([
     28, 65, 30, 154, 150, 224, 113, 36, 28, 47, 33, 247, 114, 107, 23, 174, 137, 227, 202, 180,
     199, 139, 229, 14, 6, 43, 3, 169, 255, 251, 186, 209,
 ]);
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UniswapV2Pool {
-    pub address:          H160,
-    pub token_a:          H160,
+    pub address:          Address,
+    pub token_a:          Address,
     pub token_a_decimals: u8,
-    pub token_b:          H160,
+    pub token_b:          Address,
     pub token_b_decimals: u8,
     pub reserve_0:        u128,
     pub reserve_1:        u128,
@@ -57,17 +76,16 @@ pub struct UniswapV2Pool {
 
 #[async_trait]
 impl AutomatedMarketMaker for UniswapV2Pool {
-    fn address(&self) -> H160 {
+    fn address(&self) -> Address {
         self.address
     }
 
-    async fn sync<M: Middleware>(&mut self, middleware: Arc<M>) -> Result<(), AMMError<M>> {
-        (self.reserve_0, self.reserve_1) = self.get_reserves(middleware).await?;
-
-        Ok(())
+    fn sync_from_action(&mut self, action: Actions) -> Result<(), EventLogError> {
+        todo!()
     }
 
-    async fn populate_data<M: Middleware>(
+
+    async fn populate_data<M: TracingProvider>(
         &mut self,
         _block_number: Option<u64>,
         middleware: Arc<M>,
@@ -75,10 +93,6 @@ impl AutomatedMarketMaker for UniswapV2Pool {
         batch_request::get_v2_pool_data_batch_request(self, middleware.clone()).await?;
 
         Ok(())
-    }
-
-    fn sync_on_event_signatures(&self) -> Vec<H256> {
-        vec![SYNC_EVENT_SIGNATURE]
     }
 
     fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {
@@ -98,15 +112,19 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 
     //Calculates base/quote, meaning the price of base token per quote (ie.
     // exchange rate is X base per 1 quote)
-    fn calculate_price(&self, base_token: H160) -> Result<f64, ArithmeticError> {
+    fn calculate_price(&self, base_token: Address) -> Result<f64, ArithmeticError> {
         Ok(q64_to_f64(self.calculate_price_64_x_64(base_token)?))
     }
 
-    fn tokens(&self) -> Vec<H160> {
+    fn tokens(&self) -> Vec<Address> {
         vec![self.token_a, self.token_b]
     }
 
-    fn simulate_swap(&self, token_in: H160, amount_in: U256) -> Result<U256, SwapSimulationError> {
+    fn simulate_swap(
+        &self,
+        token_in: Address,
+        amount_in: U256,
+    ) -> Result<U256, SwapSimulationError> {
         tracing::info!(?token_in, ?amount_in, "simulating swap");
 
         if self.token_a == token_in {
@@ -126,7 +144,7 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 
     fn simulate_swap_mut(
         &mut self,
-        token_in: H160,
+        token_in: Address,
         amount_in: U256,
     ) -> Result<U256, SwapSimulationError> {
         tracing::info!(?token_in, ?amount_in, "simulating swap");
@@ -166,7 +184,7 @@ impl AutomatedMarketMaker for UniswapV2Pool {
         }
     }
 
-    fn get_token_out(&self, token_in: H160) -> H160 {
+    fn get_token_out(&self, token_in: Address) -> Address {
         if self.token_a == token_in {
             self.token_b
         } else {
@@ -178,10 +196,10 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 impl UniswapV2Pool {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        address: H160,
-        token_a: H160,
+        address: Address,
+        token_a: Address,
         token_a_decimals: u8,
-        token_b: H160,
+        token_b: Address,
         token_b_decimals: u8,
         reserve_0: u128,
         reserve_1: u128,
@@ -201,16 +219,16 @@ impl UniswapV2Pool {
 
     //Creates a new instance of the pool from the pair address, and syncs the pool
     // data
-    pub async fn new_from_address<M: Middleware>(
-        pair_address: H160,
+    pub async fn new_from_address<M: TracingProvider>(
+        pair_address: Address,
         fee: u32,
         middleware: Arc<M>,
     ) -> Result<Self, AMMError<M>> {
         let mut pool = UniswapV2Pool {
             address: pair_address,
-            token_a: H160::zero(),
+            token_a: Address::zero(),
             token_a_decimals: 0,
-            token_b: H160::zero(),
+            token_b: Address::zero(),
             token_b_decimals: 0,
             reserve_0: 0,
             reserve_1: 0,
@@ -226,7 +244,7 @@ impl UniswapV2Pool {
         Ok(pool)
     }
 
-    pub async fn new_from_log<M: Middleware>(
+    pub async fn new_from_log<M: TracingProvider>(
         log: Log,
         fee: u32,
         middleware: Arc<M>,
@@ -273,75 +291,75 @@ impl UniswapV2Pool {
             || self.reserve_1 == 0)
     }
 
-    pub async fn get_reserves<M: Middleware>(
-        &self,
-        middleware: Arc<M>,
-    ) -> Result<(u128, u128), AMMError<M>> {
-        tracing::trace!("getting reserves of {}", self.address);
+    // pub async fn get_reserves<M: TracingProvider>(
+    //     &self,
+    //     middleware: Arc<M>,
+    // ) -> Result<(u128, u128), AMMError<M>> {
+    //     tracing::trace!("getting reserves of {}", self.address);
+    //
+    //     //Initialize a new instance of the Pool
+    //     let v2_pair = IUniswapV2Pair::new(self.address, middleware);
+    //     // Make a call to get the reserves
+    //     let (reserve_0, reserve_1, _) = match v2_pair.get_reserves().call().await {
+    //         Ok(result) => result,
+    //         Err(contract_error) => return Err(AMMError::ContractError(contract_error)),
+    //     };
+    //
+    //     tracing::trace!(reserve_0, reserve_1);
+    //
+    //     Ok((reserve_0, reserve_1))
+    // }
+    //
+    // pub async fn get_token_decimals<M: TracingProvider>(
+    //     &mut self,
+    //     middleware: Arc<M>,
+    // ) -> Result<(u8, u8), AMMError<M>> {
+    //     let token_a_decimals = IErc20::new(self.token_a, middleware.clone())
+    //         .decimals()
+    //         .call()
+    //         .await?;
+    //
+    //     let token_b_decimals = IErc20::new(self.token_b, middleware)
+    //         .decimals()
+    //         .call()
+    //         .await?;
+    //
+    //     tracing::trace!(token_a_decimals, token_b_decimals);
+    //
+    //     Ok((token_a_decimals, token_b_decimals))
+    // }
+    //
+    // pub async fn get_token_0<M: TracingProvider>(
+    //     &self,
+    //     pair_address: Address,
+    //     middleware: Arc<M>,
+    // ) -> Result<Address, AMMError<M>> {
+    //     let v2_pair = IUniswapV2Pair::new(pair_address, middleware);
+    //
+    //     let token0 = match v2_pair.token_0().call().await {
+    //         Ok(result) => result,
+    //         Err(contract_error) => return Err(AMMError::ContractError(contract_error)),
+    //     };
+    //
+    //     Ok(token0)
+    // }
+    //
+    // pub async fn get_token_1<M: TracingProvider>(
+    //     &self,
+    //     pair_address: Address,
+    //     middleware: Arc<M>,
+    // ) -> Result<Address, AMMError<M>> {
+    //     let v2_pair = IUniswapV2Pair::new(pair_address, middleware);
+    //
+    //     let token1 = match v2_pair.token_1().call().await {
+    //         Ok(result) => result,
+    //         Err(contract_error) => return Err(AMMError::ContractError(contract_error)),
+    //     };
+    //
+    //     Ok(token1)
+    // }
 
-        //Initialize a new instance of the Pool
-        let v2_pair = IUniswapV2Pair::new(self.address, middleware);
-        // Make a call to get the reserves
-        let (reserve_0, reserve_1, _) = match v2_pair.get_reserves().call().await {
-            Ok(result) => result,
-            Err(contract_error) => return Err(AMMError::ContractError(contract_error)),
-        };
-
-        tracing::trace!(reserve_0, reserve_1);
-
-        Ok((reserve_0, reserve_1))
-    }
-
-    pub async fn get_token_decimals<M: Middleware>(
-        &mut self,
-        middleware: Arc<M>,
-    ) -> Result<(u8, u8), AMMError<M>> {
-        let token_a_decimals = IErc20::new(self.token_a, middleware.clone())
-            .decimals()
-            .call()
-            .await?;
-
-        let token_b_decimals = IErc20::new(self.token_b, middleware)
-            .decimals()
-            .call()
-            .await?;
-
-        tracing::trace!(token_a_decimals, token_b_decimals);
-
-        Ok((token_a_decimals, token_b_decimals))
-    }
-
-    pub async fn get_token_0<M: Middleware>(
-        &self,
-        pair_address: H160,
-        middleware: Arc<M>,
-    ) -> Result<H160, AMMError<M>> {
-        let v2_pair = IUniswapV2Pair::new(pair_address, middleware);
-
-        let token0 = match v2_pair.token_0().call().await {
-            Ok(result) => result,
-            Err(contract_error) => return Err(AMMError::ContractError(contract_error)),
-        };
-
-        Ok(token0)
-    }
-
-    pub async fn get_token_1<M: Middleware>(
-        &self,
-        pair_address: H160,
-        middleware: Arc<M>,
-    ) -> Result<H160, AMMError<M>> {
-        let v2_pair = IUniswapV2Pair::new(pair_address, middleware);
-
-        let token1 = match v2_pair.token_1().call().await {
-            Ok(result) => result,
-            Err(contract_error) => return Err(AMMError::ContractError(contract_error)),
-        };
-
-        Ok(token1)
-    }
-
-    pub fn calculate_price_64_x_64(&self, base_token: H160) -> Result<u128, ArithmeticError> {
+    pub fn calculate_price_64_x_64(&self, base_token: Address) -> Result<u128, ArithmeticError> {
         let decimal_shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
 
         let (r_0, r_1) = if decimal_shift < 0 {
@@ -390,7 +408,7 @@ impl UniswapV2Pool {
         &self,
         amount_0_out: U256,
         amount_1_out: U256,
-        to: H160,
+        to: Address,
         calldata: Vec<u8>,
     ) -> Result<Bytes, ethers::abi::Error> {
         let input_tokens = vec![
@@ -407,24 +425,24 @@ impl UniswapV2Pool {
 }
 
 pub const U256_0XFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF: U256 =
-    U256([18446744073709551615, 18446744073709551615, 18446744073709551615, 0]);
+    U256::from_limbs([18446744073709551615, 18446744073709551615, 18446744073709551615, 0]);
 
 pub const U256_0XFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF: U256 =
-    U256([18446744073709551615, 18446744073709551615, 0, 0]);
+    U256::from_limbs([18446744073709551615, 18446744073709551615, 0, 0]);
 
-pub const U256_0X100000000: U256 = U256([4294967296, 0, 0, 0]);
-pub const U256_0X10000: U256 = U256([65536, 0, 0, 0]);
-pub const U256_0X100: U256 = U256([256, 0, 0, 0]);
-pub const U256_255: U256 = U256([255, 0, 0, 0]);
-pub const U256_192: U256 = U256([192, 0, 0, 0]);
-pub const U256_191: U256 = U256([191, 0, 0, 0]);
-pub const U256_128: U256 = U256([128, 0, 0, 0]);
-pub const U256_64: U256 = U256([64, 0, 0, 0]);
-pub const U256_32: U256 = U256([32, 0, 0, 0]);
-pub const U256_16: U256 = U256([16, 0, 0, 0]);
-pub const U256_8: U256 = U256([8, 0, 0, 0]);
-pub const U256_4: U256 = U256([4, 0, 0, 0]);
-pub const U256_2: U256 = U256([2, 0, 0, 0]);
+pub const U256_0X100000000: U256 = U256::from_limbs([4294967296, 0, 0, 0]);
+pub const U256_0X10000: U256 = U256::from_limbs([65536, 0, 0, 0]);
+pub const U256_0X100: U256 = U256::from_limbs([256, 0, 0, 0]);
+pub const U256_255: U256 = U256::from_limbs([255, 0, 0, 0]);
+pub const U256_192: U256 = U256::from_limbs([192, 0, 0, 0]);
+pub const U256_191: U256 = U256::from_limbs([191, 0, 0, 0]);
+pub const U256_128: U256 = U256::from_limbs([128, 0, 0, 0]);
+pub const U256_64: U256 = U256::from_limbs([64, 0, 0, 0]);
+pub const U256_32: U256 = U256::from_limbs([32, 0, 0, 0]);
+pub const U256_16: U256 = U256::from_limbs([16, 0, 0, 0]);
+pub const U256_8: U256 = U256::from_limbs([8, 0, 0, 0]);
+pub const U256_4: U256 = U256::from_limbs([4, 0, 0, 0]);
+pub const U256_2: U256 = U256::from_limbs([2, 0, 0, 0]);
 
 pub fn div_uu(x: U256, y: U256) -> Result<u128, ArithmeticError> {
     if !y.is_zero() {
@@ -521,7 +539,7 @@ mod tests {
 
     use ethers::{
         providers::{Http, Provider},
-        types::{H160, U256},
+        types::{Address, U256},
     };
 
     use super::UniswapV2Pool;
@@ -534,7 +552,7 @@ mod tests {
         let _calldata = uniswap_v2_pool.swap_calldata(
             U256::from(123456789),
             U256::zero(),
-            H160::from_str("0x41c36f504BE664982e7519480409Caf36EE4f008")?,
+            Address::from_str("0x41c36f504BE664982e7519480409Caf36EE4f008")?,
             vec![],
         );
 
@@ -547,16 +565,16 @@ mod tests {
         let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint)?);
 
         let pool = UniswapV2Pool::new_from_address(
-            H160::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
+            Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
             300,
             middleware.clone(),
         )
         .await?;
 
-        assert_eq!(pool.address, H160::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?);
-        assert_eq!(pool.token_a, H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")?);
+        assert_eq!(pool.address, Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?);
+        assert_eq!(pool.token_a, Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")?);
         assert_eq!(pool.token_a_decimals, 6);
-        assert_eq!(pool.token_b, H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")?);
+        assert_eq!(pool.token_b, Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")?);
         assert_eq!(pool.token_b_decimals, 18);
         assert_eq!(pool.fee, 300);
 
@@ -569,16 +587,16 @@ mod tests {
         let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint)?);
 
         let mut pool = UniswapV2Pool {
-            address: H160::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
+            address: Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
             ..Default::default()
         };
 
         pool.populate_data(None, middleware.clone()).await?;
 
-        assert_eq!(pool.address, H160::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?);
-        assert_eq!(pool.token_a, H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")?);
+        assert_eq!(pool.address, Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?);
+        assert_eq!(pool.token_a, Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")?);
         assert_eq!(pool.token_a_decimals, 6);
-        assert_eq!(pool.token_b, H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")?);
+        assert_eq!(pool.token_b, Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")?);
         assert_eq!(pool.token_b_decimals, 18);
 
         Ok(())
@@ -586,10 +604,10 @@ mod tests {
 
     #[test]
     fn test_calculate_price_edge_case() -> eyre::Result<()> {
-        let token_a = H160::from_str("0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270")?;
-        let token_b = H160::from_str("0x8f18dc399594b451eda8c5da02d0563c0b2d0f16")?;
+        let token_a = Address::from_str("0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270")?;
+        let token_b = Address::from_str("0x8f18dc399594b451eda8c5da02d0563c0b2d0f16")?;
         let x = UniswapV2Pool {
-            address: H160::from_str("0x652a7b75c229850714d4a11e856052aac3e9b065")?,
+            address: Address::from_str("0x652a7b75c229850714d4a11e856052aac3e9b065")?,
             token_a,
             token_a_decimals: 18,
             token_b,
@@ -610,7 +628,7 @@ mod tests {
         let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint)?);
 
         let mut pool = UniswapV2Pool {
-            address: H160::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
+            address: Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
             ..Default::default()
         };
 
@@ -634,7 +652,7 @@ mod tests {
         let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint)?);
 
         let mut pool = UniswapV2Pool {
-            address: H160::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
+            address: Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
             ..Default::default()
         };
 

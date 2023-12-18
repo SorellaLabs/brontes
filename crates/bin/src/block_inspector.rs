@@ -70,7 +70,11 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
 
             let (meta, _) = join!(
                 labeller_fut,
-                MissingDecimals::new(self.provider, self.database, extra_data.tokens_decimal_fill)
+                MissingDecimals::new(
+                    self.parser.get_tracer(),
+                    self.database,
+                    extra_data.tokens_decimal_fill
+                )
             );
             tree.eth_price = meta.eth_prices.clone();
             let tmp_meta = meta.into_finalized_metadata(DexPrices::new());

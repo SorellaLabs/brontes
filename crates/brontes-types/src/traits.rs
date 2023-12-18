@@ -6,7 +6,7 @@ use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, Transact
 use crate::structured_trace::TxTrace;
 
 #[async_trait::async_trait]
-#[auto_impl::auto_impl(&, Arc, Box)]
+#[auto_impl::auto_impl(Box)]
 pub trait TracingProvider: Send + Sync + 'static {
     async fn eth_call(
         &self,
