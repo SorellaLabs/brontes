@@ -1,11 +1,11 @@
 pub mod batch_request;
 pub mod factory;
+
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
     sync::Arc,
 };
-use crate::uniswap_v3_math;
 
 use alloy_primitives::{Address, BlockNumber, FixedBytes, B256, I256, U256, U64};
 use alloy_sol_macro::sol;
@@ -27,7 +27,7 @@ use crate::{
     errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
     exchanges::uniswap_v3::batch_request::get_uniswap_v3_tick_data_batch_request,
     factory::AutomatedMarketMakerFactory,
-    AutomatedMarketMaker,
+    uniswap_v3_math, AutomatedMarketMaker,
 };
 sol!(
     interface IUniswapV3Factory {
@@ -141,7 +141,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         &mut self,
         block_number: Option<u64>,
         middleware: Arc<M>,
-    ) -> Result<(), AMMError<M>> {
+    ) -> Result<(), AmmError> {
         let ticks =
             batch_request::get_v3_pool_data_batch_request(self, block_number, middleware.clone())
                 .await?;
@@ -171,7 +171,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         // of the pool
         let mut current_state = CurrentState {
             sqrt_price_x_96: self.sqrt_price, //Active price on the pool
-            amount_calculated: I256::ZERO,  //Amount of token_out that has been calculated
+            amount_calculated: I256::ZERO,    //Amount of token_out that has been calculated
             amount_specified_remaining: I256::from_raw(amount_in), /* Amount of token_in that
                                                * has not been swapped */
             tick: self.tick,           //Current i24 tick of the pool
@@ -307,7 +307,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         // of the pool
         let mut current_state = CurrentState {
             sqrt_price_x_96: self.sqrt_price, //Active price on the pool
-            amount_calculated: I256::ZERO,  //Amount of token_out that has been calculated
+            amount_calculated: I256::ZERO,    //Amount of token_out that has been calculated
             amount_specified_remaining: I256::from_raw(amount_in), /* Amount of token_in that
                                                * has not been swapped */
             tick: self.tick,           //Current i24 tick of the pool
@@ -472,7 +472,7 @@ impl UniswapV3Pool {
         pair_address: Address,
         creation_block: u64,
         middleware: Arc<M>,
-    ) -> Result<Self, AMMError<M>> {
+    ) -> Result<Self, AmmError> {
         let mut pool = UniswapV3Pool {
             address:          pair_address,
             token_a:          Address::ZERO,
@@ -540,14 +540,14 @@ impl UniswapV3Pool {
         .0;
 
         for tick in ticks {
-            self.update_tick(tick.tick, tick.liquidity_net, tick.initialized);
+            self.update_tick(tick.tick, tick.liquidityNet, tick.initialized);
         }
     }
 
     // pub async fn new_from_log<M: 'static + TracingProvider>(
     //     log: Log,
     //     middleware: Arc<M>,
-    // ) -> Result<Self, AMMError<M>> {
+    // ) -> Result<Self, AmmError> {
     //     let event_signature = log.topics[0];
     //
     //     if event_signature == POOL_CREATED_EVENT_SIGNATURE {
@@ -601,7 +601,7 @@ impl UniswapV3Pool {
     //     &mut self,
     //     mut from_block: u64,
     //     middleware: Arc<M>,
-    // ) -> Result<u64, AMMError<M>> {
+    // ) -> Result<u64, AmmError> {
     //     let current_block = middleware
     //         .get_block_number()
     //         .await
@@ -634,7 +634,7 @@ impl UniswapV3Pool {
     //                 .await
     //                 .map_err(AMMError::TracingProviderError)?;
     //
-    //             Ok::<Vec<Log>, AMMError<M>>(logs)
+    //             Ok::<Vec<Log>, AmmError>(logs)
     //         }));
     //
     //         from_block += POPULATE_TICK_DATA_STEP;
@@ -663,9 +663,9 @@ impl UniswapV3Pool {
     //
     // async fn process_logs_from_handles<M: TracingProvider>(
     //     &self,
-    //     handles: Vec<JoinHandle<Result<Vec<Log>, AMMError<M>>>>,
+    //     handles: Vec<JoinHandle<Result<Vec<Log>, AmmError>>>,
     //     ordered_logs: &mut BTreeMap<U64, Vec<Log>>,
-    // ) -> Result<(), AMMError<M>> {
+    // ) -> Result<(), AmmError> {
     //     // group the logs from each thread by block number and then sync the logs
     // in     // chronological order
     //     for handle in handles {
@@ -698,7 +698,7 @@ impl UniswapV3Pool {
     //     &self,
     //     tick: i32,
     //     middleware: Arc<M>,
-    // ) -> Result<U256, AMMError<M>> {
+    // ) -> Result<U256, AmmError> {
     //     // let v3_pool = IUniswapV3Pool::new(self.address, middleware);
     //     let (word_position, _) = uniswap_v3_math::tick_bitmap::position(tick);
     //
@@ -711,7 +711,7 @@ impl UniswapV3Pool {
     //     &self,
     //     word_position: i16,
     //     middleware: Arc<M>,
-    // ) -> Result<U256, AMMError<M>> {
+    // ) -> Result<U256, AmmError> {
     //     let v3_pool = IUniswapV3Pool::new(self.address, middleware);
     //     Ok(v3_pool.tick_bitmap(word_position).call().await?)
     // }
@@ -719,20 +719,20 @@ impl UniswapV3Pool {
     // pub async fn get_tick_spacing<M: TracingProvider>(
     //     &self,
     //     middleware: Arc<M>,
-    // ) -> Result<i32, AMMError<M>> {
+    // ) -> Result<i32, AmmError> {
     //     let v3_pool = IUniswapV3Pool::new(self.address, middleware);
     //     Ok(v3_pool.tick_spacing().call().await?)
     // }
     //
     // pub async fn get_tick<M: TracingProvider>(&self, middleware: Arc<M>) ->
-    // Result<i32, AMMError<M>> {     Ok(self.get_slot_0(middleware).await?.1)
+    // Result<i32, AmmError> {     Ok(self.get_slot_0(middleware).await?.1)
     // }
 
     // pub async fn get_tick_info<M: TracingProvider>(
     //     &self,
     //     tick: i32,
     //     middleware: Arc<M>,
-    // ) -> Result<(u128, i128, U256, U256, i64, U256, u32, bool), AMMError<M>> {
+    // ) -> Result<(u128, i128, U256, U256, i64, U256, u32, bool), AmmError> {
     //     let v3_pool = IUniswapV3Pool::new(self.address, middleware.clone());
     //
     //     let tick_info = v3_pool.ticks(tick).call().await?;
@@ -753,7 +753,7 @@ impl UniswapV3Pool {
     //     &self,
     //     tick: i32,
     //     middleware: Arc<M>,
-    // ) -> Result<i128, AMMError<M>> {
+    // ) -> Result<i128, AmmError> {
     //     let tick_info = self.get_tick_info(tick, middleware).await?;
     //     Ok(tick_info.1)
     // }
@@ -762,7 +762,7 @@ impl UniswapV3Pool {
     //     &self,
     //     tick: i32,
     //     middleware: Arc<M>,
-    // ) -> Result<bool, AMMError<M>> {
+    // ) -> Result<bool, AmmError> {
     //     let tick_info = self.get_tick_info(tick, middleware).await?;
     //     Ok(tick_info.7)
     // }
@@ -770,7 +770,7 @@ impl UniswapV3Pool {
     // pub async fn get_slot_0<M: TracingProvider>(
     //     &self,
     //     middleware: Arc<M>,
-    // ) -> Result<(U256, i32, u16, u16, u16, u8, bool), AMMError<M>> {
+    // ) -> Result<(U256, i32, u16, u16, u16, u8, bool), AmmError> {
     //     let v3_pool = IUniswapV3Pool::new(self.address, middleware);
     //     Ok(v3_pool.slot_0().call().await?)
     // }
@@ -778,7 +778,7 @@ impl UniswapV3Pool {
     // pub async fn get_liquidity<M: TracingProvider>(
     //     &self,
     //     middleware: Arc<M>,
-    // ) -> Result<u128, AMMError<M>> {
+    // ) -> Result<u128, AmmError> {
     //     let v3_pool = IUniswapV3Pool::new(self.address, middleware);
     //     Ok(v3_pool.liquidity().call().await?)
     // }
@@ -786,7 +786,7 @@ impl UniswapV3Pool {
     // pub async fn get_sqrt_price<M: TracingProvider>(
     //     &self,
     //     middleware: Arc<M>,
-    // ) -> Result<U256, AMMError<M>> {
+    // ) -> Result<U256, AmmError> {
     //     Ok(self.get_slot_0(middleware).await?.0)
     // }
     //
@@ -922,7 +922,7 @@ impl UniswapV3Pool {
     // pub async fn get_token_decimals<M: TracingProvider>(
     //     &mut self,
     //     middleware: Arc<M>,
-    // ) -> Result<(u8, u8), AMMError<M>> {
+    // ) -> Result<(u8, u8), AmmError> {
     //     let token_a_decimals = IErc20::new(self.token_a, middleware.clone())
     //         .decimals()
     //         .call()
@@ -937,7 +937,7 @@ impl UniswapV3Pool {
     // }
     //
     // pub async fn get_fee<M: TracingProvider>(&mut self, middleware: Arc<M>) ->
-    // Result<u32, AMMError<M>> {     let fee =
+    // Result<u32, AmmError> {     let fee =
     // IUniswapV3Pool::new(self.address, middleware)         .fee()
     //         .call()
     //         .await?;
@@ -948,7 +948,7 @@ impl UniswapV3Pool {
     // pub async fn get_token_0<M: TracingProvider>(
     //     &self,
     //     middleware: Arc<M>,
-    // ) -> Result<Address, AMMError<M>> {
+    // ) -> Result<Address, AmmError> {
     //     let v3_pool = IUniswapV3Pool::new(self.address, middleware);
     //
     //     let token_0 = match v3_pool.token_0().call().await {
@@ -962,7 +962,7 @@ impl UniswapV3Pool {
     // pub async fn get_token_1<M: TracingProvider>(
     //     &self,
     //     middleware: Arc<M>,
-    // ) -> Result<Address, AMMError<M>> {
+    // ) -> Result<Address, AmmError> {
     //     let v3_pool = IUniswapV3Pool::new(self.address, middleware);
     //
     //     let token_1 = match v3_pool.token_1().call().await {
@@ -1154,13 +1154,7 @@ mod test {
         let amount_out_1 = pool.simulate_swap(pool.token_a, amount_in_1)?;
 
         let expected_amount_out_1 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_1,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_1, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1172,13 +1166,7 @@ mod test {
         let amount_out_2 = pool.simulate_swap(pool.token_a, amount_in_2)?;
 
         let expected_amount_out_2 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_2,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_2, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1190,13 +1178,7 @@ mod test {
         let amount_out_3 = pool.simulate_swap(pool.token_a, amount_in_3)?;
 
         let expected_amount_out_3 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_3,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_3, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1231,13 +1213,7 @@ mod test {
         let amount_out_1 = pool.simulate_swap(pool.token_b, amount_in_1)?;
 
         let expected_amount_out_1 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_1,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_1, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1249,13 +1225,7 @@ mod test {
         let amount_out_2 = pool.simulate_swap(pool.token_b, amount_in_2)?;
 
         let expected_amount_out_2 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_2,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_2, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1267,13 +1237,7 @@ mod test {
         let amount_out_3 = pool.simulate_swap(pool.token_b, amount_in_3)?;
 
         let expected_amount_out_3 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_3,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_3, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1308,13 +1272,7 @@ mod test {
         let amount_out_1 = pool.simulate_swap(pool.token_a, amount_in_1)?;
 
         let expected_amount_out_1 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_1,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_1, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1326,13 +1284,7 @@ mod test {
         let amount_out_2 = pool.simulate_swap(pool.token_a, amount_in_2)?;
 
         let expected_amount_out_2 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_2,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_2, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1344,13 +1296,7 @@ mod test {
         let amount_out_3 = pool.simulate_swap(pool.token_a, amount_in_3)?;
 
         let expected_amount_out_3 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_3,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_3, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1385,13 +1331,7 @@ mod test {
         let amount_out_1 = pool.simulate_swap(pool.token_b, amount_in_1)?;
 
         let expected_amount_out_1 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_1,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_1, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1403,13 +1343,7 @@ mod test {
         let amount_out_2 = pool.simulate_swap(pool.token_b, amount_in_2)?;
 
         let expected_amount_out_2 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_2,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_2, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1421,13 +1355,7 @@ mod test {
         let amount_out_3 = pool.simulate_swap(pool.token_b, amount_in_3)?;
 
         let expected_amount_out_3 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_3,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_3, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1461,13 +1389,7 @@ mod test {
         let amount_out_1 = pool.simulate_swap(pool.token_a, amount_in_1)?;
 
         let expected_amount_out_1 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_1,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_1, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1479,13 +1401,7 @@ mod test {
         let amount_out_2 = pool.simulate_swap(pool.token_a, amount_in_2)?;
 
         let expected_amount_out_2 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_2,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_2, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1497,13 +1413,7 @@ mod test {
         let amount_out_3 = pool.simulate_swap(pool.token_a, amount_in_3)?;
 
         let expected_amount_out_3 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_3,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_3, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1538,13 +1448,7 @@ mod test {
         let amount_out_1 = pool.simulate_swap(pool.token_b, amount_in_1)?;
 
         let expected_amount_out_1 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_1,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_1, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1556,13 +1460,7 @@ mod test {
         let amount_out_2 = pool.simulate_swap(pool.token_b, amount_in_2)?;
 
         let expected_amount_out_2 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_2,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_2, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1574,13 +1472,7 @@ mod test {
         let amount_out_3 = pool.simulate_swap(pool.token_b, amount_in_3)?;
 
         let expected_amount_out_3 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_3,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_3, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1615,13 +1507,7 @@ mod test {
         let amount_out_1 = pool.simulate_swap(pool.token_a, amount_in_1)?;
 
         let expected_amount_out_1 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_1,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_1, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1633,13 +1519,7 @@ mod test {
         let amount_out_2 = pool.simulate_swap(pool.token_a, amount_in_2)?;
 
         let expected_amount_out_2 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_2,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_2, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1651,13 +1531,7 @@ mod test {
         let amount_out_3 = pool.simulate_swap(pool.token_a, amount_in_3)?;
 
         let expected_amount_out_3 = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in_3,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in_3, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1692,13 +1566,7 @@ mod test {
         let amount_out_1 = pool.simulate_swap(pool.token_b, amount_in_1)?;
 
         let expected_amount_out_1 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_1,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_1, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1710,13 +1578,7 @@ mod test {
         let amount_out_2 = pool.simulate_swap(pool.token_b, amount_in_2)?;
 
         let expected_amount_out_2 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_2,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_2, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;
@@ -1728,13 +1590,7 @@ mod test {
         let amount_out_3 = pool.simulate_swap(pool.token_b, amount_in_3)?;
 
         let expected_amount_out_3 = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in_3,
-                U256::ZERO,
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in_3, U256::ZERO)
             .block(synced_block)
             .call()
             .await?;

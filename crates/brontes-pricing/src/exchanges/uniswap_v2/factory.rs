@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use brontes_types::traits::TracingProvider;
 use ethers::{
     abi::RawLog,
     prelude::{abigen, EthEvent},
@@ -8,11 +9,8 @@ use ethers::{
 };
 use serde::{Deserialize, Serialize};
 
-use brontes_types::traits::TracingProvider;
 use super::{batch_request, UniswapV2Pool};
-use crate::{
-    errors::AMMError,  factory::AutomatedMarketMakerFactory, AMM,
-};
+use crate::{errors::AMMError, factory::AutomatedMarketMakerFactory, AMM};
 
 abigen!(
     IUniswapV2Factory,
@@ -45,18 +43,20 @@ impl UniswapV2Factory {
     pub async fn get_all_pairs_via_batched_calls<M: TracingProvider>(
         &self,
         middleware: Arc<M>,
-    ) -> Result<Vec<AMM>, AMMError<M>> {
+    ) -> Result<Vec<AMM>, AmmError> {
         // let factory = IUniswapV2Factory::new(self.address, middleware.clone());
         //
         // let pairs_length: U256 = factory.all_pairs_length().call().await?;
         //
-        // tracing::trace!(?pairs_length, factory = ?self.address, "getting all pairs of factory via batched calls");
+        // tracing::trace!(?pairs_length, factory = ?self.address, "getting all pairs of
+        // factory via batched calls");
         //
         // let mut pairs = vec![];
         // let step = 766; //max batch size for this call until codesize is too large
         // let mut idx_from = U256::zero();
         // let mut idx_to =
-        //     if step > pairs_length.as_usize() { pairs_length } else { U256::from(step) };
+        //     if step > pairs_length.as_usize() { pairs_length } else {
+        // U256::from(step) };
         //
         // for _ in (0..pairs_length.as_u128()).step_by(step) {
         //     pairs.append(
@@ -106,7 +106,7 @@ impl AutomatedMarketMakerFactory for UniswapV2Factory {
         &self,
         log: Log,
         middleware: Arc<M>,
-    ) -> Result<AMM, AMMError<M>> {
+    ) -> Result<AMM, AmmError> {
         let pair_created_event: PairCreatedFilter =
             PairCreatedFilter::decode_log(&RawLog::from(log))?;
         Ok(AMM::UniswapV2Pool(
@@ -134,7 +134,7 @@ impl AutomatedMarketMakerFactory for UniswapV2Factory {
         _to_block: Option<u64>,
         middleware: Arc<M>,
         _step: u64,
-    ) -> Result<Vec<AMM>, AMMError<M>> {
+    ) -> Result<Vec<AMM>, AmmError> {
         self.get_all_pairs_via_batched_calls(middleware).await
     }
 
@@ -143,11 +143,11 @@ impl AutomatedMarketMakerFactory for UniswapV2Factory {
         amms: &mut [AMM],
         _block_number: Option<u64>,
         middleware: Arc<M>,
-    ) -> Result<(), AMMError<M>> {
+    ) -> Result<(), AmmError> {
         // let step = 127; //Max batch size for call
         // for amm_chunk in amms.chunks_mut(step) {
-        //     batch_request::get_amm_data_batch_request(amm_chunk, middleware.clone()).await?;
-        // }
+        //     batch_request::get_amm_data_batch_request(amm_chunk,
+        // middleware.clone()).await?; }
         todo!();
         Ok(())
     }

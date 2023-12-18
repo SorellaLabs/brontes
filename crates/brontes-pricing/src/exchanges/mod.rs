@@ -7,11 +7,11 @@ pub mod uniswap_v3_math;
 
 use std::sync::Arc;
 
+use alloy_primitives::{Address, B256, U256};
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
-use ethers::types::{Log};
-use alloy_primitives::{Address, U256, B256};
+use ethers::types::Log;
 use reth_rpc_types::{CallInput, CallRequest};
 use serde::{Deserialize, Serialize};
 
@@ -47,9 +47,13 @@ pub trait AutomatedMarketMaker {
         &mut self,
         block_number: Option<u64>,
         middleware: Arc<M>,
-    ) -> Result<(), AMMError<M>>;
+    ) -> Result<(), AmmError>;
 
-    fn simulate_swap(&self, token_in: Address, amount_in: U256) -> Result<U256, SwapSimulationError>;
+    fn simulate_swap(
+        &self,
+        token_in: Address,
+        amount_in: U256,
+    ) -> Result<U256, SwapSimulationError>;
     fn simulate_swap_mut(
         &mut self,
         token_in: Address,
@@ -87,7 +91,11 @@ impl AutomatedMarketMaker for AMM {
         }
     }
 
-    fn simulate_swap(&self, token_in: Address, amount_in: U256) -> Result<U256, SwapSimulationError> {
+    fn simulate_swap(
+        &self,
+        token_in: Address,
+        amount_in: U256,
+    ) -> Result<U256, SwapSimulationError> {
         match self {
             AMM::UniswapV2Pool(pool) => pool.simulate_swap(token_in, amount_in),
             AMM::UniswapV3Pool(pool) => pool.simulate_swap(token_in, amount_in),
@@ -116,7 +124,7 @@ impl AutomatedMarketMaker for AMM {
         &mut self,
         block_number: Option<u64>,
         middleware: Arc<M>,
-    ) -> Result<(), AMMError<M>> {
+    ) -> Result<(), AmmError> {
         match self {
             AMM::UniswapV2Pool(pool) => pool.populate_data(None, middleware).await,
             AMM::UniswapV3Pool(pool) => pool.populate_data(block_number, middleware).await,
