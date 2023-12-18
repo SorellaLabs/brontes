@@ -16,7 +16,7 @@ use reth_rpc_types::{CallInput, CallRequest};
 use serde::{Deserialize, Serialize};
 
 use self::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
-use super::errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError};
+use super::errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError};
 
 async fn make_call_request<C: SolCall, T: TracingProvider>(
     call: C,

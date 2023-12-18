@@ -17,8 +17,8 @@ pub fn flip_tick(
     }
 
     let (word_pos, bit_pos) = position(tick / tick_spacing);
-    let mask = U256::one() << bit_pos;
-    let word = *tick_bitmap.get(&word_pos).unwrap_or(&U256::zero());
+    let mask = U256::from(1) << bit_pos;
+    let word = *tick_bitmap.get(&word_pos).unwrap_or(&U256::ZERO);
     tick_bitmap.insert(word_pos, word ^ mask);
     Ok(())
 }
@@ -41,9 +41,9 @@ pub fn next_initialized_tick_within_one_word(
     if lte {
         let (word_pos, bit_pos) = position(compressed);
 
-        let mask = (U256::one() << bit_pos) - 1 + (U256::one() << bit_pos);
+        let mask = (U256::from(1) << bit_pos) - 1 + (U256::from(1) << bit_pos);
 
-        let masked = *tick_bitmap.get(&word_pos).unwrap_or(&U256::zero()) & mask;
+        let masked = *tick_bitmap.get(&word_pos).unwrap_or(&U256::ZERO) & mask;
 
         let initialized = !masked.is_zero();
 
@@ -61,9 +61,9 @@ pub fn next_initialized_tick_within_one_word(
     } else {
         let (word_pos, bit_pos) = position(compressed + 1);
 
-        let mask = !((U256::one() << bit_pos) - U256::one());
+        let mask = !((U256::from(1) << bit_pos) - U256::from(1));
 
-        let masked = *tick_bitmap.get(&word_pos).unwrap_or(&U256::zero()) & mask;
+        let masked = *tick_bitmap.get(&word_pos).unwrap_or(&U256::ZERO) & mask;
 
         let initialized = !masked.is_zero();
 

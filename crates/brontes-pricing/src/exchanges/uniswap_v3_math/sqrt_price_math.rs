@@ -239,7 +239,7 @@ mod test {
     fn test_get_next_sqrt_price_from_input() {
         //Fails if price is zero
         let result = get_next_sqrt_price_from_input(
-            U256::zero(),
+            U256::ZERO,
             0,
             U256::from(100000000000000000_u128),
             false,
@@ -248,7 +248,7 @@ mod test {
 
         //Fails if liquidity is zero
         let result = get_next_sqrt_price_from_input(
-            U256::one(),
+            U256::from(1),
             0,
             U256::from(100000000000000000_u128),
             true,
@@ -261,7 +261,7 @@ mod test {
 
         //any input amount cannot underflow the price
         let result = get_next_sqrt_price_from_input(
-            U256::one(),
+            U256::from(1),
             1,
             U256::from_dec_str(
                 "57896044618658097711785492504343953926634992332820282019728792003956564819968",
@@ -270,13 +270,13 @@ mod test {
             true,
         );
 
-        assert_eq!(result.unwrap(), U256::one());
+        assert_eq!(result.unwrap(), U256::from(1));
 
         //returns input price if amount in is zero and zeroForOne = true
         let result = get_next_sqrt_price_from_input(
             U256::from_dec_str("79228162514264337593543950336").unwrap(),
             1e17 as u128,
-            U256::zero(),
+            U256::ZERO,
             true,
         );
 
@@ -286,7 +286,7 @@ mod test {
         let result = get_next_sqrt_price_from_input(
             U256::from_dec_str("79228162514264337593543950336").unwrap(),
             1e17 as u128,
-            U256::zero(),
+            U256::ZERO,
             true,
         );
 
@@ -299,7 +299,7 @@ mod test {
         let max_amount_no_overflow = U256::MAX - ((U256::from(liquidity) << 96) / sqrt_price);
         let result =
             get_next_sqrt_price_from_input(sqrt_price, liquidity, max_amount_no_overflow, true);
-        assert_eq!(result.unwrap(), U256::one());
+        assert_eq!(result.unwrap(), U256::from(1));
 
         //input amount of 0.1 token1
         let result = get_next_sqrt_price_from_input(
@@ -340,18 +340,17 @@ mod test {
             true,
         );
 
-        assert_eq!(result.unwrap(), U256::one());
+        assert_eq!(result.unwrap(), U256::from(1));
     }
 
     #[test]
     fn test_get_next_sqrt_price_from_output() {
         //fails if price is zero
-        let result =
-            get_next_sqrt_price_from_output(U256::zero(), 0, U256::from(1000000000), false);
+        let result = get_next_sqrt_price_from_output(U256::ZERO, 0, U256::from(1000000000), false);
         assert_eq!(result.unwrap_err().to_string(), "Sqrt price is 0");
 
         //fails if liquidity is zero
-        let result = get_next_sqrt_price_from_output(U256::one(), 0, U256::from(1000000000), false);
+        let result = get_next_sqrt_price_from_output(U256::from(1), 0, U256::from(1000000000), false);
         assert_eq!(result.unwrap_err().to_string(), "Liquidity is 0");
 
         //fails if output amount is exactly the virtual reserves of token0
@@ -421,7 +420,7 @@ mod test {
         let result = get_next_sqrt_price_from_output(
             U256::from_dec_str("79228162514264337593543950336").unwrap(),
             1e17 as u128,
-            U256::zero(),
+            U256::ZERO,
             true,
         );
         assert_eq!(result.unwrap(), U256::from_dec_str("79228162514264337593543950336").unwrap());
@@ -430,7 +429,7 @@ mod test {
         let result = get_next_sqrt_price_from_output(
             U256::from_dec_str("79228162514264337593543950336").unwrap(),
             1e17 as u128,
-            U256::zero(),
+            U256::ZERO,
             false,
         );
         assert_eq!(result.unwrap(), U256::from_dec_str("79228162514264337593543950336").unwrap());
@@ -485,7 +484,7 @@ mod test {
             true,
         );
 
-        assert_eq!(amount_0.unwrap(), U256::zero());
+        assert_eq!(amount_0.unwrap(), U256::ZERO);
 
         // returns 0 if prices are equal
         let amount_0 = _get_amount_0_delta(
@@ -495,7 +494,7 @@ mod test {
             true,
         );
 
-        assert_eq!(amount_0.unwrap(), U256::zero());
+        assert_eq!(amount_0.unwrap(), U256::ZERO);
 
         // returns 0.1 amount1 for price of 1 to 1.21
         let amount_0 = _get_amount_0_delta(
@@ -547,7 +546,7 @@ mod test {
             true,
         );
 
-        assert_eq!(amount_1.unwrap(), U256::zero());
+        assert_eq!(amount_1.unwrap(), U256::ZERO);
 
         // returns 0 if prices are equal
         let amount_1 = _get_amount_1_delta(
@@ -557,7 +556,7 @@ mod test {
             true,
         );
 
-        assert_eq!(amount_1.unwrap(), U256::zero());
+        assert_eq!(amount_1.unwrap(), U256::ZERO);
 
         // returns 0.1 amount1 for price of 1 to 1.21
         let amount_1 = _get_amount_1_delta(
