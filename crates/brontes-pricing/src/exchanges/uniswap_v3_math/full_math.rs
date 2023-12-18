@@ -135,18 +135,18 @@ mod tests {
     #[test]
     fn test_mul_div() {
         //Revert if the denominator is zero
-        let result = mul_div(Q128, U256::from(5), U256::zero());
+        let result = mul_div(Q128, U256::from(5), U256::ZERO);
         assert_eq!(result.err().unwrap().to_string(), "Denominator is 0");
 
         // Revert if the denominator is zero and numerator overflows
-        let result = mul_div(Q128, Q128, U256::zero());
+        let result = mul_div(Q128, Q128, U256::ZERO);
         assert_eq!(
             result.err().unwrap().to_string(),
             "Denominator is less than or equal to prod_1"
         );
 
         // Revert if the output overflows uint256
-        let result = mul_div(Q128, Q128, U256::one());
+        let result = mul_div(Q128, Q128, U256::from(1));
         assert_eq!(
             result.err().unwrap().to_string(),
             "Denominator is less than or equal to prod_1"
@@ -168,18 +168,18 @@ mod test {
     #[test]
     fn test_mul_div() {
         //Revert if the denominator is zero
-        let result = mul_div(Q128, U256::from(5), U256::zero());
+        let result = mul_div(Q128, U256::from(5), U256::ZERO);
         assert_eq!(result.err().unwrap().to_string(), "Denominator is 0");
 
         // Revert if the denominator is zero and numerator overflows
-        let result = mul_div(Q128, Q128, U256::zero());
+        let result = mul_div(Q128, Q128, U256::ZERO);
         assert_eq!(
             result.err().unwrap().to_string(),
             "Denominator is less than or equal to prod_1"
         );
 
         // Revert if the output overflows uint256
-        let result = mul_div(Q128, Q128, U256::one());
+        let result = mul_div(Q128, Q128, U256::from(1));
         assert_eq!(
             result.err().unwrap().to_string(),
             "Denominator is less than or equal to prod_1"

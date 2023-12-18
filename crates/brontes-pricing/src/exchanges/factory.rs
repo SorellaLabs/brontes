@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
 use super::{
-    errors::{AMMError, EventLogError},
+    errors::{AmmError, EventLogError},
     uniswap_v2::factory::{UniswapV2Factory, PAIR_CREATED_EVENT_SIGNATURE},
     uniswap_v3::factory::{UniswapV3Factory, POOL_CREATED_EVENT_SIGNATURE},
     AMM,

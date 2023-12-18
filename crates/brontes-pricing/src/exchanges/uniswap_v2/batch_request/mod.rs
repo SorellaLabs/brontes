@@ -7,9 +7,10 @@ use ethers::{
     prelude::abigen,
     types::{Bytes, H160, U256},
 };
+use reth_rpc_types::{CallInput, CallRequest};
 
 use super::UniswapV2Pool;
-use crate::{errors::AMMError, AutomatedMarketMaker, AMM};
+use crate::{errors::AmmError, AutomatedMarketMaker, AMM};
 
 abigen!(
 
@@ -70,78 +71,97 @@ sol!(
 // }
 //
 
-fn populate_pool_data_from_tokens(
-    mut pool: UniswapV2Pool,
-    tokens: Vec<Token>,
-) -> Option<UniswapV2Pool> {
-    pool.token_a = tokens[0].to_owned().into_address()?;
-    pool.token_a_decimals = tokens[1].to_owned().into_uint()?.as_u32() as u8;
-    pool.token_b = tokens[2].to_owned().into_address()?;
-    pool.token_b_decimals = tokens[3].to_owned().into_uint()?.as_u32() as u8;
-    pool.reserve_0 = tokens[4].to_owned().into_uint()?.as_u128();
-    pool.reserve_1 = tokens[5].to_owned().into_uint()?.as_u128();
+fn populate_pool_data_from_tokens(mut pool: UniswapV2Pool, pool_data: PoolData) -> UniswapV2Pool {
+    pool.token_a = pool_data.tokenA;
+    pool.token_a_decimals = pool_data.tokenADecimals;
+    pool.token_b = pool_data.tokenB;
+    pool.token_b_decimals = pool_data.tokenBDecimals;
+    pool.reserve_0 = pool_data.reserve0;
+    pool.reserve_1 = pool_data.reserve_1;
 
-    Some(pool)
+    pool
+}
+
+pub async fn get_v2_pool_data<M: TracingProvider>(
+    pool: &mut UniswapV2Pool,
+    block: Option<u64>,
+    middleware: Arc<M>,
+) -> Result<(), AmmError> {
+    let mut bytecode = IGetUniswapV2PoolDataBatchRequest::BYTECODE.to_vec();
+    let data = data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
+
+    let req =
+        CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
+
+    let res = middleware
+        .eth_call(req, block_number.map(|i| i.into()), None, None)
+        .await
+        .unwrap();
+
+    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false).unwrap();
+    *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
 }
 
 pub async fn get_amm_data_batch_request<M: TracingProvider>(
     amms: &mut [UniswapV2Pool],
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    tracing::info!("getting data for {} AMMs", amms.len());
-
-    let mut target_addresses = vec![];
-    for amm in amms.iter() {
-        target_addresses.push(Token::Address(amm.address()));
-    }
-
-    let constructor_args = Token::Tuple(vec![Token::Array(target_addresses)]);
-
-    let deployer = IGetUniswapV2PoolDataBatchRequest::deploy(middleware.clone(), constructor_args)?;
-
-    let return_data: Bytes = deployer.call_raw().await?;
-    let return_data_tokens = ethers::abi::decode(
-        &[ParamType::Array(Box::new(ParamType::Tuple(vec![
-            ParamType::Address,   // token a
-            ParamType::Uint(8),   // token a decimals
-            ParamType::Address,   // token b
-            ParamType::Uint(8),   // token b decimals
-            ParamType::Uint(112), // reserve 0
-            ParamType::Uint(112), // reserve 1
-        ])))],
-        &return_data,
-    )?;
-
-    let mut pool_idx = 0;
-
-    for tokens in return_data_tokens {
-        if let Some(tokens_arr) = tokens.into_array() {
-            for tup in tokens_arr {
-                if let Some(pool_data) = tup.into_tuple() {
-                    //If the pool token A is not zero, signaling that the pool data was populated
-                    if let Some(address) = pool_data[0].to_owned().into_address() {
-                        if !address.is_zero() {
-                            //Update the pool data
-                            if let AMM::UniswapV2Pool(uniswap_v2_pool) = amms
-                                .get_mut(pool_idx)
-                                .expect("Pool idx should be in bounds")
-                            {
-                                if let Some(pool) = populate_pool_data_from_tokens(
-                                    uniswap_v2_pool.to_owned(),
-                                    pool_data,
-                                ) {
-                                    tracing::trace!(?pool);
-                                    *uniswap_v2_pool = pool;
-                                }
-                            }
-                        }
-                    }
-
-                    pool_idx += 1;
-                }
-            }
-        }
-    }
+    // tracing::info!("getting data for {} AMMs", amms.len());
+    //
+    // let mut target_addresses = vec![];
+    // for amm in amms.iter() {
+    //     target_addresses.push(Token::Address(amm.address()));
+    // }
+    //
+    // let constructor_args = Token::Tuple(vec![Token::Array(target_addresses)]);
+    //
+    // let deployer = IGetUniswapV2PoolDataBatchRequest::deploy(middleware.clone(),
+    // constructor_args)?;
+    //
+    // let return_data: Bytes = deployer.call_raw().await?;
+    // let return_data_tokens = ethers::abi::decode(
+    //     &[ParamType::Array(Box::new(ParamType::Tuple(vec![
+    //         ParamType::Address,   // token a
+    //         ParamType::Uint(8),   // token a decimals
+    //         ParamType::Address,   // token b
+    //         ParamType::Uint(8),   // token b decimals
+    //         ParamType::Uint(112), // reserve 0
+    //         ParamType::Uint(112), // reserve 1
+    //     ])))],
+    //     &return_data,
+    // )?;
+    //
+    // let mut pool_idx = 0;
+    //
+    // for tokens in return_data_tokens {
+    //     if let Some(tokens_arr) = tokens.into_array() {
+    //         for tup in tokens_arr {
+    //             if let Some(pool_data) = tup.into_tuple() {
+    //                 //If the pool token A is not zero, signaling that the pool
+    // data was populated                 if let Some(address) =
+    // pool_data[0].to_owned().into_address() {                     if
+    // !address.is_zero() {                         //Update the pool data
+    //                         if let AMM::UniswapV2Pool(uniswap_v2_pool) = amms
+    //                             .get_mut(pool_idx)
+    //                             .expect("Pool idx should be in bounds")
+    //                         {
+    //                             if let Some(pool) =
+    // populate_pool_data_from_tokens(                                 
+    // uniswap_v2_pool.to_owned(),                                 pool_data,
+    //                             ) {
+    //                                 tracing::trace!(?pool);
+    //                                 *uniswap_v2_pool = pool;
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //
+    //                 pool_idx += 1;
+    //             }
+    //         }
+    //     }
+    // }
+    todo!();
 
     Ok(())
 }
@@ -150,36 +170,39 @@ pub async fn get_v2_pool_data_batch_request<M: TracingProvider>(
     pool: &mut UniswapV2Pool,
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    tracing::info!(?pool.address, "getting pool data");
-    let constructor_args = Token::Tuple(vec![Token::Array(vec![Token::Address(pool.address)])]);
-
-    let deployer = IGetUniswapV2PoolDataBatchRequest::deploy(middleware.clone(), constructor_args)?;
-
-    let return_data: Bytes = deployer.call_raw().await?;
-    let return_data_tokens = ethers::abi::decode(
-        &[ParamType::Array(Box::new(ParamType::Tuple(vec![
-            ParamType::Address,   // token a
-            ParamType::Uint(8),   // token a decimals
-            ParamType::Address,   // token b
-            ParamType::Uint(8),   // token b decimals
-            ParamType::Uint(112), // reserve 0
-            ParamType::Uint(112), // reserve 1
-        ])))],
-        &return_data,
-    )?;
-
-    for tokens in return_data_tokens {
-        if let Some(tokens_arr) = tokens.into_array() {
-            for tup in tokens_arr {
-                let pool_data = tup
-                    .into_tuple()
-                    .ok_or(AMMError::BatchRequestError(pool.address))?;
-
-                *pool = populate_pool_data_from_tokens(pool.to_owned(), pool_data)
-                    .ok_or(AMMError::BatchRequestError(pool.address))?;
-            }
-        }
-    }
+    // tracing::info!(?pool.address, "getting pool data");
+    // let constructor_args =
+    // Token::Tuple(vec![Token::Array(vec![Token::Address(pool.address)])]);
+    //
+    // let deployer = IGetUniswapV2PoolDataBatchRequest::deploy(middleware.clone(),
+    // constructor_args)?;
+    //
+    // let return_data: Bytes = deployer.call_raw().await?;
+    // let return_data_tokens = ethers::abi::decode(
+    //     &[ParamType::Array(Box::new(ParamType::Tuple(vec![
+    //         ParamType::Address,   // token a
+    //         ParamType::Uint(8),   // token a decimals
+    //         ParamType::Address,   // token b
+    //         ParamType::Uint(8),   // token b decimals
+    //         ParamType::Uint(112), // reserve 0
+    //         ParamType::Uint(112), // reserve 1
+    //     ])))],
+    //     &return_data,
+    // )?;
+    //
+    // for tokens in return_data_tokens {
+    //     if let Some(tokens_arr) = tokens.into_array() {
+    //         for tup in tokens_arr {
+    //             let pool_data = tup
+    //                 .into_tuple()
+    //                 .ok_or(AMMError::BatchRequestError(pool.address))?;
+    //
+    //             *pool = populate_pool_data_from_tokens(pool.to_owned(),
+    // pool_data)                 
+    // .ok_or(AMMError::BatchRequestError(pool.address))?;         }
+    //     }
+    // }
+    todo!();
 
     Ok(())
 }

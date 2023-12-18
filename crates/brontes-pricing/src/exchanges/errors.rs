@@ -12,7 +12,7 @@ use tokio::task::JoinError;
 use crate::exchanges::uniswap_v3_math::error::UniswapV3MathError;
 
 #[derive(Error, Debug)]
-pub enum AMMError {
+pub enum AmmError {
     #[error("Provider error")]
     ProviderError(#[from] ProviderError),
     #[error("ABI Codec error")]

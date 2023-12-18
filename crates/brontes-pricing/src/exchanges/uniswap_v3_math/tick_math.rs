@@ -28,7 +28,7 @@ pub fn get_sqrt_ratio_at_tick(tick: i32) -> Result<U256, UniswapV3MathError> {
         return Err(UniswapV3MathError::T)
     }
 
-    let mut ratio = if abs_tick & (U256::from(0x1)) != U256::zero() {
+    let mut ratio = if abs_tick & (U256::from(0x1)) != U256::ZERO {
         U256::from("0xfffcb933bd6fad37aa2d162d1a594001")
     } else {
         U256::from("0x100000000000000000000000000000000")
@@ -97,7 +97,7 @@ pub fn get_sqrt_ratio_at_tick(tick: i32) -> Result<U256, UniswapV3MathError> {
     }
 
     Ok((ratio >> 32)
-        + if (ratio % (U256::one() << 32)).is_zero() { U256::zero() } else { U256::one() })
+        + if (ratio % (U256::from(1) << 32)).is_zero() { U256::ZERO } else { U256::from(1) })
 }
 
 pub fn get_tick_at_sqrt_ratio(sqrt_price_x_96: U256) -> Result<i32, UniswapV3MathError> {
@@ -107,45 +107,45 @@ pub fn get_tick_at_sqrt_ratio(sqrt_price_x_96: U256) -> Result<i32, UniswapV3Mat
 
     let ratio = sqrt_price_x_96.shl(32);
     let mut r = ratio;
-    let mut msb = U256::zero();
+    let mut msb = U256::ZERO;
 
     let mut f = if r > U256::from("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") {
-        U256::one().shl(U256::from(7))
+        U256::from(1).shl(U256::from(7))
     } else {
-        U256::zero()
+        U256::ZERO
     };
     msb = msb.bitor(f);
     r = r.shr(f);
 
     f = if r > U256::from("0xFFFFFFFFFFFFFFFF") {
-        U256::one().shl(U256::from(6))
+        U256::from(1).shl(U256::from(6))
     } else {
-        U256::zero()
+        U256::ZERO
     };
     msb = msb.bitor(f);
     r = r.shr(f);
 
-    f = if r > U256::from("0xFFFFFFFF") { U256::one().shl(U256::from(5)) } else { U256::zero() };
+    f = if r > U256::from("0xFFFFFFFF") { U256::from(1).shl(U256::from(5)) } else { U256::ZERO };
     msb = msb.bitor(f);
     r = r.shr(f);
 
-    f = if r > U256::from("0xFFFF") { U256::one().shl(U256::from(4)) } else { U256::zero() };
+    f = if r > U256::from("0xFFFF") { U256::from(1).shl(U256::from(4)) } else { U256::ZERO };
     msb = msb.bitor(f);
     r = r.shr(f);
 
-    f = if r > U256::from("0xFF") { U256::one().shl(U256::from(3)) } else { U256::zero() };
+    f = if r > U256::from("0xFF") { U256::from(1).shl(U256::from(3)) } else { U256::ZERO };
     msb = msb.bitor(f);
     r = r.shr(f);
 
-    f = if r > U256::from("0xF") { U256::one().shl(U256::from(2)) } else { U256::zero() };
+    f = if r > U256::from("0xF") { U256::from(1).shl(U256::from(2)) } else { U256::ZERO };
     msb = msb.bitor(f);
     r = r.shr(f);
 
-    f = if r > U256::from("0x3") { U256::one().shl(U256::from(1)) } else { U256::zero() };
+    f = if r > U256::from("0x3") { U256::from(1).shl(U256::from(1)) } else { U256::ZERO };
     msb = msb.bitor(f);
     r = r.shr(f);
 
-    f = if r > U256::from("0x1") { U256::one() } else { U256::zero() };
+    f = if r > U256::from("0x1") { U256::from(1) } else { U256::ZERO };
 
     msb = msb.bitor(f);
 
