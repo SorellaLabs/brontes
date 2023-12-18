@@ -10,10 +10,7 @@ use ethers::{
 use serde::{Deserialize, Serialize};
 
 use super::{batch_request, UniswapV2Pool};
-use crate::{
-    amm::{factory::AutomatedMarketMakerFactory, AMM},
-    errors::AMMError,
-};
+use crate::{errors::AMMError, factory::AutomatedMarketMakerFactory, AMM};
 
 abigen!(
     IUniswapV2Factory,
