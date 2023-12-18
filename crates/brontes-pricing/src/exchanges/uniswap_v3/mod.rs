@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{Address, BlockNumber, FixedBytes, B256, I256, U256, U64};
+use alloy_primitives::{Address, BlockNumber, FixedBytes, Log, B256, I256, U256, U64};
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
@@ -15,7 +15,7 @@ use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
 use ethers::{
     abi::{ethabi::Bytes, RawLog, Token},
     prelude::{abigen, AbiError, EthEvent},
-    types::{Action, Filter, Log},
+    types::{Action, Filter},
 };
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
@@ -69,6 +69,23 @@ pub const U256_TWO: U256 = U256::from_limbs([2, 0, 0, 0]);
 pub const Q128: U256 = U256::from_limbs([0, 0, 1, 0]);
 pub const Q224: U256 = U256::from_limbs([0, 0, 0, 4294967296]);
 
+pub const SWAP_EVENT_SIGNATURE: B256 = FixedBytes([
+    196, 32, 121, 249, 74, 99, 80, 215, 230, 35, 95, 41, 23, 73, 36, 249, 40, 204, 42, 200, 24,
+    235, 100, 254, 216, 0, 78, 17, 95, 188, 202, 103,
+]);
+
+// Burn event signature
+pub const BURN_EVENT_SIGNATURE: B256 = FixedBytes([
+    12, 57, 108, 217, 137, 163, 159, 68, 89, 181, 250, 26, 237, 106, 154, 141, 205, 188, 69, 144,
+    138, 207, 214, 126, 2, 140, 213, 104, 218, 152, 152, 44,
+]);
+
+// Mint event signature
+pub const MINT_EVENT_SIGNATURE: B256 = FixedBytes([
+    122, 83, 8, 11, 164, 20, 21, 139, 231, 236, 105, 185, 135, 181, 251, 125, 7, 222, 225, 1, 254,
+    133, 72, 143, 8, 83, 174, 22, 35, 157, 11, 222,
+]);
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UniswapV3Pool {
     pub address:          Address,
@@ -109,7 +126,17 @@ impl AutomatedMarketMaker for UniswapV3Pool {
     }
 
     fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {
-        unreachable!();
+        let event_signature = log.topics()[0];
+
+        if event_signature == BURN_EVENT_SIGNATURE {
+            self.sync_from_burn_log(log)?;
+        } else if event_signature == MINT_EVENT_SIGNATURE {
+            self.sync_from_mint_log(log)?;
+        } else if event_signature == SWAP_EVENT_SIGNATURE {
+            self.sync_from_swap_log(log)?;
+        } else {
+            Err(EventLogError::InvalidEventSignature)?
+        }
 
         Ok(())
     }
@@ -142,9 +169,8 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         block_number: Option<u64>,
         middleware: Arc<M>,
     ) -> Result<(), AmmError> {
-        let ticks =
-            batch_request::get_v3_pool_data_batch_request(self, block_number, middleware.clone())
-                .await?;
+        batch_request::get_v3_pool_data_batch_request(self, block_number, middleware.clone())
+            .await?;
 
         Ok(())
     }
@@ -808,29 +834,25 @@ impl UniswapV3Pool {
     //     Ok(self.get_slot_0(middleware).await?.0)
     // }
     //
-    // pub fn sync_from_burn_log(&mut self, log: Log) -> Result<(), AbiError> {
-    //     let burn_event = BurnFilter::decode_log(&RawLog::from(log))?;
-    //
-    //     self.modify_position(
-    //         burn_event.tick_lower,
-    //         burn_event.tick_upper,
-    //         -(burn_event.amount as i128),
-    //     );
-    //
-    //     Ok(())
-    // }
-    //
-    // pub fn sync_from_mint_log(&mut self, log: Log) -> Result<(), AbiError> {
-    //     let mint_event = MintFilter::decode_log(&RawLog::from(log))?;
-    //
-    //     self.modify_position(
-    //         mint_event.tick_lower,
-    //         mint_event.tick_upper,
-    //         mint_event.amount as i128,
-    //     );
-    //
-    //     Ok(())
-    // }
+    pub fn sync_from_burn_log(&mut self, log: Log) -> Result<(), AbiError> {
+        let burn_event = IUniswapV3Pool::Burn::decode_log_object(&log, false).unwrap();
+
+        self.modify_position(
+            burn_event.tickLower,
+            burn_event.tickUpper,
+            -(burn_event.amount as i128),
+        );
+
+        Ok(())
+    }
+
+    pub fn sync_from_mint_log(&mut self, log: Log) -> Result<(), AbiError> {
+        let mint_event = IUniswapV3Pool::Mint::decode_log_object(&log, false).unwrap();
+
+        self.modify_position(mint_event.tickLower, mint_event.tickUpper, mint_event.amount as i128);
+
+        Ok(())
+    }
 
     pub fn modify_position(&mut self, tick_lower: i32, tick_upper: i32, liquidity_delta: i128) {
         //We are only using this function when a mint or burn event is emitted,
@@ -927,15 +949,16 @@ impl UniswapV3Pool {
         }
     }
 
-    // pub fn sync_from_swap_log(&mut self, log: Log) -> Result<(), AbiError> {
-    //     let swap_event = SwapFilter::decode_log(&RawLog::from(log))?;
-    //
-    //     self.sqrt_price = swap_event.sqrt_price_x96;
-    //     self.liquidity = swap_event.liquidity;
-    //     self.tick = swap_event.tick;
-    //
-    //     Ok(())
-    // }
+    pub fn sync_from_swap_log(&mut self, log: Log) -> Result<(), AbiError> {
+        let swap_event = IUniswapV3Pool::Swap::decode_log_object(&log, false).unwrap();
+
+        self.sqrt_price = swap_event.sqrtPriceX96;
+        self.liquidity = swap_event.liquidity;
+        self.tick = swap_event.tick;
+
+        Ok(())
+    }
+
     //
     // pub async fn get_token_decimals<M: TracingProvider>(
     //     &mut self,

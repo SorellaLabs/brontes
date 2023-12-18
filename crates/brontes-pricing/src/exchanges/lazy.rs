@@ -1,25 +1,50 @@
-use std::{collections::VecDeque, pin::Pin, task::Poll};
+use std::{pin::Pin, sync::Arc, task::Poll};
 
 use alloy_primitives::Address;
-use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
+use brontes_types::{traits::TracingProvider, Dexes};
+use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
 use reth_primitives::revm_primitives::HashMap;
+use tracing::error;
 
-use crate::{types::PoolState, PoolUpdate};
+use crate::{types::PoolState, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, PoolUpdate};
 
-pub struct LazyExchangeLoader {
+pub struct LazyExchangeLoader<T: TracingProvider> {
+    provider:          Arc<T>,
     pool_buf:          HashMap<Address, Vec<PoolUpdate>>,
     pool_load_futures: FuturesUnordered<Pin<Box<dyn Future<Output = (Address, PoolState)>>>>,
 }
 
-impl LazyExchangeLoader {
-    pub fn new() -> Self {
+impl<T: TracingProvider> LazyExchangeLoader<T> {
+    pub fn new(provider: Arc<T>) -> Self {
         Self {
-            pool_buf:          HashMap::default(),
+            pool_buf: HashMap::default(),
             pool_load_futures: FuturesUnordered::default(),
+            provider,
         }
     }
 
-    pub fn lazy_load_exchange(&mut self, address: Address, block_number: u64, ex_type: ()) {
+    pub fn lazy_load_exchange(&mut self, address: Address, block_number: u64, ex_type: Dexes) {
+        let provider = self.provider.clone();
+        match ex_type {
+            Dexes::UniswapV2 => self.pool_load_futures.push(Box::pin(async move {
+                let pool = UniswapV2Pool::new_load_on_block(address, provider, block_number)
+                    .await
+                    .unwrap();
+                (address, PoolState::new(crate::types::PoolVariants::UniswapV2(pool)))
+            })),
+            Dexes::UniswapV3 => {
+                self.pool_load_futures.push(Box::pin(async move {
+                    let pool = UniswapV3Pool::new_from_address(address, block_number, provider)
+                        .await
+                        .unwrap();
+                    (address, PoolState::new(crate::types::PoolVariants::UniswapV3(pool)))
+                }));
+            }
+            rest @ _ => {
+                error!(exchange =?ex_type, "no state updater is build for");
+            }
+        }
+
         todo!()
     }
 
@@ -39,7 +64,7 @@ impl LazyExchangeLoader {
     }
 }
 
-impl Stream for LazyExchangeLoader {
+impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
     type Item = (PoolState, Vec<PoolUpdate>);
 
     fn poll_next(
