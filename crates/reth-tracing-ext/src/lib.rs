@@ -41,6 +41,9 @@ use revm::interpreter::InstructionResult;
 use revm_primitives::{Account, ExecutionResult, HashMap, SpecId, KECCAK_EMPTY};
 use tokio::runtime::Handle;
 
+mod provider;
+pub use provider::*;
+
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
     ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory>,
