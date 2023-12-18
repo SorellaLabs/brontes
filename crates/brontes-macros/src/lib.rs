@@ -292,10 +292,12 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: Address,
                 logs: &Vec<Log>,
                 db_tx: &LibmdbxTx<RO>,
+                tx: Sender<PoolUpdate>,
+                block: u64,
+                tx_idx: u64,
             ) -> Option<Actions> {
                 if sig == self.0.get_signature() {
-                    return
-                        self.0.decode_trace_data(
+                    let res = self.0.decode_trace_data(
                             index,
                             data,
                             return_data,
@@ -303,11 +305,22 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             target_address,
                             logs,
                             db_tx
-                            )
-                }
+                        );
 
+                    if let Some(res) = &res {
+                        let pool_update = PoolUpdate {
+                            block,
+                            tx_idx,
+                            logs: logs.clone(),
+                            action: res.clone()
+                        };
+                        let _ = tx.try_send(pool_update);
+                    }
+
+                    return res
+                }
                 #( else if sig == self.#i.get_signature() {
-                        return self.#i.decode_trace_data(
+                    let res = self.#i.decode_trace_data(
                             index,
                             data,
                             return_data,
@@ -315,7 +328,19 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             target_address,
                             logs,
                             db_tx
-                        )
+                    );
+                        if let Some(res) = &res {
+                            let pool_update = PoolUpdate {
+                                logs: logs.clone(),
+                                block,
+                                tx_idx,
+                                action: res.clone()
+                            };
+                            let _ = tx.try_send(pool_update);
+
+                        }
+
+                            return res
                     }
                 )*
 
