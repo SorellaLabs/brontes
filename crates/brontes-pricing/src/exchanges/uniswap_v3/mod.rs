@@ -7,10 +7,6 @@ use std::{
     sync::Arc,
 };
 
-use amms::{
-    amm::AutomatedMarketMaker,
-    errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
-};
 use async_trait::async_trait;
 use ethers::{
     abi::{ethabi::Bytes, RawLog, Token},
@@ -18,6 +14,7 @@ use ethers::{
     providers::Middleware,
     types::{BlockNumber, Filter, Log, H160, H256, I256, U256, U64},
 };
+use crate::{ errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError}, AutomatedMarketMaker};
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 

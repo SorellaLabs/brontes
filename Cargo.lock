@@ -1393,8 +1393,10 @@ dependencies = [
  "serde_repr",
  "serde_with",
  "strum",
+ "thiserror",
  "tokio",
  "tracing",
+ "uniswap_v3_math",
 ]
 
 [[package]]

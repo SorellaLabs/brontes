@@ -2,26 +2,21 @@ use std::{sync::Arc, vec};
 
 use ethers::{
     abi::{ParamType, Token},
+    prelude::abigen,
     providers::Middleware,
     types::{Bytes, I256, U256, U64},
 };
 
-use crate::{
-    amm::{AutomatedMarketMaker, AMM},
-    errors::AMMError,
-};
-
 use super::UniswapV3Pool;
-
-use ethers::prelude::abigen;
+use crate::{errors::AMMError, AutomatedMarketMaker, AMM};
 
 abigen!(
     IGetUniswapV3PoolDataBatchRequest,
-    "src/amm/uniswap_v3/batch_request/GetUniswapV3PoolDataBatchRequestABI.json";
+    "./crates/brontes-pricing/src/exchanges/uniswap_v3/batch_request/GetUniswapV3PoolDataBatchRequestABI.json";
     IGetUniswapV3TickDataBatchRequest,
-    "src/amm/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequestABI.json";
+    "./crates/brontes-pricing/src/exchanges/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequestABI.json";
     ISyncUniswapV3PoolBatchRequest,
-    "src/amm/uniswap_v3/batch_request/SyncUniswapV3PoolBatchRequestABI.json";
+    "./crates/brontes-pricing/src/exchanges/uniswap_v3/batch_request/SyncUniswapV3PoolBatchRequestABI.json";
 
 );
 
@@ -91,8 +86,8 @@ pub async fn get_v3_pool_data_batch_request<M: Middleware>(
 }
 
 pub struct UniswapV3TickData {
-    pub initialized: bool,
-    pub tick: i32,
+    pub initialized:   bool,
+    pub tick:          i32,
     pub liquidity_net: i128,
 }
 
@@ -206,7 +201,7 @@ pub async fn sync_v3_pool_batch_request<M: Middleware>(
                 .ok_or(AMMError::BatchRequestError(pool.address))?
                 .is_zero()
             {
-                return Err(AMMError::BatchRequestError(pool.address));
+                return Err(AMMError::BatchRequestError(pool.address))
             } else {
                 pool.liquidity = pool_data[0]
                     .to_owned()

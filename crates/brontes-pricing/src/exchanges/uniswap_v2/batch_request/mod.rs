@@ -8,18 +8,15 @@ use ethers::{
 };
 
 use super::UniswapV2Pool;
-use crate::{
-    amm::{AutomatedMarketMaker, AMM},
-    errors::AMMError,
-};
+use crate::{errors::AMMError, AutomatedMarketMaker, AMM};
 
 abigen!(
 
     IGetUniswapV2PairsBatchRequest,
-        "src/amm/uniswap_v2/batch_request/GetUniswapV2PairsBatchRequestABI.json";
+        "./crates/brontes-pricing/src/exchanges/uniswap_v2/batch_request/GetUniswapV2PairsBatchRequestABI.json";
 
     IGetUniswapV2PoolDataBatchRequest,
-        "src/amm/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json";
+        "./crates/brontes-pricing/src/exchanges/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json";
 );
 
 fn populate_pool_data_from_tokens(
