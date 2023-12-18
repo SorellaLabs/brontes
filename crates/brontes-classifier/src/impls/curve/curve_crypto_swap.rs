@@ -1,5 +1,6 @@
 use alloy_primitives::{hex, FixedBytes};
 use alloy_sol_types::{SolCall, SolEvent};
+use brontes_types::Dexes;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens, Libmdbx};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{Actions, NormalizedSwap};
@@ -152,7 +153,7 @@ logs: true,
 );
 
 action_dispatch!(
-    CurveCryptoSwapClassifier,
+    CurveCryptoSwap,
     CurveCryptoExchange0,
     CurveCryptoExchange1,
     CurveCryptoExchangeUnderlying

@@ -18,6 +18,14 @@ pub mod tree;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Dexes {
+    UniswapV2,
+    UniswapV3,
+    SushiSwapV2,
+    SushiSwapV3,
+    CurveCryptoSwap,
+}
 // include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
 
 static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
