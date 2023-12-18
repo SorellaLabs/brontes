@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
-use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
@@ -28,8 +27,6 @@ use crate::errors::TraceParseError;
 //#[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider> {
     #[allow(unused)]
-    database:              &'db Clickhouse,
-    #[allow(unused)]
     libmdbx:               &'db Libmdbx,
     #[allow(unused)]
     should_fetch:          Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
@@ -39,13 +36,12 @@ pub struct TraceParser<'db, T: TracingProvider> {
 
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
-        database: &'db Clickhouse,
         libmdbx: &'db Libmdbx,
         should_fetch: Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
-        Self { database, libmdbx, tracer, metrics_tx, should_fetch }
+        Self { libmdbx, tracer, metrics_tx, should_fetch }
     }
 
     pub fn get_tracer(&self) -> Arc<T> {
