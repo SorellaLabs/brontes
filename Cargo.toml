@@ -142,6 +142,9 @@ strum = "0.25.0"
 serial_test = "2.0.0"
 derive_more = "0.99.17"
 
+num_cpus = "1.16.0"
+
+
 [profile.dev]
 opt-level = 0           # No optimizations
 debug = true            # Generate debug information
