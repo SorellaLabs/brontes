@@ -4,6 +4,7 @@ use alloy_primitives::Address;
 use brontes_types::{extra_processing::Pair, normalized_actions::Actions, Dexes};
 // use crate::exchanges::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
 use malachite::Rational;
+use reth_rpc_types::Log;
 
 use crate::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, AutomatedMarketMaker};
 
@@ -67,7 +68,7 @@ impl PoolState {
 
     pub fn increment_state(&mut self, state: PoolUpdate) -> (u16, PoolStateSnapShot) {
         self.update_nonce += 1;
-        self.variant.increment_state(state.action);
+        self.variant.increment_state(state.action, state.logs);
         (self.update_nonce, self.variant.clone().into_snapshot())
     }
 
@@ -90,11 +91,19 @@ pub enum PoolVariants {
 }
 
 impl PoolVariants {
-    fn increment_state(&mut self, action: Actions) {
-        match self {
-            PoolVariants::UniswapV3(a) => a.sync_from_action(action).unwrap(),
-            PoolVariants::UniswapV2(a) => a.sync_from_action(action).unwrap(),
+    fn increment_state(&mut self, _action: Actions, logs: Vec<Log>) {
+        for log in logs {
+            let log = alloy_primitives::Log::new(log.topics, log.data).unwrap();
+            match self {
+                PoolVariants::UniswapV3(a) => a.sync_from_log(log).unwrap(),
+                PoolVariants::UniswapV2(a) => a.sync_from_log(log).unwrap(),
+            }
         }
+        // match self {
+        //     PoolVariants::UniswapV3(a) =>
+        // a.sync_from_action(action).unwrap(),
+        //     PoolVariants::UniswapV2(a) =>
+        // a.sync_from_action(action).unwrap(), }
     }
 
     fn into_snapshot(self) -> PoolStateSnapShot {
@@ -109,6 +118,7 @@ impl PoolVariants {
 pub struct PoolUpdate {
     pub block:  u64,
     pub tx_idx: u64,
+    pub logs:   Vec<Log>,
     pub action: Actions,
 }
 
