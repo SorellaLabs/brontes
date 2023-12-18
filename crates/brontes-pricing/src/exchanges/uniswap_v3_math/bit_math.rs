@@ -11,41 +11,41 @@ pub fn most_significant_bit(mut x: U256) -> Result<u8, UniswapV3MathError> {
         return Err(UniswapV3MathError::ZeroValue)
     }
 
-    if x >= U256::from("0x100000000000000000000000000000000") {
+    if x >= U256::from_str_radix("100000000000000000000000000000000", 16).unwrap() {
         x.shr_assign(128);
         r += 128;
     }
 
-    if x >= U256::from("0x10000000000000000") {
+    if x >= U256::from(0x10000000000000000) {
         x.shr_assign(64);
         r += 64;
     }
 
-    if x >= U256::from("0x100000000") {
+    if x >= U256::from(0x100000000) {
         x.shr_assign(32);
         r += 32;
     }
 
-    if x >= U256::from("0x10000") {
+    if x >= U256::from(0x10000) {
         x.shr_assign(16);
         r += 16;
     }
 
-    if x >= U256::from("0x100") {
+    if x >= U256::from(0x100) {
         x.shr_assign(8);
         r += 8;
     }
 
-    if x >= U256::from("0x10") {
+    if x >= U256::from(0x10) {
         x.shr_assign(4);
         r += 4;
     }
-    if x >= U256::from("0x4") {
+    if x >= U256::from(0x4) {
         x.shr_assign(2);
         r += 2;
     }
 
-    if x >= U256::from("0x2") {
+    if x >= U256::from(0x2) {
         r += 1;
     }
 
@@ -91,19 +91,19 @@ pub fn least_significant_bit(mut x: U256) -> Result<u8, UniswapV3MathError> {
         x >>= 8;
     }
 
-    if x & U256::from("0xf") > U256::ZERO {
+    if x & U256::from(0xf) > U256::ZERO {
         r -= 4;
     } else {
         x >>= 4;
     }
 
-    if x & U256::from("0x3") > U256::ZERO {
+    if x & U256::from(0x3) > U256::ZERO {
         r -= 2;
     } else {
         x >>= 2;
     }
 
-    if x & U256::from("0x1") > U256::ZERO {
+    if x & U256::from(0x1) > U256::ZERO {
         r -= 1;
     }
 

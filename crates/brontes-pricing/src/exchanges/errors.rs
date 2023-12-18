@@ -1,10 +1,10 @@
 use std::time::SystemTimeError;
 
+use alloy_primitives::{Address as H160, U256};
 use brontes_types::traits::TracingProvider;
 use ethers::{
     prelude::{AbiError, ContractError},
     providers::{Middleware, ProviderError},
-    types::{H160, U256},
 };
 use thiserror::Error;
 use tokio::task::JoinError;
