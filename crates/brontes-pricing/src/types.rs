@@ -5,6 +5,8 @@ use brontes_types::{extra_processing::Pair, normalized_actions::Actions};
 // use crate::exchanges::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
 use malachite::Rational;
 
+use crate::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
 pub struct PoolKey {
     pub pool:         Address,
@@ -49,8 +51,8 @@ impl DexQuotes {
 /// period
 #[derive(Debug, Clone)]
 pub enum PoolStateSnapShot {
-    UniswapV2(()),
-    UniswapV3(()),
+    UniswapV2(UniswapV2Pool),
+    UniswapV3(UniswapV3Pool),
 }
 
 pub struct PoolState {
@@ -76,8 +78,8 @@ impl PoolState {
 
 #[derive(Debug, Clone)]
 pub enum PoolVariants {
-    UniswapV2(()),
-    UniswapV3(()),
+    UniswapV2(UniswapV2Pool),
+    UniswapV3(UniswapV3Pool),
 }
 
 impl PoolVariants {
