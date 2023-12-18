@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 # Reth
+async-trait.workspace = true
 reth-tasks.workspace = true
 reth-rpc.workspace = true
 reth-rpc-types.workspace = true
