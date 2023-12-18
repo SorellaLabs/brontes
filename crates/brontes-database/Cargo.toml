@@ -9,7 +9,7 @@ edition = "2021"
 
 # brontes
 brontes-types.workspace = true
-
+brontes-pricing.workspace = true
 
 petgraph = "0.6.4"
 itertools = "0.12.0"
