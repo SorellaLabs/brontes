@@ -109,7 +109,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
         tracer,
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
-    let (tx, rx) = tokio::sync::mpsc::channel(5);
+    let (tx, _rx) = tokio::sync::mpsc::channel(5);
     let classifier = Classifier::new(&libmdbx, tx.clone());
 
     #[cfg(not(feature = "local"))]
