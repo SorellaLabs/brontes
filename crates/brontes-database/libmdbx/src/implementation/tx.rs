@@ -87,6 +87,7 @@ impl<K: TransactionKind> DbTx for LibmdbxTx<K> {
     fn commit(self) -> Result<bool, DatabaseError> {
         self.inner
             .commit()
+            .map(|(res, latency)| res)
             .map_err(|e| DatabaseError::Commit(e.into()))
     }
 
