@@ -9,7 +9,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::extra_processing::Pair;
+use brontes_types::{extra_processing::Pair, Dexes};
 use itertools::Itertools;
 use petgraph::{
     graph::UnGraph,
@@ -20,19 +20,21 @@ use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct PairGraph {
-    graph:         UnGraph<(), HashSet<Address>, usize>,
+    graph:         UnGraph<(), HashSet<(Address, Dexes)>, usize>,
     addr_to_index: HashMap<Address, usize>,
-    known_pairs:   HashMap<Pair, Vec<Address>>,
+    known_pairs:   HashMap<Pair, Vec<(Address, Dexes)>>,
 }
 
 impl PairGraph {
-    pub fn init_from_hashset(map: HashMap<Address, Pair>) -> Self {
+    pub fn init_from_hashset(map: HashMap<(Address, Dexes), Pair>) -> Self {
         let t0 = SystemTime::now();
-        let mut graph = UnGraph::<(), HashSet<Address>, usize>::default();
+        let mut graph = UnGraph::<(), HashSet<(Address, Dexes)>, usize>::default();
 
         let mut addr_to_index = HashMap::default();
-        let mut connections: HashMap<Address, (usize, Vec<(Address, Vec<Address>, usize)>)> =
-            HashMap::new();
+        let mut connections: HashMap<
+            Address,
+            (usize, Vec<(Address, Vec<(Address, Dexes)>, usize)>),
+        > = HashMap::new();
 
         let mut known_pairs = HashMap::new();
 
@@ -85,25 +87,25 @@ impl PairGraph {
         Self { graph, addr_to_index, known_pairs }
     }
 
-    pub fn get_all_pools(&self, pair: Pair) -> Box<dyn Iterator<Item = Address>> {
+    pub fn get_all_pools(&self, pair: Pair) -> Box<dyn Iterator<Item = (Address, Dexes)>> {
         let Some(node0) = self.addr_to_index.get(&pair.0) else {
-            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = Address>>
+            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = (Address, Dexes)>>
         };
         let Some(node1) = self.addr_to_index.get(&pair.1) else {
-            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = Address>>
+            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = (Address, Dexes)>>
         };
 
         let Some(edge) = self.graph.find_edge((*node0).into(), (*node1).into()) else {
-            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = Address>>
+            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = (Address, Dexes)>>
         };
 
         Box::new(self.graph.edge_weight(edge).unwrap().clone().into_iter())
-            as Box<dyn Iterator<Item = Address>>
+            as Box<dyn Iterator<Item = (Address, Dexes)>>
     }
 
     // returns false if there was a duplicate
-    pub fn add_node(&mut self, pair: Pair, pool_addr: Address) {
-        self.known_pairs.insert(pair, vec![pool_addr]);
+    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: Dexes) {
+        self.known_pairs.insert(pair, vec![(pool_addr, dex)]);
 
         let node_0 = *self
             .addr_to_index
@@ -116,18 +118,18 @@ impl PairGraph {
 
         if let Some(edge) = self.graph.find_edge(node_0.into(), node_1.into()) {
             let mut pools = self.graph.edge_weight(edge).unwrap().clone();
-            pools.insert(pool_addr);
+            pools.insert((pool_addr, dex));
             self.graph.update_edge(node_0.into(), node_1.into(), pools);
         } else {
             let mut set = HashSet::new();
-            set.insert(pool_addr);
+            set.insert((pool_addr, dex));
 
             self.graph.add_edge(node_0.into(), node_1.into(), set);
         }
     }
 
     // fetches the path from start to end
-    pub fn get_path(&mut self, start: Address, end: Address) -> Vec<Address> {
+    pub fn get_path(&mut self, start: Address, end: Address) -> Vec<(Address, Dexes)> {
         let pair = Pair(start, end);
         if let Some(pools) = self.known_pairs.get(&pair) {
             return pools.clone()

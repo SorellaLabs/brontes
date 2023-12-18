@@ -35,7 +35,7 @@ reth-db.workspace = true
 
 # libmdbx deps
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
-reth-codecs = { workspace = true, features = ["arbitrary"] }
+reth-codecs.workspace = true
 codecs-derive.workspace = true
 proptest = "1.4"
 proptest-derive = "0.4"

@@ -1,6 +1,7 @@
 use std::{fmt::Debug, path::Path, sync::Arc};
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
+use num_cpus::get;
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
@@ -41,6 +42,9 @@ use revm::interpreter::InstructionResult;
 use revm_primitives::{Account, ExecutionResult, HashMap, SpecId, KECCAK_EMPTY};
 use tokio::runtime::Handle;
 
+mod provider;
+pub use provider::*;
+
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
     ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory>,
@@ -60,7 +64,7 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, handle: Handle) -> (TaskManager, Self) {
+    pub fn new(db_path: &Path, handle: Handle, max_tasks: u32) -> (TaskManager, Self) {
         let task_manager = TaskManager::new(handle);
         let task_executor: reth_tasks::TaskExecutor = task_manager.executor();
 
@@ -120,7 +124,7 @@ impl TracingClient {
             fee_history,
         );
 
-        let tracing_call_guard = BlockingTaskGuard::new(10);
+        let tracing_call_guard = BlockingTaskGuard::new(max_tasks);
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 

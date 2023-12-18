@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 # Reth
+async-trait.workspace = true
 reth-tasks.workspace = true
 reth-rpc.workspace = true
 reth-rpc-types.workspace = true
@@ -23,6 +24,8 @@ reth-interfaces.workspace = true
 futures.workspace = true
 brontes-types.workspace = true
 tracing.workspace = true
+
+num_cpus.workspace = true   
 
 revm = { git = "https://github.com/bluealloy/revm", branch = "reth_freeze",  features = ["std", "secp256k1"], default-features = false }
 revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "reth_freeze", features = ["std"], default-features = false }

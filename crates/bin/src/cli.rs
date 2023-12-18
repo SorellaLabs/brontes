@@ -2,37 +2,51 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
+#[command(name = "brontes", author = "Sorella Labs", version = "0.1.0")]
 #[command(propagate_version = true)]
-pub struct Opts {
+pub struct Args {
     #[clap(subcommand)]
-    pub sub: Commands,
+    pub command: Commands,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Runs brontes
-    Brontes(Cli),
+    #[command(name = "run")]
+    Run(Run),
+    #[command(name = "init")]
+    Init(Init),
 }
 
 #[derive(Debug, Parser)]
-pub struct Cli {
+pub struct Run {
     /// Start Block
     #[arg(long, short)]
-    pub start_block:  u64,
+    pub start_block: u64,
     /// Optional End Block, if omitted it will continue to run until killed
     #[arg(long, short)]
-    pub end_block:    Option<u64>,
-    /// Max Block Queue size
-    #[arg(long, short, default_value = "10")]
-    pub max_tasks:    u64,
-    /// Flush Tardis data loaded into clickhouse upon termination
-    #[arg(long, short, default_value = "false")]
-    pub flush_tardis: bool,
-    /// initializes libmdbx tables
-    #[arg(long, short, default_value = "false")]
-    pub init_libmdbx: bool,
-    /// Will run in test mode, benchmarking the perfomance of the inspectors
-    /// against our latest best run
-    #[arg(long, short, default_value = "false")]
-    pub test:         bool,
+    pub end_block:   Option<u64>,
+    /// Optional Max Tasks, if omitted it will default to 80% of the number of
+    /// physical cores on your machine
+    pub max_tasks:   Option<u64>,
+    /// Optional quote asset, if omitted it will default to USDC
+    #[arg(long, short, default_value = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")]
+    pub quote_asset: String,
+}
+
+#[derive(Debug, Parser)]
+pub struct Init {
+    /// Initialize the local Libmdbx DB
+    #[arg(long, short, default_value = "true")]
+    pub init_libmdbx:         bool,
+    /// Start Block to download metadata from Sorella's MEV DB
+    #[arg(long, short, default_value = "0")]
+    pub start_block:          Option<u64>,
+    /// End Block to download metadata from Sorella's MEV DB
+    #[arg(long, short, default_value = "0")]
+    pub end_block:            Option<u64>,
+    /// Download Dex Prices from Sorella's MEV DB for the given block range. If
+    /// false it will run the dex pricing locally using raw on-chain data
+    #[arg(long, short, default_value = "true")]
+    pub download_dex_pricing: bool,
 }

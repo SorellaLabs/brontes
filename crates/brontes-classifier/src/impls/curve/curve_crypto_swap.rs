@@ -1,17 +1,19 @@
 use alloy_primitives::{hex, FixedBytes};
 use alloy_sol_types::{SolCall, SolEvent};
-use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens, Libmdbx};
+use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
+use brontes_pricing::types::PoolUpdate;
 use brontes_types::normalized_actions::{Actions, NormalizedSwap};
 use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_primitives::{Address, Bytes, U256};
 use reth_rpc_types::Log;
+use tokio::sync::mpsc::Sender;
 
 use crate::{
     enum_unwrap, ActionCollection,
     CurveCryptoSwap::{
-        exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call,
-        exchange_underlying_1Call, CurveCryptoSwapCalls, TokenExchange,
+        exchange_0Call, exchange_1Call, exchange_underlying_0Call, CurveCryptoSwapCalls,
+        TokenExchange,
     },
     IntoAction, StaticReturnBindings,
 };

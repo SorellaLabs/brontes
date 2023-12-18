@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
 };
@@ -26,6 +24,7 @@ const TRANSFER_TOPIC: B256 =
 #[derive(Debug)]
 pub struct Classifier<'db> {
     libmdbx: &'db Libmdbx,
+    #[allow(dead_code)]
     sender:  Sender<PoolUpdate>,
 }
 
@@ -52,7 +51,8 @@ impl<'db> Classifier<'db> {
                 let address = root_trace.get_from_addr();
                 let t_address = root_trace.get_to_address();
 
-                let (_, classification) = self.classify_node(trace.trace.remove(0), 0);
+                let (_, classification) =
+                    self.classify_node(trace.trace.remove(0), 0, header.number, tx_idx as u64);
 
                 if classification.is_transfer() {
                     if try_get_decimals(&t_address.0 .0).is_none() {
@@ -91,8 +91,12 @@ impl<'db> Classifier<'db> {
 
                     let from_addr = trace.get_from_addr();
                     let t_address = root_trace.get_to_address();
-                    let (pair, classification) =
-                        self.classify_node(trace.clone(), (index + 1) as u64);
+                    let (pair, classification) = self.classify_node(
+                        trace.clone(),
+                        (index + 1) as u64,
+                        header.number,
+                        tx_idx as u64,
+                    );
 
                     if let Some(pair) = pair {
                         tx_pairs.push(pair);
@@ -235,6 +239,8 @@ impl<'db> Classifier<'db> {
         &self,
         trace: TransactionTraceWithLogs,
         index: u64,
+        block: u64,
+        tx_idx: u64,
     ) -> (Option<Pair>, Actions) {
         // we don't classify static calls
         if trace.is_static_call() {
@@ -274,6 +280,9 @@ impl<'db> Classifier<'db> {
                         target_address,
                         &trace.logs,
                         &db_tx,
+                        self.sender.clone(),
+                        block,
+                        tx_idx,
                     )
                 })
                 .ok()

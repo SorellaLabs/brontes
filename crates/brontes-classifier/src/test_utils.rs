@@ -2,7 +2,7 @@ use std::env;
 
 use brontes_core::decoding::{parser::TraceParser, TracingProvider};
 use brontes_database::{clickhouse::Clickhouse, Metadata};
-use brontes_database_libmdbx::{types::address_to_protocol::StaticBindingsDb, Libmdbx};
+use brontes_database_libmdbx::Libmdbx;
 use brontes_pricing::types::DexPrices;
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use reth_primitives::Header;
@@ -28,7 +28,7 @@ pub async fn build_raw_test_tree<T: TracingProvider>(
     let (traces, header, metadata) = get_traces_with_meta(tracer, db, block_number).await;
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
     let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
-    let (tx, rx) = tokio::sync::mpsc::channel(5);
+    let (tx, _rx) = tokio::sync::mpsc::channel(5);
     let classifier = Classifier::new(&libmdbx, tx);
     let (_, mut tree) = classifier.build_tree(traces, header);
     tree.eth_price = metadata.eth_prices.clone();
