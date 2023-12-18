@@ -12,16 +12,15 @@ use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, StreamExt};
 use tracing::info;
 
+mod banner;
 mod block_inspector;
 mod data_batching;
+
+use banner::print_banner;
 use block_inspector::BlockInspector;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
-
-// composer created for each block
-// need to have a tracker of end block or tip block
-// need a concept of batch size
 
 pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     current_block:    u64,

@@ -107,10 +107,7 @@ impl SharedInspectorUtils {
         }
         let pair = Pair(token_address, self.0);
 
-        metadata
-            .dex_quotes
-            .get_quote(&pair)
-            .map(|q| q.get_price(block_position))
+        Some(metadata.dex_quotes.price_after(pair, block_position))
     }
 
     /// applies usd price to deltas and flattens out the tokens
@@ -122,16 +119,9 @@ impl SharedInspectorUtils {
     ) -> Rational {
         deltas
             .into_iter()
-            .filter_map(|(token_out, value)| {
+            .map(|(token_out, value)| {
                 let pair = Pair(token_out, self.0);
-                metadata
-                    .dex_quotes
-                    .get_quote(&pair)
-                    .map(|q| Some(q.get_price(block_position) * value))
-                    .unwrap_or_else(|| {
-                        error!(?pair, "was unable to find a price");
-                        None
-                    })
+                metadata.dex_quotes.price_after(pair, block_position)
             })
             .sum::<Rational>()
     }
