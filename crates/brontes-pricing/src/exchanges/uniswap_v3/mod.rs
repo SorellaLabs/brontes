@@ -10,20 +10,21 @@ use std::{
 use async_trait::async_trait;
 use ethers::{
     abi::{ethabi::Bytes, RawLog, Token},
-    prelude::{AbiError, EthEvent},
+    prelude::{abigen, AbiError, EthEvent},
     providers::Middleware,
     types::{BlockNumber, Filter, Log, H160, H256, I256, U256, U64},
 };
-use crate::{ errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError}, AutomatedMarketMaker};
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
-
-use ethers::prelude::abigen;
 use tokio::task::JoinHandle;
 
 use self::factory::POOL_CREATED_EVENT_SIGNATURE;
-
 use super::factory::TASK_LIMIT;
+use crate::{
+    errors::{AMMError, ArithmeticError, EventLogError, SwapSimulationError},
+    factory::AutomatedMarketMakerFactory,
+    AutomatedMarketMaker,
+};
 
 abigen!(
 
@@ -83,34 +84,30 @@ pub const Q128: U256 = U256([0, 0, 1, 0]);
 pub const Q224: U256 = U256([0, 0, 0, 4294967296]);
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UniswapV3Pool {
-    pub address: H160,
-    pub token_a: H160,
+    pub address:          H160,
+    pub token_a:          H160,
     pub token_a_decimals: u8,
-    pub token_b: H160,
+    pub token_b:          H160,
     pub token_b_decimals: u8,
-    pub liquidity: u128,
-    pub sqrt_price: U256,
-    pub fee: u32,
-    pub tick: i32,
-    pub tick_spacing: i32,
-    pub tick_bitmap: HashMap<i16, U256>,
-    pub ticks: HashMap<i32, Info>,
+    pub liquidity:        u128,
+    pub sqrt_price:       U256,
+    pub fee:              u32,
+    pub tick:             i32,
+    pub tick_spacing:     i32,
+    pub tick_bitmap:      HashMap<i16, U256>,
+    pub ticks:            HashMap<i32, Info>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Info {
     pub liquidity_gross: u128,
-    pub liquidity_net: i128,
-    pub initialized: bool,
+    pub liquidity_net:   i128,
+    pub initialized:     bool,
 }
 
 impl Info {
     pub fn new(liquidity_gross: u128, liquidity_net: i128, initialized: bool) -> Self {
-        Info {
-            liquidity_gross,
-            liquidity_net,
-            initialized,
-        }
+        Info { liquidity_gross, liquidity_net, initialized }
     }
 }
 
@@ -125,13 +122,10 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         Ok(())
     }
 
-    //This defines the event signatures to listen to that will produce events to be passed into AMM::sync_from_log()
+    //This defines the event signatures to listen to that will produce events to be
+    // passed into AMM::sync_from_log()
     fn sync_on_event_signatures(&self) -> Vec<H256> {
-        vec![
-            SWAP_EVENT_SIGNATURE,
-            MINT_EVENT_SIGNATURE,
-            BURN_EVENT_SIGNATURE,
-        ]
+        vec![SWAP_EVENT_SIGNATURE, MINT_EVENT_SIGNATURE, BURN_EVENT_SIGNATURE]
     }
 
     fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {
@@ -170,7 +164,9 @@ impl AutomatedMarketMaker for UniswapV3Pool {
             Ok(1.0 / price)
         }
     }
-    // NOTE: This function will not populate the tick_bitmap and ticks, if you want to populate those, you must call populate_tick_data on an initialized pool
+
+    // NOTE: This function will not populate the tick_bitmap and ticks, if you want
+    // to populate those, you must call populate_tick_data on an initialized pool
     async fn populate_data<M: Middleware>(
         &mut self,
         block_number: Option<u64>,
@@ -190,28 +186,29 @@ impl AutomatedMarketMaker for UniswapV3Pool {
 
         let zero_for_one = token_in == self.token_a;
 
-        //Set sqrt_price_limit_x_96 to the max or min sqrt price in the pool depending on zero_for_one
-        let sqrt_price_limit_x_96 = if zero_for_one {
-            MIN_SQRT_RATIO + 1
-        } else {
-            MAX_SQRT_RATIO - 1
-        };
+        //Set sqrt_price_limit_x_96 to the max or min sqrt price in the pool depending
+        // on zero_for_one
+        let sqrt_price_limit_x_96 =
+            if zero_for_one { MIN_SQRT_RATIO + 1 } else { MAX_SQRT_RATIO - 1 };
 
-        //Initialize a mutable state state struct to hold the dynamic simulated state of the pool
+        //Initialize a mutable state state struct to hold the dynamic simulated state
+        // of the pool
         let mut current_state = CurrentState {
             sqrt_price_x_96: self.sqrt_price, //Active price on the pool
             amount_calculated: I256::zero(),  //Amount of token_out that has been calculated
-            amount_specified_remaining: I256::from_raw(amount_in), //Amount of token_in that has not been swapped
-            tick: self.tick,                                       //Current i24 tick of the pool
+            amount_specified_remaining: I256::from_raw(amount_in), /* Amount of token_in that
+                                               * has not been swapped */
+            tick: self.tick,           //Current i24 tick of the pool
             liquidity: self.liquidity, //Current available liquidity in the tick range
         };
 
         while current_state.amount_specified_remaining != I256::zero()
             && current_state.sqrt_price_x_96 != sqrt_price_limit_x_96
         {
-            //Initialize a new step struct to hold the dynamic state of the pool at each step
+            //Initialize a new step struct to hold the dynamic state of the pool at each
+            // step
             let mut step = StepComputations {
-                sqrt_price_start_x_96: current_state.sqrt_price_x_96, //Set the sqrt_price_start_x_96 to the current sqrt_price_x_96
+                sqrt_price_start_x_96: current_state.sqrt_price_x_96, /* Set the sqrt_price_start_x_96 to the current sqrt_price_x_96 */
                 ..Default::default()
             };
 
@@ -224,8 +221,9 @@ impl AutomatedMarketMaker for UniswapV3Pool {
                     zero_for_one,
                 )?;
 
-            // ensure that we do not overshoot the min/max tick, as the tick bitmap is not aware of these bounds
-            //Note: this could be removed as we are clamping in the batch contract
+            // ensure that we do not overshoot the min/max tick, as the tick bitmap is not
+            // aware of these bounds Note: this could be removed as we are
+            // clamping in the batch contract
             step.tick_next = step.tick_next.clamp(MIN_TICK, MAX_TICK);
 
             //Get the next sqrt price from the input amount
@@ -246,30 +244,26 @@ impl AutomatedMarketMaker for UniswapV3Pool {
             };
 
             //Compute swap step and update the current state
-            (
-                current_state.sqrt_price_x_96,
-                step.amount_in,
-                step.amount_out,
-                step.fee_amount,
-            ) = uniswap_v3_math::swap_math::compute_swap_step(
-                current_state.sqrt_price_x_96,
-                swap_target_sqrt_ratio,
-                current_state.liquidity,
-                current_state.amount_specified_remaining,
-                self.fee,
-            )?;
+            (current_state.sqrt_price_x_96, step.amount_in, step.amount_out, step.fee_amount) =
+                uniswap_v3_math::swap_math::compute_swap_step(
+                    current_state.sqrt_price_x_96,
+                    swap_target_sqrt_ratio,
+                    current_state.liquidity,
+                    current_state.amount_specified_remaining,
+                    self.fee,
+                )?;
 
-            //Decrement the amount remaining to be swapped and amount received from the step
+            //Decrement the amount remaining to be swapped and amount received from the
+            // step
             current_state.amount_specified_remaining = current_state
                 .amount_specified_remaining
-                .overflowing_sub(I256::from_raw(
-                    step.amount_in.overflowing_add(step.fee_amount).0,
-                ))
+                .overflowing_sub(I256::from_raw(step.amount_in.overflowing_add(step.fee_amount).0))
                 .0;
 
             current_state.amount_calculated -= I256::from_raw(step.amount_out);
 
-            //If the price moved all the way to the next price, recompute the liquidity change for the next iteration
+            //If the price moved all the way to the next price, recompute the liquidity
+            // change for the next iteration
             if current_state.sqrt_price_x_96 == step.sqrt_price_next_x96 {
                 if step.initialized {
                     let mut liquidity_net = if let Some(info) = self.ticks.get(&step.tick_next) {
@@ -278,7 +272,8 @@ impl AutomatedMarketMaker for UniswapV3Pool {
                         0
                     };
 
-                    // we are on a tick boundary, and the next tick is initialized, so we must charge a protocol fee
+                    // we are on a tick boundary, and the next tick is initialized, so we must
+                    // charge a protocol fee
                     if zero_for_one {
                         liquidity_net = -liquidity_net;
                     }
@@ -294,13 +289,12 @@ impl AutomatedMarketMaker for UniswapV3Pool {
                     };
                 }
                 //Increment the current tick
-                current_state.tick = if zero_for_one {
-                    step.tick_next.wrapping_sub(1)
-                } else {
-                    step.tick_next
-                }
-                //If the current_state sqrt price is not equal to the step sqrt price, then we are not on the same tick.
-                //Update the current_state.tick to the tick at the current_state.sqrt_price_x_96
+                current_state.tick =
+                    if zero_for_one { step.tick_next.wrapping_sub(1) } else { step.tick_next }
+                //If the current_state sqrt price is not equal to the step sqrt
+                // price, then we are not on the same tick.
+                // Update the current_state.tick to the tick at the
+                // current_state.sqrt_price_x_96
             } else if current_state.sqrt_price_x_96 != step.sqrt_price_start_x_96 {
                 current_state.tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(
                     current_state.sqrt_price_x_96,
@@ -328,28 +322,29 @@ impl AutomatedMarketMaker for UniswapV3Pool {
 
         let zero_for_one = token_in == self.token_a;
 
-        //Set sqrt_price_limit_x_96 to the max or min sqrt price in the pool depending on zero_for_one
-        let sqrt_price_limit_x_96 = if zero_for_one {
-            MIN_SQRT_RATIO + 1
-        } else {
-            MAX_SQRT_RATIO - 1
-        };
+        //Set sqrt_price_limit_x_96 to the max or min sqrt price in the pool depending
+        // on zero_for_one
+        let sqrt_price_limit_x_96 =
+            if zero_for_one { MIN_SQRT_RATIO + 1 } else { MAX_SQRT_RATIO - 1 };
 
-        //Initialize a mutable state state struct to hold the dynamic simulated state of the pool
+        //Initialize a mutable state state struct to hold the dynamic simulated state
+        // of the pool
         let mut current_state = CurrentState {
             sqrt_price_x_96: self.sqrt_price, //Active price on the pool
             amount_calculated: I256::zero(),  //Amount of token_out that has been calculated
-            amount_specified_remaining: I256::from_raw(amount_in), //Amount of token_in that has not been swapped
-            tick: self.tick,                                       //Current i24 tick of the pool
+            amount_specified_remaining: I256::from_raw(amount_in), /* Amount of token_in that
+                                               * has not been swapped */
+            tick: self.tick,           //Current i24 tick of the pool
             liquidity: self.liquidity, //Current available liquidity in the tick range
         };
 
         while current_state.amount_specified_remaining != I256::zero()
             && current_state.sqrt_price_x_96 != sqrt_price_limit_x_96
         {
-            //Initialize a new step struct to hold the dynamic state of the pool at each step
+            //Initialize a new step struct to hold the dynamic state of the pool at each
+            // step
             let mut step = StepComputations {
-                sqrt_price_start_x_96: current_state.sqrt_price_x_96, //Set the sqrt_price_start_x_96 to the current sqrt_price_x_96
+                sqrt_price_start_x_96: current_state.sqrt_price_x_96, /* Set the sqrt_price_start_x_96 to the current sqrt_price_x_96 */
                 ..Default::default()
             };
 
@@ -362,8 +357,9 @@ impl AutomatedMarketMaker for UniswapV3Pool {
                     zero_for_one,
                 )?;
 
-            // ensure that we do not overshoot the min/max tick, as the tick bitmap is not aware of these bounds
-            //Note: this could be removed as we are clamping in the batch contract
+            // ensure that we do not overshoot the min/max tick, as the tick bitmap is not
+            // aware of these bounds Note: this could be removed as we are
+            // clamping in the batch contract
             step.tick_next = step.tick_next.clamp(MIN_TICK, MAX_TICK);
 
             //Get the next sqrt price from the input amount
@@ -384,30 +380,26 @@ impl AutomatedMarketMaker for UniswapV3Pool {
             };
 
             //Compute swap step and update the current state
-            (
-                current_state.sqrt_price_x_96,
-                step.amount_in,
-                step.amount_out,
-                step.fee_amount,
-            ) = uniswap_v3_math::swap_math::compute_swap_step(
-                current_state.sqrt_price_x_96,
-                swap_target_sqrt_ratio,
-                current_state.liquidity,
-                current_state.amount_specified_remaining,
-                self.fee,
-            )?;
+            (current_state.sqrt_price_x_96, step.amount_in, step.amount_out, step.fee_amount) =
+                uniswap_v3_math::swap_math::compute_swap_step(
+                    current_state.sqrt_price_x_96,
+                    swap_target_sqrt_ratio,
+                    current_state.liquidity,
+                    current_state.amount_specified_remaining,
+                    self.fee,
+                )?;
 
-            //Decrement the amount remaining to be swapped and amount received from the step
+            //Decrement the amount remaining to be swapped and amount received from the
+            // step
             current_state.amount_specified_remaining = current_state
                 .amount_specified_remaining
-                .overflowing_sub(I256::from_raw(
-                    step.amount_in.overflowing_add(step.fee_amount).0,
-                ))
+                .overflowing_sub(I256::from_raw(step.amount_in.overflowing_add(step.fee_amount).0))
                 .0;
 
             current_state.amount_calculated -= I256::from_raw(step.amount_out);
 
-            //If the price moved all the way to the next price, recompute the liquidity change for the next iteration
+            //If the price moved all the way to the next price, recompute the liquidity
+            // change for the next iteration
             if current_state.sqrt_price_x_96 == step.sqrt_price_next_x96 {
                 if step.initialized {
                     let mut liquidity_net = if let Some(info) = self.ticks.get(&step.tick_next) {
@@ -416,7 +408,8 @@ impl AutomatedMarketMaker for UniswapV3Pool {
                         0
                     };
 
-                    // we are on a tick boundary, and the next tick is initialized, so we must charge a protocol fee
+                    // we are on a tick boundary, and the next tick is initialized, so we must
+                    // charge a protocol fee
                     if zero_for_one {
                         liquidity_net = -liquidity_net;
                     }
@@ -432,13 +425,12 @@ impl AutomatedMarketMaker for UniswapV3Pool {
                     };
                 }
                 //Increment the current tick
-                current_state.tick = if zero_for_one {
-                    step.tick_next.wrapping_sub(1)
-                } else {
-                    step.tick_next
-                }
-                //If the current_state sqrt price is not equal to the step sqrt price, then we are not on the same tick.
-                //Update the current_state.tick to the tick at the current_state.sqrt_price_x_96
+                current_state.tick =
+                    if zero_for_one { step.tick_next.wrapping_sub(1) } else { step.tick_next }
+                //If the current_state sqrt price is not equal to the step sqrt
+                // price, then we are not on the same tick.
+                // Update the current_state.tick to the tick at the
+                // current_state.sqrt_price_x_96
             } else if current_state.sqrt_price_x_96 != step.sqrt_price_start_x_96 {
                 current_state.tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(
                     current_state.sqrt_price_x_96,
@@ -506,21 +498,22 @@ impl UniswapV3Pool {
         middleware: Arc<M>,
     ) -> Result<Self, AMMError<M>> {
         let mut pool = UniswapV3Pool {
-            address: pair_address,
-            token_a: H160::zero(),
+            address:          pair_address,
+            token_a:          H160::zero(),
             token_a_decimals: 0,
-            token_b: H160::zero(),
+            token_b:          H160::zero(),
             token_b_decimals: 0,
-            liquidity: 0,
-            sqrt_price: U256::zero(),
-            tick: 0,
-            tick_spacing: 0,
-            fee: 0,
-            tick_bitmap: HashMap::new(),
-            ticks: HashMap::new(),
+            liquidity:        0,
+            sqrt_price:       U256::zero(),
+            tick:             0,
+            tick_spacing:     0,
+            fee:              0,
+            tick_bitmap:      HashMap::new(),
+            ticks:            HashMap::new(),
         };
 
-        //We need to get tick spacing before populating tick data because tick spacing can not be uninitialized when syncing burn and mint logs
+        //We need to get tick spacing before populating tick data because tick spacing
+        // can not be uninitialized when syncing burn and mint logs
         pool.tick_spacing = pool.get_tick_spacing(middleware.clone()).await?;
 
         let synced_block = pool
@@ -568,18 +561,18 @@ impl UniswapV3Pool {
             let pool_created_event = PoolCreatedFilter::decode_log(&RawLog::from(log))?;
 
             Ok(UniswapV3Pool {
-                address: pool_created_event.pool,
-                token_a: pool_created_event.token_0,
-                token_b: pool_created_event.token_1,
+                address:          pool_created_event.pool,
+                token_a:          pool_created_event.token_0,
+                token_b:          pool_created_event.token_1,
                 token_a_decimals: 0,
                 token_b_decimals: 0,
-                fee: pool_created_event.fee,
-                liquidity: 0,
-                sqrt_price: U256::zero(),
-                tick_spacing: 0,
-                tick: 0,
-                tick_bitmap: HashMap::new(),
-                ticks: HashMap::new(),
+                fee:              pool_created_event.fee,
+                liquidity:        0,
+                sqrt_price:       U256::zero(),
+                tick_spacing:     0,
+                tick:             0,
+                tick_bitmap:      HashMap::new(),
+                ticks:            HashMap::new(),
             })
         } else {
             Err(EventLogError::InvalidEventSignature)
@@ -628,7 +621,8 @@ impl UniswapV3Pool {
 
             from_block += POPULATE_TICK_DATA_STEP;
             tasks += 1;
-            //Here we are limiting the number of green threads that can be spun up to not have the node time out
+            //Here we are limiting the number of green threads that can be spun up to not
+            // have the node time out
             if tasks == TASK_LIMIT {
                 self.process_logs_from_handles(handles, &mut ordered_logs)
                     .await?;
@@ -654,7 +648,8 @@ impl UniswapV3Pool {
         handles: Vec<JoinHandle<Result<Vec<Log>, AMMError<M>>>>,
         ordered_logs: &mut BTreeMap<U64, Vec<Log>>,
     ) -> Result<(), AMMError<M>> {
-        // group the logs from each thread by block number and then sync the logs in chronological order
+        // group the logs from each thread by block number and then sync the logs in
+        // chronological order
         for handle in handles {
             let logs = handle.await??;
 
@@ -800,11 +795,13 @@ impl UniswapV3Pool {
 
     pub fn modify_position(&mut self, tick_lower: i32, tick_upper: i32, liquidity_delta: i128) {
         //We are only using this function when a mint or burn event is emitted,
-        //therefore we do not need to checkTicks as that has happened before the event is emitted
+        //therefore we do not need to checkTicks as that has happened before the event
+        // is emitted
         self.update_position(tick_lower, tick_upper, liquidity_delta);
 
         if liquidity_delta != 0 {
-            //if the tick is between the tick lower and tick upper, update the liquidity between the ticks
+            //if the tick is between the tick lower and tick upper, update the liquidity
+            // between the ticks
             if self.tick > tick_lower && self.tick < tick_upper {
                 self.liquidity = if liquidity_delta < 0 {
                     self.liquidity - ((-liquidity_delta) as u128)
@@ -860,8 +857,9 @@ impl UniswapV3Pool {
             liquidity_gross_before + (liquidity_delta as u128)
         };
 
-        //we do not need to check if liqudity_gross_after > maxLiquidity because we are only calling update tick on a burn or mint log.
-        // this should already be validated when a log is
+        //we do not need to check if liqudity_gross_after > maxLiquidity because we are
+        // only calling update tick on a burn or mint log. this should already
+        // be validated when a log is
         let flipped = (liquidity_gross_after == 0) != (liquidity_gross_before == 0);
 
         if liquidity_gross_before == 0 {
@@ -953,6 +951,7 @@ impl UniswapV3Pool {
 
         Ok(token_1)
     }
+
     /* Legend:
        sqrt(price) = sqrt(y/x)
        L = sqrt(x*y)
@@ -1030,12 +1029,12 @@ pub struct CurrentState {
 #[derive(Default)]
 pub struct StepComputations {
     pub sqrt_price_start_x_96: U256,
-    pub tick_next: i32,
-    pub initialized: bool,
-    pub sqrt_price_next_x96: U256,
-    pub amount_in: U256,
-    pub amount_out: U256,
-    pub fee_amount: U256,
+    pub tick_next:             i32,
+    pub initialized:           bool,
+    pub sqrt_price_next_x96:   U256,
+    pub amount_in:             U256,
+    pub amount_out:            U256,
+    pub fee_amount:            U256,
 }
 
 const MIN_TICK: i32 = -887272;
@@ -1054,26 +1053,25 @@ pub struct Tick {
 
 #[cfg(test)]
 mod test {
-    use super::IUniswapV3Pool;
     #[allow(unused)]
+    use std::error::Error;
     #[allow(unused)]
-    use super::UniswapV3Pool;
-
-    use crate::amm::AutomatedMarketMaker;
+    use std::{str::FromStr, sync::Arc};
 
     #[allow(unused)]
     use ethers::providers::Middleware;
-
     #[allow(unused)]
     use ethers::{
         prelude::abigen,
         providers::{Http, Provider},
         types::{H160, U256},
     };
+
+    use super::IUniswapV3Pool;
     #[allow(unused)]
-    use std::error::Error;
     #[allow(unused)]
-    use std::{str::FromStr, sync::Arc};
+    use super::UniswapV3Pool;
+    use crate::amm::AutomatedMarketMaker;
     abigen!(
         IQuoter,
     r#"[
@@ -1130,13 +1128,7 @@ mod test {
 
         let amount_out = pool.simulate_swap(pool.token_a, amount_in)?;
         let expected_amount_out = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in,
-                U256::zero(),
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in, U256::zero())
             .block(synced_block)
             .call()
             .await?;
@@ -1213,13 +1205,7 @@ mod test {
 
         let amount_out = pool.simulate_swap(pool.token_b, amount_in)?;
         let expected_amount_out = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in,
-                U256::zero(),
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in, U256::zero())
             .block(synced_block)
             .call()
             .await?;
@@ -1296,13 +1282,7 @@ mod test {
 
         let amount_out = pool.simulate_swap(pool.token_a, amount_in)?;
         let expected_amount_out = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in,
-                U256::zero(),
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in, U256::zero())
             .block(synced_block)
             .call()
             .await?;
@@ -1379,13 +1359,7 @@ mod test {
 
         let amount_out = pool.simulate_swap(pool.token_b, amount_in)?;
         let expected_amount_out = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in,
-                U256::zero(),
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in, U256::zero())
             .block(synced_block)
             .call()
             .await?;
@@ -1461,13 +1435,7 @@ mod test {
 
         let amount_out = pool.simulate_swap(pool.token_a, amount_in)?;
         let expected_amount_out = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in,
-                U256::zero(),
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in, U256::zero())
             .block(synced_block)
             .call()
             .await?;
@@ -1544,13 +1512,7 @@ mod test {
 
         let amount_out = pool.simulate_swap(pool.token_b, amount_in)?;
         let expected_amount_out = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in,
-                U256::zero(),
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in, U256::zero())
             .block(synced_block)
             .call()
             .await?;
@@ -1627,13 +1589,7 @@ mod test {
 
         let amount_out = pool.simulate_swap(pool.token_a, amount_in)?;
         let expected_amount_out = quoter
-            .quote_exact_input_single(
-                pool.token_a,
-                pool.token_b,
-                pool.fee,
-                amount_in,
-                U256::zero(),
-            )
+            .quote_exact_input_single(pool.token_a, pool.token_b, pool.fee, amount_in, U256::zero())
             .block(synced_block)
             .call()
             .await?;
@@ -1710,13 +1666,7 @@ mod test {
 
         let amount_out = pool.simulate_swap(pool.token_b, amount_in)?;
         let expected_amount_out = quoter
-            .quote_exact_input_single(
-                pool.token_b,
-                pool.token_a,
-                pool.fee,
-                amount_in,
-                U256::zero(),
-            )
+            .quote_exact_input_single(pool.token_b, pool.token_a, pool.fee, amount_in, U256::zero())
             .block(synced_block)
             .call()
             .await?;
@@ -1790,19 +1740,10 @@ mod test {
         )
         .await?;
 
-        assert_eq!(
-            pool.address,
-            H160::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640")?
-        );
-        assert_eq!(
-            pool.token_a,
-            H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")?
-        );
+        assert_eq!(pool.address, H160::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640")?);
+        assert_eq!(pool.token_a, H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")?);
         assert_eq!(pool.token_a_decimals, 6);
-        assert_eq!(
-            pool.token_b,
-            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")?
-        );
+        assert_eq!(pool.token_b, H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")?);
         assert_eq!(pool.token_b_decimals, 18);
         assert_eq!(pool.fee, 500);
         assert!(pool.tick != 0);
@@ -1817,19 +1758,10 @@ mod test {
         let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint)?);
 
         let (pool, _synced_block) = initialize_usdc_weth_pool(middleware.clone()).await?;
-        assert_eq!(
-            pool.address,
-            H160::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640")?
-        );
-        assert_eq!(
-            pool.token_a,
-            H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")?
-        );
+        assert_eq!(pool.address, H160::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640")?);
+        assert_eq!(pool.token_a, H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")?);
         assert_eq!(pool.token_a_decimals, 6);
-        assert_eq!(
-            pool.token_b,
-            H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")?
-        );
+        assert_eq!(pool.token_b, H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")?);
         assert_eq!(pool.token_b_decimals, 18);
         assert_eq!(pool.fee, 500);
         assert!(pool.tick != 0);
