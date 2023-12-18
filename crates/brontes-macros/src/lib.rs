@@ -266,6 +266,8 @@ impl Parse for MacroParse {
 pub fn action_dispatch(input: TokenStream) -> TokenStream {
     let ActionDispatch { struct_name, rest } = syn::parse2(input.into()).unwrap();
 
+    let classifier_name = Ident::new(&(struct_name.to_string() + "Classifier"), Span::call_site().into());
+
     if rest.is_empty() {
         panic!("need more than one entry");
     }
@@ -279,9 +281,14 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
 
     quote!(
         #[derive(Default, Debug)]
-        pub struct #struct_name(#(pub #name,)*);
+        pub struct #classifier_name(#(pub #name,)*);
 
-        impl ActionCollection for #struct_name {
+        impl ActionCollection for #classifier_name{
+
+            fn get_dex(&self) -> Dexes {
+                Dexes::#struct_name
+            }
+
             fn dispatch(
                 &self,
                 sig: &[u8],

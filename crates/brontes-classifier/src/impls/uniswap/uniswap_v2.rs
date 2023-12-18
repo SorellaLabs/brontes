@@ -1,5 +1,7 @@
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::{SolCall, SolEvent};
+
+use brontes_types::Dexes;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens, Libmdbx};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
@@ -100,4 +102,4 @@ action_impl!(
     }
 );
 
-action_dispatch!(UniswapV2Classifier, V2SwapImpl, V2BurnImpl, V2MintImpl);
+action_dispatch!(UniswapV2, V2SwapImpl, V2BurnImpl, V2MintImpl);
