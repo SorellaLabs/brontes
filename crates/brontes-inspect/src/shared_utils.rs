@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-
 use brontes_database::{Metadata, Pair};
 use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
@@ -15,7 +14,6 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils(Address);

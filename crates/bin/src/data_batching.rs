@@ -17,7 +17,7 @@ pub struct DataBatching<'db, T: TracingProvider> {
     provider:      &'db Provider<Http<reqwest::Client>>,
     classifier:    &'db Classifier<'db>,
     libmdbx:       &'db Libmdbx,
-    dex_price_map: BrontesBatchPricer,
+    dex_price_map: BrontesBatchPricer<T>,
 }
 
 impl<T: TracingProvider> Future for DataBatching<'_, T> {

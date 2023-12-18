@@ -1,9 +1,12 @@
 use std::fmt::Debug;
 
-use brontes_database_libmdbx::implementation::tx::LibmdbxTx;
+use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
+use brontes_pricing::types::PoolUpdate;
+use once_cell::sync::Lazy;
 use reth_db::mdbx::RO;
 use reth_primitives::{Address, Bytes};
 use reth_rpc_types::Log;
+use tokio::sync::mpsc::Sender;
 
 pub mod classifier;
 pub use classifier::*;
@@ -16,7 +19,7 @@ pub mod test_utils;
 
 mod impls;
 use alloy_sol_types::{sol, SolInterface};
-use brontes_types::normalized_actions::Actions;
+use brontes_types::{normalized_actions::Actions, Dexes};
 pub use impls::*;
 
 //include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
@@ -40,6 +43,9 @@ pub trait ActionCollection: Sync + Send {
         target_address: Address,
         logs: &Vec<Log>,
         db_tx: &LibmdbxTx<RO>,
+        tx: Sender<PoolUpdate>,
+        block: u64,
+        tx_idx: u64,
     ) -> Option<Actions>;
 }
 
