@@ -266,8 +266,6 @@ impl Parse for MacroParse {
 pub fn action_dispatch(input: TokenStream) -> TokenStream {
     let ActionDispatch { struct_name, rest } = syn::parse2(input.into()).unwrap();
 
-    let classifier_name = Ident::new(&(struct_name.to_string() + "Classifier"), Span::call_site().into());
-
     if rest.is_empty() {
         panic!("need more than one entry");
     }
@@ -281,14 +279,9 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
 
     quote!(
         #[derive(Default, Debug)]
-        pub struct #classifier_name(#(pub #name,)*);
+        pub struct #struct_name(#(pub #name,)*);
 
-        impl ActionCollection for #classifier_name{
-
-            fn get_dex(&self) -> Dexes {
-                Dexes::#struct_name
-            }
-
+        impl ActionCollection for #struct_name {
             fn dispatch(
                 &self,
                 sig: &[u8],
@@ -299,10 +292,12 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: Address,
                 logs: &Vec<Log>,
                 db_tx: &LibmdbxTx<RO>,
+                tx: Sender<PoolUpdate>,
+                block: u64,
+                tx_idx: u64,
             ) -> Option<Actions> {
                 if sig == self.0.get_signature() {
-                    return
-                        self.0.decode_trace_data(
+                    let res = self.0.decode_trace_data(
                             index,
                             data,
                             return_data,
@@ -310,11 +305,21 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             target_address,
                             logs,
                             db_tx
-                            )
-                }
+                        );
 
+                    if let Some(res) = &res {
+                        let pool_update = PoolUpdate {
+                            block,
+                            tx_idx,
+                            action: res.clone()
+                        };
+                        let _ = tx.try_send(pool_update);
+                    }
+
+                    return res
+                }
                 #( else if sig == self.#i.get_signature() {
-                        return self.#i.decode_trace_data(
+                    let res = self.#i.decode_trace_data(
                             index,
                             data,
                             return_data,
@@ -322,7 +327,18 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             target_address,
                             logs,
                             db_tx
-                        )
+                    );
+                        if let Some(res) = &res {
+                            let pool_update = PoolUpdate {
+                                block,
+                                tx_idx,
+                                action: res.clone()
+                            };
+                            let _ = tx.try_send(pool_update);
+
+                        }
+
+                            return res
                     }
                 )*
 

@@ -1,10 +1,12 @@
 use std::fmt::Debug;
 
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
+use brontes_pricing::types::PoolUpdate;
 use once_cell::sync::Lazy;
 use reth_db::mdbx::RO;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Bytes};
 use reth_rpc_types::Log;
+use tokio::sync::mpsc::Sender;
 
 pub mod classifier;
 pub use classifier::*;
@@ -31,8 +33,6 @@ sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
 sol!(CurveCryptoSwap, "./abis/CurveCryptoSwap.json");
 
 pub trait ActionCollection: Sync + Send {
-    fn get_dex(&self) -> Dexes;
-
     fn dispatch(
         &self,
         sig: &[u8],
@@ -43,6 +43,9 @@ pub trait ActionCollection: Sync + Send {
         target_address: Address,
         logs: &Vec<Log>,
         db_tx: &LibmdbxTx<RO>,
+        tx: Sender<PoolUpdate>,
+        block: u64,
+        tx_idx: u64,
     ) -> Option<Actions>;
 }
 

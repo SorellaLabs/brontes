@@ -23,7 +23,6 @@ pub struct BrontesBatchPricer {
     batch_id:    u64,
     update_rx:   Receiver<PoolUpdate>,
 
-
     /// holds all token pairs for the given chunk.
     pair_graph:      PairGraph,
     /// lazy loads dex pairs so we only fetch init state that is needed
@@ -91,7 +90,6 @@ impl BrontesBatchPricer {
             .collect::<HashSet<_>>();
 
         for pool in new_pair_set {
-
             self.lazy_loader.lazy_load_exchange(pool, msg.block - 1, ())
         }
     }
@@ -132,18 +130,18 @@ impl BrontesBatchPricer {
                     let size = q.0.len();
 
                     // make sure to pad the vector to the proper index
-                    for _ in size..=tx_idx {
+                    for _ in size..=tx_idx as usize {
                         q.0.push(None)
                     }
 
                     // insert the new keys
-                    let mut tx_pairs = q.0.remove(tx_idx).unwrap_or_default();
+                    let mut tx_pairs = q.0.remove(tx_idx as usize).unwrap_or_default();
                     tx_pairs.insert(pool_pair, pool_keys);
                 }
                 Entry::Vacant(v) => {
                     // pad the vec to the tx index
                     let mut vec = Vec::new();
-                    for _ in 0..=tx_idx {
+                    for _ in 0..=tx_idx as usize {
                         vec.push(None);
                     }
                     // insert
