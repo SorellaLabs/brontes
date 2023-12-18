@@ -1,12 +1,13 @@
 use alloy_primitives::{hex, FixedBytes};
 use alloy_sol_types::{SolCall, SolEvent};
-use brontes_types::Dexes;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens, Libmdbx};
 use brontes_macros::{action_dispatch, action_impl};
+use brontes_pricing::types::PoolUpdate;
 use brontes_types::normalized_actions::{Actions, NormalizedSwap};
 use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_primitives::{Address, Bytes, U256};
 use reth_rpc_types::Log;
+use tokio::sync::mpsc::Sender;
 
 use crate::{
     enum_unwrap, ActionCollection,
@@ -153,7 +154,7 @@ logs: true,
 );
 
 action_dispatch!(
-    CurveCryptoSwap,
+    CurveCryptoSwapClassifier,
     CurveCryptoExchange0,
     CurveCryptoExchange1,
     CurveCryptoExchangeUnderlying
