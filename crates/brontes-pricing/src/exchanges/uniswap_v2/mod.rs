@@ -3,14 +3,14 @@ pub mod factory;
 
 use std::sync::Arc;
 
-use brontes_types::normalized_actions::Actions;
-use alloy_primitives::{Address, B256, U256, FixedBytes};
+use alloy_primitives::{Address, FixedBytes, B256, U256};
+use alloy_sol_macro::sol;
 use async_trait::async_trait;
-use brontes_types::traits::TracingProvider;
+use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
 use ethers::{
     abi::{ethabi::Bytes, RawLog, Token},
     prelude::{abigen, EthEvent},
-    types::{ Log},
+    types::Log,
 };
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
@@ -21,7 +21,6 @@ use crate::{
     factory::AutomatedMarketMakerFactory,
     AutomatedMarketMaker,
 };
-use alloy_sol_macro::sol;
 
 abigen!(
     IUniswapV2Pair,
@@ -84,12 +83,11 @@ impl AutomatedMarketMaker for UniswapV2Pool {
         todo!()
     }
 
-
     async fn populate_data<M: TracingProvider>(
         &mut self,
         _block_number: Option<u64>,
         middleware: Arc<M>,
-    ) -> Result<(), AMMError<M>> {
+    ) -> Result<(), AmmError> {
         batch_request::get_v2_pool_data_batch_request(self, middleware.clone()).await?;
 
         Ok(())
@@ -223,7 +221,7 @@ impl UniswapV2Pool {
         pair_address: Address,
         fee: u32,
         middleware: Arc<M>,
-    ) -> Result<Self, AMMError<M>> {
+    ) -> Result<Self, AmmError> {
         let mut pool = UniswapV2Pool {
             address: pair_address,
             token_a: Address::zero(),
@@ -248,7 +246,7 @@ impl UniswapV2Pool {
         log: Log,
         fee: u32,
         middleware: Arc<M>,
-    ) -> Result<Self, AMMError<M>> {
+    ) -> Result<Self, AmmError> {
         let event_signature = log.topics[0];
 
         if event_signature == PAIR_CREATED_EVENT_SIGNATURE {
@@ -294,16 +292,16 @@ impl UniswapV2Pool {
     // pub async fn get_reserves<M: TracingProvider>(
     //     &self,
     //     middleware: Arc<M>,
-    // ) -> Result<(u128, u128), AMMError<M>> {
+    // ) -> Result<(u128, u128), AmmError> {
     //     tracing::trace!("getting reserves of {}", self.address);
     //
     //     //Initialize a new instance of the Pool
     //     let v2_pair = IUniswapV2Pair::new(self.address, middleware);
     //     // Make a call to get the reserves
-    //     let (reserve_0, reserve_1, _) = match v2_pair.get_reserves().call().await {
-    //         Ok(result) => result,
-    //         Err(contract_error) => return Err(AMMError::ContractError(contract_error)),
-    //     };
+    //     let (reserve_0, reserve_1, _) = match v2_pair.get_reserves().call().await
+    // {         Ok(result) => result,
+    //         Err(contract_error) => return
+    // Err(AMMError::ContractError(contract_error)),     };
     //
     //     tracing::trace!(reserve_0, reserve_1);
     //
@@ -313,7 +311,7 @@ impl UniswapV2Pool {
     // pub async fn get_token_decimals<M: TracingProvider>(
     //     &mut self,
     //     middleware: Arc<M>,
-    // ) -> Result<(u8, u8), AMMError<M>> {
+    // ) -> Result<(u8, u8), AmmError> {
     //     let token_a_decimals = IErc20::new(self.token_a, middleware.clone())
     //         .decimals()
     //         .call()
@@ -333,13 +331,13 @@ impl UniswapV2Pool {
     //     &self,
     //     pair_address: Address,
     //     middleware: Arc<M>,
-    // ) -> Result<Address, AMMError<M>> {
+    // ) -> Result<Address, AmmError> {
     //     let v2_pair = IUniswapV2Pair::new(pair_address, middleware);
     //
     //     let token0 = match v2_pair.token_0().call().await {
     //         Ok(result) => result,
-    //         Err(contract_error) => return Err(AMMError::ContractError(contract_error)),
-    //     };
+    //         Err(contract_error) => return
+    // Err(AMMError::ContractError(contract_error)),     };
     //
     //     Ok(token0)
     // }
@@ -348,13 +346,13 @@ impl UniswapV2Pool {
     //     &self,
     //     pair_address: Address,
     //     middleware: Arc<M>,
-    // ) -> Result<Address, AMMError<M>> {
+    // ) -> Result<Address, AmmError> {
     //     let v2_pair = IUniswapV2Pair::new(pair_address, middleware);
     //
     //     let token1 = match v2_pair.token_1().call().await {
     //         Ok(result) => result,
-    //         Err(contract_error) => return Err(AMMError::ContractError(contract_error)),
-    //     };
+    //         Err(contract_error) => return
+    // Err(AMMError::ContractError(contract_error)),     };
     //
     //     Ok(token1)
     // }

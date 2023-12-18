@@ -59,11 +59,7 @@ sol!(
     ) returns (TickData[], uint64);
 );
 
-fn populate_pool_data_from_tokens(
-    mut pool: UniswapV3Pool,
-    tokens: data_constructorReturn,
-) -> Option<UniswapV3Pool> {
-    let tokens = tokens._0[0];
+fn populate_pool_data_from_tokens(mut pool: UniswapV3Pool, tokens: PoolData) -> UniswapV3Pool {
     pool.token_a = tokens.tokenA;
     pool.token_a_decimals = tokens.tokenADecimals;
     pool.token_b = tokens.tokenB;
@@ -74,28 +70,28 @@ fn populate_pool_data_from_tokens(
     pool.tick_spacing = tokens.tickSpacing;
     pool.fee = tokens.fee;
 
-    Some(pool)
+    pool
 }
 
 pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     pool: &mut UniswapV3Pool,
     block_number: Option<u64>,
     middleware: Arc<M>,
-) -> Result<(), AMMError<M>> {
+) -> Result<(), AmmError> {
     tracing::info!(?pool.address, "getting pool data");
     let mut bytecode = IGetUniswapV3PoolDataBatchRequest::BYTECODE.to_vec();
-    let data = data_constructorCall::new(vec![pool.address]).abi_encode_raw(&mut bytecode);
+    let data = data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
     let req =
         CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
 
     let res = middleware
-        .eth_call(req, block_number, None, None)
+        .eth_call(req, block_number.map(|i| i.into()), None, None)
         .await
         .unwrap();
 
-    let return_data = data_constructorCall::abi_decode_returns(&*res, false).unwrap();
-    *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0[0]);
+    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false).unwrap();
+    *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
 
     Ok(())
 }
@@ -107,7 +103,7 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
     num_ticks: u16,
     block_number: Option<u64>,
     middleware: Arc<M>,
-) -> Result<(Vec<TickData>, u64), AMMError<M>> {
+) -> Result<(Vec<TickData>, u64), AmmError> {
     let mut bytecode = IGetUniswapV3TickDataBatchRequest::BYTECODE.to_vec();
     tick_constructorCall::new((
         pool.address,
@@ -122,7 +118,7 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
         CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
 
     let res = middleware
-        .eth_call(req, block_number, None, None)
+        .eth_call(req, block_number.map(Into::into), None, None)
         .await
         .unwrap();
 

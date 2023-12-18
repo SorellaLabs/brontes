@@ -3,10 +3,9 @@ use std::{
     sync::Arc,
 };
 
-use brontes_types::traits::TracingProvider;
-
 use alloy_sol_macro::sol;
 use async_trait::async_trait;
+use brontes_types::traits::TracingProvider;
 use ethers::{
     abi::RawLog,
     prelude::{abigen, EthEvent},
@@ -70,7 +69,7 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
         &self,
         log: Log,
         middleware: Arc<M>,
-    ) -> Result<AMM, AMMError<M>> {
+    ) -> Result<AMM, AmmError> {
         if let Some(block_number) = log.block_number {
             let pool_created_filter = PoolCreatedFilter::decode_log(&RawLog::from(log))?;
             Ok(AMM::UniswapV3Pool(
@@ -91,7 +90,7 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
         to_block: Option<u64>,
         middleware: Arc<M>,
         step: u64,
-    ) -> Result<Vec<AMM>, AMMError<M>> {
+    ) -> Result<Vec<AMM>, AmmError> {
         if let Some(block) = to_block {
             self.get_all_pools_from_logs(block, step, middleware).await
         } else {
@@ -104,7 +103,7 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
         amms: &mut [AMM],
         block_number: Option<u64>,
         middleware: Arc<M>,
-    ) -> Result<(), AMMError<M>> {
+    ) -> Result<(), AmmError> {
         // if let Some(block_number) = block_number {
         //     let step = 127; //Max batch size for call
         //     for amm_chunk in amms.chunks_mut(step) {
@@ -155,7 +154,7 @@ impl UniswapV3Factory {
     //     to_block: u64,
     //     step: u64,
     //     middleware: Arc<M>,
-    // ) -> Result<Vec<AMM>, AMMError<M>> {
+    // ) -> Result<Vec<AMM>, AmmError> {
     //     //Unwrap can be used here because the creation block was verified within
     //     // `Dex::new()`
     //     let mut from_block = self.creation_block;
@@ -191,7 +190,7 @@ impl UniswapV3Factory {
     //                 .await
     //                 .map_err(AMMError::TracingProviderError)?;
     //
-    //             Ok::<Vec<Log>, AMMError<M>>(logs)
+    //             Ok::<Vec<Log>, AmmError>(logs)
     //         }));
     //
     //         from_block += step;
@@ -229,11 +228,11 @@ impl UniswapV3Factory {
     //             } else if event_signature == BURN_EVENT_SIGNATURE {
     //                 //If the event sig is the BURN_EVENT_SIGNATURE log is coming
     // from the pool                 if let Some(AMM::UniswapV3Pool(pool)) =
-    // aggregated_amms.get_mut(&log.address) {                     
+    // aggregated_amms.get_mut(&log.address) {
     // pool.sync_from_burn_log(log)?;                 }
     //             } else if event_signature == MINT_EVENT_SIGNATURE {
     //                 if let Some(AMM::UniswapV3Pool(pool)) =
-    // aggregated_amms.get_mut(&log.address) {                     
+    // aggregated_amms.get_mut(&log.address) {
     // pool.sync_from_mint_log(log)?;                 }
     //             }
     //         }
@@ -244,9 +243,9 @@ impl UniswapV3Factory {
     //
     // async fn process_logs_from_handles<M: TracingProvider>(
     //     &self,
-    //     handles: Vec<JoinHandle<Result<Vec<Log>, AMMError<M>>>>,
+    //     handles: Vec<JoinHandle<Result<Vec<Log>, AmmError>>>,
     //     ordered_logs: &mut BTreeMap<U64, Vec<Log>>,
-    // ) -> Result<(), AMMError<M>> {
+    // ) -> Result<(), AmmError> {
     //     // group the logs from each thread by block number and then sync the logs
     // in     // chronological order
     //     for handle in handles {
@@ -255,7 +254,7 @@ impl UniswapV3Factory {
     //         for log in logs {
     //             if let Some(log_block_number) = log.block_number {
     //                 if let Some(log_group) =
-    // ordered_logs.get_mut(&log_block_number) {                     
+    // ordered_logs.get_mut(&log_block_number) {
     // log_group.push(log);                 } else {
     //                     ordered_logs.insert(log_block_number, vec![log]);
     //                 }
