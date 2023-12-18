@@ -95,8 +95,7 @@ impl PoolVariants {
 #[derive(Debug, Clone)]
 pub struct PoolUpdate {
     pub block:  u64,
-    pub tx_idx: usize,
-    pub dex:  Dexes,
+    pub tx_idx: u64,
     pub action: Actions,
 }
 
