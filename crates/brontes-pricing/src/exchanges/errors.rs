@@ -1,5 +1,6 @@
 use std::time::SystemTimeError;
 
+use brontes_types::traits::TracingProvider;
 use ethers::{
     prelude::{AbiError, ContractError},
     providers::{Middleware, ProviderError},
@@ -12,14 +13,10 @@ use uniswap_v3_math::error::UniswapV3MathError;
 #[derive(Error, Debug)]
 pub enum AMMError<M>
 where
-    M: Middleware,
+    M: TracingProvider,
 {
-    #[error("Middleware error")]
-    MiddlewareError(<M as Middleware>::Error),
     #[error("Provider error")]
     ProviderError(#[from] ProviderError),
-    #[error("Contract error")]
-    ContractError(#[from] ContractError<M>),
     #[error("ABI Codec error")]
     ABICodecError(#[from] AbiError),
     #[error("Eth ABI error")]

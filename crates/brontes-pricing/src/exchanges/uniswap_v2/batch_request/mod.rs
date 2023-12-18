@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
+use alloy_sol_macro::sol;
+use brontes_types::traits::TracingProvider;
 use ethers::{
     abi::{ParamType, Token},
     prelude::abigen,
-    providers::Middleware,
     types::{Bytes, H160, U256},
 };
 
 use super::UniswapV2Pool;
-use crate::{errors::AMMError, AutomatedMarketMaker, AMM};
+use crate::{errors::AMMError,  AutomatedMarketMaker, AMM};
 
 abigen!(
 
@@ -18,6 +19,56 @@ abigen!(
     IGetUniswapV2PoolDataBatchRequest,
         "./crates/brontes-pricing/src/exchanges/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json";
 );
+
+sol!(
+    struct PoolData {
+        address tokenA;
+        uint8 tokenADecimals;
+        address tokenB;
+        uint8 tokenBDecimals;
+        uint112 reserve0;
+        uint112 reserve1;
+    }
+
+    function data_constructor(address[] memory pools) returns(PoolData[]);
+);
+
+// pub async fn get_pairs_batch_request<M: TracingProvider>(
+//     factory: H160,
+//     from: U256,
+//     step: U256,
+//     middleware: Arc<M>,
+// ) -> Result<Vec<H160>, AMMError<M>> {
+//     tracing::info!("getting pairs {}-{}", from, step);
+//
+//     let mut pairs = vec![];
+//
+//     let constructor_args =
+//         Token::Tuple(vec![Token::Uint(from), Token::Uint(step),
+// Token::Address(factory)]);
+//
+//     let deployer = IGetUniswapV2PairsBatchRequest::deploy(middleware,
+// constructor_args)?;     let return_data: Bytes = deployer.call_raw().await?;
+//
+//     let return_data_tokens =
+//         ethers::abi::decode(&
+// [ParamType::Array(Box::new(ParamType::Address))], &return_data)?;
+//
+//     for token_array in return_data_tokens {
+//         if let Some(arr) = token_array.into_array() {
+//             for token in arr {
+//                 if let Some(addr) = token.into_address() {
+//                     if !addr.is_zero() {
+//                         pairs.push(addr);
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//
+//     Ok(pairs)
+// }
+//
 
 fn populate_pool_data_from_tokens(
     mut pool: UniswapV2Pool,
@@ -33,42 +84,8 @@ fn populate_pool_data_from_tokens(
     Some(pool)
 }
 
-pub async fn get_pairs_batch_request<M: Middleware>(
-    factory: H160,
-    from: U256,
-    step: U256,
-    middleware: Arc<M>,
-) -> Result<Vec<H160>, AMMError<M>> {
-    tracing::info!("getting pairs {}-{}", from, step);
-
-    let mut pairs = vec![];
-
-    let constructor_args =
-        Token::Tuple(vec![Token::Uint(from), Token::Uint(step), Token::Address(factory)]);
-
-    let deployer = IGetUniswapV2PairsBatchRequest::deploy(middleware, constructor_args)?;
-    let return_data: Bytes = deployer.call_raw().await?;
-
-    let return_data_tokens =
-        ethers::abi::decode(&[ParamType::Array(Box::new(ParamType::Address))], &return_data)?;
-
-    for token_array in return_data_tokens {
-        if let Some(arr) = token_array.into_array() {
-            for token in arr {
-                if let Some(addr) = token.into_address() {
-                    if !addr.is_zero() {
-                        pairs.push(addr);
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(pairs)
-}
-
-pub async fn get_amm_data_batch_request<M: Middleware>(
-    amms: &mut [AMM],
+pub async fn get_amm_data_batch_request<M: TracingProvider>(
+    amms: &mut [UniswapV2Pool],
     middleware: Arc<M>,
 ) -> Result<(), AMMError<M>> {
     tracing::info!("getting data for {} AMMs", amms.len());
@@ -129,7 +146,7 @@ pub async fn get_amm_data_batch_request<M: Middleware>(
     Ok(())
 }
 
-pub async fn get_v2_pool_data_batch_request<M: Middleware>(
+pub async fn get_v2_pool_data_batch_request<M: TracingProvider>(
     pool: &mut UniswapV2Pool,
     middleware: Arc<M>,
 ) -> Result<(), AMMError<M>> {
