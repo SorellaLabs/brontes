@@ -197,8 +197,6 @@ pub fn get_tick_at_sqrt_ratio(sqrt_price_x_96: U256) -> Result<i32, UniswapV3Mat
 mod test {
     use std::ops::Sub;
 
-    use ethers::types::U256;
-
     use super::*;
 
     #[test]

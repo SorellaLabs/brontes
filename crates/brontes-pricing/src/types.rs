@@ -162,7 +162,13 @@ impl PoolStateSnapShot {
                 Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
             }
             PoolStateSnapShot::UniswapV3(v) => {
-                Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
+                let price = v.calculate_price(base);
+                if price.is_err() {
+                    tracing::error!(?price, "failed to get price");
+                    return Rational::ZERO
+                }
+
+                Rational::try_from(price.unwrap()).unwrap()
             }
         }
     }
