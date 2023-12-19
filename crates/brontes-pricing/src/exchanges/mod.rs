@@ -20,16 +20,16 @@ async fn make_call_request<C: SolCall, T: TracingProvider>(
     provider: Arc<T>,
     to: Address,
     block: Option<u64>,
-) -> C::Return {
+) -> eyre::Result<C::Return> {
     let encoded = call.abi_encode();
     let req =
         CallRequest { to: Some(to), input: CallInput::new(encoded.into()), ..Default::default() };
 
     let res = provider
         .eth_call(req, block.map(Into::into), None, None)
-        .await
-        .unwrap();
-    C::abi_decode_returns(&res, false).unwrap()
+        .await?;
+
+    Ok(C::abi_decode_returns(&res, false)?)
 }
 
 #[async_trait]
