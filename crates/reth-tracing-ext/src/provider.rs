@@ -20,9 +20,9 @@ impl TracingProvider for TracingClient {
     ) -> ProviderResult<Bytes> {
         // NOTE: these types are equivalent, however we want ot
         info!(?request, "making call");
-        Ok(EthApiServer::call(&self.api, request, block_number, state_overrides, block_overrides)
+        EthApiServer::call(&self.api, request, block_number, state_overrides, block_overrides)
             .await
-            .unwrap())
+            .map_err(|_| reth_provider::ProviderError::StateRootNotAvailableForHistoricalBlock)
     }
 
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
