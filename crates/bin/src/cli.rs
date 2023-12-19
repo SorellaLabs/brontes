@@ -17,7 +17,7 @@ pub enum Commands {
     #[command(name = "init")]
     Init(Init),
     #[command(name = "batch-dex")]
-    RunBackWithPricing(RunBatchWithPricing),
+    RunBatchWithPricing(RunBatchWithPricing),
 }
 
 #[derive(Debug, Parser)]
