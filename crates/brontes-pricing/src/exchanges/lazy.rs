@@ -46,13 +46,19 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         *self.req_per_block.entry(block_number).or_default() += 1;
 
         match ex_type {
-            StaticBindingsDb::UniswapV2 => self.pool_load_futures.push(Box::pin(async move {
-                let pool = UniswapV2Pool::new_load_on_block(address, provider, block_number)
-                    .await
-                    .unwrap();
-                (block_number, address, PoolState::new(crate::types::PoolVariants::UniswapV2(pool)))
-            })),
-            StaticBindingsDb::UniswapV3 => {
+            StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
+                self.pool_load_futures.push(Box::pin(async move {
+                    let pool = UniswapV2Pool::new_load_on_block(address, provider, block_number)
+                        .await
+                        .unwrap();
+                    (
+                        block_number,
+                        address,
+                        PoolState::new(crate::types::PoolVariants::UniswapV2(pool)),
+                    )
+                }))
+            }
+            StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
                 self.pool_load_futures.push(Box::pin(async move {
                     let pool = UniswapV3Pool::new_from_address(address, block_number, provider)
                         .await
@@ -68,8 +74,6 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 error!(exchange =?ex_type, "no state updater is build for");
             }
         }
-
-        todo!()
     }
 
     pub fn is_loading(&self, k: &Address) -> bool {
