@@ -86,9 +86,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_new_pool(&mut self, msg: PoolUpdate) {
-        let pair = msg
-            .get_pair()
-            .expect("got a non exchange state related update");
+        let Some(pair) = msg.get_pair() else { return };
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
