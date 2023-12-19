@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     pin::Pin,
     sync::Arc,
     task::Poll,
@@ -20,7 +20,7 @@ use crate::{
 
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
-    pool_buf:          HashMap<Address, Vec<PoolUpdate>>,
+    pool_buf:          HashSet<Address>,
     // we need to keep order here or else our pricing will be off
     pool_load_futures: FuturesOrdered<
         Pin<Box<dyn Future<Output = Result<(u64, Address, PoolState), (u64, AmmError)>> + Send>>,
@@ -32,7 +32,7 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
 impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
-            pool_buf: HashMap::default(),
+            pool_buf: HashSet::default(),
             pool_load_futures: FuturesOrdered::default(),
             provider,
             req_per_block: HashMap::default(),
@@ -87,11 +87,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     }
 
     pub fn is_loading(&self, k: &Address) -> bool {
-        self.pool_buf.contains_key(k)
-    }
-
-    pub fn buffer_update(&mut self, k: &Address, update: PoolUpdate) {
-        self.pool_buf.entry(*k).or_default().push(update);
+        self.pool_buf.contains(k)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -100,7 +96,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 }
 
 impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
-    type Item = (PoolState, Vec<PoolUpdate>);
+    type Item = PoolState;
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
@@ -115,8 +111,8 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                         unreachable!()
                     }
 
-                    let buf = self.pool_buf.remove(&addr).unwrap_or(vec![]);
-                    return Poll::Ready(Some((state, buf)))
+                    self.pool_buf.remove(&addr);
+                    return Poll::Ready(Some(state))
                 }
                 Err((block, e)) => {
                     error!(?e, "failed to load pool");
