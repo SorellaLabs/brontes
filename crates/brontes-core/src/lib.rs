@@ -1,6 +1,5 @@
 #![feature(trait_alias)]
 pub mod decoding;
-pub mod dex_price;
 pub mod errors;
 pub mod executor;
 pub mod macros;

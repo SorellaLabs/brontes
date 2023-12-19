@@ -9,6 +9,7 @@ use parking_lot::RwLock;
 use reth_primitives::U256;
 
 pub mod classified_mev;
+pub mod exchanges;
 pub mod extra_processing;
 pub mod libmdbx_utils;
 pub mod normalized_actions;
@@ -19,15 +20,6 @@ pub mod tree;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u8)]
-pub enum Dexes {
-    UniswapV2,
-    UniswapV3,
-    SushiSwapV2,
-    SushiSwapV3,
-    CurveCryptoSwap,
-}
 // include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
 
 static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
