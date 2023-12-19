@@ -14,7 +14,7 @@ use crate::DBTokenPricesDB;
 /// So when we query the map we order the addresses in the pair and then query
 /// the quote provides us with the actual token0 so we can interpret the price
 /// in any direction
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CexPriceMap(pub HashMap<Pair, Vec<CexQuote>>);
 
 impl CexPriceMap {
