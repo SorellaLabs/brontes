@@ -301,11 +301,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.update_dex_quotes(block, tx_idx, pool_pair.flip());
             self.update_dex_quotes(block, tx_idx, pair0);
             self.update_dex_quotes(block, tx_idx, pair1);
-
-            // fetch all pool keys for a given pair
-
-            // info!(pair=?pool_pair, %block, ?pool_keys, " adding pricing for
-            // key");
         }
     }
 
@@ -331,7 +326,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if self.lazy_loader.requests_for_block(&self.completed_block) == 0
             && self.completed_block < self.current_block
         {
-            info!(?self.completed_block,"getting ready to calc dex prices");
+            info!(?self.completed_block, "getting ready to calc dex prices");
             // if all block requests are complete, lets apply all the state transitions we
             // had for the given block which will allow us to generate all pricing
             if let Some(buffer) = self.buffer.remove(&self.completed_block) {
@@ -357,6 +352,31 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         None
     }
+
+    fn on_close(&mut self) -> Option<(u64, DexPrices)> {
+        info!(?self.completed_block,"getting ready to calc dex prices");
+        // if all block requests are complete, lets apply all the state transitions we
+        // had for the given block which will allow us to generate all pricing
+        if let Some(buffer) = self.buffer.remove(&self.completed_block) {
+            for (address, update) in buffer {
+                self.update_known_state(address, update);
+            }
+        }
+
+        let block = self.completed_block;
+
+        let res = self
+            .dex_quotes
+            .remove(&self.completed_block)
+            .unwrap_or(DexQuotes(vec![]));
+
+        info!(dex_quotes = res.0.len(), "got dex quotes");
+
+        let state = self.finalized_state.clone().into();
+        self.completed_block += 1;
+
+        return Some((block, DexPrices::new(state, res)))
+    }
 }
 
 impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
@@ -378,7 +398,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
 
                 if s.is_none() && self.lazy_loader.is_empty() {
-                    return Poll::Ready(None)
+                    return Poll::Ready(self.on_close())
                 }
             }
 
@@ -436,7 +456,7 @@ pub mod test {
         BrontesBatchPricer::new(quote, 0, 0, pair_graph, rx, parser.get_tracer(), block)
     }
     #[tokio::test]
-    async fn test_on_pool_resolve() {
+    async fn test_pool() {
         dotenv::dotenv().ok();
         init_tracing();
         info!("initing tests");
