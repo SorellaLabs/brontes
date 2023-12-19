@@ -62,7 +62,7 @@ pub struct PairGraph {
 }
 
 impl PairGraph {
-    pub fn init_from_hashset(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
+    pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
         let t0 = SystemTime::now();
         let mut graph = UnGraph::<(), HashSet<PoolPairInformation>, usize>::default();
 
