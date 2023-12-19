@@ -211,7 +211,7 @@ impl PairGraph {
         let Some(end_idx) = self.addr_to_index.get(&pair.1) else { return vec![].into_iter() };
 
         let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
-            .expect("no path found, gotta make this into a option")
+            .unwrap_or(vec![])
             .into_iter()
             .tuple_windows()
             .map(|(base, quote)| {
