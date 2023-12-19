@@ -1,4 +1,5 @@
 use alloy_rlp::{Decodable, Encodable};
+use brontes_types::libmdbx_utils::serde_address_string;
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
@@ -8,16 +9,12 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
 
-use crate::{
-    tables::AddressToProtocol,
-    types::utils::{address_string, static_bindings},
-    LibmdbxData,
-};
+use crate::{tables::AddressToProtocol, types::utils::static_bindings, LibmdbxData};
 
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Row)]
 pub struct AddressToProtocolData {
-    #[serde(with = "address_string")]
+    #[serde(with = "serde_address_string")]
     pub address: Address,
 
     #[serde(with = "static_bindings")]
