@@ -4,11 +4,12 @@ pub mod factory;
 use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
-use alloy_rlp::{RlpEncodable, RlpDecodable};
+use alloy_rlp::{RlpDecodable, RlpEncodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
+use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
+use malachite::Rational;
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 
@@ -39,7 +40,9 @@ pub const SYNC_EVENT_SIGNATURE: B256 = FixedBytes([
     199, 139, 229, 14, 6, 43, 3, 169, 255, 251, 186, 209,
 ]);
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, RlpEncodable, RlpDecodable, Hash, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Default, Serialize, Deserialize, RlpEncodable, RlpDecodable, Hash, PartialEq, Eq,
+)]
 pub struct UniswapV2Pool {
     pub address:          Address,
     pub token_a:          Address,
@@ -384,6 +387,10 @@ impl UniswapV2Pool {
         } else {
             div_uu(r_0, r_1)
         }
+    }
+
+    pub fn get_tvl(&self) -> Rational {
+        self.reserve_0.to_scaled_rational(0) + self.reserve_1.to_scaled_rational(0)
     }
 
     pub fn get_amount_out(&self, amount_in: U256, reserve_in: U256, reserve_out: U256) -> U256 {

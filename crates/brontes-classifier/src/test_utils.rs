@@ -1,9 +1,9 @@
-use std::env;
+use std::{collections::HashMap, env, sync::Arc};
 
 use brontes_core::decoding::{parser::TraceParser, TracingProvider};
 use brontes_database::{clickhouse::Clickhouse, Metadata};
 use brontes_database_libmdbx::Libmdbx;
-use brontes_pricing::types::DexPrices;
+use brontes_pricing::types::{DexPrices, DexQuotes};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use reth_primitives::Header;
 
@@ -40,8 +40,9 @@ pub async fn get_traces_with_meta<T: TracingProvider>(
     db: &Clickhouse,
     block_number: u64,
 ) -> (Vec<TxTrace>, Header, Metadata) {
+    let map = Arc::new(HashMap::new());
     let (traces, header) = tracer.execute_block(block_number).await.unwrap();
     let metadata = db.get_metadata(block_number).await;
-    let metadata = metadata.into_finalized_metadata(DexPrices::new());
+    let metadata = metadata.into_finalized_metadata(DexPrices::new(map, DexQuotes(vec![])));
     (traces, header, metadata)
 }
