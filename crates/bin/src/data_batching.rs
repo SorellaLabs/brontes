@@ -3,7 +3,6 @@ use std::{
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
-    time::SystemTime,
 };
 
 use brontes_classifier::Classifier;
