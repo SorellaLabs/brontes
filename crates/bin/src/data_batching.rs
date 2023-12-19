@@ -293,7 +293,7 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
-            info!(?block_details, ?mev_details, "finished processing for block");
+            info!(?block_details, "finished processing for block");
             // self.database
             //     .insert_classified_data(block_details, mev_details);
 
