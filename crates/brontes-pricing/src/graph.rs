@@ -65,7 +65,6 @@ pub struct PairGraph {
 impl PairGraph {
     pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
         let t0 = SystemTime::now();
-
         let mut graph =
             UnGraph::<(), HashSet<PoolPairInformation>, usize>::with_capacity(500_000, 500_000);
 
@@ -159,6 +158,7 @@ impl PairGraph {
     }
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
+        let t0 = SystemTime::now();
         let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
 
         let direction0 = PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: true };
@@ -187,6 +187,10 @@ impl PairGraph {
 
             self.graph.add_edge(node_0.into(), node_1.into(), set);
         }
+
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        info!(delta, "added new node in us");
     }
 
     // fetches the path from start to end
@@ -197,6 +201,8 @@ impl PairGraph {
         if let Some(pools) = self.known_pairs.get(&pair) {
             return pools.clone().into_iter()
         }
+
+        let t0 = SystemTime::now();
 
         let Some(start_idx) = self.addr_to_index.get(&pair.0) else { return vec![].into_iter() };
         let Some(end_idx) = self.addr_to_index.get(&pair.1) else { return vec![].into_iter() };
@@ -229,6 +235,10 @@ impl PairGraph {
             .collect::<Vec<_>>();
 
         self.known_pairs.insert(pair, path.clone());
+
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        info!(%delta, pair=?pair, "found path to pair in us");
 
         path.into_iter()
     }
