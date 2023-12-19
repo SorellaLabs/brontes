@@ -177,6 +177,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         for info in self.pair_graph.get_path(Pair(pair.0, pair.1)).flatten() {
             self.lazy_loader.lazy_load_exchange(
                 info.info.pool_addr,
+                // we want to load state from prev block
                 msg.block - 1,
                 info.info.dex_type,
             );
@@ -325,12 +326,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        while let Poll::Ready(Some((state, updates))) = self.lazy_loader.poll_next_unpin(cx) {
-            if let Some(update) = self.on_pool_resolve(state, updates) {
-                return Poll::Ready(Some(update))
-            }
-        }
-
         while let Poll::Ready(s) = self
             .update_rx
             .poll_recv(cx)
@@ -342,6 +337,12 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
 
             if s.is_none() && self.lazy_loader.is_empty() {
                 return Poll::Ready(None)
+            }
+        }
+
+        while let Poll::Ready(Some((state, updates))) = self.lazy_loader.poll_next_unpin(cx) {
+            if let Some(update) = self.on_pool_resolve(state, updates) {
+                return Poll::Ready(Some(update))
             }
         }
 
