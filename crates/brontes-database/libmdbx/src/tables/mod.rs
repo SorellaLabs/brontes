@@ -221,12 +221,12 @@ where
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
             let data = if let Some((start, end)) = block_range {
-                if let Ok(r) = db_client
-                    .inner()
-                    .query_many::<D>(Self::initialize_query(), &(start, end))
-                    .await
-                {
-                    Ok(r)
+                let query = Self::initialize_query();
+                if query.contains('?') {
+                    db_client
+                        .inner()
+                        .query_many::<D>(Self::initialize_query(), &(start, end))
+                        .await
                 } else {
                     db_client
                         .inner()
