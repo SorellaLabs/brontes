@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -9,7 +10,10 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{clickhouse::Clickhouse, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
-use brontes_pricing::{types::DexPrices, BrontesBatchPricer};
+use brontes_pricing::{
+    types::{DexPrices, DexQuotes},
+    BrontesBatchPricer,
+};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
@@ -17,6 +21,7 @@ use brontes_types::{
 };
 use futures::{stream::FuturesOrdered, Future, FutureExt, StreamExt};
 use tracing::{debug, info};
+
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (MetadataDB, TimeTree<Actions>)> + Send + 'a>>;
 
 pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
@@ -88,9 +93,11 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
         match self.classifier_future.poll_next_unpin(cx) {
             Poll::Ready(Some((meta_data, tree))) => {
+                let map = Arc::new(HashMap::new());
+                let meta_data =
+                    meta_data.into_finalized_metadata(DexPrices::new(map, DexQuotes(vec![])));
                 //TODO: wire in the dex pricing task here
-                let meta_data = Arc::new(meta_data.into_finalized_metadata(DexPrices::new()));
-                self.composer.on_new_tree(tree.into(), meta_data);
+                self.composer.on_new_tree(tree.into(), meta_data.into());
             }
             Poll::Pending => return,
             Poll::Ready(None) => return,
