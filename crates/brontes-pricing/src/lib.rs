@@ -193,6 +193,19 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.lazy_loader
                 .buffer_update(&info.info.pool_addr, msg.clone());
         }
+
+        for info in self.pair_graph.get_path(Pair(pair.1, pair.0)).flatten() {
+            self.lazy_loader.lazy_load_exchange(
+                info.info.pool_addr,
+                // we want to load state from prev block
+                msg.block - 1,
+                info.info.dex_type,
+            );
+
+            // for the raw pair we always rebuffer
+            self.lazy_loader
+                .buffer_update(&info.info.pool_addr, msg.clone());
+        }
     }
 
     fn update_dex_quotes(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
@@ -285,6 +298,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let pair1 = Pair(pool_pair.1, self.quote_asset);
 
             self.update_dex_quotes(block, tx_idx, pool_pair);
+            self.update_dex_quotes(block, tx_idx, pool_pair.flip());
             self.update_dex_quotes(block, tx_idx, pair0);
             self.update_dex_quotes(block, tx_idx, pair1);
 
