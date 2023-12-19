@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use alloy_primitives::{Address, BlockNumber, U256};
 use ethers::providers::Middleware;
 
-use super::{abi, bit_math, error::UniswapV3MathError};
+use super::{bit_math, error::UniswapV3MathError};
 
 //Flips the initialized state for a given tick from false to true, or vice
 // versa
