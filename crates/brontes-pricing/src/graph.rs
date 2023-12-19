@@ -9,7 +9,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{extra_processing::Pair, Dexes};
+use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair};
 use itertools::Itertools;
 use petgraph::{
     graph::UnGraph,
@@ -18,21 +18,26 @@ use petgraph::{
 };
 use tracing::info;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PoolPairInformation {
     pub pool_addr: Address,
-    pub dex_type:  Dexes,
+    pub dex_type:  StaticBindingsDb,
     pub token_0:   Address,
     pub token_1:   Address,
 }
 
 impl PoolPairInformation {
-    fn new(pool_addr: Address, dex_type: Dexes, token_0: Address, token_1: Address) -> Self {
+    fn new(
+        pool_addr: Address,
+        dex_type: StaticBindingsDb,
+        token_0: Address,
+        token_1: Address,
+    ) -> Self {
         Self { token_1, token_0, dex_type, pool_addr }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PoolPairInfoDirection {
     pub info:       PoolPairInformation,
     pub token_0_in: bool,
@@ -57,7 +62,7 @@ pub struct PairGraph {
 }
 
 impl PairGraph {
-    pub fn init_from_hashset(map: HashMap<(Address, Dexes), Pair>) -> Self {
+    pub fn init_from_hashset(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
         let t0 = SystemTime::now();
         let mut graph = UnGraph::<(), HashSet<PoolPairInformation>, usize>::default();
 
@@ -147,7 +152,7 @@ impl PairGraph {
         Self { graph, addr_to_index, known_pairs }
     }
 
-    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: Dexes) {
+    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
         let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
 
         let direction0 = PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: true };
