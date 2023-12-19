@@ -19,7 +19,7 @@ use futures::FutureExt;
 use lazy_static::lazy_static;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 use reth_primitives::Address;
-use tracing::{info, Subscriber};
+use tracing::info;
 
 use crate::Inspector;
 
@@ -60,7 +60,9 @@ macro_rules! mev_composability {
 
 mev_composability!(
     // reduce first
-    Sandwich => Backrun, CexDex;
+    Sandwich => Backrun;
+    CexDex => Backrun;
+    Sandwich => CexDex;
     // try compose
     JitSandwich => Sandwich, Jit;
 );
