@@ -201,6 +201,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         {
             return Poll::Ready(())
         }
+        cx.waker().wake_by_ref();
 
         Poll::Pending
     }
@@ -259,6 +260,8 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
             self.resechedule(pricer);
 
             if let Some((block, prices)) = inner {
+                info!(?block, "got dex prices for block");
+
                 let Some((tree, meta)) = self.pending_trees.remove(&block) else {
                     return Poll::Ready(None)
                 };
