@@ -134,7 +134,7 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
 
-    let (tx, _rx) = tokio::sync::mpsc::channel(5);
+    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
     let classifier = Classifier::new(&libmdbx, tx.clone());
 
     #[cfg(not(feature = "local"))]

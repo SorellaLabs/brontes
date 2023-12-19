@@ -12,7 +12,7 @@ use hex_literal::hex;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 
 use crate::*;
 
@@ -23,11 +23,11 @@ const TRANSFER_TOPIC: B256 =
 #[derive(Debug, Clone)]
 pub struct Classifier<'db> {
     libmdbx: &'db Libmdbx,
-    sender:  Sender<PoolUpdate>,
+    sender:  UnboundedSender<PoolUpdate>,
 }
 
 impl<'db> Classifier<'db> {
-    pub fn new(libmdbx: &'db Libmdbx, sender: Sender<PoolUpdate>) -> Self {
+    pub fn new(libmdbx: &'db Libmdbx, sender: UnboundedSender<PoolUpdate>) -> Self {
         Self { libmdbx, sender }
     }
 
