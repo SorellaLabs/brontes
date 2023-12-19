@@ -252,10 +252,10 @@ impl PoolVariants {
     fn increment_state(&mut self, _action: Actions, logs: Vec<Log>) {
         for log in logs {
             let log = alloy_primitives::Log::new(log.topics, log.data).unwrap();
-            match self {
-                PoolVariants::UniswapV3(a) => a.sync_from_log(log).unwrap(),
-                PoolVariants::UniswapV2(a) => a.sync_from_log(log).unwrap(),
-            }
+            let _ = match self {
+                PoolVariants::UniswapV3(a) => a.sync_from_log(log),
+                PoolVariants::UniswapV2(a) => a.sync_from_log(log),
+            };
         }
         // match self {
         //     PoolVariants::UniswapV3(a) =>
