@@ -82,7 +82,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if self.lazy_loader.requests_for_block(&self.completed_block) == 0
             && self.completed_block < self.current_block
         {
-            info!( ?self.completed_block,"getting ready to calc dex prices");
+            info!(?self.completed_block," getting ready to calc dex prices");
             let block = self.completed_block;
             if let Some(buffer) = self.buffer.remove(&self.completed_block) {
                 for (address, update) in buffer {
@@ -230,7 +230,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 })
                 .collect::<Vec<_>>();
 
-            info!(pair=?pool_pair, %block, ?pool_keys, " adding pricing for key");
+            // info!(pair=?pool_pair, %block, ?pool_keys, " adding pricing for key");
 
             match self.dex_quotes.entry(block) {
                 Entry::Occupied(mut quotes) => {
