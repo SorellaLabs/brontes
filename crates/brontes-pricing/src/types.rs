@@ -77,7 +77,8 @@ impl DexPrices {
 
     pub fn price_after(&self, pair: Pair, tx: usize) -> Rational {
         let Some(keys) = self.quotes.get_pair_keys(pair, tx) else {
-            info!(?pair, tx_idx=%tx, "failed to get price for");
+
+            info!(?pair, tx_idx=%tx, ?self.quotes, "failed to get price for");
             return Rational::from(1)
         };
         let mut price = Rational::ZERO;
