@@ -302,16 +302,20 @@ impl<'db> Classifier<'db> {
         // don't want to classify it
         if trace.logs.len() == 1 {
             if let Some((addr, from, to, value)) = self.decode_transfer(&trace.logs[0]) {
-                return (
-                    None,
-                    Actions::Transfer(NormalizedTransfer {
-                        index,
-                        to,
-                        from,
-                        token: addr,
-                        amount: value,
-                    }),
-                )
+                let normalized = Actions::Transfer(NormalizedTransfer {
+                    index,
+                    to,
+                    from,
+                    token: addr,
+                    amount: value,
+                });
+                let _ = self.sender.send(PoolUpdate {
+                    block,
+                    tx_idx,
+                    logs: vec![],
+                    action: normalized.clone(),
+                });
+                return (None, normalized)
             }
         }
 
