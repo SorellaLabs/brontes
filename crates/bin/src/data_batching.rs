@@ -3,7 +3,6 @@ use std::{
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
-    time::SystemTime,
 };
 
 use brontes_classifier::Classifier;
@@ -60,10 +59,8 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let tx = libmdbx.ro_tx().unwrap();
         let binding_tx = libmdbx.ro_tx().unwrap();
         let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
-
         let mut pairs = HashMap::new();
 
-        let t0 = SystemTime::now();
         for value in all_addr_to_tokens.walk(None).unwrap() {
             if let Ok((address, tokens)) = value {
                 if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(address) {
@@ -71,9 +68,6 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
                 }
             }
         }
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_millis();
-        info!(libmdx_time_ms = delta, "took to query all libmdx data");
 
         let pair_graph = PairGraph::init_from_hashmap(pairs);
 
