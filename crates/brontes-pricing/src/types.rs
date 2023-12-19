@@ -101,7 +101,7 @@ impl DexPrices {
             }
             if weight == Rational::ZERO {
                 // can no longer convert
-                tracing::error!("no hops for pool");
+                tracing::error!(?pair, "no hops for pool");
                 return Rational::from(1)
             }
 
