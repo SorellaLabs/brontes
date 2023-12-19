@@ -175,7 +175,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
     if init_config.init_libmdbx {
         // currently inits all tables
         libmdbx
-            .clear_and_initialize_tables(&clickhouse, &Tables::ALL)
+            .clear_and_initialize_tables(&clickhouse, &Tables::ALL, None)
             .await?;
     }
 
