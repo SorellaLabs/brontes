@@ -232,13 +232,13 @@ pub fn get_tick_at_sqrt_ratio(sqrt_price_x_96: U256) -> Result<i32, UniswapV3Mat
 //         );
 //         assert_eq!(
 //             get_sqrt_ratio_at_tick(MAX_TICK - 1).unwrap(),
-//             
+//
 // U256::from_dec_str("1461373636630004318706518188784493106690254656249").
 // unwrap(),             "sqrt ratio at max - 1 incorrect"
 //         );
 //         assert_eq!(
 //             get_sqrt_ratio_at_tick(MAX_TICK).unwrap(),
-//             
+//
 // U256::from_dec_str("1461446703485210103287273052203988822378723970342").
 // unwrap(),             "sqrt ratio at max incorrect"
 //         );
@@ -305,13 +305,13 @@ pub fn get_tick_at_sqrt_ratio(sqrt_price_x_96: U256) -> Result<i32, UniswapV3Mat
 //         );
 //         assert_eq!(
 //             get_sqrt_ratio_at_tick(500000).unwrap(),
-//             
+//
 // U256::from_dec_str("5697689776495288729098254600827762987878").unwrap(),
 //             "sqrt ratio at 500000 incorrect"
 //         );
 //         assert_eq!(
 //             get_sqrt_ratio_at_tick(738203).unwrap(),
-//             
+//
 // U256::from_dec_str("847134979253254120489401328389043031315994541").unwrap(),
 //             "sqrt ratio at 738203 incorrect"
 //         );

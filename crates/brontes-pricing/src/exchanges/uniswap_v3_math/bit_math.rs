@@ -138,13 +138,13 @@ pub fn least_significant_bit(mut x: U256) -> Result<u8, UniswapV3MathError> {
 //         //all powers of 2
 //         for i in 0..=255 {
 //             let result =
-// most_significant_bit(U256::from(2).pow(U256::from(i)));             
+// most_significant_bit(U256::from(2).pow(U256::from(i)));
 // assert_eq!(result.unwrap(), i as u8);         }
 //
 //         //uint256(-1)
 //         let result = most_significant_bit(
 //             U256::from_dec_str(
-//                 
+//
 // "115792089237316195423570985008687907853269984665640564039457584007913129639935"
 // ,             )
 //             .unwrap(),
@@ -172,13 +172,13 @@ pub fn least_significant_bit(mut x: U256) -> Result<u8, UniswapV3MathError> {
 //         //all powers of 2
 //         for i in 0..=255 {
 //             let result =
-// least_significant_bit(U256::from(2).pow(U256::from(i)));             
+// least_significant_bit(U256::from(2).pow(U256::from(i)));
 // assert_eq!(result.unwrap(), i as u8);         }
 //
 //         //uint256(-1)
 //         let result = least_significant_bit(
 //             U256::from_dec_str(
-//                 
+//
 // "115792089237316195423570985008687907853269984665640564039457584007913129639935"
 // ,             )
 //             .unwrap(),
