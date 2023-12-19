@@ -19,7 +19,7 @@ use exchanges::lazy::LazyExchangeLoader;
 pub use exchanges::*;
 use futures::{Future, Stream, StreamExt};
 pub use graph::PairGraph;
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::info;
 use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
 
@@ -30,7 +30,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     run:         u64,
     batch_id:    u64,
 
-    update_rx: Receiver<PoolUpdate>,
+    update_rx: UnboundedReceiver<PoolUpdate>,
 
     current_block:   u64,
     completed_block: u64,
@@ -57,7 +57,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         run: u64,
         batch_id: u64,
         pair_graph: PairGraph,
-        update_rx: Receiver<PoolUpdate>,
+        update_rx: UnboundedReceiver<PoolUpdate>,
         provider: Arc<T>,
         current_block: u64,
     ) -> Self {
