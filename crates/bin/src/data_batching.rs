@@ -77,10 +77,6 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
 
         let pair_graph = PairGraph::init_from_hashmap(pairs);
 
-        // let start = cur.next().unwrap().unwrap().0;
-        // let end = cur.last().unwrap().unwrap().0;
-        // info!(start, end, "have metadata for blocks");
-
         let pricer = BrontesBatchPricer::new(
             quote_asset,
             run,
@@ -116,9 +112,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     ) -> CollectionFut<'db> {
         let (extra, tree) = classifier.build_tree(traces, header);
         Box::pin(async move {
-            info!("resolving missing decimals");
             MissingDecimals::new(tracer, libmdbx, extra.tokens_decimal_fill).await;
-            info!("resolved missing decimals");
 
             (tree, meta)
         })
@@ -186,6 +180,8 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
 
         // poll pricer
         while let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
+            info!(?meta, "metadata");
+            panic!();
             self.on_price_finish(tree, meta);
         }
 
