@@ -184,18 +184,18 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     let size = q.0.len();
 
                     // make sure to pad the vector to the proper index
-                    for _ in size..=tx_idx as usize {
+                    for _ in size..tx_idx as usize {
                         q.0.push(None)
                     }
-
                     // insert the new keys
-                    let mut tx_pairs = q.0.remove(tx_idx as usize).unwrap_or_default();
+                    let mut tx_pairs = HashMap::default();
                     tx_pairs.insert(pool_pair, pool_keys);
+                    q.0.push(Some(tx_pairs))
                 }
                 Entry::Vacant(v) => {
                     // pad the vec to the tx index
                     let mut vec = Vec::new();
-                    for _ in 0..=tx_idx as usize {
+                    for _ in 0..tx_idx as usize {
                         vec.push(None);
                     }
                     // insert
