@@ -78,6 +78,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             && self.completed_block < self.current_block
         {
             let block = self.completed_block;
+            if let Some(buffer) = self.buffer.remove(&self.completed_block) {
+                for update in buffer {
+                    self.on_new_pool(update);
+                }
+            }
 
             let res = self
                 .dex_quotes
@@ -87,7 +92,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let state = self.finalized_state.clone().into();
             self.completed_block += 1;
 
-            return Some((block, DexPrices::new(state, res)))
+            return Some((self.completed_block, DexPrices::new(state, res)))
         }
 
         if msg.block > self.current_block {
