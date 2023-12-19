@@ -8,7 +8,7 @@ use brontes_types::normalized_actions::{
 };
 use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_rpc_types::Log;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,

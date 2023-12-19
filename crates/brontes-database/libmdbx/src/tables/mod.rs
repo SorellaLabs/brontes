@@ -220,12 +220,27 @@ where
         block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
-            let data = db_client
-                .inner()
-                .query_many::<D>(Self::initialize_query(), &())
-                .await;
+            let query = Self::initialize_query();
+            if query.is_empty() {
+                println!("init empty");
+                libmdbx.initialize_table::<_, D>(&vec![])?;
+                return Ok(())
+            }
 
-            println!("\n\nDUP Data: {:?}\n\n", data);
+            let data = if let Some((start, end)) = block_range {
+                if query.contains('?') {
+                    db_client
+                        .inner()
+                        .query_many::<D>(query, &(start, end))
+                        .await
+                } else {
+                    db_client.inner().query_many::<D>(query, &()).await
+                }
+            } else {
+                db_client.inner().query_many::<D>(query, &()).await
+            };
+
+            // println!("\n\nREG Data: {:?}\n\n", data);
 
             /*
                         let data = match data {
@@ -261,7 +276,7 @@ where
                 .query_many::<D>(Self::initialize_query(), &())
                 .await;
 
-            println!("\n\nDUP Data: {:?}\n\n", data);
+            // println!("\n\nDUP Data: {:?}\n\n", data);
 
             /*
                         let data = match data {

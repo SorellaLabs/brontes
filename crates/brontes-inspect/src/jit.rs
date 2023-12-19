@@ -4,11 +4,12 @@ use std::{
 };
 
 use async_trait::async_trait;
+use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     tree::GasDetails,
-    try_get_decimals, ToFloatNearest, ToScaledRational,
+    ToFloatNearest, ToScaledRational,
 };
 use itertools::Itertools;
 use malachite::Rational;
@@ -28,18 +29,18 @@ struct PossibleJit {
     pub victims:               Vec<B256>,
 }
 
-pub struct JitInspector {
-    inner: SharedInspectorUtils,
+pub struct JitInspector<'db> {
+    inner: SharedInspectorUtils<'db>,
 }
 
-impl JitInspector {
-    pub fn new(quote: Address) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote) }
+impl<'db> JitInspector<'db> {
+    pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
+        Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
 #[async_trait]
-impl Inspector for JitInspector {
+impl Inspector for JitInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
@@ -137,7 +138,7 @@ impl Inspector for JitInspector {
     }
 }
 
-impl JitInspector {
+impl JitInspector<'_> {
     fn calculate_jit(
         &self,
         eoa: Address,
@@ -358,7 +359,7 @@ impl JitInspector {
                 Some(
                     self.inner
                         .get_usd_price_dex_avg(idx, *token, metadata.clone())?
-                        * amount.to_scaled_rational(try_get_decimals(&token.0 .0)?),
+                        * amount.to_scaled_rational(self.inner.try_get_decimals(*token)?),
                 )
             })
             .sum::<Rational>()
