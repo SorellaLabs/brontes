@@ -106,7 +106,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     fn on_new_pool(&mut self, msg: PoolUpdate) {
         let Some(pair) = msg.get_pair() else { return };
-        // info!(?msg, "on new pool");
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset

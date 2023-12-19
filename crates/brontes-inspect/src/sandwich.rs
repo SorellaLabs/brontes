@@ -4,6 +4,7 @@ use std::{
 };
 
 use brontes_database::Metadata;
+use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{MevType, Sandwich, SpecificMev},
     normalized_actions::Actions,
@@ -17,13 +18,13 @@ use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
-pub struct SandwichInspector {
-    inner: SharedInspectorUtils,
+pub struct SandwichInspector<'db> {
+    inner: SharedInspectorUtils<'db>,
 }
 
-impl SandwichInspector {
-    pub fn new(quote: Address) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote) }
+impl<'db> SandwichInspector<'db> {
+    pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
+        Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -37,7 +38,7 @@ pub struct PossibleSandwich {
 }
 
 #[async_trait::async_trait]
-impl Inspector for SandwichInspector {
+impl Inspector for SandwichInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
@@ -101,7 +102,7 @@ impl Inspector for SandwichInspector {
     }
 }
 
-impl SandwichInspector {
+impl SandwichInspector<'_> {
     fn calculate_sandwich(
         &self,
         tx_idx: [usize; 2],

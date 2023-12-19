@@ -1,6 +1,8 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
 use brontes_pricing::types::DexQuotes;
+
+use crate::types::token_decimals::TokenDecimalsData;
 pub mod initialize;
 use std::collections::HashMap;
 
@@ -56,6 +58,11 @@ impl Libmdbx {
         this.create_tables()?;
 
         Ok(this)
+    }
+
+    pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
+        let db_tx = self.ro_tx().unwrap();
+        db_tx.get::<TokenDecimals>(address).ok()?
     }
 
     /// Creates all the defined tables, opens if already created
@@ -125,6 +132,10 @@ impl Libmdbx {
         tx.commit()?;
 
         Ok(())
+    }
+
+    pub fn insert_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
+        self.write_table(&vec![TokenDecimalsData { address, decimals }])
     }
 
     /// returns a RO transaction
