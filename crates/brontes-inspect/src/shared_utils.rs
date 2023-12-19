@@ -112,8 +112,9 @@ impl SharedInspectorUtils<'_> {
             return Some(Rational::ONE)
         }
         let pair = Pair(token_address, self.quote);
+        return None
 
-        Some(metadata.dex_quotes.price_after(pair, block_position))
+        // Some(metadata.dex_quotes.price_after(pair, block_position))
     }
 
     /// applies usd price to deltas and flattens out the tokens
