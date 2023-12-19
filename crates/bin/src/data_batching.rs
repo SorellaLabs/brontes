@@ -153,6 +153,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     }
 
     fn on_price_finish(&mut self, tree: TimeTree<Actions>, meta: Metadata) {
+        info!("dex pricing finished");
         self.processing_futures.push(Box::pin(ResultProcessing::new(
             self.libmdbx,
             self.inspectors,
@@ -169,6 +170,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         // progress collection future,
         if let Some(mut future) = self.collection_future.take() {
             if let Poll::Ready((tree, meta)) = future.poll_unpin(cx) {
+                info!("built tree");
                 let block = self.current_block;
                 self.pricer.add_pending_inspection(block, tree, meta);
             } else {
