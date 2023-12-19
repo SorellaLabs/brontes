@@ -17,6 +17,7 @@ mod tip_inspector;
 
 mod data_batching;
 use block_inspector::BlockInspector;
+pub use data_batching::DataBatching;
 use tip_inspector::TipInspector;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
