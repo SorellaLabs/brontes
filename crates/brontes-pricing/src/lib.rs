@@ -167,11 +167,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     PoolKeysForPair(
                         pairs
                             .into_iter()
-                            .map(|pair_details| {
-                                PoolKeyWithDirection::new(
-                                    *self.last_update.get(&pair_details.info.pool_addr).unwrap(),
+                            .filter_map(|pair_details| {
+                                // TODO: this being a filtermap is wrong because we then can't
+                                // garentee all underlying pool weighting. need a bigger refactor
+                                // tho so will circle back after i think about it for a bit
+                                Some(PoolKeyWithDirection::new(
+                                    *self.last_update.get(&pair_details.info.pool_addr)?,
                                     pair_details.get_base_token(),
-                                )
+                                ))
                             })
                             .collect::<Vec<_>>(),
                     )
