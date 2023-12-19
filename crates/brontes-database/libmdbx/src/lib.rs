@@ -1,19 +1,25 @@
-use std::path::Path;
+use std::{path::Path, str::FromStr};
 pub mod initialize;
-use brontes_database::{clickhouse::Clickhouse, MetadataDB};
+use alloy_primitives::Address;
+use brontes_database::{clickhouse::Clickhouse, MetadataDB, Pair};
+use brontes_pricing::types::DexPrices;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use eyre::Context;
 use initialize::LibmdbxInitializer;
+use malachite::Rational;
 use reth_db::{
+    cursor::{DbCursorRO, DbDupCursorRW},
     is_database_empty,
     mdbx::DatabaseFlags,
-    table::Table,
+    table::{DupSort, Table},
     transaction::{DbTx, DbTxMut},
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
 };
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
+use tables::*;
+use types::{LibmdbxDupData, metadata::MetadataInner, cex_price::CexPriceMap};
 
 use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
 pub mod implementation;
@@ -73,24 +79,12 @@ impl Libmdbx {
         &self,
         clickhouse: &Clickhouse,
         tables: &[Tables],
+        block_range: Option<(u64, u64)> // inclusive of start only
     ) -> eyre::Result<()> {
         let initializer = LibmdbxInitializer::new(self, clickhouse);
-        initializer.initialize(tables).await?;
+        initializer.initialize(tables, block_range).await?;
 
         Ok(())
-    }
-
-    //TODO: Joe - implement
-    pub async fn get_metadata(&self, block_num: u64) -> MetadataDB {
-        todo!()
-    }
-
-    pub async fn insert_classified_data(
-        &self,
-        block_details: MevBlock,
-        mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
-    ) {
-        todo!()
     }
 
     /// Clears a table in the database
@@ -136,18 +130,45 @@ impl Libmdbx {
 
         Ok(tx)
     }
+
+    //TODO: Joe - implement
+    pub fn get_metadata(&self, block_num: u64) -> eyre::Result<brontes_database::Metadata> {
+        let tx = LibmdbxTx::new_ro_tx(&self.0)?;
+        let block_meta: MetadataInner = tx.get::<Metadata>(block_num)?.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+        let cex_quotes: CexPriceMap = tx.get::<CexPrice>(block_num)?.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+        //let eth_prices = ; 
+
+        
+        Ok(brontes_database::Metadata 
+        {db: MetadataDB { block_num, 
+            block_hash: block_meta.block_hash, 
+            relay_timestamp: block_meta.relay_timestamp, 
+            p2p_timestamp: block_meta.p2p_timestamp, 
+            proposer_fee_recipient: block_meta.proposer_fee_recipient.unwrap_or_default(), // change this 
+            proposer_mev_reward: block_meta.proposer_mev_reward, 
+            cex_quotes: brontes_database::cex::CexPriceMap::new(),//brontes_database::cex::CexPriceMap(cex_quotes.0), // ambiguous type
+            eth_prices: Rational::default(), // cex_quotes.0.get(&Pair(Address::from_str("").unwrap(), Address::from_str("").unwrap())).unwrap() // ambiguous type // change to USDC - ETH + error handle 
+            mempool_flow: block_meta.mempool_flow.into_iter().collect(),
+        }, dex_quotes: DexPrices::new() 
+    })
+    }
+
+    pub async fn insert_classified_data(
+        &self,
+        block_details: MevBlock,
+        mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+    ) {
+        todo!() // we r we inserting if never using again
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::env;
 
-    use brontes_database::clickhouse::Clickhouse;
-    use reth_db::cursor::DbCursorRO;
     use serial_test::serial;
 
-    use super::{initialize::LibmdbxInitializer, *};
-    use crate::tables::TokenDecimals;
+    use crate::Libmdbx;
 
     fn init_db() -> eyre::Result<Libmdbx> {
         dotenv::dotenv().ok();
