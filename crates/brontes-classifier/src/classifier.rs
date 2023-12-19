@@ -309,12 +309,9 @@ impl<'db> Classifier<'db> {
                     token: addr,
                     amount: value,
                 });
-                let _ = self.sender.send(PoolUpdate {
-                    block,
-                    tx_idx,
-                    logs: vec![],
-                    action: normalized.clone(),
-                });
+                self.sender
+                    .send(PoolUpdate { block, tx_idx, logs: vec![], action: normalized.clone() })
+                    .unwrap();
                 return (None, normalized)
             }
         }

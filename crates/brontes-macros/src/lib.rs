@@ -314,7 +314,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             logs: logs.clone(),
                             action: res.clone()
                         };
-                        let _ = tx.send(pool_update);
+                        tx.send(pool_update).unwrap();
                     }
 
                     return res
@@ -336,7 +336,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                                 tx_idx,
                                 action: res.clone()
                             };
-                            let _ = tx.send(pool_update);
+                            tx.send(pool_update).unwrap();
 
                         }
 
