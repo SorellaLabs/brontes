@@ -56,9 +56,11 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         match ex_type {
             StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
                 self.pool_load_futures.push_back(Box::pin(async move {
-                    let pool = UniswapV2Pool::new_load_on_block(address, provider, block_number)
-                        .await
-                        .map_err(|e| (block_number, e))?;
+                    // we want end of last block state
+                    let pool =
+                        UniswapV2Pool::new_load_on_block(address, provider, block_number - 1)
+                            .await
+                            .map_err(|e| (block_number, e))?;
                     Ok((
                         block_number,
                         address,
@@ -68,7 +70,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
                 self.pool_load_futures.push_back(Box::pin(async move {
-                    let pool = UniswapV3Pool::new_from_address(address, block_number, provider)
+                    let pool = UniswapV3Pool::new_from_address(address, block_number - 1, provider)
                         .await
                         .map_err(|e| (block_number, e))?;
                     Ok((
