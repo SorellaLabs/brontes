@@ -2,6 +2,7 @@
 pub mod exchanges;
 mod graph;
 pub mod types;
+
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     sync::Arc,
@@ -12,7 +13,7 @@ use alloy_primitives::Address;
 use brontes_types::{extra_processing::Pair, traits::TracingProvider};
 use exchanges::lazy::LazyExchangeLoader;
 pub use exchanges::*;
-use futures::{Future, StreamExt};
+use futures::{Future, Stream, StreamExt};
 use graph::PairGraph;
 use serde::de;
 use tokio::sync::mpsc::Receiver;
@@ -24,7 +25,11 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     quote_asset: Address,
     run:         u64,
     batch_id:    u64,
-    update_rx:   Receiver<PoolUpdate>,
+
+    update_rx: Receiver<PoolUpdate>,
+
+    current_block:   u64,
+    completed_block: u64,
 
     /// holds all token pairs for the given chunk.
     pair_graph:      PairGraph,
@@ -48,6 +53,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         pair_graph: PairGraph,
         update_rx: Receiver<PoolUpdate>,
         provider: Arc<T>,
+        current_block: u64,
     ) -> Self {
         Self {
             quote_asset,
@@ -60,10 +66,16 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             lazy_loader: LazyExchangeLoader::new(provider),
             mut_state: HashMap::default(),
             last_update: HashMap::default(),
+            current_block,
+            completed_block: current_block - 1,
         }
     }
 
     fn on_message(&mut self, msg: PoolUpdate) {
+        if msg.block > self.current_block {
+            self.current_block = msg.block
+        }
+
         let addr = msg.get_pool_address();
         if self.mut_state.contains_key(&addr) {
             self.update_known_state(addr, msg)
@@ -180,35 +192,50 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
-    fn into_results(&mut self) -> HashMap<u64, DexPrices> {
-        let dex_quotes = std::mem::take(&mut self.dex_quotes);
-        let finalized_state = Arc::new(std::mem::take(&mut self.finalized_state));
-
-        dex_quotes
-            .into_iter()
-            .map(|(block, quotes)| (block, DexPrices { quotes, state: finalized_state.clone() }))
-            .collect()
-    }
-
-    fn on_pool_resolve(&mut self, state: PoolState, updates: Vec<PoolUpdate>) {
+    fn on_pool_resolve(
+        &mut self,
+        state: PoolState,
+        updates: Vec<PoolUpdate>,
+    ) -> Option<(u64, DexPrices)> {
         let addr = state.address();
         // init state
         self.mut_state.insert(addr, state);
         for update in updates {
             self.on_message(update);
         }
+        // if there are no requests and we have moved onto processing the next block,
+        // then we will resolve this block. otherwise we will wait
+        if self.lazy_loader.requests_for_block(&self.completed_block) == 0
+            && self.completed_block < self.current_block
+        {
+            let block = self.completed_block;
+
+            let res = self
+                .dex_quotes
+                .remove(&self.completed_block)
+                .unwrap_or(DexQuotes(vec![]));
+
+            let state = self.finalized_state.clone().into();
+            self.completed_block += 1;
+
+            return Some((block, DexPrices::new(state, res)))
+        }
+
+        None
     }
 }
 
-impl<T: TracingProvider> Future for BrontesBatchPricer<T> {
-    type Output = HashMap<u64, DexPrices>;
+impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
+    type Item = (u64, DexPrices);
 
-    fn poll(
+    fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
+    ) -> std::task::Poll<Option<Self::Item>> {
         while let Poll::Ready(Some((state, updates))) = self.lazy_loader.poll_next_unpin(cx) {
-            self.on_pool_resolve(state, updates)
+            if let Some(update) = self.on_pool_resolve(state, updates) {
+                return Poll::Ready(Some(update))
+            }
         }
 
         while let Poll::Ready(s) = self
@@ -217,7 +244,7 @@ impl<T: TracingProvider> Future for BrontesBatchPricer<T> {
             .map(|inner| inner.map(|update| self.on_message(update)))
         {
             if s.is_none() && self.lazy_loader.is_empty() {
-                return Poll::Ready(self.into_results())
+                return Poll::Ready(None)
             }
         }
 

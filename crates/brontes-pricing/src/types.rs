@@ -3,8 +3,9 @@ use std::{collections::HashMap, sync::Arc};
 use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::{
-    extra_processing::Pair, impl_compress_decompress_for_encoded_decoded,
-    libmdbx_utils::serde_address_string, normalized_actions::Actions, Dexes,
+    exchanges::StaticBindingsDb, extra_processing::Pair,
+    impl_compress_decompress_for_encoded_decoded, libmdbx_utils::serde_address_string,
+    normalized_actions::Actions,
 };
 use bytes::BufMut;
 // use crate::exchanges::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
