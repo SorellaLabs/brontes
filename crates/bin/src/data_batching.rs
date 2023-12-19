@@ -135,7 +135,6 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
 
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
 
-    // dex_price_map_next:
     current_block: u64,
     end_block:     u64,
 
@@ -282,6 +281,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
 
         if self.current_block == self.end_block
+            && self.collection_future.is_none()
             && self.pricer.is_complete()
             && self.processing_futures.is_empty()
         {
