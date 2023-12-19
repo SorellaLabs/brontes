@@ -180,8 +180,6 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
 
         // poll pricer
         while let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
-            info!(?meta, "metadata");
-            panic!();
             self.on_price_finish(tree, meta);
         }
 
