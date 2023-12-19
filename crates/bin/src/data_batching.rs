@@ -80,6 +80,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let mut cur = tx
             .cursor_read::<brontes_database_libmdbx::tables::Metadata>()
             .unwrap();
+
         let start = cur.next().unwrap().unwrap().0;
         let end = cur.last().unwrap().unwrap().0;
         info!(start, end, "have metadata for blocks");
