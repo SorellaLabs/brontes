@@ -18,28 +18,76 @@ use petgraph::{
 };
 use tracing::info;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub struct PoolPairInformation {
+    pub pool_addr: Address,
+    pub dex_type:  Dexes,
+    pub token_0:   Address,
+    pub token_1:   Address,
+}
+
+impl PoolPairInformation {
+    fn new(pool_addr: Address, dex_type: Dexes, token_0: Address, token_1: Address) -> Self {
+        Self { token_1, token_0, dex_type, pool_addr }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub struct PoolPairInfoDirection {
+    pub info:       PoolPairInformation,
+    pub token_0_in: bool,
+}
+
+impl PoolPairInfoDirection {
+    pub fn get_base_token(&self) -> Address {
+        if self.token_0_in {
+            self.info.token_0
+        } else {
+            self.info.token_1
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct PairGraph {
-    graph:         UnGraph<(), HashSet<(Address, Dexes)>, usize>,
+    graph:         UnGraph<(), HashSet<PoolPairInformation>, usize>,
     addr_to_index: HashMap<Address, usize>,
-    known_pairs:   HashMap<Pair, Vec<(Address, Dexes)>>,
+    // double vec for multi_hop multi_pool
+    known_pairs:   HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>>,
 }
 
 impl PairGraph {
     pub fn init_from_hashset(map: HashMap<(Address, Dexes), Pair>) -> Self {
         let t0 = SystemTime::now();
-        let mut graph = UnGraph::<(), HashSet<(Address, Dexes)>, usize>::default();
+        let mut graph = UnGraph::<(), HashSet<PoolPairInformation>, usize>::default();
 
         let mut addr_to_index = HashMap::default();
         let mut connections: HashMap<
             Address,
-            (usize, Vec<(Address, Vec<(Address, Dexes)>, usize)>),
+            (usize, Vec<(Address, Vec<PoolPairInformation>, usize)>),
         > = HashMap::new();
 
-        let mut known_pairs = HashMap::new();
+        let mut known_pairs: HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>> = HashMap::new();
 
-        for (pool, pair) in map.clone() {
-            known_pairs.insert(pair, vec![pool]);
+        for ((pool_addr, dex), pair) in map.clone() {
+            // add the pool known in both directions
+            let entry = known_pairs.entry(pair).or_default();
+            insert_known_pair(
+                entry,
+                PoolPairInfoDirection {
+                    info:       PoolPairInformation::new(pool_addr, dex, pair.0, pair.1),
+                    token_0_in: true,
+                },
+            );
+
+            let entry = known_pairs.entry(pair.flip()).or_default();
+            insert_known_pair(
+                entry,
+                PoolPairInfoDirection {
+                    info:       PoolPairInformation::new(pool_addr, dex, pair.0, pair.1),
+                    token_0_in: false,
+                },
+            );
 
             // crate node if doesn't exist for addr or get node otherwise
             let addr0 = *addr_to_index
@@ -57,9 +105,15 @@ impl PairGraph {
             // if we find a already inserted edge, we append the address otherwise we insert
             // both
             if let Some(inner) = e.1.iter_mut().find(|addr| addr.0 == pair.1) {
-                inner.1.push(pool);
+                inner
+                    .1
+                    .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
             } else {
-                e.1.push((pair.1, vec![pool], addr1));
+                e.1.push((
+                    pair.1,
+                    vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)],
+                    addr1,
+                ));
             }
 
             // insert token1
@@ -67,9 +121,15 @@ impl PairGraph {
             // if we find a already inserted edge, we append the address otherwise we insert
             // both
             if let Some(inner) = e.1.iter_mut().find(|addr| addr.0 == pair.0) {
-                inner.1.push(pool);
+                inner
+                    .1
+                    .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
             } else {
-                e.1.push((pair.0, vec![pool], addr0));
+                e.1.push((
+                    pair.0,
+                    vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)],
+                    addr0,
+                ));
             }
         }
 
@@ -87,30 +147,20 @@ impl PairGraph {
         Self { graph, addr_to_index, known_pairs }
     }
 
-    pub fn get_all_pools(&self, pair: Pair) -> Box<dyn Iterator<Item = (Address, Dexes)>> {
-        let Some(node0) = self.addr_to_index.get(&pair.0) else {
-            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = (Address, Dexes)>>
-        };
-        let Some(node1) = self.addr_to_index.get(&pair.1) else {
-            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = (Address, Dexes)>>
-        };
-
-        let Some(edge) = self.graph.find_edge((*node0).into(), (*node1).into()) else {
-            return Box::new(vec![].into_iter()) as Box<dyn Iterator<Item = (Address, Dexes)>>
-        };
-
-        Box::new(self.graph.edge_weight(edge).unwrap().clone().into_iter())
-            as Box<dyn Iterator<Item = (Address, Dexes)>>
-    }
-
-    // returns false if there was a duplicate
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: Dexes) {
-        self.known_pairs.insert(pair, vec![(pool_addr, dex)]);
+        let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
+
+        let direction0 = PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: true };
+        let direction1 = PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: false };
+
+        self.known_pairs.insert(pair, vec![vec![direction0]]);
+        self.known_pairs.insert(pair.flip(), vec![vec![direction1]]);
 
         let node_0 = *self
             .addr_to_index
             .entry(pair.0)
             .or_insert(self.graph.add_node(()).index());
+
         let node_1 = *self
             .addr_to_index
             .entry(pair.1)
@@ -118,42 +168,62 @@ impl PairGraph {
 
         if let Some(edge) = self.graph.find_edge(node_0.into(), node_1.into()) {
             let mut pools = self.graph.edge_weight(edge).unwrap().clone();
-            pools.insert((pool_addr, dex));
+            pools.insert(pool_pair);
             self.graph.update_edge(node_0.into(), node_1.into(), pools);
         } else {
             let mut set = HashSet::new();
-            set.insert((pool_addr, dex));
+            set.insert(pool_pair);
 
             self.graph.add_edge(node_0.into(), node_1.into(), set);
         }
     }
 
     // fetches the path from start to end
-    pub fn get_path(&mut self, start: Address, end: Address) -> Vec<(Address, Dexes)> {
-        let pair = Pair(start, end);
+    pub fn get_path(
+        &mut self,
+        pair: Pair,
+    ) -> impl Iterator<Item = Vec<PoolPairInfoDirection>> + '_ {
         if let Some(pools) = self.known_pairs.get(&pair) {
-            return pools.clone()
+            return pools.clone().into_iter()
         }
 
-        let start_idx = self.addr_to_index.get(&start).unwrap();
-        let end_idx = self.addr_to_index.get(&end).unwrap();
+        let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
+            return vec![].into_iter()
+        };
+        let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
+            return vec![].into_iter()
+        };
 
         let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
             .expect("no path found, gotta make this into a option")
             .into_iter()
             .tuple_windows()
-            .flat_map(|(base, quote)| {
+            .map(|(base, quote)| {
                 self.graph
                     .edge_weight(self.graph.find_edge(base, quote).unwrap())
                     .unwrap()
                     .into_iter()
-                    .map(|i| *i)
+                    .map(|pool_info| {
+                        let token_0_edge = *self.addr_to_index.get(&pool_info.token_0).unwrap();
+                        if base.index() == token_0_edge {
+                            PoolPairInfoDirection {
+                                info:       pool_info.clone(),
+                                token_0_in: true,
+                            }
+                        } else {
+                            PoolPairInfoDirection {
+                                info:       pool_info.clone(),
+                                token_0_in: false,
+                            }
+                        }
+                    })
+                    .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
 
         self.known_pairs.insert(pair, path.clone());
 
-        path
+        path.into_iter()
     }
 }
 
@@ -233,6 +303,13 @@ where
     Some(path)
 }
 
+fn insert_known_pair(entry: &mut Vec<Vec<PoolPairInfoDirection>>, pool: PoolPairInfoDirection) {
+    if entry.is_empty() {
+        entry.push(vec![pool]);
+    } else {
+        entry.get_mut(0).unwrap().push(pool);
+    }
+}
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in
 /// a pair for use with a `BinaryHeap`.
 ///
