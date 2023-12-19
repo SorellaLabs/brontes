@@ -60,7 +60,6 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let tx = libmdbx.ro_tx().unwrap();
         let binding_tx = libmdbx.ro_tx().unwrap();
         let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
-
         let mut pairs = HashMap::new();
 
         for value in all_addr_to_tokens.walk(None).unwrap() {
@@ -70,7 +69,6 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
                 }
             }
         }
-        info!(libmdx_time_ms = delta, "took to query all libmdx data");
 
         let pair_graph = PairGraph::init_from_hashmap(pairs);
 
