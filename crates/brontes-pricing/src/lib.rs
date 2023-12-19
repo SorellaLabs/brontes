@@ -398,4 +398,26 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
 }
 
 #[cfg(test)]
-pub mod test {}
+pub mod test {
+    use brontes_classifier::*;
+    use brontes_core::init_tracing;
+    use brontes_database_libmdbx::Libmdbx;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+
+    async fn init(
+        libmdbx: Libmdbx,
+        rx: UnboundedReceiver<PoolUpdate>,
+    ) -> BrontesBatchPricer<Box<dyn TracingProvider>> {
+        todo!()
+    }
+    #[tokio::test]
+    async fn test_on_pool_resolve() {
+        dotenv::dotenv().ok();
+        init_tracing();
+
+        let (tx, rx) = unbounded_channel();
+        let pricer = init(rx).await;
+    }
+}
