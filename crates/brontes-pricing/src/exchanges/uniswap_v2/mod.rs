@@ -211,7 +211,13 @@ impl UniswapV2Pool {
             reserve_1:        0,
             fee:              0,
         };
-        todo!()
+        pool.populate_data(Some(block), middleware).await;
+
+        if !pool.data_is_populated() {
+            return Err(AmmError::PoolDataError)
+        }
+
+        Ok(pool)
     }
 
     //Creates a new instance of the pool from the pair address, and syncs the pool
