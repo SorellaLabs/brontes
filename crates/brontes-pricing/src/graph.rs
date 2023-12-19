@@ -53,6 +53,7 @@ impl PoolPairInfoDirection {
         }
     }
 }
+const CAPACITY: usize = 500_000;
 
 #[derive(Debug, Clone)]
 pub struct PairGraph {
@@ -66,15 +67,16 @@ impl PairGraph {
     pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
         let t0 = SystemTime::now();
         let mut graph =
-            UnGraph::<(), HashSet<PoolPairInformation>, usize>::with_capacity(500_000, 500_000);
+            UnGraph::<(), HashSet<PoolPairInformation>, usize>::with_capacity(CAPACITY, CAPACITY);
 
-        let mut addr_to_index = HashMap::default();
+        let mut addr_to_index = HashMap::with_capacity(CAPACITY);
         let mut connections: HashMap<
             Address,
             (usize, Vec<(Address, Vec<PoolPairInformation>, usize)>),
-        > = HashMap::new();
+        > = HashMap::with_capacity(CAPACITY);
 
-        let mut known_pairs: HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>> = HashMap::new();
+        let mut known_pairs: HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>> =
+            HashMap::with_capacity(CAPACITY);
 
         for ((pool_addr, dex), pair) in map {
             // add the pool known in both directions
