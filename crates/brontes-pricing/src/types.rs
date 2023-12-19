@@ -123,6 +123,8 @@ pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
 
 impl DexQuotes {
     pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> &Vec<PoolKeysForPair> {
+        println!("{:#?}", self);
+
         self.0
             .get(tx)
             .expect("this should never be reached")
