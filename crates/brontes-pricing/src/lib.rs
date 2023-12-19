@@ -16,6 +16,7 @@ use futures::{Future, Stream, StreamExt};
 pub use graph::PairGraph;
 use serde::de;
 use tokio::sync::mpsc::Receiver;
+use tracing::info;
 use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
@@ -87,6 +88,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     fn on_new_pool(&mut self, msg: PoolUpdate) {
         let Some(pair) = msg.get_pair() else { return };
+        info!(?msg, "on new pool");
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
@@ -117,6 +119,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
+        info!(?addr, "update known state");
         let tx_idx = msg.tx_idx;
         let block = msg.block;
         let pool_pair = msg
@@ -194,6 +197,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         state: PoolState,
         updates: Vec<PoolUpdate>,
     ) -> Option<(u64, DexPrices)> {
+        info!("on pool resolve");
         let addr = state.address();
         // init state
         self.mut_state.insert(addr, state);
@@ -245,6 +249,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             }
         }
 
+        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
