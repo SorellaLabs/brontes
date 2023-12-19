@@ -226,6 +226,10 @@ impl PoolState {
         Self { variant, update_nonce: 0 }
     }
 
+    pub fn nonce(&self) -> u16 {
+        self.update_nonce
+    }
+
     pub fn increment_state(&mut self, state: PoolUpdate) -> (u16, PoolStateSnapShot) {
         self.update_nonce += 1;
         self.variant.increment_state(state.action, state.logs);

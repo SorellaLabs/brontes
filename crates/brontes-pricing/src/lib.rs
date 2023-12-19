@@ -128,11 +128,21 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .collect::<HashSet<_>>(),
         );
 
-        new_pair_set.extend(
-            self.pair_graph
-                .get_path(Pair(pair.0, pair.1))
-                .collect::<HashSet<_>>(),
-        );
+        let pairs = self
+            .pair_graph
+            .get_path(Pair(pair.0, pair.1))
+            .collect::<HashSet<_>>();
+
+        for info in pairs.into_iter().flatten() {
+            self.lazy_loader.lazy_load_exchange(
+                info.info.pool_addr,
+                msg.block - 1,
+                info.info.dex_type,
+            );
+            // for the raw pair we always rebuffer
+            self.lazy_loader
+                .buffer_update(&info.info.pool_addr, msg.clone());
+        }
 
         for info in new_pair_set.into_iter().flatten() {
             self.lazy_loader.lazy_load_exchange(
@@ -185,6 +195,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     )
                 })
                 .collect::<Vec<_>>();
+
+            info!(pair=?pool_pair, %block, ?pool_keys, " adding pricing for key");
 
             match self.dex_quotes.entry(block) {
                 Entry::Occupied(mut quotes) => {
