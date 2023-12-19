@@ -18,7 +18,7 @@ use brontes_database_libmdbx::{
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
 use brontes_types::{normalized_actions::Actions, tree::TimeTree};
-use futures::{Future, FutureExt, Stream, StreamExt};
+use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_db::{cursor::DbCursorRO, transaction::DbTx};
 use tokio::task::JoinHandle;
 
@@ -93,6 +93,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             "traced a duplicate block"
         );
     }
+
+    pub fn is_complete(&self) -> bool {
+        self.pending_trees.is_empty()
+    }
 }
 
 impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
@@ -120,11 +124,16 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
     }
 }
 
+type CollectionFut<'a> = Pin<Box<dyn Future<Output = (TimeTree<Actions>, MetadataDB)> + Send + 'a>>;
+
 pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     parser:     &'db Parser<'db, T>,
     classifier: Classifier<'db>,
 
-    pricer: WaitingForPricerFuture<T>,
+    collection_future: Option<CollectionFut<'db>>,
+    pricer:            WaitingForPricerFuture<T>,
+
+    processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send>>>,
 
     // dex_price_map_next:
     current_block: u64,
@@ -176,7 +185,10 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         );
 
         let pricer = WaitingForPricerFuture::new(pricer);
+
         Self {
+            collection_future: None,
+            processing_futures: FuturesUnordered::default(),
             parser,
             classifier,
             pricer,
@@ -194,7 +206,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             .get_metadata_no_dex(self.current_block)
             .unwrap();
 
-        let fut = parser.then(|x| async move {
+        let fut = Box::pin(parser.then(|x| async move {
             let (traces, header) = x.unwrap().unwrap();
             let (extra, tree) = self.classifier.build_tree(traces, header);
 
@@ -202,14 +214,60 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
                 .await;
 
             (tree, meta)
-        });
+        }));
+
+        self.collection_future = Some(fut);
+    }
+
+    fn on_price_finish(&mut self, tree: TimeTree<Actions>, meta: Metadata) {
+        self.processing_futures.push(Box::pin(ResultProcessing::new(
+            self.libmdbx,
+            self.inspectors,
+            tree.into(),
+            meta.into(),
+        )));
     }
 }
 
 impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
     type Output = ();
 
-    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // progress collection future,
+        if let Some(mut future) = self.collection_future.take() {
+            if let Poll::Ready((tree, meta)) = future.poll_unpin(cx) {
+                self.pricer
+                    .add_pending_inspection(self.current_block, tree, meta);
+            } else {
+                self.collection_future = Some(future);
+            }
+        } else {
+            if self.current_block == self.end_block
+                && self.pricer.is_complete()
+                && self.processing_futures.is_empty()
+            {
+                return Poll::Ready(())
+            } else {
+                self.current_block += 1;
+                self.start_next_block();
+            }
+        }
+
+        // poll pricer
+        while let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
+            self.on_price_finish(tree, meta);
+        }
+
+        // poll insertion
+        while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
+
+        if self.current_block == self.end_block
+            && self.pricer.is_complete()
+            && self.insertion_futures.is_empty()
+        {
+            return Poll::Ready(())
+        }
+
         Poll::Pending
     }
 }

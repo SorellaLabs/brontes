@@ -88,7 +88,7 @@ pub struct BlockPreprocessing {
 }
 
 type InspectorFut<'a> =
-    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + 'a>>;
+    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>;
 
 /// the results downcast using any in order to be able to serialize and
 /// impliment row trait due to the abosulte autism that the db library   
@@ -96,51 +96,62 @@ type InspectorFut<'a> =
 pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
 
 pub struct Composer<'a, const N: usize> {
-    orchestra:            &'a [&'a Box<dyn Inspector>; N],
-    inspectors_execution: Option<InspectorFut<'a>>,
-    pre_processing:       Option<BlockPreprocessing>,
-    // this is terroristic and need to prob rewrite most of this. however
-    // we will leave it for now so we can get to testing
-    is_finished:          bool,
+    inspectors_execution: InspectorFut<'a>,
+    pre_processing:       BlockPreprocessing,
 }
 
 impl<'a, const N: usize> Composer<'a, N> {
-    pub fn new(orchestra: &'a [&'a Box<dyn Inspector>; N]) -> Self {
-        Self { orchestra, inspectors_execution: None, pre_processing: None, is_finished: false }
-    }
+    pub fn new(
+        orchestra: &'a [&'a Box<dyn Inspector>; N],
+        tree: Arc<TimeTree<Actions>>,
+        meta_data: Arc<Metadata>,
+    ) -> Self {
+        let processing = Self::pre_process(tree.clone(), meta_data.clone());
+        let future = Box::pin(async move {
+            let mut scope: TokioScope<'a, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
+                unsafe { Scope::create() };
+            println!("inspectors to run: {}", orchestra.len());
+            orchestra.iter().for_each(|inspector| {
+                scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
+            });
 
-    pub fn is_processing(&self) -> bool {
-        self.inspectors_execution.is_some()
-    }
-
-    pub fn is_finished(&self) -> bool {
-        return self.is_finished
-    }
-
-    pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) {
-        // This is only unsafe due to the fact that you can have missbehaviour where you
-        // drop this with incomplete futures
-        let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
-            unsafe { Scope::create() };
-
-        println!("inspectors to run: {}", self.orchestra.len());
-        self.orchestra.iter().for_each(|inspector| {
-            scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
-        });
-
-        let fut = Box::pin(async move {
             scope
                 .collect()
-                .map(|r| r.into_iter().flatten().flatten().collect::<Vec<_>>())
                 .await
-        });
+                .into_iter()
+                .flat_map(|r| r.unwrap())
+                .collect::<Vec<_>>()
+        })
+            as Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + 'a>>;
 
-        self.inspectors_execution = Some(fut);
-
-        self.pre_process(tree, meta_data);
+        Self {
+            inspectors_execution: unsafe { std::mem::transmute(future) },
+            pre_processing:       processing,
+        }
     }
 
-    fn pre_process(&mut self, tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) {
+    // pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data:
+    // Arc<Metadata>) {     // This is only unsafe due to the fact that you can
+    // have missbehaviour where you     // drop this with incomplete futures
+    //     let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
+    // =         unsafe { Scope::create() };
+    //
+    //     println!("inspectors to run: {}", self.orchestra.len());
+    //     self.orchestra.iter().for_each(|inspector| {
+    //         scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
+    //     });
+    //
+    //     let fut = Box::pin(async move {
+    //         scope
+    //             .collect()
+    //             .map(|r| r.into_iter().flatten().flatten().collect::<Vec<_>>())
+    //             .await
+    //     });
+    //
+    //     self.pre_process(tree, meta_data);
+    // }
+
+    fn pre_process(tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) -> BlockPreprocessing {
         let builder_address = tree.header.beneficiary;
         let cumulative_gas_used = tree
             .roots
@@ -154,19 +165,14 @@ impl<'a, const N: usize> Composer<'a, N> {
             .map(|root| root.gas_details.effective_gas_price * root.gas_details.gas_used)
             .sum::<u128>();
 
-        self.pre_processing = Some(BlockPreprocessing {
-            meta_data,
-            cumulative_gas_used,
-            cumulative_gas_paid,
-            builder_address,
-        });
+        BlockPreprocessing { meta_data, cumulative_gas_used, cumulative_gas_paid, builder_address }
     }
 
     fn build_mev_header(
         &mut self,
         orchestra_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> MevBlock {
-        let pre_processing = self.pre_processing.take().unwrap();
+        let pre_processing = &self.pre_processing;
         let cum_mev_priority_fee_paid = orchestra_data
             .iter()
             .map(|(_, mev)| mev.priority_fee_paid())
@@ -252,8 +258,6 @@ impl<'a, const N: usize> Composer<'a, N> {
                     self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
                 }
             });
-
-        self.is_finished = true;
 
         // downcast all of the sorted mev results. should cleanup
         Poll::Ready((header, sorted_mev.into_values().flatten().collect::<Vec<_>>()))
@@ -364,14 +368,8 @@ impl<const N: usize> Future for Composer<'_, N> {
     type Output = ComposerResults;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Some(mut calculations) = self.inspectors_execution.take() {
-            return match calculations.poll_unpin(cx) {
-                Poll::Ready(data) => self.on_orchestra_resolution(data),
-                Poll::Pending => {
-                    self.inspectors_execution = Some(calculations);
-                    Poll::Pending
-                }
-            }
+        if let Poll::Ready(calculation) = self.inspectors_execution.poll_unpin(cx) {
+            return self.on_orchestra_resolution(calculation)
         }
         Poll::Pending
     }
