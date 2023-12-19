@@ -4,6 +4,7 @@ pub mod factory;
 use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
+use alloy_rlp::{RlpEncodable, RlpDecodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
@@ -38,7 +39,7 @@ pub const SYNC_EVENT_SIGNATURE: B256 = FixedBytes([
     199, 139, 229, 14, 6, 43, 3, 169, 255, 251, 186, 209,
 ]);
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, RlpEncodable, RlpDecodable, Hash, PartialEq, Eq)]
 pub struct UniswapV2Pool {
     pub address:          Address,
     pub token_a:          Address,

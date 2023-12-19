@@ -10,6 +10,7 @@ edition = "2021"
 # brontes
 brontes-database.workspace = true
 brontes-types.workspace = true
+brontes-pricing.workspace = true
 
 # alloy
 alloy-primitives = { workspace = true, features = [
@@ -49,6 +50,7 @@ sorella-db-databases.workspace = true
 # serde
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+serde_repr.workspace = true
 serde_with = { workspace = true, features = ["macros"] }
 
 # error handling

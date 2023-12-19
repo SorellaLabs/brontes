@@ -24,11 +24,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
 
-use crate::{
-    tables::CexPrice,
-    types::utils::{address_string, pool_tokens},
-    LibmdbxData,
-};
+use crate::{tables::CexPrice, types::utils::pool_tokens, LibmdbxData};
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct CexPriceData {
