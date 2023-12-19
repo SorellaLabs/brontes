@@ -15,7 +15,8 @@ use crate::{types::PoolState, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Po
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
     pool_buf:          HashMap<Address, Vec<PoolUpdate>>,
-    pool_load_futures: FuturesUnordered<Pin<Box<dyn Future<Output = (u64, Address, PoolState)>>>>,
+    pool_load_futures:
+        FuturesUnordered<Pin<Box<dyn Future<Output = (u64, Address, PoolState)> + Send>>>,
     // the different blocks that we are currently fetching
     req_per_block:     HashMap<u64, u64>,
 }
