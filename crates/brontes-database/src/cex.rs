@@ -15,7 +15,7 @@ use crate::DBTokenPricesDB;
 /// the quote provides us with the actual token0 so we can interpret the price
 /// in any direction
 #[derive(Debug, Clone)]
-pub struct CexPriceMap(HashMap<Pair, Vec<CexQuote>>);
+pub struct CexPriceMap(pub HashMap<Pair, Vec<CexQuote>>);
 
 impl CexPriceMap {
     pub fn new() -> Self {
