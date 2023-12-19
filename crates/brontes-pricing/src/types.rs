@@ -112,7 +112,6 @@ impl DexPrices {
             }
         }
 
-        info!(?pair, price=?price);
         Some(price)
     }
 }
