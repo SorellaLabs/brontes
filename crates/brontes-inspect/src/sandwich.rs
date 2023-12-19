@@ -136,7 +136,7 @@ impl SandwichInspector<'_> {
             .inner
             .usd_delta_dex_avg(tx_idx[1], backrun, metadata.clone());
 
-        let rev_usd = back_run_rev + front_run_rev;
+        let rev_usd = back_run_rev? + front_run_rev?;
 
         if rev_usd.le(&Rational::ZERO) {
             return None

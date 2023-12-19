@@ -19,7 +19,7 @@ use futures::FutureExt;
 use lazy_static::lazy_static;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 use reth_primitives::Address;
-use tracing::info;
+use tracing::{info, Subscriber};
 
 use crate::Inspector;
 
@@ -270,45 +270,46 @@ impl<'a, const N: usize> Composer<'a, N> {
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
     ) {
         // TODO
-        //
-        // let Some(head_mev) = sorted_mev.get(head_mev_type) else { return };
-        // let flattend_indexes = head_mev
-        //     .iter()
-        //     .flat_map(|(_, specific)| {
-        //         let hashes = specific.mev_transaction_hashes();
-        //         let mut remove_data: Vec<(MevType, usize)> = Vec::new();
-        //         for dep in deps {
-        //             let mut remove_count = 0;
-        //             let Some(dep_mev) = sorted_mev.get(dep) else { continue
-        // };
-        //
-        //             for (i, (_, specific)) in dep_mev.iter().enumerate() {
-        //                 let dep_hashes = specific.mev_transaction_hashes();
-        //                 // verify both match
-        //                 if dep_hashes == hashes {
-        //                     remove_data.push((*dep, i - remove_count));
-        //                     remove_count += 1;
-        //                     continue
-        //                 }
-        //                 // we only want one match
-        //                 else if dep_hashes
-        //                     .iter()
-        //                     .map(|hash| hashes.contains(hash))
-        //                     .any(|f| f)
-        //                 {
-        //                     remove_data.push((*dep, i - remove_count));
-        //                     remove_count += 1;
-        //                 }
-        //             }
-        //         }
-        //
-        //         remove_data
-        //     })
-        //     .collect::<Vec<(MevType, usize)>>();
-        //
-        // for (mev_type, index) in flattend_indexes {
-        //     sorted_mev.get_mut(&mev_type).unwrap().remove(index);
-        // }
+        let Some(head_mev) = sorted_mev.get(head_mev_type) else { return };
+        let flattend_indexes = head_mev
+            .iter()
+            .flat_map(|(_, specific)| {
+                let hashes = specific.mev_transaction_hashes();
+                let mut remove_data: Vec<(MevType, usize)> = Vec::new();
+                for dep in deps {
+                    let mut remove_count = 0;
+                    let Some(dep_mev) = sorted_mev.get(dep) else { continue };
+
+                    for (i, (_, specific)) in dep_mev.iter().enumerate() {
+                        let dep_hashes = specific.mev_transaction_hashes();
+                        // verify both match
+                        if dep_hashes == hashes {
+                            remove_data.push((*dep, i - remove_count));
+                            remove_count += 1;
+                            continue
+                        }
+                        // we only want one match
+                        else if dep_hashes
+                            .iter()
+                            .map(|hash| hashes.contains(hash))
+                            .any(|f| f)
+                        {
+                            remove_data.push((*dep, i - remove_count));
+                            remove_count += 1;
+                        }
+                    }
+                }
+
+                remove_data
+            })
+            .collect::<Vec<(MevType, usize)>>();
+
+        for (mev_type, index) in flattend_indexes {
+            let entry = sorted_mev.get_mut(&mev_type).unwrap();
+            if entry.len() > index {
+                entry.remove(index);
+            }
+        }
     }
 
     fn compose_dep_filter(

@@ -106,6 +106,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.current_block = msg.block
         }
 
+        // we want to capture these
+        if msg.action.is_transfer() {
+            self.update_dex_quotes(msg.block, msg.tx_idx, msg.get_pair(self.quote_asset).unwrap());
+            return None
+        }
+
         let addr = msg.get_pool_address();
 
         if self.mut_state.contains_key(&addr) {
@@ -176,6 +182,19 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         // add default pair
         for info in self.pair_graph.get_path(Pair(pair.0, pair.1)).flatten() {
+            self.lazy_loader.lazy_load_exchange(
+                info.info.pool_addr,
+                // we want to load state from prev block
+                msg.block - 1,
+                info.info.dex_type,
+            );
+
+            // for the raw pair we always rebuffer
+            self.lazy_loader
+                .buffer_update(&info.info.pool_addr, msg.clone());
+        }
+
+        for info in self.pair_graph.get_path(Pair(pair.1, pair.0)).flatten() {
             self.lazy_loader.lazy_load_exchange(
                 info.info.pool_addr,
                 // we want to load state from prev block
@@ -279,6 +298,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let pair1 = Pair(pool_pair.1, self.quote_asset);
 
             self.update_dex_quotes(block, tx_idx, pool_pair);
+            self.update_dex_quotes(block, tx_idx, pool_pair.flip());
             self.update_dex_quotes(block, tx_idx, pair0);
             self.update_dex_quotes(block, tx_idx, pair1);
 
@@ -294,7 +314,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         state: PoolState,
         updates: Vec<PoolUpdate>,
     ) -> Option<(u64, DexPrices)> {
-        info!("on pool resolve");
         let addr = state.address();
         // init state
         self.mut_state.insert(addr, state);
@@ -377,3 +396,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         }
     }
 }
+
+#[cfg(test)]
+pub mod test {}
