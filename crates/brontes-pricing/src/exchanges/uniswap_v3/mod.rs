@@ -8,7 +8,7 @@ use std::{
 };
 
 use alloy_primitives::{Address, BlockNumber, FixedBytes, Log, B256, I256, U256, U64};
-use alloy_rlp::{Encodable, Decodable, RlpEncodable};
+use alloy_rlp::{Decodable, Encodable, RlpEncodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
@@ -104,7 +104,6 @@ pub struct UniswapV3Pool {
     pub ticks:            HashMap<i32, Info>,
 }
 
-
 impl Encodable for UniswapV3Pool {
     fn encode(&self, out: &mut dyn BufMut) {
         self.address.encode(out);
@@ -117,8 +116,14 @@ impl Encodable for UniswapV3Pool {
         self.fee.encode(out);
         self.tick.to_be_bytes().encode(out);
         self.tick_spacing.to_be_bytes().encode(out);
-        self.tick_bitmap.iter().for_each(|(key, val)| {key.to_be_bytes().encode(out); val.encode(out);});
-        self.ticks.iter().for_each(|(key, val)| {key.to_be_bytes().encode(out); val.encode(out);});
+        self.tick_bitmap.iter().for_each(|(key, val)| {
+            key.to_be_bytes().encode(out);
+            val.encode(out);
+        });
+        self.ticks.iter().for_each(|(key, val)| {
+            key.to_be_bytes().encode(out);
+            val.encode(out);
+        });
     }
 }
 
@@ -132,20 +137,38 @@ impl Decodable for UniswapV3Pool {
         let liquidity = u128::decode(buf)?;
         let sqrt_price = U256::decode(buf)?;
         let fee = u32::decode(buf)?;
-        let tick:  [u8;4] =Decodable::decode(buf)?;
-        let tick_spacing : [u8;4] =Decodable::decode(buf)?;
-        let tick_bitmap = Vec::<TickBitMapEncodeHelper>::decode(buf)?.into_iter().map(|inner| (inner.key, inner.val)).collect::<HashMap<i16, U256>>();
-        let ticks = Vec::<TicksEncodeHelper>::decode(buf)?.into_iter().map(|inner| (inner.key, inner.val)).collect::<HashMap<i32, Info>>();
+        let tick: [u8; 4] = Decodable::decode(buf)?;
+        let tick_spacing: [u8; 4] = Decodable::decode(buf)?;
+        let tick_bitmap = Vec::<TickBitMapEncodeHelper>::decode(buf)?
+            .into_iter()
+            .map(|inner| (inner.key, inner.val))
+            .collect::<HashMap<i16, U256>>();
+        let ticks = Vec::<TicksEncodeHelper>::decode(buf)?
+            .into_iter()
+            .map(|inner| (inner.key, inner.val))
+            .collect::<HashMap<i32, Info>>();
 
-
-        Ok(Self { address, token_a, token_a_decimals, token_b, token_b_decimals, liquidity, sqrt_price, fee, tick: i32::from_be_bytes(tick), tick_spacing: i32::from_be_bytes(tick_spacing), tick_bitmap, ticks  })
+        Ok(Self {
+            address,
+            token_a,
+            token_a_decimals,
+            token_b,
+            token_b_decimals,
+            liquidity,
+            sqrt_price,
+            fee,
+            tick: i32::from_be_bytes(tick),
+            tick_spacing: i32::from_be_bytes(tick_spacing),
+            tick_bitmap,
+            ticks,
+        })
     }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct TickBitMapEncodeHelper {
-    key: i16, 
-    val: U256
+    key: i16,
+    val: U256,
 }
 
 impl Encodable for TickBitMapEncodeHelper {
@@ -160,15 +183,14 @@ impl Decodable for TickBitMapEncodeHelper {
         let key: [u8; 2] = Decodable::decode(buf)?;
         let val = U256::decode(buf)?;
 
-        Ok(Self { key: i16::from_be_bytes(key), val  })
+        Ok(Self { key: i16::from_be_bytes(key), val })
     }
 }
 
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct TicksEncodeHelper {
-    key: i32, 
-    val: Info
+    key: i32,
+    val: Info,
 }
 
 impl Encodable for TicksEncodeHelper {
@@ -183,7 +205,7 @@ impl Decodable for TicksEncodeHelper {
         let key: [u8; 4] = Decodable::decode(buf)?;
         let val = Info::decode(buf)?;
 
-        Ok(Self { key: i32::from_be_bytes(key), val  })
+        Ok(Self { key: i32::from_be_bytes(key), val })
     }
 }
 
@@ -199,7 +221,6 @@ impl Encodable for Info {
         self.liquidity_gross.encode(out);
         self.liquidity_net.to_be_bytes().encode(out);
         self.initialized.encode(out);
-
     }
 }
 
@@ -209,8 +230,7 @@ impl Decodable for Info {
         let liquidity_net: [u8; 16] = Decodable::decode(buf)?;
         let initialized = bool::decode(buf)?;
 
-
-        Ok(Self {  liquidity_gross, liquidity_net: i128::from_be_bytes(liquidity_net), initialized })
+        Ok(Self { liquidity_gross, liquidity_net: i128::from_be_bytes(liquidity_net), initialized })
     }
 }
 
