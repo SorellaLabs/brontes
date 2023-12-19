@@ -211,7 +211,7 @@ impl UniswapV2Pool {
             reserve_1:        0,
             fee:              0,
         };
-        pool.populate_data(Some(block), middleware).await;
+        pool.populate_data(Some(block), middleware).await?;
 
         if !pool.data_is_populated() {
             return Err(AmmError::PoolDataError)
