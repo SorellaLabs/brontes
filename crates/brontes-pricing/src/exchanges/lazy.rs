@@ -108,7 +108,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                 unreachable!()
             }
 
-            let buf = self.pool_buf.remove(&pool).unwrap();
+            let buf = self.pool_buf.remove(&pool).unwrap_or(vec![]);
             return Poll::Ready(Some((state, buf)))
         } else {
             Poll::Pending
