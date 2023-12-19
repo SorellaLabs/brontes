@@ -241,6 +241,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     for _ in size..=tx_idx as usize {
                         q.0.push(None)
                     }
+                    // take the empty if exists
                     let tx = q.0.get_mut(tx_idx as usize).unwrap();
 
                     if let Some(tx) = tx.as_mut() {
