@@ -13,6 +13,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_rpc_types::Log;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
+use tracing::info;
 
 use crate::{
     graph::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
@@ -75,7 +76,10 @@ impl DexPrices {
     }
 
     pub fn price_after(&self, pair: Pair, tx: usize) -> Rational {
-        let Some(keys) = self.quotes.get_pair_keys(pair, tx) else { return Rational::from(1) };
+        let Some(keys) = self.quotes.get_pair_keys(pair, tx) else {
+            info!(?pair, tx_idx=%tx, "failed to get price for");
+            return Rational::from(1)
+        };
         let mut price = Rational::ZERO;
 
         for hop in keys {
@@ -123,7 +127,6 @@ pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
 
 impl DexQuotes {
     pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> Option<&Vec<PoolKeysForPair>> {
-        println!("REQ: {pair:?} idx: {tx} \n\n{:#?}", self.0);
         self.0.get(tx)?.as_ref()?.get(&pair)
     }
 }
