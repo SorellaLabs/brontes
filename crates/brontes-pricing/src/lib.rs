@@ -9,15 +9,16 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::traits::TracingProvider;
+use brontes_types::{extra_processing::Pair, traits::TracingProvider};
 use exchanges::lazy::LazyExchangeLoader;
 pub use exchanges::*;
 use futures::{Future, StreamExt};
 use graph::PairGraph;
+use serde::de;
 use tokio::sync::mpsc::Receiver;
-use types::{DexPrices, DexQuotes, PoolStateSnapShot, PoolUpdate};
+use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
 
-use crate::types::{PoolKey, PoolState};
+use crate::types::{PoolKey, PoolKeysForPair, PoolState};
 
 pub struct BrontesBatchPricer<T: TracingProvider> {
     quote_asset: Address,
@@ -80,21 +81,28 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
-        let new_pair_set = self
+        let mut new_pair_set = self
             .pair_graph
-            .get_path(pair.0, self.quote_asset)
-            .into_iter()
-            .chain(
-                self.pair_graph
-                    .get_path(pair.1, self.quote_asset)
-                    .into_iter(),
-            )
-            .chain(self.pair_graph.get_path(pair.0, pair.1).into_iter())
+            .get_path(Pair(pair.0, self.quote_asset))
             .collect::<HashSet<_>>();
 
-        for (pool, dex) in new_pair_set {
-            self.lazy_loader
-                .lazy_load_exchange(pool, msg.block - 1, dex)
+        new_pair_set.extend(
+            self.pair_graph
+                .get_path(Pair(pair.1, self.quote_asset))
+                .collect::<HashSet<_>>(),
+        );
+        new_pair_set.extend(
+            self.pair_graph
+                .get_path(Pair(pair.0, pair.1))
+                .collect::<HashSet<_>>(),
+        );
+
+        for info in new_pair_set.into_iter().flatten() {
+            self.lazy_loader.lazy_load_exchange(
+                info.info.pool_addr,
+                msg.block - 1,
+                info.info.dex_type,
+            )
         }
     }
 
@@ -124,9 +132,20 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             // fetch all pool keys for a given pair
             let pool_keys = self
                 .pair_graph
-                .get_all_pools(pool_pair)
-                .map(|(i, _)| i)
-                .map(|pair_addr| *self.last_update.get(&pair_addr).unwrap())
+                .get_path(pool_pair)
+                .map(|pairs| {
+                    PoolKeysForPair(
+                        pairs
+                            .into_iter()
+                            .map(|pair_details| {
+                                PoolKeyWithDirection::new(
+                                    *self.last_update.get(&pair_details.info.pool_addr).unwrap(),
+                                    pair_details.get_base_token(),
+                                )
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                })
                 .collect::<Vec<_>>();
 
             match self.dex_quotes.entry(block) {

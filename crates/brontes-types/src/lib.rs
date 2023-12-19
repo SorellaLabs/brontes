@@ -19,7 +19,7 @@ pub mod tree;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum Dexes {
     UniswapV2,
@@ -27,6 +27,8 @@ pub enum Dexes {
     SushiSwapV2,
     SushiSwapV3,
     CurveCryptoSwap,
+    #[default]
+    None,
 }
 // include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
 
