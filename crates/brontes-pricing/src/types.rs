@@ -75,7 +75,7 @@ impl DexPrices {
     }
 
     pub fn price_after(&self, pair: Pair, tx: usize) -> Rational {
-        let keys = self.quotes.get_pair_keys(pair, tx);
+        let Some(keys) = self.quotes.get_pair_keys(pair, tx) else { return Rational::from(1) };
         let mut price = Rational::ZERO;
 
         for hop in keys {
@@ -122,14 +122,9 @@ pub struct PoolKeysForPair(pub Vec<PoolKeyWithDirection>);
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
 
 impl DexQuotes {
-    pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> &Vec<PoolKeysForPair> {
-        self.0
-            .get(tx)
-            .expect("this should never be reached")
-            .as_ref()
-            .expect("unreachable")
-            .get(&pair)
-            .unwrap()
+    pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> Option<&Vec<PoolKeysForPair>> {
+        println!("REQ: {pair:?} idx: {tx} \n\n{:#?}", self.0);
+        self.0.get(tx)?.as_ref()?.get(&pair)
     }
 }
 
