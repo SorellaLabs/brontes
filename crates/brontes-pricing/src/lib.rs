@@ -20,7 +20,7 @@ pub use exchanges::*;
 use futures::{Future, Stream, StreamExt};
 pub use graph::PairGraph;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{info, warn};
+use tracing::{debug, info};
 use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
@@ -78,6 +78,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
+    // will always be in order
     fn on_message(&mut self, msg: PoolUpdate) -> Option<(u64, DexPrices)> {
         // we want to capture these
         if msg.block > self.current_block {
@@ -233,7 +234,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .collect::<Vec<_>>();
 
         if pool_keys.is_empty() {
-            warn!(?pool_pair, "no keys found for pair");
+            debug!(?pool_pair, "no keys found for pair");
             return
         }
 
@@ -241,7 +242,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             Entry::Occupied(mut quotes) => {
                 let q = quotes.get_mut();
                 let size = q.0.len();
-
                 // make sure to pad the vector to the proper index
                 for _ in size..=tx_idx as usize {
                     q.0.push(None)
