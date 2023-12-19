@@ -8,8 +8,13 @@ use std::{
     task::Poll,
 };
 
-use alloy_primitives::Address;
-use brontes_types::{extra_processing::Pair, normalized_actions::Actions, traits::TracingProvider};
+use alloy_primitives::{Address, U256};
+use brontes_types::{
+    extra_processing::Pair,
+    normalized_actions::{Actions, NormalizedAction, NormalizedSwap},
+    traits::TracingProvider,
+};
+use ethers::core::k256::elliptic_curve::bigint::Zero;
 use exchanges::lazy::LazyExchangeLoader;
 pub use exchanges::*;
 use futures::{Future, Stream, StreamExt};
@@ -30,7 +35,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     current_block:   u64,
     completed_block: u64,
 
-    buffer: HashMap<u64, VecDeque<PoolUpdate>>,
+    buffer: HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
 
     /// holds all token pairs for the given chunk.
     pair_graph:      PairGraph,
@@ -77,11 +82,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if self.lazy_loader.requests_for_block(&self.completed_block) == 0
             && self.completed_block < self.current_block
         {
-            info!(?self.buffer, ?self.completed_block,"getting ready to calc dex prices");
+            info!( ?self.completed_block,"getting ready to calc dex prices");
             let block = self.completed_block;
             if let Some(buffer) = self.buffer.remove(&self.completed_block) {
-                for update in buffer {
-                    self.on_new_pool(update);
+                for (address, update) in buffer {
+                    self.update_known_state(address, update);
                 }
             }
 
@@ -113,41 +118,63 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         None
     }
 
+    const fn make_fake_swap(t0: Address, t1: Address) -> Actions {
+        Actions::Swap(NormalizedSwap {
+            index:      0,
+            from:       Address::ZERO,
+            pool:       Address::ZERO,
+            token_in:   t0,
+            token_out:  t1,
+            amount_in:  U256::ZERO,
+            amount_out: U256::ZERO,
+        })
+    }
+
     fn on_new_pool(&mut self, msg: PoolUpdate) {
         let Some(pair) = msg.get_pair() else { return };
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
-        let mut new_pair_set = self
-            .pair_graph
-            .get_path(Pair(pair.0, self.quote_asset))
-            .collect::<HashSet<_>>();
-
-        new_pair_set.extend(
-            self.pair_graph
-                .get_path(Pair(pair.1, self.quote_asset))
-                .collect::<HashSet<_>>(),
-        );
-
         let mut fake_update = msg.clone();
         fake_update.logs = vec![];
-        fake_update.action = Actions::Revert;
 
-        for info in new_pair_set.into_iter().flatten() {
+        // add first diection
+        fake_update.action = Self::make_fake_swap(pair.1, self.quote_asset);
+        for info in self
+            .pair_graph
+            .get_path(Pair(pair.1, self.quote_asset))
+            .flatten()
+        {
             self.lazy_loader.lazy_load_exchange(
                 info.info.pool_addr,
                 msg.block - 1,
                 info.info.dex_type,
             );
+
             self.lazy_loader
                 .buffer_update(&info.info.pool_addr, fake_update.clone());
         }
-        let pairs = self
-            .pair_graph
-            .get_path(Pair(pair.0, pair.1))
-            .collect::<HashSet<_>>();
 
-        for info in pairs.into_iter().flatten() {
+        // add second direction
+        fake_update.action = Self::make_fake_swap(pair.0, self.quote_asset);
+        for info in self
+            .pair_graph
+            .get_path(Pair(pair.0, self.quote_asset))
+            .flatten()
+            .collect::<HashSet<_>>()
+        {
+            self.lazy_loader.lazy_load_exchange(
+                info.info.pool_addr,
+                msg.block - 1,
+                info.info.dex_type,
+            );
+
+            self.lazy_loader
+                .buffer_update(&info.info.pool_addr, fake_update.clone());
+        }
+
+        // add default pair
+        for info in self.pair_graph.get_path(Pair(pair.0, pair.1)).flatten() {
             self.lazy_loader.lazy_load_exchange(
                 info.info.pool_addr,
                 msg.block - 1,
@@ -248,7 +275,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         for update in updates {
             let block = update.block;
-            self.buffer.entry(block).or_default().push_back(update);
+            self.buffer
+                .entry(block)
+                .or_default()
+                .push_back((addr, update));
         }
 
         // if there are no requests and we have moved onto processing the next block,
@@ -256,12 +286,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if self.lazy_loader.requests_for_block(&self.completed_block) == 0
             && self.completed_block < self.current_block
         {
-            info!(?self.buffer, ?self.completed_block,"getting ready to calc dex prices");
+            info!(?self.completed_block,"getting ready to calc dex prices");
             // if all block requests are complete, lets apply all the state transitions we
             // had for the given block which will allow us to generate all pricing
             if let Some(buffer) = self.buffer.remove(&self.completed_block) {
-                for update in buffer {
-                    self.on_new_pool(update);
+                for (address, update) in buffer {
+                    self.update_known_state(address, update);
                 }
             }
 
