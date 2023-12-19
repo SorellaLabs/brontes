@@ -73,7 +73,7 @@ mod tests {
         let clickhouse = Clickhouse::default();
 
         let db_initializer = LibmdbxInitializer::new(&db, &clickhouse);
-        db_initializer.initialize(&Tables::ALL).await?;
+        db_initializer.initialize(&Tables::ALL, None).await?;
 
         Ok(db)
     }

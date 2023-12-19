@@ -45,11 +45,12 @@ impl LibmdbxData<Metadata> for MetadataData {
 pub struct MetadataInner {
     #[serde(with = "u256")]
     pub block_hash:             U256,
-    pub relay_timestamp:        u64,
-    pub p2p_timestamp:          u64,
+    pub block_timestamp:        u64,
+    pub relay_timestamp:        Option<u64>,
+    pub p2p_timestamp:          Option<u64>,
     #[serde(with = "option_address")]
     pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward:    u128,
+    pub proposer_mev_reward:    Option<u128>,
     #[serde_as(as = "Vec<DisplayFromStr>")]
     pub mempool_flow:           Vec<TxHash>,
 }
@@ -57,10 +58,10 @@ pub struct MetadataInner {
 impl Encodable for MetadataInner {
     fn encode(&self, out: &mut dyn BufMut) {
         self.block_hash.encode(out);
-        self.relay_timestamp.encode(out);
-        self.p2p_timestamp.encode(out);
+        self.relay_timestamp.unwrap_or_default().encode(out);
+        self.p2p_timestamp.unwrap_or_default().encode(out);
         self.proposer_fee_recipient.unwrap_or_default().encode(out);
-        self.proposer_mev_reward.encode(out);
+        self.proposer_mev_reward.unwrap_or_default().encode(out);
         self.mempool_flow.encode(out);
     }
 }
@@ -68,17 +69,28 @@ impl Encodable for MetadataInner {
 impl Decodable for MetadataInner {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         let block_hash = U256::decode(buf)?;
-        let relay_timestamp = u64::decode(buf)?;
-        let p2p_timestamp = u64::decode(buf)?;
+        let block_timestamp = u64::decode(buf)?;
+        let mut relay_timestamp = Some(u64::decode(buf)?);
+        if relay_timestamp.as_ref().unwrap() == &0 {
+            relay_timestamp = None
+        }
+        let mut p2p_timestamp = Some(u64::decode(buf)?);
+        if p2p_timestamp.as_ref().unwrap() == &0 {
+            p2p_timestamp = None
+        }
         let mut proposer_fee_recipient = Some(Address::decode(buf)?);
         if proposer_fee_recipient.as_ref().unwrap().is_zero() {
             proposer_fee_recipient = None
         }
-        let proposer_mev_reward = u128::decode(buf)?;
+        let mut proposer_mev_reward = Some(u128::decode(buf)?);
+        if proposer_mev_reward.as_ref().unwrap() == &0 {
+            proposer_mev_reward = None
+        }
         let mempool_flow = Vec::<TxHash>::decode(buf)?;
 
         Ok(Self {
             block_hash,
+            block_timestamp,
             relay_timestamp,
             p2p_timestamp,
             proposer_fee_recipient,

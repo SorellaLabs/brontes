@@ -314,11 +314,3 @@ pub(crate) mod dex_quote {
         Ok(DexQuote(dex_quotes))
     }
 }
-
-/*
-pub pool:         Address,
-pub run:          u64,
-pub batch:        u64,
-pub update_nonce: u16,
-
-*/
