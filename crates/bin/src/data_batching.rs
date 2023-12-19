@@ -120,7 +120,9 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     ) -> CollectionFut<'db> {
         let (extra, tree) = classifier.build_tree(traces, header);
         Box::pin(async move {
+            info!("resolving missing decimals");
             MissingDecimals::new(tracer, libmdbx, extra.tokens_decimal_fill).await;
+            info!("resolved missing decimals");
 
             (tree, meta)
         })
