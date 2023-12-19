@@ -9,6 +9,8 @@ edition = "2021"
 
 # brontes
 brontes-database.workspace = true
+brontes-types.workspace = true
+brontes-pricing.workspace = true
 
 # alloy
 alloy-primitives = { workspace = true, features = [
@@ -19,9 +21,6 @@ alloy-primitives = { workspace = true, features = [
 ] }
 alloy-rlp = { workspace = true, features = ["arrayvec"] }
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
-
-
-brontes-types.workspace = true
 
 
 # reth
@@ -42,12 +41,16 @@ modular-bitfield = "0.11.2"
 bytes = "1.5"
 
 
+# numbers
+malachite = { workspace = true, features = ["naturals_and_integers"] }
+
 # sorella-db
 sorella-db-databases.workspace = true
 
 # serde
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+serde_repr.workspace = true
 serde_with = { workspace = true, features = ["macros"] }
 
 # error handling
