@@ -8,10 +8,12 @@ use std::{
 };
 
 use alloy_primitives::{Address, BlockNumber, FixedBytes, Log, B256, I256, U256, U64};
+use alloy_rlp::{Encodable, Decodable, RlpEncodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
+use bytes::BufMut;
 use ethers::{
     abi::{ethabi::Bytes, RawLog, Token},
     prelude::{abigen, AbiError, EthEvent},
@@ -86,7 +88,7 @@ pub const MINT_EVENT_SIGNATURE: B256 = FixedBytes([
     133, 72, 143, 8, 83, 174, 22, 35, 157, 11, 222,
 ]);
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UniswapV3Pool {
     pub address:          Address,
     pub token_a:          Address,
@@ -102,11 +104,114 @@ pub struct UniswapV3Pool {
     pub ticks:            HashMap<i32, Info>,
 }
 
+
+impl Encodable for UniswapV3Pool {
+    fn encode(&self, out: &mut dyn BufMut) {
+        self.address.encode(out);
+        self.token_a.encode(out);
+        self.token_a_decimals.encode(out);
+        self.token_b.encode(out);
+        self.token_b_decimals.encode(out);
+        self.liquidity.encode(out);
+        self.sqrt_price.encode(out);
+        self.fee.encode(out);
+        self.tick.to_be_bytes().encode(out);
+        self.tick_spacing.to_be_bytes().encode(out);
+        self.tick_bitmap.iter().for_each(|(key, val)| {key.to_be_bytes().encode(out); val.encode(out);});
+        self.ticks.iter().for_each(|(key, val)| {key.to_be_bytes().encode(out); val.encode(out);});
+    }
+}
+
+impl Decodable for UniswapV3Pool {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let address = Address::decode(buf)?;
+        let token_a = Address::decode(buf)?;
+        let token_a_decimals = u8::decode(buf)?;
+        let token_b = Address::decode(buf)?;
+        let token_b_decimals = u8::decode(buf)?;
+        let liquidity = u128::decode(buf)?;
+        let sqrt_price = U256::decode(buf)?;
+        let fee = u32::decode(buf)?;
+        let tick:  [u8;4] =Decodable::decode(buf)?;
+        let tick_spacing : [u8;4] =Decodable::decode(buf)?;
+        let tick_bitmap = Vec::<TickBitMapEncodeHelper>::decode(buf)?.into_iter().map(|inner| (inner.key, inner.val)).collect::<HashMap<i16, U256>>();
+        let ticks = Vec::<TicksEncodeHelper>::decode(buf)?.into_iter().map(|inner| (inner.key, inner.val)).collect::<HashMap<i32, Info>>();
+
+
+        Ok(Self { address, token_a, token_a_decimals, token_b, token_b_decimals, liquidity, sqrt_price, fee, tick: i32::from_be_bytes(tick), tick_spacing: i32::from_be_bytes(tick_spacing), tick_bitmap, ticks  })
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct TickBitMapEncodeHelper {
+    key: i16, 
+    val: U256
+}
+
+impl Encodable for TickBitMapEncodeHelper {
+    fn encode(&self, out: &mut dyn BufMut) {
+        self.key.to_be_bytes().encode(out);
+        self.val.encode(out);
+    }
+}
+
+impl Decodable for TickBitMapEncodeHelper {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let key: [u8; 2] = Decodable::decode(buf)?;
+        let val = U256::decode(buf)?;
+
+        Ok(Self { key: i16::from_be_bytes(key), val  })
+    }
+}
+
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct TicksEncodeHelper {
+    key: i32, 
+    val: Info
+}
+
+impl Encodable for TicksEncodeHelper {
+    fn encode(&self, out: &mut dyn BufMut) {
+        self.key.to_be_bytes().encode(out);
+        self.val.encode(out);
+    }
+}
+
+impl Decodable for TicksEncodeHelper {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let key: [u8; 4] = Decodable::decode(buf)?;
+        let val = Info::decode(buf)?;
+
+        Ok(Self { key: i32::from_be_bytes(key), val  })
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Info {
     pub liquidity_gross: u128,
     pub liquidity_net:   i128,
     pub initialized:     bool,
+}
+
+impl Encodable for Info {
+    fn encode(&self, out: &mut dyn BufMut) {
+        self.liquidity_gross.encode(out);
+        self.liquidity_net.to_be_bytes().encode(out);
+        self.initialized.encode(out);
+
+    }
+}
+
+impl Decodable for Info {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let liquidity_gross = u128::decode(buf)?;
+        let liquidity_net: [u8; 16] = Decodable::decode(buf)?;
+        let initialized = bool::decode(buf)?;
+
+
+        Ok(Self {  liquidity_gross, liquidity_net: i128::from_be_bytes(liquidity_net), initialized })
+    }
 }
 
 impl Info {

@@ -4,6 +4,7 @@ use alloy_primitives::{Address, Bytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_database::clickhouse::Clickhouse;
+use brontes_database_libmdbx::Libmdbx;
 use brontes_types::cache_decimals;
 use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
 use reth_provider::ProviderError;
@@ -22,11 +23,11 @@ pub struct MissingDecimals<'db, T: TracingProvider + 'db> {
     provider:         Arc<T>,
     pending_decimals: FuturesUnordered<DecimalQuery>,
     db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
-    _database:        &'db Clickhouse,
+    _database:        &'db Libmdbx,
 }
 
 impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
-    pub fn new(provider: Arc<T>, db: &'db Clickhouse, missing: Vec<Address>) -> Self {
+    pub fn new(provider: Arc<T>, db: &'db Libmdbx, missing: Vec<Address>) -> Self {
         let mut this = Self {
             provider,
             pending_decimals: FuturesUnordered::default(),

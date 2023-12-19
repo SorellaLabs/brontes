@@ -1,7 +1,9 @@
 use alloy_primitives::Address;
+use alloy_rlp::{BufMut, Decodable, Encodable};
 use reth_rpc_types::trace::parity::StateDiff;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pair(pub Address, pub Address);
 
 impl Pair {
@@ -31,7 +33,21 @@ impl Pair {
     }
 }
 
-impl Pair {}
+impl Encodable for Pair {
+    fn encode(&self, out: &mut dyn BufMut) {
+        self.0.encode(out);
+        self.1.encode(out);
+    }
+}
+
+impl Decodable for Pair {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let token0 = Address::decode(buf)?;
+        let token1 = Address::decode(buf)?;
+
+        Ok(Self(token0, token1))
+    }
+}
 
 #[derive(Debug)]
 pub struct ExtraProcessing {

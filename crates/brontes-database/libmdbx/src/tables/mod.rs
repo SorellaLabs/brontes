@@ -1,12 +1,17 @@
 #![allow(non_upper_case_globals)]
 
-use std::{pin::Pin, str::FromStr};
+use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 mod const_sql;
 use alloy_primitives::Address;
 use brontes_database::clickhouse::Clickhouse;
+use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
 use const_sql::*;
 use futures::Future;
-use reth_db::{table::Table, TableType};
+use reth_db::{
+    dupsort,
+    table::{DupSort, Table},
+    TableType,
+};
 use serde::Deserialize;
 use sorella_db_databases::Row;
 
@@ -14,22 +19,37 @@ use crate::{
     types::{
         address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
         address_to_tokens::{AddressToTokensData, PoolTokens},
+        cex_price::{CexPriceData, CexPriceMap},
+        dex_price::{DexPriceData, DexQuoteWithIndex},
+        metadata::{MetadataData, MetadataInner},
+        pool_state::PoolStateData,
         *,
     },
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 3;
+pub const NUM_TABLES: usize = 7;
 
 pub enum Tables {
     TokenDecimals,
     AddressToTokens,
     AddressToProtocol,
+    CexPrice,
+    Metadata,
+    PoolState,
+    DexPrice,
 }
 
 impl Tables {
-    pub const ALL: [Tables; NUM_TABLES] =
-        [Tables::TokenDecimals, Tables::AddressToTokens, Tables::AddressToProtocol];
+    pub const ALL: [Tables; NUM_TABLES] = [
+        Tables::TokenDecimals,
+        Tables::AddressToTokens,
+        Tables::AddressToProtocol,
+        Tables::CexPrice,
+        Tables::Metadata,
+        Tables::PoolState,
+        Tables::DexPrice,
+    ];
 
     /// type of table
     pub(crate) const fn table_type(&self) -> TableType {
@@ -37,6 +57,10 @@ impl Tables {
             Tables::TokenDecimals => TableType::Table,
             Tables::AddressToTokens => TableType::Table,
             Tables::AddressToProtocol => TableType::Table,
+            Tables::CexPrice => TableType::Table,
+            Tables::Metadata => TableType::Table,
+            Tables::PoolState => TableType::Table,
+            Tables::DexPrice => TableType::DupSort,
         }
     }
 
@@ -45,18 +69,37 @@ impl Tables {
             Tables::TokenDecimals => TokenDecimals::NAME,
             Tables::AddressToTokens => AddressToTokens::NAME,
             Tables::AddressToProtocol => AddressToProtocol::NAME,
+            Tables::CexPrice => CexPrice::NAME,
+            Tables::Metadata => Metadata::NAME,
+            Tables::PoolState => PoolState::NAME,
+            Tables::DexPrice => DexPrice::NAME,
         }
     }
 
     pub(crate) fn initialize_table<'a>(
         &'a self,
         libmdbx: &'a Libmdbx,
-        clickhouse: &'a Clickhouse,
+        clickhouse: Arc<&'a Clickhouse>,
+        block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
         match self {
-            Tables::TokenDecimals => TokenDecimals::initialize_table(libmdbx, clickhouse),
-            Tables::AddressToTokens => AddressToTokens::initialize_table(libmdbx, clickhouse),
-            Tables::AddressToProtocol => AddressToProtocol::initialize_table(libmdbx, clickhouse),
+            Tables::TokenDecimals => {
+                TokenDecimals::initialize_table(libmdbx, clickhouse, block_range)
+            }
+            Tables::AddressToTokens => {
+                AddressToTokens::initialize_table(libmdbx, clickhouse, block_range)
+            }
+            Tables::AddressToProtocol => {
+                AddressToProtocol::initialize_table(libmdbx, clickhouse, block_range)
+            }
+            Tables::CexPrice => CexPrice::initialize_table(libmdbx, clickhouse, block_range),
+            Tables::Metadata => Metadata::initialize_table(libmdbx, clickhouse, block_range),
+            Tables::PoolState => PoolState::initialize_table(libmdbx, clickhouse, block_range),
+            Tables::DexPrice => <DexPrice as InitializeDupTable<DexPriceData>>::initialize_table(
+                libmdbx,
+                clickhouse,
+                block_range,
+            ),
         }
     }
 }
@@ -69,6 +112,10 @@ impl FromStr for Tables {
             TokenDecimals::NAME => return Ok(Tables::TokenDecimals),
             AddressToTokens::NAME => return Ok(Tables::AddressToTokens),
             AddressToProtocol::NAME => return Ok(Tables::AddressToProtocol),
+            CexPrice::NAME => return Ok(Tables::CexPrice),
+            Metadata::NAME => return Ok(Tables::Metadata),
+            PoolState::NAME => return Ok(Tables::PoolState),
+            DexPrice::NAME => return Ok(Tables::DexPrice),
             _ => return Err("Unknown table".to_string()),
         }
     }
@@ -96,7 +143,29 @@ macro_rules! table {
             }
         }
 
-        impl<'fut, 'db: 'fut> InitializeTable<'fut, 'db, paste::paste! {[<$table_name Data>]}> for $table_name {
+        impl<'db> InitializeTable<'db, paste::paste! {[<$table_name Data>]}> for $table_name {
+            fn initialize_query() -> &'static str {
+                paste::paste! {[<$table_name InitQuery>]}
+            }
+        }
+    };
+}
+
+#[macro_export]
+/// Macro to declare duplicate key value table.
+macro_rules! dupsort {
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | [$subkey:ty] $value:ty) => {
+        table!(
+            $(#[$docs])+
+            ///
+            #[doc = concat!("`DUPSORT` table with subkey being: [`", stringify!($subkey), "`]")]
+            ( $table_name ) $key | $value
+        );
+        impl DupSort for $table_name {
+            type SubKey = $subkey;
+        }
+
+        impl<'db> InitializeDupTable<'db, paste::paste! {[<$table_name Data>]}> for $table_name {
             fn initialize_query() -> &'static str {
                 paste::paste! {[<$table_name InitQuery>]}
             }
@@ -119,23 +188,94 @@ table!(
     ( AddressToProtocol ) Address | StaticBindingsDb
 );
 
-pub(crate) trait InitializeTable<'fut, 'db: 'fut, D>:
-    reth_db::table::Table + Sized + 'db
+table!(
+    /// block num -> cex prices
+    ( CexPrice ) u64 | CexPriceMap
+);
+
+table!(
+    /// block num -> metadata
+    ( Metadata ) u64 | MetadataInner
+);
+
+table!(
+    /// pool key -> pool state
+    ( PoolState ) PoolKey | PoolStateSnapShot
+);
+
+dupsort!(
+    /// block number -> tx idx -> cex quotes
+    ( DexPrice ) u64 | [u16] DexQuoteWithIndex
+);
+
+pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
-    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync,
+    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug,
 {
     fn initialize_query() -> &'static str;
 
     fn initialize_table(
         libmdbx: &'db Libmdbx,
-        db_client: &'db Clickhouse,
-    ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'fut>> {
+        db_client: Arc<&'db Clickhouse>,
+        block_range: Option<(u64, u64)>, // inclusive of start only TODO
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
             let data = db_client
                 .inner()
                 .query_many::<D>(Self::initialize_query(), &())
-                .await?;
-            libmdbx.initialize_table(&data)
+                .await;
+
+            println!("\n\nDUP Data: {:?}\n\n", data);
+
+            /*
+                        let data = match data {
+                            Ok(dd) =>  {
+                                for d in &dd {
+                                    println!("DATA: {:?}\n\n\n", d);
+                                };
+                                Ok(dd)
+                            },
+                            Err(e) => {println!("DB: ERROR: {:?}", e); Err(e)}
+                        };
+            */
+
+            libmdbx.initialize_table(&data?)
+        })
+    }
+}
+
+pub(crate) trait InitializeDupTable<'db, D>: reth_db::table::DupSort + Sized + 'db
+where
+    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug,
+{
+    fn initialize_query() -> &'static str;
+
+    fn initialize_table(
+        libmdbx: &'db Libmdbx,
+        db_client: Arc<&'db Clickhouse>,
+        block_range: Option<(u64, u64)>, // inclusive of start only TODO
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
+        Box::pin(async move {
+            let data = db_client
+                .inner()
+                .query_many::<D>(Self::initialize_query(), &())
+                .await;
+
+            println!("\n\nDUP Data: {:?}\n\n", data);
+
+            /*
+                        let data = match data {
+                            Ok(dd) =>  {
+                                for d in &dd {
+                                    println!("DATA: {:?}\n\n\n", d);
+                                };
+                                Ok(dd)
+                            },
+                            Err(e) => {println!("DB: ERROR: {:?}", e); Err(e)}
+                        };
+            */
+
+            libmdbx.initialize_table(&data?)
         })
     }
 }
