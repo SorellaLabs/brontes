@@ -7,7 +7,6 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
-    try_get_decimals,
 };
 use hex_literal::hex;
 use reth_db::transaction::DbTx;
@@ -54,7 +53,7 @@ impl<'db> Classifier<'db> {
                     self.classify_node(trace.trace.remove(0), 0, header.number, tx_idx as u64);
 
                 if classification.is_transfer() {
-                    if try_get_decimals(&t_address.0 .0).is_none() {
+                    if self.libmdbx.try_get_decimals(t_address).is_none() {
                         missing_decimals.push(t_address.clone());
                     }
                 }
@@ -102,7 +101,7 @@ impl<'db> Classifier<'db> {
                     }
 
                     if classification.is_transfer() {
-                        if try_get_decimals(&t_address.0 .0).is_none() {
+                        if self.libmdbx.try_get_decimals(t_address).is_none() {
                             missing_decimals.push(t_address.clone());
                         }
                     }
