@@ -97,10 +97,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let addr = msg.get_pool_address();
 
-        if self.mut_state.contains_key(&addr) {
-            self.update_known_state(addr, msg)
-        } else if self.lazy_loader.is_loading(&addr) {
-            self.lazy_loader.buffer_update(&addr, msg)
+        if self.mut_state.contains_key(&addr) || self.lazy_loader.is_loading(&addr) {
+            self.buffer
+                .entry(msg.block)
+                .or_default()
+                .push_back((addr, msg));
         } else {
             self.on_new_pool(msg)
         }
@@ -161,8 +162,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.lazy_loader
                 .lazy_load_exchange(info.info.pool_addr, msg.block, info.info.dex_type);
 
-            self.lazy_loader
-                .buffer_update(&info.info.pool_addr, fake_update.clone());
+            self.buffer
+                .entry(msg.block)
+                .or_default()
+                .push_back((info.info.pool_addr, fake_update.clone()));
         }
 
         // add second direction
@@ -176,8 +179,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.lazy_loader
                 .lazy_load_exchange(info.info.pool_addr, msg.block, info.info.dex_type);
 
-            self.lazy_loader
-                .buffer_update(&info.info.pool_addr, fake_update.clone());
+            self.buffer
+                .entry(msg.block)
+                .or_default()
+                .push_back((info.info.pool_addr, fake_update.clone()));
         }
 
         // add default pair
@@ -188,10 +193,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 msg.block,
                 info.info.dex_type,
             );
-
-            // for the raw pair we always rebuffer
-            self.lazy_loader
-                .buffer_update(&info.info.pool_addr, msg.clone());
+            self.buffer
+                .entry(msg.block)
+                .or_default()
+                .push_back((info.info.pool_addr, msg.clone()));
         }
 
         for info in self.pair_graph.get_path(Pair(pair.1, pair.0)).flatten() {
@@ -202,9 +207,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 info.info.dex_type,
             );
 
-            // for the raw pair we always rebuffer
-            self.lazy_loader
-                .buffer_update(&info.info.pool_addr, msg.clone());
+            self.buffer
+                .entry(msg.block)
+                .or_default()
+                .push_back((info.info.pool_addr, msg.clone()));
         }
     }
 
@@ -220,9 +226,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     pairs
                         .into_iter()
                         .filter_map(|pair_details| {
-                            // TODO: this being a filtermap is wrong because we then can't
-                            // garentee all underlying pool weighting. need a bigger refactor
-                            // tho so will circle back after i think about it for a bit
                             Some(PoolKeyWithDirection::new(
                                 *self.last_update.get(&pair_details.info.pool_addr)?,
                                 pair_details.get_base_token(),
@@ -304,22 +307,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
-    fn on_pool_resolve(
-        &mut self,
-        state: PoolState,
-        updates: Vec<PoolUpdate>,
-    ) -> Option<(u64, DexPrices)> {
+    fn on_pool_resolve(&mut self, state: PoolState) -> Option<(u64, DexPrices)> {
         let addr = state.address();
-        // init state
+        // init state so its ok to push
         self.mut_state.insert(addr, state);
-
-        for update in updates {
-            let block = update.block;
-            self.buffer
-                .entry(block)
-                .or_default()
-                .push_back((addr, update));
-        }
 
         // if there are no requests and we have moved onto processing the next block,
         // then we will resolve this block. otherwise we will wait
@@ -412,8 +403,8 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
             }
 
-            if let Poll::Ready(Some((state, updates))) = self.lazy_loader.poll_next_unpin(cx) {
-                if let Some(update) = self.on_pool_resolve(state, updates) {
+            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                if let Some(update) = self.on_pool_resolve(state) {
                     return Poll::Ready(Some(update))
                 }
             }
