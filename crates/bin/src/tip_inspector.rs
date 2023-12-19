@@ -9,7 +9,10 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{clickhouse::Clickhouse, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
-use brontes_inspect::{composer::Composer, Inspector};
+use brontes_inspect::{
+    composer::{Composer, ComposerResults},
+    Inspector,
+};
 use brontes_pricing::{
     types::{DexPrices, DexQuotes},
     BrontesBatchPricer,
@@ -31,11 +34,13 @@ pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
     classifier:        &'inspector Classifier<'inspector>,
     clickhouse:        &'inspector Clickhouse,
     database:          &'inspector Libmdbx,
-    composer:          Composer<'inspector, N>,
+    inspectors:        &'inspector [&'inspector Box<dyn Inspector>; N],
     // pending future data
     classifier_future: FuturesOrdered<CollectionFut<'inspector>>,
+
+    composer_future:  Option<Pin<Box<dyn Future<Output = ComposerResults> + Send + 'inspector>>>,
     // pending insertion data
-    insertion_future:  Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
+    insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
 impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N, T> {
@@ -48,12 +53,13 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
         current_block: u64,
     ) -> Self {
         Self {
+            inspectors,
             current_block,
             parser,
             clickhouse,
+            composer_future: None,
             database,
             classifier,
-            composer: Composer::new(inspectors),
             classifier_future: FuturesOrdered::new(),
             insertion_future: None,
         }
@@ -86,8 +92,7 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
             block_number = self.current_block,
             "inserting the collected results \n {:#?}", results
         );
-        self.insertion_future =
-            Some(Box::pin(self.database.insert_classified_data(results.0, results.1)));
+        self.database.insert_classified_data(results.0, results.1);
     }
 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
@@ -97,24 +102,19 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
                 let meta_data =
                     meta_data.into_finalized_metadata(DexPrices::new(map, DexQuotes(vec![])));
                 //TODO: wire in the dex pricing task here
-                self.composer.on_new_tree(tree.into(), meta_data.into());
+
+                self.composer_future =
+                    Some(Box::pin(Composer::new(self.inspectors, tree.into(), meta_data.into())));
             }
             Poll::Pending => return,
             Poll::Ready(None) => return,
         }
 
-        if !self.composer.is_finished() {
-            if let Poll::Ready(data) = self.composer.poll_unpin(cx) {
+        if let Some(mut inner) = self.composer_future.take() {
+            if let Poll::Ready(data) = inner.poll_unpin(cx) {
                 self.on_inspectors_finish(data);
-            }
-        }
-
-        if let Some(mut insertion_future) = self.insertion_future.take() {
-            match insertion_future.poll_unpin(cx) {
-                Poll::Ready(_) => {}
-                Poll::Pending => {
-                    self.insertion_future = Some(insertion_future);
-                }
+            } else {
+                self.composer_future = Some(inner);
             }
         }
     }
