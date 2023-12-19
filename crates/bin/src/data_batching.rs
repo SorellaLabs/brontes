@@ -17,9 +17,10 @@ use brontes_database_libmdbx::{
 };
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
-use brontes_types::{normalized_actions::Actions, tree::TimeTree};
+use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_db::{cursor::DbCursorRO, transaction::DbTx};
+use reth_primitives::Header;
 use tokio::task::JoinHandle;
 
 // takes the composer + db and will process data and insert it into libmdx
@@ -35,8 +36,7 @@ impl<'db, const N: usize> ResultProcessing<'db, N> {
         tree: Arc<TimeTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
-        let mut composer = Composer::new(inspectors);
-        composer.on_new_tree(tree, meta_data);
+        let composer = Composer::new(inspectors, tree, meta_data);
         Self { database: db, composer }
     }
 }
@@ -61,8 +61,8 @@ pub struct WaitingForPricerFuture<T: TracingProvider> {
 }
 
 impl<T: TracingProvider> WaitingForPricerFuture<T> {
-    pub fn new(pricer: BrontesBatchPricer<T>) -> Self {
-        let mut future = Box::pin(async move {
+    pub fn new(mut pricer: BrontesBatchPricer<T>) -> Self {
+        let future = Box::pin(async move {
             let res = pricer.next().await;
             (pricer, res)
         });
@@ -72,8 +72,8 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         Self { handle, pending_trees: HashMap::default() }
     }
 
-    fn resechedule(&mut self, pricer: BrontesBatchPricer<T>) {
-        let mut future = Box::pin(async move {
+    fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
+        let future = Box::pin(async move {
             let res = pricer.next().await;
             (pricer, res)
         });
@@ -133,7 +133,7 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
 
-    processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send>>>,
+    processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
 
     // dex_price_map_next:
     current_block: u64,
@@ -199,6 +199,22 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         }
     }
 
+    fn on_parser_resolve(
+        meta: MetadataDB,
+        traces: Vec<TxTrace>,
+        header: Header,
+        classifier: Classifier<'db>,
+        tracer: Arc<T>,
+        libmdbx: &'db Libmdbx,
+    ) -> CollectionFut<'db> {
+        let (extra, tree) = classifier.build_tree(traces, header);
+        Box::pin(async move {
+            MissingDecimals::new(tracer, libmdbx, extra.tokens_decimal_fill).await;
+
+            (tree, meta)
+        })
+    }
+
     fn start_next_block(&mut self) {
         let parser = self.parser.execute(self.current_block);
         let meta = self
@@ -206,14 +222,18 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             .get_metadata_no_dex(self.current_block)
             .unwrap();
 
-        let fut = Box::pin(parser.then(|x| async move {
+        let classifier = self.classifier.clone();
+
+        let fut = Box::pin(parser.then(|x| {
             let (traces, header) = x.unwrap().unwrap();
-            let (extra, tree) = self.classifier.build_tree(traces, header);
-
-            MissingDecimals::new(self.parser.get_tracer(), self.libmdbx, extra.tokens_decimal_fill)
-                .await;
-
-            (tree, meta)
+            Self::on_parser_resolve(
+                meta,
+                traces,
+                header,
+                classifier,
+                self.parser.get_tracer(),
+                self.libmdbx,
+            )
         }));
 
         self.collection_future = Some(fut);
@@ -236,8 +256,8 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         // progress collection future,
         if let Some(mut future) = self.collection_future.take() {
             if let Poll::Ready((tree, meta)) = future.poll_unpin(cx) {
-                self.pricer
-                    .add_pending_inspection(self.current_block, tree, meta);
+                let block = self.current_block;
+                self.pricer.add_pending_inspection(block, tree, meta);
             } else {
                 self.collection_future = Some(future);
             }
@@ -263,7 +283,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
 
         if self.current_block == self.end_block
             && self.pricer.is_complete()
-            && self.insertion_futures.is_empty()
+            && self.processing_futures.is_empty()
         {
             return Poll::Ready(())
         }

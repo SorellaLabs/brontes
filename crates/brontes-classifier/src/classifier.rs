@@ -21,7 +21,7 @@ const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 /// goes through and classifies all exchanges as-well as missing data
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Classifier<'db> {
     libmdbx: &'db Libmdbx,
     sender:  Sender<PoolUpdate>,
