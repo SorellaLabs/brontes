@@ -79,6 +79,31 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_message(&mut self, msg: PoolUpdate) -> Option<(u64, DexPrices)> {
+        // we want to capture these
+        if msg.block > self.current_block {
+            self.current_block = msg.block
+        }
+
+        if msg.action.is_transfer() {
+            self.update_dex_quotes(msg.block, msg.tx_idx, msg.get_pair(self.quote_asset).unwrap());
+            self.update_dex_quotes(
+                msg.block,
+                msg.tx_idx,
+                msg.get_pair(self.quote_asset).unwrap().flip(),
+            );
+            return None
+        }
+
+        let addr = msg.get_pool_address();
+
+        if self.mut_state.contains_key(&addr) {
+            self.update_known_state(addr, msg)
+        } else if self.lazy_loader.is_loading(&addr) {
+            self.lazy_loader.buffer_update(&addr, msg)
+        } else {
+            self.on_new_pool(msg)
+        }
+
         if self.lazy_loader.requests_for_block(&self.completed_block) == 0
             && self.completed_block < self.current_block
         {
@@ -100,26 +125,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.completed_block += 1;
 
             return Some((self.completed_block, DexPrices::new(state, res)))
-        }
-
-        if msg.block > self.current_block {
-            self.current_block = msg.block
-        }
-
-        // we want to capture these
-        if msg.action.is_transfer() {
-            self.update_dex_quotes(msg.block, msg.tx_idx, msg.get_pair(self.quote_asset).unwrap());
-            return None
-        }
-
-        let addr = msg.get_pool_address();
-
-        if self.mut_state.contains_key(&addr) {
-            self.update_known_state(addr, msg)
-        } else if self.lazy_loader.is_loading(&addr) {
-            self.lazy_loader.buffer_update(&addr, msg)
-        } else {
-            self.on_new_pool(msg)
         }
 
         None
@@ -152,11 +157,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .get_path(Pair(pair.1, self.quote_asset))
             .flatten()
         {
-            self.lazy_loader.lazy_load_exchange(
-                info.info.pool_addr,
-                msg.block - 1,
-                info.info.dex_type,
-            );
+            self.lazy_loader
+                .lazy_load_exchange(info.info.pool_addr, msg.block, info.info.dex_type);
 
             self.lazy_loader
                 .buffer_update(&info.info.pool_addr, fake_update.clone());
@@ -170,11 +172,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .flatten()
             .collect::<HashSet<_>>()
         {
-            self.lazy_loader.lazy_load_exchange(
-                info.info.pool_addr,
-                msg.block - 1,
-                info.info.dex_type,
-            );
+            self.lazy_loader
+                .lazy_load_exchange(info.info.pool_addr, msg.block, info.info.dex_type);
 
             self.lazy_loader
                 .buffer_update(&info.info.pool_addr, fake_update.clone());
@@ -185,7 +184,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.lazy_loader.lazy_load_exchange(
                 info.info.pool_addr,
                 // we want to load state from prev block
-                msg.block - 1,
+                msg.block,
                 info.info.dex_type,
             );
 
@@ -198,7 +197,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.lazy_loader.lazy_load_exchange(
                 info.info.pool_addr,
                 // we want to load state from prev block
-                msg.block - 1,
+                msg.block,
                 info.info.dex_type,
             );
 
@@ -232,6 +231,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 )
             })
             .collect::<Vec<_>>();
+
         if pool_keys.is_empty() {
             warn!(?pool_pair, "no keys found for pair");
             return
@@ -388,17 +388,27 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut work = 1024;
         loop {
-            if let Poll::Ready(s) = self
-                .update_rx
-                .poll_recv(cx)
-                .map(|inner| inner.map(|update| self.on_message(update)))
-            {
-                if let Some(Some(data)) = s {
-                    return Poll::Ready(Some(data))
+            let mut count = 10;
+            'inner: loop {
+                if let Poll::Ready(s) = self
+                    .update_rx
+                    .poll_recv(cx)
+                    .map(|inner| inner.map(|update| self.on_message(update)))
+                {
+                    if let Some(Some(data)) = s {
+                        return Poll::Ready(Some(data))
+                    }
+
+                    if s.is_none() && self.lazy_loader.is_empty() {
+                        return Poll::Ready(self.on_close())
+                    }
+                } else {
+                    break 'inner
                 }
 
-                if s.is_none() && self.lazy_loader.is_empty() {
-                    return Poll::Ready(self.on_close())
+                count -= 1;
+                if count == 0 {
+                    break 'inner
                 }
             }
 
