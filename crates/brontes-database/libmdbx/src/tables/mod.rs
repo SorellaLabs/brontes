@@ -240,7 +240,7 @@ where
                     .await
             };
 
-            // println!("\n\nDUP Data: {:?}\n\n", data);
+            println!("\n\nREG Data: {:?}\n\n", data);
 
             /*
                         let data = match data {
