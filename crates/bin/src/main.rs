@@ -98,7 +98,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     match opt.command {
         Commands::Run(command) => run_brontes(command).await,
         Commands::Init(command) => init_brontes(command).await,
-        Commands::RunBackWithPricing(command) => run_batch_with_pricing(command).await,
+        Commands::RunBatchWithPricing(command) => run_batch_with_pricing(command).await,
     }
 }
 
