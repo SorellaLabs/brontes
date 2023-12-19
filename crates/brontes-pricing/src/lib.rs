@@ -399,25 +399,123 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
 
 #[cfg(test)]
 pub mod test {
+    use std::env;
+
     use brontes_classifier::*;
-    use brontes_core::init_tracing;
-    use brontes_database_libmdbx::Libmdbx;
+    use brontes_core::{decoding::parser::TraceParser, init_trace_parser, init_tracing};
+    use brontes_database_libmdbx::{
+        tables::{AddressToProtocol, AddressToTokens},
+        Libmdbx,
+    };
+    use reth_db::{cursor::DbCursorRO, transaction::DbTx};
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
 
     async fn init(
-        libmdbx: Libmdbx,
+        libmdbx: &Libmdbx,
         rx: UnboundedReceiver<PoolUpdate>,
+        quote: Address,
+        block: u64,
+        parser: &TraceParser<'_, Box<dyn TracingProvider>>,
     ) -> BrontesBatchPricer<Box<dyn TracingProvider>> {
-        todo!()
+        let tx = libmdbx.ro_tx().unwrap();
+        let binding_tx = libmdbx.ro_tx().unwrap();
+        let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
+        let mut pairs = HashMap::new();
+
+        for value in all_addr_to_tokens.walk(None).unwrap() {
+            if let Ok((address, tokens)) = value {
+                if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(address) {
+                    pairs.insert((address, protocol), Pair(tokens.token0, tokens.token1));
+                }
+            }
+        }
+
+        let pair_graph = PairGraph::init_from_hashmap(pairs);
+        BrontesBatchPricer::new(quote, 0, 0, pair_graph, rx, parser.get_tracer(), block)
     }
     #[tokio::test]
     async fn test_on_pool_resolve() {
         dotenv::dotenv().ok();
         init_tracing();
 
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
         let (tx, rx) = unbounded_channel();
-        let pricer = init(rx).await;
+
+        let (a, b) = unbounded_channel();
+        let tracer =
+            brontes_core::init_trace_parser(tokio::runtime::Handle::current(), a, &libmdbx, 10);
+        let quote = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            .parse()
+            .unwrap();
+
+        let mut pricer = init(&libmdbx, rx, quote, 18500000, &tracer).await;
+
+        let handle = tokio::spawn(async move { 
+                    let res = pricer.next().await; 
+                    (pricer, res)
+        });
+        // weth
+        let t0: Address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+            .parse()
+            .unwrap();
+
+        // usdt
+        let t1: Address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+            .parse()
+            .unwrap();
+
+        // shib
+        let t3: Address = "0x3e34eabf5858a126cb583107e643080cee20ca64"
+            .parse()
+            .unwrap();
+
+        // lets send pools we want to be able to swap through
+        let mut poolupdate = PoolUpdate {
+            block:  18500000,
+            tx_idx: 0,
+            logs:   vec![],
+            action: BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t0, t1),
+        };
+
+        // send these two txes for the given block
+        let _ = tx.send(poolupdate.clone()).unwrap();
+        poolupdate.tx_idx = 69;
+        poolupdate.action = BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t0, t3);
+        let _ = tx.send(poolupdate.clone()).unwrap();
+
+        // trigger next block
+        poolupdate.block += 1;
+        poolupdate.action = BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t1, t3);
+        let _ = tx.send(poolupdate.clone()).unwrap();
+        let (handle, dex_prices) = handle.await.unwrap();
+
+        let (block, prices) = dex_prices.unwrap();
+
+        // default pairs
+        let p0 = Pair(t0, t1);
+        let p1 = p0.clone().flip();
+
+        let p2 = Pair(t0, t3);
+        let p3 = p2.clone().flip();
+
+        // pairs with quote
+        let p4 = Pair(t0, quote);
+        let p5 = Pair(t1, quote);
+        let p6 = Pair(t3, quote);
+
+        // we should have p0 and p1 at index 0 in the vector
+        assert!(prices.price_after(p0, 0).is_some());
+        assert!(prices.price_after(p1, 0).is_some());
+        assert!(prices.price_after(p4, 0).is_some());
+        assert!(prices.price_after(p5, 0).is_some());
+
+        // we should have t0, t3 and t1, t3 at 69
+        assert!(prices.price_after(p2, 69).is_some());
+        assert!(prices.price_after(p3, 69).is_some());
+        assert!(prices.price_after(p4, 69).is_some());
+        assert!(prices.price_after(p6, 69).is_some());
     }
 }
