@@ -191,6 +191,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn update_dex_quotes(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
+        if pool_pair.0 == pool_pair.1 {
+            return
+        }
         let pool_keys = self
             .pair_graph
             .get_path(pool_pair)
