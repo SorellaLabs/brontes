@@ -379,27 +379,17 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut work = 1024;
         loop {
-            let mut count = 10;
-            'inner: loop {
-                if let Poll::Ready(s) = self
-                    .update_rx
-                    .poll_recv(cx)
-                    .map(|inner| inner.map(|update| self.on_message(update)))
-                {
-                    if let Some(Some(data)) = s {
-                        return Poll::Ready(Some(data))
-                    }
-
-                    if s.is_none() && self.lazy_loader.is_empty() {
-                        return Poll::Ready(self.on_close())
-                    }
-                } else {
-                    break 'inner
+            if let Poll::Ready(s) = self
+                .update_rx
+                .poll_recv(cx)
+                .map(|inner| inner.map(|update| self.on_message(update)))
+            {
+                if let Some(Some(data)) = s {
+                    return Poll::Ready(Some(data))
                 }
 
-                count -= 1;
-                if count == 0 {
-                    break 'inner
+                if s.is_none() && self.lazy_loader.is_empty() {
+                    return Poll::Ready(self.on_close())
                 }
             }
 
