@@ -75,7 +75,14 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let delta = t1.duration_since(t0).unwrap().as_millis();
         info!(libmdx_time_ms = delta, "took to query all libmdx data");
 
-        let pair_graph = PairGraph::init_from_hashmap(pairs);
+        let pair_graph = PairGraph::init_from_hashmap(HashMap::default());
+        let tx = libmdbx.ro_tx().unwrap();
+        let mut cur = tx
+            .cursor_read::<brontes_database_libmdbx::tables::Metadata>()
+            .unwrap();
+        let start = cur.next().unwrap().unwrap().0;
+        let end = cur.last().unwrap().unwrap().0;
+        info!(start, end, "have metadata for blocks");
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
