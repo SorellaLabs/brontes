@@ -58,7 +58,6 @@ impl reth_db::table::Encode for PoolKey {
         buf
     }
 }
-
 impl_compress_decompress_for_encoded_decoded!(PoolKey);
 
 /// Block level pre-computed prices for all dexes
@@ -70,8 +69,8 @@ pub struct DexPrices {
 }
 
 impl DexPrices {
-    pub fn new() -> Self {
-        todo!()
+    pub fn new(state: Arc<HashMap<PoolKey, PoolStateSnapShot>>, quotes: DexQuotes) -> Self {
+        Self { state, quotes }
     }
 
     pub fn price_after(&self, pair: Pair, tx: usize) -> Rational {
@@ -99,15 +98,14 @@ impl DexPrices {
             }
         }
 
-        // self.quotes
-        todo!()
+        price
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct PoolKeyWithDirection {
-    key:  PoolKey,
-    base: Address,
+    pub key:  PoolKey,
+    pub base: Address,
 }
 
 impl PoolKeyWithDirection {
@@ -120,7 +118,7 @@ impl PoolKeyWithDirection {
 pub struct PoolKeysForPair(pub Vec<PoolKeyWithDirection>);
 
 #[derive(Debug, Clone)]
-pub struct DexQuotes(pub(crate) Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
+pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
 
 impl DexQuotes {
     pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> &Vec<PoolKeysForPair> {
@@ -147,12 +145,8 @@ impl_compress_decompress_for_encoded_decoded!(PoolStateSnapShot);
 impl PoolStateSnapShot {
     pub fn get_tvl(&self) -> Rational {
         match self {
-            PoolStateSnapShot::UniswapV2(v) => {
-                Rational::from(v.reserve_0) + Rational::from(v.reserve_1)
-            }
-            PoolStateSnapShot::UniswapV3(v) => {
-                todo!();
-            }
+            PoolStateSnapShot::UniswapV2(v) => v.get_tvl(),
+            PoolStateSnapShot::UniswapV3(v) => v.get_tvl(),
         }
     }
 

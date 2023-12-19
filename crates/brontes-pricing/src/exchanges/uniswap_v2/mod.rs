@@ -8,7 +8,8 @@ use alloy_rlp::{RlpDecodable, RlpEncodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
+use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
+use malachite::Rational;
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 
@@ -386,6 +387,10 @@ impl UniswapV2Pool {
         } else {
             div_uu(r_0, r_1)
         }
+    }
+
+    pub fn get_tvl(&self) -> Rational {
+        self.reserve_0.to_scaled_rational(0) + self.reserve_1.to_scaled_rational(0)
     }
 
     pub fn get_amount_out(&self, amount_in: U256, reserve_in: U256, reserve_out: U256) -> U256 {
