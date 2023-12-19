@@ -15,6 +15,7 @@ mod banner;
 mod block_inspector;
 mod tip_inspector;
 
+mod data_batching;
 use block_inspector::BlockInspector;
 use tip_inspector::TipInspector;
 

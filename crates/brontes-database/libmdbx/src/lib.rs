@@ -1,5 +1,9 @@
-use std::{path::Path, str::FromStr};
+use std::{path::Path, str::FromStr, sync::Arc};
+
+use brontes_pricing::types::DexQuotes;
 pub mod initialize;
+use std::collections::HashMap;
+
 use alloy_primitives::Address;
 use brontes_database::{clickhouse::Clickhouse, MetadataDB, Pair};
 use brontes_pricing::types::DexPrices;
@@ -8,7 +12,6 @@ use eyre::Context;
 use initialize::LibmdbxInitializer;
 use malachite::Rational;
 use reth_db::{
-    cursor::{DbCursorRO, DbDupCursorRW},
     is_database_empty,
     mdbx::DatabaseFlags,
     table::{DupSort, Table},
@@ -142,6 +145,8 @@ impl Libmdbx {
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
         //let eth_prices = ;
 
+        let map = Arc::new(HashMap::new());
+
         Ok(brontes_database::Metadata {
             db:         MetadataDB {
                 block_num,
@@ -161,7 +166,7 @@ impl Libmdbx {
                                                                         * error handle */
                 mempool_flow: block_meta.mempool_flow.into_iter().collect(),
             },
-            dex_quotes: DexPrices::new(),
+            dex_quotes: DexPrices::new(map, DexQuotes(vec![])),
         })
     }
 
