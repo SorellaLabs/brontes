@@ -314,7 +314,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         state: PoolState,
         updates: Vec<PoolUpdate>,
     ) -> Option<(u64, DexPrices)> {
-        info!("on pool resolve");
         let addr = state.address();
         // init state
         self.mut_state.insert(addr, state);

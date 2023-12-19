@@ -107,7 +107,6 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
         if let Poll::Ready(Some((result))) = self.pool_load_futures.poll_next_unpin(cx) {
             match result {
                 Ok((block, addr, state)) => {
-                    info!("loaded pool");
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     } else {
