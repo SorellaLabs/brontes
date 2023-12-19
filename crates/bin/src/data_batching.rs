@@ -75,15 +75,11 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let delta = t1.duration_since(t0).unwrap().as_millis();
         info!(libmdx_time_ms = delta, "took to query all libmdx data");
 
-        let pair_graph = PairGraph::init_from_hashmap(HashMap::default());
-        let tx = libmdbx.ro_tx().unwrap();
-        let mut cur = tx
-            .cursor_read::<brontes_database_libmdbx::tables::Metadata>()
-            .unwrap();
+        let pair_graph = PairGraph::init_from_hashmap(pairs);
 
-        let start = cur.next().unwrap().unwrap().0;
-        let end = cur.last().unwrap().unwrap().0;
-        info!(start, end, "have metadata for blocks");
+        // let start = cur.next().unwrap().unwrap().0;
+        // let end = cur.last().unwrap().unwrap().0;
+        // info!(start, end, "have metadata for blocks");
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
@@ -303,8 +299,9 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
-            self.database
-                .insert_classified_data(block_details, mev_details);
+            info!(?block_details, ?mev_details, "finished processing for block");
+            // self.database
+            //     .insert_classified_data(block_details, mev_details);
 
             return Poll::Ready(())
         }
