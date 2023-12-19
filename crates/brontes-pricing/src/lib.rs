@@ -7,7 +7,6 @@ use std::{
     sync::Arc,
     task::Poll,
 };
-use tracing::warn;
 
 use alloy_primitives::{Address, U256};
 use brontes_types::{
@@ -21,7 +20,7 @@ pub use exchanges::*;
 use futures::{Future, Stream, StreamExt};
 pub use graph::PairGraph;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::info;
+use tracing::{info, warn};
 use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
@@ -133,7 +132,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_new_pool(&mut self, msg: PoolUpdate) {
-        let Some(pair) = msg.get_pair() else { return };
+        let Some(pair) = msg.get_pair(self.quote_asset) else { return };
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
@@ -258,7 +257,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
-        let Some(pool_pair) = msg.get_pair() else { return };
+        let Some(pool_pair) = msg.get_pair(self.quote_asset) else { return };
 
         if let Some((key, state)) = self.mut_state.get_mut(&addr).map(|inner| {
             // if we have the pair loaded. increment_state
