@@ -12,14 +12,15 @@ use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair};
 use itertools::Itertools;
 use petgraph::{
-    graph::UnGraph,
+    graph::{self, UnGraph},
     prelude::*,
     visit::{IntoEdges, VisitMap, Visitable},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use serde::{Deserialize, Serialize};
 use tracing::info;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInformation {
     pub pool_addr: Address,
     pub dex_type:  StaticBindingsDb,
@@ -38,7 +39,7 @@ impl PoolPairInformation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInfoDirection {
     pub info:       PoolPairInformation,
     pub token_0_in: bool,
