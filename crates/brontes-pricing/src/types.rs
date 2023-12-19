@@ -99,7 +99,7 @@ impl DexPrices {
             if weight == Rational::ZERO {
                 // can no longer convert
                 tracing::error!("no hops for pool");
-                panic!("shit");
+                return Rational::from(1)
             }
 
             if price == Rational::ZERO {

@@ -94,6 +94,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .dex_quotes
                 .remove(&self.completed_block)
                 .unwrap_or(DexQuotes(vec![]));
+            info!(dex_quotes = res.0.len(), "got dex quotes");
 
             let state = self.finalized_state.clone().into();
             self.completed_block += 1;
@@ -308,6 +309,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .dex_quotes
                 .remove(&self.completed_block)
                 .unwrap_or(DexQuotes(vec![]));
+
+            info!(dex_quotes = res.0.len(), "got dex quotes");
 
             let state = self.finalized_state.clone().into();
             self.completed_block += 1;
