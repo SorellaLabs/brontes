@@ -19,7 +19,6 @@ impl TracingProvider for TracingClient {
         block_overrides: Option<Box<BlockOverrides>>,
     ) -> ProviderResult<Bytes> {
         // NOTE: these types are equivalent, however we want ot
-        info!(?request, "making call");
         EthApiServer::call(&self.api, request, block_number, state_overrides, block_overrides)
             .await
             .map_err(|_| reth_provider::ProviderError::StateRootNotAvailableForHistoricalBlock)
