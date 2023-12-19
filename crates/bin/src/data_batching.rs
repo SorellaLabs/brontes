@@ -182,7 +182,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
                 && self.processing_futures.is_empty()
             {
                 return Poll::Ready(())
-            } else {
+            } else if self.current_block != self.end_block {
                 self.current_block += 1;
                 self.start_next_block();
             }
