@@ -54,7 +54,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         libmdbx: &'db Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>; N],
     ) -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel(100_000);
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx);
 
         let tx = libmdbx.ro_tx().unwrap();

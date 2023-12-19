@@ -77,10 +77,9 @@ impl DexPrices {
 
     pub fn price_after(&self, pair: Pair, tx: usize) -> Rational {
         let Some(keys) = self.quotes.get_pair_keys(pair, tx) else {
-            // info!(?pair, tx_idx=%tx, "failed to get price for");
+            info!(?pair, tx_idx=%tx, "failed to get price for");
             return Rational::from(1)
         };
-        info!(?pair, tx_idx=%tx, "got keys for");
         let mut price = Rational::ZERO;
 
         for hop in keys {
@@ -100,7 +99,7 @@ impl DexPrices {
             if weight == Rational::ZERO {
                 // can no longer convert
                 tracing::error!("no hops for pool");
-                return Rational::from(1)
+                panic!("shit");
             }
 
             if price == Rational::ZERO {
@@ -134,14 +133,6 @@ pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
 
 impl DexQuotes {
     pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> Option<&Vec<PoolKeysForPair>> {
-        let bit = self
-            .0
-            .iter()
-            .enumerate()
-            .map(|(i, f)| (i, f.is_some()))
-            .collect::<Vec<_>>();
-        println!("{bit:#?}");
-
         self.0.get(tx)?.as_ref()?.get(&pair)
     }
 }
