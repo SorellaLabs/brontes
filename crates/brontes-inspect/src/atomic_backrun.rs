@@ -47,7 +47,7 @@ impl Inspector for AtomicBackrunInspector<'_> {
                 let root = tree.get_root(tx)?;
                 let idx = root.get_block_position();
                 // not atomic
-                if swaps.len() == 1 {
+                if swaps.iter().filter(|s| s.is_swap()).count() <= 1 {
                     return None
                 }
 
