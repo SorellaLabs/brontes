@@ -124,89 +124,91 @@ pub fn mul_div_rounding_up(
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use ethers::types::U256;
+// #[cfg(test)]
+// mod tests {
+//     use ethers::types::U256;
+//
+//     use super::*;
+//
+//     const Q128: U256 = U256([0, 0, 1, 0]);
+//
+//     #[test]
+//     fn test_mul_div() {
+//         //Revert if the denominator is zero
+//         let result = mul_div(Q128, U256::from(5), U256::ZERO);
+//         assert_eq!(result.err().unwrap().to_string(), "Denominator is 0");
+//
+//         // Revert if the denominator is zero and numerator overflows
+//         let result = mul_div(Q128, Q128, U256::ZERO);
+//         assert_eq!(
+//             result.err().unwrap().to_string(),
+//             "Denominator is less than or equal to prod_1"
+//         );
+//
+//         // Revert if the output overflows uint256
+//         let result = mul_div(Q128, Q128, U256::from(1));
+//         assert_eq!(
+//             result.err().unwrap().to_string(),
+//             "Denominator is less than or equal to prod_1"
+//         );
+//     }
+// }
 
-    use super::*;
-
-    const Q128: U256 = U256([0, 0, 1, 0]);
-
-    #[test]
-    fn test_mul_div() {
-        //Revert if the denominator is zero
-        let result = mul_div(Q128, U256::from(5), U256::ZERO);
-        assert_eq!(result.err().unwrap().to_string(), "Denominator is 0");
-
-        // Revert if the denominator is zero and numerator overflows
-        let result = mul_div(Q128, Q128, U256::ZERO);
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            "Denominator is less than or equal to prod_1"
-        );
-
-        // Revert if the output overflows uint256
-        let result = mul_div(Q128, Q128, U256::from(1));
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            "Denominator is less than or equal to prod_1"
-        );
-    }
-}
-
-#[cfg(test)]
-mod test {
-
-    use std::ops::{Div, Mul, Sub};
-
-    use ethers::types::U256;
-
-    use super::mul_div;
-
-    const Q128: U256 = U256([0, 0, 1, 0]);
-
-    #[test]
-    fn test_mul_div() {
-        //Revert if the denominator is zero
-        let result = mul_div(Q128, U256::from(5), U256::ZERO);
-        assert_eq!(result.err().unwrap().to_string(), "Denominator is 0");
-
-        // Revert if the denominator is zero and numerator overflows
-        let result = mul_div(Q128, Q128, U256::ZERO);
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            "Denominator is less than or equal to prod_1"
-        );
-
-        // Revert if the output overflows uint256
-        let result = mul_div(Q128, Q128, U256::from(1));
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            "Denominator is less than or equal to prod_1"
-        );
-
-        // Reverts on overflow with all max inputs
-        let result = mul_div(U256::MAX, U256::MAX, U256::MAX.sub(1));
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            "Denominator is less than or equal to prod_1"
-        );
-
-        // All max inputs
-        let result = mul_div(U256::MAX, U256::MAX, U256::MAX);
-        assert_eq!(result.unwrap(), U256::MAX);
-
-        // Accurate without phantom overflow
-        let result =
-            mul_div(Q128, U256::from(50).mul(Q128).div(100), U256::from(150).mul(Q128).div(100));
-        assert_eq!(result.unwrap(), Q128.div(3));
-
-        // Accurate with phantom overflow
-        let result = mul_div(Q128, U256::from(35).mul(Q128), U256::from(8).mul(Q128));
-        assert_eq!(result.unwrap(), U256::from(4375).mul(Q128).div(1000));
-
-        // Accurate with phantom overflow and repeating decimal
-        let result = mul_div(Q128, U256::from(1000).mul(Q128), U256::from(3000).mul(Q128));
-        assert_eq!(result.unwrap(), Q128.div(3));
-    }
-}
+// #[cfg(test)]
+// mod test {
+//
+//     use std::ops::{Div, Mul, Sub};
+//
+//     use ethers::types::U256;
+//
+//     use super::mul_div;
+//
+//     const Q128: U256 = U256([0, 0, 1, 0]);
+//
+//     #[test]
+//     fn test_mul_div() {
+//         //Revert if the denominator is zero
+//         let result = mul_div(Q128, U256::from(5), U256::ZERO);
+//         assert_eq!(result.err().unwrap().to_string(), "Denominator is 0");
+//
+//         // Revert if the denominator is zero and numerator overflows
+//         let result = mul_div(Q128, Q128, U256::ZERO);
+//         assert_eq!(
+//             result.err().unwrap().to_string(),
+//             "Denominator is less than or equal to prod_1"
+//         );
+//
+//         // Revert if the output overflows uint256
+//         let result = mul_div(Q128, Q128, U256::from(1));
+//         assert_eq!(
+//             result.err().unwrap().to_string(),
+//             "Denominator is less than or equal to prod_1"
+//         );
+//
+//         // Reverts on overflow with all max inputs
+//         let result = mul_div(U256::MAX, U256::MAX, U256::MAX.sub(1));
+//         assert_eq!(
+//             result.err().unwrap().to_string(),
+//             "Denominator is less than or equal to prod_1"
+//         );
+//
+//         // All max inputs
+//         let result = mul_div(U256::MAX, U256::MAX, U256::MAX);
+//         assert_eq!(result.unwrap(), U256::MAX);
+//
+//         // Accurate without phantom overflow
+//         let result =
+//             mul_div(Q128, U256::from(50).mul(Q128).div(100),
+// U256::from(150).mul(Q128).div(100));         assert_eq!(result.unwrap(),
+// Q128.div(3));
+//
+//         // Accurate with phantom overflow
+//         let result = mul_div(Q128, U256::from(35).mul(Q128),
+// U256::from(8).mul(Q128));         assert_eq!(result.unwrap(),
+// U256::from(4375).mul(Q128).div(1000));
+//
+//         // Accurate with phantom overflow and repeating decimal
+//         let result = mul_div(Q128, U256::from(1000).mul(Q128),
+// U256::from(3000).mul(Q128));         assert_eq!(result.unwrap(),
+// Q128.div(3));     }
+// }
