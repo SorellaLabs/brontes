@@ -10,6 +10,7 @@ use reth_primitives::U256;
 
 pub mod classified_mev;
 pub mod extra_processing;
+pub mod libmdbx_utils;
 pub mod normalized_actions;
 pub mod structured_trace;
 pub mod traits;

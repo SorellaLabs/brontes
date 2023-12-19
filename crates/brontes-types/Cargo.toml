@@ -41,6 +41,7 @@ alloy-primitives = { workspace = true, features = ["serde"] }
 alloy-sol-types.workspace = true
 alloy-sol-macro.workspace = true
 alloy-dyn-abi.workspace = true
+alloy-rlp.workspace = true
 parking_lot.workspace = true
 petgraph = "0.6.4"
 derive_more.workspace = true

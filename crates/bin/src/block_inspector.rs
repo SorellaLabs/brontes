@@ -4,7 +4,10 @@ use std::{
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
+use brontes_core::{
+    decoding::{Parser, TracingProvider},
+    missing_decimals::MissingDecimals,
+};
 use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
@@ -14,7 +17,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::TimeTree,
 };
-use futures::{Future, FutureExt};
+use futures::{join, Future, FutureExt};
 use tracing::info;
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;

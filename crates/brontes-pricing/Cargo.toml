@@ -17,6 +17,7 @@ thiserror.workspace = true
 # reth 
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
+reth-db.workspace = true
 
 # tracing
 tracing.workspace = true
@@ -33,6 +34,8 @@ serde_json.workspace = true
 erased-serde = "0.3.31"
 serde_with.workspace = true
 serde_repr.workspace = true
+alloy-rlp = { workspace = true, features = ["arrayvec"] }
+
 
 # misc
 phf.workspace = true
@@ -40,7 +43,7 @@ strum = { workspace = true, features = ["derive"] }
 auto_impl.workspace = true
 alloy-primitives = { workspace = true, features = ["serde"] }
 alloy-sol-types.workspace = true
-alloy-sol-macro.workspace = true
+alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-dyn-abi.workspace = true
 parking_lot.workspace = true
 petgraph = "0.6.4"
@@ -48,3 +51,12 @@ derive_more.workspace = true
 ethers = "2.0.11"
 async-trait.workspace = true
 num-bigfloat = "1.7.0"
+parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
+reth-codecs.workspace = true
+codecs-derive.workspace = true
+proptest = "1.4"
+proptest-derive = "0.4"
+arbitrary = "1.3"
+rand = "0.8.5"
+modular-bitfield = "0.11.2"
+bytes = "1.5"
