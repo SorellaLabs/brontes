@@ -439,7 +439,7 @@ pub mod test {
     async fn test_on_pool_resolve() {
         dotenv::dotenv().ok();
         init_tracing();
-        info!("starting tests");
+        info!("initing tests");
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
@@ -453,6 +453,8 @@ pub mod test {
             .unwrap();
 
         let mut pricer = init(&libmdbx, rx, quote, 18500000, &tracer).await;
+
+        info!("starting tests");
 
         let handle = tokio::spawn(async move {
             let res = pricer.next().await;
@@ -487,13 +489,16 @@ pub mod test {
         poolupdate.action = BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t0, t3);
         let _ = tx.send(poolupdate.clone()).unwrap();
 
+        info!("triggering next block");
         // trigger next block
         poolupdate.block += 1;
         poolupdate.action = BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t1, t3);
         let _ = tx.send(poolupdate.clone()).unwrap();
+
         let (handle, dex_prices) = handle.await.unwrap();
 
         let (block, prices) = dex_prices.unwrap();
+        info!(?prices, "got prices");
 
         // default pairs
         let p0 = Pair(t0, t1);
