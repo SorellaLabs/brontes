@@ -6,7 +6,6 @@ use std::{
     time::SystemTime,
 };
 
-use alloy_primitives::{Address, FixedBytes, Uint, U160};
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
@@ -25,107 +24,6 @@ use reth_db::{cursor::DbCursorRO, transaction::DbTx};
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
 use tracing::info;
-
-// takes the composer + db and will process data and insert it into libmdx
-pub struct ResultProcessing<'db, const N: usize> {
-    database: &'db Libmdbx,
-    composer: Composer<'db, N>,
-}
-
-impl<'db, const N: usize> ResultProcessing<'db, N> {
-    pub fn new(
-        db: &'db Libmdbx,
-        inspectors: &'db [&'db Box<dyn Inspector>; N],
-        tree: Arc<TimeTree<Actions>>,
-        meta_data: Arc<Metadata>,
-    ) -> Self {
-        let composer = Composer::new(inspectors, tree, meta_data);
-        Self { database: db, composer }
-    }
-}
-
-impl<const N: usize> Future for ResultProcessing<'_, N> {
-    type Output = ();
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
-            self.database
-                .insert_classified_data(block_details, mev_details);
-
-            return Poll::Ready(())
-        }
-        Poll::Pending
-    }
-}
-
-pub struct WaitingForPricerFuture<T: TracingProvider> {
-    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexPrices)>)>,
-    pending_trees: HashMap<u64, (TimeTree<Actions>, MetadataDB)>,
-}
-
-impl<T: TracingProvider> WaitingForPricerFuture<T> {
-    pub fn new(mut pricer: BrontesBatchPricer<T>) -> Self {
-        let future = Box::pin(async move {
-            let res = pricer.next().await;
-            (pricer, res)
-        });
-
-        let handle = tokio::spawn(future);
-
-        Self { handle, pending_trees: HashMap::default() }
-    }
-
-    fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
-        let future = Box::pin(async move {
-            let res = pricer.next().await;
-            (pricer, res)
-        });
-
-        let handle = tokio::spawn(future);
-        self.handle = handle;
-    }
-
-    pub fn add_pending_inspection(
-        &mut self,
-        block: u64,
-        tree: TimeTree<Actions>,
-        meta: MetadataDB,
-    ) {
-        assert!(
-            self.pending_trees.insert(block, (tree, meta)).is_none(),
-            "traced a duplicate block"
-        );
-    }
-
-    pub fn is_complete(&self) -> bool {
-        self.pending_trees.is_empty()
-    }
-}
-
-impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
-    type Item = (TimeTree<Actions>, Metadata);
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if let Poll::Ready(handle) = self.handle.poll_unpin(cx) {
-            let (pricer, inner) = handle.unwrap();
-            self.resechedule(pricer);
-
-            if let Some((block, prices)) = inner {
-                let Some((tree, meta)) = self.pending_trees.remove(&block) else {
-                    return Poll::Ready(None)
-                };
-
-                let finalized_meta = meta.into_finalized_metadata(prices);
-                return Poll::Ready(Some((tree, finalized_meta)))
-            } else {
-                // means we have completed chunks
-                return Poll::Ready(None)
-            }
-        }
-
-        Poll::Pending
-    }
-}
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (TimeTree<Actions>, MetadataDB)> + Send + 'a>>;
 
@@ -162,8 +60,6 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let tx = libmdbx.ro_tx().unwrap();
         let binding_tx = libmdbx.ro_tx().unwrap();
         let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
-        // let unit = U160::from_be_bytes::<20>([255;20]);
-        // let amount = U160::from(10);
 
         let mut pairs = HashMap::new();
 
@@ -296,6 +192,107 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
             return Poll::Ready(())
         }
 
+        Poll::Pending
+    }
+}
+
+pub struct WaitingForPricerFuture<T: TracingProvider> {
+    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexPrices)>)>,
+    pending_trees: HashMap<u64, (TimeTree<Actions>, MetadataDB)>,
+}
+
+impl<T: TracingProvider> WaitingForPricerFuture<T> {
+    pub fn new(mut pricer: BrontesBatchPricer<T>) -> Self {
+        let future = Box::pin(async move {
+            let res = pricer.next().await;
+            (pricer, res)
+        });
+
+        let handle = tokio::spawn(future);
+
+        Self { handle, pending_trees: HashMap::default() }
+    }
+
+    fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
+        let future = Box::pin(async move {
+            let res = pricer.next().await;
+            (pricer, res)
+        });
+
+        let handle = tokio::spawn(future);
+        self.handle = handle;
+    }
+
+    pub fn add_pending_inspection(
+        &mut self,
+        block: u64,
+        tree: TimeTree<Actions>,
+        meta: MetadataDB,
+    ) {
+        assert!(
+            self.pending_trees.insert(block, (tree, meta)).is_none(),
+            "traced a duplicate block"
+        );
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.pending_trees.is_empty()
+    }
+}
+
+impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
+    type Item = (TimeTree<Actions>, Metadata);
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        if let Poll::Ready(handle) = self.handle.poll_unpin(cx) {
+            let (pricer, inner) = handle.unwrap();
+            self.resechedule(pricer);
+
+            if let Some((block, prices)) = inner {
+                let Some((tree, meta)) = self.pending_trees.remove(&block) else {
+                    return Poll::Ready(None)
+                };
+
+                let finalized_meta = meta.into_finalized_metadata(prices);
+                return Poll::Ready(Some((tree, finalized_meta)))
+            } else {
+                // means we have completed chunks
+                return Poll::Ready(None)
+            }
+        }
+
+        Poll::Pending
+    }
+}
+
+// takes the composer + db and will process data and insert it into libmdx
+pub struct ResultProcessing<'db, const N: usize> {
+    database: &'db Libmdbx,
+    composer: Composer<'db, N>,
+}
+
+impl<'db, const N: usize> ResultProcessing<'db, N> {
+    pub fn new(
+        db: &'db Libmdbx,
+        inspectors: &'db [&'db Box<dyn Inspector>; N],
+        tree: Arc<TimeTree<Actions>>,
+        meta_data: Arc<Metadata>,
+    ) -> Self {
+        let composer = Composer::new(inspectors, tree, meta_data);
+        Self { database: db, composer }
+    }
+}
+
+impl<const N: usize> Future for ResultProcessing<'_, N> {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
+            self.database
+                .insert_classified_data(block_details, mev_details);
+
+            return Poll::Ready(())
+        }
         Poll::Pending
     }
 }

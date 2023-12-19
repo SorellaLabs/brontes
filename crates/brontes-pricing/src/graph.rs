@@ -16,6 +16,7 @@ use petgraph::{
     prelude::*,
     visit::{IntoEdges, VisitMap, Visitable},
 };
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::info;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -64,7 +65,9 @@ pub struct PairGraph {
 impl PairGraph {
     pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
         let t0 = SystemTime::now();
-        let mut graph = UnGraph::<(), HashSet<PoolPairInformation>, usize>::default();
+
+        let mut graph =
+            UnGraph::<(), HashSet<PoolPairInformation>, usize>::with_capacity(500_000, 500_000);
 
         let mut addr_to_index = HashMap::default();
         let mut connections: HashMap<
@@ -74,7 +77,7 @@ impl PairGraph {
 
         let mut known_pairs: HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>> = HashMap::new();
 
-        for ((pool_addr, dex), pair) in map.clone() {
+        for ((pool_addr, dex), pair) in map {
             // add the pool known in both directions
             let entry = known_pairs.entry(pair).or_default();
             insert_known_pair(
@@ -139,9 +142,12 @@ impl PairGraph {
         }
 
         graph.extend_with_edges(connections.into_values().flat_map(|(node0, edges)| {
-            edges.into_iter().map(move |(_, pools, adjacent)| {
-                (node0, adjacent, pools.into_iter().collect::<HashSet<_>>())
-            })
+            edges
+                .into_par_iter()
+                .map(move |(_, pools, adjacent)| {
+                    (node0, adjacent, pools.into_iter().collect::<HashSet<_>>())
+                })
+                .collect::<Vec<_>>()
         }));
 
         let t1 = SystemTime::now();
