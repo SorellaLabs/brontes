@@ -7,16 +7,24 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
-use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
-use tracing::error;
+use futures::{
+    stream::{FuturesOrdered, FuturesUnordered},
+    Future, Stream, StreamExt,
+};
+use tracing::{error, info};
 
-use crate::{types::PoolState, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, PoolUpdate};
+use crate::{
+    errors::AmmError, types::PoolState, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
+    PoolUpdate,
+};
 
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
     pool_buf:          HashMap<Address, Vec<PoolUpdate>>,
-    pool_load_futures:
-        FuturesUnordered<Pin<Box<dyn Future<Output = (u64, Address, PoolState)> + Send>>>,
+    // we need to keep order here or else our pricing will be off
+    pool_load_futures: FuturesOrdered<
+        Pin<Box<dyn Future<Output = Result<(u64, Address, PoolState), (u64, AmmError)>> + Send>>,
+    >,
     // the different blocks that we are currently fetching
     req_per_block:     HashMap<u64, u64>,
 }
@@ -25,7 +33,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
             pool_buf: HashMap::default(),
-            pool_load_futures: FuturesUnordered::default(),
+            pool_load_futures: FuturesOrdered::default(),
             provider,
             req_per_block: HashMap::default(),
         }
@@ -46,30 +54,34 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         *self.req_per_block.entry(block_number).or_default() += 1;
 
         match ex_type {
-            StaticBindingsDb::UniswapV2 => self.pool_load_futures.push(Box::pin(async move {
-                let pool = UniswapV2Pool::new_load_on_block(address, provider, block_number)
-                    .await
-                    .unwrap();
-                (block_number, address, PoolState::new(crate::types::PoolVariants::UniswapV2(pool)))
-            })),
-            StaticBindingsDb::UniswapV3 => {
-                self.pool_load_futures.push(Box::pin(async move {
+            StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
+                self.pool_load_futures.push_back(Box::pin(async move {
+                    let pool = UniswapV2Pool::new_load_on_block(address, provider, block_number)
+                        .await
+                        .map_err(|e| (block_number, e))?;
+                    Ok((
+                        block_number,
+                        address,
+                        PoolState::new(crate::types::PoolVariants::UniswapV2(pool)),
+                    ))
+                }))
+            }
+            StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
+                self.pool_load_futures.push_back(Box::pin(async move {
                     let pool = UniswapV3Pool::new_from_address(address, block_number, provider)
                         .await
-                        .unwrap();
-                    (
+                        .map_err(|e| (block_number, e))?;
+                    Ok((
                         block_number,
                         address,
                         PoolState::new(crate::types::PoolVariants::UniswapV3(pool)),
-                    )
+                    ))
                 }));
             }
             rest @ _ => {
                 error!(exchange =?ex_type, "no state updater is build for");
             }
         }
-
-        todo!()
     }
 
     pub fn is_loading(&self, k: &Address) -> bool {
@@ -77,10 +89,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     }
 
     pub fn buffer_update(&mut self, k: &Address, update: PoolUpdate) {
-        self.pool_buf
-            .get_mut(k)
-            .expect("buffered lazy exchange when no exchange future was found")
-            .push(update);
+        self.pool_buf.entry(*k).or_default().push(update);
     }
 
     pub fn is_empty(&self) -> bool {
@@ -95,16 +104,31 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if let Poll::Ready(Some((block, pool, state))) = self.pool_load_futures.poll_next_unpin(cx)
-        {
-            if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
-                *(o.get_mut()) -= 1;
-            } else {
-                unreachable!()
-            }
+        if let Poll::Ready(Some((result))) = self.pool_load_futures.poll_next_unpin(cx) {
+            match result {
+                Ok((block, addr, state)) => {
+                    info!("loaded pool");
+                    if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
+                        *(o.get_mut()) -= 1;
+                    } else {
+                        unreachable!()
+                    }
 
-            let buf = self.pool_buf.remove(&pool).unwrap();
-            return Poll::Ready(Some((state, buf)))
+                    let buf = self.pool_buf.remove(&addr).unwrap_or(vec![]);
+                    return Poll::Ready(Some((state, buf)))
+                }
+                Err((block, e)) => {
+                    error!(?e, "failed to load pool");
+
+                    if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
+                        *(o.get_mut()) -= 1;
+                    } else {
+                        unreachable!()
+                    }
+
+                    return Poll::Pending
+                }
+            }
         } else {
             Poll::Pending
         }

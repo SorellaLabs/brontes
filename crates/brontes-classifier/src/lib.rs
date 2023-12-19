@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use reth_db::mdbx::RO;
 use reth_primitives::{Address, Bytes};
 use reth_rpc_types::Log;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Sender, UnboundedSender};
 
 pub mod classifier;
 pub use classifier::*;
@@ -43,7 +43,7 @@ pub trait ActionCollection: Sync + Send {
         target_address: Address,
         logs: &Vec<Log>,
         db_tx: &LibmdbxTx<RO>,
-        tx: Sender<PoolUpdate>,
+        tx: UnboundedSender<PoolUpdate>,
         block: u64,
         tx_idx: u64,
     ) -> Option<Actions>;

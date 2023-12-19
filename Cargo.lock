@@ -1361,6 +1361,7 @@ dependencies = [
  "derive_more",
  "erased-serde",
  "ethers",
+ "eyre",
  "futures",
  "itertools 0.12.0",
  "malachite",
