@@ -80,7 +80,7 @@ impl AtomicBackrunInspector<'_> {
 
         let finalized_usd = self
             .inner
-            .usd_delta_dex_avg(idx, deltas.clone(), metadata.clone());
+            .usd_delta_dex_avg(idx, deltas.clone(), metadata.clone())?;
 
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
