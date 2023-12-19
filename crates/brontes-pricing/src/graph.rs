@@ -18,7 +18,7 @@ use petgraph::{
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInformation {
@@ -211,7 +211,10 @@ impl PairGraph {
         let Some(end_idx) = self.addr_to_index.get(&pair.1) else { return vec![].into_iter() };
 
         let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
-            .unwrap_or(vec![])
+            .unwrap_or_else(|| {
+                error!(?pair, "couldn't find path between pairs");
+                vec![]
+            })
             .into_iter()
             .tuple_windows()
             .map(|(base, quote)| {
@@ -286,7 +289,7 @@ where
             // be more accurate than routing though a shit-coin. This will also
             // help as nodes with better connectivity will be searched more than low
             // connectivity nodes
-            let next_score = node_score + max(0, 6 - connectivity as isize);
+            let next_score = node_score + max(0, 25 - connectivity as isize);
 
             match scores.entry(next) {
                 Occupied(ent) => {
