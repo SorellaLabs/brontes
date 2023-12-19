@@ -106,6 +106,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.current_block = msg.block
         }
 
+        // we want to capture these
+        if msg.action.is_transfer() {
+            self.update_dex_quotes(msg.block, msg.tx_idx, msg.get_pair(self.quote_asset).unwrap());
+            return None
+        }
+
         let addr = msg.get_pool_address();
 
         if self.mut_state.contains_key(&addr) {
