@@ -9,4 +9,4 @@ SELECT
         WHEN has(mempool_flow, '') THEN []
         ELSE mempool_flow
     END
-FROM brontes.metadata
+FROM brontes.metadata WHERE block_number >= ? AND block_number <= ?

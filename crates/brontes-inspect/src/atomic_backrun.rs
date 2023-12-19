@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use brontes_database::Metadata;
+use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::Actions,
@@ -13,18 +14,18 @@ use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
-pub struct AtomicBackrunInspector {
-    inner: SharedInspectorUtils,
+pub struct AtomicBackrunInspector<'db> {
+    inner: SharedInspectorUtils<'db>,
 }
 
-impl AtomicBackrunInspector {
-    pub fn new(quote: Address) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote) }
+impl<'db> AtomicBackrunInspector<'db> {
+    pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
+        Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
 #[async_trait::async_trait]
-impl Inspector for AtomicBackrunInspector {
+impl Inspector for AtomicBackrunInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<TimeTree<Actions>>,
@@ -45,6 +46,10 @@ impl Inspector for AtomicBackrunInspector {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
                 let idx = root.get_block_position();
+                // not atomic
+                if swaps.len() == 1 {
+                    return None
+                }
 
                 self.process_swaps(
                     tx,
@@ -60,7 +65,7 @@ impl Inspector for AtomicBackrunInspector {
     }
 }
 
-impl AtomicBackrunInspector {
+impl AtomicBackrunInspector<'_> {
     fn process_swaps(
         &self,
         tx_hash: B256,
@@ -83,8 +88,6 @@ impl AtomicBackrunInspector {
         if &finalized_usd - &gas_used_usd <= Rational::ZERO {
             return None
         }
-
-        println!("{:#?}", deltas);
 
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,

@@ -20,30 +20,6 @@ pub mod tree;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-// include!(concat!(env!("ABI_BUILD_DIR"), "/token_mapping.rs"));
-
-static DYN_MAP: OnceLock<RwLock<HashMap<[u8; 20], u8>>> = OnceLock::new();
-
-pub fn try_get_decimals(_address: &[u8; 20]) -> Option<u8> {
-    // if let Some(value) = TOKEN_TO_DECIMALS.get(address) {
-    //     Some(*value)
-    // } else {
-    //     DYN_MAP
-    //         .get_or_init(|| RwLock::new(HashMap::new()))
-    //         .read()
-    //         .get(address)
-    //         .copied()
-    // }
-    None
-}
-
-pub fn cache_decimals(address: [u8; 20], decimals: u8) {
-    DYN_MAP
-        .get_or_init(|| RwLock::new(HashMap::new()))
-        .write()
-        .insert(address, decimals);
-}
-
 pub trait ToScaledRational {
     fn to_scaled_rational(self, decimals: u8) -> Rational;
 }
