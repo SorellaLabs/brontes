@@ -72,7 +72,6 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     block_number: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    tracing::info!(?pool.address, "getting pool data");
     let mut bytecode = IGetUniswapV3PoolDataBatchRequest::BYTECODE.to_vec();
     data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
