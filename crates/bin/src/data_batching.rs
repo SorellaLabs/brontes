@@ -4,12 +4,10 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_providers::provider::Provider;
-use alloy_transport_http::Http;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database_libmdbx::Libmdbx;
-use brontes_inspect::composer::Composer;
+use brontes_inspect::{composer::Composer, Inspector};
 use brontes_pricing::{types::DexPrices, BrontesBatchPricer};
 use futures::Future;
 
@@ -26,12 +24,51 @@ impl<'db, const N: usize> ResultProcessing<'db, N> {
 
 pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     parser:        &'db Parser<'db, T>,
-    provider:      &'db Provider<Http<reqwest::Client>>,
-    classifier:    &'db Classifier<'db>,
+    classifier:    Classifier<'db>,
     dex_price_map: BrontesBatchPricer<T>,
 
-    libmdbx:  &'db Libmdbx,
-    composer: Composer<'db, N>,
+    current_block: u64,
+    end_block:     u64,
+
+    libmdbx:    &'db Libmdbx,
+    inspectors: &'db [&'db Box<dyn Inspector>; N],
+}
+
+impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
+    pub fn new(
+        quote_asset: alloy_primitives::Address,
+        batch_id: u64,
+        run: u64,
+        start_block: u64,
+        end_block: u64,
+        parser: &'db Parser<'db, T>,
+        libmdbx: &'db Libmdbx,
+        inspectors: &'db [&'db Box<dyn Inspector>; N],
+    ) -> Self {
+        let (tx, rx) = tokio::sync::mpsc::channel(100);
+        let classifier = Classifier::new(libmdbx, tx);
+        let graph_data
+
+
+        let pricer = BrontesBatchPricer::new(
+            quote_asset,
+            run,
+            batch_id,
+            pair_graph,
+            rx,
+            parser.get_tracer(),
+            start_block,
+        );
+        Self {
+            parser,
+            classifier,
+            dex_price_map: pricer,
+            current_block: start_block,
+            end_block,
+            libmdbx,
+            inspectors,
+        }
+    }
 }
 
 impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
