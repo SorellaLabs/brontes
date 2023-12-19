@@ -6,10 +6,15 @@ use std::{
 
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::Pair;
+use brontes_database_libmdbx::{
+    tables::{AddressToProtocol, AddressToTokens},
+    Libmdbx,
+};
 use brontes_inspect::{composer::Composer, Inspector};
-use brontes_pricing::{types::DexPrices, BrontesBatchPricer};
+use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
 use futures::Future;
+use reth_db::{cursor::DbCursorRO, transaction::DbTx};
 
 pub struct ResultProcessing<'db, const N: usize> {
     database: &'db Libmdbx,
@@ -47,8 +52,23 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::channel(100);
         let classifier = Classifier::new(libmdbx, tx);
-        let graph_data
 
+        let tx = libmdbx.ro_tx().unwrap();
+        let binding_tx = libmdbx.ro_tx().unwrap();
+        let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
+        let mut pairs = HashMap::new();
+
+        for value in all_addr_to_tokens.walk(None).unwrap() {
+            if let Ok((address, tokens)) = value {
+                let protocol = binding_tx
+                    .get::<AddressToProtocol>(address)
+                    .unwrap()
+                    .unwrap();
+                pairs.insert((address, protocol), Pair(tokens.token0, tokens.token1));
+            }
+        }
+
+        let pair_graph = PairGraph::init_from_hashmap(pairs);
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
