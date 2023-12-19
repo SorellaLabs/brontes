@@ -5,6 +5,7 @@ use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc::eth::error::EthResult;
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
+use tracing::info;
 
 use crate::TracingClient;
 
@@ -18,6 +19,7 @@ impl TracingProvider for TracingClient {
         block_overrides: Option<Box<BlockOverrides>>,
     ) -> ProviderResult<Bytes> {
         // NOTE: these types are equivalent, however we want ot
+        info!(?request, "making call");
         Ok(EthApiServer::call(&self.api, request, block_number, state_overrides, block_overrides)
             .await
             .unwrap())
