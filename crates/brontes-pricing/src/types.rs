@@ -3,17 +3,21 @@ use std::{collections::HashMap, sync::Arc};
 use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::{
-    extra_processing::Pair, impl_compress_decompress_for_encoded_decoded,
-    libmdbx_utils::serde_address_string, normalized_actions::Actions, Dexes,
+    exchanges::StaticBindingsDb, extra_processing::Pair,
+    impl_compress_decompress_for_encoded_decoded, libmdbx_utils::serde_address_string,
+    normalized_actions::Actions,
 };
 use bytes::BufMut;
 // use crate::exchanges::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_rpc_types::Log;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
 
-use crate::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, AutomatedMarketMaker};
+use crate::{
+    graph::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
+    AutomatedMarketMaker,
+};
 
 #[derive(
     Debug,
@@ -55,7 +59,6 @@ impl reth_db::table::Encode for PoolKey {
         buf
     }
 }
-
 impl_compress_decompress_for_encoded_decoded!(PoolKey);
 
 /// Block level pre-computed prices for all dexes
@@ -67,23 +70,59 @@ pub struct DexPrices {
 }
 
 impl DexPrices {
-    pub fn new() -> Self {
-        todo!()
+    pub fn new(state: Arc<HashMap<PoolKey, PoolStateSnapShot>>, quotes: DexQuotes) -> Self {
+        Self { state, quotes }
     }
 
     pub fn price_after(&self, pair: Pair, tx: usize) -> Rational {
         let keys = self.quotes.get_pair_keys(pair, tx);
+        let mut price = Rational::ZERO;
 
-        // self.quotes
-        todo!()
+        for hop in keys {
+            let mut pxw = Rational::ZERO;
+            let mut weight = Rational::ZERO;
+
+            for hop_pool in &hop.0 {
+                let pair_detail = self.state.get(&hop_pool.key).unwrap();
+                let res = pair_detail.get_price(hop_pool.base);
+                let tvl = pair_detail.get_tvl();
+
+                let weight_price = res * &tvl;
+
+                pxw += weight_price;
+                weight += tvl;
+            }
+            if price == Rational::ZERO {
+                price = pxw / weight;
+            } else {
+                price *= (pxw / weight);
+            }
+        }
+
+        price
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct DexQuotes(pub(crate) Vec<Option<HashMap<Pair, Vec<PoolKey>>>>);
+pub struct PoolKeyWithDirection {
+    pub key:  PoolKey,
+    pub base: Address,
+}
+
+impl PoolKeyWithDirection {
+    pub fn new(key: PoolKey, base: Address) -> Self {
+        Self { key, base }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PoolKeysForPair(pub Vec<PoolKeyWithDirection>);
+
+#[derive(Debug, Clone)]
+pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
 
 impl DexQuotes {
-    pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> &Vec<PoolKey> {
+    pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> &Vec<PoolKeysForPair> {
         self.0
             .get(tx)
             .expect("this should never be reached")
@@ -105,6 +144,13 @@ pub enum PoolStateSnapShot {
 impl_compress_decompress_for_encoded_decoded!(PoolStateSnapShot);
 
 impl PoolStateSnapShot {
+    pub fn get_tvl(&self) -> Rational {
+        match self {
+            PoolStateSnapShot::UniswapV2(v) => v.get_tvl(),
+            PoolStateSnapShot::UniswapV3(v) => v.get_tvl(),
+        }
+    }
+
     pub fn get_price(&self, base: Address) -> Rational {
         match self {
             PoolStateSnapShot::UniswapV2(v) => {
@@ -112,6 +158,25 @@ impl PoolStateSnapShot {
             }
             PoolStateSnapShot::UniswapV3(v) => {
                 Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
+            }
+        }
+    }
+
+    pub fn get_base_token(&self, token_0_in: bool) -> Address {
+        match self {
+            PoolStateSnapShot::UniswapV3(v) => {
+                if token_0_in {
+                    v.token_a
+                } else {
+                    v.token_b
+                }
+            }
+            PoolStateSnapShot::UniswapV2(v) => {
+                if token_0_in {
+                    v.token_a
+                } else {
+                    v.token_b
+                }
             }
         }
     }

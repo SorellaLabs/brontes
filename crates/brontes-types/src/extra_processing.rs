@@ -7,6 +7,10 @@ use serde::{Deserialize, Serialize};
 pub struct Pair(pub Address, pub Address);
 
 impl Pair {
+    pub fn flip(self) -> Self {
+        Pair(self.1, self.0)
+    }
+
     pub fn has_base_edge(&self, addr: Address) -> bool {
         self.0 == addr
     }

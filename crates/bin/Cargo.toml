@@ -20,6 +20,7 @@ toml = "0.8.2"
 
 # Async
 tokio = { workspace = true, features = ["full", "tracing"] }
+async-scoped = { version = "0.7.1", features = ["use-tokio"] }
 futures.workspace = true
 
 reqwest.workspace = true
@@ -86,6 +87,7 @@ tests = [
   "brontes-classifier/tests",
   "brontes-inspect/tests",
 ]
-local = ["brontes-core/local"]
 
+local = ["brontes-core/local"]
+uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]
