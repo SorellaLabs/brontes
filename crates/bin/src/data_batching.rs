@@ -163,11 +163,9 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
 
         for value in all_addr_to_tokens.walk(None).unwrap() {
             if let Ok((address, tokens)) = value {
-                let protocol = binding_tx
-                    .get::<AddressToProtocol>(address)
-                    .unwrap()
-                    .unwrap();
-                pairs.insert((address, protocol), Pair(tokens.token0, tokens.token1));
+                if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(address) {
+                    pairs.insert((address, protocol), Pair(tokens.token0, tokens.token1));
+                }
             }
         }
 
