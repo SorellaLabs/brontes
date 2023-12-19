@@ -7,6 +7,7 @@ use std::{
     sync::Arc,
     task::Poll,
 };
+use tracing::warn;
 
 use alloy_primitives::{Address, U256};
 use brontes_types::{
@@ -210,6 +211,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 )
             })
             .collect::<Vec<_>>();
+        if pool_keys.is_empty() {
+            warn!(?pool_pair, "no keys found for pair");
+            return
+        }
+
         match self.dex_quotes.entry(block) {
             Entry::Occupied(mut quotes) => {
                 let q = quotes.get_mut();
