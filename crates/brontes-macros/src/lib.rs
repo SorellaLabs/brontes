@@ -292,7 +292,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: Address,
                 logs: &Vec<Log>,
                 db_tx: &LibmdbxTx<RO>,
-                tx: Sender<PoolUpdate>,
+                tx: UnboundedSender<PoolUpdate>,
                 block: u64,
                 tx_idx: u64,
             ) -> Option<Actions> {
@@ -314,7 +314,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             logs: logs.clone(),
                             action: res.clone()
                         };
-                        let _ = tx.try_send(pool_update);
+                        let _ = tx.send(pool_update);
                     }
 
                     return res
@@ -336,7 +336,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                                 tx_idx,
                                 action: res.clone()
                             };
-                            let _ = tx.try_send(pool_update);
+                            let _ = tx.send(pool_update);
 
                         }
 

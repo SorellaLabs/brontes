@@ -9,10 +9,10 @@ use crate::tables::TokenDecimals;
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone, Row)]
-pub(crate) struct TokenDecimalsData {
+pub struct TokenDecimalsData {
     #[serde(with = "serde_address_string")]
-    address:  Address,
-    decimals: u8,
+    pub address:  Address,
+    pub decimals: u8,
 }
 
 impl LibmdbxData<TokenDecimals> for TokenDecimalsData {

@@ -3,13 +3,11 @@ use std::{pin::Pin, sync::Arc, task::Poll};
 use alloy_primitives::{Address, Bytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
-use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::Libmdbx;
-use brontes_types::cache_decimals;
-use futures::{future::join, join, stream::FuturesUnordered, Future, StreamExt};
+use futures::{future::join, stream::FuturesUnordered, Future, StreamExt};
 use reth_provider::ProviderError;
 use reth_rpc_types::{CallInput, CallRequest};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::decoding::TracingProvider;
 
@@ -22,18 +20,13 @@ type DecimalQuery = Pin<Box<dyn Future<Output = (Address, Result<Bytes, Provider
 pub struct MissingDecimals<'db, T: TracingProvider + 'db> {
     provider:         Arc<T>,
     pending_decimals: FuturesUnordered<DecimalQuery>,
-    db_future:        FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
-    _database:        &'db Libmdbx,
+    database:         &'db Libmdbx,
 }
 
 impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
     pub fn new(provider: Arc<T>, db: &'db Libmdbx, missing: Vec<Address>) -> Self {
-        let mut this = Self {
-            provider,
-            pending_decimals: FuturesUnordered::default(),
-            db_future: FuturesUnordered::default(),
-            _database: db,
-        };
+        let mut this =
+            Self { provider, pending_decimals: FuturesUnordered::default(), database: db };
         this.missing_decimals(missing);
 
         this
@@ -60,8 +53,9 @@ impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
             let Some(dec) = decimalsCall::abi_decode_returns(&res, false).ok() else { return };
             let dec = dec._0;
             info!(?dec, ?addr, "got new decimal");
-            cache_decimals(**addr, dec);
-            self.db_future.push(Box::pin(async {}));
+            if let Err(e) = self.database.insert_decimals(addr, dec) {
+                error!(?e);
+            }
         } else {
             debug!(?addr, "Token request failed for token");
         }
@@ -79,9 +73,7 @@ impl<T: TracingProvider> Future for MissingDecimals<'_, T> {
             self.on_query_res(res.0, res.1);
         }
 
-        while let Poll::Ready(Some(_)) = self.db_future.poll_next_unpin(cx) {}
-
-        if self.pending_decimals.is_empty() && self.db_future.is_empty() {
+        if self.pending_decimals.is_empty() {
             Poll::Ready(())
         } else {
             Poll::Pending

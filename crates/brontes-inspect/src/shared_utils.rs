@@ -5,9 +5,10 @@ use std::{
 };
 
 use brontes_database::{Metadata, Pair};
+use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
-    try_get_decimals, ToScaledRational,
+    ToScaledRational,
 };
 use malachite::{
     num::basic::traits::{One, Zero},
@@ -16,18 +17,25 @@ use malachite::{
 use reth_primitives::Address;
 
 #[derive(Debug)]
-pub struct SharedInspectorUtils(Address);
+pub struct SharedInspectorUtils<'db> {
+    quote: Address,
+    db:    &'db Libmdbx,
+}
 
-impl SharedInspectorUtils {
-    pub fn new(quote_address: Address) -> SharedInspectorUtils {
-        SharedInspectorUtils(quote_address)
+impl<'db> SharedInspectorUtils<'db> {
+    pub fn new(quote_address: Address, db: &'db Libmdbx) -> Self {
+        SharedInspectorUtils { quote: quote_address, db }
+    }
+
+    pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
+        self.db.try_get_decimals(address)
     }
 }
 
 type SwapTokenDeltas = HashMap<Address, Rational>;
 type TokenCollectors = Vec<Address>;
 
-impl SharedInspectorUtils {
+impl SharedInspectorUtils<'_> {
     /// Calculates the swap deltas.
     pub(crate) fn calculate_swap_deltas(
         &self,
@@ -41,10 +49,10 @@ impl SharedInspectorUtils {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-                let Some(decimals_in) = try_get_decimals(&swap.token_in.0 .0) else {
+                let Some(decimals_in) = self.db.try_get_decimals(swap.token_in) else {
                     continue;
                 };
-                let Some(decimals_out) = try_get_decimals(&swap.token_out.0 .0) else {
+                let Some(decimals_out) = self.db.try_get_decimals(swap.token_out) else {
                     continue;
                 };
 
@@ -100,10 +108,10 @@ impl SharedInspectorUtils {
         token_address: Address,
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {
-        if token_address == self.0 {
+        if token_address == self.quote {
             return Some(Rational::ONE)
         }
-        let pair = Pair(token_address, self.0);
+        let pair = Pair(token_address, self.quote);
 
         Some(metadata.dex_quotes.price_after(pair, block_position))
     }
@@ -118,7 +126,7 @@ impl SharedInspectorUtils {
         deltas
             .into_iter()
             .map(|(token_out, _value)| {
-                let pair = Pair(token_out, self.0);
+                let pair = Pair(token_out, self.quote);
                 metadata.dex_quotes.price_after(pair, block_position)
             })
             .sum::<Rational>()
@@ -135,7 +143,7 @@ impl SharedInspectorUtils {
 
             for transfer in transfers.into_iter() {
                 // normalize token decimals
-                let Some(decimals) = try_get_decimals(&transfer.token.0 .0) else {
+                let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
                     continue;
                 };
 

@@ -310,14 +310,15 @@ impl AutomatedMarketMaker for UniswapV3Pool {
             self.token_a,
             block_number,
         )
-        .await;
+        .await?;
+
         let r1 = make_call_request(
             IErc20::balanceOfCall::new((self.address,)),
             middleware,
             self.token_b,
             block_number,
         )
-        .await;
+        .await?;
 
         self.reserve_0 = r0._0;
         self.reserve_1 = r1._0;
@@ -906,7 +907,7 @@ impl UniswapV3Pool {
         middleware: Arc<M>,
     ) -> Result<i32, AmmError> {
         let call = IUniswapV3Pool::tickSpacingCall::new(());
-        let res = make_call_request(call, middleware, self.address, None).await;
+        let res = make_call_request(call, middleware, self.address, None).await?;
         Ok(res._0)
     }
 
@@ -968,7 +969,7 @@ impl UniswapV3Pool {
             self.address,
             Some(block),
         )
-        .await)
+        .await?)
     }
 
     //

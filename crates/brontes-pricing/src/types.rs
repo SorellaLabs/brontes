@@ -13,6 +13,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_rpc_types::Log;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
+use tracing::info;
 
 use crate::{
     graph::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
@@ -75,7 +76,13 @@ impl DexPrices {
     }
 
     pub fn price_after(&self, pair: Pair, tx: usize) -> Rational {
-        let keys = self.quotes.get_pair_keys(pair, tx);
+        if pair.0 == pair.1 {
+            return Rational::from(1)
+        }
+        let Some(keys) = self.quotes.get_pair_keys(pair, tx) else {
+            info!(?pair, tx_idx=%tx, "failed to get price for");
+            return Rational::from(1)
+        };
         let mut price = Rational::ZERO;
 
         for hop in keys {
@@ -92,6 +99,12 @@ impl DexPrices {
                 pxw += weight_price;
                 weight += tvl;
             }
+            if weight == Rational::ZERO {
+                // can no longer convert
+                tracing::error!("no hops for pool");
+                return Rational::from(1)
+            }
+
             if price == Rational::ZERO {
                 price = pxw / weight;
             } else {
@@ -122,14 +135,8 @@ pub struct PoolKeysForPair(pub Vec<PoolKeyWithDirection>);
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
 
 impl DexQuotes {
-    pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> &Vec<PoolKeysForPair> {
-        self.0
-            .get(tx)
-            .expect("this should never be reached")
-            .as_ref()
-            .expect("unreachable")
-            .get(&pair)
-            .unwrap()
+    pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> Option<&Vec<PoolKeysForPair>> {
+        self.0.get(tx)?.as_ref()?.get(&pair)
     }
 }
 
@@ -157,7 +164,13 @@ impl PoolStateSnapShot {
                 Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
             }
             PoolStateSnapShot::UniswapV3(v) => {
-                Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
+                let price = v.calculate_price(base);
+                if price.is_err() {
+                    tracing::error!(?price, "failed to get price");
+                    return Rational::ZERO
+                }
+
+                Rational::try_from(price.unwrap()).unwrap()
             }
         }
     }
@@ -224,6 +237,10 @@ impl PoolState {
         Self { variant, update_nonce: 0 }
     }
 
+    pub fn nonce(&self) -> u16 {
+        self.update_nonce
+    }
+
     pub fn increment_state(&mut self, state: PoolUpdate) -> (u16, PoolStateSnapShot) {
         self.update_nonce += 1;
         self.variant.increment_state(state.action, state.logs);
@@ -252,10 +269,10 @@ impl PoolVariants {
     fn increment_state(&mut self, _action: Actions, logs: Vec<Log>) {
         for log in logs {
             let log = alloy_primitives::Log::new(log.topics, log.data).unwrap();
-            match self {
-                PoolVariants::UniswapV3(a) => a.sync_from_log(log).unwrap(),
-                PoolVariants::UniswapV2(a) => a.sync_from_log(log).unwrap(),
-            }
+            let _ = match self {
+                PoolVariants::UniswapV3(a) => a.sync_from_log(log),
+                PoolVariants::UniswapV2(a) => a.sync_from_log(log),
+            };
         }
         // match self {
         //     PoolVariants::UniswapV3(a) =>
@@ -287,11 +304,13 @@ impl PoolUpdate {
 
     // we currently only use this in order to fetch the pair for when its new or to
     // fetch all pairs of it. this
-    pub fn get_pair(&self) -> Option<Pair> {
+    pub fn get_pair(&self, quote: Address) -> Option<Pair> {
         match &self.action {
             Actions::Swap(s) => Some(Pair(s.token_in, s.token_out)),
             Actions::Mint(m) => Some(Pair(m.token[0], m.token[1])),
             Actions::Burn(b) => Some(Pair(b.token[0], b.token[1])),
+            Actions::Collect(b) => Some(Pair(b.token[0], b.token[1])),
+            Actions::Transfer(t) => Some(Pair(t.token, quote)),
             _ => None,
         }
     }

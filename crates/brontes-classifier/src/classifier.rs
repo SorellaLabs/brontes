@@ -7,13 +7,12 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{GasDetails, Node, Root, TimeTree},
-    try_get_decimals,
 };
 use hex_literal::hex;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{trace::parity::Action, Log};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 
 use crate::*;
 
@@ -24,11 +23,11 @@ const TRANSFER_TOPIC: B256 =
 #[derive(Debug, Clone)]
 pub struct Classifier<'db> {
     libmdbx: &'db Libmdbx,
-    sender:  Sender<PoolUpdate>,
+    sender:  UnboundedSender<PoolUpdate>,
 }
 
 impl<'db> Classifier<'db> {
-    pub fn new(libmdbx: &'db Libmdbx, sender: Sender<PoolUpdate>) -> Self {
+    pub fn new(libmdbx: &'db Libmdbx, sender: UnboundedSender<PoolUpdate>) -> Self {
         Self { libmdbx, sender }
     }
 
@@ -54,7 +53,7 @@ impl<'db> Classifier<'db> {
                     self.classify_node(trace.trace.remove(0), 0, header.number, tx_idx as u64);
 
                 if classification.is_transfer() {
-                    if try_get_decimals(&t_address.0 .0).is_none() {
+                    if self.libmdbx.try_get_decimals(t_address).is_none() {
                         missing_decimals.push(t_address.clone());
                     }
                 }
@@ -102,7 +101,7 @@ impl<'db> Classifier<'db> {
                     }
 
                     if classification.is_transfer() {
-                        if try_get_decimals(&t_address.0 .0).is_none() {
+                        if self.libmdbx.try_get_decimals(t_address).is_none() {
                             missing_decimals.push(t_address.clone());
                         }
                     }

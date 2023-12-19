@@ -18,8 +18,11 @@ pub const TICK_HIGH: I256 =
     I256::from_raw(U256::from_limbs([4998474450511881007, 15793544031827761793, 0, 0]));
 
 pub fn get_sqrt_ratio_at_tick(tick: i32) -> Result<U256, UniswapV3MathError> {
-    let abs_tick =
-        if tick < 0 { U256::from_be_bytes(tick.neg().to_be_bytes()) } else { U256::from(tick) };
+    let abs_tick = if tick < 0 {
+        U256::from(u32::from_be_bytes(tick.neg().to_be_bytes()))
+    } else {
+        U256::from(tick)
+    };
 
     if abs_tick > U256::from(MAX_TICK) {
         return Err(UniswapV3MathError::T)
@@ -28,7 +31,8 @@ pub fn get_sqrt_ratio_at_tick(tick: i32) -> Result<U256, UniswapV3MathError> {
     let mut ratio = if abs_tick & (U256::from(0x1)) != U256::ZERO {
         U256::from(0xfffcb933bd6fad37aa2d162d1a594001 as u128)
     } else {
-        U256::from_str_radix("100000000000000000000000000000000", 16).unwrap()
+        U256::from_str_radix("100000000000000000000000000000000", 16)
+            .map_err(|_| UniswapV3MathError::T)?
     };
 
     if !(abs_tick & (U256::from(0x2))).is_zero() {
@@ -195,8 +199,6 @@ pub fn get_tick_at_sqrt_ratio(sqrt_price_x_96: U256) -> Result<i32, UniswapV3Mat
 #[cfg(test)]
 mod test {
     use std::ops::Sub;
-
-    use ethers::types::U256;
 
     use super::*;
 
