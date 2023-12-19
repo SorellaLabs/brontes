@@ -3,7 +3,7 @@ pub mod exchanges;
 mod graph;
 pub mod types;
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     sync::Arc,
     task::Poll,
 };
@@ -14,7 +14,6 @@ use exchanges::lazy::LazyExchangeLoader;
 pub use exchanges::*;
 use futures::{Future, Stream, StreamExt};
 pub use graph::PairGraph;
-use serde::de;
 use tokio::sync::mpsc::Receiver;
 use tracing::info;
 use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
@@ -30,6 +29,8 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 
     current_block:   u64,
     completed_block: u64,
+
+    buffer: HashMap<u64, VecDeque<PoolUpdate>>,
 
     /// holds all token pairs for the given chunk.
     pair_graph:      PairGraph,
@@ -57,6 +58,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     ) -> Self {
         Self {
             quote_asset,
+            buffer: HashMap::default(),
             run,
             batch_id,
             update_rx,
@@ -93,6 +95,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
 
         let addr = msg.get_pool_address();
+
         if self.mut_state.contains_key(&addr) {
             self.update_known_state(addr, msg)
         } else if self.lazy_loader.is_loading(&addr) {
@@ -215,14 +218,25 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let addr = state.address();
         // init state
         self.mut_state.insert(addr, state);
+
         for update in updates {
-            self.on_message(update);
+            let block = update.block;
+            self.buffer.entry(block).or_default().push_back(update);
         }
+
         // if there are no requests and we have moved onto processing the next block,
         // then we will resolve this block. otherwise we will wait
         if self.lazy_loader.requests_for_block(&self.completed_block) == 0
             && self.completed_block < self.current_block
         {
+            // if all block requests are complete, lets apply all the state transitions we
+            // had for the given block which will allow us to generate all pricing
+            if let Some(buffer) = self.buffer.remove(&self.completed_block) {
+                for update in buffer {
+                    self.on_new_pool(update);
+                }
+            }
+
             let block = self.completed_block;
 
             let res = self
