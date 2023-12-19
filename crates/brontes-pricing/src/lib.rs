@@ -69,7 +69,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             mut_state: HashMap::default(),
             last_update: HashMap::default(),
             current_block,
-            completed_block: current_block - 1,
+            completed_block: current_block,
         }
     }
 
