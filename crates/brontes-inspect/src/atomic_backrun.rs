@@ -46,6 +46,10 @@ impl Inspector for AtomicBackrunInspector<'_> {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
                 let idx = root.get_block_position();
+                // not atomic
+                if swaps.len() == 1 {
+                    return None
+                }
 
                 self.process_swaps(
                     tx,
@@ -84,8 +88,6 @@ impl AtomicBackrunInspector<'_> {
         if &finalized_usd - &gas_used_usd <= Rational::ZERO {
             return None
         }
-
-        println!("{:#?}", deltas);
 
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,
