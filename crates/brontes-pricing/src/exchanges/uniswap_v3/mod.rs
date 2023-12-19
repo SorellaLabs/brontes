@@ -1299,7 +1299,7 @@ pub struct Tick {
 //     ) -> eyre::Result<(UniswapV3Pool, u64)> {
 //         let mut pool = UniswapV3Pool {
 //             address:
-// Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")?,            
+// Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")?,
 // ..Default::default()         };
 //
 //         let creation_block = 12369620;
@@ -1317,7 +1317,7 @@ pub struct Tick {
 //     ) -> eyre::Result<(UniswapV3Pool, u64)> {
 //         let mut pool = UniswapV3Pool {
 //             address:
-// Address::from_str("0xa6Cc3C2531FdaA6Ae1A3CA84c2855806728693e8")?,            
+// Address::from_str("0xa6Cc3C2531FdaA6Ae1A3CA84c2855806728693e8")?,
 // ..Default::default()         };
 //
 //         let creation_block = 12375680;
@@ -1337,8 +1337,8 @@ pub struct Tick {
 //
 //         let (pool, synced_block) =
 // initialize_usdc_weth_pool(middleware.clone()).await?;         let quoter =
-// IQuoter::new(             
-// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,            
+// IQuoter::new(
+// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,
 // middleware.clone(),         );
 //         let amount_in = U256::from_dec_str("100000000")?; // 100 USDC
 //
@@ -1397,8 +1397,8 @@ pub struct Tick {
 //
 //         let (pool, synced_block) =
 // initialize_usdc_weth_pool(middleware.clone()).await?;         let quoter =
-// IQuoter::new(             
-// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,            
+// IQuoter::new(
+// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,
 // middleware.clone(),         );
 //
 //         let amount_in = U256::from_dec_str("1000000000000000000")?; // 1 ETH
@@ -1459,8 +1459,8 @@ pub struct Tick {
 //
 //         let (pool, synced_block) =
 // initialize_weth_link_pool(middleware.clone()).await?;         let quoter =
-// IQuoter::new(             
-// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,            
+// IQuoter::new(
+// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,
 // middleware.clone(),         );
 //
 //         let amount_in = U256::from_dec_str("1000000000000000000")?; // 1 LINK
@@ -1521,8 +1521,8 @@ pub struct Tick {
 //
 //         let (pool, synced_block) =
 // initialize_weth_link_pool(middleware.clone()).await?;         let quoter =
-// IQuoter::new(             
-// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,            
+// IQuoter::new(
+// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,
 // middleware.clone(),         );
 //
 //         let amount_in = U256::from_dec_str("1000000000000000000")?; // 1 ETH
@@ -1583,8 +1583,8 @@ pub struct Tick {
 //
 //         let (pool, synced_block) =
 // initialize_usdc_weth_pool(middleware.clone()).await?;         let quoter =
-// IQuoter::new(             
-// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,            
+// IQuoter::new(
+// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,
 // middleware.clone(),         );
 //         let amount_in = U256::from_dec_str("100000000")?; // 100 USDC
 //
@@ -1643,8 +1643,8 @@ pub struct Tick {
 //
 //         let (pool, synced_block) =
 // initialize_usdc_weth_pool(middleware.clone()).await?;         let quoter =
-// IQuoter::new(             
-// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,            
+// IQuoter::new(
+// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,
 // middleware.clone(),         );
 //
 //         let amount_in = U256::from_dec_str("1000000000000000000")?; // 1 ETH
@@ -1705,8 +1705,8 @@ pub struct Tick {
 //
 //         let (pool, synced_block) =
 // initialize_weth_link_pool(middleware.clone()).await?;         let quoter =
-// IQuoter::new(             
-// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,            
+// IQuoter::new(
+// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,
 // middleware.clone(),         );
 //
 //         let amount_in = U256::from_dec_str("1000000000000000000")?; // 1 LINK
@@ -1767,8 +1767,8 @@ pub struct Tick {
 //
 //         let (pool, synced_block) =
 // initialize_weth_link_pool(middleware.clone()).await?;         let quoter =
-// IQuoter::new(             
-// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,            
+// IQuoter::new(
+// Address::from_str("0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6")?,
 // middleware.clone(),         );
 //
 //         let amount_in = U256::from_dec_str("1000000000000000000")?; // 1 ETH
@@ -1878,7 +1878,7 @@ pub struct Tick {
 //
 //         let mut pool = UniswapV3Pool {
 //             address:
-// Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")?,            
+// Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")?,
 // ..Default::default()         };
 //
 //         pool.sync(middleware).await?;
@@ -1895,7 +1895,7 @@ pub struct Tick {
 //
 //         let mut pool = UniswapV3Pool {
 //             address:
-// Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")?,            
+// Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")?,
 // ..Default::default()         };
 //
 //         pool.populate_data(None, middleware.clone()).await?;
@@ -1927,7 +1927,7 @@ pub struct Tick {
 //
 //         let mut pool = UniswapV3Pool {
 //             address:
-// Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")?,            
+// Address::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")?,
 // ..Default::default()         };
 //
 //         pool.populate_data(None, middleware.clone()).await?;
