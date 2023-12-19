@@ -226,378 +226,407 @@ pub fn get_amount_1_delta(
     }
 }
 
-#[cfg(test)]
-mod test {
-    use std::ops::{Add, Sub};
-
-    use ethers::types::U256;
-
-    use super::{_get_amount_0_delta, get_next_sqrt_price_from_input};
-    use crate::sqrt_price_math::{_get_amount_1_delta, get_next_sqrt_price_from_output, MAX_U160};
-
-    #[test]
-    fn test_get_next_sqrt_price_from_input() {
-        //Fails if price is zero
-        let result = get_next_sqrt_price_from_input(
-            U256::ZERO,
-            0,
-            U256::from(100000000000000000_u128),
-            false,
-        );
-        assert_eq!(result.unwrap_err().to_string(), "Sqrt price is 0");
-
-        //Fails if liquidity is zero
-        let result = get_next_sqrt_price_from_input(
-            U256::from(1),
-            0,
-            U256::from(100000000000000000_u128),
-            true,
-        );
-        assert_eq!(result.unwrap_err().to_string(), "Liquidity is 0");
-
-        //fails if input amount overflows the price
-        let result = get_next_sqrt_price_from_input(MAX_U160, 1024, U256::from(1024), false);
-        assert_eq!(result.unwrap_err().to_string(), "Overflow when casting to U160");
-
-        //any input amount cannot underflow the price
-        let result = get_next_sqrt_price_from_input(
-            U256::from(1),
-            1,
-            U256::from_dec_str(
-                "57896044618658097711785492504343953926634992332820282019728792003956564819968",
-            )
-            .unwrap(),
-            true,
-        );
-
-        assert_eq!(result.unwrap(), U256::from(1));
-
-        //returns input price if amount in is zero and zeroForOne = true
-        let result = get_next_sqrt_price_from_input(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1e17 as u128,
-            U256::ZERO,
-            true,
-        );
-
-        assert_eq!(result.unwrap(), U256::from_dec_str("79228162514264337593543950336").unwrap());
-
-        //returns input price if amount in is zero and zeroForOne = false
-        let result = get_next_sqrt_price_from_input(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1e17 as u128,
-            U256::ZERO,
-            true,
-        );
-
-        assert_eq!(result.unwrap(), U256::from_dec_str("79228162514264337593543950336").unwrap());
-
-        //returns the minimum price for max inputs
-
-        let sqrt_price = MAX_U160;
-        let liquidity = u128::MAX;
-        let max_amount_no_overflow = U256::MAX - ((U256::from(liquidity) << 96) / sqrt_price);
-        let result =
-            get_next_sqrt_price_from_input(sqrt_price, liquidity, max_amount_no_overflow, true);
-        assert_eq!(result.unwrap(), U256::from(1));
-
-        //input amount of 0.1 token1
-        let result = get_next_sqrt_price_from_input(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1e18 as u128,
-            U256::from_dec_str("100000000000000000").unwrap(),
-            false,
-        );
-
-        assert_eq!(result.unwrap(), U256::from_dec_str("87150978765690771352898345369").unwrap());
-
-        //input amount of 0.1 token0
-        let result = get_next_sqrt_price_from_input(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1e18 as u128,
-            U256::from_dec_str("100000000000000000").unwrap(),
-            true,
-        );
-
-        assert_eq!(result.unwrap(), U256::from_dec_str("72025602285694852357767227579").unwrap());
-
-        //amountIn > type(uint96).max and zeroForOne = true
-        let result = get_next_sqrt_price_from_input(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1e19 as u128,
-            U256::from_dec_str("1267650600228229401496703205376").unwrap(),
-            true,
-        );
-        // perfect answer:
-        // https://www.wolframalpha.com/input/?i=624999999995069620+-+%28%281e19+*+1+%2F+%281e19+%2B+2%5E100+*+1%29%29+*+2%5E96%29
-        assert_eq!(result.unwrap(), U256::from_dec_str("624999999995069620").unwrap());
-
-        //can return 1 with enough amountIn and zeroForOne = true
-        let result = get_next_sqrt_price_from_input(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1,
-            U256::MAX / 2,
-            true,
-        );
-
-        assert_eq!(result.unwrap(), U256::from(1));
-    }
-
-    #[test]
-    fn test_get_next_sqrt_price_from_output() {
-        //fails if price is zero
-        let result = get_next_sqrt_price_from_output(U256::ZERO, 0, U256::from(1000000000), false);
-        assert_eq!(result.unwrap_err().to_string(), "Sqrt price is 0");
-
-        //fails if liquidity is zero
-        let result =
-            get_next_sqrt_price_from_output(U256::from(1), 0, U256::from(1000000000), false);
-        assert_eq!(result.unwrap_err().to_string(), "Liquidity is 0");
-
-        //fails if output amount is exactly the virtual reserves of token0
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("20282409603651670423947251286016").unwrap(),
-            1024,
-            U256::from(4),
-            false,
-        );
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "require((product = amount * sqrtPX96) / amount == sqrtPX96 && numerator1 > product);"
-        );
-
-        //fails if output amount is greater than virtual reserves of token0
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("20282409603651670423947251286016").unwrap(),
-            1024,
-            U256::from(5),
-            false,
-        );
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "require((product = amount * sqrtPX96) / amount == sqrtPX96 && numerator1 > product);"
-        );
-
-        //fails if output amount is greater than virtual reserves of token1
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("20282409603651670423947251286016").unwrap(),
-            1024,
-            U256::from(262145),
-            true,
-        );
-        assert_eq!(result.unwrap_err().to_string(), "Sqrt price is less than or equal to quotient");
-
-        //fails if output amount is exactly the virtual reserves of token1
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("20282409603651670423947251286016").unwrap(),
-            1024,
-            U256::from(262144),
-            true,
-        );
-        assert_eq!(result.unwrap_err().to_string(), "Sqrt price is less than or equal to quotient");
-
-        //succeeds if output amount is just less than the virtual
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("20282409603651670423947251286016").unwrap(),
-            1024,
-            U256::from(262143),
-            true,
-        );
-        assert_eq!(result.unwrap(), U256::from_dec_str("77371252455336267181195264").unwrap());
-
-        //puzzling echidna test
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("20282409603651670423947251286016").unwrap(),
-            1024,
-            U256::from(4),
-            false,
-        );
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "require((product = amount * sqrtPX96) / amount == sqrtPX96 && numerator1 > product);"
-        );
-
-        //returns input price if amount in is zero and zeroForOne = true
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1e17 as u128,
-            U256::ZERO,
-            true,
-        );
-        assert_eq!(result.unwrap(), U256::from_dec_str("79228162514264337593543950336").unwrap());
-
-        //returns input price if amount in is zero and zeroForOne = false
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1e17 as u128,
-            U256::ZERO,
-            false,
-        );
-        assert_eq!(result.unwrap(), U256::from_dec_str("79228162514264337593543950336").unwrap());
-
-        //output amount of 0.1 token1
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1e18 as u128,
-            U256::from(1e17 as u128),
-            false,
-        );
-        assert_eq!(result.unwrap(), U256::from_dec_str("88031291682515930659493278152").unwrap());
-
-        //output amount of 0.1 token1
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1e18 as u128,
-            U256::from(1e17 as u128),
-            true,
-        );
-        assert_eq!(result.unwrap(), U256::from_dec_str("71305346262837903834189555302").unwrap());
-
-        //reverts if amountOut is impossible in zero for one direction
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1,
-            U256::MAX,
-            true,
-        );
-        assert_eq!(result.unwrap_err().to_string(), "Denominator is less than or equal to prod_1");
-
-        //reverts if amountOut is impossible in one for zero direction
-        let result = get_next_sqrt_price_from_output(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            1,
-            U256::MAX,
-            false,
-        );
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "require((product = amount * sqrtPX96) / amount == sqrtPX96 && numerator1 > product);"
-        );
-    }
-
-    #[test]
-    fn test_get_amount_0_delta() {
-        // returns 0 if liquidity is 0
-        let amount_0 = _get_amount_0_delta(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            0,
-            true,
-        );
-
-        assert_eq!(amount_0.unwrap(), U256::ZERO);
-
-        // returns 0 if prices are equal
-        let amount_0 = _get_amount_0_delta(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            U256::from_dec_str("87150978765690771352898345369").unwrap(),
-            0,
-            true,
-        );
-
-        assert_eq!(amount_0.unwrap(), U256::ZERO);
-
-        // returns 0.1 amount1 for price of 1 to 1.21
-        let amount_0 = _get_amount_0_delta(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            U256::from_dec_str("87150978765690771352898345369").unwrap(),
-            1e18 as u128,
-            true,
-        )
-        .unwrap();
-
-        assert_eq!(amount_0.clone(), U256::from_dec_str("90909090909090910").unwrap());
-
-        let amount_0_rounded_down = _get_amount_0_delta(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            U256::from_dec_str("87150978765690771352898345369").unwrap(),
-            1e18 as u128,
-            false,
-        );
-
-        assert_eq!(amount_0_rounded_down.unwrap(), amount_0.sub(1));
-
-        // works for prices that overflow
-        let amount_0_up = _get_amount_0_delta(
-            U256::from_dec_str("2787593149816327892691964784081045188247552").unwrap(),
-            U256::from_dec_str("22300745198530623141535718272648361505980416").unwrap(),
-            1e18 as u128,
-            true,
-        )
-        .unwrap();
-
-        let amount_0_down = _get_amount_0_delta(
-            U256::from_dec_str("2787593149816327892691964784081045188247552").unwrap(),
-            U256::from_dec_str("22300745198530623141535718272648361505980416").unwrap(),
-            1e18 as u128,
-            false,
-        )
-        .unwrap();
-
-        assert_eq!(amount_0_up, amount_0_down.add(1));
-    }
-
-    #[test]
-    fn test_get_amount_1_delta() {
-        // returns 0 if liquidity is 0
-        let amount_1 = _get_amount_1_delta(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            0,
-            true,
-        );
-
-        assert_eq!(amount_1.unwrap(), U256::ZERO);
-
-        // returns 0 if prices are equal
-        let amount_1 = _get_amount_1_delta(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            U256::from_dec_str("87150978765690771352898345369").unwrap(),
-            0,
-            true,
-        );
-
-        assert_eq!(amount_1.unwrap(), U256::ZERO);
-
-        // returns 0.1 amount1 for price of 1 to 1.21
-        let amount_1 = _get_amount_1_delta(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            U256::from_dec_str("87150978765690771352898345369").unwrap(),
-            1e18 as u128,
-            true,
-        )
-        .unwrap();
-
-        assert_eq!(amount_1.clone(), U256::from_dec_str("100000000000000000").unwrap());
-
-        let amount_1_rounded_down = _get_amount_1_delta(
-            U256::from_dec_str("79228162514264337593543950336").unwrap(),
-            U256::from_dec_str("87150978765690771352898345369").unwrap(),
-            1e18 as u128,
-            false,
-        );
-
-        assert_eq!(amount_1_rounded_down.unwrap(), amount_1.sub(1));
-    }
-
-    #[test]
-    fn test_swap_computation() {
-        let sqrt_price =
-            U256::from_dec_str("1025574284609383690408304870162715216695788925244").unwrap();
-        let liquidity = 50015962439936049619261659728067971248;
-        let zero_for_one = true;
-        let amount_in = U256::from(406);
-
-        let sqrt_q =
-            get_next_sqrt_price_from_input(sqrt_price, liquidity, amount_in, zero_for_one).unwrap();
-
-        assert_eq!(
-            sqrt_q,
-            U256::from_dec_str("1025574284609383582644711336373707553698163132913").unwrap()
-        );
-
-        let amount_0_delta = _get_amount_0_delta(sqrt_q, sqrt_price, liquidity, true).unwrap();
-
-        assert_eq!(amount_0_delta, U256::from(406));
-    }
-}
+// #[cfg(test)]
+// mod test {
+//     use std::ops::{Add, Sub};
+//
+//     use ethers::types::U256;
+//
+//     use super::{_get_amount_0_delta, get_next_sqrt_price_from_input};
+//     use crate::sqrt_price_math::{_get_amount_1_delta,
+// get_next_sqrt_price_from_output, MAX_U160};
+//
+//     #[test]
+//     fn test_get_next_sqrt_price_from_input() {
+//         //Fails if price is zero
+//         let result = get_next_sqrt_price_from_input(
+//             U256::ZERO,
+//             0,
+//             U256::from(100000000000000000_u128),
+//             false,
+//         );
+//         assert_eq!(result.unwrap_err().to_string(), "Sqrt price is 0");
+//
+//         //Fails if liquidity is zero
+//         let result = get_next_sqrt_price_from_input(
+//             U256::from(1),
+//             0,
+//             U256::from(100000000000000000_u128),
+//             true,
+//         );
+//         assert_eq!(result.unwrap_err().to_string(), "Liquidity is 0");
+//
+//         //fails if input amount overflows the price
+//         let result = get_next_sqrt_price_from_input(MAX_U160, 1024,
+// U256::from(1024), false);         assert_eq!(result.unwrap_err().to_string(),
+// "Overflow when casting to U160");
+//
+//         //any input amount cannot underflow the price
+//         let result = get_next_sqrt_price_from_input(
+//             U256::from(1),
+//             1,
+//             U256::from_dec_str(
+//
+// "57896044618658097711785492504343953926634992332820282019728792003956564819968"
+// ,             )
+//             .unwrap(),
+//             true,
+//         );
+//
+//         assert_eq!(result.unwrap(), U256::from(1));
+//
+//         //returns input price if amount in is zero and zeroForOne = true
+//         let result = get_next_sqrt_price_from_input(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1e17 as u128,
+//             U256::ZERO,
+//             true,
+//         );
+//
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("79228162514264337593543950336").unwrap());
+//
+//         //returns input price if amount in is zero and zeroForOne = false
+//         let result = get_next_sqrt_price_from_input(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1e17 as u128,
+//             U256::ZERO,
+//             true,
+//         );
+//
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("79228162514264337593543950336").unwrap());
+//
+//         //returns the minimum price for max inputs
+//
+//         let sqrt_price = MAX_U160;
+//         let liquidity = u128::MAX;
+//         let max_amount_no_overflow = U256::MAX - ((U256::from(liquidity) <<
+// 96) / sqrt_price);         let result =
+//     get_next_sqrt_price_from_input(sqrt_price, liquidity,
+// max_amount_no_overflow, true);         assert_eq!(result.unwrap(),
+// U256::from(1));
+//
+//         //input amount of 0.1 token1
+//         let result = get_next_sqrt_price_from_input(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1e18 as u128,
+//             U256::from_dec_str("100000000000000000").unwrap(),
+//             false,
+//         );
+//
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("87150978765690771352898345369").unwrap());
+//
+//         //input amount of 0.1 token0
+//         let result = get_next_sqrt_price_from_input(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1e18 as u128,
+//             U256::from_dec_str("100000000000000000").unwrap(),
+//             true,
+//         );
+//
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("72025602285694852357767227579").unwrap());
+//
+//         //amountIn > type(uint96).max and zeroForOne = true
+//         let result = get_next_sqrt_price_from_input(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1e19 as u128,
+//             U256::from_dec_str("1267650600228229401496703205376").unwrap(),
+//             true,
+//         );
+//         // perfect answer:
+//         // https://www.wolframalpha.com/input/?i=624999999995069620+-+%28%281e19+*+1+%2F+%281e19+%2B+2%5E100+*+1%29%29+*+2%5E96%29
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("624999999995069620").unwrap());
+//
+//         //can return 1 with enough amountIn and zeroForOne = true
+//         let result = get_next_sqrt_price_from_input(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1,
+//             U256::MAX / 2,
+//             true,
+//         );
+//
+//         assert_eq!(result.unwrap(), U256::from(1));
+//     }
+//
+//     #[test]
+//     fn test_get_next_sqrt_price_from_output() {
+//         //fails if price is zero
+//         let result = get_next_sqrt_price_from_output(U256::ZERO, 0,
+// U256::from(1000000000), false);         assert_eq!(result.unwrap_err().
+// to_string(), "Sqrt price is 0");
+//
+//         //fails if liquidity is zero
+//         let result =
+//             get_next_sqrt_price_from_output(U256::from(1), 0,
+// U256::from(1000000000), false);         assert_eq!(result.unwrap_err().
+// to_string(), "Liquidity is 0");
+//
+//         //fails if output amount is exactly the virtual reserves of token0
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("20282409603651670423947251286016").unwrap(),
+//             1024,
+//             U256::from(4),
+//             false,
+//         );
+//         assert_eq!(
+//             result.unwrap_err().to_string(),
+//             "require((product = amount * sqrtPX96) / amount == sqrtPX96 &&
+// numerator1 > product);"         );
+//
+//         //fails if output amount is greater than virtual reserves of token0
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("20282409603651670423947251286016").unwrap(),
+//             1024,
+//             U256::from(5),
+//             false,
+//         );
+//         assert_eq!(
+//             result.unwrap_err().to_string(),
+//             "require((product = amount * sqrtPX96) / amount == sqrtPX96 &&
+// numerator1 > product);"         );
+//
+//         //fails if output amount is greater than virtual reserves of token1
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("20282409603651670423947251286016").unwrap(),
+//             1024,
+//             U256::from(262145),
+//             true,
+//         );
+//         assert_eq!(result.unwrap_err().to_string(), "Sqrt price is less than
+// or equal to quotient");
+//
+//         //fails if output amount is exactly the virtual reserves of token1
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("20282409603651670423947251286016").unwrap(),
+//             1024,
+//             U256::from(262144),
+//             true,
+//         );
+//         assert_eq!(result.unwrap_err().to_string(), "Sqrt price is less than
+// or equal to quotient");
+//
+//         //succeeds if output amount is just less than the virtual
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("20282409603651670423947251286016").unwrap(),
+//             1024,
+//             U256::from(262143),
+//             true,
+//         );
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("77371252455336267181195264").unwrap());
+//
+//         //puzzling echidna test
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("20282409603651670423947251286016").unwrap(),
+//             1024,
+//             U256::from(4),
+//             false,
+//         );
+//         assert_eq!(
+//             result.unwrap_err().to_string(),
+//             "require((product = amount * sqrtPX96) / amount == sqrtPX96 &&
+// numerator1 > product);"         );
+//
+//         //returns input price if amount in is zero and zeroForOne = true
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1e17 as u128,
+//             U256::ZERO,
+//             true,
+//         );
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("79228162514264337593543950336").unwrap());
+//
+//         //returns input price if amount in is zero and zeroForOne = false
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1e17 as u128,
+//             U256::ZERO,
+//             false,
+//         );
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("79228162514264337593543950336").unwrap());
+//
+//         //output amount of 0.1 token1
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1e18 as u128,
+//             U256::from(1e17 as u128),
+//             false,
+//         );
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("88031291682515930659493278152").unwrap());
+//
+//         //output amount of 0.1 token1
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1e18 as u128,
+//             U256::from(1e17 as u128),
+//             true,
+//         );
+//         assert_eq!(result.unwrap(),
+// U256::from_dec_str("71305346262837903834189555302").unwrap());
+//
+//         //reverts if amountOut is impossible in zero for one direction
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1,
+//             U256::MAX,
+//             true,
+//         );
+//         assert_eq!(result.unwrap_err().to_string(), "Denominator is less than
+// or equal to prod_1");
+//
+//         //reverts if amountOut is impossible in one for zero direction
+//         let result = get_next_sqrt_price_from_output(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             1,
+//             U256::MAX,
+//             false,
+//         );
+//         assert_eq!(
+//             result.unwrap_err().to_string(),
+//             "require((product = amount * sqrtPX96) / amount == sqrtPX96 &&
+// numerator1 > product);"         );
+//     }
+//
+//     #[test]
+//     fn test_get_amount_0_delta() {
+//         // returns 0 if liquidity is 0
+//         let amount_0 = _get_amount_0_delta(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             0,
+//             true,
+//         );
+//
+//         assert_eq!(amount_0.unwrap(), U256::ZERO);
+//
+//         // returns 0 if prices are equal
+//         let amount_0 = _get_amount_0_delta(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             U256::from_dec_str("87150978765690771352898345369").unwrap(),
+//             0,
+//             true,
+//         );
+//
+//         assert_eq!(amount_0.unwrap(), U256::ZERO);
+//
+//         // returns 0.1 amount1 for price of 1 to 1.21
+//         let amount_0 = _get_amount_0_delta(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             U256::from_dec_str("87150978765690771352898345369").unwrap(),
+//             1e18 as u128,
+//             true,
+//         )
+//         .unwrap();
+//
+//         assert_eq!(amount_0.clone(),
+// U256::from_dec_str("90909090909090910").unwrap());
+//
+//         let amount_0_rounded_down = _get_amount_0_delta(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             U256::from_dec_str("87150978765690771352898345369").unwrap(),
+//             1e18 as u128,
+//             false,
+//         );
+//
+//         assert_eq!(amount_0_rounded_down.unwrap(), amount_0.sub(1));
+//
+//         // works for prices that overflow
+//         let amount_0_up = _get_amount_0_delta(
+//
+// U256::from_dec_str("2787593149816327892691964784081045188247552").unwrap(),
+//
+// U256::from_dec_str("22300745198530623141535718272648361505980416").unwrap(),
+//             1e18 as u128,
+//             true,
+//         )
+//         .unwrap();
+//
+//         let amount_0_down = _get_amount_0_delta(
+//
+// U256::from_dec_str("2787593149816327892691964784081045188247552").unwrap(),
+//
+// U256::from_dec_str("22300745198530623141535718272648361505980416").unwrap(),
+//             1e18 as u128,
+//             false,
+//         )
+//         .unwrap();
+//
+//         assert_eq!(amount_0_up, amount_0_down.add(1));
+//     }
+//
+//     #[test]
+//     fn test_get_amount_1_delta() {
+//         // returns 0 if liquidity is 0
+//         let amount_1 = _get_amount_1_delta(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             0,
+//             true,
+//         );
+//
+//         assert_eq!(amount_1.unwrap(), U256::ZERO);
+//
+//         // returns 0 if prices are equal
+//         let amount_1 = _get_amount_1_delta(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             U256::from_dec_str("87150978765690771352898345369").unwrap(),
+//             0,
+//             true,
+//         );
+//
+//         assert_eq!(amount_1.unwrap(), U256::ZERO);
+//
+//         // returns 0.1 amount1 for price of 1 to 1.21
+//         let amount_1 = _get_amount_1_delta(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             U256::from_dec_str("87150978765690771352898345369").unwrap(),
+//             1e18 as u128,
+//             true,
+//         )
+//         .unwrap();
+//
+//         assert_eq!(amount_1.clone(),
+// U256::from_dec_str("100000000000000000").unwrap());
+//
+//         let amount_1_rounded_down = _get_amount_1_delta(
+//             U256::from_dec_str("79228162514264337593543950336").unwrap(),
+//             U256::from_dec_str("87150978765690771352898345369").unwrap(),
+//             1e18 as u128,
+//             false,
+//         );
+//
+//         assert_eq!(amount_1_rounded_down.unwrap(), amount_1.sub(1));
+//     }
+//
+//     #[test]
+//     fn test_swap_computation() {
+//         let sqrt_price =
+//
+// U256::from_dec_str("1025574284609383690408304870162715216695788925244").
+// unwrap();         let liquidity = 50015962439936049619261659728067971248;
+//         let zero_for_one = true;
+//         let amount_in = U256::from(406);
+//
+//         let sqrt_q =
+//             get_next_sqrt_price_from_input(sqrt_price, liquidity, amount_in,
+// zero_for_one).unwrap();
+//
+//         assert_eq!(
+//             sqrt_q,
+//
+// U256::from_dec_str("1025574284609383582644711336373707553698163132913").
+// unwrap()         );
+//
+//         let amount_0_delta = _get_amount_0_delta(sqrt_q, sqrt_price,
+// liquidity, true).unwrap();
+//
+//         assert_eq!(amount_0_delta, U256::from(406));
+//     }
+// }

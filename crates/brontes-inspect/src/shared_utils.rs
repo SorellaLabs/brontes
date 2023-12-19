@@ -111,9 +111,9 @@ impl SharedInspectorUtils<'_> {
         if token_address == self.quote {
             return Some(Rational::ONE)
         }
-        let pair = Pair(token_address, self.quote);
 
-        Some(metadata.dex_quotes.price_after(pair, block_position))
+        let pair = Pair(token_address, self.quote);
+        metadata.dex_quotes.price_after(pair, block_position)
     }
 
     /// applies usd price to deltas and flattens out the tokens
@@ -122,14 +122,14 @@ impl SharedInspectorUtils<'_> {
         block_position: usize,
         deltas: HashMap<Address, Rational>,
         metadata: Arc<Metadata>,
-    ) -> Rational {
-        deltas
-            .into_iter()
-            .map(|(token_out, _value)| {
-                let pair = Pair(token_out, self.quote);
-                metadata.dex_quotes.price_after(pair, block_position)
-            })
-            .sum::<Rational>()
+    ) -> Option<Rational> {
+        let mut sum = Rational::ZERO;
+        for (token_out, value) in deltas.into_iter() {
+            let pair = Pair(token_out, self.quote);
+            sum += value * metadata.dex_quotes.price_after(pair, block_position)?;
+        }
+
+        Some(sum)
     }
 
     fn token_collectors(
