@@ -220,12 +220,27 @@ where
         block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
-            let data = db_client
-                .inner()
-                .query_many::<D>(Self::initialize_query(), &())
-                .await;
+            let data = if let Some((start, end)) = block_range {
+                if let Ok(r) = db_client
+                    .inner()
+                    .query_many::<D>(Self::initialize_query(), &(start, end))
+                    .await
+                {
+                    Ok(r)
+                } else {
+                    db_client
+                        .inner()
+                        .query_many::<D>(Self::initialize_query(), &())
+                        .await
+                }
+            } else {
+                db_client
+                    .inner()
+                    .query_many::<D>(Self::initialize_query(), &())
+                    .await
+            };
 
-            println!("\n\nDUP Data: {:?}\n\n", data);
+            // println!("\n\nDUP Data: {:?}\n\n", data);
 
             /*
                         let data = match data {
