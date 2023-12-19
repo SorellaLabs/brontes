@@ -77,6 +77,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if self.lazy_loader.requests_for_block(&self.completed_block) == 0
             && self.completed_block < self.current_block
         {
+            info!(?self.buffer, ?self.completed_block,"getting ready to calc dex prices");
             let block = self.completed_block;
             if let Some(buffer) = self.buffer.remove(&self.completed_block) {
                 for update in buffer {
@@ -255,6 +256,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if self.lazy_loader.requests_for_block(&self.completed_block) == 0
             && self.completed_block < self.current_block
         {
+            info!(?self.buffer, ?self.completed_block,"getting ready to calc dex prices");
             // if all block requests are complete, lets apply all the state transitions we
             // had for the given block which will allow us to generate all pricing
             if let Some(buffer) = self.buffer.remove(&self.completed_block) {
