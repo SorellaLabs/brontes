@@ -266,7 +266,7 @@ pub fn get_amount_1_delta(
 //             U256::from(1),
 //             1,
 //             U256::from_dec_str(
-//                 
+//
 // "57896044618658097711785492504343953926634992332820282019728792003956564819968"
 // ,             )
 //             .unwrap(),
@@ -303,7 +303,7 @@ pub fn get_amount_1_delta(
 //         let liquidity = u128::MAX;
 //         let max_amount_no_overflow = U256::MAX - ((U256::from(liquidity) <<
 // 96) / sqrt_price);         let result =
-//             get_next_sqrt_price_from_input(sqrt_price, liquidity,
+//     get_next_sqrt_price_from_input(sqrt_price, liquidity,
 // max_amount_no_overflow, true);         assert_eq!(result.unwrap(),
 // U256::from(1));
 //
@@ -539,9 +539,9 @@ pub fn get_amount_1_delta(
 //
 //         // works for prices that overflow
 //         let amount_0_up = _get_amount_0_delta(
-//             
+//
 // U256::from_dec_str("2787593149816327892691964784081045188247552").unwrap(),
-//             
+//
 // U256::from_dec_str("22300745198530623141535718272648361505980416").unwrap(),
 //             1e18 as u128,
 //             true,
@@ -549,9 +549,9 @@ pub fn get_amount_1_delta(
 //         .unwrap();
 //
 //         let amount_0_down = _get_amount_0_delta(
-//             
+//
 // U256::from_dec_str("2787593149816327892691964784081045188247552").unwrap(),
-//             
+//
 // U256::from_dec_str("22300745198530623141535718272648361505980416").unwrap(),
 //             1e18 as u128,
 //             false,
@@ -608,7 +608,7 @@ pub fn get_amount_1_delta(
 //     #[test]
 //     fn test_swap_computation() {
 //         let sqrt_price =
-//             
+//
 // U256::from_dec_str("1025574284609383690408304870162715216695788925244").
 // unwrap();         let liquidity = 50015962439936049619261659728067971248;
 //         let zero_for_one = true;
@@ -620,7 +620,7 @@ pub fn get_amount_1_delta(
 //
 //         assert_eq!(
 //             sqrt_q,
-//             
+//
 // U256::from_dec_str("1025574284609383582644711336373707553698163132913").
 // unwrap()         );
 //
