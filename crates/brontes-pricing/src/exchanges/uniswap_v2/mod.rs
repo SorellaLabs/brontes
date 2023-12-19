@@ -583,7 +583,7 @@ pub fn q64_to_f64(x: u128) -> f64 {
 //
 //         let mut pool = UniswapV2Pool {
 //             address:
-// Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,            
+// Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
 // ..Default::default()         };
 //
 //         pool.populate_data(None, middleware.clone()).await?;
@@ -607,7 +607,7 @@ pub fn q64_to_f64(x: u128) -> f64 {
 // token_b = Address::from_str("0x8f18dc399594b451eda8c5da02d0563c0b2d0f16")?;
 //         let x = UniswapV2Pool {
 //             address:
-// Address::from_str("0x652a7b75c229850714d4a11e856052aac3e9b065")?,            
+// Address::from_str("0x652a7b75c229850714d4a11e856052aac3e9b065")?,
 // token_a,             token_a_decimals: 18,
 //             token_b,
 //             token_b_decimals: 9,
@@ -628,7 +628,7 @@ pub fn q64_to_f64(x: u128) -> f64 {
 //
 //         let mut pool = UniswapV2Pool {
 //             address:
-// Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,            
+// Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
 // ..Default::default()         };
 //
 //         pool.populate_data(None, middleware.clone()).await?;
@@ -653,7 +653,7 @@ pub fn q64_to_f64(x: u128) -> f64 {
 //
 //         let mut pool = UniswapV2Pool {
 //             address:
-// Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,            
+// Address::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")?,
 // ..Default::default()         };
 //
 //         pool.populate_data(None, middleware.clone()).await?;
