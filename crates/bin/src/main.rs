@@ -6,7 +6,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes::{Brontes, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
+use brontes::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::Clickhouse;
@@ -30,7 +30,7 @@ mod banner;
 mod cli;
 
 use banner::print_banner;
-use cli::{Args, Commands, Init, Run};
+use cli::{Args, Commands, Init, Run, RunBatchWithPricing};
 
 type Inspectors<'a> = [&'a Box<dyn Inspector>; 4];
 
@@ -98,6 +98,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     match opt.command {
         Commands::Run(command) => run_brontes(command).await,
         Commands::Init(command) => init_brontes(command).await,
+        Commands::RunBackWithPricing(command) => run_batch_with_pricing(command).await,
     }
 }
 
@@ -175,12 +176,69 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
     if init_config.init_libmdbx {
         // currently inits all tables
         libmdbx
-            .clear_and_initialize_tables(&clickhouse, &Tables::ALL)
+            .clear_and_initialize_tables(&clickhouse, &Tables::ALL, None)
             .await?;
     }
 
     //TODO: Joe, have it download the full range of metadata from the MEV DB so
     // they can run everything in parallel
+    Ok(())
+}
+
+async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<dyn Error>> {
+    let db_path = get_env_vars()?;
+
+    let max_tasks = config.max_tasks.unwrap_or(5);
+
+    let (metrics_tx, metrics_rx) = unbounded_channel();
+
+    let metrics_listener = PoirotMetricsListener::new(metrics_rx);
+
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None)?;
+
+    let inspector_holder = InspectorHolder::new(config.quote_asset.parse().unwrap());
+    let inspectors: Inspectors = inspector_holder.get_inspectors();
+
+    let (mut manager, tracer) = TracingClient::new(
+        Path::new(&db_path),
+        tokio::runtime::Handle::current(),
+        max_tasks as u32,
+    );
+
+    let parser = DParser::new(
+        metrics_tx,
+        &libmdbx,
+        tracer,
+        Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
+    );
+
+    let batch = DataBatching::new(
+        config.quote_asset.parse().unwrap(),
+        0,
+        1,
+        config.start_block,
+        config.end_block,
+        &parser,
+        &libmdbx,
+        &inspectors,
+    );
+
+    pin!(batch);
+    pin!(metrics_listener);
+
+    // wait for completion
+    tokio::select! {
+        _ = &mut batch => {
+            info!("finnished running batch , shutting down");
+        }
+        _ = Pin::new(&mut manager) => {
+        }
+        _ = &mut metrics_listener => {
+        }
+    }
+    manager.graceful_shutdown();
+
     Ok(())
 }
 
