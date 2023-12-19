@@ -42,16 +42,16 @@ struct InspectorHolder {
 }
 
 impl InspectorHolder {
-    fn new(quote_token: Address) -> Self {
+    fn new(quote_token: Address, db: &'static Libmdbx) -> Self {
         Self {
-            sandwich: Box::new(SandwichInspector::new(quote_token)),
-            cex_dex:  Box::new(CexDexInspector::new(quote_token)),
-            jit:      Box::new(JitInspector::new(quote_token)),
-            backrun:  Box::new(AtomicBackrunInspector::new(quote_token)),
+            sandwich: Box::new(SandwichInspector::new(quote_token, db)),
+            cex_dex:  Box::new(CexDexInspector::new(quote_token, db)),
+            jit:      Box::new(JitInspector::new(quote_token, db)),
+            backrun:  Box::new(AtomicBackrunInspector::new(quote_token, db)),
         }
     }
 
-    fn get_inspectors(&self) -> Inspectors {
+    fn get_inspectors(&'static self) -> Inspectors<'static> {
         [&self.sandwich, &self.cex_dex, &self.jit, &self.backrun]
     }
 }
@@ -113,10 +113,15 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
     let metrics_listener = PoirotMetricsListener::new(metrics_rx);
 
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None)?;
+    let libmdbx =
+        Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None)?)) as &'static Libmdbx;
     let clickhouse = Clickhouse::default();
 
-    let inspector_holder = InspectorHolder::new(run_config.quote_asset.parse().unwrap());
+    let inspector_holder = Box::leak(Box::new(InspectorHolder::new(
+        run_config.quote_asset.parse().unwrap(),
+        &libmdbx,
+    )));
+
     let inspectors: Inspectors = inspector_holder.get_inspectors();
 
     let (mut manager, tracer) =
@@ -201,9 +206,11 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
     let metrics_listener = PoirotMetricsListener::new(metrics_rx);
 
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None)?;
+    let libmdbx =
+        Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None)?)) as &'static Libmdbx;
 
-    let inspector_holder = InspectorHolder::new(config.quote_asset.parse().unwrap());
+    let inspector_holder =
+        Box::leak(Box::new(InspectorHolder::new(config.quote_asset.parse().unwrap(), &libmdbx)));
     let inspectors: Inspectors = inspector_holder.get_inspectors();
 
     let (mut manager, tracer) = TracingClient::new(
