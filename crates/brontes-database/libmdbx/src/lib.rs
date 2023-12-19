@@ -60,11 +60,6 @@ impl Libmdbx {
         Ok(this)
     }
 
-    pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
-        let db_tx = self.ro_tx().unwrap();
-        db_tx.get::<TokenDecimals>(address).ok()?
-    }
-
     /// Creates all the defined tables, opens if already created
     fn create_tables(&self) -> Result<(), DatabaseError> {
         let tx = LibmdbxTx::new_rw_tx(&self.0)?;
@@ -95,6 +90,12 @@ impl Libmdbx {
         initializer.initialize(tables, block_range).await?;
 
         Ok(())
+    }
+
+
+    pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
+        let db_tx = self.ro_tx().unwrap();
+        db_tx.get::<TokenDecimals>(address).ok()?
     }
 
     /// Clears a table in the database
@@ -161,7 +162,7 @@ impl Libmdbx {
             block_hash: block_meta.block_hash,
             relay_timestamp: block_meta.relay_timestamp,
             p2p_timestamp: block_meta.p2p_timestamp,
-            proposer_fee_recipient: block_meta.proposer_fee_recipient.unwrap_or_default(), /* change this */
+            proposer_fee_recipient: block_meta.proposer_fee_recipient, /* change this */
             proposer_mev_reward: block_meta.proposer_mev_reward,
             cex_quotes: brontes_database::cex::CexPriceMap::new(), /* brontes_database::cex::CexPriceMap(cex_quotes.0), // ambiguous type */
             eth_prices: Rational::default(),                       /* cex_quotes.0.get(&
@@ -173,6 +174,7 @@ impl Libmdbx {
                                                                     * change to USDC - ETH +
                                                                     * error handle */
             mempool_flow: block_meta.mempool_flow.into_iter().collect(),
+            block_timestamp: block_meta.block_timestamp,
         })
     }
 
@@ -195,10 +197,11 @@ impl Libmdbx {
                 block_hash: block_meta.block_hash,
                 relay_timestamp: block_meta.relay_timestamp,
                 p2p_timestamp: block_meta.p2p_timestamp,
-                proposer_fee_recipient: block_meta.proposer_fee_recipient.unwrap_or_default(), /* change this */
+                proposer_fee_recipient: block_meta.proposer_fee_recipient, /* change this */
                 proposer_mev_reward: block_meta.proposer_mev_reward,
                 cex_quotes: brontes_database::cex::CexPriceMap::new(), /* brontes_database::cex::CexPriceMap(cex_quotes.0), // ambiguous type */
-                eth_prices: Rational::default(),                       /* cex_quotes.0.get(&
+                eth_prices: Rational::default(),
+                block_timestamp: block_meta.block_timestamp,                       /* cex_quotes.0.get(&
                                                                         * Pair(Address::from_str("
                                                                         * ").unwrap(),
                                                                         * Address::from_str("").

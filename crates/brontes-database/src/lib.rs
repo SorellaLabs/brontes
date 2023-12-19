@@ -22,14 +22,15 @@ pub struct Metadata {
     pub dex_quotes: DexPrices,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MetadataDB {
     pub block_num:              u64,
     pub block_hash:             U256,
-    pub relay_timestamp:        u64,
-    pub p2p_timestamp:          u64,
-    pub proposer_fee_recipient: Address,
-    pub proposer_mev_reward:    u128,
+    pub block_timestamp:        u64,
+    pub relay_timestamp:        Option<u64>,
+    pub p2p_timestamp:          Option<u64>,
+    pub proposer_fee_recipient: Option<Address>,
+    pub proposer_mev_reward:    Option<u128>,
     pub cex_quotes:             CexPriceMap,
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
@@ -40,10 +41,11 @@ impl MetadataDB {
     pub fn new(
         block_num: u64,
         block_hash: U256,
-        relay_timestamp: u64,
-        p2p_timestamp: u64,
-        proposer_fee_recipient: Address,
-        proposer_mev_reward: u128,
+        block_timestamp: u64,
+        relay_timestamp: Option<u64>,
+        p2p_timestamp: Option<u64>,
+        proposer_fee_recipient: Option<Address>,
+        proposer_mev_reward: Option<u128>,
         cex_quotes: CexPriceMap,
         eth_prices: Rational,
         mempool_flow: HashSet<TxHash>,
@@ -58,6 +60,7 @@ impl MetadataDB {
             proposer_fee_recipient,
             proposer_mev_reward,
             mempool_flow,
+            block_timestamp,
         }
     }
 

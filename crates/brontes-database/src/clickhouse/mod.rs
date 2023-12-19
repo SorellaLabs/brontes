@@ -64,6 +64,7 @@ impl Clickhouse {
             .unwrap()
             .clone();
 
+        /*
         let metadata = MetadataDB::new(
             block_num,
             times_flow.block_hash.into(),
@@ -77,6 +78,9 @@ impl Clickhouse {
         );
 
         metadata
+         */
+
+        Default::default()
     }
 
     async fn insert_singe_classified_data<
