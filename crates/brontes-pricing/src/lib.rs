@@ -2,7 +2,6 @@
 pub mod exchanges;
 mod graph;
 pub mod types;
-
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     sync::Arc,
@@ -14,7 +13,7 @@ use brontes_types::{extra_processing::Pair, traits::TracingProvider};
 use exchanges::lazy::LazyExchangeLoader;
 pub use exchanges::*;
 use futures::{Future, Stream, StreamExt};
-use graph::PairGraph;
+pub use graph::PairGraph;
 use serde::de;
 use tokio::sync::mpsc::Receiver;
 use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
