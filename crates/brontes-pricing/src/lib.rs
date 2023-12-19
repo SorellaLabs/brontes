@@ -339,27 +339,33 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        while let Poll::Ready(s) = self
-            .update_rx
-            .poll_recv(cx)
-            .map(|inner| inner.map(|update| self.on_message(update)))
-        {
-            if let Some(Some(data)) = s {
-                return Poll::Ready(Some(data))
+        let mut work = 1024;
+        loop {
+            if let Poll::Ready(s) = self
+                .update_rx
+                .poll_recv(cx)
+                .map(|inner| inner.map(|update| self.on_message(update)))
+            {
+                if let Some(Some(data)) = s {
+                    return Poll::Ready(Some(data))
+                }
+
+                if s.is_none() && self.lazy_loader.is_empty() {
+                    return Poll::Ready(None)
+                }
             }
 
-            if s.is_none() && self.lazy_loader.is_empty() {
-                return Poll::Ready(None)
+            if let Poll::Ready(Some((state, updates))) = self.lazy_loader.poll_next_unpin(cx) {
+                if let Some(update) = self.on_pool_resolve(state, updates) {
+                    return Poll::Ready(Some(update))
+                }
+            }
+
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
             }
         }
-
-        while let Poll::Ready(Some((state, updates))) = self.lazy_loader.poll_next_unpin(cx) {
-            if let Some(update) = self.on_pool_resolve(state, updates) {
-                return Poll::Ready(Some(update))
-            }
-        }
-
-        cx.waker().wake_by_ref();
-        Poll::Pending
     }
 }
