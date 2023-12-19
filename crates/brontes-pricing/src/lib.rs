@@ -71,7 +71,23 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
-    fn on_message(&mut self, msg: PoolUpdate) {
+    fn on_message(&mut self, msg: PoolUpdate) -> Option<(u64, DexPrices)> {
+        if self.lazy_loader.requests_for_block(&self.completed_block) == 0
+            && self.completed_block < self.current_block
+        {
+            let block = self.completed_block;
+
+            let res = self
+                .dex_quotes
+                .remove(&self.completed_block)
+                .unwrap_or(DexQuotes(vec![]));
+
+            let state = self.finalized_state.clone().into();
+            self.completed_block += 1;
+
+            return Some((block, DexPrices::new(state, res)))
+        }
+
         if msg.block > self.current_block {
             self.current_block = msg.block
         }
@@ -84,11 +100,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         } else {
             self.on_new_pool(msg)
         }
+
+        None
     }
 
     fn on_new_pool(&mut self, msg: PoolUpdate) {
         let Some(pair) = msg.get_pair() else { return };
-        info!(?msg, "on new pool");
+        // info!(?msg, "on new pool");
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
@@ -119,12 +137,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
-        info!(?addr, "update known state");
         let tx_idx = msg.tx_idx;
         let block = msg.block;
-        let pool_pair = msg
-            .get_pair()
-            .expect("got a non exchange state related update");
+        let Some(pool_pair) = msg.get_pair() else { return };
 
         if let Some((key, state)) = self.mut_state.get_mut(&addr).map(|inner| {
             // if we have the pair loaded. increment_state
@@ -244,6 +259,10 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             .poll_recv(cx)
             .map(|inner| inner.map(|update| self.on_message(update)))
         {
+            if let Some(Some(data)) = s {
+                return Poll::Ready(Some(data))
+            }
+
             if s.is_none() && self.lazy_loader.is_empty() {
                 return Poll::Ready(None)
             }
