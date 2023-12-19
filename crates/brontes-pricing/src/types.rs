@@ -80,6 +80,7 @@ impl DexPrices {
             info!(?pair, tx_idx=%tx, "failed to get price for");
             return Rational::from(1)
         };
+        info!(?pair, tx_idx=%tx, "got keys for");
         let mut price = Rational::ZERO;
 
         for hop in keys {
@@ -96,6 +97,12 @@ impl DexPrices {
                 pxw += weight_price;
                 weight += tvl;
             }
+            if weight == Rational::ZERO {
+                // can no longer convert
+                tracing::error!("no hops for pool");
+                return Rational::from(1)
+            }
+
             if price == Rational::ZERO {
                 price = pxw / weight;
             } else {
