@@ -439,6 +439,7 @@ pub mod test {
     async fn test_on_pool_resolve() {
         dotenv::dotenv().ok();
         init_tracing();
+        info!("starting tests");
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
@@ -453,9 +454,9 @@ pub mod test {
 
         let mut pricer = init(&libmdbx, rx, quote, 18500000, &tracer).await;
 
-        let handle = tokio::spawn(async move { 
-                    let res = pricer.next().await; 
-                    (pricer, res)
+        let handle = tokio::spawn(async move {
+            let res = pricer.next().await;
+            (pricer, res)
         });
         // weth
         let t0: Address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
