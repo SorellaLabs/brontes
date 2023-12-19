@@ -12,13 +12,14 @@ use alloy_rlp::{Decodable, Encodable, RlpEncodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
+use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
 use bytes::BufMut;
 use ethers::{
     abi::{ethabi::Bytes, RawLog, Token},
     prelude::{abigen, AbiError, EthEvent},
     types::{Action, Filter},
 };
+use malachite::{Natural, Rational};
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
@@ -27,8 +28,10 @@ use super::make_call_request;
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
     exchanges::uniswap_v3::batch_request::get_uniswap_v3_tick_data_batch_request,
+    uniswap_v2::IErc20,
     uniswap_v3_math, AutomatedMarketMaker,
 };
+
 sol!(
     interface IUniswapV3Factory {
         function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool);
@@ -50,13 +53,6 @@ sol!(
         event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick);
         event Burn(address indexed owner, int24 indexed tickLower, int24 indexed tickUpper, uint128 amount, uint256 amount0, uint256 amount1);
         event Mint(address sender, address indexed owner, int24 indexed tickLower, int24 indexed tickUpper, uint128 amount, uint256 amount0, uint256 amount1);
-    }
-);
-
-sol!(
-    interface IErc20 {
-        function balanceOf(address account) external view returns (uint256);
-        function decimals() external view returns (uint8);
     }
 );
 
@@ -102,6 +98,10 @@ pub struct UniswapV3Pool {
     pub tick_spacing:     i32,
     pub tick_bitmap:      HashMap<i16, U256>,
     pub ticks:            HashMap<i32, Info>,
+
+    // non v3 native state
+    pub reserve_0: U256,
+    pub reserve_1: U256,
 }
 
 impl Encodable for UniswapV3Pool {
@@ -124,6 +124,8 @@ impl Encodable for UniswapV3Pool {
             key.to_be_bytes().encode(out);
             val.encode(out);
         });
+        self.reserve_0.encode(out);
+        self.reserve_1.encode(out);
     }
 }
 
@@ -148,6 +150,9 @@ impl Decodable for UniswapV3Pool {
             .map(|inner| (inner.key, inner.val))
             .collect::<HashMap<i32, Info>>();
 
+        let r0 = U256::decode(buf)?;
+        let r1 = U256::decode(buf)?;
+
         Ok(Self {
             address,
             token_a,
@@ -161,6 +166,8 @@ impl Decodable for UniswapV3Pool {
             tick_spacing: i32::from_be_bytes(tick_spacing),
             tick_bitmap,
             ticks,
+            reserve_0: r0,
+            reserve_1: r1,
         })
     }
 }
@@ -296,6 +303,24 @@ impl AutomatedMarketMaker for UniswapV3Pool {
     ) -> Result<(), AmmError> {
         batch_request::get_v3_pool_data_batch_request(self, block_number, middleware.clone())
             .await?;
+
+        let r0 = make_call_request(
+            IErc20::balanceOfCall::new((self.address,)),
+            middleware.clone(),
+            self.token_a,
+            block_number,
+        )
+        .await;
+        let r1 = make_call_request(
+            IErc20::balanceOfCall::new((self.address,)),
+            middleware,
+            self.token_b,
+            block_number,
+        )
+        .await;
+
+        self.reserve_0 = r0._0;
+        self.reserve_1 = r1._0;
 
         Ok(())
     }
@@ -593,36 +618,36 @@ impl AutomatedMarketMaker for UniswapV3Pool {
 }
 
 impl UniswapV3Pool {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        address: Address,
-        token_a: Address,
-        token_a_decimals: u8,
-        token_b: Address,
-        token_b_decimals: u8,
-        fee: u32,
-        liquidity: u128,
-        sqrt_price: U256,
-        tick: i32,
-        tick_spacing: i32,
-        tick_bitmap: HashMap<i16, U256>,
-        ticks: HashMap<i32, Info>,
-    ) -> UniswapV3Pool {
-        UniswapV3Pool {
-            address,
-            token_a,
-            token_a_decimals,
-            token_b,
-            token_b_decimals,
-            fee,
-            liquidity,
-            sqrt_price,
-            tick,
-            tick_spacing,
-            tick_bitmap,
-            ticks,
-        }
-    }
+    // #[allow(clippy::too_many_arguments)]
+    // pub fn new(
+    //     address: Address,
+    //     token_a: Address,
+    //     token_a_decimals: u8,
+    //     token_b: Address,
+    //     token_b_decimals: u8,
+    //     fee: u32,
+    //     liquidity: u128,
+    //     sqrt_price: U256,
+    //     tick: i32,
+    //     tick_spacing: i32,
+    //     tick_bitmap: HashMap<i16, U256>,
+    //     ticks: HashMap<i32, Info>,
+    // ) -> UniswapV3Pool {
+    //     UniswapV3Pool {
+    //         address,
+    //         token_a,
+    //         token_a_decimals,
+    //         token_b,
+    //         token_b_decimals,
+    //         fee,
+    //         liquidity,
+    //         sqrt_price,
+    //         tick,
+    //         tick_spacing,
+    //         tick_bitmap,
+    //         ticks,
+    //     }
+    // }
 
     // Creates a new instance of the pool from the pair address
     pub async fn new_from_address<M: 'static + TracingProvider>(
@@ -631,22 +656,24 @@ impl UniswapV3Pool {
         middleware: Arc<M>,
     ) -> Result<Self, AmmError> {
         let mut pool = UniswapV3Pool {
-            address:          pair_address,
-            token_a:          Address::ZERO,
+            address: pair_address,
+            token_a: Address::ZERO,
             token_a_decimals: 0,
-            token_b:          Address::ZERO,
+            token_b: Address::ZERO,
             token_b_decimals: 0,
-            liquidity:        0,
-            sqrt_price:       U256::ZERO,
-            tick:             0,
-            tick_spacing:     0,
-            fee:              0,
-            tick_bitmap:      HashMap::new(),
-            ticks:            HashMap::new(),
+            liquidity: 0,
+            sqrt_price: U256::ZERO,
+            tick: 0,
+            tick_spacing: 0,
+            fee: 0,
+            tick_bitmap: HashMap::new(),
+            ticks: HashMap::new(),
+            ..Default::default()
         };
 
         //We need to get tick spacing before populating tick data because tick spacing
         // can not be uninitialized when syncing burn and mint logs
+        #[cfg(feature = "uni-v3-ticks")]
         pool.sync_ticks_around_current(block_number, 100, middleware.clone())
             .await;
 
@@ -659,6 +686,7 @@ impl UniswapV3Pool {
         Ok(pool)
     }
 
+    #[cfg(feature = "uni-v3-ticks")]
     pub async fn sync_ticks_around_current<M: 'static + TracingProvider>(
         &mut self,
         block: u64,
@@ -1082,6 +1110,10 @@ impl UniswapV3Pool {
         self.tick = swap_event.tick;
 
         Ok(())
+    }
+
+    pub fn get_tvl(&self) -> Rational {
+        self.reserve_0.to_scaled_rational(0) + self.reserve_1.to_scaled_rational(0)
     }
 
     //

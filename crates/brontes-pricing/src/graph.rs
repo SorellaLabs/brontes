@@ -187,12 +187,8 @@ impl PairGraph {
             return pools.clone().into_iter()
         }
 
-        let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
-            return vec![].into_iter()
-        };
-        let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
-            return vec![].into_iter()
-        };
+        let Some(start_idx) = self.addr_to_index.get(&pair.0) else { return vec![].into_iter() };
+        let Some(end_idx) = self.addr_to_index.get(&pair.1) else { return vec![].into_iter() };
 
         let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
             .expect("no path found, gotta make this into a option")

@@ -91,6 +91,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .get_path(Pair(pair.1, self.quote_asset))
                 .collect::<HashSet<_>>(),
         );
+
         new_pair_set.extend(
             self.pair_graph
                 .get_path(Pair(pair.0, pair.1))
