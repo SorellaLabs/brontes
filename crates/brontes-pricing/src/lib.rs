@@ -189,6 +189,63 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
+    fn update_dex_quotes(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
+        let pool_keys = self
+            .pair_graph
+            .get_path(pool_pair)
+            .map(|pairs| {
+                PoolKeysForPair(
+                    pairs
+                        .into_iter()
+                        .filter_map(|pair_details| {
+                            // TODO: this being a filtermap is wrong because we then can't
+                            // garentee all underlying pool weighting. need a bigger refactor
+                            // tho so will circle back after i think about it for a bit
+                            Some(PoolKeyWithDirection::new(
+                                *self.last_update.get(&pair_details.info.pool_addr)?,
+                                pair_details.get_base_token(),
+                            ))
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect::<Vec<_>>();
+        match self.dex_quotes.entry(block) {
+            Entry::Occupied(mut quotes) => {
+                let q = quotes.get_mut();
+                let size = q.0.len();
+
+                // make sure to pad the vector to the proper index
+                for _ in size..=tx_idx as usize {
+                    q.0.push(None)
+                }
+                // take the empty if exists
+                let tx = q.0.get_mut(tx_idx as usize).unwrap();
+
+                if let Some(tx) = tx.as_mut() {
+                    tx.insert(pool_pair, pool_keys);
+                } else {
+                    let mut tx_pairs = HashMap::default();
+                    tx_pairs.insert(pool_pair, pool_keys);
+                    *tx = Some(tx_pairs)
+                }
+            }
+            Entry::Vacant(v) => {
+                // pad the vec to the tx index
+                let mut vec = Vec::new();
+                for _ in 0..tx_idx as usize {
+                    vec.push(None);
+                }
+                // insert
+                let mut map = HashMap::new();
+                map.insert(pool_pair, pool_keys);
+
+                vec.push(Some(map));
+                v.insert(DexQuotes(vec));
+            }
+        }
+    }
+
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
@@ -210,64 +267,17 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             // update address to new key
             self.last_update.insert(addr, key);
 
+            let pair0 = Pair(pool_pair.0, self.quote_asset);
+            let pair1 = Pair(pool_pair.1, self.quote_asset);
+
+            self.update_dex_quotes(block, tx_idx, pool_pair);
+            self.update_dex_quotes(block, tx_idx, pair0);
+            self.update_dex_quotes(block, tx_idx, pair1);
+
             // fetch all pool keys for a given pair
-            let pool_keys = self
-                .pair_graph
-                .get_path(pool_pair)
-                .map(|pairs| {
-                    PoolKeysForPair(
-                        pairs
-                            .into_iter()
-                            .filter_map(|pair_details| {
-                                // TODO: this being a filtermap is wrong because we then can't
-                                // garentee all underlying pool weighting. need a bigger refactor
-                                // tho so will circle back after i think about it for a bit
-                                Some(PoolKeyWithDirection::new(
-                                    *self.last_update.get(&pair_details.info.pool_addr)?,
-                                    pair_details.get_base_token(),
-                                ))
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                })
-                .collect::<Vec<_>>();
 
-            // info!(pair=?pool_pair, %block, ?pool_keys, " adding pricing for key");
-
-            match self.dex_quotes.entry(block) {
-                Entry::Occupied(mut quotes) => {
-                    let q = quotes.get_mut();
-                    let size = q.0.len();
-
-                    // make sure to pad the vector to the proper index
-                    for _ in size..=tx_idx as usize {
-                        q.0.push(None)
-                    }
-                    // take the empty if exists
-                    let tx = q.0.get_mut(tx_idx as usize).unwrap();
-
-                    if let Some(tx) = tx.as_mut() {
-                        tx.insert(pool_pair, pool_keys);
-                    } else {
-                        let mut tx_pairs = HashMap::default();
-                        tx_pairs.insert(pool_pair, pool_keys);
-                        *tx = Some(tx_pairs)
-                    }
-                }
-                Entry::Vacant(v) => {
-                    // pad the vec to the tx index
-                    let mut vec = Vec::new();
-                    for _ in 0..tx_idx as usize {
-                        vec.push(None);
-                    }
-                    // insert
-                    let mut map = HashMap::new();
-                    map.insert(pool_pair, pool_keys);
-
-                    vec.push(Some(map));
-                    v.insert(DexQuotes(vec));
-                }
-            }
+            // info!(pair=?pool_pair, %block, ?pool_keys, " adding pricing for
+            // key");
         }
     }
 
