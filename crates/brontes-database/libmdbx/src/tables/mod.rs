@@ -240,7 +240,7 @@ where
                 db_client.inner().query_many::<D>(query, &()).await
             };
 
-            println!("\n\nREG Data: {:?}\n\n", data);
+            // println!("\n\nREG Data: {:?}\n\n", data);
 
             /*
                         let data = match data {
@@ -276,7 +276,7 @@ where
                 .query_many::<D>(Self::initialize_query(), &())
                 .await;
 
-            println!("\n\nDUP Data: {:?}\n\n", data);
+            // println!("\n\nDUP Data: {:?}\n\n", data);
 
             /*
                         let data = match data {
