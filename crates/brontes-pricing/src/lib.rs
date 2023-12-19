@@ -396,3 +396,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         }
     }
 }
+
+#[cfg(test)]
+pub mod test {}
