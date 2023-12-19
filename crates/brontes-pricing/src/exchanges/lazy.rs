@@ -8,7 +8,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
 use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{types::PoolState, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, PoolUpdate};
 
@@ -97,6 +97,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Poll::Ready(Some((block, pool, state))) = self.pool_load_futures.poll_next_unpin(cx)
         {
+            info!("loaded pool");
             if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                 *(o.get_mut()) -= 1;
             } else {
