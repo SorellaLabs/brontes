@@ -9,7 +9,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{extra_processing::Pair, traits::TracingProvider};
+use brontes_types::{extra_processing::Pair, normalized_actions::Actions, traits::TracingProvider};
 use exchanges::lazy::LazyExchangeLoader;
 pub use exchanges::*;
 use futures::{Future, Stream, StreamExt};
@@ -128,6 +128,19 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .collect::<HashSet<_>>(),
         );
 
+        let mut fake_update = msg.clone();
+        fake_update.logs = vec![];
+        fake_update.action = Actions::Revert;
+
+        for info in new_pair_set.into_iter().flatten() {
+            self.lazy_loader.lazy_load_exchange(
+                info.info.pool_addr,
+                msg.block - 1,
+                info.info.dex_type,
+            );
+            self.lazy_loader
+                .buffer_update(&info.info.pool_addr, fake_update.clone());
+        }
         let pairs = self
             .pair_graph
             .get_path(Pair(pair.0, pair.1))
@@ -139,17 +152,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 msg.block - 1,
                 info.info.dex_type,
             );
+
             // for the raw pair we always rebuffer
             self.lazy_loader
                 .buffer_update(&info.info.pool_addr, msg.clone());
-        }
-
-        for info in new_pair_set.into_iter().flatten() {
-            self.lazy_loader.lazy_load_exchange(
-                info.info.pool_addr,
-                msg.block - 1,
-                info.info.dex_type,
-            )
         }
     }
 
