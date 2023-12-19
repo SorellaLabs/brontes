@@ -89,10 +89,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     }
 
     pub fn buffer_update(&mut self, k: &Address, update: PoolUpdate) {
-        self.pool_buf
-            .get_mut(k)
-            .expect("buffered lazy exchange when no exchange future was found")
-            .push(update);
+        self.pool_buf.entry(*k).or_default().push(update);
     }
 
     pub fn is_empty(&self) -> bool {
