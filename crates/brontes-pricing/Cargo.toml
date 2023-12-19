@@ -62,5 +62,17 @@ modular-bitfield = "0.11.2"
 bytes = "1.5"
 eyre.workspace = true
 
+[dev-dependencies]
+serial_test.workspace = true
+brontes-core = { workspace = true, features = ["tests"] }
+brontes-classifier = { workspace = true, features = ["tests"] }
+brontes-inspect.workspace = true
+brontes-types.workspace = true
+brontes-database.workspace = true 
+brontes-database-libmdbx.workspace = true
+dotenv.workspace = true
+tokio.workspace = true
+reth-tracing-ext.workspace = true
+
 [features]
-uni-v3-ticks =[]
+uni-v3-ticks = []
