@@ -142,9 +142,9 @@ impl Libmdbx {
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        let cex_quotes: CexPriceMap = tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+        // let cex_quotes: CexPriceMap = tx
+        //     .get::<CexPrice>(block_num)?
+        //     .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
         Ok(MetadataDB {
             block_num,
             block_hash: block_meta.block_hash,
