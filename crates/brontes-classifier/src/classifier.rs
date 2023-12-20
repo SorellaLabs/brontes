@@ -151,14 +151,18 @@ impl<'db> Classifier<'db> {
     // need this for dyn classifying
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
-            |node| node.data.is_swap(),
-            |node| (node.index, node.data.clone()),
-            |other_nodes, node| {
-                let Actions::Swap(swap_data) = &node.data else { unreachable!() };
-                other_nodes
+            |node| {
+                node.get_all_sub_actions()
                     .into_iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data else { return None };
+                    .any(|data| data.is_transfer())
+            },
+            |node| node.data.clone(),
+            |other_nodes, node| {
+                let Actions::Transfer(transfer) = &node.data else { unreachable!() };
+                let mut res = other_nodes
+                    .into_iter()
+                    .filter_map(|data| {
+                        let Actions::Swap(swap_data) = data else { return None };
                         if (transfer.amount == swap_data.amount_in
                             && transfer.token == swap_data.token_in
                             && transfer.to == swap_data.pool)
@@ -166,11 +170,13 @@ impl<'db> Classifier<'db> {
                                 && transfer.token == swap_data.token_out
                                 && transfer.from == swap_data.pool)
                         {
-                            return Some(*index)
+                            return Some(node.index)
                         }
                         None
                     })
-                    .collect::<Vec<_>>()
+                    .collect::<Vec<_>>();
+                res.dedup();
+                res
             },
         );
     }
@@ -693,7 +699,6 @@ pub mod test {
 
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx, 6);
         let db = Clickhouse::default();
-
 
         let tree = build_raw_test_tree(&tracer, &db, &libmdbx, block_num).await;
         let jarad = tree.roots[1].tx_hash;
