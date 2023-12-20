@@ -696,10 +696,7 @@ pub mod test {
 
         let (tx2, _rx2) = unbounded_channel();
 
-        let classifier = Classifier::new(&libmdbx, tx2);
-
-        let tree = build_raw_test_tree(&tracer, &db, block_num).await;
-
+        let tree = build_raw_test_tree(&tracer, &db, &libmdbx, block_num).await;
         let jarad = tree.roots[1].tx_hash;
 
         let swap = tree.collect(jarad, |node| {
