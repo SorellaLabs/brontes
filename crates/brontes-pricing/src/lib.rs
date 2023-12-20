@@ -137,13 +137,21 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn queue_loading(&mut self, pair: Pair, trigger_update: PoolUpdate) {
-        for pool_info in self.pair_graph.get_path(pair).flatten() {
+        for pool_info in self
+            .pair_graph
+            .get_path(pair)
+            .flatten()
+            .filter(|f| {
+                !(self.mut_state.contains_key(&f.info.pool_addr)
+                    || self.lazy_loader.is_loading(&f.info.pool_addr))
+            })
+            .collect::<Vec<_>>()
+        {
             // load exchange
             self.lazy_loader.lazy_load_exchange(
                 pool_info.info.pool_addr,
                 trigger_update.block,
                 pool_info.info.dex_type,
-                // needed for if the pool fails
             );
 
             // we buffer the update for all of the pool state with there specific addresses
@@ -426,13 +434,23 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         // runtime scheduler less in order to boost performance
         let mut work = 1024;
         loop {
-            if let Poll::Ready(s) = self
-                .update_rx
-                .poll_recv(cx)
-                .map(|inner| inner.map(|update| self.on_message(update)))
-            {
-                if s.is_none() && self.lazy_loader.is_empty() {
-                    return Poll::Ready(self.on_close())
+            let mut work_inner = 7;
+            loop {
+                if let Poll::Ready(s) = self
+                    .update_rx
+                    .poll_recv(cx)
+                    .map(|inner| inner.map(|update| self.on_message(update)))
+                {
+                    if s.is_none() && self.lazy_loader.is_empty() {
+                        return Poll::Ready(self.on_close())
+                    }
+                } else {
+                    break
+                }
+
+                work_inner -= 1;
+                if work_inner == 0 {
+                    break
                 }
             }
 
