@@ -154,32 +154,38 @@ impl<'db> Classifier<'db> {
         tree.remove_duplicate_data(
             |node| {
                 (
+                    node.data.is_swap(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_swap()),
+                )
+            },
+            |node| {
+                (
                     node.data.is_transfer(),
                     node.get_all_sub_actions()
                         .into_iter()
                         .any(|data| data.is_transfer()),
                 )
             },
-            |node| node.data.clone(),
+            |node| (node.index, node.data.clone()),
             |other_nodes, node| {
-                let Actions::Transfer(transfer) = &node.data else { unreachable!() };
-                let mut res = other_nodes
+                let Actions::Swap(swap_data) = &node.data else { unreachable!() };
+                other_nodes
                     .into_iter()
-                    .filter_map(|data| {
-                        let Actions::Swap(swap_data) = data else { return None };
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
                         println!("running classify");
                         if (transfer.amount == swap_data.amount_in
                             || transfer.amount == swap_data.amount_out)
                             && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
                         {
                             println!("adding node to be removed");
-                            return Some(node.index)
+                            return Some(*index)
                         }
                         None
                     })
-                    .collect::<Vec<_>>();
-                res.dedup();
-                res
+                    .collect::<Vec<_>>()
             },
         );
     }
