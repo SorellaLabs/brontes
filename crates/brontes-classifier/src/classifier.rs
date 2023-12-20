@@ -179,7 +179,6 @@ impl<'db> Classifier<'db> {
                             || transfer.amount == swap_data.amount_out)
                             && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
                         {
-                            println!("adding node to be removed");
                             return Some(*index)
                         }
                         None
@@ -191,50 +190,78 @@ impl<'db> Classifier<'db> {
 
     // need this for dyn classifying
     fn remove_mint_transfers(&self, tree: &mut TimeTree<Actions>) {
-        // tree.remove_duplicate_data(
-        //     |node| node.data.is_mint(),
-        //     |node| (node.index, node.data.clone()),
-        //     |other_nodes, node| {
-        //         let Actions::Mint(mint_data) = &node.data else {
-        // unreachable!() };         other_nodes
-        //             .into_iter()
-        //             .filter_map(|(index, data)| {
-        //                 let Actions::Transfer(transfer) = data else { return
-        // None };                 for (amount, token) in
-        // mint_data.amount.iter().zip(&mint_data.token) {
-        // if transfer.amount.eq(amount) && transfer.token.eq(token) {
-        //                         return Some(*index)
-        //                     }
-        //                 }
-        //                 None
-        //             })
-        //             .collect::<Vec<_>>()
-        //     },
-        // );
+        tree.remove_duplicate_data(
+            |node| {
+                (
+                    node.data.is_mint(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_mint()),
+                )
+            },
+            |node| {
+                (
+                    node.data.is_transfer(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_transfer()),
+                )
+            },
+            |node| (node.index, node.data.clone()),
+            |other_nodes, node| {
+                let Actions::Mint(mint_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
+                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
+                                return Some(*index)
+                            }
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+        );
     }
 
     // need this for dyn classifying
     fn remove_collect_transfers(&self, tree: &mut TimeTree<Actions>) {
-        // tree.remove_duplicate_data(
-        //     |node| node.data.is_collect(),
-        //     |node| (node.index, node.data.clone()),
-        //     |other_nodes, node| {
-        //         let Actions::Collect(collect_data) = &node.data else {
-        // unreachable!() };         other_nodes
-        //             .into_iter()
-        //             .filter_map(|(index, data)| {
-        //                 let Actions::Transfer(transfer) = data else { return
-        // None };                 for (amount, token) in
-        // collect_data.amount.iter().zip(&collect_data.token) {
-        //                     if transfer.amount.eq(amount) &&
-        // transfer.token.eq(token) {                         return
-        // Some(*index)                     }
-        //                 }
-        //                 None
-        //             })
-        //             .collect::<Vec<_>>()
-        //     },
-        // );
+        tree.remove_duplicate_data(
+            |node| {
+                (
+                    node.data.is_collect(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_collect()),
+                )
+            },
+            |node| {
+                (
+                    node.data.is_transfer(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_transfer()),
+                )
+            },
+            |node| (node.index, node.data.clone()),
+            |other_nodes, node| {
+                let Actions::Collect(collect_data) = &node.data else { unreachable!() };
+                other_nodes
+                    .into_iter()
+                    .filter_map(|(index, data)| {
+                        let Actions::Transfer(transfer) = data else { return None };
+                        for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {
+                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
+                                return Some(*index)
+                            }
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>()
+            },
+        );
     }
 
     fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u128> {
