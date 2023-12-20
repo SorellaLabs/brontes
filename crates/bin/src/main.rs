@@ -187,7 +187,17 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
                 None
             };
         libmdbx
-            .clear_and_initialize_tables(&clickhouse, &Tables::ALL, range)
+            .clear_and_initialize_tables(
+                &clickhouse,
+                &[
+                    Tables::AddressToProtocol,
+                    Tables::AddressToTokens,
+                    Tables::CexPrice,
+                    Tables::TokenDecimals,
+                    Tables::Metadata,
+                ],
+                range,
+            )
             .await?;
     }
 
