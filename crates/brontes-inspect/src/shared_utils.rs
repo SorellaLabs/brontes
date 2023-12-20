@@ -155,6 +155,7 @@ impl SharedInspectorUtils<'_> {
                     // add to
                     let mut inner = deltas.entry(transfer.to).or_default();
                     apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
+                    continue
                 }
 
                 // fill backwards
@@ -182,11 +183,7 @@ impl SharedInspectorUtils<'_> {
         });
 
         // if the address is negative, this wasn't a profit collector
-        deltas
-            .iter()
-            .filter(|(_, v)| v.iter().any(|(_, a)| a.gt(&Rational::ZERO)))
-            .map(|(k, _)| *k)
-            .collect::<Vec<_>>()
+        deltas.keys().copied().collect::<Vec<_>>()
     }
 }
 
