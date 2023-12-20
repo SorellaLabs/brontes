@@ -694,7 +694,6 @@ pub mod test {
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx, 6);
         let db = Clickhouse::default();
 
-        let (tx2, _rx2) = unbounded_channel();
 
         let tree = build_raw_test_tree(&tracer, &db, &libmdbx, block_num).await;
         let jarad = tree.roots[1].tx_hash;
