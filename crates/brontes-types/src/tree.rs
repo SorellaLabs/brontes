@@ -352,6 +352,7 @@ impl<V: NormalizedAction> Node<V> {
         if !find(self) {
             return false
         }
+
         let lower_has_better_collect = self
             .inner
             .iter()
