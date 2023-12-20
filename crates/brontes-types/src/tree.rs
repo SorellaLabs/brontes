@@ -378,7 +378,7 @@ impl<V: NormalizedAction> Node<V> {
         let val = loop {
             if let Some((our_index, next)) = iter.next() {
                 if index == next.index {
-                    println!("found matching idx");
+                    println!("found matching idx {index}");
                     break Some(our_index)
                 }
 
@@ -388,7 +388,7 @@ impl<V: NormalizedAction> Node<V> {
                         break None
                     }
                 } else {
-                    println!("no match");
+                    println!("no match: {index}");
                     break None
                 }
             }
