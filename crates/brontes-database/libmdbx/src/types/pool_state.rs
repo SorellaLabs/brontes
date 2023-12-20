@@ -190,6 +190,8 @@ mod tests {
                         );
                         map
                     },
+                    reserve_0:        Default::default(),
+                    reserve_1:        Default::default(),
                 }),
                 pool_type:    PoolStateType::UniswapV3,
             },
