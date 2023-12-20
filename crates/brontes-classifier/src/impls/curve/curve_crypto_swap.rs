@@ -12,8 +12,8 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::{
     enum_unwrap, ActionCollection,
     CurveCryptoSwap::{
-        exchange_0Call, exchange_1Call, exchange_underlying_0Call, CurveCryptoSwapCalls,
-        TokenExchange,exchange_2Call
+        exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call,
+        CurveCryptoSwapCalls, TokenExchange,
     },
     IntoAction, StaticReturnBindings,
 };
@@ -110,7 +110,6 @@ action_impl!(
     }
 );
 
-
 action_impl!(
     CurveCryptoExchange2,
     Swap,
@@ -163,8 +162,6 @@ action_impl!(
         }
     }
 );
-
-
 
 // I don't know who coded this contract, but I wish them great harm.
 action_impl!(

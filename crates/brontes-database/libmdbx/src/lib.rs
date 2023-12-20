@@ -9,17 +9,21 @@ use std::collections::HashMap;
 use alloy_primitives::Address;
 use brontes_database::{clickhouse::Clickhouse, MetadataDB, Pair};
 use brontes_pricing::types::DexPrices;
-use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
+use brontes_types::{
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    exchanges::StaticBindingsDb,
+};
 use eyre::Context;
 use initialize::LibmdbxInitializer;
 use malachite::Rational;
 use reth_db::{
+    cursor::DbCursorRO,
     is_database_empty,
     mdbx::DatabaseFlags,
     table::{DupSort, Table},
     transaction::{DbTx, DbTxMut},
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
-    DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType, cursor::DbCursorRO,
+    DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
 };
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
@@ -134,8 +138,6 @@ impl Libmdbx {
         Ok(())
     }
 
-
-
     /// returns a RO transaction
     pub fn ro_tx(&self) -> eyre::Result<LibmdbxTx<RO>> {
         let tx = LibmdbxTx::new_ro_tx(&self.0)?;
@@ -147,17 +149,54 @@ impl Libmdbx {
         self.write_table(&vec![TokenDecimalsData { address, decimals }])
     }
 
-
-    /// gets all addresses that were initialized in a given block
-    pub fn addresses_init_block(&self, block_num: u64) -> eyre::Result<Vec<Address>> {
+    pub fn addresses_inited_before(
+        &self,
+        block_num: u64,
+    ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
         let tx = self.ro_tx()?;
         let mut cursor = tx.cursor_read::<AddressToTokens>()?;
+        let binding_tx = self.ro_tx()?;
 
-        let addresses = cursor.walk(None)?.flatten().filter_map(|(addr, info)|  {if info.init_block == block_num {
-            Some(addr)
-        } else {
-            None
-        }}).collect::<Vec<_>>();
+        Ok(cursor
+            .walk(None)?
+            .flatten()
+            .filter_map(|(addr, info)| {
+                if info.init_block <= block_num {
+                    if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(addr) {
+                        return Some(((addr, protocol), Pair(info.token0, info.token1)))
+                    }
+
+                    None
+                } else {
+                    None
+                }
+            })
+            .collect::<HashMap<_, _>>())
+    }
+
+    /// gets all addresses that were initialized in a given block
+    pub fn addresses_init_block(
+        &self,
+        block_num: u64,
+    ) -> eyre::Result<Vec<(Address, StaticBindingsDb, Pair)>> {
+        let tx = self.ro_tx()?;
+        let mut cursor = tx.cursor_read::<AddressToTokens>()?;
+        let binding_tx = self.ro_tx()?;
+
+        let addresses = cursor
+            .walk(None)?
+            .flatten()
+            .filter_map(|(addr, info)| {
+                if info.init_block == block_num {
+                    if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(addr) {
+                        return Some((addr, protocol, Pair(info.token0, info.token1)))
+                    }
+                    None
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
         Ok(addresses)
     }
@@ -236,7 +275,6 @@ impl Libmdbx {
         block_details: MevBlock,
         mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
-        
     }
 }
 

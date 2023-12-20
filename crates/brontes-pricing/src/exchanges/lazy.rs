@@ -15,15 +15,15 @@ use crate::{
     uniswap_v3::UniswapV3Pool, PoolUpdate,
 };
 
-type PoolFetchError = (Address, StaticBindingsDb, u64, AmmError, PoolPairInfoDirection, Pair);
+type PoolFetchError = (Address, StaticBindingsDb, u64, AmmError);
 type PoolFetchSuccess = (u64, Address, PoolState, LoadResult);
 
 pub enum LoadResult {
     Ok,
+    Err,
     // because we back query 1 block. this breaks so we need to instead
     // do a special query
     PoolInitOnBlock,
-    PoolDoesNotExistYet,
 }
 impl LoadResult {
     pub fn is_ok(&self) -> bool {
@@ -35,8 +35,6 @@ pub struct LazyResult {
     pub state:       Option<PoolState>,
     pub block:       u64,
     pub load_result: LoadResult,
-    pub pair:        Option<PoolPairInfoDirection>,
-    pub parent_pair: Option<Pair>,
 }
 
 pub struct LazyExchangeLoader<T: TracingProvider> {
@@ -69,8 +67,6 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         address: Address,
         block_number: u64,
         ex_type: StaticBindingsDb,
-        info: PoolPairInfoDirection,
-        parent_pair: Pair,
     ) {
         let provider = self.provider.clone();
         // increment
@@ -94,14 +90,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                             UniswapV2Pool::new_load_on_block(address, provider, block_number)
                                 .await
                                 .map_err(|e| {
-                                    (
-                                        address,
-                                        StaticBindingsDb::UniswapV2,
-                                        block_number,
-                                        e,
-                                        info,
-                                        parent_pair,
-                                    )
+                                    (address, StaticBindingsDb::UniswapV2, block_number, e)
                                 })?,
                             LoadResult::PoolInitOnBlock,
                         )
@@ -129,14 +118,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                             UniswapV3Pool::new_from_address(address, block_number, provider)
                                 .await
                                 .map_err(|e| {
-                                    (
-                                        address,
-                                        StaticBindingsDb::UniswapV3,
-                                        block_number,
-                                        e,
-                                        info,
-                                        parent_pair,
-                                    )
+                                    (address, StaticBindingsDb::UniswapV3, block_number, e)
                                 })?,
                             LoadResult::PoolInitOnBlock,
                         )
@@ -180,27 +162,15 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     }
 
                     self.pool_buf.remove(&addr);
-                    let res = LazyResult {
-                        block,
-                        state: Some(state),
-                        load_result: load,
-                        pair: None,
-                        parent_pair: None,
-                    };
+                    let res = LazyResult { block, state: Some(state), load_result: load };
                     return Poll::Ready(Some(res))
                 }
-                Err((address, dex, block, e, pair, parent_pair)) => {
+                Err((address, dex, block, e)) => {
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
 
-                    let res = LazyResult {
-                        pair: Some(pair),
-                        parent_pair: Some(parent_pair),
-                        state: None,
-                        block,
-                        load_result: LoadResult::PoolDoesNotExistYet,
-                    };
+                    let res = LazyResult { state: None, block, load_result: LoadResult::Err };
                     return Poll::Ready(Some(res))
                 }
             }
