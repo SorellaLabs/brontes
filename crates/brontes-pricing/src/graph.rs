@@ -280,6 +280,10 @@ impl PairGraph {
         &mut self,
         pair: Pair,
     ) -> impl Iterator<Item = Vec<PoolPairInfoDirection>> + '_ {
+        if pair.0 == pair.1 {
+            return vec![].into_iter()
+        }
+
         if let Some(pools) = self.known_pairs.get(&pair) {
             return pools.clone().into_iter()
         }

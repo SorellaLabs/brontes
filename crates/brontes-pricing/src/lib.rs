@@ -101,6 +101,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
 
         if msg.action.is_transfer() {
+            let pair = msg.get_pair(self.quote_asset);
             self.update_dex_quotes(msg.block, msg.tx_idx, msg.get_pair(self.quote_asset).unwrap());
             self.update_dex_quotes(
                 msg.block,
@@ -441,28 +442,13 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         // runtime scheduler less in order to boost performance
         let mut work = 1024;
         loop {
-            // Due to how the scheduling works with our tracing and classification
-            // this channel will almost always be full. Because of this we don't want to
-            // just poll till it is drained as that means that no other
-            // progression will be made and this will be significantly slower than if we
-            // process in a 10 to 1 ratio
-            let mut inner_work = 10;
-            'inner: loop {
-                if let Poll::Ready(s) = self
-                    .update_rx
-                    .poll_recv(cx)
-                    .map(|inner| inner.map(|update| self.on_message(update)))
-                {
-                    if s.is_none() && self.lazy_loader.is_empty() {
-                        return Poll::Ready(self.on_close())
-                    }
-                } else {
-                    break 'inner
-                }
-
-                inner_work -= 1;
-                if inner_work == 0 {
-                    break 'inner
+            if let Poll::Ready(s) = self
+                .update_rx
+                .poll_recv(cx)
+                .map(|inner| inner.map(|update| self.on_message(update)))
+            {
+                if s.is_none() && self.lazy_loader.is_empty() {
+                    return Poll::Ready(self.on_close())
                 }
             }
 
