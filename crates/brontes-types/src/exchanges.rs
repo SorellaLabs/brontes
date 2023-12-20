@@ -8,8 +8,6 @@ use reth_db::{
 use reth_primitives::{Address, BufMut};
 use serde::{Deserialize, Serialize};
 
-use crate::libmdbx_utils::serde_address_string;
-
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash, Serialize, Deserialize)]
 pub enum StaticBindingsDb {

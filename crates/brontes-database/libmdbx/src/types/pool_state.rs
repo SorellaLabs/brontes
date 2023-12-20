@@ -3,9 +3,7 @@ use std::{collections::HashMap, default::Default, hash::Hash, ops::MulAssign, st
 use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable};
 use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
-use brontes_types::{
-    impl_compress_decompress_for_encoded_decoded, libmdbx_utils::serde_address_string,
-};
+use brontes_types::{impl_compress_decompress_for_encoded_decoded, libmdbx::serde::address_string};
 use bytes::BufMut;
 use reth_db::{
     table::{Compress, Decompress},
@@ -23,7 +21,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Row, Deserialize)]
 pub struct PoolStateData {
-    #[serde(with = "serde_address_string")]
+    #[serde(with = "address_string")]
     pub pool:         Address,
     pub run:          u64,
     pub batch:        u64,
