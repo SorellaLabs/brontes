@@ -173,16 +173,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return
         }
 
-        // if we already have the pair, lets not re-insert
-        if self
-            .dex_quotes
-            .get(&block)
-            .filter(|i| i.get_pair_keys(pool_pair, tx_idx as usize).is_some())
-            .is_some()
-        {
-            return
-        }
-
         let pool_keys = self
             .pair_graph
             .get_path(pool_pair)
