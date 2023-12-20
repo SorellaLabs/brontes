@@ -106,7 +106,7 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
     // Fetch required environment variables.
     let db_path = get_env_vars()?;
 
-    let max_tasks = determine_max_tasks(&run_config);
+    let max_tasks = determine_max_tasks(run_config.max_tasks);
 
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
@@ -199,7 +199,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
 async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<dyn Error>> {
     let db_path = get_env_vars()?;
 
-    let max_tasks = config.max_tasks.unwrap_or(5);
+    let max_tasks = determine_max_tasks(config.max_tasks);
 
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
@@ -255,8 +255,8 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
     Ok(())
 }
 
-fn determine_max_tasks(run_config: &Run) -> u32 {
-    match run_config.max_tasks {
+fn determine_max_tasks(max_tasks: Option<u64>) -> u32 {
+    match max_tasks {
         Some(max_tasks) => max_tasks as u32,
         None => {
             let cpus = num_cpus::get_physical();
