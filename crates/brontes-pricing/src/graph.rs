@@ -210,8 +210,6 @@ impl PairGraph {
         // remove any known info ab this pair
         let t0 = SystemTime::now();
         let pair = Pair(info.info.token_0, info.info.token_1);
-        self.known_pairs.remove(&pair);
-        self.known_pairs.remove(&pair.flip());
 
         let start_idx = *self.addr_to_index.get(&pair.0).unwrap();
         let end_idx = *self.addr_to_index.get(&pair.1).unwrap();
@@ -227,6 +225,8 @@ impl PairGraph {
         info!(us, addr=?info.info.pool_addr, "disabled pool in");
 
         if weight.is_empty() {
+            self.known_pairs.remove(&pair);
+            self.known_pairs.remove(&pair.flip());
             self.graph.remove_edge(edge);
             return true
         }
