@@ -7,11 +7,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
-use futures::{
-    future::BoxFuture,
-    stream::{FuturesOrdered, FuturesUnordered},
-    Future, Stream, StreamExt,
-};
+use futures::{future::BoxFuture, stream::FuturesUnordered, Future, Stream, StreamExt};
 use tracing::{error, info};
 
 use crate::{
@@ -25,7 +21,10 @@ type PoolFetchSuccess = (u64, Address, PoolState);
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
     pool_buf:          HashSet<Address>,
-    pool_load_futures: FuturesOrdered<BoxFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
+    // this can be unordered as it is in just init state and we don't apply any transitions
+    // until all state has been fetched for a given block.
+    pool_load_futures:
+        FuturesUnordered<BoxFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
     // the different blocks that we are currently fetching
     req_per_block:     HashMap<u64, u64>,
 }
@@ -34,7 +33,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
             pool_buf: HashSet::default(),
-            pool_load_futures: FuturesOrdered::default(),
+            pool_load_futures: FuturesUnordered::default(),
             provider,
             req_per_block: HashMap::default(),
         }
@@ -56,7 +55,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
         match ex_type {
             StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
-                self.pool_load_futures.push_back(Box::pin(async move {
+                self.pool_load_futures.push(Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let pool =
@@ -71,7 +70,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 }))
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
-                self.pool_load_futures.push_back(Box::pin(async move {
+                self.pool_load_futures.push(Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let pool = UniswapV3Pool::new_from_address(address, block_number - 1, provider)
@@ -85,7 +84,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 }));
             }
             rest @ _ => {
-                error!(exchange =?ex_type, "no state updater is build for");
+                error!(exchange=?ex_type, "no state updater is build for");
             }
         }
     }
