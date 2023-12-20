@@ -1,6 +1,6 @@
 use alloy_rlp::{Decodable, Encodable};
 pub use brontes_types::exchanges::StaticBindingsDb;
-use brontes_types::libmdbx_utils::serde_address_string;
+use brontes_types::libmdbx::serde::address_string;
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
@@ -15,7 +15,7 @@ use crate::{tables::AddressToProtocol, types::utils::static_bindings, LibmdbxDat
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Row)]
 pub struct AddressToProtocolData {
-    #[serde(with = "serde_address_string")]
+    #[serde(with = "address_string")]
     pub address: Address,
 
     #[serde(with = "static_bindings")]

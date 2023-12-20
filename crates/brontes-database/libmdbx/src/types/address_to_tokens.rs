@@ -1,7 +1,7 @@
 use std::{default::Default, str::FromStr};
 
 use alloy_rlp::{Decodable, Encodable};
-use brontes_types::libmdbx_utils::serde_address_string;
+use brontes_types::libmdbx::serde::address_string;
 use reth_codecs::{main_codec, Compact};
 use reth_db::{
     table::{Compress, Decompress},
@@ -17,7 +17,7 @@ use crate::{tables::AddressToTokens, types::utils::pool_tokens, LibmdbxData};
 #[serde_as]
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct AddressToTokensData {
-    #[serde(with = "serde_address_string")]
+    #[serde(with = "address_string")]
     pub address: Address,
     #[serde(with = "pool_tokens")]
     pub tokens:  PoolTokens,
