@@ -134,16 +134,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn queue_loading(&mut self, pair: Pair, trigger_update: PoolUpdate) {
         for pool_info in self.pair_graph.get_path(pair).flatten() {
             // load exchange
-            if !self.mut_state.contains_key(&pool_info.info.pool_addr) {
-                self.lazy_loader.lazy_load_exchange(
-                    pool_info.info.pool_addr,
-                    trigger_update.block,
-                    pool_info.info.dex_type,
-                    // needed for if the pool fails
-                    pool_info,
-                    pair,
-                );
-            }
+            self.lazy_loader.lazy_load_exchange(
+                pool_info.info.pool_addr,
+                trigger_update.block,
+                pool_info.info.dex_type,
+                // needed for if the pool fails
+                pool_info,
+                pair,
+            );
 
             // we buffer the update for all of the pool state with there specific addresses
             // this is so that when the pool resolves,
