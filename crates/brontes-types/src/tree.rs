@@ -389,6 +389,7 @@ impl<V: NormalizedAction> Node<V> {
                 }
 
                 if index < next.index {
+                    println!("index less than");
                     break None
                 }
 
@@ -399,7 +400,7 @@ impl<V: NormalizedAction> Node<V> {
                 // }
                 loop {
                     if let Some(next_i) = iter.next() {
-                        if index > next.index && index < next_i.1.index {
+                        if index > next.index && index <= next_i.1.index {
                             println!("finding {index}, going lower: {}", next_i.1.index);
                             next.remove_index_and_childs(index);
                             next_i.1.remove_index_and_childs(index);
