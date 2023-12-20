@@ -168,6 +168,7 @@ impl<'db> Classifier<'db> {
                     .into_iter()
                     .filter_map(|data| {
                         let Actions::Swap(swap_data) = data else { return None };
+                        println!("running classify");
                         if (transfer.amount == swap_data.amount_in
                             && transfer.token == swap_data.token_in
                             && transfer.to == swap_data.pool)
