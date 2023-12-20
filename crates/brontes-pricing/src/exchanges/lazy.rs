@@ -190,9 +190,6 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     return Poll::Ready(Some(res))
                 }
                 Err((address, dex, block, e, pair, parent_pair)) => {
-                    error!(?address, exchange_type=%dex, block_number=block, "failed to load
-                    pool, most likely isn't innited for the given block yet");
-
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
