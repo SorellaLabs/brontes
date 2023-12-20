@@ -680,7 +680,10 @@ pub mod test {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::{test_utils::{get_traces_with_meta, build_raw_test_tree}, Classifier};
+    use crate::{
+        test_utils::{build_raw_test_tree, get_traces_with_meta},
+        Classifier,
+    };
 
     #[tokio::test]
     #[serial]
