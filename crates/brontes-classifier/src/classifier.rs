@@ -694,7 +694,9 @@ pub mod test {
         let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx, 6);
         let db = Clickhouse::default();
 
-        let classifier = Classifier::new(&libmdbx, tx);
+        let (tx2, _rx2) = unbounded_channel();
+
+        let classifier = Classifier::new(&libmdbx, tx2);
 
         let (traces, header, metadata) = get_traces_with_meta(&tracer, &db, block_num).await;
 
@@ -713,8 +715,8 @@ pub mod test {
 
         for i in &swap {
             if let Actions::Swap(s) = i {
-                swaps.entry(s.token_in).or_defualt().insert(s.amount_in);
-                swaps.entry(s.token_out).or_defualt().insert(s.amount_out);
+                swaps.entry(s.token_in).or_default().insert(s.amount_in);
+                swaps.entry(s.token_out).or_default().insert(s.amount_out);
             }
         }
 
