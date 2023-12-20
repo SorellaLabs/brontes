@@ -54,6 +54,7 @@ impl PoolPairInfoDirection {
         }
     }
 }
+
 const CAPACITY: usize = 650_000;
 
 #[derive(Debug, Clone)]
