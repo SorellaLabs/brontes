@@ -145,7 +145,7 @@ impl SharedInspectorUtils<'_> {
                 };
                 let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
-                // if deltas has the entry or token_collector does, then we move it
+                // if deltas has the entry, then we move it
                 if deltas.contains_key(&transfer.from) {
                     changed = true;
                     let mut inner = deltas.entry(transfer.from).or_default();
