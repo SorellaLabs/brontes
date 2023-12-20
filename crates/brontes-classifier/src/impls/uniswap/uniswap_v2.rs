@@ -18,7 +18,7 @@ action_impl!(
     swapCall,
     Swap,
     UniswapV2,
-    call_data: true, 
+    call_data: true,
     logs: true,
     |index, from_address: Address, target_address: Address, call_data: swapCall, data: Option<Swap>, db_tx: &LibmdbxTx<RO>| {
         let data = data?;

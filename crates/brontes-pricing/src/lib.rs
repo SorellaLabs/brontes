@@ -10,6 +10,7 @@ use std::{
 
 use alloy_primitives::{Address, U256};
 use brontes_types::{
+    exchanges::StaticBindingsDb,
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedAction, NormalizedSwap},
     traits::TracingProvider,
@@ -21,7 +22,7 @@ use futures::{Future, Stream, StreamExt};
 pub use graph::PairGraph;
 use graph::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
@@ -47,6 +48,8 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     completed_block: u64,
 
     buffer: StateBuffer,
+
+    new_graph_pairs: HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>,
 
     /// pools that don't exist yet that have been attempted to be queried
     pending_init_pools: HashSet<Address>,
@@ -74,8 +77,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         update_rx: UnboundedReceiver<PoolUpdate>,
         provider: Arc<T>,
         current_block: u64,
+        new_graph_pairs: HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>,
     ) -> Self {
         Self {
+            new_graph_pairs,
             quote_asset,
             pending_init_pools: HashSet::default(),
             buffer: StateBuffer::new(),
@@ -97,7 +102,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn on_message(&mut self, msg: PoolUpdate) {
         // we want to capture these
         if msg.block > self.current_block {
-            self.current_block = msg.block
+            self.current_block = msg.block;
+            for (pool_addr, dex, pair) in self
+                .new_graph_pairs
+                .remove(&self.current_block)
+                .unwrap_or(vec![])
+            {
+                self.pair_graph.add_node(pair, pool_addr, dex);
+            }
         }
 
         if msg.action.is_transfer() {
@@ -141,8 +153,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 trigger_update.block,
                 pool_info.info.dex_type,
                 // needed for if the pool fails
-                pool_info,
-                pair,
             );
 
             // we buffer the update for all of the pool state with there specific addresses
@@ -355,7 +365,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_pool_resolve(&mut self, state: LazyResult) {
-        let LazyResult { block, state, load_result, pair, parent_pair } = state;
+        let LazyResult { block, state, load_result } = state;
         if let Some(state) = state {
             let nonce = state.nonce();
             let snap = state.into_snapshot();
@@ -377,25 +387,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
         } else {
-            let info = pair.unwrap();
-            let parent_pair = parent_pair.unwrap();
-            // remove parent
-            self.pending_init_pools.insert(info.info.pool_addr);
-
-            // because we got a bad path, we need to re
-            if self.pair_graph.disable_pool(info) {
-                self.pair_graph.remove_pair(parent_pair);
-                let trigger_update = PoolUpdate {
-                    block,
-                    tx_idx: 69,
-                    logs: vec![],
-                    action: make_fake_swap(parent_pair),
-                };
-
-                self.queue_loading(parent_pair, trigger_update)
-            }
-
-            // we got a bad address, we need to requery path
+            error!("failed to load a pool");
         }
     }
 
@@ -512,16 +504,18 @@ pub mod test {
         let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
         let mut pairs = HashMap::new();
 
-        for value in all_addr_to_tokens.walk(None).unwrap() {
-            if let Ok((address, tokens)) = value {
-                if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(address) {
-                    pairs.insert((address, protocol), Pair(tokens.token0, tokens.token1));
-                }
-            }
+        let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
+
+        let mut rest_pairs = HashMap::default();
+        for i in start_block + 1..=end_block {
+            let pairs = libmdbx.addresses_init_block(i).unwrap();
+            rest_pairs.insert(i, pairs);
         }
 
+        info!("initing pair graph");
         let pair_graph = PairGraph::init_from_hashmap(pairs);
-        BrontesBatchPricer::new(quote, 0, 0, pair_graph, rx, parser.get_tracer(), block)
+
+        BrontesBatchPricer::new(quote, 0, 0, pair_graph, rx, parser.get_tracer(), block, rest_pairs)
     }
     #[tokio::test]
     async fn test_pool() {
