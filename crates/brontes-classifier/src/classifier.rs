@@ -681,7 +681,7 @@ pub mod test {
 
     use super::*;
     use crate::{
-        test_utils::{build_raw_test_tree, get_traces_with_meta},
+        test_utils::{ get_traces_with_meta},
         Classifier,
     };
 
