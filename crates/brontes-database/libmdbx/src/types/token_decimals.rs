@@ -1,5 +1,5 @@
 use alloy_primitives::Address;
-use brontes_types::libmdbx_utils::serde_address_string;
+use brontes_types::libmdbx::serde::address_string;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
@@ -10,7 +10,7 @@ use crate::tables::TokenDecimals;
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone, Row)]
 pub struct TokenDecimalsData {
-    #[serde(with = "serde_address_string")]
+    #[serde(with = "address_string")]
     pub address:  Address,
     pub decimals: u8,
 }

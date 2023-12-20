@@ -52,8 +52,8 @@ mod tests {
         implementation::tx::LibmdbxTx,
         initialize::LibmdbxInitializer,
         tables::{
-            AddressToProtocol, AddressToTokens, CexPrice, DexPrice, Metadata, PoolState, Tables,
-            TokenDecimals,
+            AddressToProtocol, AddressToTokens, CexPrice, DexPrice, Metadata, PoolCreationBlocks,
+            PoolState, Tables, TokenDecimals,
         },
         types::{
             address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
@@ -205,22 +205,38 @@ mod tests {
         Ok(())
     }
 
+    async fn test_pool_creation_blocks_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
+        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+        assert_ne!(tx.entries::<PoolCreationBlocks>()?, 0);
+
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
+        if !print {
+            cursor.first()?.ok_or(DatabaseError::Read(-1))?;
+        } else {
+            while let Some(vals) = cursor.next()? {
+                println!("{:?}", vals);
+            }
+        }
+        Ok(())
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
     #[serial]
     async fn test_intialize_tables() {
         let db = initialize_tables(&[
             //Tables::TokenDecimals,
-            Tables::AddressToTokens,
+            //Tables::AddressToTokens,
             //Tables::AddressToProtocol,
             //Tables::CexPrice,
             //Tables::Metadata,
             //Tables::PoolState,
             //Tables::DexPrice,
+            Tables::PoolCreationBlocks,
         ])
         .await;
         assert!(db.is_ok());
 
-        //let db = db.unwrap();
+        let db = db.unwrap();
         //assert!(test_tokens_decimals_table(&db, false).await.is_ok());
         //assert!(test_address_to_tokens_table(&db, false).await.is_ok());
         //assert!(test_address_to_protocols_table(&db, false).await.is_ok());
@@ -228,5 +244,6 @@ mod tests {
         //assert!(test_metadata_table(&db, false).await.is_ok());
         //assert!(test_pool_state_table(&db, false).await.is_ok());
         //assert!(test_dex_price_table(&db, false).await.is_ok());
+        assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
     }
 }
