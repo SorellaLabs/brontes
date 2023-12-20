@@ -5,6 +5,7 @@ use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, Parall
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
+use strum::VariantIterator;
 use tracing::error;
 
 use crate::normalized_actions::NormalizedAction;
@@ -369,61 +370,23 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     pub fn remove_index_and_childs(&mut self, index: u64) {
-        if self.index == index {
-            println!("found matching idx {index}");
-            self.inner.drain(..);
-            return
-        }
+        let mut iter = self.inner.iter_mut().enumerate();
 
-        if self.inner.is_empty() {
-            return
-        }
-
-        let mut iter = self.inner.iter_mut().enumerate().peekable();
-
-        let val = 'outer: loop {
-            if let Some((our_index, next)) = iter.next() {
-                if index == next.index {
-                    println!("found matching idx {index}");
-                    break Some(our_index)
+        let res = loop {
+            if let Some((i, inner)) = iter.next() {
+                if inner.index == index {
+                    break Some(i)
                 }
 
-                if index < next.index {
-                    println!("index less than");
+                if inner.index < index {
+                    inner.remove_index_and_childs(index)
+                } else {
                     break None
                 }
-
-                next.remove_index_and_childs(index);
-                loop {
-                    if let Some(next_i) = iter.next() {
-                        if index <= next_i.1.index {
-                            println!("finding {index}, going lower: {}", next_i.1.index);
-                            if next_i.1.index == index {
-                                println!("removing: {}", next_i.1.index);
-                                break 'outer Some(next_i.0)
-                            }
-
-                            next_i.1.remove_index_and_childs(index);
-                            break 'outer None
-                        }
-                    } else {
-                        break 'outer None
-                    }
-                }
-
-                // if let Some(peek) = iter.peek() {
-                //     if index > next.index && index < peek.1.index {
-                //         next.remove_index_and_childs(index);
-                //         break None
-                //     }
-                // } else {
-                //     println!("no match: {index}");
-                //     break None
-                // }
             }
         };
 
-        if let Some(val) = val {
+        if let Some(val) = res {
             self.inner.remove(val);
         }
     }
