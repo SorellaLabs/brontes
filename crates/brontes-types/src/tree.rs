@@ -398,6 +398,8 @@ impl<V: NormalizedAction> Node<V> {
                 // } else {
                 //     break 'outer
                 // }
+                //
+                next.remove_index_and_childs(index);
                 loop {
                     if let Some(next_i) = iter.next() {
                         if index > next.index && index <= next_i.1.index {
@@ -406,7 +408,6 @@ impl<V: NormalizedAction> Node<V> {
                                 break 'outer Some(next_i.0)
                             }
 
-                            next.remove_index_and_childs(index);
                             next_i.1.remove_index_and_childs(index);
                             break 'outer None
                         }
