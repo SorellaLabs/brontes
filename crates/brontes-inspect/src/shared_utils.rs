@@ -145,7 +145,7 @@ impl SharedInspectorUtils<'_> {
                 };
                 let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
-                // if deltas has the entry, then we move it to dest
+                // fill forward
                 if deltas.contains_key(&transfer.from) {
                     changed = true;
                     // remove from
@@ -159,14 +159,14 @@ impl SharedInspectorUtils<'_> {
                     continue
                 }
 
-                // remove delta
+                // fill backwards
                 if deltas.contains_key(&transfer.to) {
                     changed = true;
-                    let mut inner = deltas.entry(transfer.to).or_default();
-                    apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-
                     let mut inner = deltas.entry(transfer.from).or_default();
                     apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
+
+                    let mut inner = deltas.entry(transfer.to).or_default();
+                    apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
                 } else {
                     reuse.push(transfer)
                 }
@@ -183,7 +183,12 @@ impl SharedInspectorUtils<'_> {
             v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
         });
 
-        deltas.keys().copied().collect::<Vec<_>>()
+        // if the address is negative, this wasn't a profit collector
+        deltas
+            .iter()
+            .filter(|(_, v)| v.iter().all(|(_, a)| a.gt(&Rational::ZERO)))
+            .map(|(k, _)| *k)
+            .collect::<Vec<_>>()
     }
 }
 
