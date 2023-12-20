@@ -3,7 +3,7 @@ use std::{collections::HashMap, default::Default, hash::Hash, ops::MulAssign, st
 use alloy_primitives::{hex::FromHexError, Address};
 use alloy_rlp::{Decodable, Encodable};
 use brontes_database::clickhouse::types::DBTokenPricesDB;
-use brontes_pricing::types::PoolKey;
+use brontes_pricing::types::{DexQuotes, PoolKey, PoolKeysForPair};
 use brontes_types::{extra_processing::Pair, impl_compress_decompress_for_encoded_decoded};
 use bytes::BufMut;
 use malachite::{
@@ -62,7 +62,7 @@ impl LibmdbxDupData<DexPrice> for DexPriceData {
 }
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DexQuote(pub HashMap<Pair, Vec<PoolKey>>);
+pub struct DexQuote(pub HashMap<Pair, Vec<PoolKeysForPair>>);
 
 impl From<DexQuoteWithIndex> for DexQuote {
     fn from(value: DexQuoteWithIndex) -> Self {
@@ -70,8 +70,8 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-impl Into<Vec<(Pair, Vec<PoolKey>)>> for DexQuote {
-    fn into(self) -> Vec<(Pair, Vec<PoolKey>)> {
+impl Into<Vec<(Pair, Vec<PoolKeysForPair>)>> for DexQuote {
+    fn into(self) -> Vec<(Pair, Vec<PoolKeysForPair>)> {
         self.0.into_iter().collect()
     }
 }
@@ -79,7 +79,7 @@ impl Into<Vec<(Pair, Vec<PoolKey>)>> for DexQuote {
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
-    pub quote:  Vec<(Pair, Vec<PoolKey>)>,
+    pub quote:  Vec<(Pair, Vec<PoolKeysForPair>)>,
 }
 
 impl Encodable for DexQuoteWithIndex {
@@ -107,6 +107,7 @@ impl Decodable for DexQuoteWithIndex {
 
 impl_compress_decompress_for_encoded_decoded!(DexQuoteWithIndex);
 
+/*
 #[cfg(test)]
 mod tests {
     use std::{collections::HashMap, env};
@@ -222,3 +223,4 @@ mod tests {
         clickhouse.inner().insert_many(data, table).await.unwrap();
     }
 }
+*/

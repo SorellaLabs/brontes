@@ -69,7 +69,7 @@ brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
-brontes-database-libmdbx.workspace = true
+
 
 [features]
 default = ["tests"]
