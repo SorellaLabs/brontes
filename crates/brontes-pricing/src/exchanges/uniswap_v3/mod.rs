@@ -304,25 +304,6 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         batch_request::get_v3_pool_data_batch_request(self, block_number, middleware.clone())
             .await?;
 
-        let r0 = make_call_request(
-            IErc20::balanceOfCall::new((self.address,)),
-            middleware.clone(),
-            self.token_a,
-            block_number,
-        )
-        .await?;
-
-        let r1 = make_call_request(
-            IErc20::balanceOfCall::new((self.address,)),
-            middleware,
-            self.token_b,
-            block_number,
-        )
-        .await?;
-
-        self.reserve_0 = r0._0;
-        self.reserve_1 = r1._0;
-
         Ok(())
     }
 
