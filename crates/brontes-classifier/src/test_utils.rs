@@ -23,13 +23,12 @@ pub fn helper_build_tree(
 pub async fn build_raw_test_tree<T: TracingProvider>(
     tracer: &TraceParser<'_, T>,
     db: &Clickhouse,
+    lib: &Libmdbx,
     block_number: u64,
 ) -> TimeTree<Actions> {
     let (traces, header) = get_traces_with_meta(tracer, db, block_number).await;
-    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
     let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
-    let classifier = Classifier::new(&libmdbx, tx);
+    let classifier = Classifier::new(&lib, tx);
     let (_, tree) = classifier.build_tree(traces, header);
     tree
 }
