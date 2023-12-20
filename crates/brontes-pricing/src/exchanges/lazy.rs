@@ -18,6 +18,13 @@ use crate::{
 type PoolFetchError = (Address, StaticBindingsDb, u64, AmmError);
 type PoolFetchSuccess = (u64, Address, PoolState);
 
+pub enum LoadResult {
+    // because we back query 1 block. this breaks so we need to instead
+    // do a special query
+    PoolInitOnBlock,
+    PoolDoesNotExistYet,
+}
+
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
     pool_buf:          HashSet<Address>,
