@@ -137,7 +137,7 @@ impl<V: NormalizedAction> TimeTree<V> {
             .collect()
     }
 
-    pub fn remove_duplicate_data<FindActionHead,FindRemoval, ClassifyRemovalIndex, WantedData, R>(
+    pub fn remove_duplicate_data<FindActionHead, FindRemoval, ClassifyRemovalIndex, WantedData, R>(
         &mut self,
         find: FindActionHead,
         find_removal: FindRemoval,
@@ -388,6 +388,7 @@ impl<V: NormalizedAction> Node<V> {
                         break None
                     }
                 } else {
+                    println!("no match");
                     break None
                 }
             }
