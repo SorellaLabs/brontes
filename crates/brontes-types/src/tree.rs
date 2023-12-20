@@ -393,18 +393,13 @@ impl<V: NormalizedAction> Node<V> {
                     break None
                 }
 
-                // if let Some((our_index_i, next_i)) = iter.next() {
-                //
-                // } else {
-                //     break 'outer
-                // }
-                //
                 next.remove_index_and_childs(index);
                 loop {
                     if let Some(next_i) = iter.next() {
-                        if index > next.index && index <= next_i.1.index {
+                        if index <= next_i.1.index {
                             println!("finding {index}, going lower: {}", next_i.1.index);
                             if next_i.1.index == index {
+                                println!("removing: {}", next_i.1.index);
                                 break 'outer Some(next_i.0)
                             }
 
