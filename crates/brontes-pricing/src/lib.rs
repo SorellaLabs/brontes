@@ -204,7 +204,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .collect::<Vec<_>>();
 
         if pool_keys.is_empty() {
-            info!(?pool_pair, "no keys found for pair");
+            debug!(?pool_pair, "no keys found for pair");
             return
         }
 
