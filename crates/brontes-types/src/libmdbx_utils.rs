@@ -77,27 +77,3 @@ pub mod serde_hashmap {
     }
 }
  */
-
-pub mod serde_address_string {
-    use std::str::FromStr;
-
-    use alloy_primitives::Address;
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
-
-    pub fn serialize<S: Serializer>(u: &Address, serializer: S) -> Result<S::Ok, S::Error> {
-        format!("{:?}", u).serialize(serializer)
-    }
-
-    #[allow(dead_code)]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let address: String = Deserialize::deserialize(deserializer)?;
-
-        Ok(Address::from_str(&address).map_err(serde::de::Error::custom)?)
-    }
-}
