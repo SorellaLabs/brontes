@@ -19,7 +19,7 @@ use reth_db::{
     table::{DupSort, Table},
     transaction::{DbTx, DbTxMut},
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
-    DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
+    DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType, cursor::DbCursorRO,
 };
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
@@ -134,15 +134,32 @@ impl Libmdbx {
         Ok(())
     }
 
-    pub fn insert_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
-        self.write_table(&vec![TokenDecimalsData { address, decimals }])
-    }
+
 
     /// returns a RO transaction
     pub fn ro_tx(&self) -> eyre::Result<LibmdbxTx<RO>> {
         let tx = LibmdbxTx::new_ro_tx(&self.0)?;
 
         Ok(tx)
+    }
+
+    pub fn insert_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
+        self.write_table(&vec![TokenDecimalsData { address, decimals }])
+    }
+
+
+    /// gets all addresses that were initialized in a given block
+    pub fn addresses_init_block(&self, block_num: u64) -> eyre::Result<Vec<Address>> {
+        let tx = self.ro_tx()?;
+        let mut cursor = tx.cursor_read::<AddressToTokens>()?;
+
+        let addresses = cursor.walk(None)?.flatten().filter_map(|(addr, info)|  {if info.init_block == block_num {
+            Some(addr)
+        } else {
+            None
+        }}).collect::<Vec<_>>();
+
+        Ok(addresses)
     }
 
     pub fn get_metadata_no_dex(
