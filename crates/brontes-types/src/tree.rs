@@ -406,6 +406,7 @@ impl<V: NormalizedAction> Node<V> {
                                 break 'outer Some(next_i.0)
                             }
 
+                            next.remove_index_and_childs(index);
                             next_i.1.remove_index_and_childs(index);
                             break 'outer None
                         }
