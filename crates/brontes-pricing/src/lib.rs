@@ -152,22 +152,34 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         trigger_update.logs = vec![];
 
         // add first direction
-        trigger_update.action = make_fake_swap(pair.1, self.quote_asset);
-        self.queue_loading(Pair(pair.1, self.quote_asset), trigger_update.clone());
+        let pair0 = Pair(pair.0, self.quote_asset);
+        trigger_update.action = make_fake_swap(pair0);
+        self.queue_loading(pair0, trigger_update.clone());
 
         // add second direction
-        trigger_update.action = make_fake_swap(pair.0, self.quote_asset);
-        self.queue_loading(Pair(pair.0, self.quote_asset), trigger_update);
+        let pair1 = Pair(pair.1, self.quote_asset);
+        trigger_update.action = make_fake_swap(pair1);
+        self.queue_loading(pair1, trigger_update);
 
         // add default pair
         self.queue_loading(pair, msg.clone());
 
-        // add inverse pair
+        // add inverse default pair
         self.queue_loading(pair.flip(), msg)
     }
 
     fn update_dex_quotes(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
         if pool_pair.0 == pool_pair.1 {
+            return
+        }
+
+        // if we already have the pair, lets not re-insert
+        if self
+            .dex_quotes
+            .get(&block)
+            .filter(|i| i.get_pair_keys(pool_pair, tx_idx as usize).is_some())
+            .is_some()
+        {
             return
         }
 
@@ -384,13 +396,13 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
     }
 }
 
-const fn make_fake_swap(t0: Address, t1: Address) -> Actions {
+const fn make_fake_swap(pair: Pair) -> Actions {
     Actions::Swap(NormalizedSwap {
         index:      0,
         from:       Address::ZERO,
         pool:       Address::ZERO,
-        token_in:   t0,
-        token_out:  t1,
+        token_in:   pair.0,
+        token_out:  pair.1,
         amount_in:  U256::ZERO,
         amount_out: U256::ZERO,
     })
