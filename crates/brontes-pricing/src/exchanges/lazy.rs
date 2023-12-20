@@ -70,10 +70,10 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     ) {
         let provider = self.provider.clone();
         // increment
-        *self.req_per_block.entry(block_number).or_default() += 1;
 
         match ex_type {
             StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
+                *self.req_per_block.entry(block_number).or_default() += 1;
                 self.pool_load_futures.push(Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
@@ -105,6 +105,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 }))
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
+                *self.req_per_block.entry(block_number).or_default() += 1;
                 self.pool_load_futures.push(Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
