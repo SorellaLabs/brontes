@@ -35,9 +35,9 @@ pub struct MevBlock {
     pub builder_finalized_profit_usd: f64,
     /// Proposer address
     #[serde_as(as = "FixedString")]
-    pub proposer_fee_recipient: Address,
-    pub proposer_mev_reward: u128,
-    pub proposer_finalized_profit_usd: f64,
+    pub proposer_fee_recipient: Option<Address>,
+    pub proposer_mev_reward: Option<u128>,
+    pub proposer_finalized_profit_usd: Option<f64>,
     // gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
     pub cumulative_mev_finalized_profit_usd: f64,
