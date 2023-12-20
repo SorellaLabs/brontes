@@ -145,7 +145,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     ) where
         WantedData: Fn(&Node<V>) -> R + Sync,
         ClassifyRemovalIndex: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        FindActionHead: Fn(&Node<V>) -> bool + Sync,
+        FindActionHead: Fn(&Node<V>) -> (bool, bool) + Sync,
     {
         self.roots
             .par_iter_mut()
@@ -195,7 +195,7 @@ impl<V: NormalizedAction> Root<V> {
     where
         T: Fn(&Node<V>) -> R,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> (bool, bool),
     {
         let mut indexes = HashSet::new();
         self.head
@@ -344,12 +344,20 @@ impl<V: NormalizedAction> Node<V> {
         info: &T,
     ) -> bool
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> (bool, bool),
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
         T: Fn(&Node<V>) -> R,
     {
         // prev better
-        if !find(self) {
+        let (run, lower) = find(self);
+        if run {
+            let mut data = Vec::new();
+            self.get_bounded_info(0, self.index, &mut data, info);
+            let classified_indexes = classify(&data, self);
+            indexes.extend(classified_indexes);
+        }
+
+        if !lower {
             return false
         }
 
