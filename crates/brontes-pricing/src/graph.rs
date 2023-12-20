@@ -215,16 +215,16 @@ impl PairGraph {
 
         let start_idx = *self.addr_to_index.get(&pair.0).unwrap();
         let end_idx = *self.addr_to_index.get(&pair.1).unwrap();
-        let edge = self
-            .graph
-            .find_edge(start_idx.into(), end_idx.into())
-            .unwrap();
-        let weight = self.graph.edge_weight_mut(edge).unwrap();
+        let Some(edge) = self.graph.find_edge(start_idx.into(), end_idx.into()) else {
+            return true
+        };
+        let Some(weight) = self.graph.edge_weight_mut(edge) else { return true };
+
         weight.remove(&info.info);
         self.waiting_init.insert(info.info.pool_addr, info.info);
         let t1 = SystemTime::now();
         let us = t1.duration_since(t0).unwrap().as_micros();
-        info!(us, addr=?info.info.pool_addr,"disabled pool in");
+        info!(us, addr=?info.info.pool_addr, "disabled pool in");
 
         if weight.is_empty() {
             self.graph.remove_edge(edge);
