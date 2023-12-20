@@ -58,6 +58,7 @@ pub struct MetadataInner {
 impl Encodable for MetadataInner {
     fn encode(&self, out: &mut dyn BufMut) {
         self.block_hash.encode(out);
+        self.block_timestamp.encode(out);
         self.relay_timestamp.unwrap_or_default().encode(out);
         self.p2p_timestamp.unwrap_or_default().encode(out);
         self.proposer_fee_recipient.unwrap_or_default().encode(out);
