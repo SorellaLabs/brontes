@@ -23,10 +23,12 @@ action_impl!(
     swapCall,
     Swap,
     UniswapV3,
+    call_data: true,
     return_data: true,
-    |index, from_address: Address, target_address: Address, return_data: swapReturn,  db_tx: &LibmdbxTx<RO>| {
+    |index, from_address: Address, target_address: Address, call_data: swapCall, return_data: swapReturn,  db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
+        let recipient = call_data.recipient;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
@@ -48,6 +50,7 @@ action_impl!(
         Some(NormalizedSwap {
             index,
             from: from_address,
+            recipient,
             pool: target_address,
             token_in,
             token_out,
