@@ -60,7 +60,7 @@ impl SharedInspectorUtils<'_> {
                 let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
                 // we track from so we can apply transfers later on the profit collector
-                match deltas.entry(swap.from) {
+                match deltas.entry(swap.pool) {
                     Entry::Occupied(mut o) => {
                         let inner: &mut HashMap<Address, Rational> = o.get_mut();
 
@@ -84,8 +84,9 @@ impl SharedInspectorUtils<'_> {
         }
 
         let token_collectors = self.token_collectors(transfers, &mut deltas);
+        deltas.iter_mut().for_each(|(_, v)| {});
 
-        // drop all zero value tokens
+        // flatten
         let deltas = deltas
             .into_iter()
             .map(|(_, mut v)| {
@@ -137,6 +138,7 @@ impl SharedInspectorUtils<'_> {
         mut transfers: Vec<&NormalizedTransfer>,
         deltas: &mut HashMap<Address, HashMap<Address, Rational>>,
     ) -> Vec<Address> {
+        return vec![];
         loop {
             let mut changed = false;
             let mut reuse = Vec::new();
@@ -146,22 +148,34 @@ impl SharedInspectorUtils<'_> {
                 let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
                     continue;
                 };
-
                 let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
-                // if deltas has the entry or token_collector does, then we move it
+                // fill forward
                 if deltas.contains_key(&transfer.from) {
+                    changed = true;
+                    // remove from
+                    let mut inner = deltas.entry(transfer.from).or_default();
+                    apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
+
+                    // add to
+                    let mut inner = deltas.entry(transfer.to).or_default();
+                    apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
+                    continue
+                }
+
+                // fill backwards
+                if deltas.contains_key(&transfer.to) {
                     changed = true;
                     let mut inner = deltas.entry(transfer.from).or_default();
                     apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
+
+                    let mut inner = deltas.entry(transfer.to).or_default();
+                    apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
                 } else {
-                    reuse.push(transfer);
-                    continue
+                    reuse.push(transfer)
                 }
-                // add value to the destination address
-                let to_token_map = deltas.entry(transfer.to).or_default();
-                apply_entry(transfer.token, adjusted_amount, to_token_map);
             }
+
             transfers = reuse;
 
             if changed == false {
@@ -169,11 +183,12 @@ impl SharedInspectorUtils<'_> {
             }
         }
 
-        deltas
-            .iter()
-            .filter(|(_addr, inner)| !inner.values().all(|f| f.eq(&Rational::ZERO)))
-            .map(|(addr, _)| *addr)
-            .collect::<Vec<_>>()
+        deltas.iter_mut().for_each(|(_, v)| {
+            v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
+        });
+
+        // if the address is negative, this wasn't a profit collector
+        deltas.keys().copied().collect::<Vec<_>>()
     }
 }
 

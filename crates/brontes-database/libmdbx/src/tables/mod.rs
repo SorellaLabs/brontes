@@ -220,7 +220,7 @@ where
         block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
-            let query = Self::initialize_query();
+            // let query = Self::initialize_query();
 
             /*
             if query.is_empty() {
