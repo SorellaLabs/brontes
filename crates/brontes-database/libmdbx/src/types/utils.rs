@@ -20,7 +20,7 @@ pub(crate) mod pool_tokens {
     where
         D: Deserializer<'de>,
     {
-        let addresses: Vec<String> = Deserialize::deserialize(deserializer)?;
+        let addresses: (Vec<String>, u64) = Deserialize::deserialize(deserializer)?;
 
         Ok(addresses.into())
     }
