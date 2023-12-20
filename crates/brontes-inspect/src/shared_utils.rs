@@ -155,8 +155,6 @@ impl SharedInspectorUtils<'_> {
                     // add to
                     let mut inner = deltas.entry(transfer.to).or_default();
                     apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-
-                    continue
                 }
 
                 // fill backwards
