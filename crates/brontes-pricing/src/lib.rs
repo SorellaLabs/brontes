@@ -359,17 +359,16 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-
             self.mut_state.insert(addr, state);
         } else {
             let info = pair.unwrap();
             let parent_pair = parent_pair.unwrap();
             // remove parent
-            self.pair_graph.remove_pair(parent_pair);
             self.pending_init_pools.insert(info.info.pool_addr);
 
             // because we got a bad path, we need to re
             if self.pair_graph.disable_pool(info) {
+                self.pair_graph.remove_pair(parent_pair);
                 let trigger_update = PoolUpdate {
                     block,
                     tx_idx: 69,
