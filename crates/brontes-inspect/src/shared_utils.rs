@@ -84,11 +84,15 @@ impl SharedInspectorUtils<'_> {
         }
 
         let token_collectors = self.token_collectors(transfers, &mut deltas);
+        deltas.iter_mut().for_each(|(_, v)| {});
 
         // flatten
         let deltas = deltas
             .into_iter()
-            .map(|(_, v)| v)
+            .map(|(_, mut v)| {
+                v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
+                v
+            })
             .fold(HashMap::new(), |mut map, inner| {
                 for (k, v) in inner {
                     *map.entry(k).or_default() += v;
@@ -134,6 +138,7 @@ impl SharedInspectorUtils<'_> {
         mut transfers: Vec<&NormalizedTransfer>,
         deltas: &mut HashMap<Address, HashMap<Address, Rational>>,
     ) -> Vec<Address> {
+        return vec![];
         loop {
             let mut changed = false;
             let mut reuse = Vec::new();
