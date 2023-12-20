@@ -60,7 +60,7 @@ impl SharedInspectorUtils<'_> {
                 let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
                 // we track from so we can apply transfers later on the profit collector
-                match deltas.entry(swap.from) {
+                match deltas.entry(swap.pool) {
                     Entry::Occupied(mut o) => {
                         let inner: &mut HashMap<Address, Rational> = o.get_mut();
 
@@ -154,10 +154,11 @@ impl SharedInspectorUtils<'_> {
                     reuse.push(transfer);
                     continue
                 }
-                // add value to the destination address
-                // let to_token_map = deltas.entry(transfer.to).or_default();
-                // apply_entry(transfer.token, adjusted_amount, to_token_map);
+                // add value to the destination address if it is not accounted for by a swap.
+                let to_token_map = deltas.entry(transfer.to).or_default();
+                apply_entry(transfer.token, adjusted_amount, to_token_map);
             }
+
             transfers = reuse;
 
             if changed == false {
