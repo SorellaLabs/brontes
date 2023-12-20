@@ -721,6 +721,7 @@ pub mod test {
                     .any(|action| action.is_swap() || action.is_transfer()),
             )
         });
+        println!("{:#?}", swap);
         let mut swaps: HashMap<Address, HashSet<U256>> = HashMap::default();
 
         for i in &swap {
