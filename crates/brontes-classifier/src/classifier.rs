@@ -191,13 +191,14 @@ impl<'db> Classifier<'db> {
         //     |node| node.data.is_mint(),
         //     |node| (node.index, node.data.clone()),
         //     |other_nodes, node| {
-        //         let Actions::Mint(mint_data) = &node.data else { unreachable!() };
-        //         other_nodes
+        //         let Actions::Mint(mint_data) = &node.data else {
+        // unreachable!() };         other_nodes
         //             .into_iter()
         //             .filter_map(|(index, data)| {
-        //                 let Actions::Transfer(transfer) = data else { return None };
-        //                 for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
-        //                     if transfer.amount.eq(amount) && transfer.token.eq(token) {
+        //                 let Actions::Transfer(transfer) = data else { return
+        // None };                 for (amount, token) in
+        // mint_data.amount.iter().zip(&mint_data.token) {
+        // if transfer.amount.eq(amount) && transfer.token.eq(token) {
         //                         return Some(*index)
         //                     }
         //                 }
@@ -214,15 +215,16 @@ impl<'db> Classifier<'db> {
         //     |node| node.data.is_collect(),
         //     |node| (node.index, node.data.clone()),
         //     |other_nodes, node| {
-        //         let Actions::Collect(collect_data) = &node.data else { unreachable!() };
-        //         other_nodes
+        //         let Actions::Collect(collect_data) = &node.data else {
+        // unreachable!() };         other_nodes
         //             .into_iter()
         //             .filter_map(|(index, data)| {
-        //                 let Actions::Transfer(transfer) = data else { return None };
-        //                 for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {
-        //                     if transfer.amount.eq(amount) && transfer.token.eq(token) {
-        //                         return Some(*index)
-        //                     }
+        //                 let Actions::Transfer(transfer) = data else { return
+        // None };                 for (amount, token) in
+        // collect_data.amount.iter().zip(&collect_data.token) {
+        //                     if transfer.amount.eq(amount) &&
+        // transfer.token.eq(token) {                         return
+        // Some(*index)                     }
         //                 }
         //                 None
         //             })
