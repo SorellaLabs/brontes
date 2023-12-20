@@ -4,10 +4,13 @@ use alloy_primitives::FixedBytes;
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolValue};
 use brontes_types::traits::TracingProvider;
+use futures::join;
 use reth_rpc_types::{CallInput, CallRequest};
 
-use super::UniswapV3Pool;
-use crate::{errors::AmmError, AutomatedMarketMaker};
+use super::{IUniswapV3Pool::*, UniswapV3Pool};
+use crate::{
+    errors::AmmError, exchanges::make_call_request, uniswap_v3::IErc20, AutomatedMarketMaker,
+};
 sol!(
     IGetUniswapV3PoolDataBatchRequest,
     "./src/exchanges/uniswap_v3/batch_request/GetUniswapV3PoolDataBatchRequestABI.json"
@@ -22,27 +25,11 @@ sol!(
 );
 
 sol!(
-    struct PoolData {
-        address tokenA;
-        uint8 tokenADecimals;
-        address tokenB;
-        uint8 tokenBDecimals;
-        uint128 liquidity;
-        uint160 sqrtPrice;
-        int24 tick;
-        int24 tickSpacing;
-        uint24 fee;
-        int128 liquidityNet;
-    }
     struct TickData {
         bool initialized;
         int24 tick;
         int128 liquidityNet;
     }
-
-    function data_constructor(
-        address[] memory pools
-    ) returns(PoolData[]);
 
     function tick_constructor(
         address pool,
@@ -53,38 +40,59 @@ sol!(
     ) returns (TickData[], uint64);
 );
 
-fn populate_pool_data_from_tokens(mut pool: UniswapV3Pool, tokens: PoolData) -> UniswapV3Pool {
-    pool.token_a = tokens.tokenA;
-    pool.token_a_decimals = tokens.tokenADecimals;
-    pool.token_b = tokens.tokenB;
-    pool.token_b_decimals = tokens.tokenBDecimals;
-    pool.liquidity = tokens.liquidity;
-    pool.sqrt_price = tokens.sqrtPrice;
-    pool.tick = tokens.tick;
-    pool.tick_spacing = tokens.tickSpacing;
-    pool.fee = tokens.fee;
-
-    pool
-}
-
 pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     pool: &mut UniswapV3Pool,
-    block_number: Option<u64>,
-    middleware: Arc<M>,
+    block: Option<u64>,
+    provider: Arc<M>,
 ) -> Result<(), AmmError> {
-    let mut bytecode = IGetUniswapV3PoolDataBatchRequest::BYTECODE.to_vec();
-    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
+    let to = pool.address;
 
-    let req =
-        CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
+    let (token_a, token_b, liquidity, fee, tick_spacing, slot0) = join!(
+        make_call_request(token0Call::new(()), provider.clone(), to, block),
+        make_call_request(token1Call::new(()), provider.clone(), to, block),
+        make_call_request(liquidityCall::new(()), provider.clone(), to, block),
+        make_call_request(feeCall::new(()), provider.clone(), to, block),
+        make_call_request(tickSpacingCall::new(()), provider.clone(), to, block),
+        make_call_request(slot0Call::new(()), provider.clone(), to, block)
+    );
 
-    let res = middleware
-        .eth_call(req, block_number.map(|i| i.into()), None, None)
-        .await
-        .unwrap();
+    pool.token_a = token_a?._0.into();
+    pool.token_b = token_b?._0.into();
+    pool.liquidity = liquidity?._0;
+    pool.fee = fee?._0;
+    pool.tick_spacing = tick_spacing?._0;
 
-    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false).unwrap();
-    *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
+    let slot0 = slot0?;
+    let (sqrt_price, tick) = (slot0._0, slot0._1);
+
+    pool.sqrt_price = sqrt_price;
+    pool.tick = tick;
+
+    let (dec_a, dec_b) = join!(
+        make_call_request(IErc20::decimalsCall::new(()), provider.clone(), pool.token_a, block),
+        make_call_request(IErc20::decimalsCall::new(()), provider.clone(), pool.token_b, block)
+    );
+
+    pool.token_a_decimals = dec_a?._0;
+    pool.token_b_decimals = dec_b?._0;
+
+    let (r0, r1) = join!(
+        make_call_request(
+            IErc20::balanceOfCall::new((pool.address,)),
+            provider.clone(),
+            pool.token_a,
+            block,
+        ),
+        make_call_request(
+            IErc20::balanceOfCall::new((pool.address,)),
+            provider,
+            pool.token_b,
+            block,
+        )
+    );
+
+    pool.reserve_0 = r0?._0;
+    pool.reserve_1 = r1?._0;
 
     Ok(())
 }
