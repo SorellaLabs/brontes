@@ -74,18 +74,26 @@ impl AtomicBackrunInspector<'_> {
         mev_contract: Address,
         metadata: Arc<Metadata>,
         gas_details: GasDetails,
-        swaps: Vec<Vec<Actions>>,
+        searcher_actions: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let (deltas, profit_collectors) = self.inner.calculate_swap_deltas(&swaps);
+        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
-        let finalized_usd = self
-            .inner
-            .usd_delta_dex_avg(idx, deltas.clone(), metadata.clone())?;
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+
+        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let rev_usd = addr_usd_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
 
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
-        if &finalized_usd - &gas_used_usd <= Rational::ZERO {
+        // Can change this later to check if people are subsidising arbs to kill ops for
+        // competitors
+        if &rev_usd - &gas_used_usd <= Rational::ZERO {
             return None
         }
 
@@ -94,13 +102,13 @@ impl AtomicBackrunInspector<'_> {
             tx_hash,
             mev_contract,
             block_number: metadata.block_num,
-            mev_profit_collector: profit_collectors,
+            mev_profit_collector,
             eoa,
             finalized_bribe_usd: gas_used_usd.clone().to_float(),
-            finalized_profit_usd: (finalized_usd - gas_used_usd).to_float(),
+            finalized_profit_usd: (rev_usd - gas_used_usd).to_float(),
         };
 
-        let swaps = swaps
+        let swaps = searcher_actions
             .into_iter()
             .flatten()
             .filter(|actions| actions.is_swap())
