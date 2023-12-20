@@ -135,9 +135,9 @@ impl<'db> Classifier<'db> {
         // self.try_classify_flashloans(&mut tree);
 
         // avoid double counting
-        self.remove_swap_transfers(&mut tree);
-        self.remove_mint_transfers(&mut tree);
-        self.remove_collect_transfers(&mut tree);
+        // self.remove_swap_transfers(&mut tree);
+        // self.remove_mint_transfers(&mut tree);
+        // self.remove_collect_transfers(&mut tree);
 
         tree.finalize_tree();
         let (dec, prices): (Vec<_>, Vec<_>) = extra.into_iter().unzip();
