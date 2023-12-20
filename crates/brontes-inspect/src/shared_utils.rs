@@ -155,8 +155,8 @@ impl SharedInspectorUtils<'_> {
                     continue
                 }
                 // add value to the destination address
-                let to_token_map = deltas.entry(transfer.to).or_default();
-                apply_entry(transfer.token, adjusted_amount, to_token_map);
+                // let to_token_map = deltas.entry(transfer.to).or_default();
+                // apply_entry(transfer.token, adjusted_amount, to_token_map);
             }
             transfers = reuse;
 
