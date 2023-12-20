@@ -77,8 +77,12 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 self.pool_load_futures.push(Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
-                    let (pool, res) = if let Ok(pool) =
-                        UniswapV2Pool::new_load_on_block(address, provider.clone(), block_number - 1).await
+                    let (pool, res) = if let Ok(pool) = UniswapV2Pool::new_load_on_block(
+                        address,
+                        provider.clone(),
+                        block_number - 1,
+                    )
+                    .await
                     {
                         (pool, LoadResult::Ok)
                     } else {
@@ -105,7 +109,8 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let (pool, res) = if let Ok(pool) =
-                        UniswapV3Pool::new_from_address(address, block_number - 1, provider.clone()).await
+                        UniswapV3Pool::new_from_address(address, block_number - 1, provider.clone())
+                            .await
                     {
                         (pool, LoadResult::Ok)
                     } else {
@@ -161,8 +166,8 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     return Poll::Ready(Some(res))
                 }
                 Err((address, dex, block, e)) => {
-                    // error!(?address, exchange_type=%dex, block_number=block, "failed to load
-                    // pool");
+                    error!(?address, exchange_type=%dex, block_number=block, "failed to load
+                    pool, most likely isn't innited for the given block yet");
 
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
