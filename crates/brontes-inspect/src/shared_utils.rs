@@ -15,6 +15,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
+use tracing::log::debug;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {
@@ -32,15 +33,12 @@ impl<'db> SharedInspectorUtils<'db> {
     }
 }
 
-type SwapTokenDeltas = HashMap<Address, Rational>;
-type TokenCollectors = Vec<Address>;
+type SwapTokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 
 impl SharedInspectorUtils<'_> {
     /// Calculates the swap deltas.
-    pub(crate) fn calculate_swap_deltas(
-        &self,
-        actions: &Vec<Vec<Actions>>,
-    ) -> (SwapTokenDeltas, TokenCollectors) {
+    /// Change to keep address level deltas
+    pub(crate) fn calculate_token_deltas(&self, actions: &Vec<Vec<Actions>>) -> SwapTokenDeltas {
         let mut transfers = Vec::new();
         // Address and there token delta's
         let mut deltas = HashMap::new();
@@ -50,31 +48,31 @@ impl SharedInspectorUtils<'_> {
             // properly.
             if let Actions::Swap(swap) = action {
                 let Some(decimals_in) = self.db.try_get_decimals(swap.token_in) else {
+                    debug!("token decimals not found");
                     continue;
                 };
                 let Some(decimals_out) = self.db.try_get_decimals(swap.token_out) else {
+                    debug!("token decimals not found");
                     continue;
                 };
 
                 let adjusted_in = -swap.amount_in.to_scaled_rational(decimals_in);
                 let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
-                // we track from so we can apply transfers later on the profit collector
-                match deltas.entry(swap.pool) {
-                    Entry::Occupied(mut o) => {
-                        let inner: &mut HashMap<Address, Rational> = o.get_mut();
+                // we track the address deltas so we can apply transfers later on the profit
+                // collector
+                if swap.from == swap.recipient {
+                    let entry = deltas.entry(swap.from).or_insert_with(HashMap::default);
+                    apply_entry(swap.token_out, adjusted_out, entry);
+                    apply_entry(swap.token_in, adjusted_in, entry);
+                } else {
+                    let entry_recipient = deltas.entry(swap.from).or_insert_with(HashMap::default);
+                    apply_entry(swap.token_in, adjusted_in, entry_recipient);
 
-                        apply_entry(swap.token_out, adjusted_out, inner);
-                        apply_entry(swap.token_in, adjusted_in, inner);
-                    }
-                    Entry::Vacant(v) => {
-                        let mut default = HashMap::default();
-
-                        default.insert(swap.token_out, adjusted_out);
-                        default.insert(swap.token_in, adjusted_in);
-
-                        v.insert(default);
-                    }
+                    let entry_from = deltas
+                        .entry(swap.recipient)
+                        .or_insert_with(HashMap::default);
+                    apply_entry(swap.token_out, adjusted_out, entry_from);
                 }
 
             // If there is a transfer, push to the given transfer addresses.
@@ -83,27 +81,46 @@ impl SharedInspectorUtils<'_> {
             }
         }
 
-        let token_collectors = self.token_collectors(transfers, &mut deltas);
-        deltas.iter_mut().for_each(|(_, v)| {});
+        self.transfer_deltas(transfers, &mut deltas);
 
-        // flatten
-        let deltas = deltas
-            .into_iter()
-            .map(|(_, mut v)| {
-                v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
-                v
-            })
-            .fold(HashMap::new(), |mut map, inner| {
-                for (k, v) in inner {
-                    *map.entry(k).or_default() += v;
-                }
-                map
-            });
+        // Prunes proxy contracts that receive and immediately send, like router
+        // contracts
+        deltas.iter_mut().for_each(|(_, v)| {
+            v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
+        });
 
-        (deltas, token_collectors)
+        deltas
     }
 
-    pub fn get_usd_price_dex_avg(
+    /// Calculates the usd delta by address
+    pub fn usd_delta_by_address(
+        &self,
+        block_position: usize,
+        deltas: SwapTokenDeltas,
+        metadata: Arc<Metadata>,
+        cex: bool,
+    ) -> Option<HashMap<Address, Rational>> {
+        let mut usd_deltas = HashMap::new();
+
+        for (address, inner_map) in deltas {
+            for (token_addr, amount) in inner_map {
+                let pair = Pair(token_addr, self.quote);
+                let price = if cex {
+                    // Fetch CEX price
+                    metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
+                } else {
+                    metadata.dex_quotes.price_after(pair, block_position)?
+                };
+
+                let usd_amount = amount * price;
+                *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
+            }
+        }
+
+        Some(usd_deltas)
+    }
+
+    pub fn get_dex_usd_price(
         &self,
         block_position: usize,
         token_address: Address,
@@ -117,78 +134,50 @@ impl SharedInspectorUtils<'_> {
         metadata.dex_quotes.price_after(pair, block_position)
     }
 
-    /// applies usd price to deltas and flattens out the tokens
-    pub fn usd_delta_dex_avg(
-        &self,
-        block_position: usize,
-        deltas: HashMap<Address, Rational>,
-        metadata: Arc<Metadata>,
-    ) -> Option<Rational> {
-        let mut sum = Rational::ZERO;
-        for (token_out, value) in deltas.into_iter() {
-            let pair = Pair(token_out, self.quote);
-            sum += value * metadata.dex_quotes.price_after(pair, block_position)?;
-        }
-
-        Some(sum)
+    pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
+        addr_usd_deltas
+            .iter()
+            .filter_map(|(addr, value)| (*value > Rational::ZERO).then(|| *addr))
+            .collect()
     }
 
-    fn token_collectors(
+    /// Account for all transfers that are in relation with the addresses that
+    /// swap, so we can track the end address that collects the funds if it is
+    /// different to the execution address
+    fn transfer_deltas(
         &self,
         mut transfers: Vec<&NormalizedTransfer>,
-        deltas: &mut HashMap<Address, HashMap<Address, Rational>>,
-    ) -> Vec<Address> {
-        return vec![];
-        loop {
-            let mut changed = false;
-            let mut reuse = Vec::new();
+        deltas: &mut SwapTokenDeltas,
+    ) {
+        for transfer in transfers.into_iter() {
+            // normalize token decimals
+            let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
+                debug!("token decimals not found");
+                continue;
+            };
+            let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
-            for transfer in transfers.into_iter() {
-                // normalize token decimals
-                let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
-                    continue;
-                };
-                let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
+            // fill forward
+            if deltas.contains_key(&transfer.from) {
+                // subtract balance from sender
+                let mut inner = deltas.entry(transfer.from).or_default();
+                apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
 
-                // fill forward
-                if deltas.contains_key(&transfer.from) {
-                    changed = true;
-                    // remove from
-                    let mut inner = deltas.entry(transfer.from).or_default();
-                    apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
-
-                    // add to
-                    let mut inner = deltas.entry(transfer.to).or_default();
-                    apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-                    continue
-                }
-
-                // fill backwards
-                if deltas.contains_key(&transfer.to) {
-                    changed = true;
-                    let mut inner = deltas.entry(transfer.from).or_default();
-                    apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
-
-                    let mut inner = deltas.entry(transfer.to).or_default();
-                    apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-                } else {
-                    reuse.push(transfer)
-                }
+                // add to transfer recipient
+                let mut inner = deltas.entry(transfer.to).or_default();
+                apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
+                continue
             }
 
-            transfers = reuse;
+            // fill backwards
+            if deltas.contains_key(&transfer.to) {
+                let mut inner = deltas.entry(transfer.from).or_default();
+                apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
 
-            if changed == false {
-                break
+                let mut inner = deltas.entry(transfer.to).or_default();
+                apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
             }
         }
-
-        deltas.iter_mut().for_each(|(_, v)| {
-            v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
-        });
-
-        // if the address is negative, this wasn't a profit collector
-        deltas.keys().copied().collect::<Vec<_>>()
     }
 }
 
