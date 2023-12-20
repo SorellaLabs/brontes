@@ -374,6 +374,7 @@ impl<V: NormalizedAction> Node<V> {
 
         let res = loop {
             if let Some((i, inner)) = iter.next() {
+
                 if inner.index == index {
                     break Some(i)
                 }
@@ -383,6 +384,8 @@ impl<V: NormalizedAction> Node<V> {
                 } else {
                     break None
                 }
+            } else {
+                break None
             }
         };
 
