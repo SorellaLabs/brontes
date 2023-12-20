@@ -30,6 +30,7 @@ use crate::{
 
 pub const NUM_TABLES: usize = 7;
 
+#[derive(Clone, Debug)]
 pub enum Tables {
     TokenDecimals,
     AddressToTokens,
@@ -49,6 +50,13 @@ impl Tables {
         Tables::Metadata,
         Tables::PoolState,
         Tables::DexPrice,
+    ];
+    pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
+        Tables::TokenDecimals,
+        Tables::AddressToTokens,
+        Tables::AddressToProtocol,
+        Tables::CexPrice,
+        Tables::Metadata,
     ];
 
     /// type of table
