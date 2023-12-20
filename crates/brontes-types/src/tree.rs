@@ -383,6 +383,7 @@ impl<V: NormalizedAction> Node<V> {
     where
         F: Fn(&Node<V>) -> R,
     {
+        println!("get bounded info");
         if self.inner.is_empty() {
             return
         }
