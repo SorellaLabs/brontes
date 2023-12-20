@@ -1,3 +1,4 @@
+use brontes_database_libmdbx::tables::Tables;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
@@ -41,6 +42,16 @@ pub struct Init {
     /// Initialize the local Libmdbx DB
     #[arg(long, short, default_value = "true")]
     pub init_libmdbx:         bool,
+    /// Libmdbx tables to init:
+    ///     TokenDecimals
+    ///     AddressToTokens
+    ///     AddressToProtocol
+    ///     CexPrice
+    ///     Metadata
+    ///     PoolState
+    ///     DexPrice
+    #[arg(long, short, requires = "init_libmdbx", value_delimiter = ',')]
+    pub tables_to_init:       Option<Vec<Tables>>,
     /// Start Block to download metadata from Sorella's MEV DB
     #[arg(long, short, default_value = "0")]
     pub start_block:          Option<u64>,
@@ -49,7 +60,7 @@ pub struct Init {
     pub end_block:            Option<u64>,
     /// Download Dex Prices from Sorella's MEV DB for the given block range. If
     /// false it will run the dex pricing locally using raw on-chain data
-    #[arg(long, short, default_value = "true")]
+    #[arg(long, short, default_value = "false")]
     pub download_dex_pricing: bool,
 }
 
