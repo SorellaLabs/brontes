@@ -170,11 +170,8 @@ impl<'db> Classifier<'db> {
                         let Actions::Swap(swap_data) = data else { return None };
                         println!("running classify");
                         if (transfer.amount == swap_data.amount_in
-                            && transfer.token == swap_data.token_in
-                            && transfer.to == swap_data.pool)
-                            || (transfer.amount == swap_data.amount_out
-                                && transfer.token == swap_data.token_out
-                                && transfer.from == swap_data.pool)
+                            || transfer.amount == swap_data.amount_out)
+                            && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
                         {
                             println!("adding node to be removed");
                             return Some(node.index)
