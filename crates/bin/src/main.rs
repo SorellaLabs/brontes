@@ -91,7 +91,7 @@ fn main() {
 }
 
 async fn run() -> Result<(), Box<dyn Error>> {
-    initalize_prometheus().await;
+    // initalize_prometheus().await;
     // parse cli
     let opt = Args::parse();
 

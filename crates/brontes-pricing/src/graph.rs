@@ -280,6 +280,10 @@ impl PairGraph {
         &mut self,
         pair: Pair,
     ) -> impl Iterator<Item = Vec<PoolPairInfoDirection>> + '_ {
+        if pair.0 == pair.1 {
+            return vec![].into_iter()
+        }
+
         if let Some(pools) = self.known_pairs.get(&pair) {
             return pools.clone().into_iter()
         }
@@ -330,7 +334,7 @@ impl PairGraph {
 }
 
 /// This modification to dijkstra weights the distance between nodes based of of
-/// a max(0, 6 - connectivity). this is to favour better connected nodes as
+/// a max(1, 20 - connectivity). this is to favour better connected nodes as
 /// there price will be more accurate
 pub fn dijkstra_path<G>(graph: G, start: G::NodeId, goal: G::NodeId) -> Option<Vec<G::NodeId>>
 where
@@ -353,8 +357,8 @@ where
         }
 
         // grab the connectivity of the
-        // let edges = graph.edges(node);
-        // let connectivity = edges.len();
+        let edges = graph.edges(node).collect::<Vec<_>>();
+        let connectivity = edges.len() as isize;
 
         for edge in graph.edges(node) {
             let next = edge.target();
@@ -368,7 +372,7 @@ where
             // be more accurate than routing though a shit-coin. This will also
             // help as nodes with better connectivity will be searched more than low
             // connectivity nodes
-            let next_score = node_score + 1;
+            let next_score = node_score + max(1, 20 - connectivity);
 
             match scores.entry(next) {
                 Occupied(ent) => {
