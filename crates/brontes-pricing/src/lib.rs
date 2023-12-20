@@ -15,7 +15,7 @@ use brontes_types::{
     traits::TracingProvider,
 };
 use ethers::core::k256::elliptic_curve::bigint::Zero;
-use exchanges::lazy::LazyExchangeLoader;
+use exchanges::lazy::{LazyExchangeLoader, LazyResult};
 pub use exchanges::*;
 use futures::{Future, Stream, StreamExt};
 pub use graph::PairGraph;
@@ -25,6 +25,16 @@ use tracing::{debug, info, warn};
 use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
+
+pub struct StateBuffer {
+    pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
+    pub overrides: HashMap<u64, HashSet<Address>>,
+}
+impl StateBuffer {
+    pub fn new() -> Self {
+        Self { updates: HashMap::default(), overrides: HashMap::default() }
+    }
+}
 
 pub struct BrontesBatchPricer<T: TracingProvider> {
     quote_asset: Address,
@@ -36,7 +46,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     current_block:   u64,
     completed_block: u64,
 
-    buffer: HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
+    buffer: StateBuffer,
 
     /// pools that don't exist yet that have been attempted to be queried
     pending_init_pools: HashSet<Address>,
@@ -68,7 +78,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         Self {
             quote_asset,
             pending_init_pools: HashSet::default(),
-            buffer: HashMap::default(),
+            buffer: StateBuffer::new(),
             run,
             batch_id,
             update_rx,
@@ -107,6 +117,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         // price transitions correctly to ensure order
         if self.mut_state.contains_key(&addr) || self.lazy_loader.is_loading(&addr) {
             self.buffer
+                .updates
                 .entry(msg.block)
                 .or_default()
                 .push_back((addr, msg));
@@ -138,6 +149,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             // we buffer the update for all of the pool state with there specific addresses
             // this is so that when the pool resolves,
             self.buffer
+                .updates
                 .entry(trigger_update.block)
                 .or_default()
                 .push_back((pool_info.info.pool_addr, trigger_update.clone()));
@@ -235,6 +247,39 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
+    // doesn't apply the state transfer given the pool is from end of block
+    fn init_new_pool_override(&mut self, addr: Address, msg: PoolUpdate) {
+        let tx_idx = msg.tx_idx;
+        let block = msg.block;
+        let Some(pool_pair) = msg.get_pair(self.quote_asset) else { return };
+
+        if let Some((key, state)) = self.mut_state.get_mut(&addr).map(|inner| {
+            let nonce = inner.nonce();
+            let snap = inner.into_snapshot();
+
+            let key = PoolKey {
+                pool:         addr,
+                run:          self.run,
+                batch:        self.batch_id,
+                update_nonce: nonce,
+            };
+            (key, snap)
+        }) {
+            // insert new state snapshot with new key
+            self.finalized_state.insert(key, state);
+            // update address to new key
+            self.last_update.insert(addr, key);
+
+            let pair0 = Pair(pool_pair.0, self.quote_asset);
+            let pair1 = Pair(pool_pair.1, self.quote_asset);
+
+            self.update_dex_quotes(block, tx_idx, pool_pair);
+            self.update_dex_quotes(block, tx_idx, pool_pair.flip());
+            self.update_dex_quotes(block, tx_idx, pair0);
+            self.update_dex_quotes(block, tx_idx, pair1);
+        }
+    }
+
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
@@ -279,9 +324,16 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing
-        if let Some(buffer) = self.buffer.remove(&self.completed_block) {
+        if let (Some(buffer), Some(overrides)) = (
+            self.buffer.updates.remove(&self.completed_block),
+            self.buffer.overrides.remove(&self.completed_block),
+        ) {
             for (address, update) in buffer {
-                self.update_known_state(address, update);
+                if overrides.contains(&address) {
+                    self.init_new_pool_override(address, update)
+                } else {
+                    self.update_known_state(address, update);
+                }
             }
         }
 
@@ -304,18 +356,34 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         Some((block, DexPrices::new(state, res)))
     }
 
-    fn on_pool_resolve(&mut self, state: PoolState) {
-        let addr = state.address();
-        self.mut_state.insert(addr, state);
+    fn on_pool_resolve(&mut self, state: LazyResult) {
+        let LazyResult { block, state, load_result } = state;
+        if let Some(state) = state {
+            let addr = state.address();
+            if !load_result.is_ok() {
+                self.buffer.overrides.entry(block).or_default().insert(addr);
+            }
+
+            self.mut_state.insert(addr, state);
+        } else {
+            // we got a bad address, we need to requery path
+        }
     }
 
     fn on_close(&mut self) -> Option<(u64, DexPrices)> {
         info!(?self.completed_block,"getting ready to calc dex prices");
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing
-        if let Some(buffer) = self.buffer.remove(&self.completed_block) {
+        if let (Some(buffer), Some(overrides)) = (
+            self.buffer.updates.remove(&self.completed_block),
+            self.buffer.overrides.remove(&self.completed_block),
+        ) {
             for (address, update) in buffer {
-                self.update_known_state(address, update);
+                if overrides.contains(&address) {
+                    self.init_new_pool_override(address, update)
+                } else {
+                    self.update_known_state(address, update);
+                }
             }
         }
 

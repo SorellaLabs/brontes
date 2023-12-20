@@ -26,6 +26,7 @@ pub struct PoolPairInformation {
     pub dex_type:  StaticBindingsDb,
     pub token_0:   Address,
     pub token_1:   Address,
+    pub enabled:   bool,
 }
 
 impl PoolPairInformation {
@@ -35,7 +36,11 @@ impl PoolPairInformation {
         token_0: Address,
         token_1: Address,
     ) -> Self {
-        Self { token_1, token_0, dex_type, pool_addr }
+        Self { token_1, token_0, dex_type, pool_addr, enabled: true }
+    }
+
+    fn disable(&mut self) {
+        self.enabled = false;
     }
 }
 
@@ -160,6 +165,9 @@ impl PairGraph {
 
         Self { graph, addr_to_index, known_pairs }
     }
+
+    // this
+    pub fn disable_pool(&mut self, pair: Pair, pool: Address) {}
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
         let t0 = SystemTime::now();

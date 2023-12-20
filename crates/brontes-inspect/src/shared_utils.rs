@@ -184,7 +184,7 @@ impl SharedInspectorUtils<'_> {
         // if the address is negative, this wasn't a profit collector
         deltas
             .iter()
-            .filter(|(_, v)| v.iter().all(|(_, a)| a.gt(&Rational::ZERO)))
+            .filter(|(_, v)| v.iter().any(|(_, a)| a.gt(&Rational::ZERO)))
             .map(|(k, _)| *k)
             .collect::<Vec<_>>()
     }
