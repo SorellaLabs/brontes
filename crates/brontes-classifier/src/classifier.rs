@@ -680,7 +680,7 @@ pub mod test {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::{test_utils::get_traces_with_meta, Classifier};
+    use crate::{test_utils::{get_traces_with_meta, build_raw_test_tree}, Classifier};
 
     #[tokio::test]
     #[serial]
@@ -698,9 +698,8 @@ pub mod test {
 
         let classifier = Classifier::new(&libmdbx, tx2);
 
-        let (traces, header, metadata) = get_traces_with_meta(&tracer, &db, block_num).await;
+        let tree = build_raw_test_tree(&tracer, &db, block_num).await;
 
-        let (a, tree) = classifier.build_tree(traces, header);
         let jarad = tree.roots[1].tx_hash;
 
         let swap = tree.collect(jarad, |node| {
