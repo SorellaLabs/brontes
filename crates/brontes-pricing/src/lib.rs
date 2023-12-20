@@ -112,6 +112,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let addr = msg.get_pool_address();
 
+        // enable pool if its been disabled
+        if let Some(pool) = self.pending_init_pools.take(&addr) {
+            self.pair_graph.enable_pool(pool);
+        }
+
         // if we already have the state, we want to buffer the update to allow for all
         // init fetches to be done so that we can then go through and apply all
         // price transitions correctly to ensure order
@@ -127,23 +132,15 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn queue_loading(&mut self, pair: Pair, trigger_update: PoolUpdate) {
-        for pool_info in self
-            .pair_graph
-            .get_path(pair)
-            .flatten()
-            .filter(|pair_info| {
-                // make sure we don't have or are already loading the state
-                !(self.mut_state.contains_key(&pair_info.info.pool_addr)
-                    || self.lazy_loader.is_loading(&pair_info.info.pool_addr))
-            })
-            // we need to collect here so the non-mut lazy loader ref is dropped
-            .collect::<Vec<_>>()
-        {
+        for pool_info in self.pair_graph.get_path(pair).flatten() {
             // load exchange
             self.lazy_loader.lazy_load_exchange(
                 pool_info.info.pool_addr,
                 trigger_update.block,
                 pool_info.info.dex_type,
+                // needed for if the pool fails
+                pool_info,
+                pair,
             );
 
             // we buffer the update for all of the pool state with there specific addresses
@@ -179,9 +176,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         // add default pair
         self.queue_loading(pair, msg.clone());
-
-        // add inverse default pair
-        self.queue_loading(pair.flip(), msg)
+        // flipped default
+        self.queue_loading(pair.flip(), msg.clone());
     }
 
     fn update_dex_quotes(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
@@ -357,7 +353,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_pool_resolve(&mut self, state: LazyResult) {
-        let LazyResult { block, state, load_result } = state;
+        let LazyResult { block, state, load_result, pair, parent_pair } = state;
         if let Some(state) = state {
             let addr = state.address();
             if !load_result.is_ok() {
@@ -366,6 +362,24 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
             self.mut_state.insert(addr, state);
         } else {
+            let info = pair.unwrap();
+            let parent_pair = parent_pair.unwrap();
+            // remove parent
+            self.pair_graph.remove_pair(parent_pair);
+            self.pending_init_pools.insert(info.info.pool_addr);
+
+            // because we got a bad path, we need to re
+            if self.pair_graph.disable_pool(info) {
+                let trigger_update = PoolUpdate {
+                    block,
+                    tx_idx: 69,
+                    logs: vec![],
+                    action: make_fake_swap(parent_pair),
+                };
+
+                self.queue_loading(parent_pair, trigger_update)
+            }
+
             // we got a bad address, we need to requery path
         }
     }
