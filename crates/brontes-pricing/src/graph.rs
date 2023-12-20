@@ -68,6 +68,7 @@ pub struct PairGraph {
     addr_to_index: HashMap<Address, usize>,
     // double vec for multi_hop multi_pool
     known_pairs:   HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>>,
+    // keeps track of all pools that have been uninitted
 }
 
 impl PairGraph {
