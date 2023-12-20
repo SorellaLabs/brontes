@@ -373,24 +373,50 @@ impl<V: NormalizedAction> Node<V> {
             return
         }
 
+        if self.index == index {
+            println!("found matching idx {index}");
+            self.inner.drain(..);
+            return
+        }
+
         let mut iter = self.inner.iter_mut().enumerate().peekable();
 
-        let val = loop {
+        let val = 'outer: loop {
             if let Some((our_index, next)) = iter.next() {
                 if index == next.index {
                     println!("found matching idx {index}");
                     break Some(our_index)
                 }
 
-                if let Some(peek) = iter.peek() {
-                    if index > next.index && index < peek.1.index {
-                        next.remove_index_and_childs(index);
-                        break None
-                    }
-                } else {
-                    println!("no match: {index}");
+                if index < next.index {
                     break None
                 }
+
+                // if let Some((our_index_i, next_i)) = iter.next() {
+                //
+                // } else {
+                //     break 'outer
+                // }
+                loop {
+                    if let Some(next_i) = iter.next() {
+                        if index > next.index && index < next_i.1.index {
+                            next_i.1.remove_index_and_childs(index);
+                            break 'outer None
+                        }
+                    } else {
+                        break 'outer None
+                    }
+                }
+
+                // if let Some(peek) = iter.peek() {
+                //     if index > next.index && index < peek.1.index {
+                //         next.remove_index_and_childs(index);
+                //         break None
+                //     }
+                // } else {
+                //     println!("no match: {index}");
+                //     break None
+                // }
             }
         };
 
