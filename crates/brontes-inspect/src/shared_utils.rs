@@ -145,18 +145,28 @@ impl SharedInspectorUtils<'_> {
                 };
                 let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
-                // if deltas has the entry, then we move it
+                // if deltas has the entry, then we move it to dest
                 if deltas.contains_key(&transfer.from) {
                     changed = true;
+                    // remove from
                     let mut inner = deltas.entry(transfer.from).or_default();
                     apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
-                } else {
-                    reuse.push(transfer);
+
+                    // add to
+                    let mut inner = deltas.entry(transfer.to).or_default();
+                    apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
+
                     continue
                 }
-                // add value to the destination address if it is not accounted for by a swap.
-                let to_token_map = deltas.entry(transfer.to).or_default();
-                apply_entry(transfer.token, adjusted_amount, to_token_map);
+
+                // remove delta
+                if deltas.contains_key(&transfer.to) {
+                    changed = true;
+                    let mut inner = deltas.entry(transfer.to).or_default();
+                    apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
+                } else {
+                    reuse.push(transfer)
+                }
             }
 
             transfers = reuse;
