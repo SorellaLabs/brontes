@@ -369,13 +369,13 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     pub fn remove_index_and_childs(&mut self, index: u64) {
-        if self.inner.is_empty() {
-            return
-        }
-
         if self.index == index {
             println!("found matching idx {index}");
             self.inner.drain(..);
+            return
+        }
+
+        if self.inner.is_empty() {
             return
         }
 
@@ -402,7 +402,10 @@ impl<V: NormalizedAction> Node<V> {
                     if let Some(next_i) = iter.next() {
                         if index > next.index && index <= next_i.1.index {
                             println!("finding {index}, going lower: {}", next_i.1.index);
-                            next.remove_index_and_childs(index);
+                            if next_i.1.index == index {
+                                break 'outer Some(next_i.0)
+                            }
+
                             next_i.1.remove_index_and_childs(index);
                             break 'outer None
                         }
