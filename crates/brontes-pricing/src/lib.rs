@@ -38,6 +38,9 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 
     buffer: HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
 
+    /// pools that don't exist yet that have been attempted to be queried
+    pending_init_pools: HashSet<Address>,
+
     /// holds all token pairs for the given chunk.
     pair_graph:      PairGraph,
     /// lazy loads dex pairs so we only fetch init state that is needed
@@ -64,6 +67,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     ) -> Self {
         Self {
             quote_asset,
+            pending_init_pools: HashSet::default(),
             buffer: HashMap::default(),
             run,
             batch_id,
