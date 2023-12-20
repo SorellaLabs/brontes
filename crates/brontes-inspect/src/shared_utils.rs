@@ -85,13 +85,10 @@ impl SharedInspectorUtils<'_> {
 
         let token_collectors = self.token_collectors(transfers, &mut deltas);
 
-        // drop all zero value tokens
+        // flatten
         let deltas = deltas
             .into_iter()
-            .map(|(_, mut v)| {
-                v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
-                v
-            })
+            .map(|(_, v)| v)
             .fold(HashMap::new(), |mut map, inner| {
                 for (k, v) in inner {
                     *map.entry(k).or_default() += v;
@@ -146,7 +143,6 @@ impl SharedInspectorUtils<'_> {
                 let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
                     continue;
                 };
-
                 let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
 
                 // if deltas has the entry or token_collector does, then we move it
@@ -169,11 +165,11 @@ impl SharedInspectorUtils<'_> {
             }
         }
 
-        deltas
-            .iter()
-            .filter(|(_addr, inner)| !inner.values().all(|f| f.eq(&Rational::ZERO)))
-            .map(|(addr, _)| *addr)
-            .collect::<Vec<_>>()
+        deltas.iter_mut().for_each(|(_, v)| {
+            v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
+        });
+
+        deltas.keys().copied().collect::<Vec<_>>()
     }
 }
 
