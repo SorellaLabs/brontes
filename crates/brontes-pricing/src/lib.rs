@@ -93,41 +93,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
-    fn on_transfer(&mut self, msg: PoolUpdate) {
-        let pair = msg.get_pair(self.quote_asset).unwrap();
-
-        let trigger_update = PoolUpdate {
-            block:  msg.block,
-            tx_idx: msg.tx_idx,
-            logs:   vec![],
-            action: make_fake_swap(pair),
-        };
-
-        for pool_info in self.pair_graph.get_path(pair).flatten() {
-            let addr = pool_info.info.pool_addr;
-            if self.mut_state.contains_key(&addr) {
-                continue
-            }
-
-            self.lazy_loader.lazy_load_exchange(
-                pool_info.info.pool_addr,
-                trigger_update.block,
-                pool_info.info.dex_type,
-                // needed for if the pool fails
-                pool_info,
-                pair,
-            );
-
-            // we buffer the update for all of the pool state with there specific addresses
-            // this is so that when the pool resolves,
-            self.buffer
-                .updates
-                .entry(trigger_update.block)
-                .or_default()
-                .push_back((pool_info.info.pool_addr, trigger_update.clone()));
-        }
-    }
-
     // will always be in order
     fn on_message(&mut self, msg: PoolUpdate) {
         // we want to capture these
@@ -136,7 +101,15 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
 
         if msg.action.is_transfer() {
-            self.on_transfer(msg);
+            let pair = msg.get_pair(self.quote_asset);
+
+
+            self.update_dex_quotes(msg.block, msg.tx_idx, msg.get_pair(self.quote_asset).unwrap());
+            self.update_dex_quotes(
+                msg.block,
+                msg.tx_idx,
+                msg.get_pair(self.quote_asset).unwrap().flip(),
+            );
             return
         }
 
