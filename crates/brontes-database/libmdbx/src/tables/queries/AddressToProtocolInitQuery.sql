@@ -4,5 +4,3 @@ SELECT
 FROM brontes.protocol_details
 FINAL
 WHERE classifier_name IS NOT NULL AND classifier_name != ''
-
--- ok

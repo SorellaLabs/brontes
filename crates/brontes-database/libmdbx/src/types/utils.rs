@@ -155,9 +155,11 @@ pub(crate) mod option_address {
         let des: Option<String> = Deserialize::deserialize(deserializer)?;
         let data = des.map(|d| Address::from_str(&d));
 
-        Ok(data
-            .map_or_else(|| Ok(None), |res| res.map(Some))
-            .map_err(serde::de::Error::custom)?)
+        if let Some(d) = data {
+            Ok(Some(d.map_err(serde::de::Error::custom)?))
+        } else {
+            Ok(None)
+        }
     }
 }
 

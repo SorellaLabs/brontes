@@ -221,6 +221,8 @@ where
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
             let query = Self::initialize_query();
+
+            /*
             if query.is_empty() {
                 println!("init empty");
                 libmdbx.initialize_table::<_, D>(&vec![])?;
@@ -238,7 +240,18 @@ where
                 }
             } else {
                 db_client.inner().query_many::<D>(query, &()).await
-            };
+            };*/
+
+            let data = db_client
+                .inner()
+                .query_many::<D>(Self::initialize_query(), &())
+                .await;
+
+            if data.is_err() {
+                println!("{} {:?}", Self::NAME, data);
+            } else {
+                println!("{} OK", Self::NAME);
+            }
 
             // println!("\n\nREG Data: {:?}\n\n", data);
 
