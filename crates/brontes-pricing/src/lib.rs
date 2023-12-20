@@ -103,7 +103,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if msg.action.is_transfer() {
             let pair = msg.get_pair(self.quote_asset);
 
-
             self.update_dex_quotes(msg.block, msg.tx_idx, msg.get_pair(self.quote_asset).unwrap());
             self.update_dex_quotes(
                 msg.block,
