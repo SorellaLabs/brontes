@@ -252,7 +252,7 @@ pub(crate) mod dex_quote {
 
     use alloy_primitives::{hex::FromHexError, Address};
     use brontes_database::Pair;
-    use brontes_pricing::types::PoolKey;
+    use brontes_pricing::types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair};
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -265,18 +265,24 @@ pub(crate) mod dex_quote {
         let val =
             u.0.clone()
                 .into_iter()
-                .map(|(pair, quotes)| {
+                .map(|(pair, pool_keys)| {
                     (
                         (format!("{:?}", pair.0), format!("{:?}", pair.1)),
-                        quotes
+                        pool_keys
                             .into_iter()
-                            .map(|quote| {
-                                (
-                                    format!("{:?}", quote.pool),
-                                    quote.run,
-                                    quote.batch,
-                                    quote.update_nonce,
-                                )
+                            .map(|key| {
+                                key.0
+                                    .into_iter()
+                                    .map(|inner_key| {
+                                        (
+                                            format!("{:?}", inner_key.base),
+                                            format!("{:?}", inner_key.key.pool),
+                                            inner_key.key.run,
+                                            inner_key.key.batch,
+                                            inner_key.key.update_nonce,
+                                        )
+                                    })
+                                    .collect::<Vec<_>>()
                             })
                             .collect::<Vec<_>>(),
                     )
@@ -289,7 +295,7 @@ pub(crate) mod dex_quote {
     where
         D: Deserializer<'de>,
     {
-        let data: Vec<((String, String), Vec<(String, u64, u64, u16)>)> =
+        let data: Vec<((String, String), Vec<Vec<(String, String, u64, u64, u16)>>)> =
             Deserialize::deserialize(deserializer)?;
 
         let dex_quotes = data
@@ -299,13 +305,24 @@ pub(crate) mod dex_quote {
                     (Pair(Address::from_str(&token0)?, Address::from_str(&token1)?)),
                     quotes
                         .into_iter()
-                        .map(|(pool, run, batch, update_nonce)| {
-                            Ok(PoolKey {
-                                pool: Address::from_str(&pool)?,
-                                run,
-                                batch,
-                                update_nonce,
-                            })
+                        .map(|keys| {
+                            {
+                                Ok(PoolKeysForPair(
+                                    keys.into_iter()
+                                        .map(|(base, pool, run, batch, update_nonce)| {
+                                            Ok(PoolKeyWithDirection {
+                                                base: Address::from_str(&base)?,
+                                                key:  PoolKey {
+                                                    pool: Address::from_str(&pool)?,
+                                                    run,
+                                                    batch,
+                                                    update_nonce,
+                                                },
+                                            })
+                                        })
+                                        .collect::<Result<Vec<_>, _>>()?,
+                                ))
+                            }
                         })
                         .collect::<Result<Vec<_>, _>>()?,
                 ))
@@ -314,5 +331,41 @@ pub(crate) mod dex_quote {
             .map_err(serde::de::Error::custom)?;
 
         Ok(DexQuote(dex_quotes))
+    }
+}
+
+pub mod pools_libmdbx {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::types::pool_creation_block::PoolsLibmdbx;
+
+    pub fn serialize<S: Serializer>(u: &PoolsLibmdbx, serializer: S) -> Result<S::Ok, S::Error> {
+        let st: Vec<String> =
+            u.0.clone()
+                .into_iter()
+                .map(|addr| format!("{:?}", addr.clone()))
+                .collect::<Vec<_>>();
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<PoolsLibmdbx, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: Vec<String> = Deserialize::deserialize(deserializer)?;
+
+        Ok(PoolsLibmdbx(
+            data.into_iter()
+                .map(|d| Address::from_str(&d))
+                .collect::<Result<Vec<_>, <Address as FromStr>::Err>>()
+                .map_err(serde::de::Error::custom)?,
+        ))
     }
 }
