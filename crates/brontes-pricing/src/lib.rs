@@ -355,11 +355,25 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn on_pool_resolve(&mut self, state: LazyResult) {
         let LazyResult { block, state, load_result, pair, parent_pair } = state;
         if let Some(state) = state {
+            let nonce = state.nonce();
+            let snap = state.into_snapshot();
             let addr = state.address();
+
+            let key = PoolKey {
+                pool:         addr,
+                run:          self.run,
+                batch:        self.batch_id,
+                update_nonce: nonce,
+            };
+
+            // init caches
+            self.finalized_state.insert(key, snap);
+            self.last_update.insert(addr, key);
+            self.mut_state.insert(addr, state);
+
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-            self.mut_state.insert(addr, state);
         } else {
             let info = pair.unwrap();
             let parent_pair = parent_pair.unwrap();
