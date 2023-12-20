@@ -703,7 +703,7 @@ pub mod test {
         let (a, tree) = classifier.build_tree(traces, header);
         let jarad = tree.roots[1].tx_hash;
 
-        let swap = tree.collect(jarad, |f| {
+        let swap = tree.collect(jarad, |node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
                 node.subactions
