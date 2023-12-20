@@ -92,7 +92,6 @@ impl Libmdbx {
         Ok(())
     }
 
-
     pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
         let db_tx = self.ro_tx().unwrap();
         db_tx.get::<TokenDecimals>(address).ok()?
@@ -201,14 +200,14 @@ impl Libmdbx {
                 proposer_mev_reward: block_meta.proposer_mev_reward,
                 cex_quotes: brontes_database::cex::CexPriceMap::new(), /* brontes_database::cex::CexPriceMap(cex_quotes.0), // ambiguous type */
                 eth_prices: Rational::default(),
-                block_timestamp: block_meta.block_timestamp,                       /* cex_quotes.0.get(&
-                                                                        * Pair(Address::from_str("
-                                                                        * ").unwrap(),
-                                                                        * Address::from_str("").
-                                                                        * unwrap())).unwrap() //
-                                                                        * ambiguous type //
-                                                                        * change to USDC - ETH +
-                                                                        * error handle */
+                block_timestamp: block_meta.block_timestamp, /* cex_quotes.0.get(&
+                                                              * Pair(Address::from_str("
+                                                              * ").unwrap(),
+                                                              * Address::from_str("").
+                                                              * unwrap())).unwrap() //
+                                                              * ambiguous type //
+                                                              * change to USDC - ETH +
+                                                              * error handle */
                 mempool_flow: block_meta.mempool_flow.into_iter().collect(),
             },
             dex_quotes: DexPrices::new(map, DexQuotes(vec![])),
