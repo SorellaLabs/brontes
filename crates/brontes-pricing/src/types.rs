@@ -119,7 +119,9 @@ impl DexPrices {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, RlpDecodable, RlpEncodable)]
+#[derive(
+    Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable,
+)]
 pub struct PoolKeyWithDirection {
     pub key:  PoolKey,
     pub base: Address,
@@ -131,7 +133,7 @@ impl PoolKeyWithDirection {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, RlpDecodable, RlpEncodable)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable)]
 pub struct PoolKeysForPair(pub Vec<PoolKeyWithDirection>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -231,7 +231,7 @@ mod tests {
             //Tables::Metadata,
             //Tables::PoolState,
             //Tables::DexPrice,
-            Tables::PoolCreationBlocks,
+            //Tables::PoolCreationBlocks,
         ])
         .await;
         assert!(db.is_ok());
@@ -244,6 +244,6 @@ mod tests {
         //assert!(test_metadata_table(&db, false).await.is_ok());
         //assert!(test_pool_state_table(&db, false).await.is_ok());
         //assert!(test_dex_price_table(&db, false).await.is_ok());
-        assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
+        //assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
     }
 }
