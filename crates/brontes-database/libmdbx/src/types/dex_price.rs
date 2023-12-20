@@ -3,7 +3,7 @@ use std::{collections::HashMap, default::Default, hash::Hash, ops::MulAssign, st
 use alloy_primitives::{hex::FromHexError, Address};
 use alloy_rlp::{Decodable, Encodable};
 use brontes_database::clickhouse::types::DBTokenPricesDB;
-use brontes_pricing::types::{DexQuotes, PoolKey, PoolKeysForPair};
+use brontes_pricing::types::{PoolKey, PoolKeysForPair};
 use brontes_types::{extra_processing::Pair, impl_compress_decompress_for_encoded_decoded};
 use bytes::BufMut;
 use malachite::{
@@ -107,7 +107,6 @@ impl Decodable for DexQuoteWithIndex {
 
 impl_compress_decompress_for_encoded_decoded!(DexQuoteWithIndex);
 
-/*
 #[cfg(test)]
 mod tests {
     use std::{collections::HashMap, env};
@@ -115,7 +114,7 @@ mod tests {
     use alloy_primitives::U256;
     use brontes_database::clickhouse::Clickhouse;
     use brontes_pricing::{
-        types::PoolStateSnapShot,
+        types::{PoolKeyWithDirection, PoolKeysForPair, PoolStateSnapShot},
         uniswap_v2::UniswapV2Pool,
         uniswap_v3::{Info, UniswapV3Pool},
     };
@@ -171,15 +170,18 @@ mod tests {
                             Address::from_str(&"0x00000000a000000000000a0000000000000a0000")
                                 .unwrap(),
                         ),
-                        vec![
-                            PoolKey::default(),
-                            PoolKey {
-                                pool:         Default::default(),
-                                run:          1000,
-                                batch:        10,
-                                update_nonce: 1,
+                        vec![PoolKeysForPair(vec![
+                            PoolKeyWithDirection::default(),
+                            PoolKeyWithDirection {
+                                key:  PoolKey {
+                                    pool:         Default::default(),
+                                    run:          9182,
+                                    batch:        102,
+                                    update_nonce: 12,
+                                },
+                                base: Default::default(),
                             },
-                        ],
+                        ])],
                     );
                     map
                 }),
@@ -205,15 +207,18 @@ mod tests {
                             Address::from_str(&"0xef000000a000002200000a0000000000000a0000")
                                 .unwrap(),
                         ),
-                        vec![
-                            PoolKey::default(),
-                            PoolKey {
-                                pool:         Default::default(),
-                                run:          9182,
-                                batch:        102,
-                                update_nonce: 12,
+                        vec![PoolKeysForPair(vec![
+                            PoolKeyWithDirection::default(),
+                            PoolKeyWithDirection {
+                                key:  PoolKey {
+                                    pool:         Default::default(),
+                                    run:          9182,
+                                    batch:        102,
+                                    update_nonce: 12,
+                                },
+                                base: Default::default(),
                             },
-                        ],
+                        ])],
                     );
                     map
                 }),
@@ -223,4 +228,3 @@ mod tests {
         clickhouse.inner().insert_many(data, table).await.unwrap();
     }
 }
-*/
