@@ -102,7 +102,7 @@ impl Inspector for SandwichInspector<'_> {
 impl SandwichInspector<'_> {
     fn calculate_sandwich(
         &self,
-        tx_idx: usize,
+        idx: usize,
         eoa: Address,
         mev_executor_contract: Address,
         metadata: Arc<Metadata>,
@@ -117,11 +117,18 @@ impl SandwichInspector<'_> {
         if searcher_actions.len() < 2 {
             return None
         }
-        let (deltas, mev_collectors) = self.inner.calculate_swap_deltas(&searcher_actions);
 
-        let rev_usd = self
-            .inner
-            .usd_delta_dex_avg(tx_idx, deltas, metadata.clone())?;
+        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+
+        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let rev_usd = addr_usd_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
 
         if rev_usd.le(&Rational::ZERO) {
             return None
@@ -269,7 +276,7 @@ impl SandwichInspector<'_> {
 
         let classified_mev = ClassifiedMev {
             eoa,
-            mev_profit_collector: mev_collectors,
+            mev_profit_collector,
             tx_hash: txes[0],
             mev_contract: mev_executor_contract,
             block_number: metadata.block_num,
