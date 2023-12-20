@@ -434,27 +434,17 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         // runtime scheduler less in order to boost performance
         let mut work = 1024;
         loop {
-            let mut work_inner = 7;
-            loop {
-                if let Poll::Ready(s) = self
-                    .update_rx
-                    .poll_recv(cx)
-                    .map(|inner| inner.map(|update| self.on_message(update)))
-                {
-                    if s.is_none() && self.lazy_loader.is_empty() {
-                        return Poll::Ready(self.on_close())
-                    }
-
-                    if self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty() {
-                        return Poll::Ready(self.on_close())
-                    }
-                } else {
-                    break
+            if let Poll::Ready(s) = self
+                .update_rx
+                .poll_recv(cx)
+                .map(|inner| inner.map(|update| self.on_message(update)))
+            {
+                if s.is_none() && self.lazy_loader.is_empty() {
+                    return Poll::Ready(self.on_close())
                 }
 
-                work_inner -= 1;
-                if work_inner == 0 {
-                    break
+                if self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty() {
+                    return Poll::Ready(self.on_close())
                 }
             }
 
