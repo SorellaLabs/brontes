@@ -134,11 +134,6 @@ impl<'db> Classifier<'db> {
         // self.try_classify_unknown_exchanges(&mut tree);
         // self.try_classify_flashloans(&mut tree);
 
-        // avoid double counting
-        self.remove_swap_transfers(&mut tree);
-        self.remove_mint_transfers(&mut tree);
-        self.remove_collect_transfers(&mut tree);
-
         tree.finalize_tree();
         let (dec, prices): (Vec<_>, Vec<_>) = extra.into_iter().unzip();
         let mut dec = dec.into_iter().flatten().collect::<Vec<_>>();
@@ -150,7 +145,8 @@ impl<'db> Classifier<'db> {
         (processing, tree)
     }
 
-    //TODO: need to deal with other direction + eth based transfers.
+    // need this for dyn classifying
+    #[allow(dead_code)]
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
@@ -177,6 +173,8 @@ impl<'db> Classifier<'db> {
         );
     }
 
+    // need this for dyn classifying
+    #[allow(dead_code)]
     fn remove_mint_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_mint(),
@@ -199,6 +197,8 @@ impl<'db> Classifier<'db> {
         );
     }
 
+    // need this for dyn classifying
+    #[allow(dead_code)]
     fn remove_collect_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_collect(),
