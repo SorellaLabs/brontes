@@ -4,10 +4,13 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
 use reth_rpc_types::{CallInput, CallRequest};
-use crate::uniswap_v2::IUniswapV2Pair::*;
+
 use super::UniswapV2Pool;
-use crate::{errors::AmmError, AutomatedMarketMaker};
-use crate::uniswap_v2::IUniswapV2Pair::token0Call;
+use crate::{
+    errors::AmmError,
+    uniswap_v2::IUniswapV2Pair::{token0Call, *},
+    AutomatedMarketMaker,
+};
 sol!(
     IGetUniswapV2PoolDataBatchRequest,
     "./src/exchanges/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json"
@@ -69,8 +72,7 @@ sol!(
 // }
 //
 
-
-//TODO: Where is the fee? 
+//TODO: Where is the fee?
 fn populate_pool_data_from_tokens(mut pool: UniswapV2Pool, pool_data: PoolData) -> UniswapV2Pool {
     pool.token_a = pool_data.tokenA;
     pool.token_a_decimals = pool_data.tokenADecimals;
@@ -82,8 +84,8 @@ fn populate_pool_data_from_tokens(mut pool: UniswapV2Pool, pool_data: PoolData) 
     pool
 }
 
-
-//TODO: I switched with the one below because there seems to be a deserialization problem given the size of the request (with all bytecode)
+//TODO: I switched with the one below because there seems to be a
+// deserialization problem given the size of the request (with all bytecode)
 pub async fn get_v2_pool_data1<M: TracingProvider>(
     pool: &mut UniswapV2Pool,
     block: Option<u64>,
@@ -110,53 +112,99 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
     block: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    let get_token_a = token0Call{};
-    let get_token_b = token1Call{};
+    let get_token_a = token0Call {};
+    let get_token_b = token1Call {};
 
-    let req =
-        CallRequest { to: Some(pool.address), input: CallInput::new(get_token_a.abi_encode().into()), ..Default::default() };
+    let req = CallRequest {
+        to: Some(pool.address),
+        input: CallInput::new(get_token_a.abi_encode().into()),
+        ..Default::default()
+    };
 
-    let mut return_token0 = token0Call::abi_decode_returns(&*middleware.eth_call(req, block.map(|i| i.into()), None, None).await.unwrap(), false).unwrap();
+    let mut return_token0 = token0Call::abi_decode_returns(
+        &*middleware
+            .eth_call(req, block.map(|i| i.into()), None, None)
+            .await
+            .unwrap(),
+        false,
+    )
+    .unwrap();
 
     *pool.token_a = return_token0._0.into();
 
-    
-    let req =
-        CallRequest { to: Some(pool.address), input: CallInput::new(get_token_b.abi_encode().into()), ..Default::default() };
+    let req = CallRequest {
+        to: Some(pool.address),
+        input: CallInput::new(get_token_b.abi_encode().into()),
+        ..Default::default()
+    };
 
-    let mut return_token1 = token0Call::abi_decode_returns(&*middleware.eth_call(req, block.map(|i| i.into()), None, None).await.unwrap(), false).unwrap();
-    
+    let mut return_token1 = token0Call::abi_decode_returns(
+        &*middleware
+            .eth_call(req, block.map(|i| i.into()), None, None)
+            .await
+            .unwrap(),
+        false,
+    )
+    .unwrap();
+
     *pool.token_b = return_token1._0.into();
 
-    let decimals = decimalsCall{};
+    let decimals = decimalsCall {};
 
-    let req =
-        CallRequest { to: Some(pool.token_a), input: CallInput::new(decimals.abi_encode().into()), ..Default::default() };
-        
-    let mut return_decimals = decimalsCall::abi_decode_returns(&*middleware.eth_call(req, block.map(|i| i.into()), None, None).await.unwrap(), false).unwrap();
+    let req = CallRequest {
+        to: Some(pool.token_a),
+        input: CallInput::new(decimals.abi_encode().into()),
+        ..Default::default()
+    };
+
+    let mut return_decimals = decimalsCall::abi_decode_returns(
+        &*middleware
+            .eth_call(req, block.map(|i| i.into()), None, None)
+            .await
+            .unwrap(),
+        false,
+    )
+    .unwrap();
 
     pool.token_a_decimals = return_decimals._0.into();
 
-    let req =
-        CallRequest { to: Some(pool.token_b), input: CallInput::new(decimals.abi_encode().into()), ..Default::default() };
+    let req = CallRequest {
+        to: Some(pool.token_b),
+        input: CallInput::new(decimals.abi_encode().into()),
+        ..Default::default()
+    };
 
-    let mut return_decimals = decimalsCall::abi_decode_returns(&*middleware.eth_call(req, block.map(|i| i.into()), None, None).await.unwrap(), false).unwrap();
+    let mut return_decimals = decimalsCall::abi_decode_returns(
+        &*middleware
+            .eth_call(req, block.map(|i| i.into()), None, None)
+            .await
+            .unwrap(),
+        false,
+    )
+    .unwrap();
 
     pool.token_b_decimals = return_decimals._0.into();
 
-    let get_reserves = getReservesCall{};
+    let get_reserves = getReservesCall {};
 
-    let req =
-        CallRequest { to: Some(pool.address), input: CallInput::new(get_reserves.abi_encode().into()), ..Default::default() };
+    let req = CallRequest {
+        to: Some(pool.address),
+        input: CallInput::new(get_reserves.abi_encode().into()),
+        ..Default::default()
+    };
 
-    let mut return_reserves = getReservesCall::abi_decode_returns(&*middleware.eth_call(req, block.map(|i| i.into()), None, None).await.unwrap(), false).unwrap();
+    let mut return_reserves = getReservesCall::abi_decode_returns(
+        &*middleware
+            .eth_call(req, block.map(|i| i.into()), None, None)
+            .await
+            .unwrap(),
+        false,
+    )
+    .unwrap();
 
     pool.reserve_0 = return_reserves.reserve0.into();
 
     pool.reserve_1 = return_reserves.reserve1.into();
-    
-
-
 
     Ok(())
 }
