@@ -174,6 +174,7 @@ impl<'db> Classifier<'db> {
                                 && transfer.token == swap_data.token_out
                                 && transfer.from == swap_data.pool)
                         {
+                            println!("adding node to be removed");
                             return Some(node.index)
                         }
                         None
