@@ -353,8 +353,8 @@ where
         }
 
         // grab the connectivity of the
-        let edges = graph.edges(node).collect::<Vec<_>>();
-        let connectivity = edges.len();
+        // let edges = graph.edges(node);
+        // let connectivity = edges.len();
 
         for edge in graph.edges(node) {
             let next = edge.target();
@@ -368,7 +368,7 @@ where
             // be more accurate than routing though a shit-coin. This will also
             // help as nodes with better connectivity will be searched more than low
             // connectivity nodes
-            let next_score = node_score + max(0, 25 - connectivity as isize);
+            let next_score = node_score + 1;
 
             match scores.entry(next) {
                 Occupied(ent) => {
