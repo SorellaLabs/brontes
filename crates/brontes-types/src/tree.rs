@@ -5,6 +5,7 @@ use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, Parall
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
+use strum::VariantIterator;
 use tracing::error;
 
 use crate::normalized_actions::NormalizedAction;
@@ -137,19 +138,21 @@ impl<V: NormalizedAction> TimeTree<V> {
             .collect()
     }
 
-    pub fn remove_duplicate_data<FindActionHead, ClassifyRemovalIndex, WantedData, R>(
+    pub fn remove_duplicate_data<FindActionHead, FindRemoval, ClassifyRemovalIndex, WantedData, R>(
         &mut self,
         find: FindActionHead,
+        find_removal: FindRemoval,
         info: WantedData,
         classify: ClassifyRemovalIndex,
     ) where
         WantedData: Fn(&Node<V>) -> R + Sync,
         ClassifyRemovalIndex: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        FindActionHead: Fn(&Node<V>) -> bool + Sync,
+        FindActionHead: Fn(&Node<V>) -> (bool, bool) + Sync,
+        FindRemoval: Fn(&Node<V>) -> (bool, bool) + Sync,
     {
         self.roots
             .par_iter_mut()
-            .for_each(|root| root.remove_duplicate_data(&find, &classify, &info));
+            .for_each(|root| root.remove_duplicate_data(&find, &classify, &info, &find_removal));
     }
 }
 
@@ -186,20 +189,35 @@ impl<V: NormalizedAction> Root<V> {
         F: Fn(&Node<V>) -> (bool, bool),
     {
         let mut result = Vec::new();
-        self.head.collect(&mut result, call);
+        self.head
+            .collect(&mut result, call, &|data| data.data.clone());
 
         result
     }
 
-    pub fn remove_duplicate_data<F, C, T, R>(&mut self, find: &F, classify: &C, info: &T)
-    where
+    pub fn remove_duplicate_data<F, C, T, R, Re>(
+        &mut self,
+        find: &F,
+        classify: &C,
+        info: &T,
+        removal: &Re,
+    ) where
         T: Fn(&Node<V>) -> R,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node<V>) -> (bool, bool),
+        Re: Fn(&Node<V>) -> (bool, bool) + Sync,
     {
-        let mut indexes = HashSet::new();
-        self.head
-            .indexes_to_remove(&mut indexes, find, classify, info);
+        let mut find_res = Vec::new();
+        self.head.collect(&mut find_res, find, &|data| data.clone());
+
+        let mut bad_res = Vec::new();
+        self.head.collect(&mut bad_res, removal, info);
+
+        let mut indexes: HashSet<u64> = HashSet::default();
+        for node in find_res {
+            indexes.extend(classify(&bad_res, &node).into_iter());
+        }
+
         indexes
             .into_iter()
             .for_each(|index| self.head.remove_index_and_childs(index));
@@ -246,7 +264,7 @@ impl GasDetails {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Node<V: NormalizedAction> {
     pub inner:     Vec<Node<V>>,
     pub finalized: bool,
@@ -336,118 +354,41 @@ impl<V: NormalizedAction> Node<V> {
         stack
     }
 
-    pub fn indexes_to_remove<F, C, T, R>(
-        &self,
-        indexes: &mut HashSet<u64>,
-        find: &F,
-        classify: &C,
-        info: &T,
-    ) -> bool
-    where
-        F: Fn(&Node<V>) -> bool,
-        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
-        T: Fn(&Node<V>) -> R,
-    {
-        // prev better
-        if !find(self) {
-            return false
-        }
-        let lower_has_better_collect = self
-            .inner
-            .iter()
-            .map(|i| i.indexes_to_remove(indexes, find, classify, info))
-            .collect::<Vec<bool>>();
-
-        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
-
-        if !lower_has_better {
-            let mut data = Vec::new();
-            self.get_bounded_info(0, self.index, &mut data, info);
-            let classified_indexes = classify(&data, self);
-            indexes.extend(classified_indexes);
-        }
-
-        return true
-    }
-
     pub fn get_bounded_info<F, R>(&self, lower: u64, upper: u64, res: &mut Vec<R>, info_fn: &F)
     where
         F: Fn(&Node<V>) -> R,
     {
-        if self.inner.is_empty() {
-            return
-        }
-
-        let last = self.inner.last().unwrap();
-
-        // fully in bounds
-        if self.index >= lower && last.index <= upper {
+        if self.index >= lower && self.index <= upper {
             res.push(info_fn(self));
-            self.inner
-                .iter()
-                .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
-
+        } else {
             return
         }
 
-        // find bounded limit
-        let mut iter = self.inner.iter().enumerate().peekable();
-        let mut start = None;
-        let mut end = None;
-
-        while start.is_none() || end.is_none() {
-            if let Some((our_index, next)) = iter.next() {
-                if let Some((_, peek)) = iter.peek() {
-                    // find lower
-                    start = start.or(Some(our_index).filter(|_| next.index >= lower));
-                    // find upper
-                    end = end.or(Some(our_index).filter(|_| peek.index > upper));
-                }
-            } else {
-                break
-            }
-        }
-
-        match (start, end) {
-            (Some(start), Some(end)) => {
-                self.inner[start..end]
-                    .iter()
-                    .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
-            }
-            (Some(start), None) => {
-                self.inner[start..]
-                    .iter()
-                    .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
-            }
-            _ => {}
-        }
+        self.inner
+            .iter()
+            .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
     }
 
     pub fn remove_index_and_childs(&mut self, index: u64) {
-        if self.inner.is_empty() {
-            return
-        }
+        let mut iter = self.inner.iter_mut().enumerate();
 
-        let mut iter = self.inner.iter_mut().enumerate().peekable();
-
-        let val = loop {
-            if let Some((our_index, next)) = iter.next() {
-                if index == next.index {
-                    break Some(our_index)
+        let res = loop {
+            if let Some((i, inner)) = iter.next() {
+                if inner.index == index {
+                    break Some(i)
                 }
 
-                if let Some(peek) = iter.peek() {
-                    if index > next.index && index < peek.1.index {
-                        next.remove_index_and_childs(index);
-                        break None
-                    }
+                if inner.index < index {
+                    inner.remove_index_and_childs(index)
                 } else {
                     break None
                 }
+            } else {
+                break None
             }
         };
 
-        if let Some(val) = val {
+        if let Some(val) = res {
             self.inner.remove(val);
         }
     }
@@ -483,17 +424,20 @@ impl<V: NormalizedAction> Node<V> {
 
     // will collect all elements of the operation that are specified.
     // useful for fetching all transfers etc
-    pub fn collect<F>(&self, results: &mut Vec<V>, call: &F)
+    pub fn collect<F, T, R>(&self, results: &mut Vec<R>, call: &F, wanted_data: &T)
     where
         F: Fn(&Node<V>) -> (bool, bool),
+        T: Fn(&Node<V>) -> R,
     {
         let (add, go_lower) = call(self);
         if add {
-            results.push(self.data.clone())
+            results.push(wanted_data(&self))
         }
 
         if go_lower {
-            self.inner.iter().for_each(|i| i.collect(results, call))
+            self.inner
+                .iter()
+                .for_each(|i| i.collect(results, call, wanted_data))
         }
     }
 
