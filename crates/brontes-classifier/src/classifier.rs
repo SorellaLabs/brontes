@@ -162,7 +162,6 @@ impl<'db> Classifier<'db> {
             },
             |node| node.data.clone(),
             |other_nodes, node| {
-                println!("running classify");
                 let Actions::Transfer(transfer) = &node.data else { unreachable!() };
                 let mut res = other_nodes
                     .into_iter()
