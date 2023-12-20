@@ -133,6 +133,9 @@ impl<'db> Classifier<'db> {
 
         // self.try_classify_unknown_exchanges(&mut tree);
         // self.try_classify_flashloans(&mut tree);
+        self.remove_swap_transfers(&mut tree);
+        self.remove_mint_transfers(&mut tree);
+        self.remove_collect_transfers(&mut tree);
 
         tree.finalize_tree();
         let (dec, prices): (Vec<_>, Vec<_>) = extra.into_iter().unzip();
@@ -146,7 +149,6 @@ impl<'db> Classifier<'db> {
     }
 
     // need this for dyn classifying
-    #[allow(dead_code)]
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_swap(),
@@ -174,7 +176,6 @@ impl<'db> Classifier<'db> {
     }
 
     // need this for dyn classifying
-    #[allow(dead_code)]
     fn remove_mint_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_mint(),
@@ -198,7 +199,6 @@ impl<'db> Classifier<'db> {
     }
 
     // need this for dyn classifying
-    #[allow(dead_code)]
     fn remove_collect_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
             |node| node.data.is_collect(),
@@ -655,7 +655,10 @@ impl<'db> Classifier<'db> {
 
 #[cfg(test)]
 pub mod test {
-    use std::{collections::HashSet, env};
+    use std::{
+        collections::{HashMap, HashSet},
+        env,
+    };
 
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::{
@@ -681,34 +684,46 @@ pub mod test {
 
     #[tokio::test]
     #[serial]
-    async fn test_dyn_classifier() {
+    async fn test_remove_swap_transfer() {
         let block_num = 18530326;
         dotenv::dotenv().ok();
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
         let (tx, _rx) = unbounded_channel();
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx, 6);
         let db = Clickhouse::default();
 
-        let classifier = Classifier::new(&libmdbx);
+        let classifier = Classifier::new(&libmdbx, tx);
 
         let (traces, header, metadata) = get_traces_with_meta(&tracer, &db, block_num).await;
 
-        let mut tree = classifier.build_tree(traces, header);
+        let (a, tree) = classifier.build_tree(traces, header);
+        let jarad = tree.roots[1].tx_hash;
 
-        /*
-        let root = tree.roots.remove(30);
-
-        let swaps = root.collect(&|node| {
+        let swap = tree.collect(jarad, |f| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
-                node.get_all_sub_actions()
+                node.subactions
                     .iter()
-                    .any(|s| s.is_swap() || s.is_transfer()),
+                    .any(|action| action.is_swap() || action.is_transfer()),
             )
         });
+        let mut swaps: HashMap<Address, HashSet<U256>> = HashMap::default();
 
-        println!("{:#?}", swaps);*/
+        for i in &swap {
+            if let Actions::Swap(s) = i {
+                swaps.entry(s.token_in).or_defualt().insert(s.amount_in);
+                swaps.entry(s.token_out).or_defualt().insert(s.amount_out);
+            }
+        }
+
+        for i in &swap {
+            if let Actions::Transfer(t) = i {
+                if swaps.get(&t.token).map(|i| i.contains(&t.amount)) == Some(true) {
+                    assert!(false, "found a transfer that was part of a swap");
+                }
+            }
+        }
     }
 }
