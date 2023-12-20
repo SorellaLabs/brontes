@@ -5,6 +5,7 @@ use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, Parall
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
+use tracing::error;
 
 use crate::normalized_actions::NormalizedAction;
 
@@ -49,6 +50,14 @@ impl<V: NormalizedAction> TimeTree<V> {
     }
 
     pub fn finalize_tree(&mut self) {
+        // because of this bad boy: https://etherscan.io/block/18500239
+        // we need this
+        if self.roots.len() == 0 {
+            error!(block = self.header.number, "have empty tree");
+            self.roots.iter_mut().for_each(|root| root.finalize());
+            return
+        }
+
         self.avg_priority_fee = self
             .roots
             .iter()
