@@ -51,9 +51,6 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 
     new_graph_pairs: HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>,
 
-    /// pools that don't exist yet that have been attempted to be queried
-    pending_init_pools: HashSet<Address>,
-
     /// holds all token pairs for the given chunk.
     pair_graph:      PairGraph,
     /// lazy loads dex pairs so we only fetch init state that is needed
@@ -82,7 +79,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         Self {
             new_graph_pairs,
             quote_asset,
-            pending_init_pools: HashSet::default(),
             buffer: StateBuffer::new(),
             run,
             batch_id,
@@ -125,11 +121,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
 
         let addr = msg.get_pool_address();
-
-        // enable pool if its been disabled
-        if let Some(pool) = self.pending_init_pools.take(&addr) {
-            self.pair_graph.enable_pool(pool);
-        }
 
         // if we already have the state, we want to buffer the update to allow for all
         // init fetches to be done so that we can then go through and apply all
