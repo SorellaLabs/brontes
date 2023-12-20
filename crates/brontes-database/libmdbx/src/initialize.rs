@@ -205,7 +205,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
     #[serial]
     async fn test_intialize_tables() {
         let db = initialize_tables(&[
