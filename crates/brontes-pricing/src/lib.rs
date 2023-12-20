@@ -19,8 +19,9 @@ use exchanges::lazy::LazyExchangeLoader;
 pub use exchanges::*;
 use futures::{Future, Stream, StreamExt};
 pub use graph::PairGraph;
+use graph::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
@@ -79,7 +80,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     // will always be in order
-    fn on_message(&mut self, msg: PoolUpdate) -> Option<(u64, DexPrices)> {
+    fn on_message(&mut self, msg: PoolUpdate) {
         // we want to capture these
         if msg.block > self.current_block {
             self.current_block = msg.block
@@ -92,7 +93,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 msg.tx_idx,
                 msg.get_pair(self.quote_asset).unwrap().flip(),
             );
-            return None
+            return
         }
 
         let addr = msg.get_pool_address();
@@ -108,120 +109,68 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         } else {
             self.on_new_pool(msg)
         }
-
-        if self.lazy_loader.requests_for_block(&self.completed_block) == 0
-            && self.completed_block < self.current_block
-        {
-            info!(?self.completed_block," getting ready to calc dex prices");
-            let block = self.completed_block;
-            if let Some(buffer) = self.buffer.remove(&self.completed_block) {
-                for (address, update) in buffer {
-                    self.update_known_state(address, update);
-                }
-            }
-
-            let res = self
-                .dex_quotes
-                .remove(&self.completed_block)
-                .unwrap_or(DexQuotes(vec![]));
-            info!(dex_quotes = res.0.len(), "got dex quotes");
-
-            let state = self.finalized_state.clone().into();
-            self.completed_block += 1;
-
-            return Some((self.completed_block, DexPrices::new(state, res)))
-        }
-
-        None
     }
 
-    const fn make_fake_swap(t0: Address, t1: Address) -> Actions {
-        Actions::Swap(NormalizedSwap {
-            index:      0,
-            from:       Address::ZERO,
-            pool:       Address::ZERO,
-            token_in:   t0,
-            token_out:  t1,
-            amount_in:  U256::ZERO,
-            amount_out: U256::ZERO,
-        })
+    fn queue_loading(&mut self, pair: Pair, trigger_update: PoolUpdate) {
+        for pool_info in self
+            .pair_graph
+            .get_path(pair)
+            .flatten()
+            .filter(|pair_info| {
+                // make sure we don't have or are already loading the state
+                !(self.mut_state.contains_key(&pair_info.info.pool_addr)
+                    || self.lazy_loader.is_loading(&pair_info.info.pool_addr))
+            })
+            // we need to collect here so the non-mut lazy loader ref is dropped
+            .collect::<Vec<_>>()
+        {
+            // load exchange
+            self.lazy_loader.lazy_load_exchange(
+                pool_info.info.pool_addr,
+                trigger_update.block,
+                pool_info.info.dex_type,
+            );
+
+            // we buffer the update for all of the pool state with there specific addresses
+            // this is so that when the pool resolves,
+            self.buffer
+                .entry(trigger_update.block)
+                .or_default()
+                .push_back((pool_info.info.pool_addr, trigger_update.clone()));
+        }
     }
 
     fn on_new_pool(&mut self, msg: PoolUpdate) {
-        let Some(pair) = msg.get_pair(self.quote_asset) else { return };
+        let Some(pair) = msg.get_pair(self.quote_asset) else {
+            warn!(pool_update=?msg, "was not able to derive pair from update");
+            return
+        };
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
-        let mut fake_update = msg.clone();
-        fake_update.logs = vec![];
+        let mut trigger_update = msg.clone();
+        trigger_update.logs = vec![];
 
-        // add first diction
-        fake_update.action = Self::make_fake_swap(pair.1, self.quote_asset);
-        for info in self
-            .pair_graph
-            .get_path(Pair(pair.1, self.quote_asset))
-            .flatten()
-        {
-            self.lazy_loader
-                .lazy_load_exchange(info.info.pool_addr, msg.block, info.info.dex_type);
-
-            // we always push the
-            self.buffer
-                .entry(msg.block)
-                .or_default()
-                .push_back((info.info.pool_addr, fake_update.clone()));
-        }
+        // add first direction
+        trigger_update.action = make_fake_swap(pair.1, self.quote_asset);
+        self.queue_loading(Pair(pair.1, self.quote_asset), trigger_update.clone());
 
         // add second direction
-        fake_update.action = Self::make_fake_swap(pair.0, self.quote_asset);
-        for info in self
-            .pair_graph
-            .get_path(Pair(pair.0, self.quote_asset))
-            .flatten()
-            .collect::<HashSet<_>>()
-        {
-            self.lazy_loader
-                .lazy_load_exchange(info.info.pool_addr, msg.block, info.info.dex_type);
-
-            self.buffer
-                .entry(msg.block)
-                .or_default()
-                .push_back((info.info.pool_addr, fake_update.clone()));
-        }
+        trigger_update.action = make_fake_swap(pair.0, self.quote_asset);
+        self.queue_loading(Pair(pair.0, self.quote_asset), trigger_update);
 
         // add default pair
-        for info in self.pair_graph.get_path(Pair(pair.0, pair.1)).flatten() {
-            self.lazy_loader.lazy_load_exchange(
-                info.info.pool_addr,
-                // we want to load state from prev block
-                msg.block,
-                info.info.dex_type,
-            );
-            self.buffer
-                .entry(msg.block)
-                .or_default()
-                .push_back((info.info.pool_addr, msg.clone()));
-        }
+        self.queue_loading(pair, msg.clone());
 
-        for info in self.pair_graph.get_path(Pair(pair.1, pair.0)).flatten() {
-            self.lazy_loader.lazy_load_exchange(
-                info.info.pool_addr,
-                // we want to load state from prev block
-                msg.block,
-                info.info.dex_type,
-            );
-
-            self.buffer
-                .entry(msg.block)
-                .or_default()
-                .push_back((info.info.pool_addr, msg.clone()));
-        }
+        // add inverse pair
+        self.queue_loading(pair.flip(), msg)
     }
 
     fn update_dex_quotes(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
         if pool_pair.0 == pool_pair.1 {
             return
         }
+
         let pool_keys = self
             .pair_graph
             .get_path(pool_pair)
@@ -311,41 +260,47 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
-    fn on_pool_resolve(&mut self, state: PoolState) -> Option<(u64, DexPrices)> {
-        let addr = state.address();
-        // init state so its ok to push
-        self.mut_state.insert(addr, state);
-
-        // if there are no requests and we have moved onto processing the next block,
-        // then we will resolve this block. otherwise we will wait
-        if self.lazy_loader.requests_for_block(&self.completed_block) == 0
+    fn can_progress(&self) -> bool {
+        self.lazy_loader.requests_for_block(&self.completed_block) == 0
             && self.completed_block < self.current_block
-        {
-            info!(?self.completed_block, "getting ready to calc dex prices");
-            // if all block requests are complete, lets apply all the state transitions we
-            // had for the given block which will allow us to generate all pricing
-            if let Some(buffer) = self.buffer.remove(&self.completed_block) {
-                for (address, update) in buffer {
-                    self.update_known_state(address, update);
-                }
+    }
+
+    fn try_resolve_block(&mut self) -> Option<(u64, DexPrices)> {
+        // if there are still requests for the given block or the current block isn't
+        // complete yet, then we wait
+        if !self.can_progress() {
+            return None
+        }
+        // if all block requests are complete, lets apply all the state transitions we
+        // had for the given block which will allow us to generate all pricing
+        if let Some(buffer) = self.buffer.remove(&self.completed_block) {
+            for (address, update) in buffer {
+                self.update_known_state(address, update);
             }
-
-            let block = self.completed_block;
-
-            let res = self
-                .dex_quotes
-                .remove(&self.completed_block)
-                .unwrap_or(DexQuotes(vec![]));
-
-            info!(dex_quotes = res.0.len(), "got dex quotes");
-
-            let state = self.finalized_state.clone().into();
-            self.completed_block += 1;
-
-            return Some((block, DexPrices::new(state, res)))
         }
 
-        None
+        let block = self.completed_block;
+
+        let res = self
+            .dex_quotes
+            .remove(&self.completed_block)
+            .unwrap_or(DexQuotes(vec![]));
+
+        info!(
+            block_number = self.completed_block,
+            dex_quotes_length = res.0.len(),
+            "got dex quotes"
+        );
+
+        let state = self.finalized_state.clone().into();
+        self.completed_block += 1;
+
+        Some((block, DexPrices::new(state, res)))
+    }
+
+    fn on_pool_resolve(&mut self, state: PoolState) {
+        let addr = state.address();
+        self.mut_state.insert(addr, state);
     }
 
     fn on_close(&mut self) -> Option<(u64, DexPrices)> {
@@ -381,26 +336,43 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        // because of how heavy this loop is when running, we want to give back to the
+        // runtime scheduler less in order to boost performance
         let mut work = 1024;
         loop {
-            if let Poll::Ready(s) = self
-                .update_rx
-                .poll_recv(cx)
-                .map(|inner| inner.map(|update| self.on_message(update)))
-            {
-                if let Some(Some(data)) = s {
-                    return Poll::Ready(Some(data))
+            // Due to how the scheduling works with our tracing and classification
+            // this channel will almost always be full. Because of this we don't want to
+            // just poll till it is drained as that means that no other
+            // progression will be made and this will be significantly slower than if we
+            // process in a 10 to 1 ratio
+            let mut inner_work = 10;
+            'inner: loop {
+                if let Poll::Ready(s) = self
+                    .update_rx
+                    .poll_recv(cx)
+                    .map(|inner| inner.map(|update| self.on_message(update)))
+                {
+                    if s.is_none() && self.lazy_loader.is_empty() {
+                        return Poll::Ready(self.on_close())
+                    }
+                } else {
+                    break 'inner
                 }
 
-                if s.is_none() && self.lazy_loader.is_empty() {
-                    return Poll::Ready(self.on_close())
+                inner_work -= 1;
+                if inner_work == 0 {
+                    break 'inner
                 }
             }
 
-            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                if let Some(update) = self.on_pool_resolve(state) {
-                    return Poll::Ready(Some(update))
-                }
+            // drain all loaded pools
+            while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                self.on_pool_resolve(state)
+            }
+
+            let block_prices = self.try_resolve_block();
+            if block_prices.is_some() {
+                return Poll::Ready(block_prices)
             }
 
             work -= 1;
@@ -410,6 +382,18 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             }
         }
     }
+}
+
+const fn make_fake_swap(t0: Address, t1: Address) -> Actions {
+    Actions::Swap(NormalizedSwap {
+        index:      0,
+        from:       Address::ZERO,
+        pool:       Address::ZERO,
+        token_in:   t0,
+        token_out:  t1,
+        amount_in:  U256::ZERO,
+        amount_out: U256::ZERO,
+    })
 }
 
 #[cfg(test)]
