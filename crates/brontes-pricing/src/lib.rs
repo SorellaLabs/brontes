@@ -97,6 +97,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let addr = msg.get_pool_address();
 
+        // if we already have the state, we want to buffer the update to allow for all
+        // init fetches to be done so that we can then go through and apply all
+        // price transitions correctly to ensure order
         if self.mut_state.contains_key(&addr) || self.lazy_loader.is_loading(&addr) {
             self.buffer
                 .entry(msg.block)
@@ -152,7 +155,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let mut fake_update = msg.clone();
         fake_update.logs = vec![];
 
-        // add first diection
+        // add first diction
         fake_update.action = Self::make_fake_swap(pair.1, self.quote_asset);
         for info in self
             .pair_graph
@@ -162,6 +165,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.lazy_loader
                 .lazy_load_exchange(info.info.pool_addr, msg.block, info.info.dex_type);
 
+            // we always push the
             self.buffer
                 .entry(msg.block)
                 .or_default()
@@ -379,27 +383,17 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut work = 1024;
         loop {
-            let mut count = 10;
-            'inner: loop {
-                if let Poll::Ready(s) = self
-                    .update_rx
-                    .poll_recv(cx)
-                    .map(|inner| inner.map(|update| self.on_message(update)))
-                {
-                    if let Some(Some(data)) = s {
-                        return Poll::Ready(Some(data))
-                    }
-
-                    if s.is_none() && self.lazy_loader.is_empty() {
-                        return Poll::Ready(self.on_close())
-                    }
-                } else {
-                    break 'inner
+            if let Poll::Ready(s) = self
+                .update_rx
+                .poll_recv(cx)
+                .map(|inner| inner.map(|update| self.on_message(update)))
+            {
+                if let Some(Some(data)) = s {
+                    return Poll::Ready(Some(data))
                 }
 
-                count -= 1;
-                if count == 0 {
-                    break 'inner
+                if s.is_none() && self.lazy_loader.is_empty() {
+                    return Poll::Ready(self.on_close())
                 }
             }
 

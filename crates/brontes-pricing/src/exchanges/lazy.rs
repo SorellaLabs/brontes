@@ -7,10 +7,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
-use futures::{
-    stream::{FuturesOrdered, FuturesUnordered},
-    Future, Stream, StreamExt,
-};
+use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
 use tracing::{error, info};
 
 use crate::{
@@ -21,8 +18,7 @@ use crate::{
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
     pool_buf:          HashSet<Address>,
-    // we need to keep order here or else our pricing will be off
-    pool_load_futures: FuturesOrdered<
+    pool_load_futures: FuturesUnordered<
         Pin<Box<dyn Future<Output = Result<(u64, Address, PoolState), (u64, AmmError)>> + Send>>,
     >,
     // the different blocks that we are currently fetching
@@ -33,7 +29,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
             pool_buf: HashSet::default(),
-            pool_load_futures: FuturesOrdered::default(),
+            pool_load_futures: FuturesUnordered::default(),
             provider,
             req_per_block: HashMap::default(),
         }
@@ -55,7 +51,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
         match ex_type {
             StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
-                self.pool_load_futures.push_back(Box::pin(async move {
+                self.pool_load_futures.push(Box::pin(async move {
                     // we want end of last block state
                     let pool =
                         UniswapV2Pool::new_load_on_block(address, provider, block_number - 1)
@@ -69,7 +65,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 }))
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
-                self.pool_load_futures.push_back(Box::pin(async move {
+                self.pool_load_futures.push(Box::pin(async move {
                     let pool = UniswapV3Pool::new_from_address(address, block_number - 1, provider)
                         .await
                         .map_err(|e| (block_number, e))?;
