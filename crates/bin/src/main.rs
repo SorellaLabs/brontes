@@ -189,13 +189,16 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
         libmdbx
             .clear_and_initialize_tables(
                 &clickhouse,
-                &[
-                    Tables::AddressToProtocol,
-                    Tables::AddressToTokens,
-                    Tables::CexPrice,
-                    Tables::TokenDecimals,
-                    Tables::Metadata,
-                ],
+                init_config
+                    .tables_to_init
+                    .unwrap_or({
+                        if init_config.download_dex_pricing {
+                            Tables::ALL.to_vec()
+                        } else {
+                            Tables::ALL_NO_DEX.to_vec()
+                        }
+                    })
+                    .as_slice(),
                 range,
             )
             .await?;
