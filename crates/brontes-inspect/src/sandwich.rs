@@ -117,8 +117,8 @@ impl SandwichInspector<'_> {
         if searcher_actions.len() < 2 {
             return None
         }
-
         let (deltas, mev_collectors) = self.inner.calculate_swap_deltas(&searcher_actions);
+        println!("{deltas:#?}");
 
         let rev_usd = self
             .inner
