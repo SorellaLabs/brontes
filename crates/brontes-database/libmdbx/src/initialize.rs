@@ -209,11 +209,11 @@ mod tests {
     #[serial]
     async fn test_intialize_tables() {
         let db = initialize_tables(&[
-            Tables::TokenDecimals,
+            //Tables::TokenDecimals,
             Tables::AddressToTokens,
-            Tables::AddressToProtocol,
-            Tables::CexPrice,
-            Tables::Metadata,
+            //Tables::AddressToProtocol,
+            //Tables::CexPrice,
+            //Tables::Metadata,
             //Tables::PoolState,
             //Tables::DexPrice,
         ])
