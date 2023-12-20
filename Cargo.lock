@@ -1419,7 +1419,6 @@ dependencies = [
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
- "brontes-database-libmdbx",
  "derive_more",
  "dotenv",
  "erased-serde",

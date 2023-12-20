@@ -3,8 +3,10 @@ use std::{collections::HashMap, sync::Arc};
 use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::{
-    exchanges::StaticBindingsDb, extra_processing::Pair,
-    impl_compress_decompress_for_encoded_decoded, libmdbx_utils::serde_address_string,
+    exchanges::StaticBindingsDb,
+    extra_processing::Pair,
+    impl_compress_decompress_for_encoded_decoded,
+    libmdbx::{dex_price_mapping::DexQuoteLibmdbx, serde::address_string},
     normalized_actions::Actions,
 };
 use bytes::BufMut;
@@ -36,7 +38,7 @@ use crate::{
     RlpDecodable,
 )]
 pub struct PoolKey {
-    #[serde(with = "serde_address_string")]
+    #[serde(with = "address_string")]
     pub pool:         Address,
     pub run:          u64,
     pub batch:        u64,
@@ -117,7 +119,7 @@ impl DexPrices {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, RlpDecodable, RlpEncodable)]
 pub struct PoolKeyWithDirection {
     pub key:  PoolKey,
     pub base: Address,
@@ -129,10 +131,10 @@ impl PoolKeyWithDirection {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, RlpDecodable, RlpEncodable)]
 pub struct PoolKeysForPair(pub Vec<PoolKeyWithDirection>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
 
 impl DexQuotes {
@@ -314,5 +316,11 @@ impl PoolUpdate {
             Actions::Transfer(t) => Some(Pair(t.token, quote)),
             _ => None,
         }
+    }
+}
+
+impl From<Vec<DexQuoteLibmdbx>> for DexQuotes {
+    fn from(value: Vec<DexQuoteLibmdbx>) -> Self {
+        todo!()
     }
 }

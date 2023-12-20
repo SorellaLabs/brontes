@@ -22,13 +22,14 @@ use crate::{
         cex_price::{CexPriceData, CexPriceMap},
         dex_price::{DexPriceData, DexQuoteWithIndex},
         metadata::{MetadataData, MetadataInner},
+        pool_creation_block::{PoolCreationBlocksData, PoolsLibmdbx},
         pool_state::PoolStateData,
         *,
     },
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 7;
+pub const NUM_TABLES: usize = 8;
 
 #[derive(Clone, Debug)]
 pub enum Tables {
@@ -39,6 +40,7 @@ pub enum Tables {
     Metadata,
     PoolState,
     DexPrice,
+    PoolCreationBlocks,
 }
 
 impl Tables {
@@ -50,6 +52,7 @@ impl Tables {
         Tables::Metadata,
         Tables::PoolState,
         Tables::DexPrice,
+        Tables::PoolCreationBlocks,
     ];
     pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
         Tables::TokenDecimals,
@@ -57,6 +60,7 @@ impl Tables {
         Tables::AddressToProtocol,
         Tables::CexPrice,
         Tables::Metadata,
+        Tables::PoolCreationBlocks,
     ];
 
     /// type of table
@@ -69,6 +73,7 @@ impl Tables {
             Tables::Metadata => TableType::Table,
             Tables::PoolState => TableType::Table,
             Tables::DexPrice => TableType::DupSort,
+            Tables::PoolCreationBlocks => TableType::Table,
         }
     }
 
@@ -81,6 +86,7 @@ impl Tables {
             Tables::Metadata => Metadata::NAME,
             Tables::PoolState => PoolState::NAME,
             Tables::DexPrice => DexPrice::NAME,
+            Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
         }
     }
 
@@ -108,6 +114,9 @@ impl Tables {
                 clickhouse,
                 block_range,
             ),
+            Tables::PoolCreationBlocks => {
+                PoolCreationBlocks::initialize_table(libmdbx, clickhouse, block_range)
+            }
         }
     }
 }
@@ -124,6 +133,7 @@ impl FromStr for Tables {
             Metadata::NAME => return Ok(Tables::Metadata),
             PoolState::NAME => return Ok(Tables::PoolState),
             DexPrice::NAME => return Ok(Tables::DexPrice),
+            PoolCreationBlocks::NAME => return Ok(Tables::PoolCreationBlocks),
             _ => return Err("Unknown table".to_string()),
         }
     }
@@ -214,6 +224,11 @@ table!(
 dupsort!(
     /// block number -> tx idx -> cex quotes
     ( DexPrice ) u64 | [u16] DexQuoteWithIndex
+);
+
+table!(
+    /// block number -> pools created in block
+    ( PoolCreationBlocks ) u64 | PoolsLibmdbx
 );
 
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
