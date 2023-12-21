@@ -6,6 +6,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use async_scoped::TokioScope;
 use brontes::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
@@ -20,6 +21,7 @@ use brontes_inspect::{
 };
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
+use itertools::Itertools;
 use metrics_process::Collector;
 use reth_db::transaction::DbTx;
 use reth_tracing_ext::TracingClient;
@@ -210,6 +212,8 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
 }
 
 async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<dyn Error>> {
+    assert!(config.start_block <= config.end_block);
+
     let db_path = get_env_vars()?;
 
     let max_tasks = determine_max_tasks(config.max_tasks);
@@ -239,24 +243,43 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
 
-    let batch = DataBatching::new(
-        config.quote_asset.parse().unwrap(),
-        0,
-        1,
-        config.start_block,
-        config.end_block,
-        &parser,
-        &libmdbx,
-        &inspectors,
-    );
+    let cpus = determine_max_tasks(config.max_tasks);
 
-    pin!(batch);
+    let range = config.end_block - config.start_block;
+    let cpus_min = range / config.min_batch_size + 1;
+
+    let mut scope: TokioScope<'a, ()> = unsafe { Scope::create() };
+
+    let cpus = std::cmp::min(cpus_min, cpus);
+
+    for (i, chunk) in (config.start_block..=config.end_block)
+        .chunks(cpus.try_into().unwrap())
+        .into_iter()
+        .enumerate()
+    {
+        let start_block = chunk.next().unwrap();
+        let end_block = chunk.last().unwrap();
+        scope.spawn(tokio::spawn(spawn_batches(
+            config.quote_asset.parse().unwrap(),
+            0,
+            i as u64,
+            start_block,
+            end_block,
+            parser,
+            libmdbx,
+            &inspectors,
+        )));
+    }
+
+    // let range
+
+    pin!(tasks);
     pin!(metrics_listener);
 
     // wait for completion
     tokio::select! {
-        _ = &mut batch => {
-            info!("finnished running batch , shutting down");
+        _ = &mut tasks => {
+            info!("finnished running all batch , shutting down");
         }
         _ = Pin::new(&mut manager) => {
         }
@@ -268,12 +291,34 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
     Ok(())
 }
 
-fn determine_max_tasks(max_tasks: Option<u64>) -> u32 {
+async fn spawn_batches(
+    quote_asset: Address,
+    run_id: u64,
+    batch_id: u64,
+    start_block: u64,
+    end_block: u64,
+    parser: DParser<'_, TracingClient>,
+    libmdbx: &Libmdbx,
+    inspectors: &Inspectors<'_>,
+) {
+    let batch = DataBatching::new(
+        quote_asset,
+        0,
+        1,
+        start_block,
+        end_block,
+        &parser,
+        &libmdbx,
+        &inspectors,
+    );
+}
+
+fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
     match max_tasks {
-        Some(max_tasks) => max_tasks as u32,
+        Some(max_tasks) => max_tasks as u64,
         None => {
             let cpus = num_cpus::get_physical();
-            (cpus as f32 * 0.8) as u32 // 80% of physical cores
+            (cpus as f64 * 0.8) as u64 // 80% of physical cores
         }
     }
 }
