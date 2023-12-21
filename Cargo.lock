@@ -1270,6 +1270,7 @@ dependencies = [
  "test-fuzz",
  "thiserror",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
