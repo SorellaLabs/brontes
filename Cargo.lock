@@ -1036,6 +1036,7 @@ dependencies = [
  "brontes-inspect",
  "brontes-metrics",
  "brontes-pricing",
+ "brontes-tracing",
  "brontes-types",
  "cfg-if",
  "clap",
