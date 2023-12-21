@@ -284,7 +284,7 @@ where
                         //.flatten()
                         .collect::<Result<Vec<_>, _>>();
             */
-            libmdbx.initialize_table::<Self, D>(&vec![])?;
+            libmdbx.clear_table::<Self>()?;
 
             let chunk = 100000;
             let tasks = (block_range.0..block_range.1)
