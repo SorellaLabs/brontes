@@ -73,7 +73,6 @@ pub struct RunBatchWithPricing {
     pub end_block:      u64,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
-    #[arg(default_value = "5")]
     pub max_tasks:      Option<u64>,
     /// Optional quote asset, if omitted it will default to USDC
     #[arg(long, short, default_value = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")]
