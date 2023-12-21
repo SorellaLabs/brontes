@@ -11,6 +11,7 @@ edition = "2021"
 brontes-database.workspace = true
 brontes-types.workspace = true
 brontes-pricing.workspace = true
+tracing.workspace = true
 
 # alloy
 alloy-primitives = { workspace = true, features = [
