@@ -109,7 +109,7 @@ impl Tables {
                 AddressToProtocol::initialize_table(libmdbx, clickhouse, block_range)
             }
             Tables::CexPrice => {
-                CexPrice::initialize_table_batching(libmdbx, clickhouse, block_range)
+                CexPrice::initialize_table_batching(Arc::new(libmdbx), clickhouse, block_range)
             }
             Tables::Metadata => Metadata::initialize_table(libmdbx, clickhouse, block_range),
             Tables::PoolState => PoolState::initialize_table(libmdbx, clickhouse, block_range),
@@ -244,19 +244,25 @@ where
     }
 
     fn initialize_table_batching(
-        libmdbx: &'db Libmdbx,
+        libmdbx: Arc<&'db Libmdbx>,
         db_client: Arc<&'db Clickhouse>,
         _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
             let block_chunks = [
                 (15000000, 16000000),
-                (16000000, 16500000),
-                (16500000, 17000000),
-                (17000000, 17500000),
-                (17500000, 18000000),
-                (18000000, 18500000),
-                (18500000, 19000000),
+                (16000000, 16250000),
+                (16250000, 16500000),
+                (16500000, 16750000),
+                (16750000, 17000000),
+                (17000000, 17250000),
+                (17250000, 17500000),
+                (17500000, 17750000),
+                (17750000, 18000000),
+                (18000000, 18250000),
+                (18250000, 18500000),
+                (18500000, 18750000),
+                (18750000, 19000000),
             ];
 
             let data = join_all(block_chunks.into_iter().map(|params| {
@@ -270,6 +276,7 @@ where
             }))
             .await
             .into_iter()
+            //.flatten()
             .collect::<Result<Vec<_>, _>>();
 
             if data.is_err() {
