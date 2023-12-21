@@ -234,7 +234,7 @@ impl Libmdbx {
             }
         }
 
-        info!(pairs = map.len(), block_num, "loaded all pairs before block");
+        info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
 
         Ok(map)
     }
