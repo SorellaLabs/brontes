@@ -10,16 +10,12 @@ use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
 };
-use brontes_database::{Metadata, MetadataDB, Pair};
-use brontes_database_libmdbx::{
-    tables::{AddressToProtocol, AddressToTokens},
-    Libmdbx,
-};
+use brontes_database::{Metadata, MetadataDB};
+use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
-use reth_db::{cursor::DbCursorRO, transaction::DbTx};
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
 use tracing::info;
@@ -286,7 +282,7 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
+        if let Poll::Ready((block_details, _mev_details)) = self.composer.poll_unpin(cx) {
             info!(?block_details, "finished processing for block");
             // self.database
             //     .insert_classified_data(block_details, mev_details);
