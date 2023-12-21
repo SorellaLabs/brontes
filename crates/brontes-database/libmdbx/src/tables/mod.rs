@@ -29,7 +29,7 @@ use crate::{
 
 pub const NUM_TABLES: usize = 8;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tables {
     TokenDecimals,
     AddressToTokens,
