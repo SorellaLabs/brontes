@@ -8,5 +8,5 @@ SELECT
     proposer_mev_reward,
     mempool_flow
 FROM brontes.metadata
-WHERE block_number >= AND ? block_number < ? 
+WHERE block_number >= ? AND block_number < ? 
 
