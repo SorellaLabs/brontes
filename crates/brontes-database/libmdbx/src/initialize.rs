@@ -168,43 +168,43 @@ mod tests {
         }
         Ok(())
     }
+    /*
+        async fn test_dex_price_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
+            let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+            assert_ne!(tx.entries::<DexPrice>()?, 0);
 
-    async fn test_dex_price_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
-        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
-        assert_ne!(tx.entries::<DexPrice>()?, 0);
+            let mut cursor = tx.cursor_dup_read::<DexPrice>()?;
 
-        let mut cursor = tx.cursor_dup_read::<DexPrice>()?;
-
-        if !print {
-            cursor.first()?.ok_or(DatabaseError::Read(-1))?;
-        } else {
-            while let Some(vals) = cursor.next()? {
-                println!("{:?}\n", vals);
+            if !print {
+                cursor.first()?.ok_or(DatabaseError::Read(-1))?;
+            } else {
+                while let Some(vals) = cursor.next()? {
+                    println!("{:?}\n", vals);
+                }
             }
-        }
 
-        println!("\n\n\n\n");
+            println!("\n\n\n\n");
 
-        cursor.first()?;
-        let mut dup_walk = cursor.walk_dup(Some(10), None)?;
-        if !print {
-            let _ = dup_walk.next().ok_or(DatabaseError::Read(-1))?;
-        } else {
-            while let Some(vals) = dup_walk.next() {
-                println!("{:?}\n", vals);
+            cursor.first()?;
+            let mut dup_walk = cursor.walk_dup(Some(10), None)?;
+            if !print {
+                let _ = dup_walk.next().ok_or(DatabaseError::Read(-1))?;
+            } else {
+                while let Some(vals) = dup_walk.next() {
+                    println!("{:?}\n", vals);
+                }
             }
+            /*
+            assert!(first_dup.is_some());
+            println!("\n\n{:?}", first_dup);
+
+            let next_dup = cursor.next_dup()?;
+            assert!(next_dup.is_some());
+            println!("\n\n{:?}", next_dup);
+            */
+            Ok(())
         }
-        /*
-        assert!(first_dup.is_some());
-        println!("\n\n{:?}", first_dup);
-
-        let next_dup = cursor.next_dup()?;
-        assert!(next_dup.is_some());
-        println!("\n\n{:?}", next_dup);
-        */
-        Ok(())
-    }
-
+    */
     async fn test_pool_creation_blocks_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
         let tx = LibmdbxTx::new_ro_tx(&db.0)?;
         assert_ne!(tx.entries::<PoolCreationBlocks>()?, 0);
