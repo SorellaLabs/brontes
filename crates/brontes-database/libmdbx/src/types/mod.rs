@@ -9,6 +9,7 @@ pub mod pool_state;
 pub mod token_decimals;
 mod utils;
 pub(crate) use token_decimals::*;
+pub mod mev_block;
 
 pub trait LibmdbxData<T: Table>: Sized {
     fn into_key_val(&self) -> (T::Key, T::Value);
