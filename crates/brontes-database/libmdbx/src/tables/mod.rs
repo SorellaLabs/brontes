@@ -293,7 +293,7 @@ where
                         tokio::spawn(async move {
                             db_client
                                 .inner()
-                                .query_many::<D>(Self::initialize_query(), &(block - 100000, block))
+                                .query_many::<D>(Self::initialize_query(), &(block - chunk, block))
                                 .await
                         })
                     }),
