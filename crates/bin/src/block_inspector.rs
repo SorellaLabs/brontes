@@ -3,6 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
@@ -114,6 +115,34 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
 
         if let Some(mut inner) = self.composer_future.take() {
             if let Poll::Ready(data) = inner.poll_unpin(cx) {
+                info!(
+                    "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
+                     ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
+                     {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- \
+                     Builder ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer \
+                     Fee Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized \
+                     Profit (USD): {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n",
+                    data.0.block_number,
+                    data.0.mev_count,
+                    data.0.finalized_eth_price,
+                    data.0.cumulative_gas_used,
+                    data.0.cumulative_gas_paid,
+                    data.0.total_bribe,
+                    data.0.cumulative_mev_priority_fee_paid,
+                    data.0.builder_address,
+                    data.0.builder_eth_profit,
+                    data.0.builder_finalized_profit_usd,
+                    data.0
+                        .proposer_fee_recipient
+                        .map_or(Address::ZERO.to_string(), |v| format!("{:?}", v)),
+                    data.0
+                        .proposer_mev_reward
+                        .map_or("None".to_string(), |v| v.to_string()),
+                    data.0
+                        .proposer_finalized_profit_usd
+                        .map_or("None".to_string(), |v| format!("{:.2}", v)),
+                    data.0.cumulative_mev_finalized_profit_usd
+                );
                 self.on_inspectors_finish(data);
             } else {
                 self.composer_future = Some(inner);
@@ -138,6 +167,7 @@ impl<const N: usize, T: TracingProvider> Future for BlockInspector<'_, N, T> {
         // Finish when both classifier and insertion futures are done.
         if self.classifier_future.is_none() && self.composer_future.is_none() {
             info!(block_number = self.block_number, "finished inspecting block");
+
             Poll::Ready(())
         } else {
             Poll::Pending
