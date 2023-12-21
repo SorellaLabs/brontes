@@ -16,7 +16,7 @@ use eyre::Context;
 use initialize::LibmdbxInitializer;
 use malachite::Rational;
 use reth_db::{
-    cursor::DbCursorRO,
+    cursor::{DbCursorRO, DbDupCursorRW},
     is_database_empty,
     mdbx::DatabaseFlags,
     table::{DupSort, Table},
@@ -109,6 +109,7 @@ impl Libmdbx {
                 .collect::<Vec<_>>(),
         )?;
 
+        
         let data = quotes
             .quotes
             .0
@@ -122,7 +123,21 @@ impl Libmdbx {
             })
             .collect::<Vec<_>>();
 
-        self.write_table::<DexPrice, DexPriceData>(&data)?;
+            let tx = LibmdbxTx::new_rw_tx(&self.0)?;
+            let mut cursor = tx.cursor_dup_write::<DexPrice>()?;
+
+            data
+                .into_iter()
+                .map(|entry| {
+                    let (key, val) = entry.into_key_val();
+                    cursor.append_dup(key, val)?;
+                    Ok(())
+                })
+                .collect::<Result<Vec<_>, DatabaseError>>()?;
+    
+            tx.commit()?;
+
+        //self.write_table::<DexPrice, DexPriceData>(&data)?;
         Ok(())
     }
 
@@ -308,6 +323,8 @@ impl Libmdbx {
             dex_quotes: DexPrices::new(map, DexQuotes(vec![])),
         })
     }
+
+
 
     pub fn insert_classified_data(
         &self,
