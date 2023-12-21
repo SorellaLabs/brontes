@@ -287,7 +287,7 @@ where
             libmdbx.clear_table::<Self>()?;
             println!("Cleared Table: {}", Self::NAME);
 
-            let chunk = 500000;
+            let chunk = 100000;
             let tasks = (block_range.0..block_range.1)
                 .into_iter()
                 .filter(|block| block % chunk == 0)
@@ -315,9 +315,9 @@ where
                         (data.unwrap(), block)
                     })
                 })
-                .buffer_unordered(5);
+                .buffer_unordered(10);
 
-            if let Some(d) = data.next().await {
+            while let Some(d) = data.next().await {
                 let (data_des, block) = d?;
                 info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk, (19000000-15000000)/chunk);
 
