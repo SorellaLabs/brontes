@@ -113,37 +113,53 @@ impl Tables {
                 //let block_range = (15400000, 19000000);
 
                 Box::pin(async move {
-                    let futs = vec![
-                        CexPrice::initialize_table_batching(
-                            libmdbx.clone(),
-                            clickhouse.clone(),
-                            (15400000, 16000000),
-                        ),
-                        CexPrice::initialize_table_batching(
-                            libmdbx.clone(),
-                            clickhouse.clone(),
-                            (16000000, 17000000),
-                        ),
-                        CexPrice::initialize_table_batching(
-                            libmdbx.clone(),
-                            clickhouse.clone(),
-                            (17000000, 18000000),
-                        ),
-                        CexPrice::initialize_table_batching(
-                            libmdbx.clone(),
-                            clickhouse.clone(),
-                            (18000000, 19000000),
-                        ),
-                    ];
-
-                    join_all(futs).await.into_iter().collect()
+                    libmdbx.clear_table::<CexPrice>()?;
+                    println!("Cleared Table: {}", CexPrice::NAME);
+                    CexPrice::initialize_table_batching(
+                        libmdbx.clone(),
+                        clickhouse.clone(),
+                        (15400000, 16000000),
+                    )
+                    .await?;
+                    info!(target: "brontes::init", "{} Block Range: {}-{}", CexPrice::NAME, 15400000, 16000000);
+                    CexPrice::initialize_table_batching(
+                        libmdbx.clone(),
+                        clickhouse.clone(),
+                        (16000000, 17000000),
+                    )
+                    .await?;
+                    info!(target: "brontes::init", "{} Block Range: {}-{}", CexPrice::NAME, 16000000, 17000000);
+                    CexPrice::initialize_table_batching(
+                        libmdbx.clone(),
+                        clickhouse.clone(),
+                        (17000000, 18000000),
+                    )
+                    .await?;
+                    info!(target: "brontes::init", "{} Block Range: {}-{}", CexPrice::NAME, 17000000, 18000000);
+                    CexPrice::initialize_table_batching(
+                        libmdbx.clone(),
+                        clickhouse.clone(),
+                        (18000000, 19000000),
+                    )
+                    .await?;
+                    info!(target: "brontes::init", "{} Block Range: {}-{}", CexPrice::NAME, 18000000, 19000000);
+                    println!("{} OK", CexPrice::NAME);
+                    Ok(())
                 })
             }
-            Tables::Metadata => Metadata::initialize_table_batching(
-                libmdbx.clone(),
-                clickhouse.clone(),
-                (15400000, 19000000),
-            ),
+            Tables::Metadata => Box::pin(async move {
+                libmdbx.clear_table::<Metadata>()?;
+                println!("Cleared Table: {}", Metadata::NAME);
+
+                Metadata::initialize_table_batching(
+                    libmdbx.clone(),
+                    clickhouse.clone(),
+                    (15400000, 19000000),
+                )
+                .await?;
+                println!("{} OK", Metadata::NAME);
+                Ok(())
+            }),
             Tables::PoolState => PoolState::initialize_table(libmdbx.clone(), clickhouse.clone()),
             Tables::DexPrice => DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone()),
             Tables::PoolCreationBlocks => {
@@ -312,8 +328,6 @@ where
                         //.flatten()
                         .collect::<Result<Vec<_>, _>>();
             */
-            libmdbx.clear_table::<Self>()?;
-            println!("Cleared Table: {}", Self::NAME);
 
             let chunk = 100000;
             let tasks = (block_range.0..block_range.1)
@@ -347,13 +361,10 @@ where
 
             while let Some(d) = data.next().await {
                 let (data_des, block) = d?;
-                info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk, (19000000-15000000)/chunk);
 
                 libmdbx.write_table(&data_des)?;
-                drop(data_des);
+                //drop(data_des);
             }
-
-            println!("{} OK", Self::NAME);
 
             Ok(())
         })
