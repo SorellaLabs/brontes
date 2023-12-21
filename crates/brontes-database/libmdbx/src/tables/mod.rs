@@ -305,9 +305,9 @@ where
                             println!(
                                 "{} Block Range: {} - {} --- ERROR: {:?}",
                                 Self::NAME,
-                                data,
                                 block - chunk,
-                                block
+                                block,
+                                data,
                             );
                         }
 
