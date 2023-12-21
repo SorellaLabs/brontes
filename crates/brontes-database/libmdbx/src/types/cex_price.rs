@@ -338,7 +338,7 @@ mod tests {
         clickhouse
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
     async fn test_insert_dex_price_clickhouse() {
         let clickhouse = init_clickhouse();
         let table = "brontes.cex_price_mapping";
