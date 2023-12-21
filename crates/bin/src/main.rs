@@ -256,6 +256,7 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
         .into_iter()
         .enumerate()
     {
+        info!(chunk_size=chunk.len());
         let start_block = chunk.next().unwrap();
         let end_block = chunk.last().unwrap();
 
