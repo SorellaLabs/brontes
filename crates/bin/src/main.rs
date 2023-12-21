@@ -249,7 +249,7 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
 
     let cpus = std::cmp::min(cpus_min, cpus);
 
-    let chunk_size = range / cpus + 1;
+    let chunk_size = range / cpus;
 
     for (i, mut chunk) in (config.start_block..=config.end_block)
         .chunks(chunk_size.try_into().unwrap())
