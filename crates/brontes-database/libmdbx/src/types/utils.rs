@@ -108,7 +108,7 @@ pub(crate) mod vec_txhash {
 
     use std::str::FromStr;
 
-    use alloy_primitives::{TxHash};
+    use alloy_primitives::TxHash;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -197,10 +197,7 @@ pub(crate) mod pool_key {
 
 pub(crate) mod pool_state {
 
-    
-
-    
-    use brontes_pricing::{types::PoolStateSnapShot};
+    use brontes_pricing::types::PoolStateSnapShot;
     use serde::{
         de::{Deserialize, Deserializer, Error as DesError},
         ser::{Error as SerError, Serialize, Serializer},
