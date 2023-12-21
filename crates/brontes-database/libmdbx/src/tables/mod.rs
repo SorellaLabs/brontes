@@ -302,7 +302,13 @@ where
                             .await;
 
                         if data.is_err() {
-                            println!("{} ERROR: {:?}", Self::NAME, data);
+                            println!(
+                                "{} Block Range: {} - {} --- ERROR: {:?}",
+                                Self::NAME,
+                                data,
+                                block - chunk,
+                                block
+                            );
                         }
 
                         (data.unwrap(), block)
