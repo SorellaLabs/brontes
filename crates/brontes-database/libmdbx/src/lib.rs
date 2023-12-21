@@ -16,7 +16,7 @@ use eyre::Context;
 use initialize::LibmdbxInitializer;
 use malachite::Rational;
 use reth_db::{
-    cursor::{DbCursorRO, DbDupCursorRW},
+    cursor::{DbCursorRO, DbDupCursorRW, DbDupCursorRO, DbCursorRW},
     is_database_empty,
     mdbx::DatabaseFlags,
     table::{DupSort, Table},
@@ -110,7 +110,7 @@ impl Libmdbx {
         )?;
 
         
-        let data = quotes
+        let mut data = quotes
             .quotes
             .0
             .into_iter()
@@ -123,19 +123,28 @@ impl Libmdbx {
             })
             .collect::<Vec<_>>();
 
-            let tx = LibmdbxTx::new_rw_tx(&self.0)?;
-            let mut cursor = tx.cursor_dup_write::<DexPrice>()?;
+        data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
+        data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
 
-            data
-                .into_iter()
-                .map(|entry| {
-                    let (key, val) = entry.into_key_val();
-                    cursor.append_dup(key, val)?;
-                    Ok(())
-                })
-                .collect::<Result<Vec<_>, DatabaseError>>()?;
-    
-            tx.commit()?;
+        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
+        let mut cursor = tx.cursor_dup_write::<DexPrice>()?;
+
+        data
+            .into_iter()
+            .map(|entry| {
+                let (key, val) = entry.into_key_val();
+                if let Some(db_entry) = cursor.seek_by_key_subkey(key, val.tx_idx)? {
+                    if db_entry.tx_idx == val.tx_idx {
+                        cursor.delete_current()?;
+                    }
+                }
+
+                cursor.upsert(key, val)?;
+                Ok(())
+            })
+            .collect::<Result<Vec<_>, DatabaseError>>()?;
+
+        tx.commit()?;
 
         //self.write_table::<DexPrice, DexPriceData>(&data)?;
         Ok(())
