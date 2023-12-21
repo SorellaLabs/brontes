@@ -249,13 +249,16 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
 
     let cpus = std::cmp::min(cpus_min, cpus);
 
+    let chunk_size = range / cpus + 1;
+
     for (i, mut chunk) in (config.start_block..=config.end_block)
-        .chunks(cpus.try_into().unwrap())
+        .chunks(chunk_size.try_into().unwrap())
         .into_iter()
         .enumerate()
     {
         let start_block = chunk.next().unwrap();
         let end_block = chunk.last().unwrap();
+
         scope.spawn(spawn_batches(
             config.quote_asset.parse().unwrap(),
             0,
