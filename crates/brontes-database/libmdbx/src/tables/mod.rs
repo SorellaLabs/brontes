@@ -121,28 +121,28 @@ impl Tables {
                         (15400000, 16000000),
                     )
                     .await?;
-                    info!(target: "brontes::init", "{} Block Range: {}-{}", CexPrice::NAME, 15400000, 16000000);
+                    info!(target: "brontes::init", "Finished {} Block Range: {}-{}", CexPrice::NAME, 15400000, 16000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
                         (16000000, 17000000),
                     )
                     .await?;
-                    info!(target: "brontes::init", "{} Block Range: {}-{}", CexPrice::NAME, 16000000, 17000000);
+                    info!(target: "brontes::init", "Finished {} Block Range: {}-{}", CexPrice::NAME, 16000000, 17000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
                         (17000000, 18000000),
                     )
                     .await?;
-                    info!(target: "brontes::init", "{} Block Range: {}-{}", CexPrice::NAME, 17000000, 18000000);
+                    info!(target: "brontes::init", "Finished {} Block Range: {}-{}", CexPrice::NAME, 17000000, 18000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
                         (18000000, 19000000),
                     )
                     .await?;
-                    info!(target: "brontes::init", "{} Block Range: {}-{}", CexPrice::NAME, 18000000, 19000000);
+                    info!(target: "brontes::init", "Finished {} Block Range: {}-{}", CexPrice::NAME, 18000000, 19000000);
                     println!("{} OK", CexPrice::NAME);
                     Ok(())
                 })
@@ -329,14 +329,14 @@ where
                         .collect::<Result<Vec<_>, _>>();
             */
 
-            let chunk = 100000;
+            let chunk = 10000;
             let tasks = (block_range.0..block_range.1)
                 .into_iter()
                 .filter(|block| block % chunk == 0)
                 .collect::<Vec<_>>();
 
-            let mut data = futures::stream::iter(tasks)
-                .map(|block| {
+            let data = //futures::stream::iter(tasks)
+                join_all(tasks.into_iter().map(|block| {
                     let db_client = db_client.clone();
                     tokio::spawn(async move {
                         let data = db_client
@@ -354,17 +354,19 @@ where
                             );
                         }
 
-                        (data.unwrap(), block)
+                        data.unwrap()
                     })
-                })
-                .buffer_unordered(10);
+                })).await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
+
+                libmdbx.write_table(&data)?;
+            /* .buffer_unordered(50);
 
             while let Some(d) = data.next().await {
-                let (data_des, block) = d?;
+                let data_des = d?;
 
                 libmdbx.write_table(&data_des)?;
                 //drop(data_des);
-            }
+            }*/
 
             Ok(())
         })
