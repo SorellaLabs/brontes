@@ -27,6 +27,7 @@ use reth_db::{
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
 use tables::*;
+use tracing::info;
 use types::{cex_price::CexPriceMap, metadata::MetadataInner, LibmdbxDupData};
 
 use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
@@ -167,6 +168,8 @@ impl Libmdbx {
                 map.insert((addr, protocol), Pair(info.token0, info.token1));
             }
         }
+
+        info!(pairs = map.len(), block_num, "loaded all pairs before block");
 
         Ok(map)
     }
