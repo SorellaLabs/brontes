@@ -20,6 +20,7 @@ use brontes_inspect::{
     sandwich::SandwichInspector, Inspector,
 };
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
+use brontes_tracing::init;
 use clap::Parser;
 use itertools::Itertools;
 use metrics_process::Collector;
@@ -27,7 +28,9 @@ use reth_db::transaction::DbTx;
 use reth_tracing_ext::TracingClient;
 use tokio::{pin, sync::mpsc::unbounded_channel};
 use tracing::{error, info, Level};
-use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
+use tracing_subscriber::{
+    filter::Directive, prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry,
+};
 mod banner;
 mod cli;
 
@@ -69,14 +72,17 @@ fn main() {
         .build()
         .unwrap();
 
-    let filter = EnvFilter::builder()
-        .with_default_directive(Level::INFO.into())
-        .from_env_lossy();
+    let directive: Directive = Level::INFO.as_str().parse().unwrap();
 
-    let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
+    let layers = vec![brontes_tracing::stdout(directive)];
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Could not set global default subscriber");
+    //let subscriber =
+    // Registry::default().with(tracing_subscriber::fmt::layer().
+    // with_filter(filter));
+
+    //tracing::subscriber::set_global_default(subscriber)
+    //  .expect("Could not set global default subscriber");
+    brontes_tracing::init(layers);
 
     match runtime.block_on(run()) {
         Ok(()) => info!("SUCCESS!"),
