@@ -56,19 +56,15 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx);
 
-        let tx = libmdbx.ro_tx().unwrap();
-        let binding_tx = libmdbx.ro_tx().unwrap();
-        let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
-        let mut pairs = HashMap::new();
+        let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
 
-        for value in all_addr_to_tokens.walk(None).unwrap() {
-            if let Ok((address, tokens)) = value {
-                if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(address) {
-                    pairs.insert((address, protocol), Pair(tokens.token0, tokens.token1));
-                }
-            }
+        let mut rest_pairs = HashMap::default();
+        for i in start_block + 1..=end_block {
+            let pairs = libmdbx.addresses_init_block(i).unwrap();
+            rest_pairs.insert(i, pairs);
         }
 
+        info!("initing pair graph");
         let pair_graph = PairGraph::init_from_hashmap(pairs);
 
         let pricer = BrontesBatchPricer::new(
@@ -79,6 +75,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             rx,
             parser.get_tracer(),
             start_block,
+            rest_pairs,
         );
 
         let pricer = WaitingForPricerFuture::new(pricer);
