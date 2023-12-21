@@ -111,7 +111,9 @@ impl Tables {
             Tables::CexPrice => {
                 CexPrice::initialize_table_batching(Arc::new(libmdbx), clickhouse, block_range)
             }
-            Tables::Metadata => Metadata::initialize_table(libmdbx, clickhouse, block_range),
+            Tables::Metadata => {
+                Metadata::initialize_table_batching(Arc::new(libmdbx), clickhouse, block_range)
+            }
             Tables::PoolState => PoolState::initialize_table(libmdbx, clickhouse, block_range),
             Tables::DexPrice => DexPrice::initialize_table(libmdbx, clickhouse, block_range),
             Tables::PoolCreationBlocks => {
@@ -249,31 +251,53 @@ where
         _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
-            let block_chunks = [
-                (15000000, 16000000),
-                (16000000, 16250000),
-                (16250000, 16500000),
-                (16500000, 16750000),
-                (16750000, 17000000),
-                (17000000, 17250000),
-                (17250000, 17500000),
-                (17500000, 17750000),
-                (17750000, 18000000),
-                (18000000, 18250000),
-                (18250000, 18500000),
-                (18500000, 18750000),
-                (18750000, 19000000),
-            ];
+            let block_range = (15000000, 19000000);
+            /*
+                        let block_chunks = [
+                            (15000000, 16000000),
+                            (16000000, 16250000),
+                            (16250000, 16500000),
+                            (16500000, 16750000),
+                            (16750000, 17000000),
+                            (17000000, 17250000),
+                            (17250000, 17500000),
+                            (17500000, 17750000),
+                            (17750000, 18000000),
+                            (18000000, 18250000),
+                            (18250000, 18500000),
+                            (18500000, 18750000),
+                            (18750000, 19000000),
+                        ];
 
-            let data = join_all(block_chunks.into_iter().map(|params| {
-                let db_client = db_client.clone();
-                async move {
-                    db_client
-                        .inner()
-                        .query_many::<D>(Self::initialize_query(), &params)
+                        let data = join_all(block_chunks.into_iter().map(|params| {
+                            let db_client = db_client.clone();
+                            async move {
+                                db_client
+                                    .inner()
+                                    .query_many::<D>(Self::initialize_query(), &params)
+                                    .await
+                            }
+                        }))
                         .await
-                }
-            }))
+                        .into_iter()
+                        //.flatten()
+                        .collect::<Result<Vec<_>, _>>();
+            */
+            let chunk = 100000;
+            let data = join_all(
+                (block_range.0..block_range.1)
+                    .into_iter()
+                    .filter(|block| block % chunk == 0)
+                    .map(|block| {
+                        let db_client = db_client.clone();
+                        async move {
+                            db_client
+                                .inner()
+                                .query_many::<D>(Self::initialize_query(), &(block - 100000, block))
+                                .await
+                        }
+                    }),
+            )
             .await
             .into_iter()
             //.flatten()
