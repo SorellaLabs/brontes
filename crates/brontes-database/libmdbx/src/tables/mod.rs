@@ -292,7 +292,7 @@ where
                 .filter(|block| block % chunk == 0)
                 .collect::<Vec<_>>();
 
-            let data = futures::stream::iter(tasks)
+            let mut data = futures::stream::iter(tasks)
                 .map(|block| {
                     let db_client = db_client.clone();
                     let libmdbx = libmdbx.clone();
