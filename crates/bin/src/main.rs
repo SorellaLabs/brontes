@@ -72,7 +72,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let directive: Directive = Level::INFO.as_str().parse().unwrap();
+    let directive: Directive = format!("brontes={}", Level::INFO).parse().unwrap();
 
     let layers = vec![brontes_tracing::stdout(directive)];
 
@@ -85,7 +85,7 @@ fn main() {
     brontes_tracing::init(layers);
 
     match runtime.block_on(run()) {
-        Ok(()) => info!("SUCCESS!"),
+        Ok(()) => info!(target: "brontes", "SUCCESS!"),
         Err(e) => {
             error!("Error: {:?}", e);
 
