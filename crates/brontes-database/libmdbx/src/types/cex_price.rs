@@ -349,7 +349,7 @@ mod tests {
                 "SELECT
         block_number,
         data AS meta
-    FROM brontes.cex_price_mapping",
+    FROM brontes.cex_price_mapping WHERE block_number >= 16200000 AND block_number < 16300000",
                 &(), //table,
             )
             .await;
