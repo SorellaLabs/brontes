@@ -3,6 +3,7 @@ use std::{
     error::Error,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
+    sync::Arc,
 };
 
 use alloy_primitives::Address;
@@ -185,9 +186,9 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
 async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
-    let clickhouse = Clickhouse::default();
+    let clickhouse = Arc::new(Clickhouse::default());
 
-    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None)?;
+    let libmdbx = Arc::new(Libmdbx::init_db(brontes_db_endpoint, None)?);
     if init_config.init_libmdbx {
         // currently inits all tables
         let range =

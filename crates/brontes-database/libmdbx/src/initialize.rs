@@ -5,13 +5,13 @@ use futures::future::join_all;
 
 use super::{tables::Tables, Libmdbx};
 
-pub struct LibmdbxInitializer<'db> {
-    libmdbx:    &'db Libmdbx,
-    clickhouse: &'db Clickhouse,
+pub struct LibmdbxInitializer {
+    libmdbx:    Arc<Libmdbx>,
+    clickhouse: Arc<Clickhouse>,
 }
 
-impl<'db> LibmdbxInitializer<'db> {
-    pub fn new(libmdbx: &'db Libmdbx, clickhouse: &'db Clickhouse) -> Self {
+impl LibmdbxInitializer {
+    pub fn new(libmdbx: Arc<Libmdbx>, clickhouse: Arc<Clickhouse>) -> Self {
         Self { libmdbx, clickhouse }
     }
 
@@ -20,12 +20,9 @@ impl<'db> LibmdbxInitializer<'db> {
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        let clickhouse = Arc::new(self.clickhouse);
-        join_all(
-            tables
-                .iter()
-                .map(|table| table.initialize_table(self.libmdbx, clickhouse.clone(), block_range)),
-        )
+        join_all(tables.iter().map(|table| {
+            table.initialize_table(self.libmdbx.clone(), self.clickhouse.clone(), block_range)
+        }))
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()
@@ -34,7 +31,7 @@ impl<'db> LibmdbxInitializer<'db> {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+    use std::{env, sync::Arc};
 
     use brontes_database::clickhouse::Clickhouse;
     use brontes_pricing::{
@@ -68,11 +65,11 @@ mod tests {
         Libmdbx::init_db(brontes_db_path, None)
     }
 
-    async fn initialize_tables(tables: &[Tables]) -> eyre::Result<Libmdbx> {
-        let db = init_db()?;
+    async fn initialize_tables(tables: &[Tables]) -> eyre::Result<Arc<Libmdbx>> {
+        let db = Arc::new(init_db()?);
         let clickhouse = Clickhouse::default();
 
-        let db_initializer = LibmdbxInitializer::new(&db, &clickhouse);
+        let db_initializer = LibmdbxInitializer::new(db.clone(), Arc::new(clickhouse));
         db_initializer.initialize(tables, None).await?;
 
         Ok(db)
