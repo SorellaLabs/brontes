@@ -154,7 +154,6 @@ impl<'db> Classifier<'db> {
 
     // need this for dyn classifying
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
-        println!("removing swap transfers");
         tree.remove_duplicate_data(
             |node| {
                 (
