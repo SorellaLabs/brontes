@@ -11,7 +11,10 @@ use brontes_types::{
 use hex_literal::hex;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
-use reth_rpc_types::{trace::parity::Action, Log};
+use reth_rpc_types::{
+    trace::parity::{Action, Action::Call},
+    Log,
+};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::*;
@@ -340,7 +343,15 @@ impl<'db> Classifier<'db> {
                 };
                 return (pair, res)
             } else {
-                tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
+                let selector = match trace.trace.action {
+                    Call(ref action) => &action.input[0..4],
+                    _ => unreachable!(),
+                };
+                tracing::warn!(
+                    "Classification failed on contract address: {:?}, with function selector: {:?}",
+                    target_address.0,
+                    selector
+                );
             }
         }
 
