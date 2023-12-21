@@ -1,37 +1,16 @@
-use std::{collections::HashMap, default::Default, hash::Hash, ops::MulAssign, str::FromStr};
+use std::collections::HashMap;
 
-use alloy_primitives::{hex::FromHexError, Address, TxHash, U256};
+use alloy_primitives::TxHash;
 use alloy_rlp::{Decodable, Encodable};
-use brontes_database::clickhouse::types::DBTokenPricesDB;
-use brontes_pricing::types::{DexPrices, PoolKey, PoolKeysForPair};
+use brontes_pricing::types::PoolKeysForPair;
 use brontes_types::{extra_processing::Pair, impl_compress_decompress_for_encoded_decoded};
 use bytes::BufMut;
-use codecs_derive::derive_arbitrary;
-use malachite::{
-    num::{
-        arithmetic::traits::{Floor, ReciprocalAssign},
-        conversion::traits::RoundingFrom,
-    },
-    platform_64::Limb,
-    rounding_modes::RoundingMode,
-    Integer, Natural, Rational,
-};
-use parity_scale_codec::Encode;
-use reth_codecs::{main_codec, Compact};
-use reth_db::{
-    table::{Compress, Decompress, DupSort, Table},
-    DatabaseError,
-};
+use reth_db::table::Table;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
 
-use super::{utils::dex_quote, LibmdbxDupData};
-use crate::{
-    tables::{CexPrice, DexPrice},
-    types::utils::pool_tokens,
-    LibmdbxData,
-};
+use super::utils::dex_quote;
+use crate::{tables::DexPrice, LibmdbxData};
 
 pub fn make_key(block_number: u64, tx_idx: u16) -> TxHash {
     let mut bytes = [0u8; 8].to_vec();
