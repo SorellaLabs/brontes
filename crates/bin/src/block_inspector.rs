@@ -14,15 +14,13 @@ use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
 };
-use brontes_pricing::types::DexPrices;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
     tree::TimeTree,
 };
-use futures::{join, Future, FutureExt};
-use tracing::info;
-
+use futures::{Future, FutureExt};
+use tracing::{debug, info, trace};
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
 
 pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
@@ -65,7 +63,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
-            info!("Got {} traces + header", traces.len());
+            debug!("Got {} traces + header", traces.len());
             let (extra_data, mut tree) = self.classifier.build_tree(traces, header);
 
             MissingDecimals::new(
@@ -88,9 +86,10 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         &mut self,
         results: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>),
     ) {
-        info!(
+        trace!(
             block_number = self.block_number,
-            "inserting the collected results \n {:#?}", results
+            "inserting the collected results \n {:#?}",
+            results
         );
 
         self.database.insert_classified_data(results.0, results.1);

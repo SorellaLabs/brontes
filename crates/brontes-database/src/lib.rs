@@ -1,6 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
-    ops::MulAssign,
+    collections::{HashSet},
 };
 
 use brontes_pricing::types::DexPrices;
