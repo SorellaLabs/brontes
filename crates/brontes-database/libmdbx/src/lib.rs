@@ -1,10 +1,9 @@
-use std::{path::Path, str::FromStr, sync::Arc};
+use std::{collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
 use brontes_pricing::types::DexQuotes;
 
 use crate::types::token_decimals::TokenDecimalsData;
 pub mod initialize;
-use std::collections::HashMap;
 
 use alloy_primitives::Address;
 use brontes_database::{clickhouse::Clickhouse, MetadataDB, Pair};
@@ -28,6 +27,7 @@ use reth_db::{
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
 use tables::*;
+use tracing::info;
 use types::{cex_price::CexPriceMap, metadata::MetadataInner, LibmdbxDupData};
 
 use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
@@ -154,24 +154,28 @@ impl Libmdbx {
         block_num: u64,
     ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
         let tx = self.ro_tx()?;
-        let mut cursor = tx.cursor_read::<AddressToTokens>()?;
         let binding_tx = self.ro_tx()?;
+        let info_tx = self.ro_tx()?;
 
-        Ok(cursor
-            .walk(None)?
-            .flatten()
-            .filter_map(|(addr, info)| {
-                if info.init_block <= block_num {
-                    if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(addr) {
-                        return Some(((addr, protocol), Pair(info.token0, info.token1)))
-                    }
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
+        let mut map = HashMap::default();
 
-                    None
-                } else {
-                    None
-                }
-            })
-            .collect::<HashMap<_, _>>())
+        for result in cursor.walk_range(0..=block_num)? {
+            let (_, res) = result?;
+            for addr in res.0.into_iter() {
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
+                    continue;
+                };
+                let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
+                    continue;
+                };
+                map.insert((addr, protocol), Pair(info.token0, info.token1));
+            }
+        }
+
+        info!(pairs = map.len(), block_num, "loaded all pairs before block");
+
+        Ok(map)
     }
 
     /// gets all addresses that were initialized in a given block
@@ -180,25 +184,18 @@ impl Libmdbx {
         block_num: u64,
     ) -> eyre::Result<Vec<(Address, StaticBindingsDb, Pair)>> {
         let tx = self.ro_tx()?;
-        let mut cursor = tx.cursor_read::<AddressToTokens>()?;
         let binding_tx = self.ro_tx()?;
+        let info_tx = self.ro_tx()?;
 
-        let addresses = cursor
-            .walk(None)?
-            .flatten()
-            .filter_map(|(addr, info)| {
-                if info.init_block == block_num {
-                    if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(addr) {
-                        return Some((addr, protocol, Pair(info.token0, info.token1)))
-                    }
-                    None
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
+        let mut res = Vec::new();
 
-        Ok(addresses)
+        for addr in tx.get::<PoolCreationBlocks>(block_num)?.map(|i| i.0).unwrap_or(vec![]) {
+            let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else { continue; };
+            let Some(info) = info_tx.get::<AddressToTokens>(addr)? else { continue; };
+            res.push((addr, protocol, Pair(info.token0, info.token1)));
+        }
+
+        Ok(res)
     }
 
     pub fn get_metadata_no_dex(
