@@ -1,8 +1,10 @@
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
+use reth_codecs::derive_arbitrary;
 use reth_rpc_types::trace::parity::StateDiff;
 use serde::{Deserialize, Serialize};
 
+#[derive_arbitrary(compact)]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pair(pub Address, pub Address);
 

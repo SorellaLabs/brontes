@@ -18,6 +18,7 @@ thiserror.workspace = true
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 reth-db.workspace = true
+reth-codecs.workspace = true
 
 # tracing
 tracing.workspace = true
@@ -52,7 +53,6 @@ ethers = "2.0.11"
 async-trait.workspace = true
 num-bigfloat = "1.7.0"
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
-reth-codecs.workspace = true
 codecs-derive.workspace = true
 proptest = "1.4"
 proptest-derive = "0.4"

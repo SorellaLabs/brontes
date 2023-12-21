@@ -146,7 +146,7 @@ impl SharedInspectorUtils<'_> {
     /// different to the execution address
     fn transfer_deltas(
         &self,
-        mut transfers: Vec<&NormalizedTransfer>,
+        transfers: Vec<&NormalizedTransfer>,
         deltas: &mut SwapTokenDeltas,
     ) {
         for transfer in transfers.into_iter() {

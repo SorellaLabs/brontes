@@ -25,7 +25,7 @@ use itertools::Itertools;
 use metrics_process::Collector;
 use reth_db::transaction::DbTx;
 use reth_tracing_ext::TracingClient;
-use tokio::{pin, runtime, sync::mpsc::unbounded_channel};
+use tokio::{pin, sync::mpsc::unbounded_channel};
 use tracing::{error, info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
 mod banner;
@@ -105,6 +105,8 @@ async fn run() -> Result<(), Box<dyn Error>> {
 }
 
 async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
+    initialize_prometheus().await;
+
     // Fetch required environment variables.
     let db_path = get_env_vars()?;
 
@@ -213,6 +215,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
 
 async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<dyn Error>> {
     assert!(config.start_block <= config.end_block);
+    info!(?config);
 
     let db_path = get_env_vars()?;
 
@@ -243,6 +246,7 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
     let cpus = determine_max_tasks(config.max_tasks);
 
     let range = config.end_block - config.start_block;
+
     let cpus_min = range / config.min_batch_size + 1;
 
     let mut scope: TokioScope<'_, ()> = unsafe { Scope::create() };
@@ -304,6 +308,7 @@ async fn spawn_batches(
     libmdbx: &Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
+    info!(%batch_id, %start_block, %end_block,"starting batch");
     DataBatching::new(
         quote_asset,
         run_id,
@@ -322,12 +327,12 @@ fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
         Some(max_tasks) => max_tasks as u64,
         None => {
             let cpus = num_cpus::get_physical();
-            (cpus as f64 * 0.8) as u64 // 80% of physical cores
+            (cpus as f64 * 0.5) as u64 // 50% of physical cores
         }
     }
 }
 
-async fn initalize_prometheus() {
+async fn initialize_prometheus() {
     // initializes the prometheus endpoint
     initialize(
         SocketAddr::new(
