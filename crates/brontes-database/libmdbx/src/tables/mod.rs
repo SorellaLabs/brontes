@@ -335,6 +335,7 @@ where
                 info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk, (19000000-15000000)/chunk);
 
                 libmdbx.write_table(&data_des)?;
+                drop(data_des);
             }
 
             println!("{} OK", Self::NAME);
