@@ -199,7 +199,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
             };
         libmdbx
             .clear_and_initialize_tables(
-                &clickhouse,
+                clickhouse.clone(),
                 init_config
                     .tables_to_init
                     .unwrap_or({
