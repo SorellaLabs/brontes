@@ -255,7 +255,7 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
         .enumerate()
     {
         let start_block = chunk.next().unwrap();
-        let end_block = chunk.last().unwrap();
+        let end_block = chunk.last().unwrap_or(start_block);
         scope.spawn(spawn_batches(
             config.quote_asset.parse().unwrap(),
             0,
