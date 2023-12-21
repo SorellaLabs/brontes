@@ -286,7 +286,7 @@ where
             */
             libmdbx.clear_table::<Self>()?;
 
-            let chunk = 100000;
+            let chunk = 500000;
             let tasks = (block_range.0..block_range.1)
                 .into_iter()
                 .filter(|block| block % chunk == 0)
@@ -314,7 +314,7 @@ where
                         (data.unwrap(), block)
                     })
                 })
-                .buffer_unordered(10);
+                .buffer_unordered(5);
 
             if let Some(d) = data.next().await {
                 let (data_des, block) = d?;
