@@ -6,7 +6,7 @@ use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
 use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
 use const_sql::*;
-use futures::{future::join_all, Future};
+use futures::{future::join_all, Future, StreamExt};
 use reth_db::{table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::Row;
@@ -288,38 +288,34 @@ where
 
             let chunk = 100000;
             let tasks = (block_range.0..block_range.1)
-            .into_iter()
-            .filter(|block| block % chunk == 0).collect::<Vec<_>>();
+                .into_iter()
+                .filter(|block| block % chunk == 0)
+                .collect::<Vec<_>>();
 
-            let data = join_all(
-                tasks.into_iter()
-                    .map(|block| {
-                        let db_client = db_client.clone();
-                        let libmdbx = libmdbx.clone();
-                        tokio::spawn(async move {
-                            let data = db_client
-                                .inner()
-                                .query_many::<D>(Self::initialize_query(), &(block - chunk, block))
-                                .await?;
-                            info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk, (19000000-15750000)/chunk);
+            let mut data = futures::stream::iter(tasks)
+                .map(|block| {
+                    let db_client = db_client.clone();
+                    tokio::spawn(async move {
+                        let data = db_client
+                            .inner()
+                            .query_many::<D>(Self::initialize_query(), &(block - chunk, block))
+                            .await
+                            .unwrap();
 
-                            libmdbx.write_table(&data)
-               
-                        })
-                    }),
-            )
-            .await
-            .into_iter()
-            .flatten()
-            .collect::<Result<Vec<_>, _>>();
+                        (data, block)
+                    })
+                })
+                .buffer_unordered(10);
 
-            if data.is_err() {
-                println!("{} {:?}", Self::NAME, data);
-            } else {
-                println!("{} OK", Self::NAME);
+            if let Some(d) = data.next().await {
+                let (data_des, block) = d?;
+                info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk, (19000000-15000000)/chunk);
+
+                libmdbx.write_table(&data_des)?;
             }
 
-            data?;
+            println!("{} OK", Self::NAME);
+
             Ok(())
         })
     }
