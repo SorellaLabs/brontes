@@ -213,6 +213,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
 
 async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<dyn Error>> {
     assert!(config.start_block <= config.end_block);
+    info!(?config);
 
     let db_path = get_env_vars()?;
 
