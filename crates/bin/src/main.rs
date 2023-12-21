@@ -298,6 +298,7 @@ async fn spawn_batches(
     libmdbx: &Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
+    info!(%batch_id, %start_block, %end_block,"starting batch");
     DataBatching::new(
         quote_asset,
         run_id,
