@@ -2,14 +2,13 @@
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 mod const_sql;
-use alloy_primitives::{Address, TxHash, U256};
+use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
 use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
 use const_sql::*;
 use futures::Future;
 use reth_db::{
-    dupsort,
-    table::{DupSort, Table},
+    table::{Table},
     TableType,
 };
 use serde::Deserialize;
@@ -236,7 +235,7 @@ where
     fn initialize_table(
         libmdbx: &'db Libmdbx,
         db_client: Arc<&'db Clickhouse>,
-        block_range: Option<(u64, u64)>, // inclusive of start only TODO
+        _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
             // let query = Self::initialize_query();
@@ -300,7 +299,7 @@ where
     fn initialize_table(
         libmdbx: &'db Libmdbx,
         db_client: Arc<&'db Clickhouse>,
-        block_range: Option<(u64, u64)>, // inclusive of start only TODO
+        _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
             let data = db_client

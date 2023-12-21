@@ -25,7 +25,7 @@ use itertools::Itertools;
 use metrics_process::Collector;
 use reth_db::transaction::DbTx;
 use reth_tracing_ext::TracingClient;
-use tokio::{pin, runtime, sync::mpsc::unbounded_channel};
+use tokio::{pin, sync::mpsc::unbounded_channel};
 use tracing::{error, info, Level};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
 mod banner;
@@ -105,6 +105,8 @@ async fn run() -> Result<(), Box<dyn Error>> {
 }
 
 async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
+    initialize_prometheus().await;
+
     // Fetch required environment variables.
     let db_path = get_env_vars()?;
 
@@ -330,7 +332,7 @@ fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
     }
 }
 
-async fn initalize_prometheus() {
+async fn initialize_prometheus() {
     // initializes the prometheus endpoint
     initialize(
         SocketAddr::new(

@@ -14,13 +14,13 @@ use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
 };
-use brontes_pricing::types::DexPrices;
+
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
     tree::TimeTree,
 };
-use futures::{join, Future, FutureExt};
+use futures::{Future, FutureExt};
 use tracing::info;
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
