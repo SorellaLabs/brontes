@@ -274,6 +274,9 @@ impl<'db, const N: usize> ResultProcessing<'db, N> {
         tree: Arc<TimeTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
+        if let Err(e) = db.insert_quotes(meta_data.block_num, meta_data.dex_quotes.clone()) {
+            tracing::error!(err=?e, block_num=meta_data.block_num, "failed to insert dex pricing and state into db");
+        }
         let composer = Composer::new(inspectors, tree, meta_data);
         Self { database: db, composer }
     }
@@ -285,8 +288,6 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
             info!(?block_details, "finished processing for block");
-            println!("{:#?}", block_details);
-            println!("{:#?}", mev_details);
             // self.database
             //     .insert_classified_data(block_details, mev_details);
 

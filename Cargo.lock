@@ -1432,6 +1432,7 @@ dependencies = [
  "phf",
  "phf_codegen",
  "rayon",
+ "reth-codecs",
  "reth-db",
  "reth-interfaces",
  "reth-primitives",
