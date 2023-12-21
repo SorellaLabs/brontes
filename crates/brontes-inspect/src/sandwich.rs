@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     sync::Arc,
 };
 
@@ -80,7 +80,12 @@ impl Inspector for SandwichInspector<'_> {
                 let searcher_actions = vec![ps.tx0, ps.tx1]
                     .into_iter()
                     .map(|tx| tree.collect(tx, search_fn.clone()))
+                    .filter(|f| !f.is_empty())
                     .collect::<Vec<Vec<Actions>>>();
+
+                if searcher_actions.len() != 2 {
+                    return None
+                }
 
                 self.calculate_sandwich(
                     tx_idx,
@@ -154,6 +159,19 @@ impl SandwichInspector<'_> {
             .filter(|s| s.is_swap())
             .map(|s| s.force_swap())
             .collect_vec();
+
+        let mut pools = HashSet::new();
+
+        for swap in &frontrun_swaps {
+            pools.insert(swap.pool);
+        }
+
+        if !backrun_swaps
+            .iter()
+            .any(|inner| pools.contains(&inner.pool))
+        {
+            return None
+        }
 
         let sandwich = Sandwich {
             frontrun_tx_hash:          txes[0],
