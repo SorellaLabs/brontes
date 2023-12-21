@@ -306,7 +306,7 @@ where
                             println!("{} ERROR: {:?}", Self::NAME, data);
                         }
 
-                        Ok((data.unwrap(), block))
+                        (data.unwrap(), block)
                     })
                 })
                 .buffer_unordered(10);
