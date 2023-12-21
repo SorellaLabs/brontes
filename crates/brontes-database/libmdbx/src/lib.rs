@@ -146,8 +146,8 @@ impl Libmdbx {
     }
 
     pub async fn clear_and_initialize_tables(
-        &self,
-        clickhouse: &Clickhouse,
+        self: Arc<Self>,
+        clickhouse: Arc<Clickhouse>,
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {

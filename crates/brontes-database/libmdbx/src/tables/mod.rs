@@ -94,8 +94,8 @@ impl Tables {
 
     pub(crate) fn initialize_table<'a>(
         &'a self,
-        libmdbx: &'a Libmdbx,
-        clickhouse: Arc<&'a Clickhouse>,
+        libmdbx: Arc<Libmdbx>,
+        clickhouse: Arc<Clickhouse>,
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
         match self {
@@ -109,10 +109,10 @@ impl Tables {
                 AddressToProtocol::initialize_table(libmdbx, clickhouse, block_range)
             }
             Tables::CexPrice => {
-                CexPrice::initialize_table_batching(Arc::new(libmdbx), clickhouse, block_range)
+                CexPrice::initialize_table_batching(libmdbx, clickhouse, block_range)
             }
             Tables::Metadata => {
-                Metadata::initialize_table_batching(Arc::new(libmdbx), clickhouse, block_range)
+                Metadata::initialize_table_batching(libmdbx, clickhouse, block_range)
             }
             Tables::PoolState => PoolState::initialize_table(libmdbx, clickhouse, block_range),
             Tables::DexPrice => DexPrice::initialize_table(libmdbx, clickhouse, block_range),
@@ -225,8 +225,8 @@ where
     fn initialize_query() -> &'static str;
 
     fn initialize_table(
-        libmdbx: &'db Libmdbx,
-        db_client: Arc<&'db Clickhouse>,
+        libmdbx: Arc<Libmdbx>,
+        db_client: Arc<Clickhouse>,
         _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
@@ -246,8 +246,8 @@ where
     }
 
     fn initialize_table_batching(
-        libmdbx: Arc<&'db Libmdbx>,
-        db_client: Arc<&'db Clickhouse>,
+        libmdbx: Arc<Libmdbx>,
+        db_client: Arc<Clickhouse>,
         _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
