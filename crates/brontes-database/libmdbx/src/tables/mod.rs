@@ -283,18 +283,23 @@ where
                         //.flatten()
                         .collect::<Result<Vec<_>, _>>();
             */
-            let chunk = 10000;
+            libmdbx.initialize_table::<Self, D>(&vec![])?;
+
+            let chunk = 5000;
             let data = join_all(
                 (block_range.0..block_range.1)
                     .into_iter()
                     .filter(|block| block % chunk == 0)
                     .map(|block| {
                         let db_client = db_client.clone();
+                        let libmdbx = libmdbx.clone();
                         tokio::spawn(async move {
-                            db_client
+                            let data = db_client
                                 .inner()
                                 .query_many::<D>(Self::initialize_query(), &(block - chunk, block))
-                                .await
+                                .await?;
+                            libmdbx.write_table(&data)
+                            //Ok(())
                         })
                     }),
             )
@@ -309,7 +314,8 @@ where
                 println!("{} OK", Self::NAME);
             }
 
-            libmdbx.initialize_table(&data?.into_iter().flatten().collect())
+            data?;
+            Ok(())
         })
     }
 }
