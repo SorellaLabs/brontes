@@ -78,6 +78,7 @@ cfg-if = "1.0.0"
 
 # prometheus
 metrics-process.workspace = true
+itertools.workspace = true
 
 
 [features]
