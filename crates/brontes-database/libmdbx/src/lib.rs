@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path, str::FromStr, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use brontes_pricing::types::DexQuotes;
 
@@ -16,10 +16,10 @@ use eyre::Context;
 use initialize::LibmdbxInitializer;
 use malachite::Rational;
 use reth_db::{
-    cursor::DbCursorRO,
+    cursor::{DbCursorRO, DbCursorRW},
     is_database_empty,
     mdbx::DatabaseFlags,
-    table::{DupSort, Table},
+    table::{Table},
     transaction::{DbTx, DbTxMut},
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
@@ -27,8 +27,13 @@ use reth_db::{
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
 use tables::*;
+use types::{
+    cex_price::CexPriceMap,
+    dex_price::{DexPriceData},
+    metadata::MetadataInner,
+    pool_state::{PoolStateData, PoolStateType},
+};
 use tracing::info;
-use types::{cex_price::CexPriceMap, metadata::MetadataInner, LibmdbxDupData};
 
 use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
 pub mod implementation;
@@ -81,6 +86,62 @@ impl Libmdbx {
 
         tx.commit()?;
 
+        Ok(())
+    }
+
+    pub fn insert_quotes(&self, block_num: u64, quotes: DexPrices) -> eyre::Result<()> {
+        self.write_table::<PoolState, PoolStateData>(
+            &quotes
+                .state
+                .iter()
+                .map(|(k, v)| {
+                    PoolStateData {
+                        pool:         k.pool,
+                        batch:        k.batch,
+                        run:          k.run,
+                        update_nonce: k.update_nonce,
+                        // doesn't get encoded
+                        pool_type:    PoolStateType::UniswapV2,
+                        pool_state:   v.clone(),
+                    }
+                })
+                .collect::<Vec<_>>(),
+        )?;
+
+        
+        let mut data = quotes
+            .quotes
+            .0
+            .into_iter()
+            .enumerate()
+            .filter(|(_, v)| v.is_some())
+            .map(|(idx, value)| DexPriceData {
+                block_number: block_num,
+                tx_idx:       idx as u16,
+                quote:        types::dex_price::DexQuote(value.unwrap()),
+            })
+            .collect::<Vec<_>>();
+
+        data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
+        data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
+
+        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
+        let mut cursor = tx.cursor_write::<DexPrice>()?;
+
+        data
+            .into_iter()
+            .map(|entry| {
+                let (key, val) = entry.into_key_val();
+                //let key = make_key(key., val.tx_idx);
+
+                cursor.upsert(key, val)?;
+                Ok(())
+            })
+            .collect::<Result<Vec<_>, DatabaseError>>()?;
+
+        tx.commit()?;
+
+        //self.write_table::<DexPrice, DexPriceData>(&data)?;
         Ok(())
     }
 
@@ -236,7 +297,7 @@ impl Libmdbx {
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        let cex_quotes: CexPriceMap = tx
+        let _cex_quotes: CexPriceMap = tx
             .get::<CexPrice>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
         //let eth_prices = ;
@@ -267,10 +328,12 @@ impl Libmdbx {
         })
     }
 
+
+
     pub fn insert_classified_data(
         &self,
-        block_details: MevBlock,
-        mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+        _block_details: MevBlock,
+        _mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
     }
 }
