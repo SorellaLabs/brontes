@@ -292,23 +292,27 @@ where
                 .filter(|block| block % chunk == 0)
                 .collect::<Vec<_>>();
 
-            let mut data = futures::stream::iter(tasks)
+            let data = futures::stream::iter(tasks)
                 .map(|block| {
                     let db_client = db_client.clone();
+                    let libmdbx = libmdbx.clone();
                     tokio::spawn(async move {
                         let data = db_client
                             .inner()
                             .query_many::<D>(Self::initialize_query(), &(block - chunk, block))
-                            .await
-                            .unwrap();
+                            .await;
 
-                        (data, block)
+                        if data.is_err() {
+                            println!("{} ERROR: {:?}", Self::NAME, data);
+                        }
+
+                        Ok((data.unwrap(), block))
                     })
                 })
                 .buffer_unordered(10);
 
             if let Some(d) = data.next().await {
-                let (data_des, block) = d?;
+                let (data_des, block) = d??;
                 info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk, (19000000-15000000)/chunk);
 
                 libmdbx.write_table(&data_des)?;
