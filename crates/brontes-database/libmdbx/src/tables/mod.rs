@@ -2,7 +2,7 @@
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 mod const_sql;
-use alloy_primitives::Address;
+use alloy_primitives::{Address, TxHash, U256};
 use brontes_database::clickhouse::Clickhouse;
 use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
 use const_sql::*;
@@ -72,7 +72,7 @@ impl Tables {
             Tables::CexPrice => TableType::Table,
             Tables::Metadata => TableType::Table,
             Tables::PoolState => TableType::Table,
-            Tables::DexPrice => TableType::DupSort,
+            Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
         }
     }
@@ -109,11 +109,7 @@ impl Tables {
             Tables::CexPrice => CexPrice::initialize_table(libmdbx, clickhouse, block_range),
             Tables::Metadata => Metadata::initialize_table(libmdbx, clickhouse, block_range),
             Tables::PoolState => PoolState::initialize_table(libmdbx, clickhouse, block_range),
-            Tables::DexPrice => <DexPrice as InitializeDupTable<DexPriceData>>::initialize_table(
-                libmdbx,
-                clickhouse,
-                block_range,
-            ),
+            Tables::DexPrice => DexPrice::initialize_table(libmdbx, clickhouse, block_range),
             Tables::PoolCreationBlocks => {
                 PoolCreationBlocks::initialize_table(libmdbx, clickhouse, block_range)
             }
@@ -221,9 +217,9 @@ table!(
     ( PoolState ) PoolKey | PoolStateSnapShot
 );
 
-dupsort!(
-    /// block number -> tx idx -> cex quotes
-    ( DexPrice ) u64 | [u16] DexQuoteWithIndex
+table!(
+    /// block number concat tx idx -> cex quotes
+    ( DexPrice ) TxHash | DexQuoteWithIndex
 );
 
 table!(
