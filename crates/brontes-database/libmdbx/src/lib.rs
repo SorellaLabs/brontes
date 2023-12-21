@@ -29,7 +29,7 @@ use reth_libmdbx::RO;
 use tables::*;
 use types::{
     cex_price::CexPriceMap,
-    dex_price::{DexPriceData, DexQuoteWithIndex},
+    dex_price::{DexPriceData, DexQuoteWithIndex, make_key},
     metadata::MetadataInner,
     pool_state::{PoolStateData, PoolStateType},
     LibmdbxDupData,
@@ -127,17 +127,13 @@ impl Libmdbx {
         data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
 
         let tx = LibmdbxTx::new_rw_tx(&self.0)?;
-        let mut cursor = tx.cursor_dup_write::<DexPrice>()?;
+        let mut cursor = tx.cursor_write::<DexPrice>()?;
 
         data
             .into_iter()
             .map(|entry| {
                 let (key, val) = entry.into_key_val();
-                if let Some(db_entry) = cursor.seek_by_key_subkey(key, val.tx_idx)? {
-                    if db_entry.tx_idx == val.tx_idx {
-                        cursor.delete_current()?;
-                    }
-                }
+                //let key = make_key(key., val.tx_idx);
 
                 cursor.upsert(key, val)?;
                 Ok(())
