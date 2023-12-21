@@ -283,7 +283,7 @@ where
                         //.flatten()
                         .collect::<Result<Vec<_>, _>>();
             */
-            let chunk = 100000;
+            let chunk = 10000;
             let data = join_all(
                 (block_range.0..block_range.1)
                     .into_iter()
