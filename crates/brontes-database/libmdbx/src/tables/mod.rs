@@ -101,38 +101,55 @@ impl Tables {
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
         match self {
             Tables::TokenDecimals => {
-                TokenDecimals::initialize_table(libmdbx.clone(), clickhouse.clone(), block_range)
+                TokenDecimals::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::AddressToTokens => {
-                AddressToTokens::initialize_table(libmdbx.clone(), clickhouse.clone(), block_range)
+                AddressToTokens::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
-            Tables::AddressToProtocol => AddressToProtocol::initialize_table(
-                libmdbx.clone(),
-                clickhouse.clone(),
-                block_range,
-            ),
-            Tables::CexPrice => CexPrice::initialize_table_batching(
-                libmdbx.clone(),
-                clickhouse.clone(),
-                block_range,
-            ),
+            Tables::AddressToProtocol => {
+                AddressToProtocol::initialize_table(libmdbx.clone(), clickhouse.clone())
+            }
+            Tables::CexPrice => {
+                //let block_range = (15400000, 19000000);
+
+                Box::pin(async move {
+                    let futs = vec![
+                        CexPrice::initialize_table_batching(
+                            libmdbx.clone(),
+                            clickhouse.clone(),
+                            (15400000, 16000000),
+                        ),
+                        CexPrice::initialize_table_batching(
+                            libmdbx.clone(),
+                            clickhouse.clone(),
+                            (16000000, 17000000),
+                        ),
+                        CexPrice::initialize_table_batching(
+                            libmdbx.clone(),
+                            clickhouse.clone(),
+                            (17000000, 18000000),
+                        ),
+                        CexPrice::initialize_table_batching(
+                            libmdbx.clone(),
+                            clickhouse.clone(),
+                            (18000000, 19000000),
+                        ),
+                    ];
+
+                    join_all(futs).await.into_iter().collect()
+                })
+            }
             Tables::Metadata => Metadata::initialize_table_batching(
                 libmdbx.clone(),
                 clickhouse.clone(),
-                block_range,
+                (15400000, 19000000),
             ),
-            Tables::PoolState => {
-                PoolState::initialize_table(libmdbx.clone(), clickhouse.clone(), block_range)
-            }
-            Tables::DexPrice => {
-                DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone(), block_range)
-            }
-            Tables::PoolCreationBlocks => PoolCreationBlocks::initialize_table(
-                libmdbx.clone(),
-                clickhouse.clone(),
-                block_range,
-            ), /* Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse,
-                * block_range), */
+            Tables::PoolState => PoolState::initialize_table(libmdbx.clone(), clickhouse.clone()),
+            Tables::DexPrice => DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone()),
+            Tables::PoolCreationBlocks => {
+                PoolCreationBlocks::initialize_table(libmdbx.clone(), clickhouse.clone())
+            } /* Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse,
+               * block_range), */
         }
     }
 }
@@ -241,7 +258,6 @@ where
     fn initialize_table(
         libmdbx: Arc<Libmdbx>,
         db_client: Arc<Clickhouse>,
-        _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
             let data = db_client
@@ -262,10 +278,9 @@ where
     fn initialize_table_batching(
         libmdbx: Arc<Libmdbx>,
         db_client: Arc<Clickhouse>,
-        _block_range: Option<(u64, u64)>, // inclusive of start only TODO
+        block_range: (u64, u64), // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
-            let block_range = (15400000, 19000000);
             /*
                         let block_chunks = [
                             (15000000, 16000000),
