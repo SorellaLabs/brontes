@@ -316,7 +316,7 @@ fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
         Some(max_tasks) => max_tasks as u64,
         None => {
             let cpus = num_cpus::get_physical();
-            (cpus as f64 * 0.8) as u64 // 80% of physical cores
+            (cpus as f64 * 0.5) as u64 // 50% of physical cores
         }
     }
 }
