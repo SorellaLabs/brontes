@@ -252,7 +252,7 @@ where
         _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
-            let block_range = (15000000, 19000000);
+            let block_range = (15400000, 19000000);
             /*
                         let block_chunks = [
                             (15000000, 16000000),
@@ -295,7 +295,6 @@ where
             let mut data = futures::stream::iter(tasks)
                 .map(|block| {
                     let db_client = db_client.clone();
-                    let libmdbx = libmdbx.clone();
                     tokio::spawn(async move {
                         let data = db_client
                             .inner()
