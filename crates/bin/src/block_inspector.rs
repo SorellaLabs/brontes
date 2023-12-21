@@ -58,7 +58,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
     }
 
     fn start_collection(&mut self) {
-        info!(block_number = self.block_number, "starting collection of data");
+        trace!(target:"brontes", block_number = self.block_number, "starting collection of data");
         let parser_fut = self.parser.execute(self.block_number);
         let labeller_fut = self.database.get_metadata(self.block_number);
 
@@ -116,6 +116,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         if let Some(mut inner) = self.composer_future.take() {
             if let Poll::Ready(data) = inner.poll_unpin(cx) {
                 info!(
+                    target:"brontes",
                     "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
                      ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
                      {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- \
@@ -166,7 +167,9 @@ impl<const N: usize, T: TracingProvider> Future for BlockInspector<'_, N, T> {
         // Decide when to finish the BlockInspector's future.
         // Finish when both classifier and insertion futures are done.
         if self.classifier_future.is_none() && self.composer_future.is_none() {
-            info!(block_number = self.block_number, "finished inspecting block");
+            info!(
+                target:"brontes",
+                block_number = self.block_number, "finished inspecting block");
 
             Poll::Ready(())
         } else {
