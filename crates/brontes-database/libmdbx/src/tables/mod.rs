@@ -312,7 +312,7 @@ where
                 .buffer_unordered(10);
 
             if let Some(d) = data.next().await {
-                let (data_des, block) = d??;
+                let (data_des, block) = d?;
                 info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk, (19000000-15000000)/chunk);
 
                 libmdbx.write_table(&data_des)?;
