@@ -1,13 +1,9 @@
-use std::{
-    collections::{HashMap, HashSet},
-    ops::MulAssign,
-    str::FromStr,
-};
+
 
 use alloy_rlp::{Decodable, Encodable};
 pub use brontes_types::extra_processing::Pair;
 use bytes::BufMut;
-use malachite::Rational;
+
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
@@ -18,7 +14,7 @@ use serde_with::{serde_as, DisplayFromStr};
 use sorella_db_databases::{clickhouse, Row};
 
 use super::{
-    utils::{address, option_address, u256},
+    utils::{option_address, u256},
     LibmdbxData,
 };
 use crate::tables::Metadata;

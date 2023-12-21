@@ -8,6 +8,7 @@ edition = "2021"
 # reth 
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
+reth-codecs.workspace = true
 
 
 reth-db.workspace = true

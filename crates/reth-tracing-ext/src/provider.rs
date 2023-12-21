@@ -5,7 +5,6 @@ use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc::eth::error::EthResult;
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
-use tracing::info;
 
 use crate::TracingClient;
 

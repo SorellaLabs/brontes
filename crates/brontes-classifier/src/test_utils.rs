@@ -1,9 +1,6 @@
-use std::{collections::HashMap, env, sync::Arc};
-
 use brontes_core::decoding::{parser::TraceParser, TracingProvider};
 use brontes_database::{clickhouse::Clickhouse, Metadata};
 use brontes_database_libmdbx::Libmdbx;
-use brontes_pricing::types::{DexPrices, DexQuotes};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use reth_primitives::Header;
 
