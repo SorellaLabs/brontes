@@ -286,11 +286,13 @@ where
             */
             libmdbx.initialize_table::<Self, D>(&vec![])?;
 
-            let chunk = 5000;
+            let chunk = 50000;
+            let tasks = (block_range.0..block_range.1)
+            .into_iter()
+            .filter(|block| block % chunk == 0).collect::<Vec<_>>();
+        
             let data = join_all(
-                (block_range.0..block_range.1)
-                    .into_iter()
-                    .filter(|block| block % chunk == 0)
+                tasks
                     .map(|block| {
                         let db_client = db_client.clone();
                         let libmdbx = libmdbx.clone();
@@ -299,7 +301,7 @@ where
                                 .inner()
                                 .query_many::<D>(Self::initialize_query(), &(block - chunk, block))
                                 .await?;
-                            info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk,(19000000-15750000)/chunk);
+                            info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk, (19000000-15750000)/chunk);
 
                             libmdbx.write_table(&data)
                
