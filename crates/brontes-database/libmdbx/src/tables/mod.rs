@@ -101,25 +101,38 @@ impl Tables {
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
         match self {
             Tables::TokenDecimals => {
-                TokenDecimals::initialize_table(libmdbx, clickhouse, block_range)
+                TokenDecimals::initialize_table(libmdbx.clone(), clickhouse.clone(), block_range)
             }
             Tables::AddressToTokens => {
-                AddressToTokens::initialize_table(libmdbx, clickhouse, block_range)
+                AddressToTokens::initialize_table(libmdbx.clone(), clickhouse.clone(), block_range)
             }
-            Tables::AddressToProtocol => {
-                AddressToProtocol::initialize_table(libmdbx, clickhouse, block_range)
+            Tables::AddressToProtocol => AddressToProtocol::initialize_table(
+                libmdbx.clone(),
+                clickhouse.clone(),
+                block_range,
+            ),
+            Tables::CexPrice => CexPrice::initialize_table_batching(
+                libmdbx.clone(),
+                clickhouse.clone(),
+                block_range,
+            ),
+            Tables::Metadata => Metadata::initialize_table_batching(
+                libmdbx.clone(),
+                clickhouse.clone(),
+                block_range,
+            ),
+            Tables::PoolState => {
+                PoolState::initialize_table(libmdbx.clone(), clickhouse.clone(), block_range)
             }
-            Tables::CexPrice => {
-                CexPrice::initialize_table_batching(libmdbx, clickhouse, block_range)
+            Tables::DexPrice => {
+                DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone(), block_range)
             }
-            Tables::Metadata => {
-                Metadata::initialize_table_batching(libmdbx, clickhouse, block_range)
-            }
-            Tables::PoolState => PoolState::initialize_table(libmdbx, clickhouse, block_range),
-            Tables::DexPrice => DexPrice::initialize_table(libmdbx, clickhouse, block_range),
-            Tables::PoolCreationBlocks => {
-                PoolCreationBlocks::initialize_table(libmdbx, clickhouse, block_range)
-            } // Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse, block_range),
+            Tables::PoolCreationBlocks => PoolCreationBlocks::initialize_table(
+                libmdbx.clone(),
+                clickhouse.clone(),
+                block_range,
+            ), /* Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse,
+                * block_range), */
         }
     }
 }
@@ -237,7 +250,7 @@ where
                 .await;
 
             if data.is_err() {
-                println!("{} {:?}", Self::NAME, data);
+                println!("{} ERROR - {:?}", Self::NAME, data);
             } else {
                 println!("{} OK", Self::NAME);
             }
