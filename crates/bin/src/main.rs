@@ -205,7 +205,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
                     .unwrap_or({
                         if init_config.download_dex_pricing {
                             let mut tables = Tables::ALL.to_vec();
-                            tables.retain(|table| table != Tables::CexPrice);
+                            tables.retain(|table| table != &Tables::CexPrice);
                             println!("TABLES: {:?}", tables);
                             tables
                         } else {
