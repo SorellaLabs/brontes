@@ -12,6 +12,7 @@ use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     exchanges::StaticBindingsDb,
 };
+use tracing::info;
 use eyre::Context;
 use initialize::LibmdbxInitializer;
 use malachite::Rational;
@@ -163,8 +164,8 @@ impl Libmdbx {
         for result in cursor.walk_range(0..=block_num)? {
             let (_, res) = result?;
             for addr in res.0.into_iter() {
-                let protocol = binding_tx.get::<AddressToProtocol>(addr)?.unwrap();
-                let info = info_tx.get::<AddressToTokens>(addr)?.unwrap();
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else { continue; };
+                let Some(info) = info_tx.get::<AddressToTokens>(addr)? else { continue; };
                 map.insert((addr, protocol), Pair(info.token0, info.token1));
             }
         }
