@@ -290,17 +290,17 @@ where
                     .filter(|block| block % chunk == 0)
                     .map(|block| {
                         let db_client = db_client.clone();
-                        async move {
+                        tokio::spawn(async move {
                             db_client
                                 .inner()
                                 .query_many::<D>(Self::initialize_query(), &(block - 100000, block))
                                 .await
-                        }
+                        })
                     }),
             )
             .await
             .into_iter()
-            //.flatten()
+            .flatten()
             .collect::<Result<Vec<_>, _>>();
 
             if data.is_err() {
