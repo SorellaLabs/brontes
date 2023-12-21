@@ -199,6 +199,21 @@ impl Libmdbx {
         Ok(())
     }
 
+        /// Clears a table in the database
+    /// Only called on initialization
+    pub(crate) fn clear_table<T>(&self) -> eyre::Result<()>
+    where
+        T: Table,
+
+    {
+        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
+        tx.clear::<T>()?;
+        tx.commit()?;
+
+
+        Ok(())
+    }
+
     /// returns a RO transaction
     pub fn ro_tx(&self) -> eyre::Result<LibmdbxTx<RO>> {
         let tx = LibmdbxTx::new_ro_tx(&self.0)?;
