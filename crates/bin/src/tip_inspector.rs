@@ -15,7 +15,6 @@ use brontes_inspect::{
 };
 use brontes_pricing::{
     types::{DexPrices, DexQuotes},
-    BrontesBatchPricer,
 };
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},

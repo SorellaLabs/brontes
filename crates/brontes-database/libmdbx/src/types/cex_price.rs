@@ -1,4 +1,4 @@
-use std::{collections::HashMap, default::Default, hash::Hash, ops::MulAssign, str::FromStr};
+use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable};
@@ -6,25 +6,18 @@ use brontes_database::clickhouse::types::DBTokenPricesDB;
 use brontes_types::extra_processing::Pair;
 use bytes::BufMut;
 use malachite::{
-    num::{
-        arithmetic::traits::{Floor, ReciprocalAssign},
-        conversion::traits::RoundingFrom,
-    },
+    num::arithmetic::traits::{Floor, ReciprocalAssign},
     platform_64::Limb,
-    rounding_modes::RoundingMode,
-    Integer, Natural, Rational,
+    Natural, Rational,
 };
-use parity_scale_codec::Encode;
-use reth_codecs::{main_codec, Compact};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
 
-use crate::{tables::CexPrice, types::utils::pool_tokens, LibmdbxData};
+use crate::{tables::CexPrice, LibmdbxData};
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct CexPriceData {

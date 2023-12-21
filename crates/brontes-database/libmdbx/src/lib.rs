@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path, str::FromStr, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use brontes_pricing::types::DexQuotes;
 
@@ -16,10 +16,10 @@ use eyre::Context;
 use initialize::LibmdbxInitializer;
 use malachite::Rational;
 use reth_db::{
-    cursor::{DbCursorRO, DbDupCursorRW, DbDupCursorRO, DbCursorRW},
+    cursor::{DbCursorRO, DbCursorRW},
     is_database_empty,
     mdbx::DatabaseFlags,
-    table::{DupSort, Table},
+    table::{Table},
     transaction::{DbTx, DbTxMut},
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
@@ -29,10 +29,9 @@ use reth_libmdbx::RO;
 use tables::*;
 use types::{
     cex_price::CexPriceMap,
-    dex_price::{DexPriceData, DexQuoteWithIndex, make_key},
+    dex_price::{DexPriceData},
     metadata::MetadataInner,
     pool_state::{PoolStateData, PoolStateType},
-    LibmdbxDupData,
 };
 use tracing::info;
 
@@ -298,7 +297,7 @@ impl Libmdbx {
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        let cex_quotes: CexPriceMap = tx
+        let _cex_quotes: CexPriceMap = tx
             .get::<CexPrice>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
         //let eth_prices = ;
@@ -333,8 +332,8 @@ impl Libmdbx {
 
     pub fn insert_classified_data(
         &self,
-        block_details: MevBlock,
-        mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+        _block_details: MevBlock,
+        _mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
     }
 }

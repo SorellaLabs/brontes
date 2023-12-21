@@ -5,7 +5,6 @@ use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, Parall
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
-use strum::VariantIterator;
 use tracing::error;
 
 use crate::normalized_actions::NormalizedAction;
