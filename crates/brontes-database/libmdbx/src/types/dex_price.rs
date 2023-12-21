@@ -120,12 +120,12 @@ impl_compress_decompress_for_encoded_decoded!(DexQuoteWithIndex);
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, env};
+    use std::{collections::HashMap, env, str::FromStr};
 
-    use alloy_primitives::U256;
+    use alloy_primitives::{Address, U256};
     use brontes_database::clickhouse::Clickhouse;
     use brontes_pricing::{
-        types::{PoolKeyWithDirection, PoolKeysForPair, PoolStateSnapShot},
+        types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair, PoolStateSnapShot},
         uniswap_v2::UniswapV2Pool,
         uniswap_v3::{Info, UniswapV3Pool},
     };
