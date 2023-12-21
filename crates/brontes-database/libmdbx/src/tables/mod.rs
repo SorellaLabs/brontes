@@ -10,6 +10,7 @@ use futures::{future::join_all, Future};
 use reth_db::{table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::Row;
+use tracing::info;
 
 use crate::{
     types::{
@@ -298,8 +299,10 @@ where
                                 .inner()
                                 .query_many::<D>(Self::initialize_query(), &(block - chunk, block))
                                 .await?;
+                            info!(target: "brontes::init", "{} Block Range: {}/{}", Self::NAME, (19000000-block)/chunk,(19000000-15750000)/chunk);
+
                             libmdbx.write_table(&data)
-                            //Ok(())
+               
                         })
                     }),
             )
