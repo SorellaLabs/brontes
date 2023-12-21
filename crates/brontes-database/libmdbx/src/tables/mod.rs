@@ -290,9 +290,9 @@ where
             let tasks = (block_range.0..block_range.1)
             .into_iter()
             .filter(|block| block % chunk == 0).collect::<Vec<_>>();
-        
+
             let data = join_all(
-                tasks
+                tasks.into_iter()
                     .map(|block| {
                         let db_client = db_client.clone();
                         let libmdbx = libmdbx.clone();
