@@ -6,11 +6,8 @@ use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
 use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
 use const_sql::*;
-use futures::Future;
-use reth_db::{
-    table::{Table},
-    TableType,
-};
+use futures::{future::join_all, Future};
+use reth_db::{table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::Row;
 
@@ -21,7 +18,7 @@ use crate::{
         cex_price::{CexPriceData, CexPriceMap},
         dex_price::{DexPriceData, DexQuoteWithIndex},
         metadata::{MetadataData, MetadataInner},
-        mev_block::{MevBlockWithClassified, MevBlocksData},
+        //mev_block::{MevBlockWithClassified, MevBlocksData},
         pool_creation_block::{PoolCreationBlocksData, PoolsLibmdbx},
         pool_state::PoolStateData,
         *,
@@ -29,7 +26,7 @@ use crate::{
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 9;
+pub const NUM_TABLES: usize = 8;
 
 #[derive(Clone, Debug)]
 pub enum Tables {
@@ -41,7 +38,7 @@ pub enum Tables {
     PoolState,
     DexPrice,
     PoolCreationBlocks,
-    MevBlocks,
+    // MevBlocks,
 }
 
 impl Tables {
@@ -54,7 +51,7 @@ impl Tables {
         Tables::PoolState,
         Tables::DexPrice,
         Tables::PoolCreationBlocks,
-        Tables::MevBlocks,
+        // Tables::MevBlocks,
     ];
     pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
         Tables::TokenDecimals,
@@ -63,7 +60,7 @@ impl Tables {
         Tables::CexPrice,
         Tables::Metadata,
         Tables::PoolCreationBlocks,
-        Tables::MevBlocks,
+        //Tables::MevBlocks,
     ];
 
     /// type of table
@@ -77,7 +74,7 @@ impl Tables {
             Tables::PoolState => TableType::Table,
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
-            Tables::MevBlocks => TableType::Table,
+            // Tables::MevBlocks => TableType::Table,
         }
     }
 
@@ -91,7 +88,7 @@ impl Tables {
             Tables::PoolState => PoolState::NAME,
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
-            Tables::MevBlock => MevBlocks::NAME,
+            // Tables::MevBlock => MevBlocks::NAME,
         }
     }
 
@@ -111,14 +108,15 @@ impl Tables {
             Tables::AddressToProtocol => {
                 AddressToProtocol::initialize_table(libmdbx, clickhouse, block_range)
             }
-            Tables::CexPrice => CexPrice::initialize_table(libmdbx, clickhouse, block_range),
+            Tables::CexPrice => {
+                CexPrice::initialize_table_batching(libmdbx, clickhouse, block_range)
+            }
             Tables::Metadata => Metadata::initialize_table(libmdbx, clickhouse, block_range),
             Tables::PoolState => PoolState::initialize_table(libmdbx, clickhouse, block_range),
             Tables::DexPrice => DexPrice::initialize_table(libmdbx, clickhouse, block_range),
             Tables::PoolCreationBlocks => {
                 PoolCreationBlocks::initialize_table(libmdbx, clickhouse, block_range)
-            }
-            Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse, block_range),
+            } // Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse, block_range),
         }
     }
 }
@@ -136,8 +134,7 @@ impl FromStr for Tables {
             PoolState::NAME => return Ok(Tables::PoolState),
             DexPrice::NAME => return Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => return Ok(Tables::PoolCreationBlocks),
-            MevBlocks::NAME => return Ok(Tables::MevBlock),
-
+            // MevBlocks::NAME => return Ok(Tables::MevBlock),
             _ => return Err("Unknown table".to_string()),
         }
     }
@@ -166,28 +163,6 @@ macro_rules! table {
         }
 
         impl<'db> InitializeTable<'db, paste::paste! {[<$table_name Data>]}> for $table_name {
-            fn initialize_query() -> &'static str {
-                paste::paste! {[<$table_name InitQuery>]}
-            }
-        }
-    };
-}
-
-#[macro_export]
-/// Macro to declare duplicate key value table.
-macro_rules! dupsort {
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | [$subkey:ty] $value:ty) => {
-        table!(
-            $(#[$docs])+
-            ///
-            #[doc = concat!("`DUPSORT` table with subkey being: [`", stringify!($subkey), "`]")]
-            ( $table_name ) $key | $value
-        );
-        impl DupSort for $table_name {
-            type SubKey = $subkey;
-        }
-
-        impl<'db> InitializeDupTable<'db, paste::paste! {[<$table_name Data>]}> for $table_name {
             fn initialize_query() -> &'static str {
                 paste::paste! {[<$table_name InitQuery>]}
             }
@@ -235,14 +210,15 @@ table!(
     ( PoolCreationBlocks ) u64 | PoolsLibmdbx
 );
 
+/*
 table!(
     /// block number -> mev block with classified mev
     ( MevBlocks ) u64 | MevBlockWithClassified
 );
-
+*/
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
-    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug,
+    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
     fn initialize_query() -> &'static str;
 
@@ -252,28 +228,6 @@ where
         _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
-            // let query = Self::initialize_query();
-
-            /*
-            if query.is_empty() {
-                println!("init empty");
-                libmdbx.initialize_table::<_, D>(&vec![])?;
-                return Ok(())
-            }
-
-            let data = if let Some((start, end)) = block_range {
-                if query.contains('?') {
-                    db_client
-                        .inner()
-                        .query_many::<D>(query, &(start, end))
-                        .await
-                } else {
-                    db_client.inner().query_many::<D>(query, &()).await
-                }
-            } else {
-                db_client.inner().query_many::<D>(query, &()).await
-            };*/
-
             let data = db_client
                 .inner()
                 .query_many::<D>(Self::initialize_query(), &())
@@ -285,57 +239,46 @@ where
                 println!("{} OK", Self::NAME);
             }
 
-            // println!("\n\nREG Data: {:?}\n\n", data);
-
-            /*
-                        let data = match data {
-                            Ok(dd) =>  {
-                                for d in &dd {
-                                    println!("DATA: {:?}\n\n\n", d);
-                                };
-                                Ok(dd)
-                            },
-                            Err(e) => {println!("DB: ERROR: {:?}", e); Err(e)}
-                        };
-            */
-
             libmdbx.initialize_table(&data?)
         })
     }
-}
 
-pub(crate) trait InitializeDupTable<'db, D>: reth_db::table::DupSort + Sized + 'db
-where
-    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug,
-{
-    fn initialize_query() -> &'static str;
-
-    fn initialize_table(
+    fn initialize_table_batching(
         libmdbx: &'db Libmdbx,
         db_client: Arc<&'db Clickhouse>,
         _block_range: Option<(u64, u64)>, // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
-            let data = db_client
-                .inner()
-                .query_many::<D>(Self::initialize_query(), &())
-                .await;
+            let block_chunks = [
+                (15000000, 16000000),
+                (16000000, 16500000),
+                (16500000, 17000000),
+                (17000000, 17500000),
+                (17500000, 18000000),
+                (18000000, 18500000),
+                (18500000, 19000000),
+            ];
 
-            // println!("\n\nDUP Data: {:?}\n\n", data);
+            let data = join_all(block_chunks.into_iter().map(|params| {
+                let db_client = db_client.clone();
+                async move {
+                    db_client
+                        .inner()
+                        .query_many::<D>(Self::initialize_query(), &params)
+                        .await
+                }
+            }))
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>();
 
-            /*
-                        let data = match data {
-                            Ok(dd) =>  {
-                                for d in &dd {
-                                    println!("DATA: {:?}\n\n\n", d);
-                                };
-                                Ok(dd)
-                            },
-                            Err(e) => {println!("DB: ERROR: {:?}", e); Err(e)}
-                        };
-            */
+            if data.is_err() {
+                println!("{} {:?}", Self::NAME, data);
+            } else {
+                println!("{} OK", Self::NAME);
+            }
 
-            libmdbx.initialize_table(&data?)
+            libmdbx.initialize_table(&data?.into_iter().flatten().collect())
         })
     }
 }
