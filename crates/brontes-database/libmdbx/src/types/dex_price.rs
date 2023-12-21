@@ -23,6 +23,23 @@ pub fn make_key(block_number: u64, tx_idx: u16) -> TxHash {
     key
 }
 
+pub fn make_filter_key_range(block_number: u64) -> (TxHash, TxHash) {
+    let mut f_bytes = [0u8; 8].to_vec();
+    let mut s_bytes = [0u8; 8].to_vec();
+
+    let block_number = block_number.to_be_bytes();
+    f_bytes = [f_bytes, block_number.to_vec()].concat();
+    s_bytes = [s_bytes, block_number.to_vec()].concat();
+
+    f_bytes = [f_bytes, [0; 16].to_vec()].concat();
+    s_bytes = [s_bytes, [u8::MAX; 16].to_vec()].concat();
+
+    let f_key: TxHash = TxHash::from_slice(&f_bytes);
+    let s_key: TxHash = TxHash::from_slice(&s_bytes);
+
+    (f_key, s_key)
+}
+
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexPriceData {
     pub block_number: u64,
