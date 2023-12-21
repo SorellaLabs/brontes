@@ -286,7 +286,7 @@ where
             */
             libmdbx.initialize_table::<Self, D>(&vec![])?;
 
-            let chunk = 50000;
+            let chunk = 10000;
             let tasks = (block_range.0..block_range.1)
             .into_iter()
             .filter(|block| block % chunk == 0).collect::<Vec<_>>();
