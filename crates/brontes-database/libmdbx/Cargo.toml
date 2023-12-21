@@ -61,6 +61,7 @@ thiserror.workspace = true
 # async
 futures.workspace = true
 tokio.workspace = true
+tokio-scoped = "0.2.0"
 
 
 # misc
