@@ -28,7 +28,13 @@ use reth_db::{
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
 use tables::*;
-use types::{cex_price::CexPriceMap, metadata::MetadataInner, LibmdbxDupData};
+use types::{
+    cex_price::CexPriceMap,
+    dex_price::{DexPriceData, DexQuoteWithIndex},
+    metadata::MetadataInner,
+    pool_state::{PoolStateData, PoolStateType},
+    LibmdbxDupData,
+};
 
 use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
 pub mod implementation;
@@ -81,6 +87,42 @@ impl Libmdbx {
 
         tx.commit()?;
 
+        Ok(())
+    }
+
+    pub fn insert_quotes(&self, block_num: u64, quotes: DexPrices) -> eyre::Result<()> {
+        self.write_table::<PoolState, PoolStateData>(
+            &quotes
+                .state
+                .iter()
+                .map(|(k, v)| {
+                    PoolStateData {
+                        pool:         k.pool,
+                        batch:        k.batch,
+                        run:          k.run,
+                        update_nonce: k.update_nonce,
+                        // doesn't get encoded
+                        pool_type:    PoolStateType::UniswapV2,
+                        pool_state:   v.clone(),
+                    }
+                })
+                .collect::<Vec<_>>(),
+        )?;
+
+        let data = quotes
+            .quotes
+            .0
+            .into_iter()
+            .enumerate()
+            .filter(|(_, v)| v.is_some())
+            .map(|(idx, value)| DexPriceData {
+                block_number: block_num,
+                tx_idx:       idx as u16,
+                quote:        types::dex_price::DexQuote(value.unwrap()),
+            })
+            .collect::<Vec<_>>();
+
+        self.write_table::<DexPrice, DexPriceData>(&data)?;
         Ok(())
     }
 

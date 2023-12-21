@@ -3,7 +3,7 @@ use std::{collections::HashMap, default::Default, hash::Hash, ops::MulAssign, st
 use alloy_primitives::{hex::FromHexError, Address};
 use alloy_rlp::{Decodable, Encodable};
 use brontes_database::clickhouse::types::DBTokenPricesDB;
-use brontes_pricing::types::{PoolKey, PoolKeysForPair};
+use brontes_pricing::types::{DexPrices, PoolKey, PoolKeysForPair};
 use brontes_types::{extra_processing::Pair, impl_compress_decompress_for_encoded_decoded};
 use bytes::BufMut;
 use malachite::{
@@ -87,6 +87,7 @@ impl Encodable for DexQuoteWithIndex {
         Encodable::encode(&self.tx_idx, out);
         let (keys, vals): (Vec<_>, Vec<_>) =
             self.quote.clone().into_iter().map(|(k, v)| (k, v)).unzip();
+
         keys.encode(out);
         vals.encode(out);
     }

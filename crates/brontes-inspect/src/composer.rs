@@ -112,7 +112,6 @@ impl<'a, const N: usize> Composer<'a, N> {
         let future = Box::pin(async move {
             let mut scope: TokioScope<'a, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
                 unsafe { Scope::create() };
-            println!("inspectors to run: {}", orchestra.len());
             orchestra.iter().for_each(|inspector| {
                 scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
             });
