@@ -130,7 +130,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     }
 
     fn on_price_finish(&mut self, tree: TimeTree<Actions>, meta: Metadata) {
-        info!("dex pricing finished");
+        info!(target:"brontes","dex pricing finished");
         self.processing_futures.push(Box::pin(ResultProcessing::new(
             self.libmdbx,
             self.inspectors,
@@ -239,7 +239,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
             self.resechedule(pricer);
 
             if let Some((block, prices)) = inner {
-                info!("Collected dex prices for block: {}", block);
+                info!(target:"brontes","Collected dex prices for block: {}", block);
 
                 let Some((tree, meta)) = self.pending_trees.remove(&block) else {
                     return Poll::Ready(None)
@@ -284,6 +284,7 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Poll::Ready((block_details, _mev_details)) = self.composer.poll_unpin(cx) {
             info!(
+                target:"brontes",
                 "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
                  ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
                  {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- Builder \
