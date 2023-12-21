@@ -285,6 +285,7 @@ where
                         .collect::<Result<Vec<_>, _>>();
             */
             libmdbx.clear_table::<Self>()?;
+            println!("Cleared Table: {}", Self::NAME);
 
             let chunk = 500000;
             let tasks = (block_range.0..block_range.1)
