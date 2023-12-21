@@ -15,6 +15,7 @@ brontes-database.workspace = true
 brontes-database-libmdbx.workspace = true
 brontes-metrics.workspace = true
 brontes-pricing.workspace = true
+brontes-tracing.workspace = true
 malachite.workspace = true
 toml = "0.8.2"
 
