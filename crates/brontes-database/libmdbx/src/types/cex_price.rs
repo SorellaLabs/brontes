@@ -316,3 +316,46 @@ impl Decompress for CexQuote {
         Ok(CexQuote::decode(buf).map_err(|_| DatabaseError::Decode)?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashMap, env, str::FromStr};
+
+    use alloy_primitives::{Address, U256};
+    use brontes_database::clickhouse::Clickhouse;
+    use brontes_pricing::{
+        types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair, PoolStateSnapShot},
+        uniswap_v2::UniswapV2Pool,
+        uniswap_v3::{Info, UniswapV3Pool},
+    };
+
+    use super::*;
+
+    fn init_clickhouse() -> Clickhouse {
+        dotenv::dotenv().ok();
+        let clickhouse = Clickhouse::default();
+
+        clickhouse
+    }
+
+    #[tokio::test]
+    async fn test_insert_dex_price_clickhouse() {
+        let clickhouse = init_clickhouse();
+        let table = "brontes.cex_price_mapping";
+
+        let res = clickhouse
+            .inner()
+            .query_many::<CexPriceData>(
+                "SELECT
+        block_number,
+        data AS meta
+    FROM brontes.cex_price_mapping",
+                &(), //table,
+            )
+            .await;
+
+        assert!(res.is_ok());
+
+        //println!("{:?}", res.unwrap()[0])
+    }
+}
