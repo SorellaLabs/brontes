@@ -5,7 +5,7 @@ use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
-use reth_primitives::{BufMut};
+use reth_primitives::BufMut;
 use serde::{Deserialize, Serialize};
 
 #[allow(non_camel_case_types)]

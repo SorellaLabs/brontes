@@ -34,7 +34,7 @@ pub mod vec_address_string {
 
     pub fn serialize<S: Serializer>(u: &Vec<Address>, serializer: S) -> Result<S::Ok, S::Error> {
         let st: Vec<String> = u
-            .into_iter()
+            .iter()
             .map(|addr| format!("{:?}", addr.clone()))
             .collect::<Vec<_>>();
         st.serialize(serializer)
