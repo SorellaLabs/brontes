@@ -32,7 +32,7 @@ pub async fn build_raw_test_tree<T: TracingProvider>(
 
 pub async fn get_traces_with_meta<T: TracingProvider>(
     tracer: &TraceParser<'_, T>,
-    db: &Clickhouse,
+    _db: &Clickhouse,
     block_number: u64,
 ) -> (Vec<TxTrace>, Header) {
     let (traces, header) = tracer.execute_block(block_number).await.unwrap();

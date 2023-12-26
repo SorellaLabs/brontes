@@ -5,7 +5,7 @@ use brontes_pricing::types::DexQuotes;
 use crate::types::token_decimals::TokenDecimalsData;
 pub mod initialize;
 
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::Address;
 use brontes_database::{clickhouse::Clickhouse, MetadataDB, Pair};
 use brontes_pricing::types::DexPrices;
 use brontes_types::{
@@ -14,7 +14,6 @@ use brontes_types::{
 };
 use eyre::Context;
 use initialize::LibmdbxInitializer;
-use malachite::Rational;
 use reth_db::{
     cursor::{DbCursorRO, DbCursorRW},
     is_database_empty,
@@ -378,13 +377,13 @@ impl Libmdbx {
             );
         });
 
-        let mut dex_quotes = Vec::new();
+        let dex_quotes = Vec::new();
         let key_range = make_filter_key_range(block_num);
-        let db_dex_quotes = tx
+        let _db_dex_quotes = tx
             .cursor_read::<DexPrice>()?
             .walk_range(key_range.0..key_range.1)?
             .flat_map(|inner| {
-                if let Ok((key, quote)) = inner {
+                if let Ok((key, _quote)) = inner {
                     //dex_quotes.push(Default::default());
                     Some(key)
                 } else {

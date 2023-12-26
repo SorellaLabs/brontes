@@ -191,7 +191,7 @@ impl TracingInspectorLocal {
         let _ = populate_state_diff(&mut diff, db, acc_diff);
 
         TxTrace {
-            trace: trace.unwrap_or(vec![]),
+            trace: trace.unwrap_or_default(),
             state_diff: diff,
             tx_hash: info.hash.unwrap(),
             gas_used,
@@ -385,13 +385,13 @@ impl TracingInspectorLocal {
         node: &CallTraceNode,
         trace_address: Vec<usize>,
     ) -> TransactionTrace {
-        let action = self.parity_action(&node);
+        let action = self.parity_action(node);
         let result = if node.trace.is_error() && !node.trace.is_revert() {
             // if the trace is a selfdestruct or an error that is not a revert, the result
             // is None
             None
         } else {
-            Some(self.parity_trace_output(&node))
+            Some(self.parity_trace_output(node))
         };
         let error = self.as_error_msg(node);
         TransactionTrace { action, error, result, trace_address, subtraces: node.children.len() }

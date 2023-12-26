@@ -88,12 +88,12 @@ pub(crate) mod address {
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-
+    #[allow(dead_code)]
     pub fn serialize<S: Serializer>(u: &Address, serializer: S) -> Result<S::Ok, S::Error> {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
-
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
     where
         D: Deserializer<'de>,
@@ -113,12 +113,12 @@ pub(crate) mod vec_txhash {
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-
+    #[allow(dead_code)]
     pub fn serialize<S: Serializer>(u: &Vec<TxHash>, serializer: S) -> Result<S::Ok, S::Error> {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
-
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<TxHash>, D::Error>
     where
         D: Deserializer<'de>,
@@ -173,12 +173,12 @@ pub(crate) mod pool_key {
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-
+    #[allow(dead_code)]
     pub fn serialize<S: Serializer>(u: &PoolKey, serializer: S) -> Result<S::Ok, S::Error> {
         let val = (format!("{:?}", u.pool), u.run, u.batch, u.update_nonce);
         val.serialize(serializer)
     }
-
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<PoolKey, D::Error>
     where
         D: Deserializer<'de>,

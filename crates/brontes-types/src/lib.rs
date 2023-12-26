@@ -1,11 +1,8 @@
-
-
 use malachite::{
     num::{arithmetic::traits::Pow, conversion::traits::RoundingFrom},
     rounding_modes::RoundingMode,
     Natural, Rational,
 };
-
 use reth_primitives::U256;
 
 pub mod classified_mev;
@@ -127,7 +124,7 @@ pub(crate) mod vec_fixed_string {
     use sorella_db_databases::fixed_string::FixedString;
 
     pub fn serialize<S: Serializer>(u: &Vec<Address>, serializer: S) -> Result<S::Ok, S::Error> {
-        u.into_iter()
+        u.iter()
             .map(|a| format!("{:?}", a).into())
             .collect::<Vec<FixedString>>()
             .serialize(serializer)
@@ -162,10 +159,10 @@ pub(crate) mod vec_vec_fixed_string {
         u: &Vec<Vec<Address>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        u.into_iter()
+        u.iter()
             .map(|addrs| {
                 addrs
-                    .into_iter()
+                    .iter()
                     .map(|a| format!("{:?}", a).into())
                     .collect::<Vec<_>>()
             })
@@ -238,10 +235,10 @@ pub(crate) mod vec_vec_b256 {
     use sorella_db_databases::fixed_string::FixedString;
 
     pub fn serialize<S: Serializer>(u: &Vec<Vec<B256>>, serializer: S) -> Result<S::Ok, S::Error> {
-        u.into_iter()
+        u.iter()
             .map(|addrs| {
                 addrs
-                    .into_iter()
+                    .iter()
                     .map(|a| format!("{:?}", a).into())
                     .collect::<Vec<_>>()
             })
