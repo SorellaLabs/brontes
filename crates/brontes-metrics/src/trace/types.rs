@@ -66,9 +66,7 @@ impl TransactionStats {
     pub fn trace(&self) {
         let msg = format!(
             "{} -- Tx Hash: {:#x}",
-            format!("Successfully Parsed Transaction")
-                .bright_green()
-                .bold(),
+            "Successfully Parsed Transaction".bright_green().bold(),
             self.tx_hash
         );
 

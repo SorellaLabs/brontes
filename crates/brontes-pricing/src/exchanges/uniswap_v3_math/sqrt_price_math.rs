@@ -63,8 +63,6 @@ pub fn get_next_sqrt_price_from_amount_0_rounding_up(
     }
 
     let numerator_1: U256 = U256::from(liquidity) << 96;
-    let amount = amount;
-    let sqrt_price_x_96 = sqrt_price_x_96;
 
     if add {
         let product = amount.wrapping_mul(sqrt_price_x_96);

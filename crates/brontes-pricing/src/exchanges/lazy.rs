@@ -133,7 +133,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                     ))
                 }));
             }
-            rest @ _ => {
+            rest => {
                 error!(exchange=?ex_type, "no state updater is build for");
             }
         }

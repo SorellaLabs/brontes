@@ -102,7 +102,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             for (pool_addr, dex, pair) in self
                 .new_graph_pairs
                 .remove(&self.current_block)
-                .unwrap_or(vec![])
+                .unwrap_or_default()
             {
                 self.pair_graph.add_node(pair, pool_addr, dex);
             }
@@ -419,7 +419,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let state = self.finalized_state.clone().into();
         self.completed_block += 1;
 
-        return Some((block, DexPrices::new(state, res)))
+        Some((block, DexPrices::new(state, res)))
     }
 }
 

@@ -32,9 +32,9 @@ impl Pair {
     // Returns an ordered version of the pair
     pub fn ordered(&self) -> Self {
         if self.0 <= self.1 {
-            Pair(self.0.clone(), self.1.clone())
+            Pair(self.0, self.1)
         } else {
-            Pair(self.1.clone(), self.0.clone())
+            Pair(self.1, self.0)
         }
     }
 }
