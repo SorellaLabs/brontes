@@ -86,5 +86,5 @@ Such as:
 ```bash
 git clone https://github.com/SorellaLabs/brontes
 cd brontes
-cargo install --path ./crates/cli
+cargo install --path ./crates/bin
 ```
