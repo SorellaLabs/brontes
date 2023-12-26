@@ -282,7 +282,7 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Poll::Ready((block_details, _mev_details)) = self.composer.poll_unpin(cx) {
+        if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
             info!(
                 target:"brontes",
                 "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
@@ -313,8 +313,8 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
                 block_details.cumulative_mev_finalized_profit_usd
             );
 
-            // self.database
-            //     .insert_classified_data(block_details, mev_details);
+            self.database
+                .insert_classified_data(block_details, mev_details);
 
             return Poll::Ready(())
         }

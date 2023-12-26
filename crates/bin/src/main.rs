@@ -21,7 +21,6 @@ use brontes_inspect::{
     sandwich::SandwichInspector, Inspector,
 };
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
-use brontes_tracing::init;
 use clap::Parser;
 use itertools::Itertools;
 use metrics_process::Collector;
@@ -29,9 +28,7 @@ use reth_db::transaction::DbTx;
 use reth_tracing_ext::TracingClient;
 use tokio::{pin, sync::mpsc::unbounded_channel};
 use tracing::{error, info, Level};
-use tracing_subscriber::{
-    filter::Directive, prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry,
-};
+use tracing_subscriber::filter::Directive;
 mod banner;
 mod cli;
 
@@ -204,7 +201,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
                     .tables_to_init
                     .unwrap_or({
                         if init_config.download_dex_pricing {
-                            let mut tables = Tables::ALL.to_vec();
+                            let tables = Tables::ALL.to_vec();
                             //tables.retain(|table| table != &Tables::CexPrice);
                             //println!("TABLES: {:?}", tables);
                             tables

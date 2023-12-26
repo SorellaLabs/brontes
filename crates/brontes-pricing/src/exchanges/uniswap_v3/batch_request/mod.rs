@@ -123,7 +123,7 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
         .await
         .unwrap();
 
-    let return_data = tick_constructorCall::abi_decode_returns(&*res, false).unwrap();
+    let return_data = tick_constructorCall::abi_decode_returns(&res, false).unwrap();
 
     Ok((return_data._0, return_data._1))
 }
