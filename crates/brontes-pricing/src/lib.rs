@@ -392,7 +392,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     fn on_close(&mut self) -> Option<(u64, DexPrices)> {
         if self.completed_block == self.current_block {
-            info!("completed == current, this means we have finished pricing");
             return None
         }
 
@@ -448,7 +447,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
 
                 if self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty() {
-                    info!(batch=self.batch_id,block=?self.current_block, "brontes pricing completed");
                     return Poll::Ready(self.on_close())
                 }
             }

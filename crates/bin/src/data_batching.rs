@@ -180,6 +180,10 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
             self.on_price_finish(tree, meta);
         }
 
+        if self.pricer.poll_next_unpin(cx) == Poll::Ready(None) {
+            println!("start: {} end: {}", self.current_block, self.end_block)
+        }
+
         // poll insertion
         while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
 
