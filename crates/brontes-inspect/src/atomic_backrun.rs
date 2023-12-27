@@ -62,17 +62,18 @@ impl Inspector for AtomicBackrunInspector<'_> {
                     });
 
                 let entries = tokens.len();
-                if tokens
+                let overlaps = tokens
                     .values()
                     .flatten()
                     .sorted()
                     .dedup_with_count()
                     .map(|(i, _)| i)
-                    .sum::<usize>()
-                    == entries
-                {
+                    .sum::<usize>();
+
+                if overlaps <= entries {
                     return None
                 }
+                println!("e: {entries}, o: {overlaps}");
 
                 self.process_swaps(
                     tx,
