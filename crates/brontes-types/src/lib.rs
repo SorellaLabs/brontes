@@ -137,11 +137,11 @@ pub(crate) mod vec_fixed_string {
     {
         let addresses: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(addresses
+        addresses
             .into_iter()
             .map(|a| Address::from_str(&a))
             .collect::<Result<Vec<_>, _>>()
-            .map_err(serde::de::Error::custom)?)
+            .map_err(serde::de::Error::custom)
     }
 }
 pub(crate) mod vec_vec_fixed_string {
@@ -177,7 +177,7 @@ pub(crate) mod vec_vec_fixed_string {
     {
         let addresses: Vec<Vec<String>> = Deserialize::deserialize(deserializer)?;
 
-        Ok(addresses
+        addresses
             .into_iter()
             .map(|addrs| {
                 addrs
@@ -186,7 +186,7 @@ pub(crate) mod vec_vec_fixed_string {
                     .collect::<Result<Vec<_>, _>>()
             })
             .collect::<Result<Vec<_>, _>>()
-            .map_err(serde::de::Error::custom)?)
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -201,7 +201,7 @@ pub(crate) mod vec_b256 {
     use sorella_db_databases::fixed_string::FixedString;
 
     pub fn serialize<S: Serializer>(u: &Vec<B256>, serializer: S) -> Result<S::Ok, S::Error> {
-        u.into_iter()
+        u.iter()
             .map(|a| format!("{:?}", a).into())
             .collect::<Vec<FixedString>>()
             .serialize(serializer)
@@ -214,11 +214,11 @@ pub(crate) mod vec_b256 {
     {
         let addresses: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(addresses
+        addresses
             .into_iter()
             .map(|a| B256::from_str(&a))
             .collect::<Result<Vec<_>, _>>()
-            .map_err(serde::de::Error::custom)?)
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -252,7 +252,7 @@ pub(crate) mod vec_vec_b256 {
     {
         let addresses: Vec<Vec<String>> = Deserialize::deserialize(deserializer)?;
 
-        Ok(addresses
+        addresses
             .into_iter()
             .map(|addrs| {
                 addrs
@@ -261,6 +261,6 @@ pub(crate) mod vec_vec_b256 {
                     .collect::<Result<Vec<_>, _>>()
             })
             .collect::<Result<Vec<_>, _>>()
-            .map_err(serde::de::Error::custom)?)
+            .map_err(serde::de::Error::custom)
     }
 }

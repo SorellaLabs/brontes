@@ -59,7 +59,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     }
 
     pub fn requests_for_block(&self, block: &u64) -> u64 {
-        self.req_per_block.get(block).map(|i| *i).unwrap_or(0)
+        self.req_per_block.get(block).copied().unwrap_or(0)
     }
 
     pub fn lazy_load_exchange(
@@ -164,7 +164,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
 
                     self.pool_buf.remove(&addr);
                     let res = LazyResult { block, state: Some(state), load_result: load };
-                    return Poll::Ready(Some(res))
+                    Poll::Ready(Some(res))
                 }
                 Err((address, dex, block, e)) => {
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
@@ -172,7 +172,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     }
 
                     let res = LazyResult { state: None, block, load_result: LoadResult::Err };
-                    return Poll::Ready(Some(res))
+                    Poll::Ready(Some(res))
                 }
             }
         } else {
