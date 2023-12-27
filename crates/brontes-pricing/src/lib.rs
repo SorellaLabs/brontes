@@ -31,12 +31,6 @@ pub struct StateBuffer {
     pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
     pub overrides: HashMap<u64, HashSet<Address>>,
 }
-impl Default for StateBuffer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl StateBuffer {
     pub fn new() -> Self {
         Self { updates: HashMap::default(), overrides: HashMap::default() }
@@ -412,7 +406,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
             }
         }
-
         let block = self.completed_block;
 
         let res = self
@@ -452,7 +445,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 if self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty() {
                     info!(batch=self.batch_id,block=?self.current_block, "brontes pricing completed");
 
-                    return Poll::Ready(self.on_close())
+                    return Poll::Ready(None)
                 }
             }
 
