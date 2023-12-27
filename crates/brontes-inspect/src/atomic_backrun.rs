@@ -61,7 +61,7 @@ impl Inspector for AtomicBackrunInspector<'_> {
                         e.push(swap.token_out);
                     });
 
-                let entries = tokens.len();
+                let entries = tokens.len() * 2;
                 let overlaps = tokens
                     .values()
                     .flatten()
