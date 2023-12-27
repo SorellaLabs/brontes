@@ -34,27 +34,21 @@ mod tests {
     use std::{env, sync::Arc};
 
     use brontes_database::clickhouse::Clickhouse;
-    use brontes_pricing::{
-        types::PoolStateSnapShot, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
-    };
+    
     use reth_db::{
-        cursor::{self, DbCursorRO, DbDupCursorRO},
+        cursor::{DbCursorRO},
         transaction::DbTx,
         DatabaseError,
     };
     use serial_test::serial;
-    use sorella_db_databases::{clickhouse, ClickhouseClient, Row};
+    
 
     use crate::{
         implementation::tx::LibmdbxTx,
         initialize::LibmdbxInitializer,
         tables::{
-            AddressToProtocol, AddressToTokens, CexPrice, DexPrice, Metadata, PoolCreationBlocks,
+            AddressToProtocol, AddressToTokens, CexPrice, Metadata, PoolCreationBlocks,
             PoolState, Tables, TokenDecimals,
-        },
-        types::{
-            address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
-            pool_state::{PoolStateData, PoolStateType},
         },
         Libmdbx,
     };
@@ -233,7 +227,7 @@ mod tests {
         .await;
         assert!(db.is_ok());
 
-        let db = db.unwrap();
+        let _db = db.unwrap();
         //assert!(test_tokens_decimals_table(&db, false).await.is_ok());
         //assert!(test_address_to_tokens_table(&db, false).await.is_ok());
         //assert!(test_address_to_protocols_table(&db, false).await.is_ok());

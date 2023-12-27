@@ -144,11 +144,7 @@ impl SharedInspectorUtils<'_> {
     /// Account for all transfers that are in relation with the addresses that
     /// swap, so we can track the end address that collects the funds if it is
     /// different to the execution address
-    fn transfer_deltas(
-        &self,
-        transfers: Vec<&NormalizedTransfer>,
-        deltas: &mut SwapTokenDeltas,
-    ) {
+    fn transfer_deltas(&self, transfers: Vec<&NormalizedTransfer>, deltas: &mut SwapTokenDeltas) {
         for transfer in transfers.into_iter() {
             // normalize token decimals
             let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
