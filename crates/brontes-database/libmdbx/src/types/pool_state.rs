@@ -1,20 +1,14 @@
-
-
 use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable};
 use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
 use brontes_types::{impl_compress_decompress_for_encoded_decoded, libmdbx::serde::address_string};
 use bytes::BufMut;
-
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sorella_db_databases::{clickhouse, Row};
 
 use super::LibmdbxData;
-use crate::{
-    tables::PoolState,
-    types::utils::{pool_state},
-};
+use crate::{tables::PoolState, types::utils::pool_state};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Row, Deserialize)]
 pub struct PoolStateData {
@@ -98,7 +92,7 @@ impl_compress_decompress_for_encoded_decoded!(PoolStateData);
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, env};
+    use std::{collections::HashMap};
 
     use alloy_primitives::U256;
     use brontes_database::clickhouse::Clickhouse;
@@ -107,26 +101,21 @@ mod tests {
         uniswap_v2::UniswapV2Pool,
         uniswap_v3::{Info, UniswapV3Pool},
     };
-    use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
-    use serial_test::serial;
-    use sorella_db_databases::{clickhouse, ClickhouseClient, Row};
+    
+    
+    
 
     use crate::{
-        implementation::tx::LibmdbxTx,
-        initialize::LibmdbxInitializer,
-        tables::{AddressToProtocol, AddressToTokens, CexPrice, Metadata, Tables, TokenDecimals},
         types::{
-            address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
             pool_state::{PoolStateData, PoolStateType},
         },
-        Libmdbx,
     };
 
     fn init_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
-        let clickhouse = Clickhouse::default();
+        
 
-        clickhouse
+        Clickhouse::default()
     }
 
     #[tokio::test]

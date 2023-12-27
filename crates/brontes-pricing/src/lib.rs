@@ -31,6 +31,12 @@ pub struct StateBuffer {
     pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
     pub overrides: HashMap<u64, HashSet<Address>>,
 }
+impl Default for StateBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StateBuffer {
     pub fn new() -> Self {
         Self { updates: HashMap::default(), overrides: HashMap::default() }
@@ -391,6 +397,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_close(&mut self) -> Option<(u64, DexPrices)> {
+        if self.completed_block == self.current_block + 1 {
+            return None
+        }
+
         info!(?self.completed_block,"getting ready to calc dex prices");
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing
@@ -406,7 +416,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
             }
         }
-
         let block = self.completed_block;
 
         let res = self
