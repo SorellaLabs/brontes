@@ -35,8 +35,6 @@ pub struct Clickhouse {
     client: ClickhouseClient,
 }
 
-
-
 impl Clickhouse {
     pub fn new(config: ClickhouseConfig) -> Self {
         let client = ClickhouseClient::new(config);
