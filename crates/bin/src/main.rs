@@ -284,29 +284,13 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
         ));
     }
 
-    // let range
-
-    pin!(metrics_listener);
-
-    let mut fut = Box::pin(scope.collect());
-
-    // wait for completion
-    tokio::select! {
-        _ = &mut fut => {
-            info!("finnished running all batch , shutting down");
-            fut.await;
-            drop(scope);
-            std::thread::spawn(move || {
-                drop(parser);
-            });
-        }
-        _ = Pin::new(&mut manager) => {
-            panic!("task manager failed");
-        }
-        _ = &mut metrics_listener => {
-            panic!("metrics listener failed");
-        }
-    }
+    // collect and wait
+    scope.collect().await;
+    info!("finnished running all batch , shutting down");
+    drop(scope);
+    std::thread::spawn(move || {
+        drop(parser);
+    });
     manager.graceful_shutdown();
 
     Ok(())
