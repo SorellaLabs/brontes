@@ -1,22 +1,24 @@
-use std::{path::Path, str::FromStr, sync::Arc};
+use std::{cmp::max, collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
 use brontes_pricing::types::DexQuotes;
 
 use crate::types::token_decimals::TokenDecimalsData;
 pub mod initialize;
-use std::collections::HashMap;
 
 use alloy_primitives::Address;
 use brontes_database::{clickhouse::Clickhouse, MetadataDB, Pair};
 use brontes_pricing::types::DexPrices;
-use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
+use brontes_types::{
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    exchanges::StaticBindingsDb,
+};
 use eyre::Context;
 use initialize::LibmdbxInitializer;
-use malachite::Rational;
 use reth_db::{
+    cursor::{DbCursorRO, DbCursorRW},
     is_database_empty,
     mdbx::DatabaseFlags,
-    table::{DupSort, Table},
+    table::Table,
     transaction::{DbTx, DbTxMut},
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
@@ -24,12 +26,23 @@ use reth_db::{
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
 use tables::*;
-use types::{cex_price::CexPriceMap, metadata::MetadataInner, LibmdbxDupData};
+use tracing::info;
+use types::{
+    cex_price::CexPriceMap,
+    dex_price::{make_filter_key_range, DexPriceData},
+    metadata::MetadataInner,
+    pool_state::{PoolStateData, PoolStateType},
+};
 
 use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
 pub mod implementation;
 pub mod tables;
 pub mod types;
+
+const WETH_ADDRESS: &str = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+const USDT_ADDRESS: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+const USDC_ADDRESS: &str = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+//const USDT_ADDRESS: &str = ;
 
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
@@ -80,9 +93,63 @@ impl Libmdbx {
         Ok(())
     }
 
+    pub fn insert_quotes(&self, block_num: u64, quotes: DexPrices) -> eyre::Result<()> {
+        self.write_table::<PoolState, PoolStateData>(
+            &quotes
+                .state
+                .iter()
+                .map(|(k, v)| {
+                    PoolStateData {
+                        pool:         k.pool,
+                        batch:        k.batch,
+                        run:          k.run,
+                        update_nonce: k.update_nonce,
+                        // doesn't get encoded
+                        pool_type:    PoolStateType::UniswapV2,
+                        pool_state:   v.clone(),
+                    }
+                })
+                .collect::<Vec<_>>(),
+        )?;
+
+        let mut data = quotes
+            .quotes
+            .0
+            .into_iter()
+            .enumerate()
+            .filter(|(_, v)| v.is_some())
+            .map(|(idx, value)| DexPriceData {
+                block_number: block_num,
+                tx_idx:       idx as u16,
+                quote:        types::dex_price::DexQuote(value.unwrap()),
+            })
+            .collect::<Vec<_>>();
+
+        data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
+        data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
+
+        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
+        let mut cursor = tx.cursor_write::<DexPrice>()?;
+
+        data.into_iter()
+            .map(|entry| {
+                let (key, val) = entry.into_key_val();
+                //let key = make_key(key., val.tx_idx);
+
+                cursor.upsert(key, val)?;
+                Ok(())
+            })
+            .collect::<Result<Vec<_>, DatabaseError>>()?;
+
+        tx.commit()?;
+
+        //self.write_table::<DexPrice, DexPriceData>(&data)?;
+        Ok(())
+    }
+
     pub async fn clear_and_initialize_tables(
-        &self,
-        clickhouse: &Clickhouse,
+        self: Arc<Self>,
+        clickhouse: Arc<Clickhouse>,
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
@@ -134,8 +201,17 @@ impl Libmdbx {
         Ok(())
     }
 
-    pub fn insert_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
-        self.write_table(&vec![TokenDecimalsData { address, decimals }])
+    /// Clears a table in the database
+    /// Only called on initialization
+    pub(crate) fn clear_table<T>(&self) -> eyre::Result<()>
+    where
+        T: Table,
+    {
+        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
+        tx.clear::<T>()?;
+        tx.commit()?;
+
+        Ok(())
     }
 
     /// returns a RO transaction
@@ -143,6 +219,67 @@ impl Libmdbx {
         let tx = LibmdbxTx::new_ro_tx(&self.0)?;
 
         Ok(tx)
+    }
+
+    pub fn insert_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
+        self.write_table(&vec![TokenDecimalsData { address, decimals }])
+    }
+
+    pub fn addresses_inited_before(
+        &self,
+        block_num: u64,
+    ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
+        let tx = self.ro_tx()?;
+        let binding_tx = self.ro_tx()?;
+        let info_tx = self.ro_tx()?;
+
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
+        let mut map = HashMap::default();
+
+        for result in cursor.walk_range(0..=block_num)? {
+            let (_, res) = result?;
+            for addr in res.0.into_iter() {
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
+                    continue;
+                };
+                let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
+                    continue;
+                };
+                map.insert((addr, protocol), Pair(info.token0, info.token1));
+            }
+        }
+
+        info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
+
+        Ok(map)
+    }
+
+    /// gets all addresses that were initialized in a given block
+    pub fn addresses_init_block(
+        &self,
+        block_num: u64,
+    ) -> eyre::Result<Vec<(Address, StaticBindingsDb, Pair)>> {
+        let tx = self.ro_tx()?;
+        let binding_tx = self.ro_tx()?;
+        let info_tx = self.ro_tx()?;
+
+        let mut res = Vec::new();
+
+        for addr in tx
+            .get::<PoolCreationBlocks>(block_num)?
+            .map(|i| i.0)
+            .unwrap_or(vec![])
+        {
+            let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
+                continue;
+            };
+            let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
+                continue;
+            };
+            res.push((addr, protocol, Pair(info.token0, info.token1)));
+        }
+
+        Ok(res)
     }
 
     pub fn get_metadata_no_dex(
@@ -153,25 +290,49 @@ impl Libmdbx {
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        // let cex_quotes: CexPriceMap = tx
-        //     .get::<CexPrice>(block_num)?
-        //     .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+        let db_cex_quotes: CexPriceMap = tx
+            .get::<CexPrice>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
+            Address::from_str(WETH_ADDRESS).unwrap(),
+            Address::from_str(USDT_ADDRESS).unwrap(),
+        )) {
+            eth_usdt
+        } else {
+            db_cex_quotes
+                .get_quote(&Pair(
+                    Address::from_str(WETH_ADDRESS).unwrap(),
+                    Address::from_str(USDC_ADDRESS).unwrap(),
+                ))
+                .unwrap_or_default()
+        };
+
+        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
+        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
+            cex_quotes.0.insert(
+                pair,
+                quote
+                    .into_iter()
+                    .map(|q| brontes_database::cex::CexQuote {
+                        exchange:  q.exchange,
+                        timestamp: q.timestamp,
+                        price:     q.price,
+                        token0:    q.token0,
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        });
+
         Ok(MetadataDB {
             block_num,
             block_hash: block_meta.block_hash,
             relay_timestamp: block_meta.relay_timestamp,
             p2p_timestamp: block_meta.p2p_timestamp,
-            proposer_fee_recipient: block_meta.proposer_fee_recipient, /* change this */
+            proposer_fee_recipient: block_meta.proposer_fee_recipient,
             proposer_mev_reward: block_meta.proposer_mev_reward,
-            cex_quotes: brontes_database::cex::CexPriceMap::new(), /* brontes_database::cex::CexPriceMap(cex_quotes.0), // ambiguous type */
-            eth_prices: Rational::default(),                       /* cex_quotes.0.get(&
-                                                                    * Pair(Address::from_str("
-                                                                    * ").unwrap(),
-                                                                    * Address::from_str("").
-                                                                    * unwrap())).unwrap() //
-                                                                    * ambiguous type //
-                                                                    * change to USDC - ETH +
-                                                                    * error handle */
+            cex_quotes,
+            eth_prices: max(eth_prices.price.0, eth_prices.price.1),
+
             mempool_flow: block_meta.mempool_flow.into_iter().collect(),
             block_timestamp: block_meta.block_timestamp,
         })
@@ -183,12 +344,55 @@ impl Libmdbx {
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        let cex_quotes: CexPriceMap = tx
+        let db_cex_quotes: CexPriceMap = tx
             .get::<CexPrice>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        //let eth_prices = ;
+        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
+            Address::from_str(WETH_ADDRESS).unwrap(),
+            Address::from_str(USDT_ADDRESS).unwrap(),
+        )) {
+            eth_usdt
+        } else {
+            db_cex_quotes
+                .get_quote(&Pair(
+                    Address::from_str(WETH_ADDRESS).unwrap(),
+                    Address::from_str(USDC_ADDRESS).unwrap(),
+                ))
+                .unwrap_or_default()
+        };
 
-        let map = Arc::new(HashMap::new());
+        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
+        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
+            cex_quotes.0.insert(
+                pair,
+                quote
+                    .into_iter()
+                    .map(|q| brontes_database::cex::CexQuote {
+                        exchange:  q.exchange,
+                        timestamp: q.timestamp,
+                        price:     q.price,
+                        token0:    q.token0,
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        });
+
+        let dex_quotes = Vec::new();
+        let key_range = make_filter_key_range(block_num);
+        let _db_dex_quotes = tx
+            .cursor_read::<DexPrice>()?
+            .walk_range(key_range.0..key_range.1)?
+            .flat_map(|inner| {
+                if let Ok((key, _quote)) = inner {
+                    //dex_quotes.push(Default::default());
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        //.get::<DexPrice>(block_num)?
+        //.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
         Ok(brontes_database::Metadata {
             db:         MetadataDB {
@@ -196,30 +400,22 @@ impl Libmdbx {
                 block_hash: block_meta.block_hash,
                 relay_timestamp: block_meta.relay_timestamp,
                 p2p_timestamp: block_meta.p2p_timestamp,
-                proposer_fee_recipient: block_meta.proposer_fee_recipient, /* change this */
+                proposer_fee_recipient: block_meta.proposer_fee_recipient,
                 proposer_mev_reward: block_meta.proposer_mev_reward,
-                cex_quotes: brontes_database::cex::CexPriceMap::new(), /* brontes_database::cex::CexPriceMap(cex_quotes.0), // ambiguous type */
-                eth_prices: Rational::default(),
-                block_timestamp: block_meta.block_timestamp, /* cex_quotes.0.get(&
-                                                              * Pair(Address::from_str("
-                                                              * ").unwrap(),
-                                                              * Address::from_str("").
-                                                              * unwrap())).unwrap() //
-                                                              * ambiguous type //
-                                                              * change to USDC - ETH +
-                                                              * error handle */
+                cex_quotes,
+                eth_prices: max(eth_prices.price.0, eth_prices.price.1),
+                block_timestamp: block_meta.block_timestamp,
                 mempool_flow: block_meta.mempool_flow.into_iter().collect(),
             },
-            dex_quotes: DexPrices::new(map, DexQuotes(vec![])),
+            dex_quotes: DexPrices::new(Default::default(), DexQuotes(dex_quotes)),
         })
     }
 
     pub fn insert_classified_data(
         &self,
-        block_details: MevBlock,
-        mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+        _block_details: MevBlock,
+        _mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
-        todo!() // we r we inserting if never using again
     }
 }
 

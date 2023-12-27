@@ -8,6 +8,7 @@ edition = "2021"
 # reth 
 reth-rpc-types.workspace = true
 reth-primitives.workspace = true
+reth-codecs.workspace = true
 
 
 reth-db.workspace = true
@@ -69,7 +70,7 @@ brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
-brontes-database-libmdbx.workspace = true
+
 
 [features]
 default = ["tests"]

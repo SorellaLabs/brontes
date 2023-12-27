@@ -3,11 +3,16 @@ use std::sync::Arc;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
+use futures::join;
 use reth_rpc_types::{CallInput, CallRequest};
 
 use super::UniswapV2Pool;
-use crate::{errors::AmmError, AutomatedMarketMaker};
-
+use crate::{
+    errors::AmmError,
+    exchanges::make_call_request,
+    uniswap_v2::IUniswapV2Pair::{token0Call, *},
+    AutomatedMarketMaker,
+};
 sol!(
     IGetUniswapV2PoolDataBatchRequest,
     "./src/exchanges/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json"
@@ -24,6 +29,12 @@ sol!(
     }
 
     function data_constructor(address[] memory pools) returns(PoolData[]);
+
+
+    function token1() external view returns (address);
+
+    function decimals() external pure returns (uint8);
+    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
 );
 
 // pub async fn get_pairs_batch_request<M: TracingProvider>(
@@ -63,35 +74,72 @@ sol!(
 // }
 //
 
-fn populate_pool_data_from_tokens(mut pool: UniswapV2Pool, pool_data: PoolData) -> UniswapV2Pool {
-    pool.token_a = pool_data.tokenA;
-    pool.token_a_decimals = pool_data.tokenADecimals;
-    pool.token_b = pool_data.tokenB;
-    pool.token_b_decimals = pool_data.tokenBDecimals;
-    pool.reserve_0 = pool_data.reserve0;
-    pool.reserve_1 = pool_data.reserve1;
+//TODO: Where is the fee? NOTE(from): WILL -> The fee for v2 is sonmething we
+// can't query. its not needed for price calcs obv but we will need to circle
+// back if we want todo more with this lib
+//
+// fn populate_pool_data_from_tokens(mut pool: UniswapV2Pool, pool_data:
+// PoolData) -> UniswapV2Pool {     pool.token_a = pool_data.tokenA;
+//     pool.token_a_decimals = pool_data.tokenADecimals;
+//     pool.token_b = pool_data.tokenB;
+//     pool.token_b_decimals = pool_data.tokenBDecimals;
+//     pool.reserve_0 = pool_data.reserve0;
+//     pool.reserve_1 = pool_data.reserve1;
+//
+//     pool
+// }
 
-    pool
-}
-
+//TODO: I switched with the one below because there seems to be a
+// deserialization problem given the size of the request (with all bytecode)
+// pub async fn get_v2_pool_data1<M: TracingProvider>(
+//     pool: &mut UniswapV2Pool,
+//     block: Option<u64>,
+//     middleware: Arc<M>,
+// ) -> Result<(), AmmError> {
+//     let mut bytecode = IGetUniswapV2PoolDataBatchRequest::BYTECODE.to_vec();
+//     data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut
+// bytecode);
+//
+//     let req =
+//         CallRequest { to: None, input: CallInput::new(bytecode.into()),
+// ..Default::default() };
+//
+//     let res = middleware
+//         .eth_call(req, block.map(|i| i.into()), None, None)
+//         .await
+//         .unwrap();
+//
+//     let mut return_data = data_constructorCall::abi_decode_returns(&*res,
+// false).unwrap();     *pool = populate_pool_data_from_tokens(pool.to_owned(),
+// return_data._0.remove(0));     Ok(())
+// }
+//TODO: We should bench this vs batch querying later
 pub async fn get_v2_pool_data<M: TracingProvider>(
     pool: &mut UniswapV2Pool,
     block: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    let mut bytecode = IGetUniswapV2PoolDataBatchRequest::BYTECODE.to_vec();
-    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
+    let (token_0, token_1) = join!(
+        make_call_request(token0Call::new(()), middleware.clone(), pool.address, block),
+        make_call_request(token1Call::new(()), middleware.clone(), pool.address, block)
+    );
 
-    let req =
-        CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
+    pool.token_a = token_0?._0.into();
+    pool.token_b = token_1?._0.into();
 
-    let res = middleware
-        .eth_call(req, block.map(|i| i.into()), None, None)
-        .await
-        .unwrap();
+    let (token_0_dec, token_1_dec, reserves) = join!(
+        make_call_request(decimalsCall::new(()), middleware.clone(), pool.token_a, block),
+        make_call_request(decimalsCall::new(()), middleware.clone(), pool.token_b, block),
+        make_call_request(getReservesCall::new(()), middleware.clone(), pool.address, block)
+    );
 
-    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false).unwrap();
-    *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
+    pool.token_a_decimals = token_0_dec?._0.into();
+    pool.token_b_decimals = token_1_dec?._0.into();
+
+    let reserves = reserves?;
+    pool.reserve_0 = reserves.reserve0.into();
+    pool.reserve_1 = reserves.reserve1.into();
+
     Ok(())
 }
 

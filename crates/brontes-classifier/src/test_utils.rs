@@ -1,9 +1,6 @@
-use std::{collections::HashMap, env, sync::Arc};
-
 use brontes_core::decoding::{parser::TraceParser, TracingProvider};
 use brontes_database::{clickhouse::Clickhouse, Metadata};
 use brontes_database_libmdbx::Libmdbx;
-use brontes_pricing::types::{DexPrices, DexQuotes};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use reth_primitives::Header;
 
@@ -23,26 +20,21 @@ pub fn helper_build_tree(
 pub async fn build_raw_test_tree<T: TracingProvider>(
     tracer: &TraceParser<'_, T>,
     db: &Clickhouse,
+    lib: &Libmdbx,
     block_number: u64,
 ) -> TimeTree<Actions> {
-    let (traces, header, metadata) = get_traces_with_meta(tracer, db, block_number).await;
-    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
+    let (traces, header) = get_traces_with_meta(tracer, db, block_number).await;
     let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
-    let classifier = Classifier::new(&libmdbx, tx);
-    let (_, mut tree) = classifier.build_tree(traces, header);
-    tree.eth_price = metadata.eth_prices.clone();
+    let classifier = Classifier::new(&lib, tx);
+    let (_, tree) = classifier.build_tree(traces, header);
     tree
 }
 
 pub async fn get_traces_with_meta<T: TracingProvider>(
     tracer: &TraceParser<'_, T>,
-    db: &Clickhouse,
+    _db: &Clickhouse,
     block_number: u64,
-) -> (Vec<TxTrace>, Header, Metadata) {
-    let map = Arc::new(HashMap::new());
+) -> (Vec<TxTrace>, Header) {
     let (traces, header) = tracer.execute_block(block_number).await.unwrap();
-    let metadata = db.get_metadata(block_number).await;
-    let metadata = metadata.into_finalized_metadata(DexPrices::new(map, DexQuotes(vec![])));
-    (traces, header, metadata)
+    (traces, header)
 }

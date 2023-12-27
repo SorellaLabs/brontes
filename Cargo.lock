@@ -1036,6 +1036,7 @@ dependencies = [
  "brontes-inspect",
  "brontes-metrics",
  "brontes-pricing",
+ "brontes-tracing",
  "brontes-types",
  "cfg-if",
  "clap",
@@ -1045,6 +1046,7 @@ dependencies = [
  "futures",
  "hyper",
  "indoc",
+ "itertools 0.11.0",
  "log",
  "malachite",
  "metrics-process",
@@ -1269,6 +1271,8 @@ dependencies = [
  "test-fuzz",
  "thiserror",
  "tokio",
+ "tokio-scoped",
+ "tracing",
 ]
 
 [[package]]
@@ -1419,7 +1423,6 @@ dependencies = [
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
- "brontes-database-libmdbx",
  "derive_more",
  "dotenv",
  "erased-serde",
@@ -1431,6 +1434,7 @@ dependencies = [
  "phf",
  "phf_codegen",
  "rayon",
+ "reth-codecs",
  "reth-db",
  "reth-interfaces",
  "reth-primitives",
@@ -7888,6 +7892,16 @@ checksum = "c28327cf380ac148141087fbfb9de9d7bd4e84ab5d2c28fbc911d753de8a7081"
 dependencies = [
  "rustls",
  "tokio",
+]
+
+[[package]]
+name = "tokio-scoped"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4beb8ba13bc53ac53ce1d52b42f02e5d8060f0f42138862869beb769722b256"
+dependencies = [
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, default::Default, hash::Hash, ops::MulAssign, str::FromStr};
+use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable};
@@ -6,25 +6,18 @@ use brontes_database::clickhouse::types::DBTokenPricesDB;
 use brontes_types::extra_processing::Pair;
 use bytes::BufMut;
 use malachite::{
-    num::{
-        arithmetic::traits::{Floor, ReciprocalAssign},
-        conversion::traits::RoundingFrom,
-    },
+    num::arithmetic::traits::{Floor, ReciprocalAssign},
     platform_64::Limb,
-    rounding_modes::RoundingMode,
-    Integer, Natural, Rational,
+    Natural, Rational,
 };
-use parity_scale_codec::Encode;
-use reth_codecs::{main_codec, Compact};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
 
-use crate::{tables::CexPrice, types::utils::pool_tokens, LibmdbxData};
+use crate::{tables::CexPrice, LibmdbxData};
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct CexPriceData {
@@ -321,5 +314,48 @@ impl Decompress for CexQuote {
         let binding = value.as_ref().to_vec();
         let buf = &mut binding.as_slice();
         Ok(CexQuote::decode(buf).map_err(|_| DatabaseError::Decode)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashMap, env, str::FromStr};
+
+    use alloy_primitives::{Address, U256};
+    use brontes_database::clickhouse::Clickhouse;
+    use brontes_pricing::{
+        types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair, PoolStateSnapShot},
+        uniswap_v2::UniswapV2Pool,
+        uniswap_v3::{Info, UniswapV3Pool},
+    };
+
+    use super::*;
+
+    fn init_clickhouse() -> Clickhouse {
+        dotenv::dotenv().ok();
+        let clickhouse = Clickhouse::default();
+
+        clickhouse
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
+    async fn test_insert_dex_price_clickhouse() {
+        let clickhouse = init_clickhouse();
+        let table = "brontes.cex_price_mapping";
+
+        let res = clickhouse
+            .inner()
+            .query_many::<CexPriceData>(
+                "SELECT
+        block_number,
+        data AS meta
+    FROM brontes.cex_price_mapping WHERE block_number >= 16200000 AND block_number < 16300000",
+                &(), //table,
+            )
+            .await;
+
+        assert!(res.is_ok());
+
+        //println!("{:?}", res.unwrap()[0])
     }
 }

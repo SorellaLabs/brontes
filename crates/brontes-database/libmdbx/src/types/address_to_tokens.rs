@@ -1,7 +1,7 @@
 use std::{default::Default, str::FromStr};
 
 use alloy_rlp::{Decodable, Encodable};
-use brontes_types::libmdbx_utils::serde_address_string;
+use brontes_types::libmdbx::serde::address_string;
 use reth_codecs::{main_codec, Compact};
 use reth_db::{
     table::{Compress, Decompress},
@@ -17,7 +17,7 @@ use crate::{tables::AddressToTokens, types::utils::pool_tokens, LibmdbxData};
 #[serde_as]
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct AddressToTokensData {
-    #[serde(with = "serde_address_string")]
+    #[serde(with = "address_string")]
     pub address: Address,
     #[serde(with = "pool_tokens")]
     pub tokens:  PoolTokens,
@@ -37,11 +37,12 @@ impl LibmdbxData<AddressToTokens> for AddressToTokensData {
 #[derive(Debug, Default, PartialEq, Clone, Eq)]
 #[main_codec(rlp)]
 pub struct PoolTokens {
-    pub token0: Address,
-    pub token1: Address,
-    pub token2: Option<Address>,
-    pub token3: Option<Address>,
-    pub token4: Option<Address>,
+    pub token0:     Address,
+    pub token1:     Address,
+    pub token2:     Option<Address>,
+    pub token3:     Option<Address>,
+    pub token4:     Option<Address>,
+    pub init_block: u64,
 }
 
 impl IntoIterator for PoolTokens {
@@ -57,8 +58,10 @@ impl IntoIterator for PoolTokens {
     }
 }
 
-impl From<Vec<String>> for PoolTokens {
-    fn from(value: Vec<String>) -> Self {
+impl From<(Vec<String>, u64)> for PoolTokens {
+    fn from(value: (Vec<String>, u64)) -> Self {
+        let init_block = value.1;
+        let value = value.0;
         let mut iter = value.into_iter();
         PoolTokens {
             token0: Address::from_str(&iter.next().unwrap()).unwrap(),
@@ -66,6 +69,7 @@ impl From<Vec<String>> for PoolTokens {
             token2: iter.next().map(|a| Address::from_str(&a).ok()).flatten(),
             token3: iter.next().map(|a| Address::from_str(&a).ok()).flatten(),
             token4: iter.next().map(|a| Address::from_str(&a).ok()).flatten(),
+            init_block,
         }
     }
 }
@@ -87,17 +91,19 @@ impl Encodable for PoolTokens {
         self.token2.unwrap_or_default().encode(out);
         self.token3.unwrap_or_default().encode(out);
         self.token4.unwrap_or_default().encode(out);
+        self.init_block.encode(out);
     }
 }
 
 impl Decodable for PoolTokens {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         let mut this = Self {
-            token0: Address::decode(buf)?,
-            token1: Address::decode(buf)?,
-            token2: Some(Address::decode(buf)?),
-            token3: Some(Address::decode(buf)?),
-            token4: Some(Address::decode(buf)?),
+            token0:     Address::decode(buf)?,
+            token1:     Address::decode(buf)?,
+            token2:     Some(Address::decode(buf)?),
+            token3:     Some(Address::decode(buf)?),
+            token4:     Some(Address::decode(buf)?),
+            init_block: u64::decode(buf)?,
         };
 
         if this.token2.as_ref().unwrap().is_zero() {

@@ -3,9 +3,11 @@ use std::{
     error::Error,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
+    sync::Arc,
 };
 
 use alloy_primitives::Address;
+use async_scoped::{Scope, TokioScope};
 use brontes::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
@@ -20,12 +22,13 @@ use brontes_inspect::{
 };
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
+use itertools::Itertools;
 use metrics_process::Collector;
 use reth_db::transaction::DbTx;
 use reth_tracing_ext::TracingClient;
 use tokio::{pin, sync::mpsc::unbounded_channel};
 use tracing::{error, info, Level};
-use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry};
+use tracing_subscriber::filter::Directive;
 mod banner;
 mod cli;
 
@@ -67,17 +70,20 @@ fn main() {
         .build()
         .unwrap();
 
-    let filter = EnvFilter::builder()
-        .with_default_directive(Level::INFO.into())
-        .from_env_lossy();
+    let directive: Directive = format!("brontes={}", Level::INFO).parse().unwrap();
 
-    let subscriber = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter));
+    let layers = vec![brontes_tracing::stdout(directive)];
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Could not set global default subscriber");
+    //let subscriber =
+    // Registry::default().with(tracing_subscriber::fmt::layer().
+    // with_filter(filter));
+
+    //tracing::subscriber::set_global_default(subscriber)
+    //  .expect("Could not set global default subscriber");
+    brontes_tracing::init(layers);
 
     match runtime.block_on(run()) {
-        Ok(()) => info!("SUCCESS!"),
+        Ok(()) => info!(target: "brontes", "SUCCESS!"),
         Err(e) => {
             error!("Error: {:?}", e);
 
@@ -91,7 +97,7 @@ fn main() {
 }
 
 async fn run() -> Result<(), Box<dyn Error>> {
-    initalize_prometheus().await;
+    // initalize_prometheus().await;
     // parse cli
     let opt = Args::parse();
 
@@ -103,10 +109,12 @@ async fn run() -> Result<(), Box<dyn Error>> {
 }
 
 async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
+    initialize_prometheus().await;
+
     // Fetch required environment variables.
     let db_path = get_env_vars()?;
 
-    let max_tasks = determine_max_tasks(&run_config);
+    let max_tasks = determine_max_tasks(run_config.max_tasks);
 
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
@@ -175,9 +183,9 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
 async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
-    let clickhouse = Clickhouse::default();
+    let clickhouse = Arc::new(Clickhouse::default());
 
-    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None)?;
+    let libmdbx = Arc::new(Libmdbx::init_db(brontes_db_endpoint, None)?);
     if init_config.init_libmdbx {
         // currently inits all tables
         let range =
@@ -187,7 +195,23 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
                 None
             };
         libmdbx
-            .clear_and_initialize_tables(&clickhouse, &Tables::ALL, range)
+            .clear_and_initialize_tables(
+                clickhouse.clone(),
+                init_config
+                    .tables_to_init
+                    .unwrap_or({
+                        if init_config.download_dex_pricing {
+                            let tables = Tables::ALL.to_vec();
+                            //tables.retain(|table| table != &Tables::CexPrice);
+                            //println!("TABLES: {:?}", tables);
+                            tables
+                        } else {
+                            Tables::ALL_NO_DEX.to_vec()
+                        }
+                    })
+                    .as_slice(),
+                range,
+            )
             .await?;
     }
 
@@ -197,9 +221,12 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
 }
 
 async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<dyn Error>> {
+    assert!(config.start_block <= config.end_block);
+    info!(?config);
+
     let db_path = get_env_vars()?;
 
-    let max_tasks = config.max_tasks.unwrap_or(5);
+    let max_tasks = determine_max_tasks(config.max_tasks);
 
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
@@ -213,11 +240,8 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
         Box::leak(Box::new(InspectorHolder::new(config.quote_asset.parse().unwrap(), &libmdbx)));
     let inspectors: Inspectors = inspector_holder.get_inspectors();
 
-    let (mut manager, tracer) = TracingClient::new(
-        Path::new(&db_path),
-        tokio::runtime::Handle::current(),
-        max_tasks as u32,
-    );
+    let (mut manager, tracer) =
+        TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), max_tasks);
 
     let parser = DParser::new(
         metrics_tx,
@@ -226,24 +250,50 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
 
-    let batch = DataBatching::new(
-        config.quote_asset.parse().unwrap(),
-        0,
-        1,
-        config.start_block,
-        config.end_block,
-        &parser,
-        &libmdbx,
-        &inspectors,
-    );
+    let cpus = determine_max_tasks(config.max_tasks);
 
-    pin!(batch);
+    let range = config.end_block - config.start_block;
+
+    let cpus_min = range / config.min_batch_size + 1;
+
+    let mut scope: TokioScope<'_, ()> = unsafe { Scope::create() };
+
+    // the amount of cpu's we want to use
+    let cpus = std::cmp::min(cpus_min, cpus);
+
+    let chunk_size = range / cpus + 1;
+
+    for (i, mut chunk) in (config.start_block..=config.end_block)
+        .chunks(chunk_size.try_into().unwrap())
+        .into_iter()
+        .enumerate()
+    {
+        let start_block = chunk.next().unwrap();
+        let end_block = chunk.last().unwrap_or(start_block);
+
+        info!(batch_id = i, start_block, end_block, "starting batch");
+
+        scope.spawn(spawn_batches(
+            config.quote_asset.parse().unwrap(),
+            0,
+            i as u64,
+            start_block,
+            end_block,
+            &parser,
+            libmdbx,
+            &inspectors,
+        ));
+    }
+
+    // let range
+
     pin!(metrics_listener);
+    let mut fut = Box::pin(scope.collect());
 
     // wait for completion
     tokio::select! {
-        _ = &mut batch => {
-            info!("finnished running batch , shutting down");
+        _ = &mut fut => {
+            info!("finnished running all batch , shutting down");
         }
         _ = Pin::new(&mut manager) => {
         }
@@ -255,17 +305,41 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
     Ok(())
 }
 
-fn determine_max_tasks(run_config: &Run) -> u32 {
-    match run_config.max_tasks {
-        Some(max_tasks) => max_tasks as u32,
+async fn spawn_batches(
+    quote_asset: Address,
+    run_id: u64,
+    batch_id: u64,
+    start_block: u64,
+    end_block: u64,
+    parser: &DParser<'_, TracingClient>,
+    libmdbx: &Libmdbx,
+    inspectors: &Inspectors<'_>,
+) {
+    info!(%batch_id, %start_block, %end_block,"starting batch");
+    DataBatching::new(
+        quote_asset,
+        run_id,
+        batch_id,
+        start_block,
+        end_block,
+        &parser,
+        &libmdbx,
+        &inspectors,
+    )
+    .await
+}
+
+fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
+    match max_tasks {
+        Some(max_tasks) => max_tasks as u64,
         None => {
             let cpus = num_cpus::get_physical();
-            (cpus as f32 * 0.8) as u32 // 80% of physical cores
+            (cpus as f64 * 0.5) as u64 // 50% of physical cores
         }
     }
 }
 
-async fn initalize_prometheus() {
+async fn initialize_prometheus() {
     // initializes the prometheus endpoint
     initialize(
         SocketAddr::new(

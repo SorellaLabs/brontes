@@ -18,9 +18,11 @@ action_impl!(
     swapCall,
     Swap,
     UniswapV2,
+    call_data: true,
     logs: true,
-    |index, from_address: Address, target_address: Address, data: Option<Swap>, db_tx: &LibmdbxTx<RO>| {
+    |index, from_address: Address, target_address: Address, call_data: swapCall, data: Option<Swap>, db_tx: &LibmdbxTx<RO>| {
         let data = data?;
+        let recipient = call_data.to;
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
@@ -31,6 +33,7 @@ action_impl!(
                 pool: target_address,
                 index,
                 from: from_address,
+                recipient,
                 token_in: token_1,
                 token_out: token_0,
                 amount_in: data.amount1In,
@@ -41,6 +44,7 @@ action_impl!(
                 index,
                 pool: target_address,
                 from: from_address,
+                recipient,
                 token_in: token_0,
                 token_out: token_1,
                 amount_in: data.amount0In,
