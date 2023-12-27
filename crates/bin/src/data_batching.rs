@@ -181,7 +181,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
             && self.collection_future.is_none()
             && self.processing_futures.is_empty()
             // we have no more data and no more processing was queued
-            && self.pricer.poll_next_unpin(cx).map(|i| i.is_none()) == Poll::Ready(false)
+            && self.pricer.poll_next_unpin(cx).map(|i| i.is_none()) == Poll::Ready(true)
         {
             return Poll::Ready(())
         }
