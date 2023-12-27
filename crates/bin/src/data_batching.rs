@@ -33,6 +33,7 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
 
     current_block: u64,
     end_block:     u64,
+    batch_id:      u64,
 
     libmdbx:    &'db Libmdbx,
     inspectors: &'db [&'db Box<dyn Inspector>; N],
@@ -55,7 +56,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
 
         let mut rest_pairs = HashMap::default();
-        for i in start_block + 1..=end_block {
+        for i in start_block + 1..end_block {
             let pairs = libmdbx.addresses_init_block(i).unwrap();
             rest_pairs.insert(i, pairs);
         }
@@ -84,6 +85,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             pricer,
             current_block: start_block,
             end_block,
+            batch_id,
             libmdbx,
             inspectors,
         }
@@ -167,6 +169,14 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
 
         // poll pricer
         while let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
+            if meta.block_num == self.end_block {
+                info!(
+                    batch_id = self.batch_id,
+                    end_block = self.end_block,
+                    "batch finished completed"
+                );
+            }
+
             self.on_price_finish(tree, meta);
         }
 
