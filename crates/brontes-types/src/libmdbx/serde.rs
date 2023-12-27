@@ -46,8 +46,7 @@ pub mod vec_address_string {
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        data
-            .into_iter()
+        data.into_iter()
             .map(|d| Address::from_str(&d))
             .collect::<Result<Vec<_>, <Address as FromStr>::Err>>()
             .map_err(serde::de::Error::custom)
