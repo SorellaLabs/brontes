@@ -31,6 +31,12 @@ pub struct StateBuffer {
     pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
     pub overrides: HashMap<u64, HashSet<Address>>,
 }
+impl Default for StateBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StateBuffer {
     pub fn new() -> Self {
         Self { updates: HashMap::default(), overrides: HashMap::default() }
