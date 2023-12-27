@@ -59,13 +59,14 @@ impl Inspector for AtomicBackrunInspector<'_> {
                         tokens.insert(swap.pool, swap.token_out);
                     });
 
+                let entries = tokens.len();
                 if tokens
                     .values()
                     .sorted()
                     .dedup_with_count()
-                    .collect::<Vec<_>>()
-                    .len()
-                    == 0
+                    .map(|(i, _)| i)
+                    .sum::<usize>()
+                    == entries
                 {
                     return None
                 }
