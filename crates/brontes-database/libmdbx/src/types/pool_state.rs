@@ -1,29 +1,18 @@
-use std::{collections::HashMap, default::Default, hash::Hash, ops::MulAssign, str::FromStr};
-
 use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable};
 use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
-use brontes_types::{
-    impl_compress_decompress_for_encoded_decoded, libmdbx_utils::serde_address_string,
-};
+use brontes_types::{impl_compress_decompress_for_encoded_decoded, libmdbx::serde::address_string};
 use bytes::BufMut;
-use reth_db::{
-    table::{Compress, Decompress},
-    DatabaseError,
-};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sorella_db_databases::{clickhouse, Row};
 
 use super::LibmdbxData;
-use crate::{
-    tables::PoolState,
-    types::utils::{pool_key, pool_state},
-};
+use crate::{tables::PoolState, types::utils::pool_state};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Row, Deserialize)]
 pub struct PoolStateData {
-    #[serde(with = "serde_address_string")]
+    #[serde(with = "address_string")]
     pub pool:         Address,
     pub run:          u64,
     pub batch:        u64,
@@ -190,6 +179,8 @@ mod tests {
                         );
                         map
                     },
+                    reserve_0:        Default::default(),
+                    reserve_1:        Default::default(),
                 }),
                 pool_type:    PoolStateType::UniswapV3,
             },

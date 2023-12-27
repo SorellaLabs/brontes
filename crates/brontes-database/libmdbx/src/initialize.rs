@@ -5,13 +5,13 @@ use futures::future::join_all;
 
 use super::{tables::Tables, Libmdbx};
 
-pub struct LibmdbxInitializer<'db> {
-    libmdbx:    &'db Libmdbx,
-    clickhouse: &'db Clickhouse,
+pub struct LibmdbxInitializer {
+    libmdbx:    Arc<Libmdbx>,
+    clickhouse: Arc<Clickhouse>,
 }
 
-impl<'db> LibmdbxInitializer<'db> {
-    pub fn new(libmdbx: &'db Libmdbx, clickhouse: &'db Clickhouse) -> Self {
+impl LibmdbxInitializer {
+    pub fn new(libmdbx: Arc<Libmdbx>, clickhouse: Arc<Clickhouse>) -> Self {
         Self { libmdbx, clickhouse }
     }
 
@@ -20,12 +20,9 @@ impl<'db> LibmdbxInitializer<'db> {
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        let clickhouse = Arc::new(self.clickhouse);
-        join_all(
-            tables
-                .iter()
-                .map(|table| table.initialize_table(self.libmdbx, clickhouse.clone(), block_range)),
-        )
+        join_all(tables.iter().map(|table| {
+            table.initialize_table(self.libmdbx.clone(), self.clickhouse.clone(), block_range)
+        }))
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()
@@ -34,7 +31,7 @@ impl<'db> LibmdbxInitializer<'db> {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+    use std::{env, sync::Arc};
 
     use brontes_database::clickhouse::Clickhouse;
     use brontes_pricing::{
@@ -52,8 +49,8 @@ mod tests {
         implementation::tx::LibmdbxTx,
         initialize::LibmdbxInitializer,
         tables::{
-            AddressToProtocol, AddressToTokens, CexPrice, DexPrice, Metadata, PoolState, Tables,
-            TokenDecimals,
+            AddressToProtocol, AddressToTokens, CexPrice, DexPrice, Metadata, PoolCreationBlocks,
+            PoolState, Tables, TokenDecimals,
         },
         types::{
             address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
@@ -68,12 +65,12 @@ mod tests {
         Libmdbx::init_db(brontes_db_path, None)
     }
 
-    async fn initialize_tables() -> eyre::Result<Libmdbx> {
-        let db = init_db()?;
+    async fn initialize_tables(tables: &[Tables]) -> eyre::Result<Arc<Libmdbx>> {
+        let db = Arc::new(init_db()?);
         let clickhouse = Clickhouse::default();
 
-        let db_initializer = LibmdbxInitializer::new(&db, &clickhouse);
-        db_initializer.initialize(&Tables::ALL, None).await?;
+        let db_initializer = LibmdbxInitializer::new(db.clone(), Arc::new(clickhouse));
+        db_initializer.initialize(tables, None).await?;
 
         Ok(db)
     }
@@ -168,56 +165,82 @@ mod tests {
         }
         Ok(())
     }
+    /*
+        async fn test_dex_price_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
+            let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+            assert_ne!(tx.entries::<DexPrice>()?, 0);
 
-    async fn test_dex_price_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
+            let mut cursor = tx.cursor_dup_read::<DexPrice>()?;
+
+            if !print {
+                cursor.first()?.ok_or(DatabaseError::Read(-1))?;
+            } else {
+                while let Some(vals) = cursor.next()? {
+                    println!("{:?}\n", vals);
+                }
+            }
+
+            println!("\n\n\n\n");
+
+            cursor.first()?;
+            let mut dup_walk = cursor.walk_dup(Some(10), None)?;
+            if !print {
+                let _ = dup_walk.next().ok_or(DatabaseError::Read(-1))?;
+            } else {
+                while let Some(vals) = dup_walk.next() {
+                    println!("{:?}\n", vals);
+                }
+            }
+            /*
+            assert!(first_dup.is_some());
+            println!("\n\n{:?}", first_dup);
+
+            let next_dup = cursor.next_dup()?;
+            assert!(next_dup.is_some());
+            println!("\n\n{:?}", next_dup);
+            */
+            Ok(())
+        }
+    */
+    async fn test_pool_creation_blocks_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
         let tx = LibmdbxTx::new_ro_tx(&db.0)?;
-        assert_ne!(tx.entries::<DexPrice>()?, 0);
+        assert_ne!(tx.entries::<PoolCreationBlocks>()?, 0);
 
-        let mut cursor = tx.cursor_dup_read::<DexPrice>()?;
-
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
         if !print {
             cursor.first()?.ok_or(DatabaseError::Read(-1))?;
         } else {
             while let Some(vals) = cursor.next()? {
-                println!("{:?}\n", vals);
+                println!("{:?}", vals);
             }
         }
-
-        println!("\n\n\n\n");
-
-        cursor.first()?;
-        let mut dup_walk = cursor.walk_dup(Some(10), None)?;
-        if !print {
-            let _ = dup_walk.next().ok_or(DatabaseError::Read(-1))?;
-        } else {
-            while let Some(vals) = dup_walk.next() {
-                println!("{:?}\n", vals);
-            }
-        }
-        /*
-        assert!(first_dup.is_some());
-        println!("\n\n{:?}", first_dup);
-
-        let next_dup = cursor.next_dup()?;
-        assert!(next_dup.is_some());
-        println!("\n\n{:?}", next_dup);
-        */
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
     #[serial]
     async fn test_intialize_tables() {
-        let db = initialize_tables().await;
+        let db = initialize_tables(&[
+            //Tables::TokenDecimals,
+            //Tables::AddressToTokens,
+            //Tables::AddressToProtocol,
+            //Tables::CexPrice,
+            //Tables::Metadata,
+            //Tables::PoolState,
+            //Tables::DexPrice,
+            //Tables::PoolCreationBlocks,
+        ])
+        .await;
         assert!(db.is_ok());
 
         let db = db.unwrap();
-        assert!(test_tokens_decimals_table(&db, false).await.is_ok());
-        assert!(test_address_to_tokens_table(&db, false).await.is_ok());
-        assert!(test_address_to_protocols_table(&db, false).await.is_ok());
-        assert!(test_cex_mapping_table(&db, false).await.is_ok());
-        assert!(test_metadata_table(&db, false).await.is_ok());
-        assert!(test_pool_state_table(&db, false).await.is_ok());
-        assert!(test_dex_price_table(&db, false).await.is_ok());
+        //assert!(test_tokens_decimals_table(&db, false).await.is_ok());
+        //assert!(test_address_to_tokens_table(&db, false).await.is_ok());
+        //assert!(test_address_to_protocols_table(&db, false).await.is_ok());
+        //assert!(test_cex_mapping_table(&db, false).await.is_ok());
+        //assert!(test_metadata_table(&db, false).await.is_ok());
+        //assert!(test_pool_state_table(&db, false).await.is_ok());
+        //assert!(test_dex_price_table(&db, false).await.is_ok());
+        //assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
     }
 }

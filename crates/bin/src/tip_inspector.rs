@@ -13,10 +13,7 @@ use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
 };
-use brontes_pricing::{
-    types::{DexPrices, DexQuotes},
-    BrontesBatchPricer,
-};
+use brontes_pricing::types::{DexPrices, DexQuotes};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
@@ -40,6 +37,7 @@ pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
 
     composer_future:  Option<Pin<Box<dyn Future<Output = ComposerResults> + Send + 'inspector>>>,
     // pending insertion data
+    #[allow(dead_code)]
     insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
