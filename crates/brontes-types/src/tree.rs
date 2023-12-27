@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use alloy_rlp::{RlpDecodable, RlpEncodable};
 use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, B256};
@@ -239,12 +240,13 @@ impl<V: NormalizedAction> Root<V> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default, RlpEncodable, RlpDecodable)]
+#[rlp(trailing)]
 pub struct GasDetails {
-    pub coinbase_transfer:   Option<u128>,
     pub priority_fee:        u128,
     pub gas_used:            u128,
     pub effective_gas_price: u128,
+    pub coinbase_transfer:   Option<u128>,
 }
 
 impl GasDetails {

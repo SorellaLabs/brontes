@@ -1,6 +1,8 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
+
+use crate::types::mev_block::{MevBlockWithClassified, MevBlocksData};
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
@@ -257,6 +259,11 @@ table!(
 table!(
     /// block number -> pools created in block
     ( PoolCreationBlocks ) u64 | PoolsLibmdbx
+);
+
+table!(
+    /// block number -> all mev in block
+    ( MevBlocks )  u64 | MevBlockWithClassified
 );
 
 /*

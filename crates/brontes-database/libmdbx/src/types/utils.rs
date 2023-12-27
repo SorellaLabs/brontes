@@ -125,8 +125,7 @@ pub(crate) mod vec_txhash {
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        data
-            .into_iter()
+        data.into_iter()
             .map(|d| TxHash::from_str(&d))
             .collect::<Result<Vec<_>, <TxHash as FromStr>::Err>>()
             .map_err(serde::de::Error::custom)

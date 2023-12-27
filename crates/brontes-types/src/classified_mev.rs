@@ -1,6 +1,9 @@
-use std::{any::Any, fmt::Debug};
+use std::{any::Any, fmt::Debug, u128};
 
 use alloy_primitives::{Address, U256};
+use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
+use alloy_sol_types::SolValue;
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::B256;
 use serde::Serialize;
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -41,6 +44,100 @@ pub struct MevBlock {
     // gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
     pub cumulative_mev_finalized_profit_usd: f64,
+}
+impl Decodable for MevBlock {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let block_hash = B256::decode(buf)?;
+        let block_number = u64::decode(buf)?;
+        let mev_count = u64::decode(buf)?;
+        let res: Rational = serde_json::from_slice(&Vec::<u8>::decode(buf)?).unwrap();
+        let finalized_eth_price = f64::rounding_from(res, RoundingMode::Nearest).0;
+        let cumulative_gas_used = u128::decode(buf)?;
+        let cumulative_gas_paid = u128::decode(buf)?;
+        let total_bribe = u128::decode(buf)?;
+        let cumulative_mev_priority_fee_paid = u128::decode(buf)?;
+        let builder_address = Address::decode(buf)?;
+        let builder_eth_profit = i128::abi_decode(&Vec::<u8>::decode(buf)?, false).unwrap();
+        let res: Rational = serde_json::from_slice(&Vec::<u8>::decode(buf)?).unwrap();
+        let builder_finalized_profit_usd = f64::rounding_from(res, RoundingMode::Nearest).0;
+
+        let proposer_fee_recipient =
+            if u8::decode(buf)? != 0 { Some(Address::decode(buf)?) } else { None };
+        let proposer_mev_reward =
+            if u8::decode(buf)? != 0 { Some(u128::decode(buf)?) } else { None };
+        let proposer_finalized_profit_usd = if u8::decode(buf)? != 0 {
+            let res: Rational = serde_json::from_slice(&Vec::<u8>::decode(buf)?).unwrap();
+            Some(f64::rounding_from(res, RoundingMode::Nearest).0)
+        } else {
+            None
+        };
+
+        let res: Rational = serde_json::from_slice(&Vec::<u8>::decode(buf)?).unwrap();
+        let cumulative_mev_finalized_profit_usd = f64::rounding_from(res, RoundingMode::Nearest).0;
+
+        Ok(Self {
+            proposer_finalized_profit_usd,
+            proposer_mev_reward,
+            builder_address,
+            proposer_fee_recipient,
+            builder_finalized_profit_usd,
+            builder_eth_profit,
+            block_number,
+            cumulative_mev_priority_fee_paid,
+            cumulative_mev_finalized_profit_usd,
+            total_bribe,
+            cumulative_gas_paid,
+            cumulative_gas_used,
+            finalized_eth_price,
+            mev_count,
+            block_hash,
+        })
+    }
+}
+
+impl Encodable for MevBlock {
+    fn encode(&self, out: &mut dyn alloy_rlp::BufMut) {
+        self.block_hash.encode(out);
+        self.block_number.encode(out);
+        self.mev_count.encode(out);
+        let r = Rational::try_from_float_simplest(self.finalized_eth_price).unwrap();
+        let res = serde_json::to_vec(&r).unwrap();
+        res.encode(out);
+        self.cumulative_gas_used.encode(out);
+        self.cumulative_gas_paid.encode(out);
+        self.total_bribe.encode(out);
+        self.cumulative_mev_priority_fee_paid.encode(out);
+        self.builder_address.encode(out);
+        self.builder_eth_profit.abi_encode().encode(out);
+        let r = Rational::try_from_float_simplest(self.builder_finalized_profit_usd).unwrap();
+        let res = serde_json::to_vec(&r).unwrap();
+        res.encode(out);
+        if let Some(res) = self.proposer_fee_recipient.as_ref() {
+            1u8.encode(out);
+            res.encode(out);
+        } else {
+            0u8.encode(out);
+        }
+        if let Some(res) = self.proposer_mev_reward.as_ref() {
+            1u8.encode(out);
+            res.encode(out);
+        } else {
+            0u8.encode(out);
+        }
+        if let Some(res) = self.proposer_finalized_profit_usd.as_ref() {
+            1u8.encode(out);
+            let r = Rational::try_from_float_simplest(*res).unwrap();
+            let res = serde_json::to_vec(&r).unwrap();
+            res.encode(out);
+        } else {
+            0u8.encode(out);
+        }
+
+        let r =
+            Rational::try_from_float_simplest(self.cumulative_mev_finalized_profit_usd).unwrap();
+        let res = serde_json::to_vec(&r).unwrap();
+        res.encode(out);
+    }
 }
 
 #[serde_as]
@@ -109,7 +206,7 @@ impl serde::Serialize for dyn SpecificMev {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Row, Clone, Default, RlpDecodable, RlpEncodable)]
 pub struct Sandwich {
     #[serde_as(as = "FixedString")]
     pub frontrun_tx_hash: B256,
@@ -161,7 +258,7 @@ pub struct Sandwich {
     #[serde(rename = "victim_swaps.amount_out")]
     pub victim_swaps_amount_out: Vec<U256>,
     #[serde(rename = "victim_gas_details.coinbase_transfer")]
-    pub victim_gas_details_coinbase_transfer: Vec<Option<u128>>,
+    pub victim_gas_details_coinbase_transfer: Vec<u128>,
     #[serde(rename = "victim_gas_details.priority_fee")]
     pub victim_gas_details_priority_fee: Vec<u128>,
     #[serde(rename = "victim_gas_details.gas_used")]
@@ -360,7 +457,7 @@ pub struct JitLiquiditySandwich {
     #[serde(rename = "victim_swaps.amount_out")]
     pub victim_swaps_amount_out: Vec<U256>,
     #[serde(rename = "victim_gas_details.coinbase_transfer")]
-    pub victim_gas_details_coinbase_transfer: Vec<Option<u128>>,
+    pub victim_gas_details_coinbase_transfer: Vec<u128>,
     #[serde(rename = "victim_gas_details.priority_fee")]
     pub victim_gas_details_priority_fee: Vec<u128>,
     #[serde(rename = "victim_gas_details.gas_used")]
