@@ -50,18 +50,21 @@ impl Inspector for AtomicBackrunInspector<'_> {
 
                 // take all swaps and remove swaps that don't do more than a single swap. This
                 // removes all cex <> dex arbs and one off funky swaps
-                let mut tokens = HashMap::new();
+                let mut tokens: HashMap<Address, Vec<Address>> = HashMap::new();
                 swaps
                     .iter()
                     .filter(|s| s.is_swap())
                     .map(|f| f.clone().force_swap())
                     .for_each(|swap| {
-                        tokens.insert(swap.pool, swap.token_out);
+                        let e = tokens.entry(swap.pool).or_default();
+                        e.push(swap.token_in);
+                        e.push(swap.token_out);
                     });
 
                 let entries = tokens.len();
                 if tokens
                     .values()
+                    .flatten()
                     .sorted()
                     .dedup_with_count()
                     .map(|(i, _)| i)
