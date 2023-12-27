@@ -10,13 +10,12 @@ use brontes_types::{
     normalized_actions::Actions,
 };
 use bytes::BufMut;
-// use crate::exchanges::{uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_codecs::derive_arbitrary;
 use reth_rpc_types::Log;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
-use tracing::info;
+use tracing::warn;
 
 use crate::{
     graph::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
@@ -84,7 +83,7 @@ impl DexPrices {
             return Some(Rational::from(1))
         }
         let Some(keys) = self.quotes.get_pair_keys(pair, tx) else {
-            info!(?pair, tx_idx=%tx, "failed to get price for");
+            warn!(?pair, tx_idx=%tx, "failed to get price for");
             return None
         };
         let mut price = Rational::ZERO;
