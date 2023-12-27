@@ -39,7 +39,7 @@ pub(crate) mod static_bindings {
         u: &StaticBindingsDb,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let st: String = u.clone().into();
+        let st: String = (*u).into();
         st.serialize(serializer)
     }
 
@@ -75,7 +75,7 @@ pub(crate) mod u256 {
     {
         let data: String = Deserialize::deserialize(deserializer)?;
 
-        Ok(U256::from_str(&data).map_err(serde::de::Error::custom)?)
+        U256::from_str(&data).map_err(serde::de::Error::custom)
     }
 }
 
@@ -100,7 +100,7 @@ pub(crate) mod address {
     {
         let data: String = Deserialize::deserialize(deserializer)?;
 
-        Ok(Address::from_str(&data).map_err(serde::de::Error::custom)?)
+        Address::from_str(&data).map_err(serde::de::Error::custom)
     }
 }
 
@@ -125,11 +125,11 @@ pub(crate) mod vec_txhash {
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(data
+        data
             .into_iter()
             .map(|d| TxHash::from_str(&d))
             .collect::<Result<Vec<_>, <TxHash as FromStr>::Err>>()
-            .map_err(serde::de::Error::custom)?)
+            .map_err(serde::de::Error::custom)
     }
 }
 
