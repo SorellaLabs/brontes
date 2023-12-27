@@ -108,6 +108,6 @@ impl Decompress for MetadataInner {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
         let buf = &mut binding.as_slice();
-        Ok(MetadataInner::decode(buf).map_err(|_| DatabaseError::Decode)?)
+        MetadataInner::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }

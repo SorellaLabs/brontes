@@ -24,6 +24,6 @@ impl LibmdbxData<AddressToProtocol> for AddressToProtocolData {
         <AddressToProtocol as reth_db::table::Table>::Key,
         <AddressToProtocol as reth_db::table::Table>::Value,
     ) {
-        (self.address, self.classifier_name.clone())
+        (self.address, self.classifier_name)
     }
 }
