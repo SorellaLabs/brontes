@@ -168,7 +168,7 @@ impl SandwichInspector<'_> {
 
         if !backrun_swaps
             .iter()
-            .all(|inner| pools.contains(&inner.pool))
+            .any(|inner| pools.contains(&inner.pool))
         {
             return None
         }
