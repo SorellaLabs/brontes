@@ -444,6 +444,8 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
 
                 if self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty() {
+                    info!(batch=self.batch_id,block=?self.current_block, "brontes pricing completed");
+
                     return Poll::Ready(self.on_close())
                 }
             }
