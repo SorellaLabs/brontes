@@ -261,7 +261,7 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
     // the amount of cpu's we want to use
     let cpus = std::cmp::min(cpus_min, cpus);
 
-    let chunk_size = range / cpus + 1;
+    let chunk_size = (range / cpus) + 1;
 
     for (i, mut chunk) in (config.start_block..=config.end_block)
         .chunks(chunk_size.try_into().unwrap())
@@ -315,6 +315,7 @@ async fn spawn_batches(
     libmdbx: &Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
+    info!(%batch_id, %start_block, %end_block,"starting batch");
     DataBatching::new(
         quote_asset,
         run_id,
