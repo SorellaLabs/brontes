@@ -204,7 +204,7 @@ impl TracingInspectorLocal {
     fn iter_traceable_nodes(&self) -> impl Iterator<Item = &CallTraceNode> {
         self.traces
             .nodes()
-            .into_iter()
+            .iter()
             .filter(|node| !node.trace.maybe_precompile.unwrap_or(false))
     }
 
@@ -234,8 +234,8 @@ impl TracingInspectorLocal {
                     log_index:         None,
                     block_hash:        info.block_hash,
                     transaction_hash:  info.hash,
-                    block_number:      info.block_number.map(|i| U256::from(i)),
-                    transaction_index: info.index.map(|i| U256::from(i)),
+                    block_number:      info.block_number.map(U256::from),
+                    transaction_index: info.index.map(U256::from),
                     removed:           false,
                     address:           node.trace.address,
                 })

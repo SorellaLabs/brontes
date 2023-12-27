@@ -124,8 +124,8 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
         make_call_request(token1Call::new(()), middleware.clone(), pool.address, block)
     );
 
-    pool.token_a = token_0?._0.into();
-    pool.token_b = token_1?._0.into();
+    pool.token_a = token_0?._0;
+    pool.token_b = token_1?._0;
 
     let (token_0_dec, token_1_dec, reserves) = join!(
         make_call_request(decimalsCall::new(()), middleware.clone(), pool.token_a, block),
@@ -133,12 +133,12 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
         make_call_request(getReservesCall::new(()), middleware.clone(), pool.address, block)
     );
 
-    pool.token_a_decimals = token_0_dec?._0.into();
-    pool.token_b_decimals = token_1_dec?._0.into();
+    pool.token_a_decimals = token_0_dec?._0;
+    pool.token_b_decimals = token_1_dec?._0;
 
     let reserves = reserves?;
-    pool.reserve_0 = reserves.reserve0.into();
-    pool.reserve_1 = reserves.reserve1.into();
+    pool.reserve_0 = reserves.reserve0;
+    pool.reserve_1 = reserves.reserve1;
 
     Ok(())
 }
