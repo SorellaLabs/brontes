@@ -73,7 +73,6 @@ impl Inspector for AtomicBackrunInspector<'_> {
                 if overlaps <= entries {
                     return None
                 }
-                println!("e: {entries}, o: {overlaps}");
 
                 self.process_swaps(
                     tx,
