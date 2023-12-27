@@ -189,7 +189,7 @@ impl Libmdbx {
         let tx = LibmdbxTx::new_rw_tx(&self.0)?;
 
         entries
-            .into_iter()
+            .iter()
             .map(|entry| {
                 let (key, val) = entry.into_key_val();
                 tx.put::<T>(key, val)

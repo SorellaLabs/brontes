@@ -33,6 +33,7 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
 
     current_block: u64,
     end_block:     u64,
+    batch_id:      u64,
 
     libmdbx:    &'db Libmdbx,
     inspectors: &'db [&'db Box<dyn Inspector>; N],
@@ -55,8 +56,8 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
 
         let mut rest_pairs = HashMap::default();
-        for i in start_block + 1..=end_block {
-            let pairs = libmdbx.addresses_init_block(i).unwrap();
+        for i in start_block + 1..end_block {
+            let pairs = libmdbx.addresses_init_block(i).unwrap_or_default();
             rest_pairs.insert(i, pairs);
         }
 
@@ -84,6 +85,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             pricer,
             current_block: start_block,
             end_block,
+            batch_id,
             libmdbx,
             inspectors,
         }
@@ -144,6 +146,19 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // poll pricer
+        while let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
+            if meta.block_num == self.end_block {
+                info!(
+                    batch_id = self.batch_id,
+                    end_block = self.end_block,
+                    "batch finished completed"
+                );
+            }
+
+            self.on_price_finish(tree, meta);
+        }
+
         // progress collection future,
         if let Some(mut future) = self.collection_future.take() {
             if let Poll::Ready((tree, meta)) = future.poll_unpin(cx) {
@@ -153,30 +168,20 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
             } else {
                 self.collection_future = Some(future);
             }
-        } else {
-            if self.current_block == self.end_block
-                && self.pricer.is_complete()
-                && self.processing_futures.is_empty()
-            {
-                return Poll::Ready(())
-            } else if self.current_block != self.end_block {
-                self.current_block += 1;
-                self.start_next_block();
-            }
-        }
-
-        // poll pricer
-        while let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
-            self.on_price_finish(tree, meta);
+        } else if self.current_block != self.end_block {
+            self.current_block += 1;
+            self.start_next_block();
         }
 
         // poll insertion
         while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
 
+        // return condition
         if self.current_block == self.end_block
             && self.collection_future.is_none()
-            && self.pricer.is_complete()
             && self.processing_futures.is_empty()
+            // we have no more data and no more processing was queued
+            && self.pricer.poll_next_unpin(cx).map(|i| i.is_none()) == Poll::Ready(true)
         {
             return Poll::Ready(())
         }
@@ -223,10 +228,6 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             self.pending_trees.insert(block, (tree, meta)).is_none(),
             "traced a duplicate block"
         );
-    }
-
-    pub fn is_complete(&self) -> bool {
-        self.pending_trees.is_empty()
     }
 }
 
@@ -312,6 +313,8 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
                     .map_or("None".to_string(), |v| format!("{:.2}", v)),
                 block_details.cumulative_mev_finalized_profit_usd
             );
+
+            println!("{:#?}", mev_details);
 
             self.database
                 .insert_classified_data(block_details, mev_details);
