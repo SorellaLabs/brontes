@@ -5,7 +5,6 @@ use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc::eth::error::EthResult;
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
-use tracing::info;
 
 use crate::TracingClient;
 
@@ -27,7 +26,7 @@ impl TracingProvider for TracingClient {
     async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
         self.trace
             .provider()
-            .block_hash_for_id(BlockId::Number(BlockNumberOrTag::Number(block_num.into())))
+            .block_hash_for_id(BlockId::Number(BlockNumberOrTag::Number(block_num)))
     }
 
     #[cfg(not(feature = "local"))]

@@ -1,12 +1,12 @@
+use std::fmt::Display;
+
 use alloy_rlp::{Decodable, Encodable};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
-use reth_primitives::{Address, BufMut};
+use reth_primitives::BufMut;
 use serde::{Deserialize, Serialize};
-
-use crate::libmdbx_utils::serde_address_string;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash, Serialize, Deserialize)]
@@ -16,6 +16,25 @@ pub enum StaticBindingsDb {
     UniswapV3,
     SushiSwapV3,
     CurveCryptoSwap,
+}
+
+impl StaticBindingsDb {
+    pub fn as_string(&self) -> String {
+        match self {
+            StaticBindingsDb::UniswapV2 => "UniswapV2".to_string(),
+            StaticBindingsDb::SushiSwapV2 => "SushiSwapV2".to_string(),
+            StaticBindingsDb::UniswapV3 => "UniswapV3".to_string(),
+            StaticBindingsDb::SushiSwapV3 => "SushiSwapV3".to_string(),
+            StaticBindingsDb::CurveCryptoSwap => "CurveCryptoSwap".to_string(),
+        }
+    }
+}
+
+impl Display for StaticBindingsDb {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = self.as_string();
+        writeln!(f, "{string}")
+    }
 }
 
 impl From<String> for StaticBindingsDb {
@@ -33,13 +52,7 @@ impl From<String> for StaticBindingsDb {
 
 impl Into<String> for StaticBindingsDb {
     fn into(self) -> String {
-        match self {
-            StaticBindingsDb::UniswapV2 => "UniswapV2".to_string(),
-            StaticBindingsDb::SushiSwapV2 => "SushiSwapV2".to_string(),
-            StaticBindingsDb::UniswapV3 => "UniswapV3".to_string(),
-            StaticBindingsDb::SushiSwapV3 => "SushiSwapV3".to_string(),
-            StaticBindingsDb::CurveCryptoSwap => "CurveCryptoSwap".to_string(),
-        }
+        self.as_string()
     }
 }
 

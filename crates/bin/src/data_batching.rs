@@ -5,25 +5,21 @@ use std::{
     task::{Context, Poll},
 };
 
+use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
 };
-use brontes_database::{Metadata, MetadataDB, Pair};
-use brontes_database_libmdbx::{
-    tables::{AddressToProtocol, AddressToTokens},
-    Libmdbx,
-};
+use brontes_database::{Metadata, MetadataDB};
+use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
-use reth_db::{cursor::DbCursorRO, transaction::DbTx};
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
-use tracing::info;
-
+use tracing::{debug, info, trace};
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (TimeTree<Actions>, MetadataDB)> + Send + 'a>>;
 
 pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
@@ -56,19 +52,15 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx);
 
-        let tx = libmdbx.ro_tx().unwrap();
-        let binding_tx = libmdbx.ro_tx().unwrap();
-        let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
-        let mut pairs = HashMap::new();
+        let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
 
-        for value in all_addr_to_tokens.walk(None).unwrap() {
-            if let Ok((address, tokens)) = value {
-                if let Ok(Some(protocol)) = binding_tx.get::<AddressToProtocol>(address) {
-                    pairs.insert((address, protocol), Pair(tokens.token0, tokens.token1));
-                }
-            }
+        let mut rest_pairs = HashMap::default();
+        for i in start_block + 1..=end_block {
+            let pairs = libmdbx.addresses_init_block(i).unwrap();
+            rest_pairs.insert(i, pairs);
         }
 
+        trace!("initing pair graph");
         let pair_graph = PairGraph::init_from_hashmap(pairs);
 
         let pricer = BrontesBatchPricer::new(
@@ -79,6 +71,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             rx,
             parser.get_tracer(),
             start_block,
+            rest_pairs,
         );
 
         let pricer = WaitingForPricerFuture::new(pricer);
@@ -137,7 +130,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     }
 
     fn on_price_finish(&mut self, tree: TimeTree<Actions>, meta: Metadata) {
-        info!("dex pricing finished");
+        info!(target:"brontes","dex pricing finished");
         self.processing_futures.push(Box::pin(ResultProcessing::new(
             self.libmdbx,
             self.inspectors,
@@ -154,7 +147,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         // progress collection future,
         if let Some(mut future) = self.collection_future.take() {
             if let Poll::Ready((tree, meta)) = future.poll_unpin(cx) {
-                info!("built tree");
+                debug!("built tree");
                 let block = self.current_block;
                 self.pricer.add_pending_inspection(block, tree, meta);
             } else {
@@ -246,7 +239,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
             self.resechedule(pricer);
 
             if let Some((block, prices)) = inner {
-                info!(?block, "got dex prices for block");
+                info!(target:"brontes","Collected dex prices for block: {}", block);
 
                 let Some((tree, meta)) = self.pending_trees.remove(&block) else {
                     return Poll::Ready(None)
@@ -277,6 +270,9 @@ impl<'db, const N: usize> ResultProcessing<'db, N> {
         tree: Arc<TimeTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
+        if let Err(e) = db.insert_quotes(meta_data.block_num, meta_data.dex_quotes.clone()) {
+            tracing::error!(err=?e, block_num=meta_data.block_num, "failed to insert dex pricing and state into db");
+        }
         let composer = Composer::new(inspectors, tree, meta_data);
         Self { database: db, composer }
     }
@@ -287,10 +283,38 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
-            info!(?block_details, "finished processing for block");
-            println!("{:#?}", mev_details);
-            // self.database
-            //     .insert_classified_data(block_details, mev_details);
+            info!(
+                target:"brontes",
+                "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
+                 ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
+                 {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- Builder \
+                 ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer Fee \
+                 Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized Profit (USD): \
+                 {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n",
+                block_details.block_number,
+                block_details.mev_count,
+                block_details.finalized_eth_price,
+                block_details.cumulative_gas_used,
+                block_details.cumulative_gas_paid,
+                block_details.total_bribe,
+                block_details.cumulative_mev_priority_fee_paid,
+                block_details.builder_address,
+                block_details.builder_eth_profit,
+                block_details.builder_finalized_profit_usd,
+                block_details
+                    .proposer_fee_recipient
+                    .unwrap_or(Address::ZERO),
+                block_details
+                    .proposer_mev_reward
+                    .map_or("None".to_string(), |v| v.to_string()),
+                block_details
+                    .proposer_finalized_profit_usd
+                    .map_or("None".to_string(), |v| format!("{:.2}", v)),
+                block_details.cumulative_mev_finalized_profit_usd
+            );
+
+            self.database
+                .insert_classified_data(block_details, mev_details);
 
             return Poll::Ready(())
         }

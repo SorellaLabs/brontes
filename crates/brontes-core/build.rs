@@ -1,8 +1,8 @@
 use std::{
     collections::HashMap,
     env,
-    fs::{self, File},
-    io::{BufWriter, Write},
+    fs::{self},
+    io::Write,
     path::Path,
     str::FromStr,
 };
@@ -28,7 +28,8 @@ pub struct Pools {
 
 fn main() {
     dotenv::dotenv().ok();
-    return println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
+    println!("cargo:rerun-if-env-changed=RUN_BUILD_SCRIPT");
+
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

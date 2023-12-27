@@ -14,7 +14,7 @@ use rayon::{
     prelude::IntoParallelRefIterator,
 };
 use reth_primitives::{Address, B256};
-use tracing::error;
+use tracing::{debug, error};
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
@@ -47,8 +47,10 @@ impl Inspector for CexDexInspector<'_> {
                 let root = tree.get_root(tx)?;
                 let eoa = root.head.address;
                 let mev_contract = root.head.data.get_to_address();
+                let idx = root.get_block_position();
                 self.process_swaps(
                     tx,
+                    idx,
                     mev_contract,
                     eoa,
                     meta_data.clone(),
@@ -64,6 +66,7 @@ impl CexDexInspector<'_> {
     fn process_swaps(
         &self,
         hash: B256,
+        idx: usize,
         mev_contract: Address,
         eoa: Address,
         metadata: Arc<Metadata>,
@@ -90,11 +93,13 @@ impl CexDexInspector<'_> {
 
         let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
 
-        // TODO: feels unecessary to do this again, given we have already looped through
-        // the swaps in a less generic way, but this is the lowest effort way of getting
-        // the collectors for now. Will need to
+        let deltas = self.inner.calculate_token_deltas(&swaps);
 
-        let (_deltas, mev_profit_collector) = self.inner.calculate_swap_deltas(&swaps);
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(idx, deltas, metadata.clone(), true)?;
+
+        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
         let classified = ClassifiedMev {
             mev_profit_collector,
@@ -234,7 +239,7 @@ impl CexDexInspector<'_> {
         //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
         // log it
         let Some(decimals_out) = self.inner.try_get_decimals(swap.token_out) else {
-            error!(missing_token=?swap.token_out, "missing token out token to decimal map");
+            debug!(missing_token=?swap.token_out, "missing token out token to decimal map");
             return None
         };
 

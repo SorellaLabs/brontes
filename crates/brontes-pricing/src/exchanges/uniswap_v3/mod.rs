@@ -34,8 +34,18 @@ use crate::{
 
 sol!(
     interface IUniswapV3Factory {
-        function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool);
-        event PoolCreated(address indexed token0, address indexed token1, uint24 indexed fee, int24 tickSpacing, address pool);
+        function getPool(
+            address tokenA,
+            address tokenB,
+            uint24 fee
+        ) external view returns (address pool);
+        event PoolCreated(
+            address indexed token0,
+            address indexed token1,
+            uint24 indexed fee,
+            int24 tickSpacing,
+            address pool
+        );
     }
 );
 
@@ -44,15 +54,55 @@ sol!(
         function token0() external view returns (address);
         function token1() external view returns (address);
         function liquidity() external view returns (uint128);
-        function slot0() external view returns (uint160, int24, uint16, uint16, uint16, uint8, bool);
+        function slot0() external view returns
+            (uint160, int24, uint16, uint16, uint16, uint8, bool);
         function fee() external view returns (uint24);
         function tickSpacing() external view returns (int24);
-        function ticks(int24 tick) external view returns (uint128, int128, uint256, uint256, int56, uint160, uint32, bool);
+        function ticks(int24 tick) external view returns (
+            uint128,
+            int128,
+            uint256,
+            uint256,
+            int56,
+            uint160,
+            uint32,
+            bool
+        );
         function tickBitmap(int16 wordPosition) external view returns (uint256);
-        function swap(address recipient, bool zeroForOne, int256 amountSpecified, uint160 sqrtPriceLimitX96, bytes calldata data) external returns (int256, int256);
-        event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick);
-        event Burn(address indexed owner, int24 indexed tickLower, int24 indexed tickUpper, uint128 amount, uint256 amount0, uint256 amount1);
-        event Mint(address sender, address indexed owner, int24 indexed tickLower, int24 indexed tickUpper, uint128 amount, uint256 amount0, uint256 amount1);
+        function swap(
+            address recipient,
+            bool zeroForOne,
+            int256 amountSpecified,
+            uint160 sqrtPriceLimitX96,
+            bytes calldata data
+        ) external returns (int256, int256);
+
+        event Swap(
+            address indexed sender,
+            address indexed recipient,
+            int256 amount0,
+            int256 amount1,
+            uint160 sqrtPriceX96,
+            uint128 liquidity,
+            int24 tick
+        );
+        event Burn(
+            address indexed owner,
+            int24 indexed tickLower,
+            int24 indexed tickUpper,
+            uint128 amount,
+            uint256 amount0,
+            uint256 amount1
+        );
+        event Mint(
+            address sender,
+            address indexed owner,
+            int24 indexed tickLower,
+            int24 indexed tickUpper,
+            uint128 amount,
+            uint256 amount0,
+            uint256 amount1
+        );
     }
 );
 
@@ -303,25 +353,6 @@ impl AutomatedMarketMaker for UniswapV3Pool {
     ) -> Result<(), AmmError> {
         batch_request::get_v3_pool_data_batch_request(self, block_number, middleware.clone())
             .await?;
-
-        let r0 = make_call_request(
-            IErc20::balanceOfCall::new((self.address,)),
-            middleware.clone(),
-            self.token_a,
-            block_number,
-        )
-        .await?;
-
-        let r1 = make_call_request(
-            IErc20::balanceOfCall::new((self.address,)),
-            middleware,
-            self.token_b,
-            block_number,
-        )
-        .await?;
-
-        self.reserve_0 = r0._0;
-        self.reserve_1 = r1._0;
 
         Ok(())
     }

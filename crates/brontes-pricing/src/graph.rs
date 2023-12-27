@@ -10,6 +10,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair};
+use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use petgraph::{
     graph::{self, UnGraph},
@@ -20,7 +21,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInformation {
     pub pool_addr: Address,
     pub dex_type:  StaticBindingsDb,
@@ -39,7 +40,7 @@ impl PoolPairInformation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInfoDirection {
     pub info:       PoolPairInformation,
     pub token_0_in: bool,
@@ -54,6 +55,7 @@ impl PoolPairInfoDirection {
         }
     }
 }
+
 const CAPACITY: usize = 650_000;
 
 #[derive(Debug, Clone)]
@@ -62,6 +64,9 @@ pub struct PairGraph {
     addr_to_index: HashMap<Address, usize>,
     // double vec for multi_hop multi_pool
     known_pairs:   HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>>,
+
+    // keeps track of all pools that have been uninitted
+    waiting_init: HashMap<Address, PoolPairInformation>,
 }
 
 impl PairGraph {
@@ -157,15 +162,87 @@ impl PairGraph {
 
         info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph in {}us", delta);
 
-        Self { graph, addr_to_index, known_pairs }
+        Self { graph, addr_to_index, known_pairs, waiting_init: HashMap::default() }
+    }
+
+    pub fn enable_pool(&mut self, address: Address) {
+        if let Some(pool_pair) = self.waiting_init.remove(&address) {
+            let t0 = SystemTime::now();
+            let pair = Pair(pool_pair.token_0, pool_pair.token_1);
+
+            let direction0 = PoolPairInfoDirection { info: pool_pair, token_0_in: true };
+            let direction1 = PoolPairInfoDirection { info: pool_pair, token_0_in: false };
+
+            self.known_pairs.insert(pair, vec![vec![direction0]]);
+            self.known_pairs.insert(pair.flip(), vec![vec![direction1]]);
+
+            let node_0 = *self
+                .addr_to_index
+                .entry(pair.0)
+                .or_insert(self.graph.add_node(()).index());
+
+            let node_1 = *self
+                .addr_to_index
+                .entry(pair.1)
+                .or_insert(self.graph.add_node(()).index());
+
+            if let Some(edge) = self.graph.find_edge(node_0.into(), node_1.into()) {
+                let mut pools = self.graph.edge_weight(edge).unwrap().clone();
+                pools.insert(pool_pair);
+                self.graph.update_edge(node_0.into(), node_1.into(), pools);
+            } else {
+                let mut set = HashSet::new();
+                set.insert(pool_pair);
+
+                self.graph.add_edge(node_0.into(), node_1.into(), set);
+            }
+
+            let t1 = SystemTime::now();
+            let delta = t1.duration_since(t0).unwrap().as_micros();
+            info!(us = delta, "enabled new node in");
+        }
+    }
+
+    // disables pool returning true if the edge is now empty
+    pub fn disable_pool(&mut self, info: PoolPairInfoDirection) -> bool {
+        // remove any known info ab this pair
+        let t0 = SystemTime::now();
+        let pair = Pair(info.info.token_0, info.info.token_1);
+
+        let start_idx = *self.addr_to_index.get(&pair.0).unwrap();
+        let end_idx = *self.addr_to_index.get(&pair.1).unwrap();
+        let Some(edge) = self.graph.find_edge(start_idx.into(), end_idx.into()) else {
+            return true
+        };
+        let Some(weight) = self.graph.edge_weight_mut(edge) else { return true };
+
+        weight.remove(&info.info);
+        self.waiting_init.insert(info.info.pool_addr, info.info);
+        let t1 = SystemTime::now();
+        let us = t1.duration_since(t0).unwrap().as_micros();
+        info!(us, addr=?info.info.pool_addr, "disabled pool in");
+
+        if weight.is_empty() {
+            self.known_pairs.remove(&pair);
+            self.known_pairs.remove(&pair.flip());
+            self.graph.remove_edge(edge);
+            return true
+        }
+
+        false
+    }
+
+    pub fn remove_pair(&mut self, pair: Pair) {
+        self.known_pairs.remove(&pair);
+        self.known_pairs.remove(&pair.flip());
     }
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
         let t0 = SystemTime::now();
         let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
 
-        let direction0 = PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: true };
-        let direction1 = PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: false };
+        let direction0 = PoolPairInfoDirection { info: pool_pair, token_0_in: true };
+        let direction1 = PoolPairInfoDirection { info: pool_pair, token_0_in: false };
 
         self.known_pairs.insert(pair, vec![vec![direction0]]);
         self.known_pairs.insert(pair.flip(), vec![vec![direction1]]);
@@ -193,7 +270,7 @@ impl PairGraph {
 
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
-        info!(delta, "added new node in us");
+        info!(us = delta, "added new node in");
     }
 
     // fetches the path from start to end
@@ -201,6 +278,10 @@ impl PairGraph {
         &mut self,
         pair: Pair,
     ) -> impl Iterator<Item = Vec<PoolPairInfoDirection>> + '_ {
+        if pair.0 == pair.1 {
+            return vec![].into_iter()
+        }
+
         if let Some(pools) = self.known_pairs.get(&pair) {
             return pools.clone().into_iter()
         }
@@ -221,19 +302,13 @@ impl PairGraph {
                 self.graph
                     .edge_weight(self.graph.find_edge(base, quote).unwrap())
                     .unwrap()
-                    .into_iter()
+                    .iter()
                     .map(|pool_info| {
                         let token_0_edge = *self.addr_to_index.get(&pool_info.token_0).unwrap();
                         if base.index() == token_0_edge {
-                            PoolPairInfoDirection {
-                                info:       pool_info.clone(),
-                                token_0_in: true,
-                            }
+                            PoolPairInfoDirection { info: *pool_info, token_0_in: true }
                         } else {
-                            PoolPairInfoDirection {
-                                info:       pool_info.clone(),
-                                token_0_in: false,
-                            }
+                            PoolPairInfoDirection { info: *pool_info, token_0_in: false }
                         }
                     })
                     .collect::<Vec<_>>()
@@ -244,14 +319,14 @@ impl PairGraph {
 
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
-        info!(%delta, pair=?pair, "found path to pair in us");
+        info!(us=%delta, pair=?pair, "found path to pair");
 
         path.into_iter()
     }
 }
 
 /// This modification to dijkstra weights the distance between nodes based of of
-/// a max(0, 6 - connectivity). this is to favour better connected nodes as
+/// a max(1, 20 - connectivity). this is to favour better connected nodes as
 /// there price will be more accurate
 pub fn dijkstra_path<G>(graph: G, start: G::NodeId, goal: G::NodeId) -> Option<Vec<G::NodeId>>
 where
@@ -275,7 +350,7 @@ where
 
         // grab the connectivity of the
         let edges = graph.edges(node).collect::<Vec<_>>();
-        let connectivity = edges.len();
+        let connectivity = edges.len() as isize;
 
         for edge in graph.edges(node) {
             let next = edge.target();
@@ -289,20 +364,20 @@ where
             // be more accurate than routing though a shit-coin. This will also
             // help as nodes with better connectivity will be searched more than low
             // connectivity nodes
-            let next_score = node_score + max(0, 25 - connectivity as isize);
+            let next_score = node_score + max(1, 20 - connectivity);
 
             match scores.entry(next) {
                 Occupied(ent) => {
                     if next_score < *ent.get() {
                         *ent.into_mut() = next_score;
                         visit_next.push(MinScored(next_score, next));
-                        predecessor.insert(next.clone(), node.clone());
+                        predecessor.insert(next, node);
                     }
                 }
                 Vacant(ent) => {
                     ent.insert(next_score);
                     visit_next.push(MinScored(next_score, next));
-                    predecessor.insert(next.clone(), node.clone());
+                    predecessor.insert(next, node);
                 }
             }
         }
