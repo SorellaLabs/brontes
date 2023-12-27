@@ -35,9 +35,9 @@ pub struct MevBlock {
     pub builder_finalized_profit_usd: f64,
     /// Proposer address
     #[serde_as(as = "FixedString")]
-    pub proposer_fee_recipient: Address,
-    pub proposer_mev_reward: u128,
-    pub proposer_finalized_profit_usd: f64,
+    pub proposer_fee_recipient: Option<Address>,
+    pub proposer_mev_reward: Option<u128>,
+    pub proposer_finalized_profit_usd: Option<f64>,
     // gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
     pub cumulative_mev_finalized_profit_usd: f64,
@@ -206,11 +206,7 @@ pub fn compose_sandwich_jit(
     let jit_sand = Box::new(JitLiquiditySandwich {
         frontrun_tx_hash: sandwich.frontrun_tx_hash,
         frontrun_gas_details: sandwich.frontrun_gas_details,
-        frontrun_swaps_index: sandwich
-            .frontrun_swaps_index
-            .into_iter()
-            .map(|x| x as u64)
-            .collect(),
+        frontrun_swaps_index: sandwich.frontrun_swaps_index,
         frontrun_swaps_from: sandwich.frontrun_swaps_from,
         frontrun_swaps_pool: sandwich.frontrun_swaps_pool,
         frontrun_swaps_token_in: sandwich.frontrun_swaps_token_in,

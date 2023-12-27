@@ -1,20 +1,12 @@
 use std::{pin::Pin, sync::Arc};
 
-use alloy_primitives::Bytes;
-use alloy_providers::provider::Provider;
-use alloy_transport_http::Http;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
-use reqwest::Client;
 use reth_db::mdbx::RO;
 use reth_interfaces::provider::ProviderResult;
-use reth_primitives::{Address, BlockNumber, BlockNumberOrTag, Header, B256};
-use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
-use reth_rpc_api::EthApiServer;
-use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest};
-use reth_tracing_ext::TracingClient;
+use reth_primitives::{Address, BlockNumberOrTag, Header, B256};
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 use self::parser::TraceParser;
@@ -36,8 +28,6 @@ pub(crate) const RECEIVE: &str = "receive";
 #[allow(dead_code)]
 pub(crate) const FALLBACK: &str = "fallback";
 use reth_primitives::BlockId;
-use reth_rpc::eth::error::EthResult;
-use reth_rpc_types::TransactionReceipt;
 
 // #[async_trait::async_trait]
 // impl TracingProvider for Provider<Http<Client>> {

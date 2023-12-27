@@ -112,7 +112,6 @@ impl<'a, const N: usize> Composer<'a, N> {
         let future = Box::pin(async move {
             let mut scope: TokioScope<'a, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
                 unsafe { Scope::create() };
-            println!("inspectors to run: {}", orchestra.len());
             orchestra.iter().for_each(|inspector| {
                 scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
             });
@@ -209,15 +208,15 @@ impl<'a, const N: usize> Composer<'a, N> {
             .0,
             proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
             proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
-            proposer_finalized_profit_usd: f64::rounding_from(
-                pre_processing
-                    .meta_data
-                    .proposer_mev_reward
-                    .to_scaled_rational(18)
-                    * &pre_processing.meta_data.eth_prices,
-                RoundingMode::Nearest,
-            )
-            .0,
+            proposer_finalized_profit_usd: pre_processing.meta_data.proposer_mev_reward.map(
+                |mev_reward| {
+                    f64::rounding_from(
+                        mev_reward.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
+                        RoundingMode::Nearest,
+                    )
+                    .0
+                },
+            ),
             cumulative_mev_finalized_profit_usd: f64::rounding_from(
                 cum_mev_priority_fee_paid.to_scaled_rational(18)
                     * &pre_processing.meta_data.eth_prices,

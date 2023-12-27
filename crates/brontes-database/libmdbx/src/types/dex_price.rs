@@ -1,36 +1,44 @@
-use std::{collections::HashMap, default::Default, hash::Hash, ops::MulAssign, str::FromStr};
+use std::collections::HashMap;
 
-use alloy_primitives::{hex::FromHexError, Address};
+use alloy_primitives::TxHash;
 use alloy_rlp::{Decodable, Encodable};
-use brontes_database::clickhouse::types::DBTokenPricesDB;
-use brontes_pricing::types::PoolKey;
+use brontes_pricing::types::PoolKeysForPair;
 use brontes_types::{extra_processing::Pair, impl_compress_decompress_for_encoded_decoded};
 use bytes::BufMut;
-use malachite::{
-    num::{
-        arithmetic::traits::{Floor, ReciprocalAssign},
-        conversion::traits::RoundingFrom,
-    },
-    platform_64::Limb,
-    rounding_modes::RoundingMode,
-    Integer, Natural, Rational,
-};
-use parity_scale_codec::Encode;
-use reth_codecs::{main_codec, Compact};
-use reth_db::{
-    table::{Compress, Decompress, DupSort, Table},
-    DatabaseError,
-};
+use reth_db::table::Table;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
 
-use super::{utils::dex_quote, LibmdbxDupData};
-use crate::{
-    tables::{CexPrice, DexPrice},
-    types::utils::pool_tokens,
-    LibmdbxData,
-};
+use super::utils::dex_quote;
+use crate::{tables::DexPrice, LibmdbxData};
+
+pub fn make_key(block_number: u64, tx_idx: u16) -> TxHash {
+    let mut bytes = [0u8; 8].to_vec();
+    let block_number = block_number.to_be_bytes();
+    bytes = [bytes, block_number.to_vec()].concat();
+    bytes = [bytes, [0; 14].to_vec()].concat();
+    let tx_idx = tx_idx.to_be_bytes();
+    bytes = [bytes, tx_idx.to_vec()].concat();
+    let key: TxHash = TxHash::from_slice(&bytes);
+    key
+}
+
+pub fn make_filter_key_range(block_number: u64) -> (TxHash, TxHash) {
+    let mut f_bytes = [0u8; 8].to_vec();
+    let mut s_bytes = [0u8; 8].to_vec();
+
+    let block_number = block_number.to_be_bytes();
+    f_bytes = [f_bytes, block_number.to_vec()].concat();
+    s_bytes = [s_bytes, block_number.to_vec()].concat();
+
+    f_bytes = [f_bytes, [0; 16].to_vec()].concat();
+    s_bytes = [s_bytes, [u8::MAX; 16].to_vec()].concat();
+
+    let f_key: TxHash = TxHash::from_slice(&f_bytes);
+    let s_key: TxHash = TxHash::from_slice(&s_bytes);
+
+    (f_key, s_key)
+}
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexPriceData {
@@ -43,12 +51,13 @@ pub struct DexPriceData {
 impl LibmdbxData<DexPrice> for DexPriceData {
     fn into_key_val(&self) -> (<DexPrice as Table>::Key, <DexPrice as Table>::Value) {
         (
-            self.block_number,
+            make_key(self.block_number, self.tx_idx),
             DexQuoteWithIndex { tx_idx: self.tx_idx, quote: self.quote.clone().into() },
         )
     }
 }
 
+/*
 impl LibmdbxDupData<DexPrice> for DexPriceData {
     fn into_key_subkey_val(
         &self,
@@ -60,9 +69,9 @@ impl LibmdbxDupData<DexPrice> for DexPriceData {
         )
     }
 }
-
+*/
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DexQuote(pub HashMap<Pair, Vec<PoolKey>>);
+pub struct DexQuote(pub HashMap<Pair, Vec<PoolKeysForPair>>);
 
 impl From<DexQuoteWithIndex> for DexQuote {
     fn from(value: DexQuoteWithIndex) -> Self {
@@ -70,8 +79,8 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-impl Into<Vec<(Pair, Vec<PoolKey>)>> for DexQuote {
-    fn into(self) -> Vec<(Pair, Vec<PoolKey>)> {
+impl Into<Vec<(Pair, Vec<PoolKeysForPair>)>> for DexQuote {
+    fn into(self) -> Vec<(Pair, Vec<PoolKeysForPair>)> {
         self.0.into_iter().collect()
     }
 }
@@ -79,7 +88,7 @@ impl Into<Vec<(Pair, Vec<PoolKey>)>> for DexQuote {
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
-    pub quote:  Vec<(Pair, Vec<PoolKey>)>,
+    pub quote:  Vec<(Pair, Vec<PoolKeysForPair>)>,
 }
 
 impl Encodable for DexQuoteWithIndex {
@@ -87,6 +96,7 @@ impl Encodable for DexQuoteWithIndex {
         Encodable::encode(&self.tx_idx, out);
         let (keys, vals): (Vec<_>, Vec<_>) =
             self.quote.clone().into_iter().map(|(k, v)| (k, v)).unzip();
+
         keys.encode(out);
         vals.encode(out);
     }
@@ -105,16 +115,34 @@ impl Decodable for DexQuoteWithIndex {
     }
 }
 
+/*
+impl Compact for DexQuoteWithIndex {
+    fn to_compact<B>(self, buf: &mut B) -> usize
+    where
+        B: bytes::BufMut + AsMut<[u8]>,
+    {
+        buf.put_u16(self.tx_idx);
+        Encodable::encode(&self.quote, buf);
+        //to_compact() + 2
+    }
+
+    fn from_compact(buf: &[u8], len: usize) -> (Self, &[u8]) {
+        let tx_idx = u16::from_be_bytes(&buf[..2]);
+        let (quote, out) = Vec::from_compact(&buf[2..], len - 2);
+        (Self { tx_idx, quote }, out)
+    }
+}
+*/
 impl_compress_decompress_for_encoded_decoded!(DexQuoteWithIndex);
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, env};
+    use std::{collections::HashMap, env, str::FromStr};
 
-    use alloy_primitives::U256;
+    use alloy_primitives::{Address, U256};
     use brontes_database::clickhouse::Clickhouse;
     use brontes_pricing::{
-        types::PoolStateSnapShot,
+        types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair, PoolStateSnapShot},
         uniswap_v2::UniswapV2Pool,
         uniswap_v3::{Info, UniswapV3Pool},
     };
@@ -170,15 +198,18 @@ mod tests {
                             Address::from_str(&"0x00000000a000000000000a0000000000000a0000")
                                 .unwrap(),
                         ),
-                        vec![
-                            PoolKey::default(),
-                            PoolKey {
-                                pool:         Default::default(),
-                                run:          1000,
-                                batch:        10,
-                                update_nonce: 1,
+                        vec![PoolKeysForPair(vec![
+                            PoolKeyWithDirection::default(),
+                            PoolKeyWithDirection {
+                                key:  PoolKey {
+                                    pool:         Default::default(),
+                                    run:          9182,
+                                    batch:        102,
+                                    update_nonce: 12,
+                                },
+                                base: Default::default(),
                             },
-                        ],
+                        ])],
                     );
                     map
                 }),
@@ -204,15 +235,18 @@ mod tests {
                             Address::from_str(&"0xef000000a000002200000a0000000000000a0000")
                                 .unwrap(),
                         ),
-                        vec![
-                            PoolKey::default(),
-                            PoolKey {
-                                pool:         Default::default(),
-                                run:          9182,
-                                batch:        102,
-                                update_nonce: 12,
+                        vec![PoolKeysForPair(vec![
+                            PoolKeyWithDirection::default(),
+                            PoolKeyWithDirection {
+                                key:  PoolKey {
+                                    pool:         Default::default(),
+                                    run:          9182,
+                                    batch:        102,
+                                    update_nonce: 12,
+                                },
+                                base: Default::default(),
                             },
-                        ],
+                        ])],
                     );
                     map
                 }),
@@ -220,5 +254,19 @@ mod tests {
         ];
 
         clickhouse.inner().insert_many(data, table).await.unwrap();
+    }
+
+    #[test]
+    fn test_make_key() {
+        let block_number = 18000000;
+        let tx_idx = 49;
+
+        let expected =
+            TxHash::from_str("0x0000000000000000000000000112A88000000000000000000000000000000031")
+                .unwrap();
+        let calculated = make_key(block_number, tx_idx);
+        println!("CALCULATED: {:?}", calculated);
+
+        assert_eq!(calculated, expected);
     }
 }

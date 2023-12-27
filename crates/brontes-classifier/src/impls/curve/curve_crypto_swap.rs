@@ -12,8 +12,8 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::{
     enum_unwrap, ActionCollection,
     CurveCryptoSwap::{
-        exchange_0Call, exchange_1Call, exchange_underlying_0Call, CurveCryptoSwapCalls,
-        TokenExchange,
+        exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call,
+        CurveCryptoSwapCalls, TokenExchange,
     },
     IntoAction, StaticReturnBindings,
 };
@@ -37,6 +37,7 @@ action_impl!(
                 pool: target_address,
                 index,
                 from: from_address,
+                recipient: from_address,
                 token_in: token_0,
                 token_out: token_1,
                 amount_in: log.tokens_sold,
@@ -47,6 +48,7 @@ action_impl!(
                 index,
                 pool: target_address,
                 from: from_address,
+                recipient: from_address,
                 token_in: token_1,
                 token_out: token_0,
                 amount_in: log.tokens_sold,
@@ -87,6 +89,7 @@ action_impl!(
                 pool: target_address,
                 index,
                 from: from_address,
+                recipient: from_address,
                 token_in: token_0,
                 token_out: token_1,
                 amount_in: log.tokens_sold,
@@ -97,6 +100,60 @@ action_impl!(
                 index,
                 pool: target_address,
                 from: from_address,
+                recipient: from_address,
+                token_in: token_1,
+                token_out: token_0,
+                amount_in: log.tokens_sold,
+                amount_out: log.tokens_bought,
+            })
+        }
+    }
+);
+
+action_impl!(
+    CurveCryptoExchange2,
+    Swap,
+    exchange_2Call,
+    TokenExchange,
+    CurveCryptoSwap,
+    logs: true,
+    call_data: true,
+    |index, from_address: Address, target_address: Address, call_data: exchange_2Call, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
+
+        let log = log_data?;
+
+        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
+
+        let is_eth = call_data.use_eth;
+
+        let recipient = call_data.receiver;
+        // Check if ETH is used and adjust token_in or token_out accordingly
+        if is_eth {
+            if log.sold_id == U256::ZERO && token_0 == WETH {
+                token_0 = ETH;
+            } else if log.sold_id != U256::ZERO && token_1 == WETH {
+                token_1 = ETH;
+            }
+        }
+
+        if log.sold_id == U256::ZERO {
+            return Some(NormalizedSwap {
+                pool: target_address,
+                index,
+                from: from_address,
+                recipient,
+                token_in: token_0,
+                token_out: token_1,
+                amount_in: log.tokens_sold,
+                amount_out: log.tokens_bought,
+            })
+        } else {
+            return Some(NormalizedSwap {
+                index,
+                pool: target_address,
+                from: from_address,
+                recipient,
                 token_in: token_1,
                 token_out: token_0,
                 amount_in: log.tokens_sold,
@@ -134,6 +191,7 @@ logs: true,
                 pool: target_address,
                 index,
                 from: from_address,
+                recipient: from_address,
                 token_in: token_0,
                 token_out: token_1,
                 amount_in: log.tokens_sold,
@@ -144,6 +202,7 @@ logs: true,
                 index,
                 pool: target_address,
                 from: from_address,
+                recipient: from_address,
                 token_in: token_1,
                 token_out: token_0,
                 amount_in: log.tokens_sold,

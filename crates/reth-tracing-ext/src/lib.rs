@@ -1,7 +1,6 @@
 use std::{fmt::Debug, path::Path, sync::Arc};
 
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
-use num_cpus::get;
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
@@ -43,7 +42,6 @@ use revm_primitives::{Account, ExecutionResult, HashMap, SpecId, KECCAK_EMPTY};
 use tokio::runtime::Handle;
 
 mod provider;
-pub use provider::*;
 
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
@@ -64,7 +62,7 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, handle: Handle, max_tasks: u32) -> (TaskManager, Self) {
+    pub fn new(db_path: &Path, handle: Handle, max_tasks: u64) -> (TaskManager, Self) {
         let task_manager = TaskManager::new(handle);
         let task_executor: reth_tasks::TaskExecutor = task_manager.executor();
 
@@ -124,7 +122,7 @@ impl TracingClient {
             fee_history,
         );
 
-        let tracing_call_guard = BlockingTaskGuard::new(max_tasks);
+        let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
@@ -193,7 +191,7 @@ impl TracingInspectorLocal {
         let _ = populate_state_diff(&mut diff, db, acc_diff);
 
         TxTrace {
-            trace: trace.unwrap_or(vec![]),
+            trace: trace.unwrap_or_default(),
             state_diff: diff,
             tx_hash: info.hash.unwrap(),
             gas_used,
@@ -387,13 +385,13 @@ impl TracingInspectorLocal {
         node: &CallTraceNode,
         trace_address: Vec<usize>,
     ) -> TransactionTrace {
-        let action = self.parity_action(&node);
+        let action = self.parity_action(node);
         let result = if node.trace.is_error() && !node.trace.is_revert() {
             // if the trace is a selfdestruct or an error that is not a revert, the result
             // is None
             None
         } else {
-            Some(self.parity_trace_output(&node))
+            Some(self.parity_trace_output(node))
         };
         let error = self.as_error_msg(node);
         TransactionTrace { action, error, result, trace_address, subtraces: node.children.len() }

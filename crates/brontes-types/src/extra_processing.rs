@@ -1,8 +1,10 @@
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
+use reth_codecs::derive_arbitrary;
 use reth_rpc_types::trace::parity::StateDiff;
 use serde::{Deserialize, Serialize};
 
+#[derive_arbitrary(compact)]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pair(pub Address, pub Address);
 
@@ -30,9 +32,9 @@ impl Pair {
     // Returns an ordered version of the pair
     pub fn ordered(&self) -> Self {
         if self.0 <= self.1 {
-            Pair(self.0.clone(), self.1.clone())
+            Pair(self.0, self.1)
         } else {
-            Pair(self.1.clone(), self.0.clone())
+            Pair(self.1, self.0)
         }
     }
 }

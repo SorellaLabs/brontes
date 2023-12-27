@@ -11,6 +11,7 @@ edition = "2021"
 brontes-database.workspace = true
 brontes-types.workspace = true
 brontes-pricing.workspace = true
+tracing.workspace = true
 
 # alloy
 alloy-primitives = { workspace = true, features = [
@@ -60,6 +61,7 @@ thiserror.workspace = true
 # async
 futures.workspace = true
 tokio.workspace = true
+tokio-scoped = "0.2.0"
 
 
 # misc

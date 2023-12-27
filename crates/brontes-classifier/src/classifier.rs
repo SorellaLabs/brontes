@@ -11,7 +11,10 @@ use brontes_types::{
 use hex_literal::hex;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
-use reth_rpc_types::{trace::parity::Action, Log};
+use reth_rpc_types::{
+    trace::parity::{Action, Action::Call},
+    Log,
+};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::*;
@@ -133,11 +136,13 @@ impl<'db> Classifier<'db> {
 
         // self.try_classify_unknown_exchanges(&mut tree);
         // self.try_classify_flashloans(&mut tree);
-
-        // avoid double counting
         self.remove_swap_transfers(&mut tree);
         self.remove_mint_transfers(&mut tree);
         self.remove_collect_transfers(&mut tree);
+
+        self.remove_collect_transfers(&mut tree);
+        self.remove_mint_transfers(&mut tree);
+        self.remove_swap_transfers(&mut tree);
 
         tree.finalize_tree();
         let (dec, prices): (Vec<_>, Vec<_>) = extra.into_iter().unzip();
@@ -150,10 +155,25 @@ impl<'db> Classifier<'db> {
         (processing, tree)
     }
 
-    //TODO: need to deal with other direction + eth based transfers.
+    // need this for dyn classifying
     fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
-            |node| node.data.is_swap(),
+            |node| {
+                (
+                    node.data.is_swap(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_swap()),
+                )
+            },
+            |node| {
+                (
+                    node.data.is_transfer(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_transfer()),
+                )
+            },
             |node| (node.index, node.data.clone()),
             |other_nodes, node| {
                 let Actions::Swap(swap_data) = &node.data else { unreachable!() };
@@ -162,11 +182,8 @@ impl<'db> Classifier<'db> {
                     .filter_map(|(index, data)| {
                         let Actions::Transfer(transfer) = data else { return None };
                         if (transfer.amount == swap_data.amount_in
-                            && transfer.token == swap_data.token_in
-                            && transfer.to == swap_data.pool)
-                            || (transfer.amount == swap_data.amount_out
-                                && transfer.token == swap_data.token_out
-                                && transfer.from == swap_data.pool)
+                            || transfer.amount == swap_data.amount_out)
+                            && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
                         {
                             return Some(*index)
                         }
@@ -177,9 +194,25 @@ impl<'db> Classifier<'db> {
         );
     }
 
+    // need this for dyn classifying
     fn remove_mint_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
-            |node| node.data.is_mint(),
+            |node| {
+                (
+                    node.data.is_mint(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_mint()),
+                )
+            },
+            |node| {
+                (
+                    node.data.is_transfer(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_transfer()),
+                )
+            },
             |node| (node.index, node.data.clone()),
             |other_nodes, node| {
                 let Actions::Mint(mint_data) = &node.data else { unreachable!() };
@@ -199,9 +232,25 @@ impl<'db> Classifier<'db> {
         );
     }
 
+    // need this for dyn classifying
     fn remove_collect_transfers(&self, tree: &mut TimeTree<Actions>) {
         tree.remove_duplicate_data(
-            |node| node.data.is_collect(),
+            |node| {
+                (
+                    node.data.is_collect(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_collect()),
+                )
+            },
+            |node| {
+                (
+                    node.data.is_transfer(),
+                    node.get_all_sub_actions()
+                        .into_iter()
+                        .any(|data| data.is_transfer()),
+                )
+            },
             |node| (node.index, node.data.clone()),
             |other_nodes, node| {
                 let Actions::Collect(collect_data) = &node.data else { unreachable!() };
@@ -294,7 +343,15 @@ impl<'db> Classifier<'db> {
                 };
                 return (pair, res)
             } else {
-                tracing::warn!(contract_addr = ?target_address.0, trace=?trace, "classification failed on the given address");
+                let selector = match trace.trace.action {
+                    Call(ref action) => &action.input[0..4],
+                    _ => unreachable!(),
+                };
+                tracing::warn!(
+                    "Classification failed on contract address: {:?}, with function selector: {:?}",
+                    target_address.0,
+                    selector
+                );
             }
         }
 
@@ -655,7 +712,10 @@ impl<'db> Classifier<'db> {
 
 #[cfg(test)]
 pub mod test {
-    use std::{collections::HashSet, env};
+    use std::{
+        collections::{HashMap, HashSet},
+        env,
+    };
 
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::{
@@ -677,38 +737,47 @@ pub mod test {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::{test_utils::get_traces_with_meta, Classifier};
+    use crate::Classifier;
 
     #[tokio::test]
     #[serial]
-    async fn test_dyn_classifier() {
+    async fn test_remove_swap_transfer() {
         let block_num = 18530326;
         dotenv::dotenv().ok();
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
         let (tx, _rx) = unbounded_channel();
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
+        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx, 6);
         let db = Clickhouse::default();
 
-        let classifier = Classifier::new(&libmdbx);
+        let tree = build_raw_test_tree(&tracer, &db, &libmdbx, block_num).await;
+        let jarad = tree.roots[1].tx_hash;
 
-        let (traces, header, metadata) = get_traces_with_meta(&tracer, &db, block_num).await;
-
-        let mut tree = classifier.build_tree(traces, header);
-
-        /*
-        let root = tree.roots.remove(30);
-
-        let swaps = root.collect(&|node| {
+        let swap = tree.collect(jarad, |node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
-                node.get_all_sub_actions()
+                node.subactions
                     .iter()
-                    .any(|s| s.is_swap() || s.is_transfer()),
+                    .any(|action| action.is_swap() || action.is_transfer()),
             )
         });
+        println!("{:#?}", swap);
+        let mut swaps: HashMap<Address, HashSet<U256>> = HashMap::default();
 
-        println!("{:#?}", swaps);*/
+        for i in &swap {
+            if let Actions::Swap(s) = i {
+                swaps.entry(s.token_in).or_default().insert(s.amount_in);
+                swaps.entry(s.token_out).or_default().insert(s.amount_out);
+            }
+        }
+
+        for i in &swap {
+            if let Actions::Transfer(t) = i {
+                if swaps.get(&t.token).map(|i| i.contains(&t.amount)) == Some(true) {
+                    assert!(false, "found a transfer that was part of a swap");
+                }
+            }
+        }
     }
 }
