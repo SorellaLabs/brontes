@@ -287,6 +287,7 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
     // let range
 
     pin!(metrics_listener);
+
     let mut fut = Box::pin(scope.collect());
 
     // wait for completion
@@ -299,7 +300,13 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
         _ = &mut metrics_listener => {
         }
     }
+    // assert we drop scope;
+    fut.await;
     manager.graceful_shutdown();
+    drop(scope);
+    std::thread::spawn(move || {
+        drop(parser);
+    });
 
     Ok(())
 }
