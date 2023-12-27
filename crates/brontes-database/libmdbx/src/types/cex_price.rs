@@ -42,6 +42,12 @@ impl LibmdbxData<CexPrice> for CexPriceData {
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize)]
 pub struct CexPriceMap(pub HashMap<Pair, Vec<CexQuote>>);
 
+impl Default for CexPriceMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CexPriceMap {
     pub fn new() -> Self {
         Self(HashMap::new())
@@ -160,7 +166,7 @@ impl Decodable for CexPriceMap {
 
         pairs
             .into_iter()
-            .zip(quotes.into_iter())
+            .zip(quotes)
             .for_each(|(pair, quote)| {
                 map.entry(pair).or_insert(quote);
             });
@@ -183,7 +189,7 @@ impl Decompress for CexPriceMap {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
         let buf = &mut binding.as_slice();
-        Ok(CexPriceMap::decode(buf).map_err(|_| DatabaseError::Decode)?)
+        CexPriceMap::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }
 
@@ -313,35 +319,31 @@ impl Decompress for CexQuote {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
         let buf = &mut binding.as_slice();
-        Ok(CexQuote::decode(buf).map_err(|_| DatabaseError::Decode)?)
+        CexQuote::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, env, str::FromStr};
+    
 
-    use alloy_primitives::{Address, U256};
+    
     use brontes_database::clickhouse::Clickhouse;
-    use brontes_pricing::{
-        types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair, PoolStateSnapShot},
-        uniswap_v2::UniswapV2Pool,
-        uniswap_v3::{Info, UniswapV3Pool},
-    };
+    
 
     use super::*;
 
     fn init_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
-        let clickhouse = Clickhouse::default();
+        
 
-        clickhouse
+        Clickhouse::default()
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
     async fn test_insert_dex_price_clickhouse() {
         let clickhouse = init_clickhouse();
-        let table = "brontes.cex_price_mapping";
+        let _table = "brontes.cex_price_mapping";
 
         let res = clickhouse
             .inner()

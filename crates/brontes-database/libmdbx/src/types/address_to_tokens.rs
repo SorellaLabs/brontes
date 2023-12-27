@@ -66,20 +66,19 @@ impl From<(Vec<String>, u64)> for PoolTokens {
         PoolTokens {
             token0: Address::from_str(&iter.next().unwrap()).unwrap(),
             token1: Address::from_str(&iter.next().unwrap()).unwrap(),
-            token2: iter.next().map(|a| Address::from_str(&a).ok()).flatten(),
-            token3: iter.next().map(|a| Address::from_str(&a).ok()).flatten(),
-            token4: iter.next().map(|a| Address::from_str(&a).ok()).flatten(),
+            token2: iter.next().and_then(|a| Address::from_str(&a).ok()),
+            token3: iter.next().and_then(|a| Address::from_str(&a).ok()),
+            token4: iter.next().and_then(|a| Address::from_str(&a).ok()),
             init_block,
         }
     }
 }
 
-impl Into<Vec<String>> for PoolTokens {
-    fn into(self) -> Vec<String> {
-        vec![Some(self.token0), Some(self.token1), self.token2, self.token3, self.token4]
+impl From<PoolTokens> for Vec<String> {
+    fn from(val: PoolTokens) -> Self {
+        vec![Some(val.token0), Some(val.token1), val.token2, val.token3, val.token4]
             .into_iter()
-            .map(|addr| addr.map(|a| format!("{:?}", a)))
-            .flatten()
+            .filter_map(|addr| addr.map(|a| format!("{:?}", a)))
             .collect::<Vec<_>>()
     }
 }
@@ -136,6 +135,6 @@ impl Decompress for PoolTokens {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
         let buf = &mut binding.as_slice();
-        Ok(PoolTokens::decode(buf).map_err(|_| DatabaseError::Decode)?)
+        PoolTokens::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }
