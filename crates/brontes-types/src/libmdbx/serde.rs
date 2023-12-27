@@ -18,7 +18,7 @@ pub mod address_string {
     {
         let address: String = Deserialize::deserialize(deserializer)?;
 
-        Ok(Address::from_str(&address).map_err(serde::de::Error::custom)?)
+        Address::from_str(&address).map_err(serde::de::Error::custom)
     }
 }
 
@@ -46,10 +46,10 @@ pub mod vec_address_string {
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(data
+        data
             .into_iter()
             .map(|d| Address::from_str(&d))
             .collect::<Result<Vec<_>, <Address as FromStr>::Err>>()
-            .map_err(serde::de::Error::custom)?)
+            .map_err(serde::de::Error::custom)
     }
 }

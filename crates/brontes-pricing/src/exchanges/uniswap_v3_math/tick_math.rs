@@ -29,7 +29,7 @@ pub fn get_sqrt_ratio_at_tick(tick: i32) -> Result<U256, UniswapV3MathError> {
     }
 
     let mut ratio = if abs_tick & (U256::from(0x1)) != U256::ZERO {
-        U256::from(0xfffcb933bd6fad37aa2d162d1a594001 as u128)
+        U256::from(0xfffcb933bd6fad37aa2d162d1a594001_u128)
     } else {
         U256::from_str_radix("100000000000000000000000000000000", 16)
             .map_err(|_| UniswapV3MathError::T)?
@@ -84,7 +84,7 @@ pub fn get_sqrt_ratio_at_tick(tick: i32) -> Result<U256, UniswapV3MathError> {
         ratio = (ratio * U256::from(0x9aa508b5b7a84e1c677de54f3e99bc9_u128)) >> 128
     }
     if !(abs_tick & (U256::from(0x20000))).is_zero() {
-        ratio = (ratio * U256::from(0x5d6af8dedb81196699c329225ee604 as u128)) >> 128
+        ratio = (ratio * U256::from(0x5d6af8dedb81196699c329225ee604_u128)) >> 128
     }
     if !(abs_tick & (U256::from(0x40000))).is_zero() {
         ratio = (ratio * U256::from(0x2216e584f5fa1ea926041bedfe98_u128)) >> 128
