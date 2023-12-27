@@ -57,7 +57,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
 
         let mut rest_pairs = HashMap::default();
         for i in start_block + 1..end_block {
-            let pairs = libmdbx.addresses_init_block(i).unwrap();
+            let pairs = libmdbx.addresses_init_block(i).unwrap_or_default();
             rest_pairs.insert(i, pairs);
         }
 
