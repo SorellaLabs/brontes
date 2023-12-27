@@ -254,7 +254,7 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
 
     let range = config.end_block - config.start_block;
 
-    let cpus_min = range / config.min_batch_size + 1;
+    let cpus_min = range / config.min_batch_size;
 
     let mut scope: TokioScope<'_, ()> = unsafe { Scope::create() };
 
