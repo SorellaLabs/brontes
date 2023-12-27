@@ -391,7 +391,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_close(&mut self) -> Option<(u64, DexPrices)> {
-        if self.completed_block == self.current_block + 1{
+        if self.completed_block == self.current_block + 1 {
             return None
         }
 
