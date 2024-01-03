@@ -2,6 +2,8 @@ pub mod atomic_backrun;
 pub mod cex_dex;
 pub mod composer;
 pub mod jit;
+#[allow(dead_code, unused_imports)]
+pub mod liquidations;
 pub mod sandwich;
 pub mod shared_utils;
 
