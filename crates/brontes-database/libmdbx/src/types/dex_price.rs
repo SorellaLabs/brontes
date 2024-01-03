@@ -94,8 +94,7 @@ pub struct DexQuoteWithIndex {
 impl Encodable for DexQuoteWithIndex {
     fn encode(&self, out: &mut dyn BufMut) {
         Encodable::encode(&self.tx_idx, out);
-        let (keys, vals): (Vec<_>, Vec<_>) =
-            self.quote.clone().into_iter().unzip();
+        let (keys, vals): (Vec<_>, Vec<_>) = self.quote.clone().into_iter().unzip();
 
         keys.encode(out);
         vals.encode(out);
@@ -139,17 +138,14 @@ impl_compress_decompress_for_encoded_decoded!(DexQuoteWithIndex);
 mod tests {
     use std::{collections::HashMap, str::FromStr};
 
-    use alloy_primitives::{Address};
+    use alloy_primitives::Address;
     use brontes_database::clickhouse::Clickhouse;
-    use brontes_pricing::{
-        types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair},
-    };
+    use brontes_pricing::types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair};
 
     use super::*;
 
     fn init_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
-        
 
         Clickhouse::default()
     }
