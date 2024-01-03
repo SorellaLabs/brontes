@@ -30,14 +30,9 @@ pub const WETH_ADDRESS: Address =
 pub const USDT_ADDRESS: Address =
     Address(FixedBytes(hex!("dac17f958d2ee523a2206206994597c13d831ec7")));
 
+#[derive(Default)]
 pub struct Clickhouse {
     client: ClickhouseClient,
-}
-
-impl Default for Clickhouse {
-    fn default() -> Self {
-        Self { client: ClickhouseClient::default() }
-    }
 }
 
 impl Clickhouse {
@@ -56,7 +51,7 @@ impl Clickhouse {
 
     pub async fn get_metadata(&self, block_num: u64) -> MetadataDB {
         let times_flow = self.get_times_flow_info(block_num).await;
-        let cex_prices = CexPriceMap::from(self.get_cex_token_prices(times_flow.p2p_time).await);
+        let cex_prices = self.get_cex_token_prices(times_flow.p2p_time).await;
 
         // eth price is in cex_prices
         let _eth_prices = cex_prices

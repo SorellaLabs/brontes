@@ -36,7 +36,7 @@ impl BlockStats {
     pub fn trace(&self) {
         let msg = format!(
             "{} -- Block Number: {}",
-            format!("Successfuly Parsed Block").bright_blue().bold(),
+            "Successfuly Parsed Block".to_string().bright_blue().bold(),
             self.block_num
         );
 
@@ -66,9 +66,7 @@ impl TransactionStats {
     pub fn trace(&self) {
         let msg = format!(
             "{} -- Tx Hash: {:#x}",
-            format!("Successfully Parsed Transaction")
-                .bright_green()
-                .bold(),
+            "Successfully Parsed Transaction".bright_green().bold(),
             self.tx_hash
         );
 

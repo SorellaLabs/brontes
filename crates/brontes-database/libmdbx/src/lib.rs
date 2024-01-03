@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{cmp::max, collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
 use brontes_pricing::types::DexQuotes;
 
@@ -14,12 +14,11 @@ use brontes_types::{
 };
 use eyre::Context;
 use initialize::LibmdbxInitializer;
-use malachite::Rational;
 use reth_db::{
     cursor::{DbCursorRO, DbCursorRW},
     is_database_empty,
     mdbx::DatabaseFlags,
-    table::{Table},
+    table::Table,
     transaction::{DbTx, DbTxMut},
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
@@ -27,18 +26,23 @@ use reth_db::{
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
 use tables::*;
+use tracing::info;
 use types::{
     cex_price::CexPriceMap,
-    dex_price::{DexPriceData},
+    dex_price::{make_filter_key_range, DexPriceData},
     metadata::MetadataInner,
     pool_state::{PoolStateData, PoolStateType},
 };
-use tracing::info;
 
 use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
 pub mod implementation;
 pub mod tables;
 pub mod types;
+
+const WETH_ADDRESS: &str = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+const USDT_ADDRESS: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+const USDC_ADDRESS: &str = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+//const USDT_ADDRESS: &str = ;
 
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
@@ -108,7 +112,6 @@ impl Libmdbx {
                 .collect::<Vec<_>>(),
         )?;
 
-        
         let mut data = quotes
             .quotes
             .0
@@ -128,8 +131,7 @@ impl Libmdbx {
         let tx = LibmdbxTx::new_rw_tx(&self.0)?;
         let mut cursor = tx.cursor_write::<DexPrice>()?;
 
-        data
-            .into_iter()
+        data.into_iter()
             .map(|entry| {
                 let (key, val) = entry.into_key_val();
                 //let key = make_key(key., val.tx_idx);
@@ -187,7 +189,7 @@ impl Libmdbx {
         let tx = LibmdbxTx::new_rw_tx(&self.0)?;
 
         entries
-            .into_iter()
+            .iter()
             .map(|entry| {
                 let (key, val) = entry.into_key_val();
                 tx.put::<T>(key, val)
@@ -199,17 +201,15 @@ impl Libmdbx {
         Ok(())
     }
 
-        /// Clears a table in the database
+    /// Clears a table in the database
     /// Only called on initialization
     pub(crate) fn clear_table<T>(&self) -> eyre::Result<()>
     where
         T: Table,
-
     {
         let tx = LibmdbxTx::new_rw_tx(&self.0)?;
         tx.clear::<T>()?;
         tx.commit()?;
-
 
         Ok(())
     }
@@ -265,9 +265,17 @@ impl Libmdbx {
 
         let mut res = Vec::new();
 
-        for addr in tx.get::<PoolCreationBlocks>(block_num)?.map(|i| i.0).unwrap_or(vec![]) {
-            let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else { continue; };
-            let Some(info) = info_tx.get::<AddressToTokens>(addr)? else { continue; };
+        for addr in tx
+            .get::<PoolCreationBlocks>(block_num)?
+            .map(|i| i.0)
+            .unwrap_or(vec![])
+        {
+            let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
+                continue;
+            };
+            let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
+                continue;
+            };
             res.push((addr, protocol, Pair(info.token0, info.token1)));
         }
 
@@ -282,25 +290,49 @@ impl Libmdbx {
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        // let cex_quotes: CexPriceMap = tx
-        //     .get::<CexPrice>(block_num)?
-        //     .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+        let db_cex_quotes: CexPriceMap = tx
+            .get::<CexPrice>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
+            Address::from_str(WETH_ADDRESS).unwrap(),
+            Address::from_str(USDT_ADDRESS).unwrap(),
+        )) {
+            eth_usdt
+        } else {
+            db_cex_quotes
+                .get_quote(&Pair(
+                    Address::from_str(WETH_ADDRESS).unwrap(),
+                    Address::from_str(USDC_ADDRESS).unwrap(),
+                ))
+                .unwrap_or_default()
+        };
+
+        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
+        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
+            cex_quotes.0.insert(
+                pair,
+                quote
+                    .into_iter()
+                    .map(|q| brontes_database::cex::CexQuote {
+                        exchange:  q.exchange,
+                        timestamp: q.timestamp,
+                        price:     q.price,
+                        token0:    q.token0,
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        });
+
         Ok(MetadataDB {
             block_num,
             block_hash: block_meta.block_hash,
             relay_timestamp: block_meta.relay_timestamp,
             p2p_timestamp: block_meta.p2p_timestamp,
-            proposer_fee_recipient: block_meta.proposer_fee_recipient, /* change this */
+            proposer_fee_recipient: block_meta.proposer_fee_recipient,
             proposer_mev_reward: block_meta.proposer_mev_reward,
-            cex_quotes: brontes_database::cex::CexPriceMap::new(), /* brontes_database::cex::CexPriceMap(cex_quotes.0), // ambiguous type */
-            eth_prices: Rational::default(),                       /* cex_quotes.0.get(&
-                                                                    * Pair(Address::from_str("
-                                                                    * ").unwrap(),
-                                                                    * Address::from_str("").
-                                                                    * unwrap())).unwrap() //
-                                                                    * ambiguous type //
-                                                                    * change to USDC - ETH +
-                                                                    * error handle */
+            cex_quotes,
+            eth_prices: max(eth_prices.price.0, eth_prices.price.1),
+
             mempool_flow: block_meta.mempool_flow.into_iter().collect(),
             block_timestamp: block_meta.block_timestamp,
         })
@@ -312,12 +344,55 @@ impl Libmdbx {
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        let _cex_quotes: CexPriceMap = tx
+        let db_cex_quotes: CexPriceMap = tx
             .get::<CexPrice>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        //let eth_prices = ;
+        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
+            Address::from_str(WETH_ADDRESS).unwrap(),
+            Address::from_str(USDT_ADDRESS).unwrap(),
+        )) {
+            eth_usdt
+        } else {
+            db_cex_quotes
+                .get_quote(&Pair(
+                    Address::from_str(WETH_ADDRESS).unwrap(),
+                    Address::from_str(USDC_ADDRESS).unwrap(),
+                ))
+                .unwrap_or_default()
+        };
 
-        let map = Arc::new(HashMap::new());
+        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
+        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
+            cex_quotes.0.insert(
+                pair,
+                quote
+                    .into_iter()
+                    .map(|q| brontes_database::cex::CexQuote {
+                        exchange:  q.exchange,
+                        timestamp: q.timestamp,
+                        price:     q.price,
+                        token0:    q.token0,
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        });
+
+        let dex_quotes = Vec::new();
+        let key_range = make_filter_key_range(block_num);
+        let _db_dex_quotes = tx
+            .cursor_read::<DexPrice>()?
+            .walk_range(key_range.0..key_range.1)?
+            .flat_map(|inner| {
+                if let Ok((key, _quote)) = inner {
+                    //dex_quotes.push(Default::default());
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        //.get::<DexPrice>(block_num)?
+        //.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
         Ok(brontes_database::Metadata {
             db:         MetadataDB {
@@ -325,25 +400,16 @@ impl Libmdbx {
                 block_hash: block_meta.block_hash,
                 relay_timestamp: block_meta.relay_timestamp,
                 p2p_timestamp: block_meta.p2p_timestamp,
-                proposer_fee_recipient: block_meta.proposer_fee_recipient, /* change this */
+                proposer_fee_recipient: block_meta.proposer_fee_recipient,
                 proposer_mev_reward: block_meta.proposer_mev_reward,
-                cex_quotes: brontes_database::cex::CexPriceMap::new(), /* brontes_database::cex::CexPriceMap(cex_quotes.0), // ambiguous type */
-                eth_prices: Rational::default(),
-                block_timestamp: block_meta.block_timestamp, /* cex_quotes.0.get(&
-                                                              * Pair(Address::from_str("
-                                                              * ").unwrap(),
-                                                              * Address::from_str("").
-                                                              * unwrap())).unwrap() //
-                                                              * ambiguous type //
-                                                              * change to USDC - ETH +
-                                                              * error handle */
+                cex_quotes,
+                eth_prices: max(eth_prices.price.0, eth_prices.price.1),
+                block_timestamp: block_meta.block_timestamp,
                 mempool_flow: block_meta.mempool_flow.into_iter().collect(),
             },
-            dex_quotes: DexPrices::new(map, DexQuotes(vec![])),
+            dex_quotes: DexPrices::new(Default::default(), DexQuotes(dex_quotes)),
         })
     }
-
-
 
     pub fn insert_classified_data(
         &self,

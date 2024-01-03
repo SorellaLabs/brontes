@@ -18,7 +18,7 @@ pub mod address_string {
     {
         let address: String = Deserialize::deserialize(deserializer)?;
 
-        Ok(Address::from_str(&address).map_err(serde::de::Error::custom)?)
+        Address::from_str(&address).map_err(serde::de::Error::custom)
     }
 }
 
@@ -34,7 +34,7 @@ pub mod vec_address_string {
 
     pub fn serialize<S: Serializer>(u: &Vec<Address>, serializer: S) -> Result<S::Ok, S::Error> {
         let st: Vec<String> = u
-            .into_iter()
+            .iter()
             .map(|addr| format!("{:?}", addr.clone()))
             .collect::<Vec<_>>();
         st.serialize(serializer)
@@ -46,10 +46,9 @@ pub mod vec_address_string {
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(data
-            .into_iter()
+        data.into_iter()
             .map(|d| Address::from_str(&d))
             .collect::<Result<Vec<_>, <Address as FromStr>::Err>>()
-            .map_err(serde::de::Error::custom)?)
+            .map_err(serde::de::Error::custom)
     }
 }

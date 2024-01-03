@@ -1,6 +1,4 @@
-use std::{
-    collections::{HashSet},
-};
+use std::collections::HashSet;
 
 use brontes_pricing::types::DexPrices;
 pub mod cex;

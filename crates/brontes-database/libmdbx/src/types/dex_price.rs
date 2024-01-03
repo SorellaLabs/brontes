@@ -23,6 +23,23 @@ pub fn make_key(block_number: u64, tx_idx: u16) -> TxHash {
     key
 }
 
+pub fn make_filter_key_range(block_number: u64) -> (TxHash, TxHash) {
+    let mut f_bytes = [0u8; 8].to_vec();
+    let mut s_bytes = [0u8; 8].to_vec();
+
+    let block_number = block_number.to_be_bytes();
+    f_bytes = [f_bytes, block_number.to_vec()].concat();
+    s_bytes = [s_bytes, block_number.to_vec()].concat();
+
+    f_bytes = [f_bytes, [0; 16].to_vec()].concat();
+    s_bytes = [s_bytes, [u8::MAX; 16].to_vec()].concat();
+
+    let f_key: TxHash = TxHash::from_slice(&f_bytes);
+    let s_key: TxHash = TxHash::from_slice(&s_bytes);
+
+    (f_key, s_key)
+}
+
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexPriceData {
     pub block_number: u64,
@@ -62,9 +79,9 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-impl Into<Vec<(Pair, Vec<PoolKeysForPair>)>> for DexQuote {
-    fn into(self) -> Vec<(Pair, Vec<PoolKeysForPair>)> {
-        self.0.into_iter().collect()
+impl From<DexQuote> for Vec<(Pair, Vec<PoolKeysForPair>)> {
+    fn from(val: DexQuote) -> Self {
+        val.0.into_iter().collect()
     }
 }
 
@@ -78,7 +95,7 @@ impl Encodable for DexQuoteWithIndex {
     fn encode(&self, out: &mut dyn BufMut) {
         Encodable::encode(&self.tx_idx, out);
         let (keys, vals): (Vec<_>, Vec<_>) =
-            self.quote.clone().into_iter().map(|(k, v)| (k, v)).unzip();
+            self.quote.clone().into_iter().unzip();
 
         keys.encode(out);
         vals.encode(out);
@@ -92,7 +109,7 @@ impl Decodable for DexQuoteWithIndex {
         let keys = Vec::decode(buf)?;
         let vals = Vec::decode(buf)?;
 
-        let map = keys.into_iter().zip(vals.into_iter()).collect::<Vec<_>>();
+        let map = keys.into_iter().zip(vals).collect::<Vec<_>>();
 
         Ok(Self { tx_idx, quote: map })
     }
@@ -120,23 +137,21 @@ impl_compress_decompress_for_encoded_decoded!(DexQuoteWithIndex);
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, env, str::FromStr};
+    use std::{collections::HashMap, str::FromStr};
 
-    use alloy_primitives::{Address, U256};
+    use alloy_primitives::{Address};
     use brontes_database::clickhouse::Clickhouse;
     use brontes_pricing::{
-        types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair, PoolStateSnapShot},
-        uniswap_v2::UniswapV2Pool,
-        uniswap_v3::{Info, UniswapV3Pool},
+        types::{PoolKey, PoolKeyWithDirection, PoolKeysForPair},
     };
 
     use super::*;
 
     fn init_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
-        let clickhouse = Clickhouse::default();
+        
 
-        clickhouse
+        Clickhouse::default()
     }
 
     #[tokio::test]
@@ -167,18 +182,18 @@ mod tests {
                     let mut map = HashMap::new();
                     map.insert(
                         Pair(
-                            Address::from_str(&"0x0000000000000000000000000000000000000000")
+                            Address::from_str("0x0000000000000000000000000000000000000000")
                                 .unwrap(),
-                            Address::from_str(&"0x00000000a000000000000a0000000000000a0000")
+                            Address::from_str("0x00000000a000000000000a0000000000000a0000")
                                 .unwrap(),
                         ),
                         Default::default(),
                     );
                     map.insert(
                         Pair(
-                            Address::from_str(&"0x0000000000000000000000000000000000000000")
+                            Address::from_str("0x0000000000000000000000000000000000000000")
                                 .unwrap(),
-                            Address::from_str(&"0x00000000a000000000000a0000000000000a0000")
+                            Address::from_str("0x00000000a000000000000a0000000000000a0000")
                                 .unwrap(),
                         ),
                         vec![PoolKeysForPair(vec![
@@ -204,18 +219,18 @@ mod tests {
                     let mut map = HashMap::new();
                     map.insert(
                         Pair(
-                            Address::from_str(&"0x2000000000000000000000000000000000000000")
+                            Address::from_str("0x2000000000000000000000000000000000000000")
                                 .unwrap(),
-                            Address::from_str(&"0x10000000a000000000000a0000000000000a0000")
+                            Address::from_str("0x10000000a000000000000a0000000000000a0000")
                                 .unwrap(),
                         ),
                         Default::default(),
                     );
                     map.insert(
                         Pair(
-                            Address::from_str(&"0x0000000000000011110000000000000000000000")
+                            Address::from_str("0x0000000000000011110000000000000000000000")
                                 .unwrap(),
-                            Address::from_str(&"0xef000000a000002200000a0000000000000a0000")
+                            Address::from_str("0xef000000a000002200000a0000000000000a0000")
                                 .unwrap(),
                         ),
                         vec![PoolKeysForPair(vec![
