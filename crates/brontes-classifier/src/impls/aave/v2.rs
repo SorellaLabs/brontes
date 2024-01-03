@@ -10,7 +10,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     enum_unwrap,
-    AaveV2::{liquidationCallCall, AaveV2Calls, LiquidationCall as LiquidationCallEvent},
+    AaveV2::{liquidationCallCall, LiquidationCall},
     ActionCollection, IntoAction, StaticReturnBindings,
 };
 pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
@@ -19,12 +19,10 @@ action_impl!(
     LiquidationCallImpl,
     Liquidation,
     liquidationCallCall,
-    LiquidationCallEvent,
+    LiquidationCall,
     AaveV2,
-    logs: true,
     call_data: true,
-    |index, from_address: Address, target_address: Address, call_data: liquidationCallCall, log_data: Option<LiquidationCallEvent>, db_tx: &LibmdbxTx<RO> | {
-        let log = log_data?;
+    |index, from_address: Address, target_address: Address, call_data: liquidationCallCall, db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -38,7 +36,6 @@ action_impl!(
             collateral_asset: call_data.collateralAsset,
             debt_asset: call_data.debtAsset,
             amount: call_data.debtToCover,
-            reward: todo!(),
         })
     }
 );

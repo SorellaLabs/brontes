@@ -21,10 +21,6 @@ use alloy_sol_types::{sol, SolInterface};
 use brontes_types::normalized_actions::Actions;
 pub use impls::*;
 
-//include!(concat!(env!("ABI_BUILD_DIR"), "/token_to_addresses.rs"));
-//include!(concat!(env!("ABI_BUILD_DIR"), "/protocol_addr_set.rs"));
-//include!(concat!(env!("ABI_BUILD_DIR"), "/bindings.rs"));
-
 sol!(UniswapV2, "./abis/UniswapV2.json");
 sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
 sol!(UniswapV3, "./abis/UniswapV3.json");
