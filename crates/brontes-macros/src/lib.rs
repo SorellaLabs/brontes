@@ -92,11 +92,216 @@ use crate::action_classifier::{ActionDispatch, ActionMacro};
 ///  call_data: true
 ///  ````
 ///  ```|index, from_address, target_address, return_data, log_data|```
-pub fn action_impl(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input as ActionMacro)
-        .expand()
-        .unwrap_or_else(syn::Error::into_compile_error)
-        .into()
+pub fn action_impl(token_stream: TokenStream) -> TokenStream {
+    let MacroParse {
+        exchange_name,
+        action_type,
+        call_type,
+        log_type,
+        exchange_mod_name,
+        give_logs,
+        give_returns,
+        call_function,
+        give_calldata,
+    } = syn::parse2(token_stream.into()).unwrap();
+
+    let mut option_parsing = Vec::new();
+
+    let a = call_type.to_string();
+    let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
+
+    if give_calldata {
+        option_parsing.push(quote!(
+                let call_data = enum_unwrap!(data, #exchange_mod_name, #decalled);
+        ));
+    }
+
+    if give_logs {
+        option_parsing.push(quote!(
+            let log_data = logs.into_iter().filter_map(|log| {
+                #log_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, false).ok()
+            }).collect::<Vec<_>>();
+            let log_data = Some(log_data).filter(|data| !data.is_empty()).map(|mut l| l.remove(0));
+        ));
+    }
+
+    if give_returns {
+        option_parsing.push(quote!(
+                let return_data = #call_type::abi_decode_returns(&return_data, false).map_err(|e| {
+                    tracing::error!("return data failed to decode {:#?}", return_data);
+                    e
+                }).unwrap();
+        ));
+    }
+
+    let fn_call = match (give_calldata, give_logs, give_returns) {
+        (true, true, true) => {
+            quote!(
+            (#call_function)(index, from_address, target_address, call_data, return_data, log_data, db_tx)
+            )
+        }
+        (true, true, false) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, call_data, log_data, db_tx)
+            )
+        }
+        (true, false, true) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, call_data, return_data, db_tx)
+            )
+        }
+        (true, false, false) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, call_data, db_tx)
+            )
+        }
+        (false, true, true) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, return_data, log_data, db_tx)
+            )
+        }
+        (false, false, true) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, return_data, db_tx)
+            )
+        }
+        (false, true, false) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, log_data, db_tx)
+            )
+        }
+        (false, false, false) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, db_tx)
+            )
+        }
+    };
+
+    quote! {
+        #[derive(Debug, Default)]
+        pub struct #exchange_name;
+
+        impl IntoAction for #exchange_name {
+            fn get_signature(&self) -> [u8; 4] {
+                #call_type::SELECTOR
+            }
+
+            #[allow(unused)]
+            fn decode_trace_data(
+                &self,
+                index: u64,
+                data: StaticReturnBindings,
+                return_data: Bytes,
+                from_address: Address,
+                target_address: Address,
+                logs: &Vec<Log>,
+                db_tx: &LibmdbxTx<RO>,
+            ) -> Option<Actions> {
+                #(#option_parsing)*
+                Some(Actions::#action_type(#fn_call?))
+            }
+        }
+    }
+    .into()
+}
+
+struct MacroParse {
+    // required for all
+    exchange_name: Ident,
+    action_type:   Ident,
+    log_type:      Ident,
+    call_type:     Ident,
+
+    /// for call data decoding
+    exchange_mod_name: Ident,
+    /// wether we want logs or not
+    give_logs:         bool,
+    /// wether we want return data or not
+    give_returns:      bool,
+    give_calldata:     bool,
+
+    /// The closure that we use to construct the normalized type
+    call_function: ExprClosure,
+}
+
+impl Parse for MacroParse {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let exchange_name: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let action_type: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let call_type: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let log_type: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+
+        let exchange_mod_name: Ident = input.parse()?;
+
+        let mut logs = false;
+        let mut return_data = false;
+        let mut call_data = false;
+
+        input.parse::<Token![,]>()?;
+
+        while !input.peek(Token![|]) {
+            let arg: Ident = input.parse()?;
+            input.parse::<Token![:]>()?;
+            let enabled: LitBool = input.parse()?;
+
+            match arg.to_string().to_lowercase().as_str() {
+                "logs" => logs = enabled.value(),
+                "call_data" => call_data = enabled.value(),
+                "return_data" => return_data = enabled.value(),
+                _ => {
+                    return Err(Error::new(
+                        arg.span(),
+                        format!(
+                            "{} is not a valid config option, valid options are: \n logs , \
+                             call_data, return_data",
+                            arg,
+                        ),
+                    ))
+                }
+            }
+            input.parse::<Token![,]>()?;
+        }
+        // no data enabled
+        let call_function: ExprClosure = input.parse()?;
+
+        if call_function.asyncness.is_some() {
+            return Err(syn::Error::new(input.span(), "closure cannot be async"))
+        }
+
+        if !input.is_empty() {
+            return Err(syn::Error::new(
+                input.span(),
+                "There should be no values after the call function",
+            ))
+        }
+
+        if call_function.asyncness.is_some() {
+            return Err(syn::Error::new(input.span(), "closure cannot be async"))
+        }
+
+        if !input.is_empty() {
+            return Err(syn::Error::new(
+                input.span(),
+                "There should be no values after the call function",
+            ))
+        }
+
+        Ok(Self {
+            give_returns: return_data,
+            log_type,
+            call_function,
+            give_logs: logs,
+            give_calldata: call_data,
+            call_type,
+            action_type,
+            exchange_name,
+            exchange_mod_name,
+        })
+    }
 }
 
 #[proc_macro]

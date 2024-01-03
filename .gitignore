@@ -26,9 +26,8 @@ abi-builds/**.txt
 
 stuff
 
-
-# Libmdbx files
-data/*
+!abi-builds/protocol_addr_sets.rs
+crates/brontes-inspect/abis/**.json
 
 /crates/brontes-core/abi_cache/sources/*
 /crates/brontes-inspect/abi_cache/sources/*
