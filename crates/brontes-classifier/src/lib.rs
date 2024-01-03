@@ -67,22 +67,12 @@ sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
 sol!(DodoDPPPool, "./classifier-abis/dodo/DPPPool.json");
 sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
 
-// Discovery
-sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
-sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
-sol!(CurveV1MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV1.json");
-sol!(CurveV2MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV2.json");
-sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
-sol!(CurveCryptoSwapFactory, "./classifier-abis/CurveCryptoSwapFactory.json");
-sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
-sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
-sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
-sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
-sol!(BalancerV1CorePoolFactory, "./classifier-abis/balancer/BalancerV1Factory.json");
-sol!(BalancerV1SmartPoolFactory, "./classifier-abis/balancer/BalancerV1CrpFactory.json");
-sol!(DodoDVMFactory, "./classifier-abis/dodo/DVMFactory.json");
-sol!(DodoDPPFactory, "./classifier-abis/dodo/DPPFactory.json");
-sol!(DodoDSPFactory, "./classifier-abis/dodo/DSPFactory.json");
+sol!(UniswapV2, "./abis/UniswapV2.json");
+sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
+sol!(UniswapV3, "./abis/UniswapV3.json");
+sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
+sol!(CurveCryptoSwap, "./abis/CurveCryptoSwap.json");
+sol!(AaveV2, "./abis/AaveV2.json");
 
 // Balancer Pool Interfaces
 sol! {
