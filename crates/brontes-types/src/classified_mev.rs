@@ -206,11 +206,7 @@ pub fn compose_sandwich_jit(
     let jit_sand = Box::new(JitLiquiditySandwich {
         frontrun_tx_hash: sandwich.frontrun_tx_hash,
         frontrun_gas_details: sandwich.frontrun_gas_details,
-        frontrun_swaps_index: sandwich
-            .frontrun_swaps_index
-            .into_iter()
-            .map(|x| x as u64)
-            .collect(),
+        frontrun_swaps_index: sandwich.frontrun_swaps_index,
         frontrun_swaps_from: sandwich.frontrun_swaps_from,
         frontrun_swaps_pool: sandwich.frontrun_swaps_pool,
         frontrun_swaps_token_in: sandwich.frontrun_swaps_token_in,

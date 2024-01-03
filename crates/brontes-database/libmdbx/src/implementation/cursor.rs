@@ -214,7 +214,7 @@ impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
                     code:       e.into(),
                     operation:  DatabaseWriteOperation::CursorUpsert,
                     table_name: T::NAME,
-                    key:        key.into(),
+                    key,
                 }
                 .into()
             })
@@ -229,7 +229,7 @@ impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
                     code:       e.into(),
                     operation:  DatabaseWriteOperation::CursorInsert,
                     table_name: T::NAME,
-                    key:        key.into(),
+                    key,
                 }
                 .into()
             })
@@ -247,7 +247,7 @@ impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
                     code:       e.into(),
                     operation:  DatabaseWriteOperation::CursorAppend,
                     table_name: T::NAME,
-                    key:        key.into(),
+                    key,
                 }
                 .into()
             })
@@ -276,7 +276,7 @@ impl<T: DupSort> DbDupCursorRW<T> for LibmdbxCursor<T, RW> {
                     code:       e.into(),
                     operation:  DatabaseWriteOperation::CursorAppendDup,
                     table_name: T::NAME,
-                    key:        key.into(),
+                    key,
                 }
                 .into()
             })
