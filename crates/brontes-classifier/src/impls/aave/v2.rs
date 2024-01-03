@@ -1,5 +1,5 @@
-use alloy_primitives::{hex, Address, Bytes, FixedBytes};
-use alloy_sol_types::{SolCall, SolEvent};
+use alloy_primitives::{ Address, Bytes};
+use alloy_sol_types::SolCall;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_pricing::types::PoolUpdate;
@@ -7,19 +7,18 @@ use brontes_types::normalized_actions::{Actions, NormalizedLiquidation};
 use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_rpc_types::Log;
 use tokio::sync::mpsc::UnboundedSender;
-
+use crate::AaveV2::AaveV2Calls;
 use crate::{
     enum_unwrap,
-    AaveV2::{liquidationCallCall, LiquidationCall},
+    AaveV2::liquidationCallCall,
     ActionCollection, IntoAction, StaticReturnBindings,
 };
-pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
 
 action_impl!(
-    LiquidationCallImpl,
+    LiquidationCallImplV2,
     Liquidation,
     liquidationCallCall,
-    LiquidationCall,
+    NormalizedLiquidation,
     AaveV2,
     call_data: true,
     |index, from_address: Address, target_address: Address, call_data: liquidationCallCall, db_tx: &LibmdbxTx<RO> | {
@@ -40,4 +39,4 @@ action_impl!(
     }
 );
 
-action_dispatch!(AaveV2Classifier, LiquidationCallImpl);
+action_dispatch!(AaveV2Classifier, LiquidationCallImplV2);

@@ -17,7 +17,7 @@ use reth_rpc_types::{
 };
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::*;
+use crate::{aave::AaveV3Classifier, *};
 
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -311,6 +311,7 @@ impl<'db> Classifier<'db> {
                 StaticBindingsDb::SushiSwapV3 => Box::new(SushiSwapV3Classifier::default()),
                 StaticBindingsDb::CurveCryptoSwap => Box::new(CurveCryptoSwapClassifier::default()),
                 StaticBindingsDb::AaveV2 => Box::new(AaveV2Classifier::default()),
+                StaticBindingsDb::AaveV3 => Box::new(AaveV3Classifier::default()),
             };
 
             let calldata = trace.get_calldata();

@@ -17,6 +17,7 @@ pub enum StaticBindingsDb {
     SushiSwapV3,
     CurveCryptoSwap,
     AaveV2,
+    AaveV3,
 }
 
 impl StaticBindingsDb {
@@ -28,6 +29,7 @@ impl StaticBindingsDb {
             StaticBindingsDb::SushiSwapV3 => "SushiSwapV3".to_string(),
             StaticBindingsDb::CurveCryptoSwap => "CurveCryptoSwap".to_string(),
             StaticBindingsDb::AaveV2 => "AaveV2".to_string(),
+            StaticBindingsDb::AaveV3 => "AaveV3".to_string(),
         }
     }
 }
@@ -48,6 +50,7 @@ impl From<String> for StaticBindingsDb {
             "SushiSwapV3" => StaticBindingsDb::SushiSwapV3,
             "CurveCryptoSwap" => StaticBindingsDb::CurveCryptoSwap,
             "AaveV2" => StaticBindingsDb::AaveV2,
+            "AaveV3" => StaticBindingsDb::AaveV3,
             _ => unreachable!("no value from str: {value}"),
         }
     }
@@ -68,6 +71,7 @@ impl Encodable for StaticBindingsDb {
             StaticBindingsDb::SushiSwapV3 => 3u64.encode(out),
             StaticBindingsDb::CurveCryptoSwap => 4u64.encode(out),
             StaticBindingsDb::AaveV2 => 5u64.encode(out),
+            StaticBindingsDb::AaveV3 => 6u64.encode(out),
         }
     }
 }
@@ -83,6 +87,7 @@ impl Decodable for StaticBindingsDb {
             3 => StaticBindingsDb::SushiSwapV3,
             4 => StaticBindingsDb::CurveCryptoSwap,
             5 => StaticBindingsDb::AaveV2,
+            6 => StaticBindingsDb::AaveV3,
             _ => unreachable!("no enum variant"),
         };
 
