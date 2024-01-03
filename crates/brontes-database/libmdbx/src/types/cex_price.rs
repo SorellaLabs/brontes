@@ -164,12 +164,9 @@ impl Decodable for CexPriceMap {
         let pairs = Vec::decode(buf)?;
         let quotes = Vec::decode(buf)?;
 
-        pairs
-            .into_iter()
-            .zip(quotes)
-            .for_each(|(pair, quote)| {
-                map.entry(pair).or_insert(quote);
-            });
+        pairs.into_iter().zip(quotes).for_each(|(pair, quote)| {
+            map.entry(pair).or_insert(quote);
+        });
 
         Ok(Self(map))
     }
@@ -325,17 +322,13 @@ impl Decompress for CexQuote {
 
 #[cfg(test)]
 mod tests {
-    
 
-    
     use brontes_database::clickhouse::Clickhouse;
-    
 
     use super::*;
 
     fn init_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
-        
 
         Clickhouse::default()
     }
