@@ -170,10 +170,8 @@ impl PairGraph {
             let t0 = SystemTime::now();
             let pair = Pair(pool_pair.token_0, pool_pair.token_1);
 
-            let direction0 =
-                PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: true };
-            let direction1 =
-                PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: false };
+            let direction0 = PoolPairInfoDirection { info: pool_pair, token_0_in: true };
+            let direction1 = PoolPairInfoDirection { info: pool_pair, token_0_in: false };
 
             self.known_pairs.insert(pair, vec![vec![direction0]]);
             self.known_pairs.insert(pair.flip(), vec![vec![direction1]]);
@@ -243,8 +241,8 @@ impl PairGraph {
         let t0 = SystemTime::now();
         let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
 
-        let direction0 = PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: true };
-        let direction1 = PoolPairInfoDirection { info: pool_pair.clone(), token_0_in: false };
+        let direction0 = PoolPairInfoDirection { info: pool_pair, token_0_in: true };
+        let direction1 = PoolPairInfoDirection { info: pool_pair, token_0_in: false };
 
         self.known_pairs.insert(pair, vec![vec![direction0]]);
         self.known_pairs.insert(pair.flip(), vec![vec![direction1]]);
@@ -304,19 +302,13 @@ impl PairGraph {
                 self.graph
                     .edge_weight(self.graph.find_edge(base, quote).unwrap())
                     .unwrap()
-                    .into_iter()
+                    .iter()
                     .map(|pool_info| {
                         let token_0_edge = *self.addr_to_index.get(&pool_info.token_0).unwrap();
                         if base.index() == token_0_edge {
-                            PoolPairInfoDirection {
-                                info:       pool_info.clone(),
-                                token_0_in: true,
-                            }
+                            PoolPairInfoDirection { info: *pool_info, token_0_in: true }
                         } else {
-                            PoolPairInfoDirection {
-                                info:       pool_info.clone(),
-                                token_0_in: false,
-                            }
+                            PoolPairInfoDirection { info: *pool_info, token_0_in: false }
                         }
                     })
                     .collect::<Vec<_>>()
@@ -379,13 +371,13 @@ where
                     if next_score < *ent.get() {
                         *ent.into_mut() = next_score;
                         visit_next.push(MinScored(next_score, next));
-                        predecessor.insert(next.clone(), node.clone());
+                        predecessor.insert(next, node);
                     }
                 }
                 Vacant(ent) => {
                     ent.insert(next_score);
                     visit_next.push(MinScored(next_score, next));
-                    predecessor.insert(next.clone(), node.clone());
+                    predecessor.insert(next, node);
                 }
             }
         }

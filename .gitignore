@@ -27,8 +27,7 @@ crates/tracing/src/main.rs
 
 **/const_sql.rs
 
-# Ignore everything in abi-builds
-abi-builds/*
+
 
 # But not bindings.rs
 !abi-builds/bindings.rs
@@ -47,3 +46,6 @@ crates/brontes-inspect/abis/**.json
 .cargo/
 
 data/db/*
+abi-builds/dex_price_map.rs
+abi-builds/protocol_addr_set.rs
+

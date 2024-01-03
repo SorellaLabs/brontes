@@ -39,7 +39,7 @@ pub(crate) mod static_bindings {
         u: &StaticBindingsDb,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let st: String = u.clone().into();
+        let st: String = (*u).into();
         st.serialize(serializer)
     }
 
@@ -75,7 +75,7 @@ pub(crate) mod u256 {
     {
         let data: String = Deserialize::deserialize(deserializer)?;
 
-        Ok(U256::from_str(&data).map_err(serde::de::Error::custom)?)
+        U256::from_str(&data).map_err(serde::de::Error::custom)
     }
 }
 
@@ -88,19 +88,19 @@ pub(crate) mod address {
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-
+    #[allow(dead_code)]
     pub fn serialize<S: Serializer>(u: &Address, serializer: S) -> Result<S::Ok, S::Error> {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
-
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
     where
         D: Deserializer<'de>,
     {
         let data: String = Deserialize::deserialize(deserializer)?;
 
-        Ok(Address::from_str(&data).map_err(serde::de::Error::custom)?)
+        Address::from_str(&data).map_err(serde::de::Error::custom)
     }
 }
 
@@ -113,23 +113,23 @@ pub(crate) mod vec_txhash {
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-
+    #[allow(dead_code)]
     pub fn serialize<S: Serializer>(u: &Vec<TxHash>, serializer: S) -> Result<S::Ok, S::Error> {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
-
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<TxHash>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(data
+        data
             .into_iter()
             .map(|d| TxHash::from_str(&d))
             .collect::<Result<Vec<_>, <TxHash as FromStr>::Err>>()
-            .map_err(serde::de::Error::custom)?)
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -173,12 +173,12 @@ pub(crate) mod pool_key {
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-
+    #[allow(dead_code)]
     pub fn serialize<S: Serializer>(u: &PoolKey, serializer: S) -> Result<S::Ok, S::Error> {
         let val = (format!("{:?}", u.pool), u.run, u.batch, u.update_nonce);
         val.serialize(serializer)
     }
-
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<PoolKey, D::Error>
     where
         D: Deserializer<'de>,

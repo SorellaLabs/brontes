@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
@@ -8,9 +8,10 @@ use brontes_types::{
     tree::{GasDetails, TimeTree},
     ToFloatNearest,
 };
+use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, B256};
+use reth_primitives::{revm_primitives::HashSet, Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
@@ -46,8 +47,30 @@ impl Inspector for AtomicBackrunInspector<'_> {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
                 let idx = root.get_block_position();
-                // not atomic
-                if swaps.iter().filter(|s| s.is_swap()).count() <= 1 {
+
+                // take all swaps and remove swaps that don't do more than a single swap. This
+                // removes all cex <> dex arbs and one off funky swaps
+                let mut tokens: HashMap<Address, Vec<Address>> = HashMap::new();
+                swaps
+                    .iter()
+                    .filter(|s| s.is_swap())
+                    .map(|f| f.clone().force_swap())
+                    .for_each(|swap| {
+                        let e = tokens.entry(swap.pool).or_default();
+                        e.push(swap.token_in);
+                        e.push(swap.token_out);
+                    });
+
+                let entries = tokens.len() * 2;
+                let overlaps = tokens
+                    .values()
+                    .flatten()
+                    .sorted()
+                    .dedup_with_count()
+                    .map(|(i, _)| i)
+                    .sum::<usize>();
+
+                if overlaps <= entries {
                     return None
                 }
 

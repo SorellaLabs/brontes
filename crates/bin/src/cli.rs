@@ -14,15 +14,15 @@ pub struct Args {
 pub enum Commands {
     /// Runs brontes
     #[command(name = "run")]
-    Run(Run),
+    Run(RunArgs),
     #[command(name = "init")]
     Init(Init),
-    #[command(name = "batch-dex")]
-    RunBatchWithPricing(RunBatchWithPricing),
+    #[command(name = "dex-pricing")]
+    RunBatchWithPricing(DexPricingArgs),
 }
 
 #[derive(Debug, Parser)]
-pub struct Run {
+pub struct RunArgs {
     /// Start Block
     #[arg(long, short)]
     pub start_block: u64,
@@ -65,7 +65,7 @@ pub struct Init {
 }
 
 #[derive(Debug, Parser)]
-pub struct RunBatchWithPricing {
+pub struct DexPricingArgs {
     #[arg(long, short)]
     pub start_block:    u64,
     /// Optional End Block, if omitted it will continue to run until killed

@@ -63,8 +63,6 @@ pub fn get_next_sqrt_price_from_amount_0_rounding_up(
     }
 
     let numerator_1: U256 = U256::from(liquidity) << 96;
-    let amount = amount;
-    let sqrt_price_x_96 = sqrt_price_x_96;
 
     if add {
         let product = amount.wrapping_mul(sqrt_price_x_96);
@@ -171,13 +169,13 @@ pub fn _get_amount_1_delta(
         mul_div_rounding_up(
             U256::from(liquidity),
             sqrt_ratio_b_x_96 - sqrt_ratio_a_x_96,
-            U256::from(0x1000000000000000000000000 as u128),
+            U256::from(0x1000000000000000000000000_u128),
         )
     } else {
         mul_div(
             U256::from(liquidity),
             sqrt_ratio_b_x_96 - sqrt_ratio_a_x_96,
-            U256::from(0x1000000000000000000000000 as u128),
+            U256::from(0x1000000000000000000000000_u128),
         )
     }
 }

@@ -6,7 +6,7 @@ use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
 use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
 use const_sql::*;
-use futures::{future::join_all, Future, StreamExt};
+use futures::{future::join_all, Future};
 use reth_db::{table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::Row;
@@ -97,7 +97,7 @@ impl Tables {
         &'a self,
         libmdbx: Arc<Libmdbx>,
         clickhouse: Arc<Clickhouse>,
-        block_range: Option<(u64, u64)>, // inclusive of start only
+        _block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
         match self {
             Tables::TokenDecimals => {
@@ -175,16 +175,16 @@ impl FromStr for Tables {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            TokenDecimals::NAME => return Ok(Tables::TokenDecimals),
-            AddressToTokens::NAME => return Ok(Tables::AddressToTokens),
-            AddressToProtocol::NAME => return Ok(Tables::AddressToProtocol),
-            CexPrice::NAME => return Ok(Tables::CexPrice),
-            Metadata::NAME => return Ok(Tables::Metadata),
-            PoolState::NAME => return Ok(Tables::PoolState),
-            DexPrice::NAME => return Ok(Tables::DexPrice),
-            PoolCreationBlocks::NAME => return Ok(Tables::PoolCreationBlocks),
+            TokenDecimals::NAME => Ok(Tables::TokenDecimals),
+            AddressToTokens::NAME => Ok(Tables::AddressToTokens),
+            AddressToProtocol::NAME => Ok(Tables::AddressToProtocol),
+            CexPrice::NAME => Ok(Tables::CexPrice),
+            Metadata::NAME => Ok(Tables::Metadata),
+            PoolState::NAME => Ok(Tables::PoolState),
+            DexPrice::NAME => Ok(Tables::DexPrice),
+            PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
             // MevBlocks::NAME => return Ok(Tables::MevBlock),
-            _ => return Err("Unknown table".to_string()),
+            _ => Err("Unknown table".to_string()),
         }
     }
 }
@@ -331,7 +331,6 @@ where
 
             let chunk = 10000;
             let tasks = (block_range.0..block_range.1)
-                .into_iter()
                 .filter(|block| block % chunk == 0)
                 .collect::<Vec<_>>();
 
@@ -358,7 +357,7 @@ where
                     })
                 })).await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
 
-                libmdbx.write_table(&data)?;
+            libmdbx.write_table(&data)?;
             /* .buffer_unordered(50);
 
             while let Some(d) = data.next().await {
