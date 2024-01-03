@@ -65,7 +65,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     let mut option_parsing = Vec::new();
 
-    let a = call_type.to_string().to_lowercase();
+    let a = call_type.to_string();
     let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
 
     if give_calldata {

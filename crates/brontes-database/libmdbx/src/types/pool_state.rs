@@ -92,7 +92,7 @@ impl_compress_decompress_for_encoded_decoded!(PoolStateData);
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap};
+    use std::collections::HashMap;
 
     use alloy_primitives::U256;
     use brontes_database::clickhouse::Clickhouse;
@@ -101,19 +101,11 @@ mod tests {
         uniswap_v2::UniswapV2Pool,
         uniswap_v3::{Info, UniswapV3Pool},
     };
-    
-    
-    
 
-    use crate::{
-        types::{
-            pool_state::{PoolStateData, PoolStateType},
-        },
-    };
+    use crate::types::pool_state::{PoolStateData, PoolStateType};
 
     fn init_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
-        
 
         Clickhouse::default()
     }
