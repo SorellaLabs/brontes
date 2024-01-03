@@ -1,8 +1,6 @@
-
 pub use brontes_types::exchanges::StaticBindingsDb;
 use brontes_types::libmdbx::serde::address_string;
-
-use reth_primitives::{Address};
+use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
@@ -26,6 +24,6 @@ impl LibmdbxData<AddressToProtocol> for AddressToProtocolData {
         <AddressToProtocol as reth_db::table::Table>::Key,
         <AddressToProtocol as reth_db::table::Table>::Value,
     ) {
-        (self.address, self.classifier_name.clone())
+        (self.address, self.classifier_name)
     }
 }

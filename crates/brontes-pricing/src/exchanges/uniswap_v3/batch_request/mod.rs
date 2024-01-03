@@ -56,8 +56,8 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
         make_call_request(slot0Call::new(()), provider.clone(), to, block)
     );
 
-    pool.token_a = token_a?._0.into();
-    pool.token_b = token_b?._0.into();
+    pool.token_a = token_a?._0;
+    pool.token_b = token_b?._0;
     pool.liquidity = liquidity?._0;
     pool.fee = fee?._0;
     pool.tick_spacing = tick_spacing?._0;
@@ -123,7 +123,7 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
         .await
         .unwrap();
 
-    let return_data = tick_constructorCall::abi_decode_returns(&*res, false).unwrap();
+    let return_data = tick_constructorCall::abi_decode_returns(&res, false).unwrap();
 
     Ok((return_data._0, return_data._1))
 }

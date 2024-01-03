@@ -5,7 +5,7 @@ use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
-use reth_primitives::{BufMut};
+use reth_primitives::BufMut;
 use serde::{Deserialize, Serialize};
 
 #[allow(non_camel_case_types)]
@@ -50,9 +50,9 @@ impl From<String> for StaticBindingsDb {
     }
 }
 
-impl Into<String> for StaticBindingsDb {
-    fn into(self) -> String {
-        self.as_string()
+impl From<StaticBindingsDb> for String {
+    fn from(val: StaticBindingsDb) -> Self {
+        val.as_string()
     }
 }
 
@@ -99,6 +99,6 @@ impl Decompress for StaticBindingsDb {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
         let buf = &mut binding.as_slice();
-        Ok(StaticBindingsDb::decode(buf).map_err(|_| DatabaseError::Decode)?)
+        StaticBindingsDb::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }

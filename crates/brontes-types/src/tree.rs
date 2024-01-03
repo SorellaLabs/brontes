@@ -52,7 +52,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     pub fn finalize_tree(&mut self) {
         // because of this bad boy: https://etherscan.io/block/18500239
         // we need this
-        if self.roots.len() == 0 {
+        if self.roots.is_empty() {
             error!(block = self.header.number, "have empty tree");
             self.roots.iter_mut().for_each(|root| root.finalize());
             return
@@ -299,12 +299,10 @@ impl<V: NormalizedAction> Node<V> {
         let log = trace_addr.clone();
         if trace_addr.len() == 1 {
             self.inner.push(n);
+        } else if let Some(inner) = self.inner.get_mut(trace_addr.remove(0)) {
+            inner.get_all_inner_nodes(n, trace_addr)
         } else {
-            if let Some(inner) = self.inner.get_mut(trace_addr.remove(0)) {
-                inner.get_all_inner_nodes(n, trace_addr)
-            } else {
-                eprintln!("ERROR: {:?}\n {:?}", self.inner, log);
-            }
+            eprintln!("ERROR: {:?}\n {:?}", self.inner, log);
         }
     }
 
@@ -430,7 +428,7 @@ impl<V: NormalizedAction> Node<V> {
     {
         let (add, go_lower) = call(self);
         if add {
-            results.push(wanted_data(&self))
+            results.push(wanted_data(self))
         }
 
         if go_lower {

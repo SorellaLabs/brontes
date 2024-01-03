@@ -21,22 +21,19 @@ use brontes_inspect::{
     sandwich::SandwichInspector, Inspector,
 };
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
-use brontes_tracing::init;
 use clap::Parser;
 use itertools::Itertools;
 use metrics_process::Collector;
 use reth_db::transaction::DbTx;
 use reth_tracing_ext::TracingClient;
-use tokio::{pin, sync::mpsc::unbounded_channel};
+use tokio::sync::mpsc::unbounded_channel;
 use tracing::{error, info, Level};
-use tracing_subscriber::{
-    filter::Directive, prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Layer, Registry,
-};
+use tracing_subscriber::filter::Directive;
 mod banner;
 mod cli;
 
 use banner::print_banner;
-use cli::{Args, Commands, Init, Run, RunBatchWithPricing};
+use cli::{Args, Commands, DexPricingArgs, Init, RunArgs};
 
 type Inspectors<'a> = [&'a Box<dyn Inspector>; 4];
 
@@ -111,7 +108,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     }
 }
 
-async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
+async fn run_brontes(run_config: RunArgs) -> Result<(), Box<dyn Error>> {
     initialize_prometheus().await;
 
     // Fetch required environment variables.
@@ -122,6 +119,7 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
     let metrics_listener = PoirotMetricsListener::new(metrics_rx);
+    tokio::spawn(metrics_listener);
 
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
     let libmdbx =
@@ -135,8 +133,9 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
 
     let inspectors: Inspectors = inspector_holder.get_inspectors();
 
-    let (mut manager, tracer) =
+    let (manager, tracer) =
         TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), max_tasks);
+    tokio::spawn(manager);
 
     let parser = DParser::new(
         metrics_tx,
@@ -164,21 +163,11 @@ async fn run_brontes(run_config: Run) -> Result<(), Box<dyn Error>> {
         &classifier,
         &inspectors,
     );
-
-    pin!(brontes);
-    pin!(metrics_listener);
-
-    // wait for completion
-    tokio::select! {
-        _ = &mut brontes => {
-            info!("finnished running brontes, shutting down");
-        }
-        _ = Pin::new(&mut manager) => {
-        }
-        _ = &mut metrics_listener => {
-        }
-    }
-    manager.graceful_shutdown();
+    brontes.await;
+    info!("finnished running brontes, shutting down");
+    std::thread::spawn(move || {
+        drop(parser);
+    });
 
     Ok(())
 }
@@ -204,7 +193,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
                     .tables_to_init
                     .unwrap_or({
                         if init_config.download_dex_pricing {
-                            let mut tables = Tables::ALL.to_vec();
+                            let tables = Tables::ALL.to_vec();
                             //tables.retain(|table| table != &Tables::CexPrice);
                             //println!("TABLES: {:?}", tables);
                             tables
@@ -223,7 +212,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<dyn Error>> {
+async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Error>> {
     assert!(config.start_block <= config.end_block);
     info!(?config);
 
@@ -234,6 +223,7 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
     let metrics_listener = PoirotMetricsListener::new(metrics_rx);
+    tokio::spawn(metrics_listener);
 
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
     let libmdbx =
@@ -243,8 +233,9 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
         Box::leak(Box::new(InspectorHolder::new(config.quote_asset.parse().unwrap(), &libmdbx)));
     let inspectors: Inspectors = inspector_holder.get_inspectors();
 
-    let (mut manager, tracer) =
+    let (manager, tracer) =
         TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), max_tasks);
+    tokio::spawn(manager);
 
     let parser = DParser::new(
         metrics_tx,
@@ -257,14 +248,13 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
 
     let range = config.end_block - config.start_block;
 
-    let cpus_min = range / config.min_batch_size + 1;
+    let cpus_min = range / config.min_batch_size;
 
     let mut scope: TokioScope<'_, ()> = unsafe { Scope::create() };
 
     // the amount of cpu's we want to use
     let cpus = std::cmp::min(cpus_min, cpus);
-
-    let chunk_size = range / cpus + 1;
+    let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
     for (i, mut chunk) in (config.start_block..=config.end_block)
         .chunks(chunk_size.try_into().unwrap())
@@ -288,22 +278,13 @@ async fn run_batch_with_pricing(config: RunBatchWithPricing) -> Result<(), Box<d
         ));
     }
 
-    // let range
-
-    pin!(metrics_listener);
-    let mut fut = Box::pin(scope.collect());
-
-    // wait for completion
-    tokio::select! {
-        _ = &mut fut => {
-            info!("finnished running all batch , shutting down");
-        }
-        _ = Pin::new(&mut manager) => {
-        }
-        _ = &mut metrics_listener => {
-        }
-    }
-    manager.graceful_shutdown();
+    // collect and wait
+    scope.collect().await;
+    info!("finnished running all batch , shutting down");
+    drop(scope);
+    std::thread::spawn(move || {
+        drop(parser);
+    });
 
     Ok(())
 }
@@ -318,7 +299,6 @@ async fn spawn_batches(
     libmdbx: &Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
-    info!(%batch_id, %start_block, %end_block,"starting batch");
     DataBatching::new(
         quote_asset,
         run_id,
