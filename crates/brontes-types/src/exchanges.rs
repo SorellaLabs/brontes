@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
 use alloy_rlp::{Decodable, Encodable};
-use malachite::integer::conversion::string::to_string;
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,

@@ -34,21 +34,15 @@ mod tests {
     use std::{env, sync::Arc};
 
     use brontes_database::clickhouse::Clickhouse;
-    
-    use reth_db::{
-        cursor::{DbCursorRO},
-        transaction::DbTx,
-        DatabaseError,
-    };
+    use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
     use serial_test::serial;
-    
 
     use crate::{
         implementation::tx::LibmdbxTx,
         initialize::LibmdbxInitializer,
         tables::{
-            AddressToProtocol, AddressToTokens, CexPrice, Metadata, PoolCreationBlocks,
-            PoolState, Tables, TokenDecimals,
+            AddressToProtocol, AddressToTokens, CexPrice, Metadata, PoolCreationBlocks, PoolState,
+            Tables, TokenDecimals,
         },
         Libmdbx,
     };
