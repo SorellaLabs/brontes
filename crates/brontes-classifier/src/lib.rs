@@ -30,6 +30,7 @@ sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
 sol!(UniswapV3, "./abis/UniswapV3.json");
 sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
 sol!(CurveCryptoSwap, "./abis/CurveCryptoSwap.json");
+sol!(AaveV2, "./abis/AaveV2.json");
 
 pub trait ActionCollection: Sync + Send {
     fn dispatch(

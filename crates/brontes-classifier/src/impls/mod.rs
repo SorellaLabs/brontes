@@ -7,6 +7,9 @@ pub use sushiswap::{SushiSwapV2Classifier, SushiSwapV3Classifier};
 pub mod curve;
 pub use curve::CurveCryptoSwapClassifier;
 
+pub mod aave;
+pub use aave::AaveV2Classifier;
+
 #[macro_export]
 macro_rules! enum_unwrap {
     ($data:ident, $exchange:ident, $return:ident) => {{
