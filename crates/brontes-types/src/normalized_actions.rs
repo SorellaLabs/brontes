@@ -185,7 +185,6 @@ pub struct NormalizedLiquidation {
     pub collateral_asset: Address,
     pub debt_asset:       Address,
     pub amount:           U256,
-    pub reward:           U256,
 }
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLoan {
