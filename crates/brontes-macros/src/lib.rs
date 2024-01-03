@@ -92,11 +92,117 @@ use crate::action_classifier::{ActionDispatch, ActionMacro};
 ///  call_data: true
 ///  ````
 ///  ```|index, from_address, target_address, return_data, log_data|```
-pub fn action_impl(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input as ActionMacro)
-        .expand()
-        .unwrap_or_else(syn::Error::into_compile_error)
-        .into()
+pub fn action_impl(token_stream: TokenStream) -> TokenStream {
+    let MacroParse {
+        exchange_name,
+        action_type,
+        call_type,
+        log_type,
+        exchange_mod_name,
+        give_logs,
+        give_returns,
+        call_function,
+        give_calldata,
+    } = syn::parse2(token_stream.into()).unwrap();
+
+    let mut option_parsing = Vec::new();
+
+    let a = call_type.to_string();
+    let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
+
+    if give_calldata {
+        option_parsing.push(quote!(
+                let call_data = enum_unwrap!(data, #exchange_mod_name, #decalled);
+        ));
+    }
+
+    if give_logs {
+        option_parsing.push(quote!(
+            let log_data = logs.into_iter().filter_map(|log| {
+                #log_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, false).ok()
+            }).collect::<Vec<_>>();
+            let log_data = Some(log_data).filter(|data| !data.is_empty()).map(|mut l| l.remove(0));
+        ));
+    }
+
+    if give_returns {
+        option_parsing.push(quote!(
+                let return_data = #call_type::abi_decode_returns(&return_data, false).map_err(|e| {
+                    tracing::error!("return data failed to decode {:#?}", return_data);
+                    e
+                }).unwrap();
+        ));
+    }
+
+    let fn_call = match (give_calldata, give_logs, give_returns) {
+        (true, true, true) => {
+            quote!(
+            (#call_function)(index, from_address, target_address, call_data, return_data, log_data, db_tx)
+            )
+        }
+        (true, true, false) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, call_data, log_data, db_tx)
+            )
+        }
+        (true, false, true) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, call_data, return_data, db_tx)
+            )
+        }
+        (true, false, false) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, call_data, db_tx)
+            )
+        }
+        (false, true, true) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, return_data, log_data, db_tx)
+            )
+        }
+        (false, false, true) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, return_data, db_tx)
+            )
+        }
+        (false, true, false) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, log_data, db_tx)
+            )
+        }
+        (false, false, false) => {
+            quote!(
+                (#call_function)(index, from_address, target_address, db_tx)
+            )
+        }
+    };
+
+    quote! {
+        #[derive(Debug, Default)]
+        pub struct #exchange_name;
+
+        impl IntoAction for #exchange_name {
+            fn get_signature(&self) -> [u8; 4] {
+                #call_type::SELECTOR
+            }
+
+            #[allow(unused)]
+            fn decode_trace_data(
+                &self,
+                index: u64,
+                data: StaticReturnBindings,
+                return_data: Bytes,
+                from_address: Address,
+                target_address: Address,
+                logs: &Vec<Log>,
+                db_tx: &LibmdbxTx<RO>,
+            ) -> Option<Actions> {
+                #(#option_parsing)*
+                Some(Actions::#action_type(#fn_call?))
+            }
+        }
+    }
+    .into()
 }
 
 #[proc_macro]
