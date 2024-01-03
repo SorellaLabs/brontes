@@ -211,8 +211,8 @@ impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
             .put(&key, &value, WriteFlags::UPSERT)
             .map_err(|e| {
                 DatabaseWriteError {
-                    code:       e.into(),
-                    operation:  DatabaseWriteOperation::CursorUpsert,
+                    code: e.into(),
+                    operation: DatabaseWriteOperation::CursorUpsert,
                     table_name: T::NAME,
                     key,
                 }
@@ -226,8 +226,8 @@ impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
             .put(&key, &value, WriteFlags::NO_OVERWRITE)
             .map_err(|e| {
                 DatabaseWriteError {
-                    code:       e.into(),
-                    operation:  DatabaseWriteOperation::CursorInsert,
+                    code: e.into(),
+                    operation: DatabaseWriteOperation::CursorInsert,
                     table_name: T::NAME,
                     key,
                 }
@@ -244,8 +244,8 @@ impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
             .put(&key, &value, WriteFlags::APPEND)
             .map_err(|e| {
                 DatabaseWriteError {
-                    code:       e.into(),
-                    operation:  DatabaseWriteOperation::CursorAppend,
+                    code: e.into(),
+                    operation: DatabaseWriteOperation::CursorAppend,
                     table_name: T::NAME,
                     key,
                 }
@@ -273,8 +273,8 @@ impl<T: DupSort> DbDupCursorRW<T> for LibmdbxCursor<T, RW> {
             .put(&key, &value, WriteFlags::APPEND_DUP)
             .map_err(|e| {
                 DatabaseWriteError {
-                    code:       e.into(),
-                    operation:  DatabaseWriteOperation::CursorAppendDup,
+                    code: e.into(),
+                    operation: DatabaseWriteOperation::CursorAppendDup,
                     table_name: T::NAME,
                     key,
                 }
