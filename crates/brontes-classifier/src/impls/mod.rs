@@ -16,7 +16,7 @@ macro_rules! enum_unwrap {
         paste::paste! {
             match $data {
                 StaticReturnBindings::$exchange(val) => match val {
-                    [<$exchange Calls>]::$return(inner) => inner,
+                    [<$exchange Calls>]::[<$return>](inner) => inner,
                     _ => unreachable!(),
                 },
                 _ => unreachable!(),
