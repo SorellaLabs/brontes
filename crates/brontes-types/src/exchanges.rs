@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use alloy_rlp::{Decodable, Encodable};
+use malachite::integer::conversion::string::to_string;
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
@@ -16,6 +17,7 @@ pub enum StaticBindingsDb {
     UniswapV3,
     SushiSwapV3,
     CurveCryptoSwap,
+    AaveV2,
 }
 
 impl StaticBindingsDb {
@@ -26,6 +28,7 @@ impl StaticBindingsDb {
             StaticBindingsDb::UniswapV3 => "UniswapV3".to_string(),
             StaticBindingsDb::SushiSwapV3 => "SushiSwapV3".to_string(),
             StaticBindingsDb::CurveCryptoSwap => "CurveCryptoSwap".to_string(),
+            StaticBindingsDb::AaveV2 => "AaveV2".to_string(),
         }
     }
 }
@@ -45,6 +48,7 @@ impl From<String> for StaticBindingsDb {
             "UniswapV3" => StaticBindingsDb::UniswapV3,
             "SushiSwapV3" => StaticBindingsDb::SushiSwapV3,
             "CurveCryptoSwap" => StaticBindingsDb::CurveCryptoSwap,
+            "AaveV2" => StaticBindingsDb::AaveV2,
             _ => unreachable!("no value from str: {value}"),
         }
     }
@@ -64,6 +68,7 @@ impl Encodable for StaticBindingsDb {
             StaticBindingsDb::UniswapV3 => 2u64.encode(out),
             StaticBindingsDb::SushiSwapV3 => 3u64.encode(out),
             StaticBindingsDb::CurveCryptoSwap => 4u64.encode(out),
+            StaticBindingsDb::AaveV2 => 5u64.encode(out),
         }
     }
 }
@@ -78,6 +83,7 @@ impl Decodable for StaticBindingsDb {
             2 => StaticBindingsDb::UniswapV3,
             3 => StaticBindingsDb::SushiSwapV3,
             4 => StaticBindingsDb::CurveCryptoSwap,
+            5 => StaticBindingsDb::AaveV2,
             _ => unreachable!("no enum variant"),
         };
 
