@@ -310,6 +310,7 @@ impl<'db> Classifier<'db> {
                 StaticBindingsDb::UniswapV3 => Box::new(UniswapV3Classifier::default()),
                 StaticBindingsDb::SushiSwapV3 => Box::new(SushiSwapV3Classifier::default()),
                 StaticBindingsDb::CurveCryptoSwap => Box::new(CurveCryptoSwapClassifier::default()),
+                StaticBindingsDb::AaveV2 => Box::new(AaveV2Classifier::default()),
             };
 
             let calldata = trace.get_calldata();

@@ -10,6 +10,7 @@ pub enum StaticBindings {
     UniswapV3(UniswapV3_Enum),
     SushiSwapV3(SushiSwapV3_Enum),
     CurveCryptoSwap(CurveCryptoSwap_Enum),
+    AaveV2(AaveV2_Enum),
 }
 impl StaticBindings {
     pub fn try_decode(
@@ -32,6 +33,9 @@ impl StaticBindings {
             StaticBindings::CurveCryptoSwap(_) => Ok(StaticReturnBindings::CurveCryptoSwap(
                 CurveCryptoSwap_Enum::try_decode(call_data)?,
             )),
+            StaticBindings::AaveV2(_) => {
+                Ok(StaticReturnBindings::AaveV2(AaveV2_Enum::try_decode(call_data)?))
+            }
         }
     }
 }
@@ -46,6 +50,7 @@ impl From<StaticBindingsDb> for StaticBindings {
             StaticBindingsDb::CurveCryptoSwap => {
                 StaticBindings::CurveCryptoSwap(CurveCryptoSwap_Enum::None)
             }
+            StaticBindingsDb::AaveV2 => StaticBindings::AaveV2(AaveV2_Enum::None),
         }
     }
 }
@@ -57,6 +62,7 @@ pub enum StaticReturnBindings {
     UniswapV3(UniswapV3::UniswapV3Calls),
     SushiSwapV3(SushiSwapV3::SushiSwapV3Calls),
     CurveCryptoSwap(CurveCryptoSwap::CurveCryptoSwapCalls),
+    AaveV2(AaveV2::AaveV2Calls),
 }
 
 #[allow(non_camel_case_types)]
@@ -99,3 +105,10 @@ pub enum CurveCryptoSwap_Enum {
     None,
 }
 impl_decode_sol!(CurveCryptoSwap_Enum, CurveCryptoSwap::CurveCryptoSwapCalls);
+
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AaveV2_Enum {
+    None,
+}
+impl_decode_sol!(AaveV2_Enum, AaveV2::AaveV2Calls);

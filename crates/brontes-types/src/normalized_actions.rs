@@ -14,6 +14,7 @@ pub enum Actions {
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
     Collect(NormalizedCollect),
+    Liquidation(NormalizedLiquidation),
     Unclassified(TransactionTraceWithLogs),
     Revert,
 }
@@ -26,6 +27,7 @@ impl InsertRow for Actions {
             Actions::Mint(_) => NormalizedMint::COLUMN_NAMES,
             Actions::Burn(_) => NormalizedBurn::COLUMN_NAMES,
             Actions::Collect(_) => NormalizedCollect::COLUMN_NAMES,
+            Actions::Liquidation(_) => NormalizedLiquidation::COLUMN_NAMES,
             Actions::Unclassified(..) | Actions::Revert => panic!(),
         }
     }
@@ -42,6 +44,7 @@ impl Serialize for Actions {
             Actions::Transfer(t) => t.serialize(serializer),
             Actions::Burn(b) => b.serialize(serializer),
             Actions::Collect(c) => c.serialize(serializer),
+            Actions::Liquidation(c) => c.serialize(serializer),
             Actions::Unclassified(trace) => (trace).serialize(serializer),
             _ => unreachable!(),
         }
@@ -77,6 +80,7 @@ impl Actions {
             Actions::Burn(b) => b.to,
             Actions::Transfer(t) => t.to,
             Actions::Collect(c) => c.to,
+            Actions::Liquidation(c) => c.pool,
             Actions::Unclassified(t) => match &t.trace.action {
                 reth_rpc_types::trace::parity::Action::Call(c) => c.to,
                 reth_rpc_types::trace::parity::Action::Create(_) => Address::ZERO,
@@ -174,14 +178,15 @@ pub struct NormalizedCollect {
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLiquidation {
-    pub index:      u64,
-    pub liquidator: Address,
-    pub liquidatee: Address,
-    pub token:      Address,
-    pub amount:     U256,
-    pub reward:     U256,
+    pub index:            u64,
+    pub pool:             Address,
+    pub liquidator:       Address,
+    pub debtor:           Address,
+    pub collateral_asset: Address,
+    pub debt_asset:       Address,
+    pub amount:           U256,
+    pub reward:           U256,
 }
-
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLoan {
     pub index:        u64,
@@ -218,6 +223,7 @@ impl NormalizedAction for Actions {
             Self::Mint(m) => m.index,
             Self::Burn(b) => b.index,
             Self::Transfer(t) => t.index,
+            Self::Liquidation(t) => t.index,
             Self::Collect(c) => c.index,
             Self::Unclassified(u) => u.trace_idx,
             _ => unreachable!(),
