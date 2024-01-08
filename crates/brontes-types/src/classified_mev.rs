@@ -1,4 +1,5 @@
 use std::{any::Any, fmt::Debug};
+use dyn_clone::DynClone;
 
 use alloy_primitives::{Address, U256};
 use reth_primitives::B256;
@@ -85,13 +86,15 @@ impl Row for MevType {
 }
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
-pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static {
+pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone {
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync>;
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u128;
     fn bribe(&self) -> u128;
     fn mev_transaction_hashes(&self) -> Vec<B256>;
 }
+
+dyn_clone::clone_trait_object!(SpecificMev);
 
 impl InsertRow for Box<dyn SpecificMev> {
     fn get_column_names(&self) -> &'static [&'static str] {
