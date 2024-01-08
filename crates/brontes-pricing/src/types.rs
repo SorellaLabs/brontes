@@ -299,6 +299,12 @@ impl PoolVariants {
 }
 
 #[derive(Debug, Clone)]
+pub enum DexPriceMsg {
+    Update(PoolUpdate),
+    Closed,
+}
+
+#[derive(Debug, Clone)]
 pub struct PoolUpdate {
     pub block:  u64,
     pub tx_idx: u64,

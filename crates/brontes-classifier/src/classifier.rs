@@ -1,7 +1,7 @@
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
 };
-use brontes_pricing::types::PoolUpdate;
+use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedTransfer},
@@ -26,12 +26,16 @@ const TRANSFER_TOPIC: B256 =
 #[derive(Debug, Clone)]
 pub struct Classifier<'db> {
     libmdbx: &'db Libmdbx,
-    sender:  UnboundedSender<PoolUpdate>,
+    sender:  UnboundedSender<DexPriceMsg>,
 }
 
 impl<'db> Classifier<'db> {
-    pub fn new(libmdbx: &'db Libmdbx, sender: UnboundedSender<PoolUpdate>) -> Self {
+    pub fn new(libmdbx: &'db Libmdbx, sender: UnboundedSender<DexPriceMsg>) -> Self {
         Self { libmdbx, sender }
+    }
+
+    pub fn close(&self) {
+        self.sender.send(DexPriceMsg::Closed).unwrap();
     }
 
     pub fn build_block_tree(
