@@ -27,7 +27,7 @@ action_impl!(
     TokenExchange,
     CurveCryptoSwap,
     logs: true,
-    |index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
+    |trace_index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
         let log = log_data?;
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -36,7 +36,7 @@ action_impl!(
         if log.sold_id ==  U256::ZERO {
             return Some(NormalizedSwap {
                 pool: target_address,
-                index,
+                trace_index,
                 from: from_address,
                 recipient: from_address,
                 token_in: token_0,
@@ -46,7 +46,7 @@ action_impl!(
             })
         } else {
             return Some(NormalizedSwap {
-                index,
+                trace_index,
                 pool: target_address,
                 from: from_address,
                 recipient: from_address,
@@ -67,7 +67,7 @@ action_impl!(
     CurveCryptoSwap,
     logs: true,
     call_data: true,
-    |index, from_address: Address, target_address: Address, call_data: exchange_1Call, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
+    |trace_index, from_address: Address, target_address: Address, call_data: exchange_1Call, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
 
         let log = log_data?;
 
@@ -88,7 +88,7 @@ action_impl!(
         if log.sold_id == U256::ZERO {
             return Some(NormalizedSwap {
                 pool: target_address,
-                index,
+                trace_index,
                 from: from_address,
                 recipient: from_address,
                 token_in: token_0,
@@ -98,7 +98,7 @@ action_impl!(
             })
         } else {
             return Some(NormalizedSwap {
-                index,
+                trace_index,
                 pool: target_address,
                 from: from_address,
                 recipient: from_address,
@@ -119,7 +119,7 @@ action_impl!(
     CurveCryptoSwap,
     logs: true,
     call_data: true,
-    |index, from_address: Address, target_address: Address, call_data: exchange_2Call, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
+    |trace_index, from_address: Address, target_address: Address, call_data: exchange_2Call, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
 
         let log = log_data?;
 
@@ -141,7 +141,7 @@ action_impl!(
         if log.sold_id == U256::ZERO {
             return Some(NormalizedSwap {
                 pool: target_address,
-                index,
+                trace_index,
                 from: from_address,
                 recipient,
                 token_in: token_0,
@@ -151,7 +151,7 @@ action_impl!(
             })
         } else {
             return Some(NormalizedSwap {
-                index,
+                trace_index,
                 pool: target_address,
                 from: from_address,
                 recipient,
@@ -172,7 +172,7 @@ exchange_underlying_0Call,
 TokenExchange,
 CurveCryptoSwap,
 logs: true,
-|index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
+|trace_index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
         let log = log_data?;
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -190,7 +190,7 @@ logs: true,
         if log.sold_id ==  U256::ZERO {
             return Some(NormalizedSwap {
                 pool: target_address,
-                index,
+                trace_index,
                 from: from_address,
                 recipient: from_address,
                 token_in: token_0,
@@ -200,7 +200,7 @@ logs: true,
             })
         } else {
             return Some(NormalizedSwap {
-                index,
+                trace_index,
                 pool: target_address,
                 from: from_address,
                 recipient: from_address,
