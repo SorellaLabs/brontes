@@ -20,7 +20,7 @@ use brontes_types::{
     tree::TimeTree,
 };
 use futures::{stream::FuturesOrdered, Future, FutureExt, StreamExt};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (MetadataDB, TimeTree<Actions>)> + Send + 'a>>;
 
@@ -90,7 +90,13 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
             block_number = self.current_block,
             "inserting the collected results \n {:#?}", results
         );
-        self.database.insert_classified_data(results.0, results.1);
+        if self
+            .database
+            .insert_classified_data(results.0, results.1)
+            .is_err()
+        {
+            error!("failed to insert classified data into libmdx");
+        }
     }
 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {

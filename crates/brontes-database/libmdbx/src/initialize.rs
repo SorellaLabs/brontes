@@ -34,6 +34,7 @@ mod tests {
     use std::{env, sync::Arc};
 
     use brontes_database::clickhouse::Clickhouse;
+    use brontes_types::classified_mev::{ClassifiedMev, Sandwich};
     use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
     use serial_test::serial;
 
@@ -41,10 +42,10 @@ mod tests {
         implementation::tx::LibmdbxTx,
         initialize::LibmdbxInitializer,
         tables::{
-            AddressToProtocol, AddressToTokens, CexPrice, Metadata, PoolCreationBlocks, PoolState,
-            Tables, TokenDecimals,
+            AddressToProtocol, AddressToTokens, CexPrice, Metadata, MevBlocks, PoolCreationBlocks,
+            PoolState, Tables, TokenDecimals,
         },
-        Libmdbx,
+        Libmdbx, MevBlock,
     };
 
     fn init_db() -> eyre::Result<Libmdbx> {
@@ -203,6 +204,24 @@ mod tests {
             }
         }
         Ok(())
+    }
+
+    fn test_classified_mev_inserts(db: &Libmdbx) -> eyre::Result<()> {
+        let block = MevBlock { ..Default::default() };
+        let classified_mev = ClassifiedMev::default();
+        let specific_mev = Sandwich::default();
+
+        let _ = db.insert_classified_data(block, vec![(classified_mev, Box::new(specific_mev))]);
+
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
+    #[serial]
+    async fn test_inserts() {
+        let db = init_db().unwrap();
+
+        let q = test_classified_mev_inserts(&db);
+        assert!(q.is_ok());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 5)]

@@ -21,7 +21,7 @@ use brontes_types::{
     tree::TimeTree,
 };
 use futures::{Future, FutureExt};
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace};
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
 
 pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
@@ -93,7 +93,13 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
             results
         );
 
-        self.database.insert_classified_data(results.0, results.1);
+        if self
+            .database
+            .insert_classified_data(results.0, results.1)
+            .is_err()
+        {
+            error!("failed to insert classified mev to Libmdbx");
+        }
     }
 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {

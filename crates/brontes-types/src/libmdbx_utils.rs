@@ -21,6 +21,28 @@ macro_rules! impl_compress_decompress_for_encoded_decoded {
     };
 }
 
+#[macro_export]
+macro_rules! impl_compress_decompress_for_serde {
+    ($type:ty) => {
+        impl reth_db::table::Compress for $type {
+            type Compressed = Vec<u8>;
+
+            fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
+                let bytes = serde_json::to_vec(&self).unwrap();
+                buf.put_slice(&bytes);
+            }
+        }
+
+        impl reth_db::table::Decompress for $type {
+            fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
+                let binding = value.as_ref().to_vec();
+                let buf = &binding.as_slice();
+                Ok(serde_json::from_slice(buf).map_err(|_| reth_db::DatabaseError::Decode)?)
+            }
+        }
+    };
+}
+
 /*
 pub mod serde_hashmap {
 
