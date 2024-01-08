@@ -1,8 +1,6 @@
 use std::{cmp::max, collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
 use brontes_pricing::types::DexQuotes;
-
-use crate::types::token_decimals::TokenDecimalsData;
 pub mod initialize;
 
 use alloy_primitives::Address;
@@ -31,7 +29,9 @@ use types::{
     cex_price::CexPriceMap,
     dex_price::{make_filter_key_range, DexPriceData},
     metadata::MetadataInner,
+    mev_block::{MevBlockWithClassified, MevBlocksData},
     pool_state::{PoolStateData, PoolStateType},
+    token_decimals::TokenDecimalsData,
 };
 
 use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
@@ -413,9 +413,14 @@ impl Libmdbx {
 
     pub fn insert_classified_data(
         &self,
-        _block_details: MevBlock,
-        _mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+        block: MevBlock,
+        mev: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) {
+        self.write_table(&vec![MevBlocksData {
+            block_number: block.block_number,
+            mev_blocks:   MevBlockWithClassified { block, mev },
+        }])
+        .unwrap();
     }
 }
 
