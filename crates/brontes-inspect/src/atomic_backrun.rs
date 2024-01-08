@@ -5,7 +5,7 @@ use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::Actions,
-    tree::{GasDetails, TimeTree},
+    tree::{BlockTree, GasDetails},
     ToFloatNearest,
 };
 use itertools::Itertools;
@@ -29,7 +29,7 @@ impl<'db> AtomicBackrunInspector<'db> {
 impl Inspector for AtomicBackrunInspector<'_> {
     async fn process_tree(
         &self,
-        tree: Arc<TimeTree<Actions>>,
+        tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let intersting_state = tree.collect_all(|node| {
@@ -185,7 +185,7 @@ mod tests {
         let metadata = db.get_metadata(block_num).await;
 
         let tx = block.0.clone().into_iter().take(60).collect::<Vec<_>>();
-        let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
+        let (missing_token_decimals, tree) = classifier.build_block_tree(tx, block.1);
         let tree = Arc::new(tree);
 
         let USDC = Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap();

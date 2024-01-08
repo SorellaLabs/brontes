@@ -5,7 +5,7 @@ use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{ClassifiedMev, Liquidation, MevType, SpecificMev},
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
-    tree::TimeTree,
+    tree::BlockTree,
 };
 use reth_primitives::Address;
 
@@ -25,7 +25,7 @@ impl<'db> LiquidationInspector<'db> {
 impl Inspector for LiquidationInspector<'_> {
     async fn process_tree(
         &self,
-        tree: Arc<TimeTree<Actions>>,
+        tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         todo!()

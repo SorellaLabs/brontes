@@ -15,12 +15,13 @@ use brontes_database::{Metadata, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
 use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
-use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::TimeTree};
+use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::BlockTree};
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info, trace};
-type CollectionFut<'a> = Pin<Box<dyn Future<Output = (TimeTree<Actions>, MetadataDB)> + Send + 'a>>;
+type CollectionFut<'a> =
+    Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
 
 pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     parser:     &'db Parser<'db, T>,
@@ -99,7 +100,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         tracer: Arc<T>,
         libmdbx: &'db Libmdbx,
     ) -> CollectionFut<'db> {
-        let (extra, tree) = classifier.build_tree(traces, header);
+        let (extra, tree) = classifier.build_block_tree(traces, header);
         Box::pin(async move {
             MissingDecimals::new(tracer, libmdbx, extra.tokens_decimal_fill).await;
 
@@ -131,7 +132,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         self.collection_future = Some(fut);
     }
 
-    fn on_price_finish(&mut self, tree: TimeTree<Actions>, meta: Metadata) {
+    fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
         info!(target:"brontes","dex pricing finished");
         self.processing_futures.push(Box::pin(ResultProcessing::new(
             self.libmdbx,
@@ -193,7 +194,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
     handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexPrices)>)>,
-    pending_trees: HashMap<u64, (TimeTree<Actions>, MetadataDB)>,
+    pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataDB)>,
 }
 
 impl<T: TracingProvider> WaitingForPricerFuture<T> {
@@ -221,7 +222,7 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
     pub fn add_pending_inspection(
         &mut self,
         block: u64,
-        tree: TimeTree<Actions>,
+        tree: BlockTree<Actions>,
         meta: MetadataDB,
     ) {
         assert!(
@@ -232,7 +233,7 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
 }
 
 impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
-    type Item = (TimeTree<Actions>, Metadata);
+    type Item = (BlockTree<Actions>, Metadata);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Poll::Ready(handle) = self.handle.poll_unpin(cx) {
@@ -268,7 +269,7 @@ impl<'db, const N: usize> ResultProcessing<'db, N> {
     pub fn new(
         db: &'db Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>; N],
-        tree: Arc<TimeTree<Actions>>,
+        tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
         if let Err(e) = db.insert_quotes(meta_data.block_num, meta_data.dex_quotes.clone()) {
