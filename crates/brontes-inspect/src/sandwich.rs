@@ -176,7 +176,10 @@ impl SandwichInspector<'_> {
         let sandwich = Sandwich {
             frontrun_tx_hash:          txes[0],
             frontrun_gas_details:      searcher_gas_details[0],
-            frontrun_swaps_index:      frontrun_swaps.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
+            frontrun_swaps_index:      frontrun_swaps
+                .iter()
+                .map(|s| s.trace_index)
+                .collect::<Vec<_>>(),
             frontrun_swaps_from:       frontrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
             frontrun_swaps_pool:       frontrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
             frontrun_swaps_token_in:   frontrun_swaps
@@ -274,7 +277,10 @@ impl SandwichInspector<'_> {
                 .collect(),
             backrun_tx_hash: txes[1],
             backrun_gas_details: searcher_gas_details[1],
-            backrun_swaps_index: backrun_swaps.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
+            backrun_swaps_index: backrun_swaps
+                .iter()
+                .map(|s| s.trace_index)
+                .collect::<Vec<_>>(),
             backrun_swaps_from: backrun_swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
             backrun_swaps_pool: backrun_swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
             backrun_swaps_token_in: backrun_swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
