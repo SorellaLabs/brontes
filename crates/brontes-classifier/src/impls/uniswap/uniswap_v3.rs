@@ -25,7 +25,7 @@ action_impl!(
     UniswapV3,
     call_data: true,
     return_data: true,
-    |index, from_address: Address, target_address: Address, call_data: swapCall, return_data: swapReturn,  db_tx: &LibmdbxTx<RO>| {
+    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, return_data: swapReturn,  db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
@@ -48,7 +48,7 @@ action_impl!(
         };
 
         Some(NormalizedSwap {
-            index,
+            trace_index,
             from: from_address,
             recipient,
             pool: target_address,
@@ -67,7 +67,7 @@ action_impl!(
     UniswapV3,
     return_data: true,
     call_data: true,
-    |index,
+    |trace_index,
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
@@ -78,7 +78,7 @@ action_impl!(
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         Some(NormalizedMint {
-            index,
+            trace_index,
             from: from_address,
             recipient: call_data.recipient,
             to: target_address,
@@ -94,7 +94,7 @@ action_impl!(
     Burn,
     UniswapV3,
     return_data: true,
-    |index, from_address: Address, target_address: Address, return_data: burnReturn,  db_tx: &LibmdbxTx<RO>| {
+    |trace_index, from_address: Address, target_address: Address, return_data: burnReturn,  db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
 
@@ -106,7 +106,7 @@ action_impl!(
         Some(NormalizedBurn {
             to: target_address,
             recipient: target_address,
-            index,
+            trace_index,
             from: from_address,
             token: vec![token_0, token_1],
             amount: vec![token_0_delta, token_1_delta],
@@ -122,7 +122,7 @@ action_impl!(
     call_data: true,
     return_data: true,
     |
-    index,
+    trace_index,
     from_addr: Address,
     to_addr: Address,
     call_data: collectCall,
@@ -131,7 +131,7 @@ action_impl!(
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedCollect {
-            index,
+            trace_index,
             from: from_addr,
             recipient: call_data.recipient,
             to: to_addr,
