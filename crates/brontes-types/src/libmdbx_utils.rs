@@ -29,9 +29,7 @@ macro_rules! impl_compress_decompress_for_serde {
 
             fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
                 let bytes = serde_json::to_vec(&self).unwrap();
-                println!("got bytes adding to slice");
                 buf.put_slice(&bytes);
-                println!("compressed serde");
             }
         }
 
