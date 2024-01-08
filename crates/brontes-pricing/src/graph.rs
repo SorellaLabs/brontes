@@ -64,9 +64,6 @@ pub struct PairGraph {
     addr_to_index: HashMap<Address, usize>,
     // double vec for multi_hop multi_pool
     known_pairs:   HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>>,
-
-    // keeps track of all pools that have been uninitted
-    waiting_init: HashMap<Address, PoolPairInformation>,
 }
 
 impl PairGraph {
@@ -162,7 +159,7 @@ impl PairGraph {
 
         info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph in {}us", delta);
 
-        Self { graph, addr_to_index, known_pairs, waiting_init: HashMap::default() }
+        Self { graph, addr_to_index, known_pairs }
     }
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
