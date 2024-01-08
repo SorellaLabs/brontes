@@ -319,7 +319,7 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
                 .insert_classified_data(block_details, mev_details)
                 .is_err()
             {
-                error!("failed to insert classified data into database");
+                error!("failed to insert classified data into libmdx");
             }
 
             return Poll::Ready(())
