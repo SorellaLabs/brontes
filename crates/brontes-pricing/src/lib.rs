@@ -23,33 +23,11 @@ pub use graph::PairGraph;
 use graph::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
-use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
+use types::{
+    DexPriceMsg, DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate,
+};
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
-
-/// a ordered buffer for holding state transitions for a block while the lazy
-/// loading of pools is being applied
-pub struct StateBuffer {
-    /// updates for a given block in order that they occur
-    pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
-    /// when we have a override for a given address at a block. it means that
-    /// we don't want to apply any pool updates for the block. This is useful
-    /// for when a pool is initted at a block and we can only query the end
-    /// of block state. we can override all pool updates for the init block
-    /// to ensure our pool state is in sync
-    pub overrides: HashMap<u64, HashSet<Address>>,
-}
-impl Default for StateBuffer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl StateBuffer {
-    pub fn new() -> Self {
-        Self { updates: HashMap::default(), overrides: HashMap::default() }
-    }
-}
 
 /// # Brontes Batch Pricer
 /// ## Reasoning
@@ -84,7 +62,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     completed_block: u64,
 
     /// receiver from classifier, classifier is ran sequential to grantee order
-    update_rx:       UnboundedReceiver<PoolUpdate>,
+    update_rx:       UnboundedReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
     /// how this works is that we process all state transitions for a block and
     /// allow lazy loading to occur. Once lazy loading has occurred and there
@@ -117,7 +95,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         run: u64,
         batch_id: u64,
         pair_graph: PairGraph,
-        update_rx: UnboundedReceiver<PoolUpdate>,
+        update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
         new_graph_pairs: HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>,
@@ -473,6 +451,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let state = self.finalized_state.clone().into();
         self.completed_block += 1;
+        for (pool_addr, dex, pair) in self
+            .new_graph_pairs
+            .remove(&self.completed_block)
+            .unwrap_or_default()
+        {
+            self.pair_graph.add_node(pair, pool_addr, dex);
+        }
 
         Some((block, DexPrices::new(state, res)))
     }
@@ -489,16 +474,23 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         // runtime scheduler less in order to boost performance
         let mut work = 1024;
         loop {
-            if let Poll::Ready(s) = self
-                .update_rx
-                .poll_recv(cx)
-                .map(|inner| inner.map(|update| self.on_message(update)))
-            {
+            if let Poll::Ready(s) = self.update_rx.poll_recv(cx).map(|inner| {
+                inner.map(|action| match action {
+                    DexPriceMsg::Update(update) => {
+                        self.on_message(update);
+                        true
+                    }
+                    DexPriceMsg::Closed => false,
+                })
+            }) {
                 if s.is_none() && self.lazy_loader.is_empty() {
                     return Poll::Ready(self.on_close())
                 }
 
-                if self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty() {
+                // check to close
+                if (self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty())
+                    || s.is_some_and(|s| s)
+                {
                     return Poll::Ready(self.on_close())
                 }
             }
@@ -520,6 +512,31 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 return Poll::Pending
             }
         }
+    }
+}
+
+/// a ordered buffer for holding state transitions for a block while the lazy
+/// loading of pools is being applied
+pub struct StateBuffer {
+    /// updates for a given block in order that they occur
+    pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
+    /// when we have a override for a given address at a block. it means that
+    /// we don't want to apply any pool updates for the block. This is useful
+    /// for when a pool is initted at a block and we can only query the end
+    /// of block state. we can override all pool updates for the init block
+    /// to ensure our pool state is in sync
+    pub overrides: HashMap<u64, HashSet<Address>>,
+}
+
+impl Default for StateBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl StateBuffer {
+    pub fn new() -> Self {
+        Self { updates: HashMap::default(), overrides: HashMap::default() }
     }
 }
 

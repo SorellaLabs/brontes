@@ -281,7 +281,9 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
         #[derive(Default, Debug)]
         pub struct #struct_name(#(pub #name,)*);
 
+
         impl ActionCollection for #struct_name {
+
             fn dispatch(
                 &self,
                 sig: &[u8],
@@ -292,7 +294,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: Address,
                 logs: &Vec<Log>,
                 db_tx: &LibmdbxTx<RO>,
-                tx: UnboundedSender<PoolUpdate>,
+                tx: UnboundedSender<::brontes_pricing::types::DexPriceMsg>,
                 block: u64,
                 tx_idx: u64,
             ) -> Option<Actions> {
@@ -314,7 +316,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             logs: logs.clone(),
                             action: res.clone()
                         };
-                        tx.send(pool_update).unwrap();
+                        tx.send(::brontes_pricing::types::DexPriceMsg::Update(pool_update)).unwrap();
                     }
 
                     return res
@@ -336,10 +338,9 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                                 tx_idx,
                                 action: res.clone()
                             };
-                            tx.send(pool_update).unwrap();
+                            tx.send(::brontes_pricing::types::DexPriceMsg::Update(pool_update)).unwrap();
 
                         }
-
                             return res
                     }
                 )*
