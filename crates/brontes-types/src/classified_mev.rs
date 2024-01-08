@@ -100,6 +100,7 @@ pub trait SpecificMev:
     fn decode(bytes: Vec<u8>) -> Result<Box<Self>, serde_json::Error>
     where
         Self: Sized;
+
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync>;
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u128;
