@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
+
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
@@ -19,7 +20,7 @@ use crate::{
         cex_price::{CexPriceData, CexPriceMap},
         dex_price::{DexPriceData, DexQuoteWithIndex},
         metadata::{MetadataData, MetadataInner},
-        //mev_block::{MevBlockWithClassified, MevBlocksData},
+        mev_block::{MevBlockWithClassified, MevBlocksData},
         pool_creation_block::{PoolCreationBlocksData, PoolsLibmdbx},
         pool_state::PoolStateData,
         *,
@@ -27,7 +28,7 @@ use crate::{
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 8;
+pub const NUM_TABLES: usize = 9;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tables {
@@ -39,7 +40,7 @@ pub enum Tables {
     PoolState,
     DexPrice,
     PoolCreationBlocks,
-    // MevBlocks,
+    MevBlocks,
 }
 
 impl Tables {
@@ -52,7 +53,7 @@ impl Tables {
         Tables::PoolState,
         Tables::DexPrice,
         Tables::PoolCreationBlocks,
-        // Tables::MevBlocks,
+        Tables::MevBlocks,
     ];
     pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
         Tables::TokenDecimals,
@@ -61,7 +62,7 @@ impl Tables {
         Tables::CexPrice,
         Tables::Metadata,
         Tables::PoolCreationBlocks,
-        //Tables::MevBlocks,
+        Tables::MevBlocks,
     ];
 
     /// type of table
@@ -75,7 +76,7 @@ impl Tables {
             Tables::PoolState => TableType::Table,
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
-            // Tables::MevBlocks => TableType::Table,
+            Tables::MevBlocks => TableType::Table,
         }
     }
 
@@ -89,7 +90,7 @@ impl Tables {
             Tables::PoolState => PoolState::NAME,
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
-            // Tables::MevBlock => MevBlocks::NAME,
+            Tables::MevBlocks => MevBlocks::NAME,
         }
     }
 
@@ -164,8 +165,12 @@ impl Tables {
             Tables::DexPrice => DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone()),
             Tables::PoolCreationBlocks => {
                 PoolCreationBlocks::initialize_table(libmdbx.clone(), clickhouse.clone())
-            } /* Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse,
-               * block_range), */
+            }
+            Tables::MevBlocks => {
+                Box::pin(
+                    async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
+                )
+            }
         }
     }
 }
@@ -183,7 +188,7 @@ impl FromStr for Tables {
             PoolState::NAME => Ok(Tables::PoolState),
             DexPrice::NAME => Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
-            // MevBlocks::NAME => return Ok(Tables::MevBlock),
+            MevBlocks::NAME => Ok(Tables::MevBlocks),
             _ => Err("Unknown table".to_string()),
         }
     }
@@ -259,12 +264,11 @@ table!(
     ( PoolCreationBlocks ) u64 | PoolsLibmdbx
 );
 
-/*
 table!(
     /// block number -> mev block with classified mev
     ( MevBlocks ) u64 | MevBlockWithClassified
 );
-*/
+
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
     D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
