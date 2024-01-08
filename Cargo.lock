@@ -1463,6 +1463,7 @@ dependencies = [
  "brontes-database",
  "derive_more",
  "dotenv",
+ "dyn-clone",
  "erased-serde",
  "hyper",
  "hyper-tls",
