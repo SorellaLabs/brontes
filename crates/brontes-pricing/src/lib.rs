@@ -145,6 +145,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if msg.block > self.current_block {
             self.current_block = msg.block;
         }
+
         let addr = msg.get_pool_address();
 
         // if we already have the state, we want to buffer the update to allow for all
@@ -408,13 +409,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.pair_graph.add_node(pair, pool_addr, dex);
         }
 
-        // for debug
-        if self.new_graph_pairs.len() < 3 {
-            println!("{:#?}", self.new_graph_pairs);
-        }
 
         // add new nodes to pair graph
-
         Some((block, DexPrices::new(state, res)))
     }
 
