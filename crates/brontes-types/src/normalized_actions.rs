@@ -7,6 +7,7 @@ use sorella_db_databases::clickhouse::{self, InsertRow, Row};
 
 use crate::structured_trace::TransactionTraceWithLogs;
 
+/// A normalized action that has been classified
 #[derive(Debug, Clone, Deserialize)]
 pub enum Actions {
     Swap(NormalizedSwap),
@@ -118,11 +119,11 @@ impl Actions {
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedFlashLoan {
-    pub index:    u64,
-    pub from:     Address,
-    pub pool:     Address,
-    pub token:    Address,
-    pub fee_paid: Address,
+    pub index:   u64,
+    pub from:    Address,
+    pub pool:    Address,
+    pub assets:  Vec<Address>,
+    pub amounts: Vec<U256>,
 }
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]

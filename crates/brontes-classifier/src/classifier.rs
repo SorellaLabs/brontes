@@ -3,10 +3,10 @@ use brontes_database_libmdbx::{
 };
 use brontes_pricing::types::PoolUpdate;
 use brontes_types::{
-    extra_processing::{ExtraProcessing, Pair, TransactionPoolSwappedTokens},
+    extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
-    tree::{GasDetails, Node, Root, TimeTree},
+    tree::{BlockTree, GasDetails, Node, Root},
 };
 use hex_literal::hex;
 use reth_db::transaction::DbTx;
@@ -34,12 +34,12 @@ impl<'db> Classifier<'db> {
         Self { libmdbx, sender }
     }
 
-    pub fn build_tree(
+    pub fn build_block_tree(
         &self,
         traces: Vec<TxTrace>,
         header: Header,
-    ) -> (ExtraProcessing, TimeTree<Actions>) {
-        let (extra, roots): (Vec<_>, Vec<_>) = traces
+    ) -> (ExtraProcessing, BlockTree<Actions>) {
+        let (extra, tx_roots): (Vec<_>, Vec<_>) = traces
             .into_iter()
             .enumerate()
             .filter_map(|(tx_idx, mut trace)| {
@@ -48,16 +48,16 @@ impl<'db> Classifier<'db> {
                 }
 
                 let mut missing_decimals = Vec::new();
+
                 let root_trace = trace.trace[0].clone();
                 let address = root_trace.get_from_addr();
-                let t_address = root_trace.get_to_address();
 
-                let (_, classification) =
+                let classification =
                     self.classify_node(trace.trace.remove(0), 0, header.number, tx_idx as u64);
 
-                if classification.is_transfer() {
-                    if self.libmdbx.try_get_decimals(t_address).is_none() {
-                        missing_decimals.push(t_address.clone());
+                if let Actions::Transfer(transfer) = &classification {
+                    if self.libmdbx.try_get_decimals(transfer.token).is_none() {
+                        missing_decimals.push(transfer.token);
                     }
                 }
 
@@ -71,7 +71,7 @@ impl<'db> Classifier<'db> {
                     trace_address: vec![],
                 };
 
-                let mut root = Root {
+                let mut tx_root = Root {
                     position:    tx_idx,
                     head:        node,
                     tx_hash:     trace.tx_hash,
@@ -85,27 +85,21 @@ impl<'db> Classifier<'db> {
                     },
                 };
 
-                let mut tx_pairs = Vec::new();
                 for (index, trace) in trace.trace.into_iter().enumerate() {
-                    root.gas_details.coinbase_transfer =
+                    tx_root.gas_details.coinbase_transfer =
                         self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
 
                     let from_addr = trace.get_from_addr();
-                    let t_address = root_trace.get_to_address();
-                    let (pair, classification) = self.classify_node(
+                    let classification = self.classify_node(
                         trace.clone(),
                         (index + 1) as u64,
                         header.number,
                         tx_idx as u64,
                     );
 
-                    if let Some(pair) = pair {
-                        tx_pairs.push(pair);
-                    }
-
-                    if classification.is_transfer() {
-                        if self.libmdbx.try_get_decimals(t_address).is_none() {
-                            missing_decimals.push(t_address.clone());
+                    if let Actions::Transfer(transfer) = &classification {
+                        if self.libmdbx.try_get_decimals(transfer.token).is_none() {
+                            missing_decimals.push(transfer.token);
                         }
                     }
 
@@ -119,44 +113,31 @@ impl<'db> Classifier<'db> {
                         trace_address: trace.trace.trace_address,
                     };
 
-                    root.insert(node);
+                    tx_root.insert(node);
                 }
-                let needed_prices = TransactionPoolSwappedTokens {
-                    tx_idx,
-                    pairs: tx_pairs,
-                    state_diff: trace.state_diff,
-                };
 
-                Some(((missing_decimals, needed_prices), root))
+                Some((missing_decimals, tx_root))
             })
             .unzip();
 
         let mut tree =
-            TimeTree { roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
+            BlockTree { tx_roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
 
-        // self.try_classify_unknown_exchanges(&mut tree);
-        // self.try_classify_flashloans(&mut tree);
         self.remove_swap_transfers(&mut tree);
         self.remove_mint_transfers(&mut tree);
         self.remove_collect_transfers(&mut tree);
-
-        self.remove_collect_transfers(&mut tree);
-        self.remove_mint_transfers(&mut tree);
-        self.remove_swap_transfers(&mut tree);
 
         tree.finalize_tree();
-        let (dec, prices): (Vec<_>, Vec<_>) = extra.into_iter().unzip();
-        let mut dec = dec.into_iter().flatten().collect::<Vec<_>>();
+        let mut dec = extra.into_iter().flatten().collect::<Vec<_>>();
         dec.sort();
-        // needs sort to work
+        // needs to be sorted to work
         dec.dedup();
-        let processing = ExtraProcessing { tokens_decimal_fill: dec, prices };
+        let processing = ExtraProcessing { tokens_decimal_fill: dec };
 
         (processing, tree)
     }
 
-    // need this for dyn classifying
-    fn remove_swap_transfers(&self, tree: &mut TimeTree<Actions>) {
+    fn remove_swap_transfers(&self, tree: &mut BlockTree<Actions>) {
         tree.remove_duplicate_data(
             |node| {
                 (
@@ -195,7 +176,7 @@ impl<'db> Classifier<'db> {
     }
 
     // need this for dyn classifying
-    fn remove_mint_transfers(&self, tree: &mut TimeTree<Actions>) {
+    fn remove_mint_transfers(&self, tree: &mut BlockTree<Actions>) {
         tree.remove_duplicate_data(
             |node| {
                 (
@@ -232,8 +213,7 @@ impl<'db> Classifier<'db> {
         );
     }
 
-    // need this for dyn classifying
-    fn remove_collect_transfers(&self, tree: &mut TimeTree<Actions>) {
+    fn remove_collect_transfers(&self, tree: &mut BlockTree<Actions>) {
         tree.remove_duplicate_data(
             |node| {
                 (
@@ -288,13 +268,13 @@ impl<'db> Classifier<'db> {
         index: u64,
         block: u64,
         tx_idx: u64,
-    ) -> (Option<Pair>, Actions) {
+    ) -> Actions {
         // we don't classify static calls
         if trace.is_static_call() {
-            return (None, Actions::Unclassified(trace))
+            return Actions::Unclassified(trace)
         }
         if trace.trace.error.is_some() {
-            return (None, Actions::Revert)
+            return Actions::Revert
         }
 
         let from_address = trace.get_from_addr();
@@ -338,12 +318,7 @@ impl<'db> Classifier<'db> {
                 .flatten();
 
             if let Some(res) = res {
-                let pair = if let Actions::Swap(s) = &res {
-                    Some(Pair(s.token_in, s.token_out))
-                } else {
-                    None
-                };
-                return (pair, res)
+                return res
             } else {
                 let selector = match trace.trace.action {
                     Call(ref action) => &action.input[0..4],
@@ -371,11 +346,11 @@ impl<'db> Classifier<'db> {
                 self.sender
                     .send(PoolUpdate { block, tx_idx, logs: vec![], action: normalized.clone() })
                     .unwrap();
-                return (None, normalized)
+                return normalized
             }
         }
 
-        (None, Actions::Unclassified(trace))
+        Actions::Unclassified(trace)
     }
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
@@ -571,7 +546,7 @@ impl<'db> Classifier<'db> {
     //         .min_by(|x, y| x.2.get_index().cmp(&y.2.get_index()))
     // }
     //
-    // fn try_classify_unknown_exchanges(&self, tree: &mut TimeTree<Actions>) {
+    // fn try_classify_unknown_exchanges(&self, tree: &mut BlockTree<Actions>) {
     //     // Acquire the read lock once
     //     let known_dyn_protocols_read = self.known_dyn_protocols.read();
     //
@@ -626,7 +601,7 @@ impl<'db> Classifier<'db> {
     // 2) callback address receives funds
     // 3) when this callscope exits, there is a transfer of the value or more
     // to the inital call address
-    // fn try_classify_flashloans(&self, tree: &mut TimeTree<Actions>) {
+    // fn try_classify_flashloans(&self, tree: &mut BlockTree<Actions>) {
     // lets check and grab all instances such that there is a transfer of a
     // token from and to the same address where the to transfer has
     // equal or more value
@@ -730,7 +705,7 @@ pub mod test {
         normalized_actions::Actions,
         structured_trace::TxTrace,
         test_utils::force_call_action,
-        tree::{Node, TimeTree},
+        tree::{BlockTree, Node},
     };
     use reth_primitives::{Address, Header};
     use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
