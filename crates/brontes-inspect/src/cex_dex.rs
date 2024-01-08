@@ -127,7 +127,7 @@ impl CexDexInspector<'_> {
             swaps_index:      flat_swaps
                 .iter()
                 .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().index)
+                .map(|s| s.clone().force_swap().trace_index)
                 .collect::<Vec<_>>(),
             swaps_from:       flat_swaps
                 .iter()

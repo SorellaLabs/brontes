@@ -28,7 +28,7 @@ action_impl!(
 
 
         return Some(NormalizedLiquidation {
-            index,
+            trace_index: index,
             pool: target_address,
             liquidator: from_address,
             debtor: call_data.user,

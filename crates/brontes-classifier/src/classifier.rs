@@ -53,7 +53,7 @@ impl<'db> Classifier<'db> {
                 let address = root_trace.get_from_addr();
 
                 let classification =
-                    self.classify_node(trace.trace.remove(0), 0, header.number, tx_idx as u64);
+                    self.classify_node(header.number, tx_idx as u64, trace.trace.remove(0), 0);
 
                 if let Actions::Transfer(transfer) = &classification {
                     if self.libmdbx.try_get_decimals(transfer.token).is_none() {
@@ -91,10 +91,10 @@ impl<'db> Classifier<'db> {
 
                     let from_addr = trace.get_from_addr();
                     let classification = self.classify_node(
-                        trace.clone(),
-                        (index + 1) as u64,
                         header.number,
                         tx_idx as u64,
+                        trace.clone(),
+                        (index + 1) as u64,
                     );
 
                     if let Actions::Transfer(transfer) = &classification {
@@ -264,10 +264,10 @@ impl<'db> Classifier<'db> {
 
     fn classify_node(
         &self,
-        trace: TransactionTraceWithLogs,
-        index: u64,
         block: u64,
         tx_idx: u64,
+        trace: TransactionTraceWithLogs,
+        trace_index: u64,
     ) -> Actions {
         // we don't classify static calls
         if trace.is_static_call() {
@@ -302,7 +302,7 @@ impl<'db> Classifier<'db> {
                 .map(|data| {
                     classifier.dispatch(
                         sig,
-                        index,
+                        trace_index,
                         data,
                         return_bytes.clone(),
                         from_address,
@@ -337,7 +337,7 @@ impl<'db> Classifier<'db> {
         if trace.logs.len() == 1 {
             if let Some((addr, from, to, value)) = self.decode_transfer(&trace.logs[0]) {
                 let normalized = Actions::Transfer(NormalizedTransfer {
-                    index,
+                    trace_index,
                     to,
                     from,
                     token: addr,
