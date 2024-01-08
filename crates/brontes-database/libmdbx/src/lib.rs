@@ -415,12 +415,11 @@ impl Libmdbx {
         &self,
         block: MevBlock,
         mev: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
-    ) {
+    ) -> eyre::Result<()> {
         self.write_table(&vec![MevBlocksData {
             block_number: block.block_number,
             mev_blocks:   MevBlockWithClassified { block, mev },
         }])
-        .unwrap();
     }
 }
 
