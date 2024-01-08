@@ -94,7 +94,6 @@ impl Row for MevType {
     const COLUMN_NAMES: &'static [&'static str] = &[];
 }
 
-/// Because of annoying trait requirements. we do some degenerate shit here.
 pub trait SpecificMev:
     InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
 {
@@ -122,17 +121,43 @@ impl InsertRow for Box<dyn SpecificMev> {
     }
 }
 
-serialize_trait_object!(SpecificMev);
+impl serde::Serialize for Box<dyn SpecificMev> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mev_type = self.mev_type();
+        let any = self.clone().into_any();
 
-// impl serde::Serialize for Box<dyn SpecificMev> {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: serde::Serializer,
-//     {
-//         println!("ser specific mev");
-//         erased_serde::serialize(&(self.mev_type(), self), serializer)
-//     }
-// }
+        match mev_type {
+            MevType::Sandwich => {
+                let this = any.downcast_ref::<Sandwich>().unwrap();
+                this.serialize(serializer)
+            }
+            MevType::Backrun => {
+                let this = any.downcast_ref::<AtomicBackrun>().unwrap();
+                this.serialize(serializer)
+            }
+            MevType::JitSandwich => {
+                let this = any.downcast_ref::<JitLiquiditySandwich>().unwrap();
+                this.serialize(serializer)
+            }
+            MevType::Jit => {
+                let this = any.downcast_ref::<JitLiquidity>().unwrap();
+                this.serialize(serializer)
+            }
+            MevType::CexDex => {
+                let this = any.downcast_ref::<CexDex>().unwrap();
+                this.serialize(serializer)
+            }
+            MevType::Liquidation => {
+                let this = any.downcast_ref::<Liquidation>().unwrap();
+                this.serialize(serializer)
+            }
+            MevType::Unknown => unimplemented!("none yet"),
+        }
+    }
+}
 
 impl<'de> serde::Deserialize<'de> for Box<dyn SpecificMev> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
