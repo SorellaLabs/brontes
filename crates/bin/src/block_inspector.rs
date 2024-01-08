@@ -18,11 +18,11 @@ use brontes_inspect::{
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
-    tree::TimeTree,
+    tree::BlockTree,
 };
 use futures::{Future, FutureExt};
 use tracing::{debug, error, info, trace};
-type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, TimeTree<Actions>)> + Send + 'a>>;
+type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, BlockTree<Actions>)> + Send + 'a>>;
 
 pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
     block_number: u64,
@@ -65,7 +65,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             debug!("Got {} traces + header", traces.len());
-            let (extra_data, mut tree) = self.classifier.build_tree(traces, header);
+            let (extra_data, mut tree) = self.classifier.build_block_tree(traces, header);
 
             MissingDecimals::new(
                 self.parser.get_tracer(),

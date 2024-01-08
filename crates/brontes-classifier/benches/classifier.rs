@@ -49,7 +49,7 @@ fn bench_tree_building(c: &mut Criterion) {
     let classifier = Classifier::new(&libmdbx);
 
     c.bench_function("build 28m gas tree", |b| {
-        b.iter(|| black_box(classifier.build_tree(traces.clone(), header.clone())))
+        b.iter(|| black_box(classifier.build_block_tree(traces.clone(), header.clone())))
     });
 }
 
