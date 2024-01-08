@@ -165,78 +165,6 @@ impl PairGraph {
         Self { graph, addr_to_index, known_pairs, waiting_init: HashMap::default() }
     }
 
-    pub fn enable_pool(&mut self, address: Address) {
-        if let Some(pool_pair) = self.waiting_init.remove(&address) {
-            let t0 = SystemTime::now();
-            let pair = Pair(pool_pair.token_0, pool_pair.token_1);
-
-            let direction0 = PoolPairInfoDirection { info: pool_pair, token_0_in: true };
-            let direction1 = PoolPairInfoDirection { info: pool_pair, token_0_in: false };
-
-            self.known_pairs.insert(pair, vec![vec![direction0]]);
-            self.known_pairs.insert(pair.flip(), vec![vec![direction1]]);
-
-            let node_0 = *self
-                .addr_to_index
-                .entry(pair.0)
-                .or_insert(self.graph.add_node(()).index());
-
-            let node_1 = *self
-                .addr_to_index
-                .entry(pair.1)
-                .or_insert(self.graph.add_node(()).index());
-
-            if let Some(edge) = self.graph.find_edge(node_0.into(), node_1.into()) {
-                let mut pools = self.graph.edge_weight(edge).unwrap().clone();
-                pools.insert(pool_pair);
-                self.graph.update_edge(node_0.into(), node_1.into(), pools);
-            } else {
-                let mut set = HashSet::new();
-                set.insert(pool_pair);
-
-                self.graph.add_edge(node_0.into(), node_1.into(), set);
-            }
-
-            let t1 = SystemTime::now();
-            let delta = t1.duration_since(t0).unwrap().as_micros();
-            info!(us = delta, "enabled new node in");
-        }
-    }
-
-    // disables pool returning true if the edge is now empty
-    pub fn disable_pool(&mut self, info: PoolPairInfoDirection) -> bool {
-        // remove any known info ab this pair
-        let t0 = SystemTime::now();
-        let pair = Pair(info.info.token_0, info.info.token_1);
-
-        let start_idx = *self.addr_to_index.get(&pair.0).unwrap();
-        let end_idx = *self.addr_to_index.get(&pair.1).unwrap();
-        let Some(edge) = self.graph.find_edge(start_idx.into(), end_idx.into()) else {
-            return true
-        };
-        let Some(weight) = self.graph.edge_weight_mut(edge) else { return true };
-
-        weight.remove(&info.info);
-        self.waiting_init.insert(info.info.pool_addr, info.info);
-        let t1 = SystemTime::now();
-        let us = t1.duration_since(t0).unwrap().as_micros();
-        info!(us, addr=?info.info.pool_addr, "disabled pool in");
-
-        if weight.is_empty() {
-            self.known_pairs.remove(&pair);
-            self.known_pairs.remove(&pair.flip());
-            self.graph.remove_edge(edge);
-            return true
-        }
-
-        false
-    }
-
-    pub fn remove_pair(&mut self, pair: Pair) {
-        self.known_pairs.remove(&pair);
-        self.known_pairs.remove(&pair.flip());
-    }
-
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
         let t0 = SystemTime::now();
         let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
@@ -273,7 +201,8 @@ impl PairGraph {
         info!(us = delta, "added new node in");
     }
 
-    // fetches the path from start to end
+    /// fetches the path from start to end for the given pair inserting it into
+    /// a hash map for quick lookups on additional queries.
     pub fn get_path(
         &mut self,
         pair: Pair,
