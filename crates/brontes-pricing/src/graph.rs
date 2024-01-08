@@ -219,12 +219,12 @@ impl PairGraph {
 
         let Some(start_idx) = self.addr_to_index.get(&pair.0) else { 
             let addr  = pair.0;
-            error!(?pair, "no node for address");
+            error!(?addr, "no node for address");
             return vec![].into_iter() 
         };
         let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
             let addr  = pair.1;
-            error!(?pair, "no node for address");
+            error!(?addr, "no node for address");
             return vec![].into_iter() 
         };
 
