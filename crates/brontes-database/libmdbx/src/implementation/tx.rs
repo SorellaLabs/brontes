@@ -121,7 +121,6 @@ impl DbTxMut for LibmdbxTx<RW> {
 
     fn put<T: Table>(&self, key: T::Key, value: T::Value) -> Result<(), DatabaseError> {
         let key = key.encode();
-        println!("key encoded");
         let value = value.compress();
         println!("value compress");
         self.inner
