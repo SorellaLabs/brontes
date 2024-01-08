@@ -210,7 +210,7 @@ impl JitInspector<'_> {
         let jit_details = JitLiquidity {
             mint_tx_hash: txes[0],
             mint_gas_details: searcher_gas_details[0],
-            jit_mints_index: mints.iter().map(|m| m.index as u16).collect(),
+            jit_mints_index: mints.iter().map(|m| m.trace_index as u16).collect(),
             jit_mints_from: mints.iter().map(|m| m.from).collect(),
             jit_mints_to: mints.iter().map(|m| m.to).collect(),
             jit_mints_recipient: mints.iter().map(|m| m.recipient).collect(),
