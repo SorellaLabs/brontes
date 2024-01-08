@@ -2,7 +2,6 @@ use std::{any::Any, fmt::Debug};
 
 use alloy_primitives::{Address, U256};
 use dyn_clone::DynClone;
-use erased_serde::serialize_trait_object;
 use reth_primitives::B256;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
