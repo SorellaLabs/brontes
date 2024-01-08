@@ -119,67 +119,67 @@ impl Actions {
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedFlashLoan {
-    pub index:   u64,
-    pub from:    Address,
-    pub pool:    Address,
-    pub assets:  Vec<Address>,
-    pub amounts: Vec<U256>,
+    pub trace_index: u64,
+    pub from:        Address,
+    pub pool:        Address,
+    pub assets:      Vec<Address>,
+    pub amounts:     Vec<U256>,
 }
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwap {
-    pub index:      u64,
-    pub from:       Address,
-    pub recipient:  Address,
-    pub pool:       Address,
-    pub token_in:   Address,
-    pub token_out:  Address,
-    pub amount_in:  U256,
-    pub amount_out: U256,
+    pub trace_index: u64,
+    pub from:        Address,
+    pub recipient:   Address,
+    pub pool:        Address,
+    pub token_in:    Address,
+    pub token_out:   Address,
+    pub amount_in:   U256,
+    pub amount_out:  U256,
 }
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedTransfer {
-    pub index:  u64,
-    pub to:     Address,
-    pub from:   Address,
-    pub token:  Address,
-    pub amount: U256,
+    pub trace_index: u64,
+    pub to:          Address,
+    pub from:        Address,
+    pub token:       Address,
+    pub amount:      U256,
 }
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedMint {
-    pub index:     u64,
-    pub from:      Address,
-    pub to:        Address,
-    pub recipient: Address,
-    pub token:     Vec<Address>,
-    pub amount:    Vec<U256>,
+    pub trace_index: u64,
+    pub from:        Address,
+    pub to:          Address,
+    pub recipient:   Address,
+    pub token:       Vec<Address>,
+    pub amount:      Vec<U256>,
 }
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBurn {
-    pub index:     u64,
-    pub from:      Address,
-    pub to:        Address,
-    pub recipient: Address,
-    pub token:     Vec<Address>,
-    pub amount:    Vec<U256>,
+    pub trace_index: u64,
+    pub from:        Address,
+    pub to:          Address,
+    pub recipient:   Address,
+    pub token:       Vec<Address>,
+    pub amount:      Vec<U256>,
 }
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedCollect {
-    pub index:     u64,
-    pub to:        Address,
-    pub from:      Address,
-    pub recipient: Address,
-    pub token:     Vec<Address>,
-    pub amount:    Vec<U256>,
+    pub trace_index: u64,
+    pub to:          Address,
+    pub from:        Address,
+    pub recipient:   Address,
+    pub token:       Vec<Address>,
+    pub amount:      Vec<U256>,
 }
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLiquidation {
-    pub index:            u64,
+    pub trace_index:      u64,
     pub pool:             Address,
     pub liquidator:       Address,
     pub debtor:           Address,
@@ -189,7 +189,7 @@ pub struct NormalizedLiquidation {
 }
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLoan {
-    pub index:        u64,
+    pub trace_index:  u64,
     pub lender:       Address,
     pub borrower:     Address,
     pub loaned_token: Address,
@@ -199,7 +199,7 @@ pub struct NormalizedLoan {
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedRepayment {
-    pub index:            u64,
+    pub trace_index:      u64,
     pub lender:           Address,
     pub borrower:         Address,
     pub repayed_token:    Address,
@@ -209,7 +209,7 @@ pub struct NormalizedRepayment {
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn get_action(&self) -> &Actions;
-    fn get_index(&self) -> u64;
+    fn get_trace_index(&self) -> u64;
 }
 
 impl NormalizedAction for Actions {
@@ -217,14 +217,14 @@ impl NormalizedAction for Actions {
         self
     }
 
-    fn get_index(&self) -> u64 {
+    fn get_trace_index(&self) -> u64 {
         match self {
-            Self::Swap(s) => s.index,
-            Self::Mint(m) => m.index,
-            Self::Burn(b) => b.index,
-            Self::Transfer(t) => t.index,
-            Self::Liquidation(t) => t.index,
-            Self::Collect(c) => c.index,
+            Self::Swap(s) => s.trace_index,
+            Self::Mint(m) => m.trace_index,
+            Self::Burn(b) => b.trace_index,
+            Self::Transfer(t) => t.trace_index,
+            Self::Liquidation(t) => t.trace_index,
+            Self::Collect(c) => c.trace_index,
             Self::Unclassified(u) => u.trace_idx,
             _ => unreachable!(),
         }

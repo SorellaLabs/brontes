@@ -141,7 +141,7 @@ impl AtomicBackrunInspector<'_> {
         let backrun = Box::new(AtomicBackrun {
             tx_hash,
             gas_details,
-            swaps_index: swaps.iter().map(|s| s.index).collect::<Vec<_>>(),
+            swaps_index: swaps.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
             swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
             swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
             swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),

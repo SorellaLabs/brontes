@@ -14,13 +14,12 @@ pub struct BlockTree<V: NormalizedAction> {
     pub tx_roots:         Vec<Root<V>>,
     pub header:           Header,
     pub avg_priority_fee: u128,
-    /// first is on block submission, second is when the block gets accepted
     pub eth_price:        Rational,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
-    pub fn new(header: Header, eth_price: Rational) -> Self {
-        Self { tx_roots: Vec::with_capacity(150), header, eth_price, avg_priority_fee: 0 }
+    pub fn new(header: Header, tx_num: usize, eth_price: Rational) -> Self {
+        Self { tx_roots: Vec::with_capacity(tx_num), header, eth_price, avg_priority_fee: 0 }
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
