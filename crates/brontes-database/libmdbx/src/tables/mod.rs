@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
+use crate::types::mev_block::{MevBlockWithClassified,MevBlocksData};
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
@@ -52,7 +53,7 @@ impl Tables {
         Tables::PoolState,
         Tables::DexPrice,
         Tables::PoolCreationBlocks,
-        // Tables::MevBlocks,
+        Tables::MevBlocks,
     ];
     pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
         Tables::TokenDecimals,
@@ -61,7 +62,7 @@ impl Tables {
         Tables::CexPrice,
         Tables::Metadata,
         Tables::PoolCreationBlocks,
-        //Tables::MevBlocks,
+        Tables::MevBlocks,
     ];
 
     /// type of table
@@ -75,7 +76,7 @@ impl Tables {
             Tables::PoolState => TableType::Table,
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
-            // Tables::MevBlocks => TableType::Table,
+            Tables::MevBlocks => TableType::Table,
         }
     }
 
@@ -89,7 +90,7 @@ impl Tables {
             Tables::PoolState => PoolState::NAME,
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
-            // Tables::MevBlock => MevBlocks::NAME,
+            Tables::MevBlock => MevBlocks::NAME,
         }
     }
 
@@ -183,7 +184,7 @@ impl FromStr for Tables {
             PoolState::NAME => Ok(Tables::PoolState),
             DexPrice::NAME => Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
-            // MevBlocks::NAME => return Ok(Tables::MevBlock),
+            MevBlocks::NAME => Ok(Tables::MevBlock),
             _ => Err("Unknown table".to_string()),
         }
     }
@@ -259,12 +260,11 @@ table!(
     ( PoolCreationBlocks ) u64 | PoolsLibmdbx
 );
 
-/*
 table!(
     /// block number -> mev block with classified mev
     ( MevBlocks ) u64 | MevBlockWithClassified
 );
-*/
+
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
     D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
