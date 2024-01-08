@@ -2,6 +2,7 @@ use std::{any::Any, fmt::Debug};
 
 use alloy_primitives::{Address, U256};
 use dyn_clone::DynClone;
+use erased_serde::serialize_trait_object;
 use reth_primitives::B256;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -121,15 +122,17 @@ impl InsertRow for Box<dyn SpecificMev> {
     }
 }
 
-impl serde::Serialize for Box<dyn SpecificMev> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        println!("ser specific mev");
-        erased_serde::serialize(&(self.mev_type(), self), serializer)
-    }
-}
+serialize_trait_object!(SpecificMev);
+
+// impl serde::Serialize for Box<dyn SpecificMev> {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//     {
+//         println!("ser specific mev");
+//         erased_serde::serialize(&(self.mev_type(), self), serializer)
+//     }
+// }
 
 impl<'de> serde::Deserialize<'de> for Box<dyn SpecificMev> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
