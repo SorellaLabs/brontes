@@ -156,7 +156,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
                     "batch finished completed"
                 );
             }
-            if meta.block_num + 1 == self.end_block {
+            if meta.block_num + 1 >= self.end_block {
                 self.classifier.close();
             }
 
