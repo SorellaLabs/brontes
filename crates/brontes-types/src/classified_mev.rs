@@ -126,10 +126,8 @@ impl serde::Serialize for Box<dyn SpecificMev> {
     where
         S: serde::Serializer,
     {
-        // let any = self.into_any();
         println!("ser specific mev");
-        let bytes = serde_json::to_vec(&self).unwrap();
-        erased_serde::serialize(&(self.mev_type(), bytes), serializer)
+        erased_serde::serialize(&(self.mev_type(), self), serializer)
     }
 }
 
