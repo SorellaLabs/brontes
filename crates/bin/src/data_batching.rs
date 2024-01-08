@@ -172,8 +172,9 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         } else if self.current_block != self.end_block {
             self.current_block += 1;
             self.start_next_block();
+        } else {
+            self.classifier.close();
         }
-
         // poll insertion
         while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
 
@@ -186,6 +187,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         {
             return Poll::Ready(())
         }
+
         cx.waker().wake_by_ref();
 
         Poll::Pending
