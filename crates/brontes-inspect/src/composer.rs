@@ -183,8 +183,7 @@ impl<'a, const N: usize> Composer<'a, N> {
         let cum_mev_priority_fee_paid = orchestra_data
             .iter()
             .map(|(_, mev)| mev.priority_fee_paid())
-            .sum::<u128>()
-            + total_bribe;
+            .sum::<u128>();
 
         //TODO: need to substract proposer payement + fees paid for gas
         let builder_eth_profit = (total_bribe + pre_processing.cumulative_gas_paid) as i128;
@@ -222,7 +221,7 @@ impl<'a, const N: usize> Composer<'a, N> {
             ),
             //TODO: need to fix
             cumulative_mev_finalized_profit_usd: f64::rounding_from(
-                cum_mev_priority_fee_paid.to_scaled_rational(18)
+                (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(18)
                     * &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )
