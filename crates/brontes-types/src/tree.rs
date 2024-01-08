@@ -10,25 +10,25 @@ use tracing::error;
 use crate::normalized_actions::NormalizedAction;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct TimeTree<V: NormalizedAction> {
-    pub roots:            Vec<Root<V>>,
+pub struct BlockTree<V: NormalizedAction> {
+    pub tx_roots:         Vec<Root<V>>,
     pub header:           Header,
     pub avg_priority_fee: u128,
     /// first is on block submission, second is when the block gets accepted
     pub eth_price:        Rational,
 }
 
-impl<V: NormalizedAction> TimeTree<V> {
+impl<V: NormalizedAction> BlockTree<V> {
     pub fn new(header: Header, eth_price: Rational) -> Self {
-        Self { roots: Vec::with_capacity(150), header, eth_price, avg_priority_fee: 0 }
+        Self { tx_roots: Vec::with_capacity(150), header, eth_price, avg_priority_fee: 0 }
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
-        self.roots.par_iter().find_any(|r| r.tx_hash == tx_hash)
+        self.tx_roots.par_iter().find_any(|r| r.tx_hash == tx_hash)
     }
 
     pub fn get_gas_details(&self, hash: B256) -> Option<&GasDetails> {
-        self.roots
+        self.tx_roots
             .iter()
             .find(|h| h.tx_hash == hash)
             .map(|root| &root.gas_details)
@@ -36,56 +36,56 @@ impl<V: NormalizedAction> TimeTree<V> {
 
     pub fn get_prev_tx(&self, hash: B256) -> B256 {
         let (index, _) = self
-            .roots
+            .tx_roots
             .iter()
             .enumerate()
             .find(|(_, h)| h.tx_hash == hash)
             .unwrap();
 
-        self.roots[index - 1].tx_hash
+        self.tx_roots[index - 1].tx_hash
     }
 
     pub fn insert_root(&mut self, root: Root<V>) {
-        self.roots.push(root);
+        self.tx_roots.push(root);
     }
 
     pub fn finalize_tree(&mut self) {
         // because of this bad boy: https://etherscan.io/block/18500239
         // we need this
-        if self.roots.is_empty() {
+        if self.tx_roots.is_empty() {
             error!(block = self.header.number, "have empty tree");
-            self.roots.iter_mut().for_each(|root| root.finalize());
+            self.tx_roots.iter_mut().for_each(|root| root.finalize());
             return
         }
 
         self.avg_priority_fee = self
-            .roots
+            .tx_roots
             .iter()
             .map(|tx| {
                 tx.gas_details.effective_gas_price - self.header.base_fee_per_gas.unwrap() as u128
             })
             .sum::<u128>()
-            / self.roots.len() as u128;
+            / self.tx_roots.len() as u128;
 
-        self.roots.iter_mut().for_each(|root| root.finalize());
+        self.tx_roots.iter_mut().for_each(|root| root.finalize());
     }
 
     pub fn insert_node(&mut self, node: Node<V>) {
-        self.roots
+        self.tx_roots
             .last_mut()
             .expect("no root_nodes inserted")
             .insert(node);
     }
 
     pub fn get_hashes(&self) -> Vec<B256> {
-        self.roots.iter().map(|r| r.tx_hash).collect()
+        self.tx_roots.iter().map(|r| r.tx_hash).collect()
     }
 
     pub fn inspect<F>(&self, hash: B256, call: F) -> Vec<Vec<V>>
     where
         F: Fn(&Node<V>) -> bool,
     {
-        if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
+        if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.inspect(&call)
         } else {
             vec![]
@@ -96,7 +96,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     where
         F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
     {
-        if let Some(root) = self.roots.iter().find(|r| r.tx_hash == hash) {
+        if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect(&call)
         } else {
             vec![]
@@ -107,7 +107,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     where
         F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
     {
-        self.roots
+        self.tx_roots
             .par_iter()
             .map(|r| (r.tx_hash, r.collect(&call)))
             .collect()
@@ -117,7 +117,7 @@ impl<V: NormalizedAction> TimeTree<V> {
     where
         F: Fn(&Node<V>) -> bool + Send + Sync,
     {
-        self.roots
+        self.tx_roots
             .par_iter()
             .map(|r| (r.tx_hash, r.inspect(&call)))
             .collect()
@@ -131,7 +131,7 @@ impl<V: NormalizedAction> TimeTree<V> {
         T: Fn(Address, &Node<V>) -> (bool, bool) + Sync,
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
-        self.roots
+        self.tx_roots
             .par_iter_mut()
             .flat_map(|root| root.dyn_classify(&find, &call))
             .collect()
@@ -149,7 +149,7 @@ impl<V: NormalizedAction> TimeTree<V> {
         FindActionHead: Fn(&Node<V>) -> (bool, bool) + Sync,
         FindRemoval: Fn(&Node<V>) -> (bool, bool) + Sync,
     {
-        self.roots
+        self.tx_roots
             .par_iter_mut()
             .for_each(|root| root.remove_duplicate_data(&find, &classify, &info, &find_removal));
     }
@@ -302,7 +302,7 @@ impl<V: NormalizedAction> Node<V> {
         } else if let Some(inner) = self.inner.get_mut(trace_addr.remove(0)) {
             inner.get_all_inner_nodes(n, trace_addr)
         } else {
-            eprintln!("ERROR: {:?}\n {:?}", self.inner, log);
+            error!("ERROR: {:?}\n {:?}", self.inner, log);
         }
     }
 
