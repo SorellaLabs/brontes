@@ -234,7 +234,10 @@ impl JitInspector<'_> {
                 .iter()
                 .map(|s| s.effective_gas_price)
                 .collect_vec(),
-            victim_swaps_index: swaps.iter().map(|s| s.trace_index as u16).collect::<Vec<_>>(),
+            victim_swaps_index: swaps
+                .iter()
+                .map(|s| s.trace_index as u16)
+                .collect::<Vec<_>>(),
             victim_swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
             victim_swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
             victim_swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
