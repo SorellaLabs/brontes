@@ -409,7 +409,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.pair_graph.add_node(pair, pool_addr, dex);
         }
 
-
         // add new nodes to pair graph
         Some((block, DexPrices::new(state, res)))
     }
@@ -443,7 +442,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_close(&mut self) -> Option<(u64, DexPrices)> {
-        if self.completed_block == self.current_block + 1 {
+        if self.completed_block >= self.current_block + 1 {
             return None
         }
 
