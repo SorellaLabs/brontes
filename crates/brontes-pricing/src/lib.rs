@@ -162,6 +162,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let addr = msg.get_pool_address();
 
+        assert!(self.mut_state.contains_key(&addr) == self.last_update.contains_key(&addr));
+
         // if we already have the state, we want to buffer the update to allow for all
         // init fetches to be done so that we can then go through and apply all
         // price transitions correctly to ensure order
