@@ -5,7 +5,7 @@ use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
     normalized_actions::{Actions, NormalizedSwap},
-    tree::{GasDetails, TimeTree},
+    tree::{BlockTree, GasDetails},
     ToFloatNearest, ToScaledRational,
 };
 use malachite::{num::basic::traits::Zero, Rational};
@@ -32,7 +32,7 @@ impl<'db> CexDexInspector<'db> {
 impl Inspector for CexDexInspector<'_> {
     async fn process_tree(
         &self,
-        tree: Arc<TimeTree<Actions>>,
+        tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // Get all normalized swaps
@@ -302,7 +302,7 @@ mod tests {
         let block = tracer.execute_block(block_num).await.unwrap();
         let metadata = db.get_metadata(block_num).await;
 
-        let (_missing_token_decimals, tree) = classifier.build_tree(block.0, block.1);
+        let (_missing_token_decimals, tree) = classifier.build_block_tree(block.0, block.1);
         let tree = Arc::new(tree);
         // Quote token is USDC here
         let inspector = CexDexInspector::new(

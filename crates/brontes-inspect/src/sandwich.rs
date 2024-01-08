@@ -8,7 +8,7 @@ use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{MevType, Sandwich, SpecificMev},
     normalized_actions::Actions,
-    tree::{GasDetails, Node, TimeTree},
+    tree::{BlockTree, GasDetails, Node},
     ToFloatNearest,
 };
 use itertools::Itertools;
@@ -41,7 +41,7 @@ pub struct PossibleSandwich {
 impl Inspector for SandwichInspector<'_> {
     async fn process_tree(
         &self,
-        tree: Arc<TimeTree<Actions>>,
+        tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // grab the set of all possible sandwich txes
@@ -306,8 +306,8 @@ impl SandwichInspector<'_> {
         Some((classified_mev, Box::new(sandwich)))
     }
 
-    fn get_possible_sandwich(&self, tree: Arc<TimeTree<Actions>>) -> Vec<PossibleSandwich> {
-        let iter = tree.roots.iter();
+    fn get_possible_sandwich(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
+        let iter = tree.tx_roots.iter();
         info!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
             return vec![]
@@ -393,7 +393,7 @@ mod tests {
 
         let tx = block.0.clone().into_iter().take(10).collect::<Vec<_>>();
 
-        let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
+        let (missing_token_decimals, tree) = classifier.build_block_tree(tx, block.1);
         let tree = Arc::new(tree);
         let inspector = SandwichInspector::new(
             Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
@@ -429,7 +429,7 @@ mod tests {
 
         let metadata = db.get_metadata(block_num).await;
 
-        let (tokens_missing_decimals, tree) = classifier.build_tree(block.0, block.1);
+        let (tokens_missing_decimals, tree) = classifier.build_block_tree(block.0, block.1);
         let tree = Arc::new(tree);
 
         let inspector = SandwichInspector::new(
