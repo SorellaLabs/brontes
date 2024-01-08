@@ -1,7 +1,6 @@
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
 use reth_codecs::derive_arbitrary;
-use reth_rpc_types::trace::parity::StateDiff;
 use serde::{Deserialize, Serialize};
 
 #[derive_arbitrary(compact)]
@@ -59,13 +58,4 @@ impl Decodable for Pair {
 pub struct ExtraProcessing {
     // decimals that are missing that we want to fill
     pub tokens_decimal_fill: Vec<Address>,
-    // dex token prices that we need
-    pub prices:              Vec<TransactionPoolSwappedTokens>,
-}
-
-#[derive(Debug)]
-pub struct TransactionPoolSwappedTokens {
-    pub tx_idx:     usize,
-    pub pairs:      Vec<Pair>,
-    pub state_diff: StateDiff,
 }
