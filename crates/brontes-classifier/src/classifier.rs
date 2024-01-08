@@ -123,27 +123,20 @@ impl<'db> Classifier<'db> {
         let mut tree =
             BlockTree { tx_roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
 
-        // self.try_classify_unknown_exchanges(&mut tree);
-        // self.try_classify_flashloans(&mut tree);
         self.remove_swap_transfers(&mut tree);
         self.remove_mint_transfers(&mut tree);
         self.remove_collect_transfers(&mut tree);
-
-        self.remove_collect_transfers(&mut tree);
-        self.remove_mint_transfers(&mut tree);
-        self.remove_swap_transfers(&mut tree);
 
         tree.finalize_tree();
         let mut dec = extra.into_iter().flatten().collect::<Vec<_>>();
         dec.sort();
-        // needs sort to work
+        // needs to be sorted to work
         dec.dedup();
         let processing = ExtraProcessing { tokens_decimal_fill: dec };
 
         (processing, tree)
     }
 
-    // need this for dyn classifying
     fn remove_swap_transfers(&self, tree: &mut BlockTree<Actions>) {
         tree.remove_duplicate_data(
             |node| {
@@ -220,7 +213,6 @@ impl<'db> Classifier<'db> {
         );
     }
 
-    // need this for dyn classifying
     fn remove_collect_transfers(&self, tree: &mut BlockTree<Actions>) {
         tree.remove_duplicate_data(
             |node| {
