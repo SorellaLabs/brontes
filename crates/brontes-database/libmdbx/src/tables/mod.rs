@@ -2,7 +2,6 @@
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 
-use crate::types::mev_block::{MevBlockWithClassified, MevBlocksData};
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
@@ -21,7 +20,7 @@ use crate::{
         cex_price::{CexPriceData, CexPriceMap},
         dex_price::{DexPriceData, DexQuoteWithIndex},
         metadata::{MetadataData, MetadataInner},
-        //mev_block::{MevBlockWithClassified, MevBlocksData},
+        mev_block::{MevBlockWithClassified, MevBlocksData},
         pool_creation_block::{PoolCreationBlocksData, PoolsLibmdbx},
         pool_state::PoolStateData,
         *,
@@ -167,7 +166,11 @@ impl Tables {
             Tables::PoolCreationBlocks => {
                 PoolCreationBlocks::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
-            Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse),
+            Tables::MevBlocks => {
+                Box::pin(
+                    async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
+                )
+            }
         }
     }
 }
