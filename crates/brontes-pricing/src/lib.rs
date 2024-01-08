@@ -424,18 +424,25 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         info!(?self.completed_block,"getting ready to calc dex prices");
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing
-        if let (Some(buffer), Some(overrides)) = (
-            self.buffer.updates.remove(&self.completed_block),
-            self.buffer.overrides.remove(&self.completed_block),
-        ) {
-            for (address, update) in buffer {
-                if overrides.contains(&address) {
-                    self.init_new_pool_override(address, update)
-                } else {
-                    self.update_known_state(address, update);
-                }
+        let (buffer, overrides) = (
+            self.buffer
+                .updates
+                .remove(&self.completed_block)
+                .unwrap_or_default(),
+            self.buffer
+                .overrides
+                .remove(&self.completed_block)
+                .unwrap_or_default(),
+        );
+
+        for (address, update) in buffer {
+            if overrides.contains(&address) {
+                self.init_new_pool_override(address, update)
+            } else {
+                self.update_known_state(address, update);
             }
         }
+
         let block = self.completed_block;
 
         let res = self
