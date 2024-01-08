@@ -20,7 +20,7 @@ action_impl!(
     UniswapV2,
     call_data: true,
     logs: true,
-    |index, from_address: Address, target_address: Address, call_data: swapCall, data: Option<Swap>, db_tx: &LibmdbxTx<RO>| {
+    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, data: Option<Swap>, db_tx: &LibmdbxTx<RO>| {
         let data = data?;
         let recipient = call_data.to;
 
@@ -31,7 +31,7 @@ action_impl!(
         if amount_0_in == U256::ZERO {
             return Some(NormalizedSwap {
                 pool: target_address,
-                index,
+                trace_index,
                 from: from_address,
                 recipient,
                 token_in: token_1,
@@ -41,7 +41,7 @@ action_impl!(
             })
         } else {
             return Some(NormalizedSwap {
-                index,
+                trace_index,
                 pool: target_address,
                 from: from_address,
                 recipient,
@@ -61,7 +61,7 @@ action_impl!(
     UniswapV2,
     logs: true,
     call_data: true,
-    |index,
+    |trace_index,
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
@@ -72,7 +72,7 @@ action_impl!(
         Some(NormalizedMint {
             recipient: call_data.to,
             from: from_address,
-            index,
+            trace_index,
             to: target_address,
             token: vec![token_0, token_1],
             amount: vec![log_data.amount0, log_data.amount1],
@@ -87,7 +87,7 @@ action_impl!(
     UniswapV2,
     call_data: true,
     logs: true,
-    |index,
+    |trace_index,
      from_address: Address,
      target_address: Address,
      call_data: burnCall,
@@ -98,7 +98,7 @@ action_impl!(
         Some(NormalizedBurn {
             recipient: call_data.to,
             to: target_address,
-            index,
+            trace_index,
             from: from_address,
             token: vec![token_0, token_1],
             amount: vec![log_data.amount0, log_data.amount1],

@@ -21,14 +21,14 @@ action_impl!(
     NormalizedLiquidation,
     AaveV3,
     call_data: true,
-    |index, from_address: Address, target_address: Address, call_data: liquidationCallCall, db_tx: &LibmdbxTx<RO> | {
+    |trace_index, from_address: Address, target_address: Address, call_data: liquidationCallCall, db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
 
         return Some(NormalizedLiquidation {
-            index,
+            trace_index,
             pool: target_address,
             liquidator: from_address,
             debtor: call_data.user,
