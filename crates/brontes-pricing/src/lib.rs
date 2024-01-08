@@ -478,14 +478,14 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
 
 const fn make_fake_swap(pair: Pair) -> Actions {
     Actions::Swap(NormalizedSwap {
-        index:      0,
-        from:       Address::ZERO,
-        recipient:  Address::ZERO,
-        pool:       Address::ZERO,
-        token_in:   pair.0,
-        token_out:  pair.1,
-        amount_in:  U256::ZERO,
-        amount_out: U256::ZERO,
+        trace_index: 0,
+        from:        Address::ZERO,
+        recipient:   Address::ZERO,
+        pool:        Address::ZERO,
+        token_in:    pair.0,
+        token_out:   pair.1,
+        amount_in:   U256::ZERO,
+        amount_out:  U256::ZERO,
     })
 }
 
