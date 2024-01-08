@@ -29,7 +29,7 @@ use crate::{
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 8;
+pub const NUM_TABLES: usize = 9;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tables {
@@ -41,7 +41,7 @@ pub enum Tables {
     PoolState,
     DexPrice,
     PoolCreationBlocks,
-    // MevBlocks,
+    MevBlocks,
 }
 
 impl Tables {
@@ -91,7 +91,7 @@ impl Tables {
             Tables::PoolState => PoolState::NAME,
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
-            Tables::MevBlock => MevBlocks::NAME,
+            Tables::MevBlocks => MevBlocks::NAME,
         }
     }
 
@@ -166,8 +166,8 @@ impl Tables {
             Tables::DexPrice => DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone()),
             Tables::PoolCreationBlocks => {
                 PoolCreationBlocks::initialize_table(libmdbx.clone(), clickhouse.clone())
-            } /* Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse,
-               * block_range), */
+            }
+            Tables::MevBlocks => MevBlocks::initialize_table(libmdbx, clickhouse),
         }
     }
 }
@@ -185,7 +185,7 @@ impl FromStr for Tables {
             PoolState::NAME => Ok(Tables::PoolState),
             DexPrice::NAME => Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
-            MevBlocks::NAME => Ok(Tables::MevBlock),
+            MevBlocks::NAME => Ok(Tables::MevBlocks),
             _ => Err("Unknown table".to_string()),
         }
     }
