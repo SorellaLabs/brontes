@@ -12,7 +12,7 @@ use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{compose_sandwich_jit, ClassifiedMev, MevBlock, MevType, SpecificMev},
     normalized_actions::Actions,
-    tree::TimeTree,
+    tree::BlockTree,
     ToScaledRational,
 };
 use futures::FutureExt;
@@ -105,7 +105,7 @@ pub struct Composer<'a, const N: usize> {
 impl<'a, const N: usize> Composer<'a, N> {
     pub fn new(
         orchestra: &'a [&'a Box<dyn Inspector>; N],
-        tree: Arc<TimeTree<Actions>>,
+        tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
         let processing = Self::pre_process(tree.clone(), meta_data.clone());
@@ -131,7 +131,7 @@ impl<'a, const N: usize> Composer<'a, N> {
         }
     }
 
-    // pub fn on_new_tree(&mut self, tree: Arc<TimeTree<Actions>>, meta_data:
+    // pub fn on_new_tree(&mut self, tree: Arc<BlockTree<Actions>>, meta_data:
     // Arc<Metadata>) {     // This is only unsafe due to the fact that you can
     // have missbehaviour where you     // drop this with incomplete futures
     //     let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
@@ -152,16 +152,16 @@ impl<'a, const N: usize> Composer<'a, N> {
     //     self.pre_process(tree, meta_data);
     // }
 
-    fn pre_process(tree: Arc<TimeTree<Actions>>, meta_data: Arc<Metadata>) -> BlockPreprocessing {
+    fn pre_process(tree: Arc<BlockTree<Actions>>, meta_data: Arc<Metadata>) -> BlockPreprocessing {
         let builder_address = tree.header.beneficiary;
         let cumulative_gas_used = tree
-            .roots
+            .tx_roots
             .iter()
             .map(|root| root.gas_details.gas_used)
             .sum::<u128>();
 
         let cumulative_gas_paid = tree
-            .roots
+            .tx_roots
             .iter()
             .map(|root| root.gas_details.effective_gas_price * root.gas_details.gas_used)
             .sum::<u128>();
@@ -492,7 +492,7 @@ pub mod tests {
         let metadata =
             if let Some(meta) = custom_meta { meta } else { db.get_metadata(block_num).await };
 
-        let (tokens_missing_decimals, tree) = classifier.build_tree(block.0, block.1);
+        let (tokens_missing_decimals, tree) = classifier.build_block_tree(block.0, block.1);
 
         let USDC = Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap();
 

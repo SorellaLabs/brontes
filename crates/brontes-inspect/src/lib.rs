@@ -13,14 +13,14 @@ use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{ClassifiedMev, SpecificMev},
     normalized_actions::Actions,
-    tree::TimeTree,
+    tree::BlockTree,
 };
 
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
     async fn process_tree(
         &self,
-        tree: Arc<TimeTree<Actions>>,
+        tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)>;
 }
