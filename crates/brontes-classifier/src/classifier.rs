@@ -51,14 +51,14 @@ impl<'db> Classifier<'db> {
 
                 let root_trace = trace.trace[0].clone();
                 let address = root_trace.get_from_addr();
-                let t_address = root_trace.get_to_address();
+                let to_address = root_trace.get_to_address();
 
                 let (_, classification) =
                     self.classify_node(trace.trace.remove(0), 0, header.number, tx_idx as u64);
 
                 if classification.is_transfer() {
-                    if self.libmdbx.try_get_decimals(t_address).is_none() {
-                        missing_decimals.push(t_address.clone());
+                    if self.libmdbx.try_get_decimals(to_address).is_none() {
+                        missing_decimals.push(to_address.clone());
                     }
                 }
 
