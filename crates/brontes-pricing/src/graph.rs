@@ -217,15 +217,15 @@ impl PairGraph {
 
         let t0 = SystemTime::now();
 
-        let Some(start_idx) = self.addr_to_index.get(&pair.0) else { 
-            let addr  = pair.0;
+        let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
+            let addr = pair.0;
             error!(?addr, "no node for address");
-            return vec![].into_iter() 
+            return vec![].into_iter()
         };
         let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
-            let addr  = pair.1;
+            let addr = pair.1;
             error!(?addr, "no node for address");
-            return vec![].into_iter() 
+            return vec![].into_iter()
         };
 
         let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
