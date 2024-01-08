@@ -19,7 +19,7 @@ use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace};
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (TimeTree<Actions>, MetadataDB)> + Send + 'a>>;
 
 pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
@@ -314,8 +314,13 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
                 block_details.cumulative_mev_finalized_profit_usd
             );
 
-            self.database
-                .insert_classified_data(block_details, mev_details);
+            if self
+                .database
+                .insert_classified_data(block_details, mev_details)
+                .is_err()
+            {
+                error!("failed to insert classified data into database");
+            }
 
             return Poll::Ready(())
         }
