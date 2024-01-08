@@ -122,6 +122,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn on_message(&mut self, msg: PoolUpdate) {
         if msg.block > self.current_block {
             self.current_block = msg.block;
+
+            for (pool_addr, dex, pair) in self
+                .new_graph_pairs
+                .remove(&self.current_block)
+                .unwrap_or_default()
+            {
+                self.pair_graph.add_node(pair, pool_addr, dex);
+            }
         }
 
         let addr = msg.get_pool_address();
@@ -335,6 +343,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if !self.can_progress() {
             return None
         }
+
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing
         let (buffer, overrides) = (
@@ -374,18 +383,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let state = self.finalized_state.clone().into();
         self.completed_block += 1;
-
-        // init pools that we can route through.
-        // there is technically an error where in a block we route
-        // through on a early transaction in the block but this is so unlikely
-        // and a pia to fix will push till we actually see this
-        for (pool_addr, dex, pair) in self
-            .new_graph_pairs
-            .remove(&self.completed_block)
-            .unwrap_or_default()
-        {
-            self.pair_graph.add_node(pair, pool_addr, dex);
-        }
 
         // add new nodes to pair graph
         Some((block, DexPrices::new(state, res)))
@@ -451,13 +448,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let state = self.finalized_state.clone().into();
         self.completed_block += 1;
-        for (pool_addr, dex, pair) in self
-            .new_graph_pairs
-            .remove(&self.completed_block)
-            .unwrap_or_default()
-        {
-            self.pair_graph.add_node(pair, pool_addr, dex);
-        }
 
         Some((block, DexPrices::new(state, res)))
     }
