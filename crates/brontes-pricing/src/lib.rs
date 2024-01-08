@@ -249,11 +249,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 PoolKeysForPair(
                     pairs
                         .into_iter()
-                        .map(|pair_details| {
-                            PoolKeyWithDirection::new(
-                                *self.last_update.get(&pair_details.info.pool_addr).unwrap(),
+                        .filter_map(|pair_details| {
+                            Some(PoolKeyWithDirection::new(
+                                *self.last_update.get(&pair_details.info.pool_addr)?,
                                 pair_details.get_base_token(),
-                            )
+                            ))
                         })
                         .collect::<Vec<_>>(),
                 )
@@ -441,8 +441,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-        } else {
-            error!("failed to load a pool");
         }
     }
 
