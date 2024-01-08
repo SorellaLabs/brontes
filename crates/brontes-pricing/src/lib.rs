@@ -407,6 +407,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         {
             self.pair_graph.add_node(pair, pool_addr, dex);
         }
+        // for debug
+        if self.new_graph_pairs.len() < 3 {
+            println!("{:#?}", self.new_graph_pairs);
+        }
 
         // add new nodes to pair graph
 
