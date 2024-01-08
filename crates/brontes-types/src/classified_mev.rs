@@ -1,9 +1,9 @@
 use std::{any::Any, fmt::Debug};
-use dyn_clone::DynClone;
 
 use alloy_primitives::{Address, U256};
+use dyn_clone::DynClone;
 use reth_primitives::B256;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 use sorella_db_databases::{
@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct MevBlock {
     #[serde_as(as = "FixedString")]
     pub block_hash: B256,
@@ -45,7 +45,7 @@ pub struct MevBlock {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct ClassifiedMev {
     // can be multiple for sandwich
     pub block_number:         u64,
@@ -86,7 +86,9 @@ impl Row for MevType {
 }
 
 /// Because of annoying trait requirements. we do some degenerate shit here.
-pub trait SpecificMev: InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone {
+pub trait SpecificMev:
+    InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
+{
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync>;
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u128;

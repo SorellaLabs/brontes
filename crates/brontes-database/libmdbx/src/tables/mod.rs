@@ -1,7 +1,8 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
-use crate::types::mev_block::{MevBlockWithClassified,MevBlocksData};
+
+use crate::types::mev_block::{MevBlockWithClassified, MevBlocksData};
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;

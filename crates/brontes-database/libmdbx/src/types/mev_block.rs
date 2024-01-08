@@ -1,5 +1,8 @@
-use alloy_primitives::Address;
-use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
+use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
+use brontes_types::{
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    impl_compress_decompress_for_serde,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
@@ -28,3 +31,5 @@ pub struct MevBlockWithClassified {
     pub block: MevBlock,
     pub mev:   Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
 }
+
+impl_compress_decompress_for_serde!(MevBlockWithClassified);
