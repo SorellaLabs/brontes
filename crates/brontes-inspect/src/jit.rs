@@ -16,8 +16,8 @@ use malachite::Rational;
 use reth_primitives::{Address, B256, U256};
 
 use crate::{
-    shared_utils::SharedInspectorUtils, Actions, ClassifiedMev, Inspector, Metadata, SpecificMev,
-    TimeTree,
+    shared_utils::SharedInspectorUtils, Actions, BlockTree, ClassifiedMev, Inspector, Metadata,
+    SpecificMev,
 };
 
 #[derive(Debug)]
@@ -43,7 +43,7 @@ impl<'db> JitInspector<'db> {
 impl Inspector for JitInspector<'_> {
     async fn process_tree(
         &self,
-        tree: Arc<TimeTree<Actions>>,
+        tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         self.possible_jit_set(tree.clone())
@@ -257,8 +257,8 @@ impl JitInspector<'_> {
         Some((classified, Box::new(jit_details)))
     }
 
-    fn possible_jit_set(&self, tree: Arc<TimeTree<Actions>>) -> Vec<PossibleJit> {
-        let iter = tree.roots.iter();
+    fn possible_jit_set(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleJit> {
+        let iter = tree.tx_roots.iter();
 
         if iter.len() < 3 {
             return vec![]
@@ -470,7 +470,7 @@ mod tests {
         let metadata = get_metadata();
 
         let tx = block.0.clone().into_iter().take(20).collect::<Vec<_>>();
-        let (missing_token_decimals, tree) = classifier.build_tree(tx, block.1);
+        let (missing_token_decimals, tree) = classifier.build_block_tree(tx, block.1);
 
         let tree = Arc::new(tree);
 
