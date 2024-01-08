@@ -125,7 +125,8 @@ impl serde::Serialize for dyn SpecificMev {
     where
         S: serde::Serializer,
     {
-        erased_serde::serialize(&(self.mev_type(), self), serializer)
+        let bytes = serde_json::to_vec(&self).unwrap();
+        erased_serde::serialize(&(self.mev_type(), bytes), serializer)
     }
 }
 
