@@ -244,7 +244,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .collect::<Vec<_>>();
 
         if pool_keys.is_empty() {
-            error!(?pool_pair, "no keys found for pair");
+            debug!(?pool_pair, "no keys found for pair");
             return
         }
 
@@ -407,6 +407,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         {
             self.pair_graph.add_node(pair, pool_addr, dex);
         }
+
         // for debug
         if self.new_graph_pairs.len() < 3 {
             println!("{:#?}", self.new_graph_pairs);
