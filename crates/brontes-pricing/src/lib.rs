@@ -145,24 +145,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if msg.block > self.current_block {
             self.current_block = msg.block;
         }
-
-        // TODO: prove we actually need this
-        // // if transfer we have different values we want to fetch
-        // if msg.action.is_transfer() {
-        //     let pair = msg.get_pair(self.quote_asset);
-        //
-        //     self.update_dex_quotes(msg.block, msg.tx_idx,
-        // msg.get_pair(self.quote_asset).unwrap());     self.update_dex_quotes(
-        //         msg.block,
-        //         msg.tx_idx,
-        //         msg.get_pair(self.quote_asset).unwrap().flip(),
-        //     );
-        //     return
-        // }
-
         let addr = msg.get_pool_address();
-
-        assert!(self.mut_state.contains_key(&addr) == self.last_update.contains_key(&addr));
 
         // if we already have the state, we want to buffer the update to allow for all
         // init fetches to be done so that we can then go through and apply all
@@ -412,6 +395,20 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let state = self.finalized_state.clone().into();
         self.completed_block += 1;
+
+        // init pools that we can route through.
+        // there is technically an error where in a block we route
+        // through on a early transaction in the block but this is so unlikely
+        // and a pia to fix will push till we actually see this
+        for (pool_addr, dex, pair) in self
+            .new_graph_pairs
+            .remove(&self.completed_block)
+            .unwrap_or_default()
+        {
+            self.pair_graph.add_node(pair, pool_addr, dex);
+        }
+
+        // add new nodes to pair graph
 
         Some((block, DexPrices::new(state, res)))
     }
