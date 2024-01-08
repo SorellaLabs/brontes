@@ -121,11 +121,13 @@ impl InsertRow for Box<dyn SpecificMev> {
     }
 }
 
-impl serde::Serialize for dyn SpecificMev {
+impl serde::Serialize for Box<dyn SpecificMev> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
+        // let any = self.into_any();
+        println!("ser specific mev");
         let bytes = serde_json::to_vec(&self).unwrap();
         erased_serde::serialize(&(self.mev_type(), bytes), serializer)
     }
