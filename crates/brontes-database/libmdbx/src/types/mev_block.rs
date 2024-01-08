@@ -1,10 +1,8 @@
-use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     impl_compress_decompress_for_serde,
 };
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, Row};
 
 use super::LibmdbxData;
@@ -22,7 +20,7 @@ impl LibmdbxData<MevBlocks> for MevBlocksData {
         &self,
     ) -> (<MevBlocks as reth_db::table::Table>::Key, <MevBlocks as reth_db::table::Table>::Value)
     {
-        (self.block_number, self.mev_blocks)
+        (self.block_number, self.mev_blocks.clone())
     }
 }
 
