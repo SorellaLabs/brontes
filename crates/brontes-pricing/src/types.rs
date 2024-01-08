@@ -63,6 +63,7 @@ impl reth_db::table::Encode for PoolKey {
         buf
     }
 }
+
 impl_compress_decompress_for_encoded_decoded!(PoolKey);
 
 /// Block level pre-computed prices for all dexes
