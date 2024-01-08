@@ -19,7 +19,6 @@ impl LibmdbxData<MevBlocks> for MevBlocksData {
         &self,
     ) -> (<MevBlocks as reth_db::table::Table>::Key, <MevBlocks as reth_db::table::Table>::Value)
     {
-        println!("into key val");
         (self.block_number, self.mev_blocks.clone())
     }
 }
