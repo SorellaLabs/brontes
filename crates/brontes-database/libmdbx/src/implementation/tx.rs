@@ -122,7 +122,6 @@ impl DbTxMut for LibmdbxTx<RW> {
     fn put<T: Table>(&self, key: T::Key, value: T::Value) -> Result<(), DatabaseError> {
         let key = key.encode();
         let value = value.compress();
-        println!("value compress");
         self.inner
             .put(self.get_dbi::<T>()?, key.as_ref(), value, WriteFlags::UPSERT)
             .map_err(|e| {
