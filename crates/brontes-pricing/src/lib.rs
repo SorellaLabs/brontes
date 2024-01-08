@@ -27,8 +27,16 @@ use types::{DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolU
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
 
+/// a ordered buffer for holding state transitions for a block while the lazy
+/// loading of pools is being applied
 pub struct StateBuffer {
+    /// updates for a given block in order that they occur
     pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
+    /// when we have a override for a given address at a block. it means that
+    /// we don't want to apply any pool updates for the block. This is useful
+    /// for when a pool is initted at a block and we can only query the end
+    /// of block state. we can override all pool updates for the init block
+    /// to ensure our pool state is in sync
     pub overrides: HashMap<u64, HashSet<Address>>,
 }
 impl Default for StateBuffer {
@@ -43,18 +51,50 @@ impl StateBuffer {
     }
 }
 
+/// # Brontes Batch Pricer
+/// ## Reasoning
+/// uses a token graph in order to provide the price of any
+/// token in a wanted quote token. A token graph is used here so that we can
+/// keep our pricing strictly to DEFI. This allows us to see delta between
+/// centralized and decentralized prices which allows us to classify
+///
+/// ## Implimentation
+/// The Brontes Batch pricer runs on a block by block basis, This process is as
+/// followed:
+///
+/// 1) On a new highest block recieved from the update channel. All new pools
+/// are added to the token graph as there are now valid paths.
+///
+/// 2) All new pools touched are loaded by the lazy loader.
+///
+/// 3) State transitions on all pools are put into the state buffer.
+///
+/// 4) Once lazy loading for the block is complete, all state transitions are
+/// applied in order, when a transition is applied, the price is added into the
+/// state map.
+///
+/// 5) Once state transitions are all applied and we have our formatted data.
+/// The data is returned and the pricer continues onto the next block.
 pub struct BrontesBatchPricer<T: TracingProvider> {
     quote_asset: Address,
     run:         u64,
     batch_id:    u64,
 
-    update_rx: UnboundedReceiver<PoolUpdate>,
-
     current_block:   u64,
     completed_block: u64,
 
-    buffer: StateBuffer,
-
+    /// receiver from classifier, classifier is ran sequential to grantee order
+    update_rx:       UnboundedReceiver<PoolUpdate>,
+    /// holds the state transfers and state void overrides for the given block.
+    /// how this works is that we process all state transitions for a block and
+    /// allow lazy loading to occur. Once lazy loading has occurred and there
+    /// are no more events for the current block, all the state transitions
+    /// are applied in order with the price at the transaction index being
+    /// calculated and inserted into the results and returned.
+    buffer:          StateBuffer,
+    /// holds new graph nodes / edges that can be added at every given block.
+    /// this is done to ensure any route from a base to our quote asset will
+    /// only pass though valid created pools.
     new_graph_pairs: HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>,
 
     /// holds all token pairs for the given chunk.
