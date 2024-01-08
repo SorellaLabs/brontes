@@ -63,7 +63,7 @@ The inspectors in Brontes are highly modular. By implementing the Inspector trai
 pub trait Inspector: Send + Sync {
     async fn process_tree(
         &self,
-        tree: Arc<TimeTree<Actions>>,
+        tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)>;
 }

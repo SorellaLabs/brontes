@@ -17,12 +17,13 @@ use brontes_pricing::types::{DexPrices, DexQuotes};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
-    tree::TimeTree,
+    tree::BlockTree,
 };
 use futures::{stream::FuturesOrdered, Future, FutureExt, StreamExt};
 use tracing::{debug, error, info};
 
-type CollectionFut<'a> = Pin<Box<dyn Future<Output = (MetadataDB, TimeTree<Actions>)> + Send + 'a>>;
+type CollectionFut<'a> =
+    Pin<Box<dyn Future<Output = (MetadataDB, BlockTree<Actions>)> + Send + 'a>>;
 
 pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
     current_block: u64,
@@ -71,7 +72,7 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (_extra_data, mut tree) = self.classifier.build_tree(traces, header);
+            let (_extra_data, mut tree) = self.classifier.build_block_tree(traces, header);
 
             let meta = labeller_fut.await;
             tree.eth_price = meta.eth_prices.clone();
