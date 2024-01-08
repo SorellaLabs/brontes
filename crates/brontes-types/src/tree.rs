@@ -302,7 +302,7 @@ impl<V: NormalizedAction> Node<V> {
         } else if let Some(inner) = self.inner.get_mut(trace_addr.remove(0)) {
             inner.get_all_inner_nodes(n, trace_addr)
         } else {
-            eprintln!("ERROR: {:?}\n {:?}", self.inner, log);
+            error!("ERROR: {:?}\n {:?}", self.inner, log);
         }
     }
 
