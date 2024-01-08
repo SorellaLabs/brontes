@@ -8,7 +8,6 @@ use sorella_db_databases::{clickhouse, Row};
 use super::LibmdbxData;
 use crate::tables::MevBlocks;
 
-//#[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone, Row)]
 pub struct MevBlocksData {
     pub block_number: u64,
