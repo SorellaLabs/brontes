@@ -3,7 +3,7 @@ use std::{any::Any, fmt::Debug};
 use alloy_primitives::{Address, U256};
 use dyn_clone::DynClone;
 use reth_primitives::B256;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 use sorella_db_databases::{
@@ -35,13 +35,21 @@ pub struct MevBlock {
     pub builder_eth_profit: i128,
     pub builder_finalized_profit_usd: f64,
     /// Proposer address
-    #[serde_as(as = "FixedString")]
+    #[serde(deserialize_with = "deser_option_address")]
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward: Option<u128>,
     pub proposer_finalized_profit_usd: Option<f64>,
-    // gas used * (effective gas price - base fee) for all Classified MEV txs
+    /// gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
     pub cumulative_mev_finalized_profit_usd: f64,
+}
+
+#[inline(always)]
+fn deser_option_address<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Address>, D::Error> {
+    let s = FixedString::deserialize(deserializer)?;
+    Ok(s.string.parse().ok())
 }
 
 #[serde_as]
@@ -89,11 +97,19 @@ impl Row for MevType {
 pub trait SpecificMev:
     InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
 {
+    fn decode(bytes: Vec<u8>) -> Result<Box<Self>, serde_json::Error>
+    where
+        Self: Sized;
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync>;
     fn mev_type(&self) -> MevType;
     fn priority_fee_paid(&self) -> u128;
     fn bribe(&self) -> u128;
     fn mev_transaction_hashes(&self) -> Vec<B256>;
+}
+
+#[inline(always)]
+fn decode_bytes<T: DeserializeOwned>(bytes: Vec<u8>) -> Result<Box<T>, serde_json::Error> {
+    serde_json::from_slice(&bytes).map(Box::new)
 }
 
 dyn_clone::clone_trait_object!(SpecificMev);
@@ -109,12 +125,50 @@ impl serde::Serialize for dyn SpecificMev {
     where
         S: serde::Serializer,
     {
-        erased_serde::serialize(self, serializer)
+        erased_serde::serialize(&(self.mev_type(), self), serializer)
     }
 }
 
+impl<'de> serde::Deserialize<'de> for Box<dyn SpecificMev> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deser_specific_mev(deserializer)
+    }
+}
+
+macro_rules! decode_specific {
+    ($mev_type:ident, $bytes:ident, $($mev:ident = $name:ident),+) => {
+        match $mev_type {
+        $(
+            MevType::$mev => $name::decode($bytes).unwrap() as Box<dyn SpecificMev>,
+        )+
+        _ => todo!("missing varient")
+    }
+    };
+}
+
+#[inline(always)]
+fn deser_specific_mev<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Box<dyn SpecificMev>, D::Error> {
+    let (mev_type, bytes) = <(MevType, Vec<u8>)>::deserialize(deserializer)?;
+
+    Ok(decode_specific!(
+        mev_type,
+        bytes,
+        Backrun = AtomicBackrun,
+        Jit = JitLiquidity,
+        JitSandwich = JitLiquiditySandwich,
+        Sandwich = Sandwich,
+        CexDex = CexDex,
+        Liquidation = Liquidation
+    ))
+}
+
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct Sandwich {
     #[serde_as(as = "FixedString")]
     pub frontrun_tx_hash: B256,
@@ -270,6 +324,13 @@ pub fn compose_sandwich_jit(
 }
 
 impl SpecificMev for Sandwich {
+    fn decode(bytes: Vec<u8>) -> Result<Box<Self>, serde_json::Error>
+    where
+        Self: Sized,
+    {
+        decode_bytes(bytes)
+    }
+
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
         self
     }
@@ -296,7 +357,7 @@ impl SpecificMev for Sandwich {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct JitLiquiditySandwich {
     #[serde_as(as = "FixedString")]
     pub frontrun_tx_hash: B256,
@@ -416,6 +477,13 @@ pub struct JitLiquiditySandwich {
 }
 
 impl SpecificMev for JitLiquiditySandwich {
+    fn decode(bytes: Vec<u8>) -> Result<Box<Self>, serde_json::Error>
+    where
+        Self: Sized,
+    {
+        decode_bytes(bytes)
+    }
+
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
         self
     }
@@ -448,7 +516,7 @@ pub enum PriceKind {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct CexDex {
     #[serde_as(as = "FixedString")]
     pub tx_hash:          B256,
@@ -488,6 +556,13 @@ impl SpecificMev for CexDex {
         self
     }
 
+    fn decode(bytes: Vec<u8>) -> Result<Box<Self>, serde_json::Error>
+    where
+        Self: Sized,
+    {
+        decode_bytes(bytes)
+    }
+
     fn mev_type(&self) -> MevType {
         MevType::CexDex
     }
@@ -506,7 +581,7 @@ impl SpecificMev for CexDex {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct Liquidation {
     #[serde_as(as = "FixedString")]
     pub liquidation_tx_hash: B256,
@@ -557,6 +632,13 @@ impl SpecificMev for Liquidation {
         self
     }
 
+    fn decode(bytes: Vec<u8>) -> Result<Box<Self>, serde_json::Error>
+    where
+        Self: Sized,
+    {
+        decode_bytes(bytes)
+    }
+
     fn mev_type(&self) -> MevType {
         MevType::Liquidation
     }
@@ -575,7 +657,7 @@ impl SpecificMev for Liquidation {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct JitLiquidity {
     #[serde_as(as = "FixedString")]
     pub mint_tx_hash: B256,
@@ -659,6 +741,13 @@ impl SpecificMev for JitLiquidity {
         MevType::Jit
     }
 
+    fn decode(bytes: Vec<u8>) -> Result<Box<Self>, serde_json::Error>
+    where
+        Self: Sized,
+    {
+        decode_bytes(bytes)
+    }
+
     fn mev_transaction_hashes(&self) -> Vec<B256> {
         vec![self.mint_tx_hash, self.burn_tx_hash]
     }
@@ -678,7 +767,7 @@ impl SpecificMev for JitLiquidity {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct AtomicBackrun {
     #[serde_as(as = "FixedString")]
     pub tx_hash:          B256,
@@ -709,6 +798,13 @@ pub struct AtomicBackrun {
 impl SpecificMev for AtomicBackrun {
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
         self
+    }
+
+    fn decode(bytes: Vec<u8>) -> Result<Box<Self>, serde_json::Error>
+    where
+        Self: Sized,
+    {
+        decode_bytes(bytes)
     }
 
     fn priority_fee_paid(&self) -> u128 {
