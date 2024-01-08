@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use brontes_database_libmdbx::implementation::tx::LibmdbxTx;
-use brontes_pricing::types::PoolUpdate;
+use brontes_pricing::types::DexPriceMsg;
 use reth_db::mdbx::RO;
 use reth_primitives::{Address, Bytes};
 use reth_rpc_types::Log;
@@ -40,7 +40,7 @@ pub trait ActionCollection: Sync + Send {
         target_address: Address,
         logs: &Vec<Log>,
         db_tx: &LibmdbxTx<RO>,
-        tx: UnboundedSender<PoolUpdate>,
+        tx: UnboundedSender<DexPriceMsg>,
         block: u64,
         tx_idx: u64,
     ) -> Option<Actions>;

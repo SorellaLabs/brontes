@@ -7,7 +7,11 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, traits::TracingProvider};
-use futures::{future::BoxFuture, stream::FuturesUnordered, Future, Stream, StreamExt};
+use futures::{
+    future::BoxFuture,
+    stream::{FuturesOrdered, FuturesUnordered},
+    Future, Stream, StreamExt,
+};
 use tracing::{error, info};
 
 use crate::{
@@ -20,10 +24,12 @@ type PoolFetchSuccess = (u64, Address, PoolState, LoadResult);
 
 pub enum LoadResult {
     Ok,
-    Err,
-    // because we back query 1 block. this breaks so we need to instead
-    // do a special query
+    /// because we back query 1 block. if a pool is created at the current
+    /// block, this will error. because of this we need to signal this case
+    /// to the pricing engine so that we don't apply any state transitions
+    /// for this block as it will cause incorrect data
     PoolInitOnBlock,
+    Err,
 }
 impl LoadResult {
     pub fn is_ok(&self) -> bool {
@@ -37,14 +43,13 @@ pub struct LazyResult {
     pub load_result: LoadResult,
 }
 
+/// Deals with the lazy loading of new exchange state, and tracks loading of new
+/// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
     pool_buf:          HashSet<Address>,
-    // this can be unordered as it is in just init state and we don't apply any transitions
-    // until all state has been fetched for a given block.
-    pool_load_futures:
-        FuturesUnordered<BoxFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
-    // the different blocks that we are currently fetching
+    pool_load_futures: FuturesOrdered<BoxFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
+    /// requests we are processing for a given block.
     req_per_block:     HashMap<u64, u64>,
 }
 
@@ -52,7 +57,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
             pool_buf: HashSet::default(),
-            pool_load_futures: FuturesUnordered::default(),
+            pool_load_futures: FuturesOrdered::default(),
             provider,
             req_per_block: HashMap::default(),
         }
@@ -69,12 +74,12 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         ex_type: StaticBindingsDb,
     ) {
         let provider = self.provider.clone();
-        // increment
+        *self.req_per_block.entry(block_number).or_default() += 1;
+        self.pool_buf.insert(address);
 
         match ex_type {
             StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
-                *self.req_per_block.entry(block_number).or_default() += 1;
-                self.pool_load_futures.push(Box::pin(async move {
+                self.pool_load_futures.push_back(Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let (pool, res) = if let Ok(pool) = UniswapV2Pool::new_load_on_block(
@@ -105,8 +110,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 }))
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
-                *self.req_per_block.entry(block_number).or_default() += 1;
-                self.pool_load_futures.push(Box::pin(async move {
+                self.pool_load_futures.push_back(Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let (pool, res) = if let Ok(pool) =
@@ -144,7 +148,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.pool_buf.is_empty()
+        self.pool_load_futures.is_empty()
     }
 }
 
@@ -171,6 +175,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                         *(o.get_mut()) -= 1;
                     }
 
+                    self.pool_buf.remove(&address);
                     let res = LazyResult { state: None, block, load_result: LoadResult::Err };
                     Poll::Ready(Some(res))
                 }
