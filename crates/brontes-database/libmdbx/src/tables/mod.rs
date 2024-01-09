@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
+use sorella_db_databases::Database;
 
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
@@ -194,6 +195,10 @@ impl FromStr for Tables {
     }
 }
 
+pub trait IntoTableKey<T, K> {
+    fn into_key(value: T) -> K;
+}
+
 /// Macro to declare key value table + extra impl
 #[macro_export]
 macro_rules! table {
@@ -203,6 +208,14 @@ macro_rules! table {
         #[doc = concat!("Takes [`", stringify!($key), "`] as a key and returns [`", stringify!($value), "`].")]
         #[derive(Clone, Copy, Debug, Default)]
         pub struct $table_name;
+
+        impl IntoTableKey<&str, $key> for $table_name {
+            fn into_key(value: &str) -> $key {
+                let key: $key = value.parse().unwrap();
+                println!("decoded key: {key:?}");
+                key
+            }
+        }
 
         impl reth_db::table::Table for $table_name {
             const NAME: &'static str = stringify!($table_name);
