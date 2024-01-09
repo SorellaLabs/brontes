@@ -1467,6 +1467,7 @@ dependencies = [
  "erased-serde",
  "hyper",
  "hyper-tls",
+ "itertools 0.11.0",
  "malachite",
  "parking_lot 0.12.1",
  "petgraph",
