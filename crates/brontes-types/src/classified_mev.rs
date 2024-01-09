@@ -61,10 +61,14 @@ impl Serialize for MevBlock {
         ser_struct.serialize_field("cumulative_gas_used", &self.cumulative_gas_used)?;
         ser_struct.serialize_field("cumulative_gas_paid", &self.cumulative_gas_paid)?;
         ser_struct.serialize_field("total_bribe", &self.total_bribe)?;
-        ser_struct.serialize_field("cumulative_mev_priority_fee_paid", &self.cumulative_mev_priority_fee_paid)?;
+        ser_struct.serialize_field(
+            "cumulative_mev_priority_fee_paid",
+            &self.cumulative_mev_priority_fee_paid,
+        )?;
         ser_struct.serialize_field("builder_address", &format!("{:?}", self.builder_address))?;
         ser_struct.serialize_field("builder_eth_profit", &self.builder_eth_profit)?;
-        ser_struct.serialize_field("builder_finalized_profit_usd", &self.builder_finalized_profit_usd)?;
+        ser_struct
+            .serialize_field("builder_finalized_profit_usd", &self.builder_finalized_profit_usd)?;
 
         let fee_recep = if self.proposer_fee_recipient.is_none() {
             "".to_string()
@@ -73,8 +77,14 @@ impl Serialize for MevBlock {
         };
         ser_struct.serialize_field("proposer_fee_recipient", &fee_recep)?;
         ser_struct.serialize_field("proposer_mev_reward", &self.proposer_mev_reward)?;
-        ser_struct.serialize_field("proposer_finalized_profit_usd", &self.proposer_finalized_profit_usd)?;
-        ser_struct.serialize_field("cumulative_mev_finalized_profit_usd", &self.cumulative_mev_finalized_profit_usd)?;
+        ser_struct.serialize_field(
+            "proposer_finalized_profit_usd",
+            &self.proposer_finalized_profit_usd,
+        )?;
+        ser_struct.serialize_field(
+            "cumulative_mev_finalized_profit_usd",
+            &self.cumulative_mev_finalized_profit_usd,
+        )?;
 
         ser_struct.end()
     }
