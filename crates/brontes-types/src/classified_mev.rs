@@ -3,7 +3,10 @@ use std::{any::Any, fmt::Debug};
 use alloy_primitives::{Address, U256};
 use dyn_clone::DynClone;
 use reth_primitives::B256;
-use serde::{de::DeserializeOwned, ser::SerializeTuple, Deserialize, Deserializer, Serialize};
+use serde::{
+    ser::{SerializeStruct, SerializeTuple},
+    Deserialize, Deserializer, Serialize,
+};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 use sorella_db_databases::{
@@ -17,7 +20,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Deserialize, Row, Clone, Default)]
 pub struct MevBlock {
     #[serde_as(as = "FixedString")]
     pub block_hash: B256,
@@ -42,6 +45,17 @@ pub struct MevBlock {
     /// gas used * (effective gas price - base fee) for all Classified MEV txs
     /// Mev profit
     pub cumulative_mev_finalized_profit_usd: f64,
+}
+
+impl Serialize for MevBlock {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut ser_struct = serializer.serialize_struct("MevBlock", 15)?;
+
+        ser_struct.end()
+    }
 }
 
 #[inline(always)]
@@ -168,20 +182,20 @@ impl<'de> serde::Deserialize<'de> for Box<dyn SpecificMev> {
     where
         D: Deserializer<'de>,
     {
-    println!("deseralizing");
-    let (mev_type, val) = <(MevType, serde_json::Value)>::deserialize(deserializer)?;
-    println!("{mev_type:?}, {val:#?}");
+        println!("deseralizing");
+        let (mev_type, val) = <(MevType, serde_json::Value)>::deserialize(deserializer)?;
+        println!("{mev_type:?}, {val:#?}");
 
-    Ok(decode_specific!(
-        mev_type,
-        val,
-        Backrun = AtomicBackrun,
-        Jit = JitLiquidity,
-        JitSandwich = JitLiquiditySandwich,
-        Sandwich = Sandwich,
-        CexDex = CexDex,
-        Liquidation = Liquidation
-    ))
+        Ok(decode_specific!(
+            mev_type,
+            val,
+            Backrun = AtomicBackrun,
+            Jit = JitLiquidity,
+            JitSandwich = JitLiquiditySandwich,
+            Sandwich = Sandwich,
+            CexDex = CexDex,
+            Liquidation = Liquidation
+        ))
     }
 }
 
