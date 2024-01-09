@@ -91,6 +91,7 @@ impl Serialize for MevBlock {
 fn deser_option_address<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<Address>, D::Error> {
+    println!("deser option addr");
     let s = FixedString::deserialize(deserializer)?;
     println!("deser fixed str {:?}", s);
     Ok(s.string.parse::<Address>().ok())
