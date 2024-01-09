@@ -4,7 +4,6 @@ pub(crate) mod serde;
 pub mod types;
 use std::collections::HashMap;
 
-use sorella_db_databases::Database;
 use alloy_json_abi::JsonAbi;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev, *};
 use futures::future::join_all;
@@ -13,8 +12,8 @@ use sorella_db_databases::{
     clickhouse::{ClickhouseClient, Credentials},
     config::ClickhouseConfig,
     utils::format_query_array,
-    Row, BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE, JIT_SANDWICH_TABLE, JIT_TABLE,
-    LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
+    Database, Row, BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE, JIT_SANDWICH_TABLE,
+    JIT_TABLE, LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
 };
 use tracing::{error, info};
 
@@ -88,7 +87,7 @@ impl Clickhouse {
     ) {
         let any = mev_detail.into_any();
         let this = any.downcast_ref::<T>().unwrap();
-        if let Err(e) = db_client.insert_one(this.clone(), table).await {
+        if let Err(e) = db_client.insert_one(this, table).await {
             error!(?e, "failed to insert specific mev");
         }
     }
@@ -100,7 +99,7 @@ impl Clickhouse {
     ) {
         if let Err(e) = self
             .client
-            .insert_one(block_details, MEV_BLOCKS_TABLE)
+            .insert_one(&block_details, MEV_BLOCKS_TABLE)
             .await
         {
             error!(?e, "failed to insert block details");
@@ -112,7 +111,7 @@ impl Clickhouse {
         join_all(mev_details.into_iter().map(|(classified, specific)| async {
             if let Err(e) = self
                 .client
-                .insert_one(classified, CLASSIFIED_MEV_TABLE)
+                .insert_one(&classified, CLASSIFIED_MEV_TABLE)
                 .await
             {
                 error!(?e, "failed to insert classified mev");
