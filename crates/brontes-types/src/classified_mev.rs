@@ -185,6 +185,7 @@ macro_rules! decode_specific {
 fn deser_specific_mev<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Box<dyn SpecificMev>, D::Error> {
+    println!("deseralizing");
     let (mev_type, val) = <(MevType, serde_json::Value)>::deserialize(deserializer)?;
     println!("{mev_type:?}, {val:#?}");
 
