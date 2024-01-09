@@ -94,9 +94,7 @@ impl Serialize for MevBlock {
 fn deser_option_address<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<Address>, D::Error> {
-    println!("deser option addr");
     let s = String::deserialize(deserializer)?;
-    println!("deser fixed str {:?}", s);
     Ok(s.parse::<Address>().ok())
 }
 
@@ -216,9 +214,7 @@ impl<'de> serde::Deserialize<'de> for Box<dyn SpecificMev> {
     where
         D: Deserializer<'de>,
     {
-        println!("deseralizing");
         let (mev_type, val) = <(MevType, serde_json::Value)>::deserialize(deserializer)?;
-        println!("{mev_type:?}, {val:#?}");
 
         Ok(decode_specific!(
             mev_type,
