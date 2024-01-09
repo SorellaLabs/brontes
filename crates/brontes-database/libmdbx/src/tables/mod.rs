@@ -210,7 +210,9 @@ macro_rules! table {
 
         impl IntoTableKey<&str, $key> for $table_name {
             fn into_key(value: &str) -> $key {
-                value.parse().unwrap()
+                let key: $key = value.parse().unwrap();
+                println!("decoded key: {key:?}");
+                key
             }
         }
 
