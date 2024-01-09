@@ -195,7 +195,6 @@ impl FromStr for Tables {
 }
 
 pub trait IntoTableKey<T, K> {
-
     fn into_key(value: T) -> K;
 }
 
