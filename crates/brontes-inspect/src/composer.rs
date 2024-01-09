@@ -216,7 +216,7 @@ impl<'a, const N: usize> Composer<'a, N> {
         orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> Poll<ComposerResults> {
         info!("starting to compose classified mev");
-        let header = self.build_mev_header(&orchestra_data);
+        let mut header = self.build_mev_header(&orchestra_data);
 
         let mut sorted_mev = orchestra_data
             .into_iter()
@@ -244,9 +244,14 @@ impl<'a, const N: usize> Composer<'a, N> {
                     self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
                 }
             });
+        let flattened_mev = sorted_mev.into_values().flatten().collect::<Vec<_>>();
+
+        // set the mev count now that all reductions and merges have been made
+        let mev_count = flattened_mev.len();
+        header.mev_count = mev_count as u64;
 
         // downcast all of the sorted mev results. should cleanup
-        Poll::Ready((header, sorted_mev.into_values().flatten().collect::<Vec<_>>()))
+        Poll::Ready((header, flattened_mev))
     }
 
     fn replace_dep_filter(

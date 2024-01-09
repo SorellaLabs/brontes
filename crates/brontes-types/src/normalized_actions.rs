@@ -240,7 +240,7 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn get_action(&self) -> &Actions;
     fn continue_classification(&self) -> bool;
     fn get_trace_index(&self) -> u64;
-    fn continued_classification_types(&self) -> Vec<Box<dyn Fn(&Actions) -> bool + Send + Sync>>;
+    fn continued_classification_types(&self) -> Box<dyn Fn(&Self) -> bool + Send + Sync>;
 }
 
 impl NormalizedAction for Actions {
@@ -263,19 +263,17 @@ impl NormalizedAction for Actions {
         }
     }
 
-    fn continued_classification_types(&self) -> Vec<Box<dyn Fn(&Actions) -> bool + Send + Sync>> {
+    fn continued_classification_types(&self) -> Box<dyn Fn(&Actions) -> bool + Send + Sync> {
         match self {
             Actions::Swap(_) => unreachable!(),
-            Actions::FlashLoan(_) => vec![
-                Box::new(|action: &Actions| action.is_flash_loan()),
-                Box::new(|action: &Actions| action.is_batch()),
-                Box::new(|action: &Actions| action.is_swap()),
-            ],
-            Actions::Batch(_) => vec![Box::new(|action: &Actions| action.is_swap())],
+            Actions::FlashLoan(_) => Box::new(|action: &Actions| {
+                action.is_flash_loan() || action.is_batch() || action.is_swap()
+            }),
+            Actions::Batch(_) => Box::new(|action: &Actions| action.is_swap()),
             Actions::Mint(_) => unreachable!(),
             Actions::Burn(_) => unreachable!(),
             Actions::Transfer(_) => unreachable!(),
-            Actions::Liquidation(_) => vec![Box::new(|action: &Actions| action.is_liquidation())],
+            Actions::Liquidation(_) => Box::new(|action: &Actions| action.is_liquidation()),
             Actions::Collect(_) => unreachable!(),
             Actions::Unclassified(_) => unreachable!(),
             _ => unreachable!(),
