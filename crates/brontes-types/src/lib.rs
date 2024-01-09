@@ -130,16 +130,15 @@ pub(crate) mod vec_fixed_string {
             .serialize(serializer)
     }
 
-    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Address>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let addresses: Vec<String> = Deserialize::deserialize(deserializer)?;
+        let addresses: Vec<FixedString> = Deserialize::deserialize(deserializer)?;
 
         addresses
             .into_iter()
-            .map(|a| Address::from_str(&a))
+            .map(|a| Address::from_str(&a.string))
             .collect::<Result<Vec<_>, _>>()
             .map_err(serde::de::Error::custom)
     }
@@ -170,19 +169,18 @@ pub(crate) mod vec_vec_fixed_string {
             .serialize(serializer)
     }
 
-    #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Vec<Address>>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let addresses: Vec<Vec<String>> = Deserialize::deserialize(deserializer)?;
+        let addresses: Vec<Vec<FixedString>> = Deserialize::deserialize(deserializer)?;
 
         addresses
             .into_iter()
             .map(|addrs| {
                 addrs
                     .into_iter()
-                    .map(|a| Address::from_str(&a))
+                    .map(|a| Address::from_str(&a.string))
                     .collect::<Result<Vec<_>, _>>()
             })
             .collect::<Result<Vec<_>, _>>()
@@ -212,11 +210,11 @@ pub(crate) mod vec_b256 {
     where
         D: Deserializer<'de>,
     {
-        let addresses: Vec<String> = Deserialize::deserialize(deserializer)?;
+        let addresses: Vec<FixedString> = Deserialize::deserialize(deserializer)?;
 
         addresses
             .into_iter()
-            .map(|a| B256::from_str(&a))
+            .map(|a| B256::from_str(&a.string))
             .collect::<Result<Vec<_>, _>>()
             .map_err(serde::de::Error::custom)
     }
@@ -250,14 +248,14 @@ pub(crate) mod vec_vec_b256 {
     where
         D: Deserializer<'de>,
     {
-        let addresses: Vec<Vec<String>> = Deserialize::deserialize(deserializer)?;
+        let addresses: Vec<Vec<FixedString>> = Deserialize::deserialize(deserializer)?;
 
         addresses
             .into_iter()
             .map(|addrs| {
                 addrs
                     .into_iter()
-                    .map(|a| B256::from_str(&a))
+                    .map(|a| B256::from_str(&a.string))
                     .collect::<Result<Vec<_>, _>>()
             })
             .collect::<Result<Vec<_>, _>>()
