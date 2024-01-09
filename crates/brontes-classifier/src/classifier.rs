@@ -90,8 +90,14 @@ impl<'db> Classifier<'db> {
                 };
 
                 for (index, trace) in trace.trace.into_iter().enumerate() {
-                    tx_root.gas_details.coinbase_transfer =
-                        self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                    if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
+                        *coinbase += self
+                            .get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                            .unwrap_or_default()
+                    } else {
+                        tx_root.gas_details.coinbase_transfer =
+                            self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                    }
 
                     let from_addr = trace.get_from_addr();
                     let classification = self.classify_node(
