@@ -1,5 +1,6 @@
 use std::{any::Any, fmt::Debug};
 
+use serde_with::SerializeAs;
 use alloy_primitives::{Address, U256};
 use dyn_clone::DynClone;
 use reth_primitives::B256;
@@ -54,6 +55,35 @@ impl Serialize for MevBlock {
     {
         let mut ser_struct = serializer.serialize_struct("MevBlock", 15)?;
 
+        let fixed_string = FixedString::new(format!("{:?}", self.block_hash));
+        ser_struct.serialize_field("block_hash", &fixed_string)?;
+
+        ser_struct.serialize_field("block_number", &self.block_number)?;
+        ser_struct.serialize_field("mev_count", &self.mev_count)?;
+        ser_struct.serialize_field("finalized_eth_price", &self.finalized_eth_price)?;
+        ser_struct.serialize_field("cumulative_gas_used", &self.cumulative_gas_used)?;
+        ser_struct.serialize_field("cumulative_gas_paid", &self.cumulative_gas_paid)?;
+        ser_struct.serialize_field("total_bribe", &self.total_bribe)?;
+        ser_struct.serialize_field("cumulative_mev_priority_fee_paid", &self.cumulative_mev_priority_fee_paid)?;
+
+        let fixed_string = FixedString::new(format!("{:?}", self.builder_address));
+        ser_struct.serialize_field("builder_address", &fixed_string)?;
+
+        ser_struct.serialize_field("builder_eth_profit", &self.builder_eth_profit)?;
+        ser_struct.serialize_field("builder_finalized_profit_usd", &self.builder_finalized_profit_usd)?;
+
+        let fee_recep = if self.proposer_fee_recipient.is_none() {
+            "".to_string()
+        } else {
+            format!("{:?}", self.proposer_fee_recipient.as_ref().unwrap())
+        };
+        let fixed_string = FixedString::new(fee_recep);
+        ser_struct.serialize_field("proposer_fee_recipient", &fixed_string)?;
+
+        ser_struct.serialize_field("proposer_mev_reward", &self.proposer_mev_reward)?;
+        ser_struct.serialize_field("proposer_finalized_profit_usd", &self.proposer_finalized_profit_usd)?;
+        ser_struct.serialize_field("cumulative_mev_finalized_profit_usd", &self.cumulative_mev_finalized_profit_usd)?;
+
         ser_struct.end()
     }
 }
@@ -63,7 +93,7 @@ fn deser_option_address<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<Address>, D::Error> {
     let s = FixedString::deserialize(deserializer)?;
-    Ok(s.string.parse().ok())
+    Ok(s.string.parse::<Address>().ok())
 }
 
 #[serde_as]
