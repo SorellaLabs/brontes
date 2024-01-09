@@ -1,6 +1,5 @@
 use std::{any::Any, fmt::Debug};
 
-use serde_with::SerializeAs;
 use alloy_primitives::{Address, U256};
 use dyn_clone::DynClone;
 use reth_primitives::B256;
@@ -55,10 +54,7 @@ impl Serialize for MevBlock {
     {
         let mut ser_struct = serializer.serialize_struct("MevBlock", 15)?;
 
-        // let fixed_string = FixedString::new(format!("{:?}", self.block_hash));
-        // let a = FixedString::serialize_as(format!("{:?}", self.block_hash), serializer);
         ser_struct.serialize_field("block_hash", &format!("{:?}", self.block_hash))?;
-
         ser_struct.serialize_field("block_number", &self.block_number)?;
         ser_struct.serialize_field("mev_count", &self.mev_count)?;
         ser_struct.serialize_field("finalized_eth_price", &self.finalized_eth_price)?;
@@ -76,7 +72,6 @@ impl Serialize for MevBlock {
             format!("{:?}", self.proposer_fee_recipient.as_ref().unwrap())
         };
         ser_struct.serialize_field("proposer_fee_recipient", &fee_recep)?;
-
         ser_struct.serialize_field("proposer_mev_reward", &self.proposer_mev_reward)?;
         ser_struct.serialize_field("proposer_finalized_profit_usd", &self.proposer_finalized_profit_usd)?;
         ser_struct.serialize_field("cumulative_mev_finalized_profit_usd", &self.cumulative_mev_finalized_profit_usd)?;
