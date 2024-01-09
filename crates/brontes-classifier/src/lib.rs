@@ -28,6 +28,7 @@ sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
 sol!(CurveCryptoSwap, "./abis/CurveCryptoSwap.json");
 sol!(AaveV2, "./abis/AaveV2Pool.json");
 sol!(AaveV3, "./abis/AaveV3Pool.json");
+sol!(UniswapX, "./abis/UniswapXExclusiveDutchOrderReactor.json");
 
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
