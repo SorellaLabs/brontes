@@ -171,12 +171,12 @@ impl<'de> serde::Deserialize<'de> for Box<dyn SpecificMev> {
 }
 
 macro_rules! decode_specific {
-    ($mev_type:ident, $bytes:ident, $($mev:ident = $name:ident),+) => {
+    ($mev_type:ident, $value:ident, $($mev:ident = $name:ident),+) => {
         match $mev_type {
         $(
-            MevType::$mev => $name::decode($bytes).unwrap() as Box<dyn SpecificMev>,
+            MevType::$mev => Box::new(serde_json::from_value::<$name>($value).unwrap()) as Box<dyn SpecificMev>,
         )+
-        _ => todo!("missing varient")
+        _ => todo!("missing variant")
     }
     };
 }
@@ -185,11 +185,12 @@ macro_rules! decode_specific {
 fn deser_specific_mev<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Box<dyn SpecificMev>, D::Error> {
-    let (mev_type, bytes) = <(MevType, Vec<u8>)>::deserialize(deserializer)?;
+    let (mev_type, val) = <(MevType, serde_json::Value)>::deserialize(deserializer)?;
+    println!("{mev_type:?}, {val:#?}");
 
     Ok(decode_specific!(
         mev_type,
-        bytes,
+        val,
         Backrun = AtomicBackrun,
         Jit = JitLiquidity,
         JitSandwich = JitLiquiditySandwich,
