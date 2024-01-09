@@ -108,7 +108,7 @@ impl Clickhouse {
         info!("inserted block details");
 
         let db_client = &self.client;
-        join_all(mev_details.into_iter().map(|(classified, specific)| async {
+        join_all(mev_details.into_iter().map(|(classified, specific)| async move {
             if let Err(e) = self
                 .client
                 .insert_one(&classified, CLASSIFIED_MEV_TABLE)
