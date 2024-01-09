@@ -39,7 +39,9 @@ macro_rules! impl_compress_decompress_for_serde {
                 let buf = &binding.as_slice();
                 let valued = serde_json::from_slice::<serde_json::Value>(&buf).unwrap();
                 println!("decoding buf: {valued:#?}");
-                Ok(serde_json::from_slice(buf).map_err(|_| reth_db::DatabaseError::Decode)?)
+                let res = Ok(serde_json::from_slice(buf).map_err(|_| reth_db::DatabaseError::Decode)?);
+                println!("decdoed buf");
+                res
             }
         }
     };
