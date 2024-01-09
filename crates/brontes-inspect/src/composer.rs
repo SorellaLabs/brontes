@@ -221,7 +221,7 @@ impl<'a, const N: usize> Composer<'a, N> {
             ),
             //TODO: need to fix
             cumulative_mev_finalized_profit_usd: f64::rounding_from(
-                (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(18)
+                (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(9)
                     * &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )
