@@ -315,8 +315,13 @@ impl<V: NormalizedAction> Node<V> {
     pub fn get_all_children_for_complex_classification(&self, head: u64) -> Vec<V> {
         if head == self.index {
             let mut results = Vec::new();
+            let classification = self.data.continued_classification_types();
+            let fixed = |node: &Node<V>| {
+                ((classification)(&node.data), node.subactions.iter().any(|i| (classification)(i)))
+            };
+
             for child in &self.inner {
-                // child.collect(&mut results, collect_fn, &|a| a.data.clone())
+                child.collect(&mut results, &fixed, &|a| a.data.clone())
             }
 
             return results
@@ -333,13 +338,12 @@ impl<V: NormalizedAction> Node<V> {
             if next_inner_node.index < head {
                 continue
             } else {
-                return  cur_inner_node.get_all_children_for_complex_classification(head)
+                return cur_inner_node.get_all_children_for_complex_classification(head)
             }
         }
 
         error!("was not able to find node in tree");
         return vec![]
-
     }
 
     pub fn finalize(&mut self) {
