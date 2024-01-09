@@ -3,7 +3,7 @@ use std::{any::Any, fmt::Debug};
 use alloy_primitives::{Address, U256};
 use dyn_clone::DynClone;
 use reth_primitives::B256;
-use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
+use serde::{de::DeserializeOwned, ser::SerializeTuple, Deserialize, Deserializer, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 use sorella_db_databases::{
@@ -125,36 +125,39 @@ impl serde::Serialize for Box<dyn SpecificMev> {
     where
         S: serde::Serializer,
     {
+        let mut tup = serializer.serialize_tuple(2)?;
         let mev_type = self.mev_type();
+        tup.serialize_element(&mev_type)?;
         let any = self.clone().into_any();
 
         match mev_type {
             MevType::Sandwich => {
                 let this = any.downcast_ref::<Sandwich>().unwrap();
-                this.serialize(serializer)
+                tup.serialize_element(&this)?;
             }
             MevType::Backrun => {
                 let this = any.downcast_ref::<AtomicBackrun>().unwrap();
-                this.serialize(serializer)
+                tup.serialize_element(&this)?;
             }
             MevType::JitSandwich => {
                 let this = any.downcast_ref::<JitLiquiditySandwich>().unwrap();
-                this.serialize(serializer)
+                tup.serialize_element(&this)?;
             }
             MevType::Jit => {
                 let this = any.downcast_ref::<JitLiquidity>().unwrap();
-                this.serialize(serializer)
+                tup.serialize_element(&this)?;
             }
             MevType::CexDex => {
                 let this = any.downcast_ref::<CexDex>().unwrap();
-                this.serialize(serializer)
+                tup.serialize_element(&this)?;
             }
             MevType::Liquidation => {
                 let this = any.downcast_ref::<Liquidation>().unwrap();
-                this.serialize(serializer)
+                tup.serialize_element(&this)?;
             }
             MevType::Unknown => unimplemented!("none yet"),
         }
+        tup.end()
     }
 }
 
