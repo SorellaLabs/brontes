@@ -1,14 +1,16 @@
+use alloy_primitives::Bytes;
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
 };
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     extra_processing::ExtraProcessing,
-    normalized_actions::{Actions, NormalizedTransfer},
+    normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     tree::{BlockTree, GasDetails, Node, Root},
 };
 use hex_literal::hex;
+use itertools::MultiUnzip;
 use malachite::strings::ToLowerHexString;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
@@ -18,7 +20,7 @@ use reth_rpc_types::{
 };
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{aave::AaveV3Classifier, *};
+use crate::{impls::*, ActionCollection, StaticBindings};
 
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -44,7 +46,11 @@ impl<'db> Classifier<'db> {
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
-        let (extra, tx_roots): (Vec<_>, Vec<_>) = traces
+        let (missing_data_requests, further_classification_requests, tx_roots): (
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+        ) = traces
             .into_iter()
             .enumerate()
             .filter_map(|(tx_idx, mut trace)| {
@@ -53,12 +59,20 @@ impl<'db> Classifier<'db> {
                 }
 
                 let mut missing_decimals = Vec::new();
+                let mut further_classification_requests = Vec::new();
 
                 let root_trace = trace.trace[0].clone();
                 let address = root_trace.get_from_addr();
 
                 let classification =
                     self.classify_node(header.number, tx_idx as u64, trace.trace.remove(0), 0);
+
+                // Here we are marking more complex actions that require data
+                // that can only be retrieved by classifying it's action and
+                // all subsequent child actions.
+                if classification.continue_classification() {
+                    further_classification_requests.push(classification.get_trace_index());
+                }
 
                 if let Actions::Transfer(transfer) = &classification {
                     if self.libmdbx.try_get_decimals(transfer.token).is_none() {
@@ -108,6 +122,10 @@ impl<'db> Classifier<'db> {
                         (index + 1) as u64,
                     );
 
+                    if classification.continue_classification() {
+                        further_classification_requests.push(classification.get_trace_index());
+                    }
+
                     if let Actions::Transfer(transfer) = &classification {
                         if self.libmdbx.try_get_decimals(transfer.token).is_none() {
                             missing_decimals.push(transfer.token);
@@ -126,10 +144,20 @@ impl<'db> Classifier<'db> {
 
                     tx_root.insert(node);
                 }
+                // Here we reverse the requests to ensure that we always classify the most
+                // nested action & its children first. This is to prevent the
+                // case where we classify a parent action where its children also require
+                // further classification
+                let tx_classification_requests = if !further_classification_requests.is_empty() {
+                    further_classification_requests.reverse();
+                    Some((tx_idx, further_classification_requests))
+                } else {
+                    None
+                };
 
-                Some((missing_decimals, tx_root))
+                Some((missing_decimals, tx_classification_requests, tx_root))
             })
-            .unzip();
+            .multiunzip();
 
         let mut tree =
             BlockTree { tx_roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
@@ -139,10 +167,17 @@ impl<'db> Classifier<'db> {
         self.remove_collect_transfers(&mut tree);
 
         tree.finalize_tree();
-        let mut dec = extra.into_iter().flatten().collect::<Vec<_>>();
+
+        let mut dec = missing_data_requests
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
+        // need to sort before we can dedup
         dec.sort();
-        // needs to be sorted to work
+
         dec.dedup();
+
         let processing = ExtraProcessing { tokens_decimal_fill: dec };
 
         (processing, tree)
@@ -303,6 +338,7 @@ impl<'db> Classifier<'db> {
                 StaticBindingsDb::CurveCryptoSwap => Box::new(CurveCryptoSwapClassifier::default()),
                 StaticBindingsDb::AaveV2 => Box::new(AaveV2Classifier::default()),
                 StaticBindingsDb::AaveV3 => Box::new(AaveV3Classifier::default()),
+                StaticBindingsDb::UniswapX => Box::new(UniswapXClassifier::default()),
             };
 
             let calldata = trace.get_calldata();
@@ -361,6 +397,14 @@ impl<'db> Classifier<'db> {
         }
 
         Actions::Unclassified(trace)
+    }
+
+    fn finish_classification(
+        &self,
+        tree: &mut BlockTree<Actions>,
+        further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
+    ) {
+        todo!()
     }
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
