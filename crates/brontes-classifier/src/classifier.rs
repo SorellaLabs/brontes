@@ -257,7 +257,7 @@ impl<'db> Classifier<'db> {
     fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u128> {
         match action {
             Action::Call(action) => {
-                if action.to == builder {
+                if action.to == builder && !action.value.is_zero() {
                     return Some(action.value.to())
                 }
                 None
@@ -284,7 +284,7 @@ impl<'db> Classifier<'db> {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        // get rid of these unwraps
+        //TODO: get rid of these unwraps
         let db_tx = self.libmdbx.ro_tx().unwrap();
 
         if let Some(protocol) = db_tx.get::<AddressToProtocol>(target_address).unwrap() {
