@@ -93,7 +93,7 @@ type InspectorFut<'a> =
     Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>;
 
 /// the results downcast using any in order to be able to serialize and
-/// impliment row trait due to the abosulte autism that the db library   
+/// implement row trait due to the absolute autism that the db library   
 /// requirements
 pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
 
@@ -126,31 +126,14 @@ impl<'a, const N: usize> Composer<'a, N> {
             as Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + 'a>>;
 
         Self {
+            // The rust compiler struggles to prove that the tokio-scope lifetime is the same as
+            // the futures lifetime and errors. the transmute is simply casting the
+            // lifetime to what it truely is. This is totally safe and will never cause
+            // an error
             inspectors_execution: unsafe { std::mem::transmute(future) },
             pre_processing:       processing,
         }
     }
-
-    // pub fn on_new_tree(&mut self, tree: Arc<BlockTree<Actions>>, meta_data:
-    // Arc<Metadata>) {     // This is only unsafe due to the fact that you can
-    // have missbehaviour where you     // drop this with incomplete futures
-    //     let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>
-    // =         unsafe { Scope::create() };
-    //
-    //     println!("inspectors to run: {}", self.orchestra.len());
-    //     self.orchestra.iter().for_each(|inspector| {
-    //         scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
-    //     });
-    //
-    //     let fut = Box::pin(async move {
-    //         scope
-    //             .collect()
-    //             .map(|r| r.into_iter().flatten().flatten().collect::<Vec<_>>())
-    //             .await
-    //     });
-    //
-    //     self.pre_process(tree, meta_data);
-    // }
 
     fn pre_process(tree: Arc<BlockTree<Actions>>, meta_data: Arc<Metadata>) -> BlockPreprocessing {
         let builder_address = tree.header.beneficiary;
@@ -174,14 +157,19 @@ impl<'a, const N: usize> Composer<'a, N> {
         orchestra_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> MevBlock {
         let pre_processing = &self.pre_processing;
+
+        let total_bribe = orchestra_data
+            .iter()
+            .map(|(_, mev)| mev.bribe())
+            .sum::<u128>();
+
         let cum_mev_priority_fee_paid = orchestra_data
             .iter()
             .map(|(_, mev)| mev.priority_fee_paid())
             .sum::<u128>();
 
-        let total_bribe = 0;
         //TODO: need to substract proposer payement + fees paid for gas
-        let builder_eth_profit = total_bribe + pre_processing.cumulative_gas_paid as i128;
+        let builder_eth_profit = (total_bribe + pre_processing.cumulative_gas_paid) as i128;
 
         MevBlock {
             block_hash: pre_processing.meta_data.block_hash.into(),
@@ -194,10 +182,7 @@ impl<'a, const N: usize> Composer<'a, N> {
             .0,
             cumulative_gas_used: pre_processing.cumulative_gas_used,
             cumulative_gas_paid: pre_processing.cumulative_gas_paid,
-            total_bribe: orchestra_data
-                .iter()
-                .map(|(_, mev)| mev.bribe())
-                .sum::<u128>(),
+            total_bribe,
             cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
             builder_address: pre_processing.builder_address,
             builder_eth_profit,
@@ -217,9 +202,8 @@ impl<'a, const N: usize> Composer<'a, N> {
                     .0
                 },
             ),
-            //TODO: need to fix
             cumulative_mev_finalized_profit_usd: f64::rounding_from(
-                cum_mev_priority_fee_paid.to_scaled_rational(18)
+                (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(12)
                     * &pre_processing.meta_data.eth_prices,
                 RoundingMode::Nearest,
             )

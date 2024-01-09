@@ -103,8 +103,14 @@ impl<'db> Classifier<'db> {
                 };
 
                 for (index, trace) in trace.trace.into_iter().enumerate() {
-                    tx_root.gas_details.coinbase_transfer =
-                        self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                    if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
+                        *coinbase += self
+                            .get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                            .unwrap_or_default()
+                    } else {
+                        tx_root.gas_details.coinbase_transfer =
+                            self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                    }
 
                     let from_addr = trace.get_from_addr();
                     let classification = self.classify_node(
@@ -359,14 +365,17 @@ impl<'db> Classifier<'db> {
             if let Some(res) = res {
                 return res
             } else {
-                let selector = match trace.trace.action {
-                    Call(ref action) => &action.input[0..4],
+                let selector = match &trace.trace.action {
+                    Call(action) => &action.input[0..4],
                     _ => unreachable!(),
                 };
+
+                let hex_selector: Bytes = Bytes::copy_from_slice(selector);
+
                 tracing::warn!(
                     "Classification failed on contract address: {:?}, with function selector: {:?}",
                     target_address.0,
-                    selector
+                    hex_selector.to_lower_hex_string()
                 );
             }
         }

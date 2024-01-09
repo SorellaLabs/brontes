@@ -19,6 +19,8 @@ pub enum Commands {
     Init(Init),
     #[command(name = "dex-pricing")]
     RunBatchWithPricing(DexPricingArgs),
+    #[command(name = "db")]
+    QueryDb(DatabaseQuery),
 }
 
 #[derive(Debug, Parser)]
@@ -80,4 +82,17 @@ pub struct DexPricingArgs {
     /// how big the batch size should be
     #[arg(long, short, default_value = "500")]
     pub min_batch_size: u64,
+}
+
+#[derive(Debug, Parser)]
+pub struct DatabaseQuery {
+    /// that table to be queried
+    #[arg(long, short)]
+    pub table: Tables,
+    /// the key of the table being queried. if a range is wanted use the rust
+    /// syntax of ..
+    /// --key 80
+    /// or --key 80..100
+    #[arg(long, short)]
+    pub key:   String,
 }
