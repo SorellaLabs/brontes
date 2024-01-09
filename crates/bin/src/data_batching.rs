@@ -317,6 +317,8 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
                 block_details.cumulative_mev_finalized_profit_usd
             );
 
+            println!("{:#?}", mev_details);
+
             if self
                 .database
                 .insert_classified_data(block_details, mev_details)
