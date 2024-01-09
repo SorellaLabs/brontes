@@ -9,6 +9,7 @@ use brontes_types::{
     tree::{BlockTree, GasDetails, Node, Root},
 };
 use hex_literal::hex;
+use malachite::strings::ToLowerHexString;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{
@@ -330,14 +331,17 @@ impl<'db> Classifier<'db> {
             if let Some(res) = res {
                 return res
             } else {
-                let selector = match trace.trace.action {
-                    Call(ref action) => &action.input[0..4],
+                let selector = match &trace.trace.action {
+                    Call(action) => &action.input[0..4],
                     _ => unreachable!(),
                 };
+
+                let hex_selector: Bytes = Bytes::copy_from_slice(selector);
+
                 tracing::warn!(
                     "Classification failed on contract address: {:?}, with function selector: {:?}",
                     target_address.0,
-                    selector
+                    hex_selector.to_lower_hex_string()
                 );
             }
         }
