@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
@@ -44,6 +44,20 @@ pub struct PoolKey {
     pub run:          u64,
     pub batch:        u64,
     pub update_nonce: u16,
+}
+
+impl FromStr for PoolKey {
+    type Err = u8;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let split = s.split('-').collect::<Vec<_>>();
+        let pool = Address::from_str(split[0]).unwrap();
+        let run = u64::from_str(split[1]).unwrap();
+        let batch = u64::from_str(split[2]).unwrap();
+        let update_nonce = u16::from_str(split[3]).unwrap();
+
+        Ok(Self { update_nonce, pool, run, batch })
+    }
 }
 
 impl reth_db::table::Decode for PoolKey {
