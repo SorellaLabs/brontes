@@ -3,7 +3,7 @@ use alloy_sol_types::{SolCall, SolEvent};
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_pricing::types::PoolUpdate;
-use brontes_types::normalized_actions::{Actions, NormalizedBatch, NormalizedAction};
+use brontes_types::normalized_actions::{Actions, NormalizedAction, NormalizedBatch};
 use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_rpc_types::Log;
 use tokio::sync::mpsc::UnboundedSender;
@@ -11,10 +11,10 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::{
     enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
     UniswapX::{
-        executeCall, executeWithCallbackCall, executeBatchCall, executeBatchWithCallbackCall, UniswapXCalls, Fill,
+        executeBatchCall, executeBatchWithCallbackCall, executeCall, executeWithCallbackCall, Fill,
+        UniswapXCalls,
     },
 };
-
 
 action_impl!(
     UniXExecuteImpl,
@@ -25,7 +25,7 @@ action_impl!(
     call_data: true,
     logs: true,
     |trace_index, from_address: Address, target_address: Address, call_data: executeCall, logs: Option<Fill>, db_tx: &LibmdbxTx<RO>| {
-        
+
 
         Some(NormalizedBatch {
             trace_index,
@@ -37,6 +37,5 @@ action_impl!(
         })
     }
 );
-
 
 action_dispatch!(UniswapXClassifier, UniXExecuteImpl);
