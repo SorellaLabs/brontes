@@ -108,48 +108,62 @@ impl Clickhouse {
         info!("inserted block details");
 
         let db_client = &self.client;
-        join_all(mev_details.into_iter().map(|(classified, specific)| async move {
-            if let Err(e) = self
-                .client
-                .insert_one(&classified, CLASSIFIED_MEV_TABLE)
-                .await
-            {
-                error!(?e, "failed to insert classified mev");
-            }
+        join_all(
+            mev_details
+                .into_iter()
+                .map(|(classified, specific)| async move {
+                    if let Err(e) = self
+                        .client
+                        .insert_one(&classified, CLASSIFIED_MEV_TABLE)
+                        .await
+                    {
+                        error!(?e, "failed to insert classified mev");
+                    }
 
-            info!("inserted classified_mev");
-            let table = &mev_table_type(&specific);
-            let mev_type = specific.mev_type();
-            match mev_type {
-                MevType::Sandwich => {
-                    Self::insert_singe_classified_data::<Sandwich>(db_client, specific, table).await
-                }
-                MevType::Backrun => {
-                    Self::insert_singe_classified_data::<AtomicBackrun>(db_client, specific, table)
-                        .await
-                }
-                MevType::JitSandwich => {
-                    Self::insert_singe_classified_data::<JitLiquiditySandwich>(
-                        db_client, specific, table,
-                    )
-                    .await
-                }
-                MevType::Jit => {
-                    Self::insert_singe_classified_data::<JitLiquidity>(db_client, specific, table)
-                        .await
-                }
-                MevType::CexDex => {
-                    Self::insert_singe_classified_data::<CexDex>(db_client, specific, table).await
-                }
-                MevType::Liquidation => {
-                    Self::insert_singe_classified_data::<Liquidation>(db_client, specific, table)
-                        .await
-                }
-                MevType::Unknown => unimplemented!("none yet"),
-            };
+                    info!("inserted classified_mev");
+                    let table = &mev_table_type(&specific);
+                    let mev_type = specific.mev_type();
+                    match mev_type {
+                        MevType::Sandwich => {
+                            Self::insert_singe_classified_data::<Sandwich>(
+                                db_client, specific, table,
+                            )
+                            .await
+                        }
+                        MevType::Backrun => {
+                            Self::insert_singe_classified_data::<AtomicBackrun>(
+                                db_client, specific, table,
+                            )
+                            .await
+                        }
+                        MevType::JitSandwich => {
+                            Self::insert_singe_classified_data::<JitLiquiditySandwich>(
+                                db_client, specific, table,
+                            )
+                            .await
+                        }
+                        MevType::Jit => {
+                            Self::insert_singe_classified_data::<JitLiquidity>(
+                                db_client, specific, table,
+                            )
+                            .await
+                        }
+                        MevType::CexDex => {
+                            Self::insert_singe_classified_data::<CexDex>(db_client, specific, table)
+                                .await
+                        }
+                        MevType::Liquidation => {
+                            Self::insert_singe_classified_data::<Liquidation>(
+                                db_client, specific, table,
+                            )
+                            .await
+                        }
+                        MevType::Unknown => unimplemented!("none yet"),
+                    };
 
-            info!(%table,"inserted specific mev type");
-        }))
+                    info!(%table,"inserted specific mev type");
+                }),
+        )
         .await;
     }
 
