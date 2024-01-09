@@ -1,7 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
 use malachite::Rational;
-use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::{
+    iter::IntoParallelIterator,
+    prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
+};
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
@@ -112,6 +115,24 @@ impl<V: NormalizedAction> BlockTree<V> {
             .collect()
     }
 
+    pub fn collect_all_scoped(
+        &self,
+        search_params: &Vec<(usize, Vec<usize>)>,
+    ) -> Vec<(usize, Vec<Vec<V>>)> {
+        search_params
+            .par_iter()
+            .map(|(index, subtraces)| {
+                (
+                    *index,
+                    self.tx_roots
+                        .get(*index)
+                        .unwrap()
+                        .collect_all_scoped(subtraces),
+                )
+            })
+            .collect()
+    }
+
     pub fn inspect_all<F>(&self, call: F) -> HashMap<B256, Vec<Vec<V>>>
     where
         F: Fn(&Node<V>) -> bool + Send + Sync,
@@ -191,6 +212,16 @@ impl<V: NormalizedAction> Root<V> {
             .collect(&mut result, call, &|data| data.data.clone());
 
         result
+    }
+
+    pub fn collect_all_scoped(&self, heads: &Vec<usize>) -> Vec<Vec<V>> {
+        heads
+            .into_par_iter()
+            .map(|search_head| {
+                self.head
+                    .get_all_children_for_complex_classification(*search_head as u64)
+            })
+            .collect()
     }
 
     pub fn remove_duplicate_data<F, C, T, R, Re>(
@@ -278,6 +309,25 @@ pub struct Node<V: NormalizedAction> {
 impl<V: NormalizedAction> Node<V> {
     pub fn is_finalized(&self) -> bool {
         self.finalized
+    }
+
+    pub fn get_all_children_for_complex_classification(
+        &self,
+        head: u64,
+        // collect_fn: &Box<dyn Fn(&Node<V>) -> (bool, bool) + Send + Sync>,
+    ) -> Vec<V> {
+        if head == self.index {
+            let mut results = Vec::new();
+            for child in &self.inner {
+                child.collect(&mut results, collect_fn, &|a| a.data.clone())
+            }
+
+            return results
+        }
+
+        // keep searching for node
+
+        todo!()
     }
 
     pub fn finalize(&mut self) {
