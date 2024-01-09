@@ -11,6 +11,8 @@ use crate::structured_trace::TransactionTraceWithLogs;
 #[derive(Debug, Clone, Deserialize)]
 pub enum Actions {
     Swap(NormalizedSwap),
+    FlashLoan(NormalizedFlashLoan),
+    Batch(NormalizedBatch),
     Transfer(NormalizedTransfer),
     Mint(NormalizedMint),
     Burn(NormalizedBurn),
@@ -24,6 +26,8 @@ impl InsertRow for Actions {
     fn get_column_names(&self) -> &'static [&'static str] {
         match self {
             Actions::Swap(_) => NormalizedSwap::COLUMN_NAMES,
+            Actions::FlashLoan(_) => NormalizedFlashLoan::COLUMN_NAMES,
+            Actions::Batch(_) => NormalizedBatch::COLUMN_NAMES,
             Actions::Transfer(_) => NormalizedTransfer::COLUMN_NAMES,
             Actions::Mint(_) => NormalizedMint::COLUMN_NAMES,
             Actions::Burn(_) => NormalizedBurn::COLUMN_NAMES,
@@ -41,6 +45,8 @@ impl Serialize for Actions {
     {
         match self {
             Actions::Swap(s) => s.serialize(serializer),
+            Actions::FlashLoan(f) => f.serialize(serializer),
+            Actions::Batch(b) => b.serialize(serializer),
             Actions::Mint(m) => m.serialize(serializer),
             Actions::Transfer(t) => t.serialize(serializer),
             Actions::Burn(b) => b.serialize(serializer),
@@ -77,6 +83,8 @@ impl Actions {
     pub fn get_to_address(&self) -> Address {
         match self {
             Actions::Swap(s) => s.pool,
+            Actions::FlashLoan(f) => f.pool,
+            Actions::Batch(b) => b.settlement_contract,
             Actions::Mint(m) => m.to,
             Actions::Burn(b) => b.to,
             Actions::Transfer(t) => t.to,
@@ -94,6 +102,18 @@ impl Actions {
 
     pub fn is_swap(&self) -> bool {
         matches!(self, Actions::Swap(_))
+    }
+
+    pub fn is_flash_loan(&self) -> bool {
+        matches!(self, Actions::FlashLoan(_))
+    }
+
+    pub fn is_liquidation(&self) -> bool {
+        matches!(self, Actions::Liquidation(_))
+    }
+
+    pub fn is_batch(&self) -> bool {
+        matches!(self, Actions::Batch(_))
     }
 
     pub fn is_burn(&self) -> bool {
@@ -136,6 +156,15 @@ pub struct NormalizedSwap {
     pub token_out:   Address,
     pub amount_in:   U256,
     pub amount_out:  U256,
+}
+
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+pub struct NormalizedBatch {
+    pub trace_index:         u64,
+    pub solver:              Address,
+    pub settlement_contract: Address,
+    pub user_swaps:          Vec<NormalizedSwap>,
+    pub solver_swaps:        Option<Vec<NormalizedSwap>>,
 }
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
@@ -209,7 +238,9 @@ pub struct NormalizedRepayment {
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn get_action(&self) -> &Actions;
+    fn continue_classification(&self) -> bool;
     fn get_trace_index(&self) -> u64;
+    fn continued_classification_types(&self) -> Vec<Box<dyn Fn(&Actions) -> bool + Send + Sync>>;
 }
 
 impl NormalizedAction for Actions {
@@ -217,9 +248,45 @@ impl NormalizedAction for Actions {
         self
     }
 
+    fn continue_classification(&self) -> bool {
+        match self {
+            Self::Swap(_) => false,
+            Self::FlashLoan(_) => true,
+            Self::Batch(_) => true,
+            Self::Mint(_) => false,
+            Self::Burn(_) => false,
+            Self::Transfer(_) => false,
+            Self::Liquidation(_) => true,
+            Self::Collect(_) => false,
+            Self::Unclassified(_) => false,
+            _ => unreachable!(),
+        }
+    }
+
+    fn continued_classification_types(&self) -> Vec<Box<dyn Fn(&Actions) -> bool + Send + Sync>> {
+        match self {
+            Actions::Swap(_) => unreachable!(),
+            Actions::FlashLoan(_) => vec![
+                Box::new(|action: &Actions| action.is_flash_loan()),
+                Box::new(|action: &Actions| action.is_batch()),
+                Box::new(|action: &Actions| action.is_swap()),
+            ],
+            Actions::Batch(_) => vec![Box::new(|action: &Actions| action.is_swap())],
+            Actions::Mint(_) => unreachable!(),
+            Actions::Burn(_) => unreachable!(),
+            Actions::Transfer(_) => unreachable!(),
+            Actions::Liquidation(_) => vec![Box::new(|action: &Actions| action.is_liquidation())],
+            Actions::Collect(_) => unreachable!(),
+            Actions::Unclassified(_) => unreachable!(),
+            _ => unreachable!(),
+        }
+    }
+
     fn get_trace_index(&self) -> u64 {
         match self {
             Self::Swap(s) => s.trace_index,
+            Self::FlashLoan(f) => f.trace_index,
+            Self::Batch(b) => b.trace_index,
             Self::Mint(m) => m.trace_index,
             Self::Burn(b) => b.trace_index,
             Self::Transfer(t) => t.trace_index,
