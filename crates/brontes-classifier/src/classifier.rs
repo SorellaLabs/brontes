@@ -1,3 +1,4 @@
+use alloy_primitives::Bytes;
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
 };
@@ -10,6 +11,7 @@ use brontes_types::{
 };
 use hex_literal::hex;
 use itertools::MultiUnzip;
+use malachite::strings::ToLowerHexString;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{
