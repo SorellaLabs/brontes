@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
+use sorella_db_databases::Database;
 
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
