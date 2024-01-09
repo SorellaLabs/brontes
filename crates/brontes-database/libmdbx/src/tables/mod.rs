@@ -194,6 +194,11 @@ impl FromStr for Tables {
     }
 }
 
+pub trait IntoTableKey<T, K> {
+
+    fn into_key(value: T) -> K;
+}
+
 /// Macro to declare key value table + extra impl
 #[macro_export]
 macro_rules! table {
@@ -203,6 +208,12 @@ macro_rules! table {
         #[doc = concat!("Takes [`", stringify!($key), "`] as a key and returns [`", stringify!($value), "`].")]
         #[derive(Clone, Copy, Debug, Default)]
         pub struct $table_name;
+
+        impl IntoTableKey<&str, $key> for $table_name {
+            fn into_key(value: &str) -> $key {
+                value.parse().unwrap()
+            }
+        }
 
         impl reth_db::table::Table for $table_name {
             const NAME: &'static str = stringify!($table_name);
