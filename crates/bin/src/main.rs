@@ -13,7 +13,8 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::{
-    tables::{AddressToProtocol, Tables},
+    implementation::cursor::LibmdbxCursor,
+    tables::{AddressToProtocol, IntoTableKey, Tables},
     Libmdbx,
 };
 use brontes_inspect::{
@@ -24,7 +25,7 @@ use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
 use itertools::Itertools;
 use metrics_process::Collector;
-use reth_db::transaction::DbTx;
+use reth_db::{cursor::DbCursorRO, mdbx::RO, table::Table, transaction::DbTx};
 use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{error, info, Level};
@@ -33,7 +34,7 @@ mod banner;
 mod cli;
 
 use banner::print_banner;
-use cli::{Args, Commands, DexPricingArgs, Init, RunArgs};
+use cli::{Args, Commands, DatabaseQuery, DexPricingArgs, Init, RunArgs};
 
 type Inspectors<'a> = [&'a Box<dyn Inspector>; 4];
 
@@ -105,7 +106,114 @@ async fn run() -> Result<(), Box<dyn Error>> {
         Commands::Run(command) => run_brontes(command).await,
         Commands::Init(command) => init_brontes(command).await,
         Commands::RunBatchWithPricing(command) => run_batch_with_pricing(command).await,
+        Commands::QueryDb(command) => query_db(command).await,
     }
+}
+
+fn process_range_query<T>(
+    mut cursor: LibmdbxCursor<T, RO>,
+    command: DatabaseQuery,
+) -> Result<Vec<T::Value>, Box<dyn Error>>
+where
+    T: Table,
+    T: for<'a> IntoTableKey<&'a str, T::Key>,
+{
+    let range = command.key.split("..").collect_vec();
+    let start = range[0];
+    let end = range[1];
+
+    let start = T::into_key(start);
+    let end = T::into_key(end);
+
+    let mut res = Vec::new();
+    for entry in cursor.walk_range(start..end)? {
+        if let Ok(entry) = entry {
+            res.push(entry.1)
+        }
+    }
+
+    Ok(res)
+}
+
+#[inline(always)]
+fn process_single_query<T>(res: Option<T>, _: DatabaseQuery) -> Result<T, Box<dyn Error>> {
+    Ok(res.ok_or_else(|| reth_db::DatabaseError::Read(-1))?)
+}
+
+async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
+
+    let tx = db.ro_tx()?;
+
+    macro_rules! match_table {
+        ($table:expr, $fn:expr, $query:ident, $($tables:ident),+ = $args:expr) => {
+            match $table {
+                $(
+                    Tables::$tables => {
+                        println!(
+                            "{:#?}",
+                            $fn(
+                                tx.$query::<brontes_database_libmdbx::tables::$tables>(
+                                    brontes_database_libmdbx::tables::$tables::into_key($args)
+                                    ).unwrap(),
+                                command
+                            ).unwrap()
+                        )
+                    }
+                )+
+            }
+        };
+        ($table:expr, $fn:expr, $query:ident, $($tables:ident),+) => {
+            match $table {
+                $(
+                    Tables::$tables => {
+                        println!(
+                            "{:#?}",
+                            $fn(
+                                tx.$query::<brontes_database_libmdbx::tables::$tables>()?,
+                                command
+                            )?
+                        )
+                    }
+                )+
+            }
+        };
+    }
+
+    if command.key.contains("..") {
+        match_table!(
+            command.table,
+            process_range_query,
+            new_cursor,
+            CexPrice,
+            Metadata,
+            DexPrice,
+            PoolState,
+            MevBlocks,
+            TokenDecimals,
+            AddressToTokens,
+            AddressToProtocol,
+            PoolCreationBlocks
+        );
+    } else {
+        match_table!(
+            command.table,
+            process_single_query,
+            get,
+            CexPrice,
+            Metadata,
+            DexPrice,
+            PoolState,
+            MevBlocks,
+            TokenDecimals,
+            AddressToTokens,
+            AddressToProtocol,
+            PoolCreationBlocks = &command.key
+        );
+    }
+
+    Ok(())
 }
 
 async fn run_brontes(run_config: RunArgs) -> Result<(), Box<dyn Error>> {
