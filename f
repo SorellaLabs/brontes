@@ -337,9 +337,18 @@ impl<V: NormalizedAction> Node<V> {
             }
         }
 
-        error!("was not able to find node in tree");
-        return vec![]
+        // for inner_node in &self.inner.iter().tu{
+        //     if inner_node.index == head {
+        //         return inner_node.get_all_children_for_complex_classification(head)
+        //     }
+        //
+        //
+        //
+        // }
 
+        // keep searching for node
+
+        todo!()
     }
 
     pub fn finalize(&mut self) {
