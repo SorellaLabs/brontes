@@ -78,6 +78,12 @@ pub struct TransactionTraceWithLogs {
     pub trace_idx:    u64,
 }
 
+impl TransactionTraceWithLogs {
+    pub fn get_trace_address(&self) -> Vec<usize> {
+        self.trace.trace_address.clone()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
