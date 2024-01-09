@@ -4,6 +4,7 @@ pub(crate) mod serde;
 pub mod types;
 use std::collections::HashMap;
 
+use sorella_db_databases::Database;
 use alloy_json_abi::JsonAbi;
 use brontes_types::classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev, *};
 use futures::future::join_all;
