@@ -156,9 +156,9 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
                             $fn(
                                 tx.$query::<brontes_database_libmdbx::tables::$tables>(
                                     brontes_database_libmdbx::tables::$tables::into_key($args)
-                                    )?,
+                                    ).unwrap(),
                                 command
-                            )?
+                            ).unwrap()
                         )
                     }
                 )+
