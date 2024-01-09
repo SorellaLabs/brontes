@@ -316,6 +316,7 @@ impl<V: NormalizedAction> Node<V> {
         if head == self.index {
             let mut results = Vec::new();
             let classification = self.data.continued_classification_types();
+
             let fixed = |node: &Node<V>| {
                 ((classification)(&node.data), node.subactions.iter().any(|i| (classification)(i)))
             };
@@ -326,6 +327,7 @@ impl<V: NormalizedAction> Node<V> {
 
             return results
         }
+
         for (cur_inner_node, next_inner_node) in self.inner.iter().tuple_windows() {
             // if we have a match we collect
             if cur_inner_node.index == head {
