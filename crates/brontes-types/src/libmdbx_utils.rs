@@ -37,11 +37,7 @@ macro_rules! impl_compress_decompress_for_serde {
             fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
                 let binding = value.as_ref().to_vec();
                 let buf = &binding.as_slice();
-                let valued = serde_json::from_slice::<serde_json::Value>(&buf).unwrap();
-                println!("decoding buf: {valued:#?}");
-                let res = Ok(serde_json::from_slice(buf).unwrap());
-                println!("decdoed buf");
-                res
+                Ok(serde_json::from_slice(buf).map_err(|_| reth_db::DatabaseError::Decode)?)
             }
         }
     };
