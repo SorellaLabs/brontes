@@ -36,7 +36,7 @@ impl PoolPairInformation {
         token_0: Address,
         token_1: Address,
     ) -> Self {
-        Self { token_1, token_0, dex_type, pool_addr }
+        Self { pool_addr, dex_type, token_0, token_1 }
     }
 }
 
@@ -60,7 +60,7 @@ const CAPACITY: usize = 650_000;
 
 #[derive(Debug, Clone)]
 pub struct PairGraph {
-    graph:         UnGraph<(), HashSet<PoolPairInformation>, usize>,
+    graph:         UnGraph<(), Vec<PoolPairInformation>, usize>,
     /// token address to node index in the graph
     addr_to_index: HashMap<Address, usize>,
     /// known pairs is a cache of pairs that have been requested before. This
@@ -74,10 +74,8 @@ pub struct PairGraph {
 
 impl PairGraph {
     pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
-        let mut graph = UnGraph::<(), HashSet<PoolPairInformation>, usize>::with_capacity(
-            CAPACITY / 2,
-            CAPACITY,
-        );
+        let mut graph =
+            UnGraph::<(), Vec<PoolPairInformation>, usize>::with_capacity(CAPACITY / 2, CAPACITY);
 
         let mut addr_to_index = HashMap::with_capacity(CAPACITY);
 
@@ -165,7 +163,7 @@ impl PairGraph {
             edges
                 .into_par_iter()
                 .map(move |(_, (pools, adjacent))| {
-                    (node0, adjacent, pools.into_iter().collect::<HashSet<_>>())
+                    (node0, adjacent, pools.into_iter().collect::<Vec<_>>())
                 })
                 .collect::<Vec<_>>()
         }));
@@ -200,13 +198,12 @@ impl PairGraph {
 
         if let Some(edge) = self.graph.find_edge(node_0.into(), node_1.into()) {
             let mut pools = self.graph.edge_weight(edge).unwrap().clone();
-            pools.insert(pool_pair);
+            pools.push(pool_pair);
             self.graph.update_edge(node_0.into(), node_1.into(), pools);
         } else {
-            let mut set = HashSet::new();
-            set.insert(pool_pair);
+            let mut pair = vec![pool_pair];
 
-            self.graph.add_edge(node_0.into(), node_1.into(), set);
+            self.graph.add_edge(node_0.into(), node_1.into(), pair);
         }
 
         let t1 = SystemTime::now();
@@ -277,9 +274,45 @@ impl PairGraph {
 
     /// fetches the path from start to end for the given pair inserting it into
     /// a hash map for quick lookups on additional queries.
-    pub fn get_path_no_cache(&mut self, pair: Pair) {
-        self.get_path(pair);
-        self.known_pairs.clear();
+    pub fn get_path_no_cache(&self, pair: Pair) {
+        if pair.0 == pair.1 {
+            return
+        }
+
+        let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
+            let addr = pair.0;
+            error!(?addr, "no node for address");
+            return
+        };
+        let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
+            let addr = pair.1;
+            error!(?addr, "no node for address");
+            return
+        };
+
+        let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
+            .unwrap_or_else(|| {
+                error!(?pair, "couldn't find path between pairs");
+                vec![]
+            })
+            .into_iter()
+            .tuple_windows()
+            .map(|(base, quote)| {
+                self.graph
+                    .edge_weight(self.graph.find_edge(base, quote).unwrap())
+                    .unwrap()
+                    .iter()
+                    .map(|pool_info| {
+                        let token_0_edge = *self.addr_to_index.get(&pool_info.token_0).unwrap();
+                        if base.index() == token_0_edge {
+                            PoolPairInfoDirection { info: *pool_info, token_0_in: true }
+                        } else {
+                            PoolPairInfoDirection { info: *pool_info, token_0_in: false }
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
     }
 
     pub fn clear_pair_cache(&mut self) {

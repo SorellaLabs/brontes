@@ -408,8 +408,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.last_update.insert(addr, key);
             self.mut_state.insert(addr, state);
 
-            // pool was initted this block. lets set the override to avoid invalid state
-            // if
+            // pool was initialized this block. lets set the override to avoid invalid state
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
