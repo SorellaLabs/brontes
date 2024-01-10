@@ -18,7 +18,7 @@ action_impl!(
     LiquidationCallImplV2,
     Liquidation,
     liquidationCallCall,
-    NormalizedLiquidation,
+    [NormalizedLiquidation],
     AaveV2,
     call_data: true,
     |trace_index, from_address: Address, target_address: Address, call_data: liquidationCallCall, db_tx: &LibmdbxTx<RO> | {

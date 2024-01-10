@@ -20,11 +20,11 @@ action_impl!(
     UniXExecuteImpl,
     Batch,
     executeCall,
-    Fill,
+    [Fill],
     UniswapX,
     call_data: true,
     logs: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: executeCall, logs: Option<Fill>, db_tx: &LibmdbxTx<RO>| {
+    |trace_index, from_address: Address, target_address: Address, call_data: executeCall, logs: Fill, db_tx: &LibmdbxTx<RO>| {
 
 
         Some(NormalizedBatch {
