@@ -417,6 +417,8 @@ impl TxTracesDB {
         let start_block: u64 = 15400000;
         let current_block = tracer.api.provider().canonical_tip().number;
 
+        libmdbx.clear_table::<TxTracesDB>()?;
+
         let range = (start_block..current_block).collect::<Vec<_>>();
     let chunks = range.chunks(1000).collect::<Vec<_>>();
     let tracer = tracer.as_ref();
