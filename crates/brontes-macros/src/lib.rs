@@ -1,9 +1,6 @@
 use proc_macro::{Span, TokenStream};
 use quote::quote;
-use syn::{
-    bracketed, parenthesized, parse::Parse, token::Bracket, Error, ExprClosure, Ident, Index,
-    LitBool, Token,
-};
+use syn::{bracketed, parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
@@ -11,6 +8,8 @@ use syn::{
 /// ```rust
 /// action_impl!(ExchangeName, NormalizedAction, CallType, [LogType / 's], ExchangeModName, [logs: bool , call_data: bool, return_data: bool])
 /// ```
+/// The Array of log types are expected to be in the order that they are emitted
+/// in. Otherwise the decoding will fail
 ///
 ///  ## Examples
 /// ```rust
@@ -68,6 +67,12 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     let mut option_parsing = Vec::new();
 
+    let (log_idx, log_type): (Vec<Index>, Vec<Ident>) = log_types
+        .into_iter()
+        .enumerate()
+        .map(|(i, n)| (Index::from(i), n))
+        .unzip();
+
     let a = call_type.to_string();
     let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
 
@@ -83,8 +88,8 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
             (
                 #(
                     {
-                    let log = logs.remove(0);
-                    #log_types::decode_log(log.topics.iter().map(|h|h.0), &log.data, false).ok()?
+                    let log = &logs[#log_idx];
+                    #log_type::decode_log(log.topics.iter().map(|h|h.0), &log.data, false).ok()?
                     }
 
                 )*
@@ -104,7 +109,14 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let fn_call = match (give_calldata, give_logs, give_returns) {
         (true, true, true) => {
             quote!(
-            (#call_function)(index, from_address, target_address, call_data, return_data, log_data, db_tx)
+            (#call_function)(
+                index,
+                from_address,
+                target_address,
+                call_data,
+                return_data,
+                log_data, db_tx
+                )
             )
         }
         (true, true, false) => {
@@ -202,20 +214,21 @@ impl Parse for MacroParse {
 
         let mut log_types = Vec::new();
 
-        let mut content;
+        let content;
         bracketed!(content in input);
 
         loop {
-            let Ok(log_type) = input.parse::<Ident>() else {
+            let Ok(log_type) = content.parse::<Ident>() else {
                 break;
             };
             log_types.push(log_type);
 
-            let Ok(_) = input.parse::<Token![,]>() else {
+            let Ok(_) = content.parse::<Token![,]>() else {
                 break;
             };
         }
 
+        input.parse::<Token![,]>()?;
         let exchange_mod_name: Ident = input.parse()?;
 
         let mut logs = false;
@@ -339,7 +352,10 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             logs: logs.clone(),
                             action: res.clone()
                         };
-                        tx.send(::brontes_pricing::types::DexPriceMsg::Update(pool_update)).unwrap();
+
+                        tx.send(
+                            ::brontes_pricing::types::DexPriceMsg::Update(pool_update)
+                        ).unwrap();
                     }
 
                     return res
@@ -361,6 +377,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                                 tx_idx,
                                 action: res.clone()
                             };
+
                             tx.send(
                                 ::brontes_pricing::types::DexPriceMsg::Update(pool_update)
                             ).unwrap();
