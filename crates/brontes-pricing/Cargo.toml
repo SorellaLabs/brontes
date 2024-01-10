@@ -3,7 +3,11 @@ name = "brontes-pricing"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bench]]
+name = "graph"
+harness = false
+required-features = ["benchmarking"]
 
 [dependencies]
 #brontes 
@@ -68,11 +72,14 @@ brontes-core = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-inspect.workspace = true
 brontes-types.workspace = true
-brontes-database.workspace = true 
+brontes-database.workspace = true
 brontes-database-libmdbx.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true
+criterion = { version = "0.5" }
+rand = "0.8.5"
 
 [features]
 uni-v3-ticks = []
+benchmarking = []
