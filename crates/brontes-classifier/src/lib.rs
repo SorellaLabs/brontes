@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
+use alloy_primitives::Log;
 use brontes_database_libmdbx::implementation::tx::LibmdbxTx;
 use brontes_pricing::types::DexPriceMsg;
 use reth_db::mdbx::RO;
 use reth_primitives::{Address, Bytes};
-use reth_rpc_types::Log;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub mod classifier;
