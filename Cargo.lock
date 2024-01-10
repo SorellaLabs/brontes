@@ -1300,6 +1300,8 @@ dependencies = [
  "reth-interfaces",
  "reth-libmdbx",
  "reth-primitives",
+ "reth-rpc",
+ "reth-tracing-ext",
  "serde",
  "serde_json",
  "serde_repr",
@@ -1311,6 +1313,7 @@ dependencies = [
  "tokio",
  "tokio-scoped",
  "tracing",
+ "zstd 0.13.0",
 ]
 
 [[package]]
@@ -7611,7 +7614,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#a9651fece95232847eb5b6ce41fca88b67269d4b"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#1dbf4d4005bfd60c9a5c19488c69e6c3b1d8447e"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7636,7 +7639,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#a9651fece95232847eb5b6ce41fca88b67269d4b"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#1dbf4d4005bfd60c9a5c19488c69e6c3b1d8447e"
 dependencies = [
  "eyre",
  "futures",
@@ -7653,7 +7656,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#a9651fece95232847eb5b6ce41fca88b67269d4b"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#1dbf4d4005bfd60c9a5c19488c69e6c3b1d8447e"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -7665,7 +7668,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#a9651fece95232847eb5b6ce41fca88b67269d4b"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#1dbf4d4005bfd60c9a5c19488c69e6c3b1d8447e"
 dependencies = [
  "serde",
  "serde_json",
@@ -9281,6 +9284,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "zstd"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bffb3309596d527cfcba7dfc6ed6052f1d39dfbd7c867aa2e865e4a449c10110"
+dependencies = [
+ "zstd-safe 7.0.0",
+]
+
+[[package]]
 name = "zstd-safe"
 version = "5.0.2+zstd.1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9297,6 +9309,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee98ffd0b48ee95e6c5168188e44a54550b1564d9d530ee21d5f0eaed1069581"
 dependencies = [
  "libc",
+ "zstd-sys",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43747c7422e2924c11144d5229878b98180ef8b06cca4ab5af37afc8a8d8ea3e"
+dependencies = [
  "zstd-sys",
 ]
 
