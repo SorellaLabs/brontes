@@ -1,4 +1,4 @@
-use std::{collections::HashSet, env};
+use std::{collections::HashSet, env, fs::File, io::Write, path::Path};
 
 use brontes_core::{decoding::parser::TraceParser, init_tracing, test_utils::init_trace_parser};
 use brontes_database_libmdbx::Libmdbx;
@@ -25,6 +25,14 @@ pub fn bench_tx_trace_parse(c: &mut Criterion) {
             69,
         )
     });
+    let a = rt
+        .block_on(async { tracer.execute_block(block).await })
+        .unwrap()
+        .0;
+
+    let dest_path = Path::new("./yeet.json");
+    let mut f = File::create(dest_path).unwrap();
+    writeln!(f, "{}", serde_json::to_string(&a).unwrap()).unwrap();
 
     println!("running bench");
     c.bench_function("29,995,104 gas block", move |b| {
