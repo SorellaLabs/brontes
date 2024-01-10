@@ -161,6 +161,7 @@ criterion_main!(benches);
 fn group<'a>(c: &'a mut Criterion, group_name: &str) -> BenchmarkGroup<'a, WallTime> {
     let mut g = c.benchmark_group(group_name);
     g.noise_threshold(0.03)
-        .warm_up_time(Duration::from_secs(1));
+        .warm_up_time(Duration::from_secs(1))
+        .sample_size(40);
     g
 }
