@@ -1,6 +1,6 @@
 use std::{env, path::Path, sync::Arc};
 
-use alloy_primitives::LogData;
+use alloy_primitives::Log;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
@@ -21,7 +21,7 @@ use crate::decoding::{parser::TraceParser, TracingProvider};
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TestTransactionTraceWithLogs {
     pub trace: TransactionTrace,
-    pub logs:  Vec<LogData>,
+    pub logs:  Vec<Log>,
 }
 
 impl From<TransactionTraceWithLogs> for TestTransactionTraceWithLogs {

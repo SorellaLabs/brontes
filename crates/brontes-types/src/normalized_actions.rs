@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use alloy_primitives::LogData;
+use alloy_primitives::Log;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, InsertRow, Row};
@@ -73,7 +73,7 @@ impl Actions {
         }
     }
 
-    pub fn get_logs(&self) -> Vec<LogData> {
+    pub fn get_logs(&self) -> Vec<Log> {
         match self {
             Self::Unclassified(a) => a.logs.clone(),
             _ => vec![],

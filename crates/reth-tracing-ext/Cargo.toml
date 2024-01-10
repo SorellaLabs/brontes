@@ -21,6 +21,7 @@ reth-blockchain-tree.workspace = true
 reth-beacon-consensus.workspace = true
 reth-revm.workspace = true
 reth-interfaces.workspace = true
+alloy-primitives.workspace = true
 futures.workspace = true
 brontes-types.workspace = true
 tracing.workspace = true

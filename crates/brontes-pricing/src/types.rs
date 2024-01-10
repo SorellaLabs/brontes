@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, Log};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::{
     exchanges::StaticBindingsDb,
@@ -12,7 +12,6 @@ use brontes_types::{
 use bytes::BufMut;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_codecs::derive_arbitrary;
-use reth_rpc_types::Log;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
 use tracing::warn;
@@ -291,7 +290,6 @@ pub enum PoolVariants {
 impl PoolVariants {
     fn increment_state(&mut self, _action: Actions, logs: Vec<Log>) {
         for log in logs {
-            let log = alloy_primitives::Log::new(log.address, log.topics, log.data).unwrap();
             let _ = match self {
                 PoolVariants::UniswapV3(a) => a.sync_from_log(log),
                 PoolVariants::UniswapV2(a) => a.sync_from_log(log),

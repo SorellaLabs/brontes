@@ -6710,6 +6710,7 @@ dependencies = [
 name = "reth-tracing-ext"
 version = "0.1.0"
 dependencies = [
+ "alloy-primitives",
  "async-trait",
  "bitflags 2.4.1",
  "brontes-types",
