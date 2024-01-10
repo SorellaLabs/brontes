@@ -24,11 +24,10 @@ action_impl!(
     CurveCryptoExchange0,
     Swap,
     exchange_0Call,
-    TokenExchange,
+    [TokenExchange],
     CurveCryptoSwap,
     logs: true,
-    |trace_index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
-        let log = log_data?;
+    |trace_index, from_address: Address, target_address: Address, log: TokenExchange, db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -63,13 +62,11 @@ action_impl!(
     CurveCryptoExchange1,
     Swap,
     exchange_1Call,
-    TokenExchange,
+    [TokenExchange],
     CurveCryptoSwap,
     logs: true,
     call_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: exchange_1Call, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
-
-        let log = log_data?;
+    |trace_index, from_address: Address, target_address: Address, call_data: exchange_1Call, log: TokenExchange, db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -115,13 +112,11 @@ action_impl!(
     CurveCryptoExchange2,
     Swap,
     exchange_2Call,
-    TokenExchange,
+    [TokenExchange],
     CurveCryptoSwap,
     logs: true,
     call_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: exchange_2Call, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
-
-        let log = log_data?;
+    |trace_index, from_address: Address, target_address: Address, call_data: exchange_2Call, log: TokenExchange, db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -166,15 +161,13 @@ action_impl!(
 
 // I don't know who coded this contract, but I wish them great harm.
 action_impl!(
-CurveCryptoExchangeUnderlying,
-Swap,
-exchange_underlying_0Call,
-TokenExchange,
-CurveCryptoSwap,
-logs: true,
-|trace_index, from_address: Address, target_address: Address, log_data: Option<TokenExchange>, db_tx: &LibmdbxTx<RO> | {
-        let log = log_data?;
-
+    CurveCryptoExchangeUnderlying,
+    Swap,
+    exchange_underlying_0Call,
+    [TokenExchange],
+    CurveCryptoSwap,
+    logs: true,
+    |trace_index, from_address: Address, target_address: Address, log: TokenExchange, db_tx: &LibmdbxTx<RO> | {
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
