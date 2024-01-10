@@ -78,7 +78,7 @@ impl AutomatedMarketMaker for UniswapV2Pool {
         let event_signature = log.topics()[0];
 
         if event_signature == SYNC_EVENT_SIGNATURE {
-            let sync_event = IUniswapV2Pair::Sync::decode_log_object(&log, false).unwrap();
+            let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false).unwrap();
 
             self.reserve_0 = sync_event.reserve0;
             self.reserve_1 = sync_event.reserve1;

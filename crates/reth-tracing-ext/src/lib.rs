@@ -225,25 +225,10 @@ impl TracingInspectorLocal {
             let trace_address = self.trace_address(self.traces.nodes(), node.idx);
 
             let trace = self.build_tx_trace(node, trace_address);
-            let logs = node
-                .logs
-                .iter()
-                .map(|alloy_log| reth_rpc_types::Log {
-                    data:              alloy_log.data.clone(),
-                    topics:            alloy_log.topics().to_vec(),
-                    log_index:         None,
-                    block_hash:        info.block_hash,
-                    transaction_hash:  info.hash,
-                    block_number:      info.block_number.map(U256::from),
-                    transaction_index: info.index.map(U256::from),
-                    removed:           false,
-                    address:           node.trace.address,
-                })
-                .collect::<Vec<_>>();
 
             traces.push(TransactionTraceWithLogs {
                 trace,
-                logs,
+                logs: node.logs.clone(),
                 decoded_data: None,
                 trace_idx: node.idx as u64,
             });
