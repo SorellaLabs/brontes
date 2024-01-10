@@ -1,3 +1,7 @@
+use alloy_rlp::{
+    BufMut, Decodable, Encodable, RlpDecodable, RlpDecodableWrapper, RlpEncodable,
+    RlpEncodableWrapper,
+};
 use reth_primitives::{Address, Bytes, B256};
 use reth_rpc_types::{
     trace::parity::{Action, CallType, StateDiff, TransactionTrace},
@@ -73,9 +77,9 @@ pub struct DecodedParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
-    pub decoded_data: Option<DecodedCallData>,
     pub logs:         Vec<Log>,
     pub trace_idx:    u64,
+    pub decoded_data: Option<DecodedCallData>,
 }
 
 impl TransactionTraceWithLogs {
@@ -84,7 +88,7 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
     pub state_diff:      StateDiff,
