@@ -68,19 +68,19 @@ pub struct PairGraph {
 
 impl PairGraph {
     pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
-        let t0 = SystemTime::now();
         let mut graph =
             UnGraph::<(), HashSet<PoolPairInformation>, usize>::with_capacity(CAPACITY, CAPACITY);
 
         let mut addr_to_index = HashMap::with_capacity(CAPACITY);
         let mut connections: HashMap<
             Address,
-            (usize, Vec<(Address, Vec<PoolPairInformation>, usize)>),
+            (usize, HashMap<Address, (Vec<PoolPairInformation>, usize)>),
         > = HashMap::with_capacity(CAPACITY);
 
         let mut known_pairs: HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>> =
             HashMap::with_capacity(CAPACITY);
 
+        let t0 = SystemTime::now();
         for ((pool_addr, dex), pair) in map {
             // add the pool known in both directions
             let entry = known_pairs.entry(pair).or_default();
@@ -112,43 +112,50 @@ impl PairGraph {
                 .or_insert(graph.add_node(()).index());
 
             // insert token0
-            let e = connections.entry(pair.0).or_insert_with(|| (addr0, vec![]));
+            let token_0_entry = connections
+                .entry(pair.0)
+                .or_insert_with(|| (addr0, HashMap::default()));
 
             // if we find a already inserted edge, we append the address otherwise we insert
             // both
-            if let Some(inner) = e.1.iter_mut().find(|addr| addr.0 == pair.1) {
+            if let Some(inner) = token_0_entry.1.get_mut(&pair.1) {
                 inner
-                    .1
+                    .0
                     .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
             } else {
-                e.1.push((
+                token_0_entry.1.insert(
                     pair.1,
-                    vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)],
-                    addr1,
-                ));
+                    (vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)], addr1),
+                );
             }
 
             // insert token1
-            let e = connections.entry(pair.1).or_insert_with(|| (addr1, vec![]));
+            let token_1_entry = connections
+                .entry(pair.1)
+                .or_insert_with(|| (addr1, HashMap::default()));
             // if we find a already inserted edge, we append the address otherwise we insert
             // both
-            if let Some(inner) = e.1.iter_mut().find(|addr| addr.0 == pair.0) {
+            if let Some(inner) = token_1_entry.1.get_mut(&pair.0) {
                 inner
-                    .1
+                    .0
                     .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
             } else {
-                e.1.push((
+                token_1_entry.1.insert(
                     pair.0,
-                    vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)],
-                    addr0,
-                ));
+                    (vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)], addr0),
+                );
             }
         }
 
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        info!("linked all graph edges in {}us", delta);
+
+        let t0 = SystemTime::now();
         graph.extend_with_edges(connections.into_values().flat_map(|(node0, edges)| {
             edges
                 .into_par_iter()
-                .map(move |(_, pools, adjacent)| {
+                .map(move |(_, (pools, adjacent))| {
                     (node0, adjacent, pools.into_iter().collect::<HashSet<_>>())
                 })
                 .collect::<Vec<_>>()
@@ -212,8 +219,6 @@ impl PairGraph {
             return pools.clone().into_iter()
         }
 
-        let t0 = SystemTime::now();
-
         let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
             let addr = pair.0;
             error!(?addr, "no node for address");
@@ -250,10 +255,6 @@ impl PairGraph {
             .collect::<Vec<_>>();
 
         self.known_pairs.insert(pair, path.clone());
-
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        info!(us=%delta, pair=?pair, "found path to pair");
 
         path.into_iter()
     }
