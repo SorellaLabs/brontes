@@ -1405,6 +1405,7 @@ dependencies = [
  "brontes-types",
  "bytes",
  "codecs-derive",
+ "criterion",
  "derive_more",
  "dotenv",
  "erased-serde",
