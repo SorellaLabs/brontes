@@ -99,6 +99,13 @@ impl DexPrices {
             warn!(?pair, tx_idx=%tx, "failed to get price for");
             return None
         };
+
+        let mut keys = keys.clone();
+        let first_pair_base = keys.first().unwrap().0.first().unwrap().base;
+        if first_pair_base != pair.0 {
+            keys.reverse();
+        }
+
         let mut price = Rational::ZERO;
 
         for hop in keys {
@@ -310,7 +317,15 @@ impl PoolVariants {
 #[derive(Debug, Clone)]
 pub enum DexPriceMsg {
     Update(PoolUpdate),
+    DiscoveredPool(DiscoveredPool),
     Closed,
+}
+
+#[derive(Debug, Clone)]
+pub struct DiscoveredPool {
+    pub protocol:     StaticBindingsDb,
+    pub pool_address: Address,
+    pub tokens:       Vec<Address>,
 }
 
 #[derive(Debug, Clone)]

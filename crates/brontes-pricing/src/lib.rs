@@ -24,7 +24,8 @@ use graph::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
 use types::{
-    DexPriceMsg, DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate,
+    DexPriceMsg, DexPrices, DexQuotes, DiscoveredPool, PoolKeyWithDirection, PoolStateSnapShot,
+    PoolUpdate,
 };
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
@@ -184,8 +185,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         // add pool pair
         self.queue_loading(pair, msg.clone());
-        // flipped pool pair
-        self.queue_loading(pair.flip(), msg.clone());
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
@@ -475,6 +474,21 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 inner.map(|action| match action {
                     DexPriceMsg::Update(update) => {
                         self.on_message(update);
+                        true
+                    }
+                    DexPriceMsg::DiscoveredPool(DiscoveredPool {
+                        protocol,
+                        tokens,
+                        pool_address,
+                    }) => {
+                        if tokens.len() == 2 {
+                            self.pair_graph.add_node(
+                                Pair(*tokens[0], tokens[1]),
+                                pool_address,
+                                protocol,
+                            )
+                        } else {
+                        }
                         true
                     }
                     DexPriceMsg::Closed => false,

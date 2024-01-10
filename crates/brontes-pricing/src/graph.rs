@@ -91,20 +91,12 @@ impl PairGraph {
         for ((pool_addr, dex), pair) in map {
             // add the pool known in both directions
             let entry = known_pairs.entry(pair).or_default();
+
             insert_known_pair(
                 entry,
                 PoolPairInfoDirection {
                     info:       PoolPairInformation::new(pool_addr, dex, pair.0, pair.1),
                     token_0_in: true,
-                },
-            );
-
-            let entry = known_pairs.entry(pair.flip()).or_default();
-            insert_known_pair(
-                entry,
-                PoolPairInfoDirection {
-                    info:       PoolPairInformation::new(pool_addr, dex, pair.0, pair.1),
-                    token_0_in: false,
                 },
             );
 
@@ -177,14 +169,12 @@ impl PairGraph {
     }
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
-        let t0 = SystemTime::now();
+        let pair = pair.ordered();
         let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
 
         let direction0 = PoolPairInfoDirection { info: pool_pair, token_0_in: true };
-        let direction1 = PoolPairInfoDirection { info: pool_pair, token_0_in: false };
 
         self.known_pairs.insert(pair, vec![vec![direction0]]);
-        self.known_pairs.insert(pair.flip(), vec![vec![direction1]]);
 
         let node_0 = *self
             .addr_to_index
@@ -206,10 +196,6 @@ impl PairGraph {
 
             self.graph.add_edge(node_0.into(), node_1.into(), set);
         }
-
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        info!(us = delta, "added new node in");
     }
 
     /// fetches the path from start to end for the given pair inserting it into
@@ -222,7 +208,8 @@ impl PairGraph {
             return vec![].into_iter()
         }
 
-        if let Some(pools) = self.known_pairs.get(&pair) {
+        let ordered_pair = pair.ordered();
+        if let Some(pools) = self.known_pairs.get(&ordered_pair) {
             return pools.clone().into_iter()
         }
 
@@ -261,7 +248,7 @@ impl PairGraph {
             })
             .collect::<Vec<_>>();
 
-        self.known_pairs.insert(pair, path.clone());
+        self.known_pairs.insert(pair.ordered(), path.clone());
 
         path.into_iter()
     }
