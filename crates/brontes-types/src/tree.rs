@@ -120,23 +120,18 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// for every action index of a transaction index, This function grabs all
     /// child nodes of the action index if and only if they are specified in
     /// the classification function of the action index node.
-    pub fn collect_all_scoped(
-        &self,
-        search_params: &Vec<Option<(usize, Vec<u64>)>>,
-    ) -> Vec<(usize, Vec<Vec<(u64, V)>>)> {
-        search_params
-            .par_iter()
-            .filter_map(|opt| opt.as_ref())
-            .map(|(index, subtraces)| {
-                let results = self
-                    .tx_roots
-                    .get(*index)
-                    .expect("Tx_root should be present")
-                    .collect_all_scoped(subtraces);
+    pub fn collect_and_classify(&mut self, search_params: &Vec<Option<(usize, Vec<u64>)>>) {
+        let mut a = self
+            .tx_roots
+            .iter_mut()
+            .zip(search_params.iter())
+            .collect::<Vec<_>>();
 
-                (*index, results)
-            })
-            .collect()
+        a.par_iter_mut()
+            .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
+            .for_each(|(root, (_, subtraces))| {
+                root.collect_child_traces_and_classify(subtraces);
+            });
     }
 
     pub fn inspect_all<F>(&self, call: F) -> HashMap<B256, Vec<Vec<V>>>
@@ -220,14 +215,11 @@ impl<V: NormalizedAction> Root<V> {
         result
     }
 
-    pub fn collect_all_scoped(&self, heads: &Vec<u64>) -> Vec<Vec<(u64, V)>> {
-        heads
-            .into_par_iter()
-            .map(|search_head| {
-                self.head
-                    .get_all_children_for_complex_classification(*search_head)
-            })
-            .collect()
+    pub fn collect_child_traces_and_classify(&mut self, heads: &Vec<u64>) {
+        heads.into_iter().map(|search_head| {
+            self.head
+                .get_all_children_for_complex_classification(*search_head)
+        });
     }
 
     pub fn remove_duplicate_data<F, C, T, R, Re>(
@@ -342,7 +334,7 @@ impl<V: NormalizedAction> Node<V> {
     ///   4 < 6 go to inf
     ///   6 < inf go to 4
     ///   4 has child 6, it is found!
-    pub fn get_all_children_for_complex_classification(&self, head: u64) -> Vec<(u64, V)> {
+    pub fn get_all_children_for_complex_classification(&mut self, head: u64) {
         if head == self.index {
             let mut results = Vec::new();
             let classification = self.data.continued_classification_types();
@@ -355,10 +347,10 @@ impl<V: NormalizedAction> Node<V> {
                 child.collect(&mut results, &fixed, &|a| (a.index, a.data.clone()))
             }
 
-            return results
+            self.data.finalize_classification(results);
         }
 
-        for (cur_inner_node, next_inner_node) in self.inner.iter().tuple_windows() {
+        for (cur_inner_node, next_inner_node) in self.inner.iter_mut().tuple_windows() {
             // if we have a match we collect
             if cur_inner_node.index == head {
                 return cur_inner_node.get_all_children_for_complex_classification(head)
@@ -380,7 +372,6 @@ impl<V: NormalizedAction> Node<V> {
         }
 
         error!("was not able to find node in tree");
-        return vec![]
     }
 
     pub fn finalize(&mut self) {
