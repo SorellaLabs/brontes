@@ -216,7 +216,7 @@ impl<V: NormalizedAction> Root<V> {
     }
 
     pub fn collect_child_traces_and_classify(&mut self, heads: &Vec<u64>) {
-        heads.into_iter().map(|search_head| {
+        heads.into_iter().for_each(|search_head| {
             self.head
                 .get_all_children_for_complex_classification(*search_head)
         });
@@ -350,8 +350,23 @@ impl<V: NormalizedAction> Node<V> {
             self.data.finalize_classification(results);
         }
 
-        for (cur_inner_node, next_inner_node) in self.inner.iter_mut().tuple_windows() {
-            // if we have a match we collect
+        if self.inner.len() <= 1 {
+            if let Some(inner) = self.inner.first_mut() {
+                return inner.get_all_children_for_complex_classification(head)
+            }
+
+            error!("was not able to find node in tree");
+            return
+        }
+
+        let mut iter = self.inner.iter_mut();
+
+        // init the sliding window
+        let mut cur_inner_node = iter.next().unwrap();
+        let mut next_inner_node = iter.next().unwrap();
+
+        while let Some(next_node) = iter.next() {
+            // check if past nodes are the head
             if cur_inner_node.index == head {
                 return cur_inner_node.get_all_children_for_complex_classification(head)
             } else if next_inner_node.index == head {
@@ -359,15 +374,25 @@ impl<V: NormalizedAction> Node<V> {
             }
 
             // if the next node is smaller than the head, we continue
-            if next_inner_node.index < head {
-                continue
+            if next_inner_node.index <= head {
+                cur_inner_node = next_inner_node;
+                next_inner_node = next_node;
             } else {
+                // next node is bigger than head. thus current node is proper path
                 return cur_inner_node.get_all_children_for_complex_classification(head)
             }
         }
 
-        // handle inf case in docs
-        if let Some(last) = self.inner.last() {
+        // handle case where there are only two inner nodes to look at
+        if cur_inner_node.index == head {
+            return cur_inner_node.get_all_children_for_complex_classification(head)
+        } else if next_inner_node.index == head {
+            return next_inner_node.get_all_children_for_complex_classification(head)
+        } else if next_inner_node.index > head {
+            return cur_inner_node.get_all_children_for_complex_classification(head)
+        }
+        // handle inf case that is shown in the function docs
+        else if let Some(last) = self.inner.last_mut() {
             return last.get_all_children_for_complex_classification(head)
         }
 
