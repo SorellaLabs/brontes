@@ -212,8 +212,6 @@ impl PairGraph {
             return pools.clone().into_iter()
         }
 
-        let t0 = SystemTime::now();
-
         let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
             let addr = pair.0;
             error!(?addr, "no node for address");
@@ -250,10 +248,6 @@ impl PairGraph {
             .collect::<Vec<_>>();
 
         self.known_pairs.insert(pair, path.clone());
-
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        info!(us=%delta, pair=?pair, "found path to pair");
 
         path.into_iter()
     }
