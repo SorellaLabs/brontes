@@ -1020,7 +1020,7 @@ impl UniswapV3Pool {
     // }
     //
     pub fn sync_from_burn_log(&mut self, log: Log) -> Result<(), AbiError> {
-        let burn_event = IUniswapV3Pool::Burn::decode_log_object(&log, false).unwrap();
+        let burn_event = IUniswapV3Pool::Burn::decode_log_data(&log, false).unwrap();
 
         self.modify_position(
             burn_event.tickLower,
@@ -1032,7 +1032,7 @@ impl UniswapV3Pool {
     }
 
     pub fn sync_from_mint_log(&mut self, log: Log) -> Result<(), AbiError> {
-        let mint_event = IUniswapV3Pool::Mint::decode_log_object(&log, false).unwrap();
+        let mint_event = IUniswapV3Pool::Mint::decode_log_data(&log, false).unwrap();
 
         self.modify_position(mint_event.tickLower, mint_event.tickUpper, mint_event.amount as i128);
 
@@ -1135,7 +1135,7 @@ impl UniswapV3Pool {
     }
 
     pub fn sync_from_swap_log(&mut self, log: Log) -> Result<(), AbiError> {
-        let swap_event = IUniswapV3Pool::Swap::decode_log_object(&log, false).unwrap();
+        let swap_event = IUniswapV3Pool::Swap::decode_log_data(&log, false).unwrap();
 
         self.sqrt_price = swap_event.sqrtPriceX96;
         self.liquidity = swap_event.liquidity;

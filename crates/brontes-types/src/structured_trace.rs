@@ -1,8 +1,6 @@
+use alloy_primitives::LogData;
 use reth_primitives::{Address, Bytes, B256};
-use reth_rpc_types::{
-    trace::parity::{Action, CallType, StateDiff, TransactionTrace},
-    Log,
-};
+use reth_rpc_types::trace::parity::{Action, CallType, StateDiff, TransactionTrace};
 use serde::{Deserialize, Serialize};
 
 pub trait TraceActions {
@@ -74,7 +72,7 @@ pub struct DecodedParams {
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub decoded_data: Option<DecodedCallData>,
-    pub logs:         Vec<Log>,
+    pub logs:         Vec<LogData>,
     pub trace_idx:    u64,
 }
 
