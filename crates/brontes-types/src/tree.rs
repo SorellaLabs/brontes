@@ -116,6 +116,10 @@ impl<V: NormalizedAction> BlockTree<V> {
             .collect()
     }
 
+    /// Takes Vec<(TransactionIndex, Vec<ActionIndex>)>
+    /// for every action index of a transaction index, This function grabs all
+    /// child nodes of the action index if and only if they are specified in
+    /// the classification function of the action index node.
     pub fn collect_all_scoped(
         &self,
         search_params: &Vec<(usize, Vec<usize>)>,
@@ -312,6 +316,31 @@ impl<V: NormalizedAction> Node<V> {
         self.finalized
     }
 
+    /// Iterates through the tree until the head node is hit. When the head node
+    /// is hit, collects all child node actions that are specified by the
+    /// head nodes classification types closure.
+    /// This works by looking at pairs of child nodes. if the next node has a
+    /// index that is greater than our target index. we know that the target
+    /// index is contained in the current node. take the following tree:
+    ///             0
+    ///         /      \
+    ///      1          4
+    ///   /    \      /  \
+    /// 2       3    5     6
+    ///
+    /// if my target node is 3:
+    /// 4 > 3 so go to 1
+    /// 1 has 3 as a child. it is found!
+    ///
+    /// if my target node is 2:
+    /// 4 > 2 go to 1
+    /// 1 has child 2, it is found!
+    ///
+    /// if my target node is 6:
+    ///   1 < 6, go to 4
+    ///   4 < 6 go to inf
+    ///   6 < inf go to 4
+    ///   4 has child 6, it is found!
     pub fn get_all_children_for_complex_classification(&self, head: u64) -> Vec<V> {
         if head == self.index {
             let mut results = Vec::new();
@@ -342,6 +371,11 @@ impl<V: NormalizedAction> Node<V> {
             } else {
                 return cur_inner_node.get_all_children_for_complex_classification(head)
             }
+        }
+
+        // handle inf case in docs
+        if let Some(last) = self.inner.last() {
+            return last.get_all_children_for_complex_classification(head)
         }
 
         error!("was not able to find node in tree");
