@@ -157,6 +157,7 @@ pub struct NormalizedSwap {
     pub trace_index: u64,
     pub from:        Address,
     pub recipient:   Address,
+    // If pool address is zero, then this is a p2p / CoW style swap, possibly within a batch
     pub pool:        Address,
     pub token_in:    Address,
     pub token_out:   Address,
