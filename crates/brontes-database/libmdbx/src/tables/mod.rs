@@ -34,7 +34,7 @@ use crate::{
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 10;
+pub const NUM_TABLES: usize = 9;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tables {
@@ -47,7 +47,7 @@ pub enum Tables {
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
-    TxTraces
+   // TxTraces
 }
 
 impl Tables {
@@ -61,7 +61,7 @@ impl Tables {
         Tables::DexPrice,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
-        Tables::TxTraces
+       // Tables::TxTraces
     ];
     pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
         Tables::TokenDecimals,
@@ -71,7 +71,7 @@ impl Tables {
         Tables::Metadata,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
-        Tables::TxTraces
+       // Tables::TxTraces
     ];
 
     /// type of table
@@ -86,7 +86,7 @@ impl Tables {
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
             Tables::MevBlocks => TableType::Table,
-            Tables::TxTraces => TableType::Table,
+           // Tables::TxTraces => TableType::Table,
         }
     }
 
@@ -101,7 +101,7 @@ impl Tables {
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
             Tables::MevBlocks => MevBlocks::NAME,
-            Tables::TxTraces =>  TxTracesDB::NAME,
+           // Tables::TxTraces =>  TxTracesDB::NAME,
         }
     }
 
@@ -183,7 +183,7 @@ impl Tables {
                     async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
                 )
             }
-            Tables::TxTraces => Box::pin(TxTracesDB::initialize_table_node(libmdbx.clone(), tracer.clone()))
+          // Tables::TxTraces => Box::pin(TxTracesDB::initialize_table_node(libmdbx.clone(), tracer.clone()))
         }
     }
 }
@@ -202,7 +202,7 @@ impl FromStr for Tables {
             DexPrice::NAME => Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
             MevBlocks::NAME => Ok(Tables::MevBlocks),
-            TxTracesDB::NAME => Ok(Tables::TxTraces),
+          //  TxTracesDB::NAME => Ok(Tables::TxTraces),
             _ => Err("Unknown table".to_string()),
         }
     }
