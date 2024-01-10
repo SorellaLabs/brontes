@@ -68,8 +68,10 @@ pub struct PairGraph {
 
 impl PairGraph {
     pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
-        let mut graph =
-            UnGraph::<(), HashSet<PoolPairInformation>, usize>::with_capacity(CAPACITY, CAPACITY);
+        let mut graph = UnGraph::<(), HashSet<PoolPairInformation>, usize>::with_capacity(
+            CAPACITY / 2,
+            CAPACITY,
+        );
 
         let mut addr_to_index = HashMap::with_capacity(CAPACITY);
         let mut connections: HashMap<
