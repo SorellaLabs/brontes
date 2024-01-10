@@ -23,7 +23,7 @@ use reth_db::{
 };
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
-use tables::*;
+pub use tables::*;
 use tracing::info;
 use types::{
     cex_price::CexPriceMap,
@@ -34,7 +34,7 @@ use types::{
     token_decimals::TokenDecimalsData,
 };
 
-use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
+use self::{implementation::tx::LibmdbxTx, types::LibmdbxData};
 pub mod implementation;
 pub mod tables;
 pub mod types;
