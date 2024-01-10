@@ -126,14 +126,15 @@ impl<V: NormalizedAction> BlockTree<V> {
     ) -> Vec<(usize, Vec<Vec<(usize, V)>>)> {
         search_params
             .par_iter()
+            .filter_map(|opt| opt.as_ref())
             .map(|(index, subtraces)| {
-                (
-                    *index,
-                    self.tx_roots
-                        .get(*index)
-                        .unwrap()
-                        .collect_all_scoped(subtraces),
-                )
+                let results = self
+                    .tx_roots
+                    .get(*index)
+                    .expect("Tx_root should be present")
+                    .collect_all_scoped(subtraces);
+
+                (*index, results)
             })
             .collect()
     }
@@ -219,12 +220,16 @@ impl<V: NormalizedAction> Root<V> {
         result
     }
 
+<<<<<<< Updated upstream
     pub fn collect_all_scoped(&self, heads: &Vec<usize>) -> Vec<Vec<(usize, V)>> {
+=======
+    pub fn collect_all_scoped(&self, heads: &Vec<u64>) -> Vec<Vec<V>> {
+>>>>>>> Stashed changes
         heads
             .into_par_iter()
             .map(|search_head| {
                 self.head
-                    .get_all_children_for_complex_classification(*search_head as u64)
+                    .get_all_children_for_complex_classification(*search_head)
             })
             .collect()
     }
