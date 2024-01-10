@@ -84,7 +84,7 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
     pub state_diff:      StateDiff,
