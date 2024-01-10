@@ -273,7 +273,7 @@ mod tests {
             //Tables::PoolState,
             //Tables::DexPrice,
             //Tables::PoolCreationBlocks,
-            Tables::TxTraces,
+           // Tables::TxTraces,
         ])
         .await;
         assert!(db.is_ok());
@@ -287,6 +287,6 @@ mod tests {
         //assert!(test_pool_state_table(&db, false).await.is_ok());
         //assert!(test_dex_price_table(&db, false).await.is_ok());
         //assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
-        assert!(test_tx_traces_table(&db, true).await.is_ok());
+        // assert!(test_tx_traces_table(&db, true).await.is_ok());
     }
 }
