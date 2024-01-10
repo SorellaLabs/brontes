@@ -407,9 +407,7 @@ impl<'db> Classifier<'db> {
         tree: &mut BlockTree<Actions>,
         further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
     ) {
-        let child_actions = tree.collect_all_scoped(&further_classification_requests);
-
-        let complex_actions = child_actions.into_par_iter();
+        tree.collect_and_classify(&further_classification_requests)
     }
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
