@@ -122,7 +122,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// the classification function of the action index node.
     pub fn collect_all_scoped(
         &self,
-        search_params: &Vec<(usize, Vec<usize>)>,
+        search_params: &Vec<Option<(usize, Vec<u64>)>>,
     ) -> Vec<(usize, Vec<Vec<(usize, V)>>)> {
         search_params
             .par_iter()
