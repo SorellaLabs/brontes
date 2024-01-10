@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use itertools::Itertools;
 use malachite::Rational;
 use rayon::{
     iter::IntoParallelIterator,
@@ -330,8 +329,8 @@ impl<V: NormalizedAction> Node<V> {
     /// 1 has child 2, it is found!
     ///
     /// if my target node is 6:
-    ///   1 < 6, go to 4
-    ///   4 < 6 go to inf
+    ///   1 < 6, check 4
+    ///   4 < 6 check inf
     ///   6 < inf go to 4
     ///   4 has child 6, it is found!
     pub fn get_all_children_for_complex_classification(&mut self, head: u64) {
