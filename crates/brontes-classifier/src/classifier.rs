@@ -1,4 +1,4 @@
-use alloy_primitives::Bytes;
+use alloy_primitives::{Bytes, Log};
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
 };
@@ -14,10 +14,7 @@ use itertools::MultiUnzip;
 use malachite::strings::ToLowerHexString;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
-use reth_rpc_types::{
-    trace::parity::{Action, Action::Call},
-    Log,
-};
+use reth_rpc_types::trace::parity::{Action, Action::Call};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{impls::*, ActionCollection, StaticBindings};
@@ -410,14 +407,14 @@ impl<'db> Classifier<'db> {
     }
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
-        if log.topics.len() != 3 {
+        if log.topics().len() != 3 {
             return None
         }
 
-        if log.topics.get(0) == Some(&TRANSFER_TOPIC) {
-            let from = Address::from_slice(&log.topics[1][12..]);
-            let to = Address::from_slice(&log.topics[2][12..]);
-            let data = U256::try_from_be_slice(&log.data[..]).unwrap();
+        if log.topics().get(0) == Some(&TRANSFER_TOPIC) {
+            let from = Address::from_slice(&log.topics()[1][12..]);
+            let to = Address::from_slice(&log.topics()[2][12..]);
+            let data = U256::try_from_be_slice(&log.data.data[..]).unwrap();
             return Some((log.address, from, to, data))
         }
 
