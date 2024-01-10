@@ -2,7 +2,7 @@ use std::{
     cmp::{max, Ordering},
     collections::{
         hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, HashMap, HashSet
+        BinaryHeap, HashMap, HashSet,
     },
     hash::Hash,
     time::SystemTime,
@@ -112,35 +112,35 @@ impl PairGraph {
                 .or_insert(graph.add_node(()).index());
 
             // insert token0
-            let e = connections
+            let token_0_entry = connections
                 .entry(pair.0)
                 .or_insert_with(|| (addr0, HashMap::default()));
 
             // if we find a already inserted edge, we append the address otherwise we insert
             // both
-            if let Some(inner) = e.1.get_mut(&pair.1) {
+            if let Some(inner) = token_0_entry.1.get_mut(&pair.1) {
                 inner
                     .0
                     .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
             } else {
-                e.1.insert(
+                token_0_entry.1.insert(
                     pair.1,
                     (vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)], addr1),
                 );
             }
 
             // insert token1
-            let e = connections
+            let token_1_entry = connections
                 .entry(pair.1)
                 .or_insert_with(|| (addr1, HashMap::default()));
             // if we find a already inserted edge, we append the address otherwise we insert
             // both
-            if let Some(inner) = e.1.get_mut(&pair.0) {
+            if let Some(inner) = token_1_entry.1.get_mut(&pair.0) {
                 inner
                     .0
                     .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
             } else {
-                e.1.insert(
+                token_1_entry.1.insert(
                     pair.0,
                     (vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)], addr0),
                 );
