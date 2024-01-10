@@ -2,7 +2,7 @@ use std::{
     cmp::{max, Ordering},
     collections::{
         hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, HashMap, HashSet,
+        BinaryHeap, HashMap, HashSet
     },
     hash::Hash,
     time::SystemTime,
@@ -18,7 +18,6 @@ use petgraph::{
     visit::{IntoEdges, VisitMap, Visitable},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::revm_primitives::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
