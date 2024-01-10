@@ -1,17 +1,15 @@
 use std::{collections::HashMap, env, time::Duration};
 
-use alloy_primitives::{FixedBytes, Address};
-use reth_primitives::hex;
+use rand::seq::SliceRandom; 
+use brontes_pricing::PairGraph;
+use alloy_primitives::{ Address};
 use brontes_core::init_tracing;
-use brontes_database::Pair;
+use brontes_database::{Pair, clickhouse::USDT_ADDRESS};
 use reth_db::transaction::DbTx;
 use brontes_database_libmdbx::{tables::PoolCreationBlocks, AddressToProtocol, AddressToTokens, Libmdbx};
 use brontes_types::exchanges::StaticBindingsDb;
 use criterion::{black_box, criterion_group, criterion_main, Criterion, measurement::WallTime, BenchmarkGroup};
 use reth_db::cursor::DbCursorRO;
-
-pub const USDT_ADDRESS: Address =
-    Address(FixedBytes(hex!("dac17f958d2ee523a2206206994597c13d831ec7")));
 
 pub fn init_bench_harness() -> Libmdbx {
     init_tracing();
@@ -65,25 +63,25 @@ pub fn bench_graph_building(c: &mut Criterion) {
     let (_, fifty_thousand) = load_amount_of_pools_starting_from(&db,0, 50_000);
 
     g.bench_function("50_000 pool graph", move |b| {
-        b.iter(|| black_box(PairGraph::init_from_hashmap(fifty_thousand)))
-    };
+        b.iter(|| black_box(PairGraph::init_from_hashmap(fifty_thousand.clone())))
+    });
 
-    let (_, hundred_thousand)= load_amount_of_pools_starting_from(&db,0, 100_000);
+    let (_, hundred_thousand)=  load_amount_of_pools_starting_from(&db,0, 100_000);
 
     g.bench_function("100_000 pool graph", move |b| {
-        b.iter(|| black_box(PairGraph::init_from_hashmap(hundred_thousand)))
-    };
+        b.iter(|| black_box(PairGraph::init_from_hashmap(hundred_thousand.clone())))
+    });
 
     let (_, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0,200_000);
 
     g.bench_function("200_000 pool graph", move |b| {
-        b.iter(|| black_box(PairGraph::init_from_hashmap(two_hundred_thousand)))
-    };
+        b.iter(|| black_box(PairGraph::init_from_hashmap(two_hundred_thousand.clone())))
+    });
 
     let (_, all_known_pools) = load_amount_of_pools_starting_from(&db, 0, usize::MAX);
     g.bench_function("all known pool graph", move |b| {
-        b.iter(|| black_box(PairGraph::init_from_hashmap(all_known_pools)))
-    };
+        b.iter(|| black_box(PairGraph::init_from_hashmap(all_known_pools.clone())))
+    });
 
 }
 
@@ -92,50 +90,66 @@ pub fn bench_graph_insertions(c: &mut Criterion) {
     let db= init_bench_harness();
 
     let (end_block, hundred_thousand) = load_amount_of_pools_starting_from(&db,0, 100_000);
-    let mut graph = PairGraph::init_from_hashmap(hundred_thousand);
-
-    g.bench_function("100_000 pool graph inserting 5000 new pools ", move |b| {
-        let (_, new_entries) = load_amount_of_pools_starting_from(end_block + 1, 5000);
-        b.iter(|| black_box(
-                for ((address, static_binding), pair) in &new_entries {
-                    graph.add_node(*pair, *address, *static_binding)
-                }
-        ))
-    };
+    let graph = PairGraph::init_from_hashmap(hundred_thousand);
+    let (_, new_entries) = load_amount_of_pools_starting_from(&db, end_block + 1, 5000);
+    bench_insertions("100_000 pool graph inserting 5000 new pools", graph, &mut g, new_entries);
 
 
     let (end_block, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0,200_000);
-    let mut graph = PairGraph::init_from_hashmap(two_hundred_thousand);
+    let graph = PairGraph::init_from_hashmap(two_hundred_thousand);
+    let (_, new_entries) = load_amount_of_pools_starting_from(&db, end_block + 1, 5000);
+    bench_insertions("200_000 pool graph inserting 5000 new pools", graph, &mut g, new_entries);
+}
 
-    g.bench_function("200_000 pool graph inserting 5000 new pools ", move |b| {
-        let (_, new_entries) = load_amount_of_pools_starting_from(end_block + 1, 5000);
-        b.iter(|| black_box(
+fn bench_insertions(
+    name: &str,
+    mut graph: PairGraph,
+    g: &mut BenchmarkGroup<'_, WallTime>,
+    new_entries: HashMap<(Address, StaticBindingsDb), Pair>
+    ) {
+    g.bench_function(name, move |b| {
+        b.iter(|| 
                 for ((address, static_binding), pair) in &new_entries {
-                    graph.add_node(*pair, *address, *static_binding)
+                    black_box(graph.add_node(*pair, *address, *static_binding))
                 }
-        ))
-    };
+        )
+    });
 }
 
 pub fn bench_graph_path_search(c: &mut Criterion) {
     let mut g = group(c, "pricing-graph/path_search");
     let db = init_bench_harness();
 
-    let (_, hundred_thousand)= load_amount_of_pools_starting_from(&db,0, 100_000);
-    let graph = PairGraph::init_from_hashmap(hundred_thousand);
-    graph.clear_pair_cache();
-
-
-
-
-    g.bench_function("100_000 pool graph token pair search", move |b| {
-        b.iter(|| black_box(PairGraph::init_from_hashmap(hundred_thousand)))
-    };
+    let (_, hundred_thousand) = load_amount_of_pools_starting_from(&db,0, 100_000);
+    bench_path_search("path search graph 100_000 pools, 50 pairs to usdt", PairGraph::init_from_hashmap(hundred_thousand), &mut g);
 
     let (_, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0,200_000);
+    bench_path_search("path search graph 200_000 pools, 50 pairs to usdt", PairGraph::init_from_hashmap(two_hundred_thousand), &mut g);
 
     let (_, all_known_pools) = load_amount_of_pools_starting_from(&db, 0, usize::MAX);
+     bench_path_search("path search graph all pools, 50 pairs to usdt", PairGraph::init_from_hashmap(all_known_pools), &mut g);
 }
+
+fn bench_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGroup<'_, WallTime>) {
+    graph.clear_pair_cache();
+
+    g.bench_function(name, move |b| {
+        b.iter_batched(|| {
+            graph.get_all_known_addresses()
+            .choose_multiple(&mut rand::thread_rng(), 50)
+            .map(|address| Pair(*address, USDT_ADDRESS))
+            .collect::<Vec<Pair>>()
+
+        },|test_pairs|{
+            for pair in test_pairs {
+                black_box(graph.get_path_no_cache(pair))
+            }
+
+        }, criterion::BatchSize::SmallInput)
+    });
+
+}
+
 
 criterion_group!(
     benches,
