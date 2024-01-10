@@ -2,17 +2,23 @@ use std::sync::Arc;
 
 use brontes_database::clickhouse::Clickhouse;
 use futures::future::join_all;
+use reth_tracing_ext::TracingClient;
 
 use super::{tables::Tables, Libmdbx};
 
 pub struct LibmdbxInitializer {
     libmdbx:    Arc<Libmdbx>,
     clickhouse: Arc<Clickhouse>,
+    tracer:     Arc<TracingClient>,
 }
 
 impl LibmdbxInitializer {
-    pub fn new(libmdbx: Arc<Libmdbx>, clickhouse: Arc<Clickhouse>) -> Self {
-        Self { libmdbx, clickhouse }
+    pub fn new(
+        libmdbx: Arc<Libmdbx>,
+        clickhouse: Arc<Clickhouse>,
+        tracer: Arc<TracingClient>,
+    ) -> Self {
+        Self { libmdbx, clickhouse, tracer }
     }
 
     pub async fn initialize(
@@ -21,7 +27,12 @@ impl LibmdbxInitializer {
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
         join_all(tables.iter().map(|table| {
-            table.initialize_table(self.libmdbx.clone(), self.clickhouse.clone(), block_range)
+            table.initialize_table(
+                self.libmdbx.clone(),
+                self.tracer.clone(),
+                self.clickhouse.clone(),
+                block_range,
+            )
         }))
         .await
         .into_iter()
@@ -31,11 +42,12 @@ impl LibmdbxInitializer {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, sync::Arc};
+    use std::{env, path::Path, sync::Arc};
 
     use brontes_database::clickhouse::Clickhouse;
     use brontes_types::classified_mev::{ClassifiedMev, Sandwich};
     use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
+    use reth_tracing_ext::TracingClient;
     use serial_test::serial;
 
     use crate::{
@@ -43,7 +55,7 @@ mod tests {
         initialize::LibmdbxInitializer,
         tables::{
             AddressToProtocol, AddressToTokens, CexPrice, Metadata, MevBlocks, PoolCreationBlocks,
-            PoolState, Tables, TokenDecimals,
+            PoolState, Tables, TokenDecimals, TxTracesDB,
         },
         Libmdbx, MevBlock,
     };
@@ -58,7 +70,15 @@ mod tests {
         let db = Arc::new(init_db()?);
         let clickhouse = Clickhouse::default();
 
-        let db_initializer = LibmdbxInitializer::new(db.clone(), Arc::new(clickhouse));
+        let db_path = env::var("DB_PATH")
+            .map_err(|_| Box::new(std::env::VarError::NotPresent))
+            .unwrap();
+        let (manager, tracer) =
+            TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), 10);
+        tokio::spawn(manager);
+
+        let tracer = Arc::new(tracer);
+        let db_initializer = LibmdbxInitializer::new(db.clone(), Arc::new(clickhouse), tracer);
         db_initializer.initialize(tables, None).await?;
 
         Ok(db)
@@ -154,6 +174,7 @@ mod tests {
         }
         Ok(())
     }
+
     /*
         async fn test_dex_price_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
             let tx = LibmdbxTx::new_ro_tx(&db.0)?;
@@ -215,6 +236,22 @@ mod tests {
 
         Ok(())
     }
+
+    async fn test_tx_traces_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
+        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+        assert_ne!(tx.entries::<TxTracesDB>()?, 0);
+
+        let mut cursor = tx.cursor_read::<TxTracesDB>()?;
+        if !print {
+            cursor.first()?.ok_or(DatabaseError::Read(-1))?;
+        } else {
+            while let Some(vals) = cursor.next()? {
+                println!("{:?}", vals);
+            }
+        }
+        Ok(())
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
     #[serial]
     async fn test_inserts() {
@@ -236,11 +273,12 @@ mod tests {
             //Tables::PoolState,
             //Tables::DexPrice,
             //Tables::PoolCreationBlocks,
+            Tables::TxTraces,
         ])
         .await;
         assert!(db.is_ok());
 
-        let _db = db.unwrap();
+        let db = db.unwrap();
         //assert!(test_tokens_decimals_table(&db, false).await.is_ok());
         //assert!(test_address_to_tokens_table(&db, false).await.is_ok());
         //assert!(test_address_to_protocols_table(&db, false).await.is_ok());
@@ -249,5 +287,6 @@ mod tests {
         //assert!(test_pool_state_table(&db, false).await.is_ok());
         //assert!(test_dex_price_table(&db, false).await.is_ok());
         //assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
+        assert!(test_tx_traces_table(&db, true).await.is_ok());
     }
 }
