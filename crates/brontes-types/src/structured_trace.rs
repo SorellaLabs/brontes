@@ -1,14 +1,13 @@
-use std::str::FromStr;
-
-use alloy_primitives::{Address, Log, U256};
-use clickhouse::DbRow;
-use itertools::Itertools;
-use redefined::self_convert_redefined;
-use reth_primitives::{Bytes, B256};
-use reth_rpc_types::trace::parity::*;
-use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
-use serde_with::serde_as;
+use alloy_rlp::{
+    BufMut, Decodable, Encodable, RlpDecodable, RlpDecodableWrapper, RlpEncodable,
+    RlpEncodableWrapper,
+};
+use reth_primitives::{Address, Bytes, B256};
+use reth_rpc_types::{
+    trace::parity::{Action, CallType, StateDiff, TransactionTrace},
+    Log,
+};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT},
@@ -195,8 +194,7 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[serde_as]
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxTrace {
     pub block_number:    u64,
     pub trace:           Vec<TransactionTraceWithLogs>,
