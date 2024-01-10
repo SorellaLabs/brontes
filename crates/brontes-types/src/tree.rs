@@ -336,6 +336,8 @@ impl<V: NormalizedAction> Node<V> {
     pub fn get_all_children_for_complex_classification(&mut self, head: u64) {
         if head == self.index {
             let mut results = Vec::new();
+            results.push((self.index, self.data.clone()));
+
             let classification = self.data.continued_classification_types();
 
             let fixed = |node: &Node<V>| {
