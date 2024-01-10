@@ -569,7 +569,7 @@ pub mod test {
 
     async fn init(
         libmdbx: &Libmdbx,
-        rx: UnboundedReceiver<PoolUpdate>,
+        rx: UnboundedReceiver<DexPriceMsg>,
         quote: Address,
         block: u64,
         parser: &TraceParser<'_, Box<dyn TracingProvider>>,
@@ -577,15 +577,10 @@ pub mod test {
         let tx = libmdbx.ro_tx().unwrap();
         let binding_tx = libmdbx.ro_tx().unwrap();
         let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
-        let mut pairs = HashMap::new();
 
-        let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
+        let pairs = libmdbx.addresses_inited_before(block).unwrap();
 
         let mut rest_pairs = HashMap::default();
-        for i in start_block + 1..=end_block {
-            let pairs = libmdbx.addresses_init_block(i).unwrap();
-            rest_pairs.insert(i, pairs);
-        }
 
         info!("initing pair graph");
         let pair_graph = PairGraph::init_from_hashmap(pairs);
@@ -637,20 +632,20 @@ pub mod test {
             block:  18500000,
             tx_idx: 0,
             logs:   vec![],
-            action: BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t0, t1),
+            action: make_fake_swap(Pair(t0, t1)),
         };
 
         // send these two txes for the given block
-        let _ = tx.send(poolupdate.clone()).unwrap();
+        let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
         poolupdate.tx_idx = 69;
-        poolupdate.action = BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t0, t3);
-        let _ = tx.send(poolupdate.clone()).unwrap();
+        poolupdate.action = make_fake_swap(Pair(t0, t3));
+        let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
 
         info!("triggering next block");
         // trigger next block
         poolupdate.block += 1;
-        poolupdate.action = BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t1, t3);
-        let _ = tx.send(poolupdate.clone()).unwrap();
+        poolupdate.action = make_fake_swap(Pair(t1, t3));
+        let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
 
         let (handle, dex_prices) = handle.await.unwrap();
 
