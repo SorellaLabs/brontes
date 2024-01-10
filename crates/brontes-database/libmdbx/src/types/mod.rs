@@ -7,6 +7,7 @@ pub mod metadata;
 pub mod pool_creation_block;
 pub mod pool_state;
 pub mod token_decimals;
+pub mod traces;
 mod utils;
 pub(crate) use token_decimals::*;
 pub mod mev_block;
