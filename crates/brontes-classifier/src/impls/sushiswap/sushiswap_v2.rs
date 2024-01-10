@@ -21,12 +21,12 @@ action_impl!(
     SushiSwapV2,
     call_data: true,
     logs: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, data: Swap, db_tx: &LibmdbxTx<RO>| {
+    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, logs: Swap, db_tx: &LibmdbxTx<RO>| {
         let recipient = call_data.to;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let amount_0_in: U256 = data.amount0In;
+        let amount_0_in: U256 = logs.amount0In;
         if amount_0_in == U256::ZERO {
             return Some(NormalizedSwap {
                 pool: target_address,
@@ -35,8 +35,8 @@ action_impl!(
                 recipient,
                 token_in: token_1,
                 token_out: token_0,
-                amount_in: data.amount1In,
-                amount_out: data.amount0Out,
+                amount_in: logs.amount1In,
+                amount_out: logs.amount0Out,
             })
         } else {
             return Some(NormalizedSwap {
@@ -46,8 +46,8 @@ action_impl!(
                 recipient,
                 token_in: token_0,
                 token_out: token_1,
-                amount_in: data.amount0In,
-                amount_out: data.amount1Out,
+                amount_in: logs.amount0In,
+                amount_out: logs.amount1Out,
             })
         }
     }
