@@ -1,4 +1,13 @@
-use std::str::FromStr;
+use alloy_rlp::{
+    BufMut, Decodable, Encodable, RlpDecodable, RlpDecodableWrapper, RlpEncodable,
+    RlpEncodableWrapper,
+};
+use reth_primitives::{Address, Bytes, B256};
+use reth_rpc_types::{
+    trace::parity::{Action, CallType, StateDiff, TransactionTrace},
+    Log,
+};
+use serde::{Deserialize, Serialize};
 
 use alloy_primitives::{Address, Log, U256};
 use clickhouse::DbRow;
@@ -124,79 +133,19 @@ pub struct DecodedData {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionTraceWithLogs {
-    pub trace:          TransactionTrace,
-    pub function_name:  String,
-    pub decoded_params: String,
-    pub logs:           Vec<Log>,
-    pub trace_idx:      u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct CallInfo {
-    pub trace_idx:      u64,
-    pub target_address: Address,
-    pub from_address:   Address,
-    pub msg_sender:     Address,
-    pub msg_value:      U256,
-}
-
-impl CallFrameInfo<'_> {
-    pub fn get_fixed_fields(&self) -> CallInfo {
-        CallInfo {
-            trace_idx:      self.trace_idx,
-            target_address: self.target_address,
-            from_address:   self.from_address,
-            msg_sender:     self.msg_sender,
-            msg_value:      self.msg_value,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub logs:         Vec<Log>,
-    /// the msg.sender of the trace. This allows us to properly deal with
-    /// delegate calls and the headache they cause when it comes to proxies
-    pub msg_sender:   Address,
     pub trace_idx:    u64,
     pub decoded_data: Option<DecodedCallData>,
 }
 
 impl TransactionTraceWithLogs {
-    pub fn get_msg_value(&self) -> U256 {
-        match &self.trace.action {
-            Action::Call(c) => c.value,
-            Action::Create(c) => c.value,
-            Action::Reward(r) => r.value,
-            Action::Selfdestruct(_) => U256::ZERO,
-        }
-    }
-
     pub fn get_trace_address(&self) -> Vec<usize> {
         self.trace.trace_address.clone()
     }
-
-    /// Returns true if the call is a call to SCP's mev bot or their notorious
-    /// `executeFFsYo` function
-    // TODO: Find a better way to track certain contracts / calls that we 100% know
-    // are cex-dex
-    pub fn is_cex_dex_call(&self) -> bool {
-        match &self.trace.action {
-            Action::Call(call) => {
-                // Assuming SCP_MAIN_CEX_DEX_BOT is of type Address and is correctly imported
-                call.to == SCP_MAIN_CEX_DEX_BOT
-                    || call.to
-                        == Address::from_str("0xfbEedCFe378866DaB6abbaFd8B2986F5C1768737").unwrap()
-                    || (call.input.len() >= 4 && &call.input[0..4] == EXECUTE_FFS_YO.as_ref())
-            }
-            _ => false,
-        }
-    }
 }
 
-#[serde_as]
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxTrace {
     pub block_number:    u64,
     pub trace:           Vec<TransactionTraceWithLogs>,

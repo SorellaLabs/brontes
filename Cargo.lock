@@ -1722,12 +1722,48 @@ dependencies = [
  "reth-libmdbx",
  "reth-mdbx-sys",
  "reth-primitives",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "serial_test",
+ "sorella-db-databases",
+ "test-fuzz",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "brontes-database-libmdbx"
+version = "0.1.0"
+dependencies = [
+ "alloy-json-abi",
+ "alloy-primitives",
+ "alloy-rlp",
+ "arbitrary",
+ "brontes-database",
+ "brontes-pricing",
+ "brontes-types",
+ "bytes",
+ "codecs-derive",
+ "dotenv",
+ "eyre",
+ "futures",
+ "malachite",
+ "modular-bitfield",
+ "parity-scale-codec",
+ "parking_lot 0.12.1",
+ "paste",
+ "proptest",
+ "proptest-derive",
+ "rand 0.8.5",
+ "reth-codecs",
+ "reth-db",
+ "reth-interfaces",
+ "reth-libmdbx",
+ "reth-primitives",
  "reth-rpc",
- "reth-rpc-types",
- "reth-tasks",
  "reth-tracing-ext",
- "rkyv",
- "schnellru",
  "serde",
  "serde_json",
  "serde_repr",
@@ -1742,7 +1778,7 @@ dependencies = [
  "tokio-scoped",
  "toml",
  "tracing",
- "zstd",
+ "zstd 0.13.0",
 ]
 
 [[package]]
@@ -9880,6 +9916,88 @@ dependencies = [
 ]
 
 [[package]]
+name = "solang-parser"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c425ce1c59f4b154717592f0bdf4715c3a1d55058883622d3157e1f0908a5b26"
+dependencies = [
+ "itertools 0.11.0",
+ "lalrpop",
+ "lalrpop-util",
+ "phf",
+ "thiserror",
+ "unicode-xid",
+]
+
+[[package]]
+name = "sorella-db-databases"
+version = "0.1.0"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#1dbf4d4005bfd60c9a5c19488c69e6c3b1d8447e"
+dependencies = [
+ "async-recursion",
+ "async-trait",
+ "chrono",
+ "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs?branch=master)",
+ "dotenv",
+ "eyre",
+ "futures",
+ "hyper",
+ "hyper-tls",
+ "primitive-types",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sorella-db-metrics",
+ "sorella-db-metrics-derive",
+ "sorella-db-tracing",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "sorella-db-metrics"
+version = "0.1.0"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#1dbf4d4005bfd60c9a5c19488c69e6c3b1d8447e"
+dependencies = [
+ "eyre",
+ "futures",
+ "hyper",
+ "metrics 0.20.1",
+ "metrics-exporter-prometheus 0.11.0",
+ "metrics-process",
+ "metrics-util 0.14.0",
+ "sorella-db-metrics-derive",
+ "sorella-db-tracing",
+ "tokio",
+]
+
+[[package]]
+name = "sorella-db-metrics-derive"
+version = "0.1.0"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#1dbf4d4005bfd60c9a5c19488c69e6c3b1d8447e"
+dependencies = [
+ "once_cell",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn 2.0.48",
+]
+
+[[package]]
+name = "sorella-db-tracing"
+version = "0.1.0"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#1dbf4d4005bfd60c9a5c19488c69e6c3b1d8447e"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+ "tracing-appender",
+ "tracing-journald",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11661,10 +11779,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "zstd"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bffb3309596d527cfcba7dfc6ed6052f1d39dfbd7c867aa2e865e4a449c10110"
+dependencies = [
+ "zstd-safe 7.0.0",
+]
+
+[[package]]
 name = "zstd-safe"
 version = "7.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54a3ab4db68cea366acc5c897c7b4d4d1b8994a9cd6e6f841f8964566a419059"
+dependencies = [
+ "zstd-sys",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43747c7422e2924c11144d5229878b98180ef8b06cca4ab5af37afc8a8d8ea3e"
 dependencies = [
  "zstd-sys",
 ]
