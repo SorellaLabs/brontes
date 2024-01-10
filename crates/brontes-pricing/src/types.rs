@@ -22,7 +22,6 @@ use crate::{
     AutomatedMarketMaker,
 };
 
-#[derive_arbitrary(compact)]
 #[derive(
     Debug,
     Default,
@@ -135,7 +134,6 @@ impl DexPrices {
     }
 }
 
-#[derive_arbitrary(compact)]
 #[derive(
     Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable,
 )]
@@ -150,7 +148,6 @@ impl PoolKeyWithDirection {
     }
 }
 
-#[derive_arbitrary(compact)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable)]
 pub struct PoolKeysForPair(pub Vec<PoolKeyWithDirection>);
 
