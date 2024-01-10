@@ -22,6 +22,7 @@ pub fn bench_tx_trace_parse(c: &mut Criterion) {
             tokio::runtime::Handle::current().clone(),
             tx,
             Box::leak(Box::new(libmdbx)),
+            69,
         )
     });
 
