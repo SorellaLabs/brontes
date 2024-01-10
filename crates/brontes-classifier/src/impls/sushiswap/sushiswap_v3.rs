@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, Bytes, U256};
+use alloy_primitives::{Address, Bytes, LogData, U256};
 use alloy_sol_types::SolCall;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
@@ -7,7 +7,6 @@ use brontes_types::normalized_actions::{
     Actions, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
 use reth_db::{mdbx::RO, transaction::DbTx};
-use reth_rpc_types::Log;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
