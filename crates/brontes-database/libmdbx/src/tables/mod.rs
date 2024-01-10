@@ -1,9 +1,12 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
-
+use reth_rpc::eth::error::EthApiError;
+use brontes_types::traits::TracingProvider;
+use reth_interfaces::blockchain_tree::BlockchainTreeViewer;
+use reth_primitives::{BlockNumberOrTag, BlockId};
 use sorella_db_databases::Database;
-
+use reth_tracing_ext::TracingClient;
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
@@ -14,7 +17,7 @@ use reth_db::{table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::Row;
 use tracing::info;
-
+use crate::types::traces::TxTracesDBData;
 use crate::{
     types::{
         address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
@@ -25,12 +28,12 @@ use crate::{
         mev_block::{MevBlockWithClassified, MevBlocksData},
         pool_creation_block::{PoolCreationBlocksData, PoolsLibmdbx},
         pool_state::PoolStateData,
-        *,
+        *, traces::TxTracesInner,
     },
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 9;
+pub const NUM_TABLES: usize = 10;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tables {
@@ -43,6 +46,7 @@ pub enum Tables {
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
+    TxTraces
 }
 
 impl Tables {
@@ -56,6 +60,7 @@ impl Tables {
         Tables::DexPrice,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
+        Tables::TxTraces
     ];
     pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
         Tables::TokenDecimals,
@@ -65,6 +70,7 @@ impl Tables {
         Tables::Metadata,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
+        Tables::TxTraces
     ];
 
     /// type of table
@@ -79,6 +85,7 @@ impl Tables {
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
             Tables::MevBlocks => TableType::Table,
+            Tables::TxTraces => TableType::Table,
         }
     }
 
@@ -93,12 +100,14 @@ impl Tables {
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
             Tables::MevBlocks => MevBlocks::NAME,
+            Tables::TxTraces =>  TxTracesDB::NAME,
         }
     }
 
     pub(crate) fn initialize_table<'a>(
         &'a self,
         libmdbx: Arc<Libmdbx>,
+        tracer: Arc<TracingClient>,
         clickhouse: Arc<Clickhouse>,
         _block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
@@ -173,6 +182,7 @@ impl Tables {
                     async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
                 )
             }
+            Tables::TxTraces => Box::pin(TxTracesDB::initialize_table_node(libmdbx.clone(), tracer.clone()))
         }
     }
 }
@@ -191,6 +201,7 @@ impl FromStr for Tables {
             DexPrice::NAME => Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
             MevBlocks::NAME => Ok(Tables::MevBlocks),
+            TxTracesDB::NAME => Ok(Tables::TxTraces),
             _ => Err("Unknown table".to_string()),
         }
     }
@@ -282,6 +293,14 @@ table!(
     /// block number -> mev block with classified mev
     ( MevBlocks ) u64 | MevBlockWithClassified
 );
+
+table!(
+    /// block number -> vec of tx traces
+    ( TxTracesDB ) u64 | TxTracesInner
+);
+
+
+
 
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
@@ -387,5 +406,27 @@ where
 
             Ok(())
         })
+    }
+}
+
+
+
+impl TxTracesDB {
+    pub async fn initialize_table_node(libmdbx: Arc<Libmdbx>, tracer: Arc<TracingClient>) -> eyre::Result<()> {
+        let start_block: u64 = 15400000;
+        let current_block = tracer.api.provider().canonical_tip().number;
+
+
+        let tx_traces = join_all((start_block..current_block).map(|block_num| { 
+            let tracer = tracer.clone();
+            async move {
+                Ok(TxTracesDBData::new(block_num, TxTracesInner::new(tracer.replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num))).await?)))
+            }
+        })).await.into_iter().collect::<Result<Vec<_>, EthApiError>>()?;
+
+        libmdbx.write_table(&tx_traces)?;
+    
+    Ok(())
+
     }
 }

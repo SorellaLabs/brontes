@@ -23,6 +23,7 @@ use reth_db::{
 };
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
+use reth_tracing_ext::TracingClient;
 use tables::*;
 use tracing::info;
 use types::{
@@ -150,10 +151,11 @@ impl Libmdbx {
     pub async fn clear_and_initialize_tables(
         self: Arc<Self>,
         clickhouse: Arc<Clickhouse>,
+        tracer: Arc<TracingClient>,
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse);
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
         initializer.initialize(tables, block_range).await?;
 
         Ok(())
