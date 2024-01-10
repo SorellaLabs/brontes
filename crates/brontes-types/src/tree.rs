@@ -347,7 +347,6 @@ impl<V: NormalizedAction> Node<V> {
             let mut results = Vec::new();
             results.push((self.index, self.data.clone()));
 
-
             let classification = self.data.continued_classification_types();
 
             let fixed = |node: &Node<V>| {
