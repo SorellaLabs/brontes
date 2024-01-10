@@ -12,6 +12,7 @@ use brontes_types::{
 use hex_literal::hex;
 use itertools::MultiUnzip;
 use malachite::strings::ToLowerHexString;
+use rayon::iter::IntoParallelIterator;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::{
@@ -399,12 +400,16 @@ impl<'db> Classifier<'db> {
         Actions::Unclassified(trace)
     }
 
+    /// This function is used to finalize the classification of complex actions
+    /// that contain nested sub-actions.
     fn finish_classification(
         &self,
         tree: &mut BlockTree<Actions>,
         further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
     ) {
-        todo!()
+        let child_actions = tree.collect_all_scoped(&further_classification_requests);
+
+        let complex_actions = child_actions.into_par_iter();
     }
 
     fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
