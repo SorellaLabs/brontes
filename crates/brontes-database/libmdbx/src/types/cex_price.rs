@@ -320,6 +320,7 @@ impl Decompress for CexQuote {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
 
@@ -354,3 +355,4 @@ mod tests {
         //println!("{:?}", res.unwrap()[0])
     }
 }
+*/

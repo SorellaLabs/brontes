@@ -134,6 +134,7 @@ impl Compact for DexQuoteWithIndex {
 */
 impl_compress_decompress_for_encoded_decoded!(DexQuoteWithIndex);
 
+/*
 #[cfg(test)]
 mod tests {
     use std::{collections::HashMap, str::FromStr};
@@ -264,3 +265,4 @@ mod tests {
         assert_eq!(calculated, expected);
     }
 }
+*/

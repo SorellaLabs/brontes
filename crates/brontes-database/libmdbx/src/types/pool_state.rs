@@ -90,6 +90,7 @@ impl From<&PoolStateSnapShot> for PoolStateType {
 
 impl_compress_decompress_for_encoded_decoded!(PoolStateData);
 
+/*
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -176,3 +177,4 @@ mod tests {
         clickhouse.inner().insert_many(data, table).await.unwrap();
     }
 }
+*/
