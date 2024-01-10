@@ -68,7 +68,6 @@ pub struct PairGraph {
 
 impl PairGraph {
     pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
-        let t0 = SystemTime::now();
         let mut graph =
             UnGraph::<(), HashSet<PoolPairInformation>, usize>::with_capacity(CAPACITY, CAPACITY);
 
@@ -81,6 +80,7 @@ impl PairGraph {
         let mut known_pairs: HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>> =
             HashMap::with_capacity(CAPACITY);
 
+        let t0 = SystemTime::now();
         for ((pool_addr, dex), pair) in map {
             // add the pool known in both directions
             let entry = known_pairs.entry(pair).or_default();
@@ -145,6 +145,11 @@ impl PairGraph {
             }
         }
 
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        info!("linked all graph edges in {}us", delta);
+
+        let t0 = SystemTime::now();
         graph.extend_with_edges(connections.into_values().flat_map(|(node0, edges)| {
             edges
                 .into_par_iter()
