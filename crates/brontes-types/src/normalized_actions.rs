@@ -146,6 +146,12 @@ pub struct NormalizedFlashLoan {
     pub amounts:     Vec<U256>,
 }
 
+impl NormalizedFlashLoan {
+    pub fn finalize_classification(&mut self, actions: Vec<(u64, Actions)>) {
+        todo!()
+    }
+}
+
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwap {
     pub trace_index: u64,
@@ -241,6 +247,7 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn continue_classification(&self) -> bool;
     fn get_trace_index(&self) -> u64;
     fn continued_classification_types(&self) -> Box<dyn Fn(&Self) -> bool + Send + Sync>;
+    fn finalize_classification(&mut self, actions: Vec<(u64, Self)>);
 }
 
 impl NormalizedAction for Actions {
@@ -300,6 +307,23 @@ impl NormalizedAction for Actions {
             Self::Liquidation(t) => t.trace_index,
             Self::Collect(c) => c.trace_index,
             Self::Unclassified(u) => u.trace_idx,
+            _ => unreachable!(),
+        }
+    }
+
+    fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) {
+        match self {
+            Self::Swap(s) => unreachable!("Swap type never requires complex classification"),
+            Self::FlashLoan(f) => f.finalize_classification(actions),
+            Self::Batch(b) => todo!(),
+            Self::Mint(m) => unreachable!(),
+            Self::Burn(b) => unreachable!(),
+            Self::Transfer(t) => unreachable!(),
+            Self::Liquidation(t) => todo!(),
+            Self::Collect(c) => unreachable!("Collect type never requires complex classification"),
+            Self::Unclassified(u) => {
+                unreachable!("Unclassified type never requires complex classification")
+            }
             _ => unreachable!(),
         }
     }
