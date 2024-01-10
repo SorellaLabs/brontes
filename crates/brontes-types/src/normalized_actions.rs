@@ -96,6 +96,7 @@ impl Actions {
                 reth_rpc_types::trace::parity::Action::Reward(_) => Address::ZERO,
                 reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address,
             },
+
             _ => unreachable!(),
         }
     }
@@ -267,6 +268,7 @@ impl NormalizedAction for Actions {
             Self::Liquidation(_) => true,
             Self::Collect(_) => false,
             Self::Unclassified(_) => false,
+            Self::Revert => false,
             _ => unreachable!(),
         }
     }
