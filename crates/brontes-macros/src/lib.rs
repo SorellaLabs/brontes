@@ -92,7 +92,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                     #log_type::decode_log(log.topics.iter().map(|h|h.0), &log.data, false).ok()?
                     }
 
-                )*
+                ),*
             );
         ));
     }
