@@ -142,11 +142,12 @@ pub fn bench_graph_path_search(c: &mut Criterion) {
 
 fn bench_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGroup<'_, WallTime>) {
     graph.clear_pair_cache();
+    let copy_graph = graph.clone();
 
     g.bench_function(name, move |b| {
         b.iter_batched(
             || {
-                graph
+                copy_graph
                     .get_all_known_addresses()
                     .choose_multiple(&mut rand::thread_rng(), 50)
                     .map(|address| Pair(*address, USDT_ADDRESS))
