@@ -202,7 +202,9 @@ macro_rules! decode_specific {
     ($mev_type:ident, $value:ident, $($mev:ident = $name:ident),+) => {
         match $mev_type {
         $(
-            MevType::$mev => Box::new(serde_json::from_value::<$name>($value).unwrap()) as Box<dyn SpecificMev>,
+            MevType::$mev => Box::new(
+                serde_json::from_value::<$name>($value).unwrap()
+            ) as Box<dyn SpecificMev>,
         )+
         _ => todo!("missing variant")
     }
