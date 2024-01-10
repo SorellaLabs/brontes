@@ -16,12 +16,11 @@ action_impl!(
     V2SwapImpl,
     Swap,
     swapCall,
-    Swap,
+    [Swap],
     UniswapV2,
     call_data: true,
     logs: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, data: Option<Swap>, db_tx: &LibmdbxTx<RO>| {
-        let data = data?;
+    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, data: Swap, db_tx: &LibmdbxTx<RO>| {
         let recipient = call_data.to;
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -53,11 +52,12 @@ action_impl!(
         }
     }
 );
+
 action_impl!(
     V2MintImpl,
     Mint,
     mintCall,
-    Mint,
+    [Mint],
     UniswapV2,
     logs: true,
     call_data: true,
@@ -65,8 +65,7 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
-     log_data: Option<Mint>, db_tx: &LibmdbxTx<RO>| {
-        let log_data = log_data?;
+     log_data: Mint, db_tx: &LibmdbxTx<RO>| {
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedMint {
@@ -83,7 +82,7 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    Burn,
+    [Burn],
     UniswapV2,
     call_data: true,
     logs: true,
@@ -91,8 +90,7 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: burnCall,
-     log_data: Option<Burn>, db_tx: &LibmdbxTx<RO>| {
-        let log_data = log_data?;
+     log_data: Burn, db_tx: &LibmdbxTx<RO>| {
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedBurn {
