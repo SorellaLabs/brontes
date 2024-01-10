@@ -316,7 +316,6 @@ impl<V: NormalizedAction> Node<V> {
         self.finalized
     }
 
-<<<<<<< Updated upstream
     /// Iterates through the tree until the head node is hit. When the head node
     /// is hit, collects all child node actions that are specified by the
     /// head nodes classification types closure.
@@ -342,10 +341,7 @@ impl<V: NormalizedAction> Node<V> {
     ///   4 < 6 go to inf
     ///   6 < inf go to 4
     ///   4 has child 6, it is found!
-    pub fn get_all_children_for_complex_classification(&self, head: u64) -> Vec<V> {
-=======
     pub fn get_all_children_for_complex_classification(&self, head: u64) -> Vec<(usize, V)> {
->>>>>>> Stashed changes
         if head == self.index {
             let mut results = Vec::new();
             let classification = self.data.continued_classification_types();
