@@ -61,11 +61,12 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     current_block:   u64,
     completed_block: u64,
 
-    /// receiver from classifier, classifier is ran sequential to grantee order
+    /// receiver from classifier, classifier is ran sequentially to guarantee
+    /// order
     update_rx:       UnboundedReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
-    /// how this works is that we process all state transitions for a block and
-    /// allow lazy loading to occur. Once lazy loading has occurred and there
+    /// it works by processing all state transitions for a block and
+    /// allowing lazy loading to occur. Once lazy loading has occurred and there
     /// are no more events for the current block, all the state transitions
     /// are applied in order with the price at the transaction index being
     /// calculated and inserted into the results and returned.
