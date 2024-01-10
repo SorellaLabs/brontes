@@ -1,6 +1,6 @@
 ![](assets/Brontes.png)
 
-# Brontes
+# Brontes – The Dark Forest has never been this bright
 
 Brontes is a blazingly fast MEV tracing system developed by Sorella Labs, for Ethereum and other EVM-compatible blockchains. It can be run locally or remotely, and is capable of following the chain tip.
 
