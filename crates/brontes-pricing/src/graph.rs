@@ -277,13 +277,13 @@ impl PairGraph {
     /// a hash map for quick lookups on additional queries.
     pub fn get_path_no_cache(&self, pair: Pair) {
         if pair.0 == pair.1 {
-            return 
+            return
         }
 
         let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
             let addr = pair.0;
             error!(?addr, "no node for address");
-            return 
+            return
         };
         let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
             let addr = pair.1;
