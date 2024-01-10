@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
+use futures::StreamExt;
 use reth_rpc::eth::error::EthApiError;
 use brontes_types::traits::TracingProvider;
 use reth_interfaces::blockchain_tree::BlockchainTreeViewer;
@@ -416,15 +417,26 @@ impl TxTracesDB {
         let start_block: u64 = 15400000;
         let current_block = tracer.api.provider().canonical_tip().number;
 
+        let range = (start_block..current_block).collect::<Vec<_>>();
+    let chunks = range.chunks(1000).collect::<Vec<_>>();
+    let tracer = tracer.as_ref();
+        let mut tx_traces_stream = futures::stream::iter(chunks).map(|chunk| { 
+            join_all( chunk.into_iter().map(|block_num|
+            
+                async move {
+                    Ok(TxTracesDBData::new(*block_num, TxTracesInner::new(tracer.replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(*block_num))).await?)))
+                }
+         ) )}).buffer_unordered(1);
 
-        let tx_traces = join_all((start_block..current_block).map(|block_num| { 
-            let tracer = tracer.clone();
-            async move {
-                Ok(TxTracesDBData::new(block_num, TxTracesInner::new(tracer.replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num))).await?)))
-            }
-        })).await.into_iter().collect::<Result<Vec<_>, EthApiError>>()?;
+       // .await
 
+       while let Some(result) = tx_traces_stream.next().await {
+        let tx_traces = result.into_iter().collect::<Result<Vec<_>, EthApiError>>()?;
         libmdbx.write_table(&tx_traces)?;
+        println!("FINISHED CHUNK: {:?} - {:?}", tx_traces.first().map(|val| val.block_number), tx_traces.last().map(|val| val.block_number));
+       }
+
+       
     
     Ok(())
 
