@@ -1,5 +1,6 @@
 use std::{fmt::Debug, path::Path, sync::Arc};
 
+use alloy_primitives::Log;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
@@ -7,7 +8,7 @@ use reth_blockchain_tree::{
 };
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{alloy_primitives::U256, Address, BlockId, Bytes, PruneModes, MAINNET, U64};
+use reth_primitives::{Address, BlockId, Bytes, PruneModes, MAINNET, U64};
 use reth_provider::{providers::BlockchainProvider, ProviderFactory, StateProvider};
 use reth_revm::{
     database::StateProviderDatabase,
@@ -186,7 +187,7 @@ impl TracingInspectorLocal {
     ) -> TxTrace {
         let gas_used = res.gas_used().into();
 
-        let trace = self.build_trace(&info);
+        let trace = self.build_trace();
         let mut diff = StateDiff::default();
         let _ = populate_state_diff(&mut diff, db, acc_diff);
 
@@ -214,7 +215,7 @@ impl TracingInspectorLocal {
     /// the state diff, since this requires access to the account diffs.
     ///
     /// See [Self::into_trace_results_with_state] and [populate_state_diff].
-    pub fn build_trace(&self, info: &TransactionInfo) -> Option<Vec<TransactionTraceWithLogs>> {
+    pub fn build_trace(&self) -> Option<Vec<TransactionTraceWithLogs>> {
         if self.traces.nodes().is_empty() {
             return None
         }
@@ -225,10 +226,15 @@ impl TracingInspectorLocal {
             let trace_address = self.trace_address(self.traces.nodes(), node.idx);
 
             let trace = self.build_tx_trace(node, trace_address);
+            let logs = node
+                .logs
+                .iter()
+                .map(|log| Log { address: node.trace.address, data: log.clone() })
+                .collect::<Vec<_>>();
 
             traces.push(TransactionTraceWithLogs {
                 trace,
-                logs: node.logs.clone(),
+                logs,
                 decoded_data: None,
                 trace_idx: node.idx as u64,
             });
