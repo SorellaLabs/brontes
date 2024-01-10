@@ -6,7 +6,7 @@ use brontes_pricing::types::PoolUpdate;
 use brontes_types::normalized_actions::{Actions, NormalizedSwap};
 use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_primitives::{Address, Bytes, U256};
-use reth_rpc_types::Log;
+use alloy_primitives::LogData;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
