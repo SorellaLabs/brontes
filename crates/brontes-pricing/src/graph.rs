@@ -61,8 +61,14 @@ const CAPACITY: usize = 650_000;
 #[derive(Debug, Clone)]
 pub struct PairGraph {
     graph:         UnGraph<(), HashSet<PoolPairInformation>, usize>,
+    /// token address to node index in the graph
     addr_to_index: HashMap<Address, usize>,
-    // double vec for multi_hop multi_pool
+    /// known pairs is a cache of pairs that have been requested before. This
+    /// significatnly speeds up the graph as it reduces the amount of times
+    /// that we search through the graph. it is set up to return all pools
+    /// that can represent a swap leg e.g Curve WETH <> BTC UniV2 WETH <> BTC.
+    /// This also supports the idea of a virtual pair. A virtual pair is a pair
+    /// that can be represented by 2 or more sub pairs.
     known_pairs:   HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>>,
 }
 
@@ -74,6 +80,7 @@ impl PairGraph {
         );
 
         let mut addr_to_index = HashMap::with_capacity(CAPACITY);
+
         let mut connections: HashMap<
             Address,
             (usize, HashMap<Address, (Vec<PoolPairInformation>, usize)>),
@@ -259,6 +266,60 @@ impl PairGraph {
         self.known_pairs.insert(pair, path.clone());
 
         path.into_iter()
+    }
+}
+
+#[cfg(feature = "benchmarking")]
+impl PairGraph {
+    pub fn get_all_known_addresses(&self) -> Vec<Address> {
+        self.addr_to_index.keys().copied().collect()
+    }
+
+    /// fetches the path from start to end for the given pair inserting it into
+    /// a hash map for quick lookups on additional queries.
+    pub fn get_path_no_cache(&self, pair: Pair) {
+        if pair.0 == pair.1 {
+            return
+        }
+
+        let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
+            let addr = pair.0;
+            error!(?addr, "no node for address");
+            return
+        };
+        let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
+            let addr = pair.1;
+            error!(?addr, "no node for address");
+            return
+        };
+
+        let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
+            .unwrap_or_else(|| {
+                error!(?pair, "couldn't find path between pairs");
+                vec![]
+            })
+            .into_iter()
+            .tuple_windows()
+            .map(|(base, quote)| {
+                self.graph
+                    .edge_weight(self.graph.find_edge(base, quote).unwrap())
+                    .unwrap()
+                    .iter()
+                    .map(|pool_info| {
+                        let token_0_edge = *self.addr_to_index.get(&pool_info.token_0).unwrap();
+                        if base.index() == token_0_edge {
+                            PoolPairInfoDirection { info: *pool_info, token_0_in: true }
+                        } else {
+                            PoolPairInfoDirection { info: *pool_info, token_0_in: false }
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+    }
+
+    pub fn clear_pair_cache(&mut self) {
+        self.known_pairs.clear();
     }
 }
 
