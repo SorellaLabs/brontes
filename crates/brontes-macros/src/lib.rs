@@ -1,13 +1,15 @@
 use proc_macro::{Span, TokenStream};
 use quote::quote;
-use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
+use syn::{bracketed, parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
 /// underlying actions. The use is as followed
 /// ```rust
-/// action_impl!(ExchangeName, NormalizedAction, CallType, LogType, ExchangeModName, [logs: bool , call_data: bool, return_data: bool])
+/// action_impl!(ExchangeName, NormalizedAction, CallType, [LogType / 's], ExchangeModName, [logs: bool , call_data: bool, return_data: bool])
 /// ```
+/// The Array of log types are expected to be in the order that they are emitted
+/// in. Otherwise the decoding will fail
 ///
 ///  ## Examples
 /// ```rust
@@ -15,16 +17,16 @@ use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 ///     V2SwapImpl,
 ///     Swap,
 ///     swapCall,
-///     Swap,
+///     [Swap],
 ///     UniswapV2,
 ///     logs: true,
-///     |index, from_address: Address, target_address: Address, data: Option<Swap>| { <body> });
+///     |index, from_address: Address, target_address: Address, log_data: (Swap)| { <body> });
 ///
 /// action_impl!(
 ///     V2MintImpl,
 ///     Mint,
 ///     mintCall,
-///     Mint,
+///     [Mint],
 ///     UniswapV2,
 ///     logs: true,
 ///     call_data: true,
@@ -32,7 +34,7 @@ use syn::{parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 ///      from_address: Address,
 ///      target_address: Address,
 ///      call_data: mintCall,
-///      log_data: Option<Mint>|  { <body> });
+///      log_data: (Mint)|  { <body> });
 ///
 /// |index, from_address, target_address, call_data, return_data, log_data| { <body> }
 /// ```
@@ -55,7 +57,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         exchange_name,
         action_type,
         call_type,
-        log_type,
+        log_types,
         exchange_mod_name,
         give_logs,
         give_returns,
@@ -64,6 +66,12 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     } = syn::parse2(token_stream.into()).unwrap();
 
     let mut option_parsing = Vec::new();
+
+    let (log_idx, log_type): (Vec<Index>, Vec<Ident>) = log_types
+        .into_iter()
+        .enumerate()
+        .map(|(i, n)| (Index::from(i), n))
+        .unzip();
 
     let a = call_type.to_string();
     let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
@@ -76,10 +84,16 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     if give_logs {
         option_parsing.push(quote!(
-            let log_data = logs.into_iter().filter_map(|log| {
-                #log_type::decode_log(log.topics.iter().map(|h| h.0), &log.data, false).ok()
-            }).collect::<Vec<_>>();
-            let log_data = Some(log_data).filter(|data| !data.is_empty()).map(|mut l| l.remove(0));
+            let log_data =
+            (
+                #(
+                    {
+                    let log = &logs[#log_idx];
+                    #log_type::decode_log(log.topics.iter().map(|h|h.0), &log.data, false).ok()?
+                    }
+
+                )*
+            );
         ));
     }
 
@@ -95,7 +109,14 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let fn_call = match (give_calldata, give_logs, give_returns) {
         (true, true, true) => {
             quote!(
-            (#call_function)(index, from_address, target_address, call_data, return_data, log_data, db_tx)
+            (#call_function)(
+                index,
+                from_address,
+                target_address,
+                call_data,
+                return_data,
+                log_data, db_tx
+                )
             )
         }
         (true, true, false) => {
@@ -167,7 +188,7 @@ struct MacroParse {
     // required for all
     exchange_name: Ident,
     action_type:   Ident,
-    log_type:      Ident,
+    log_types:     Vec<Ident>,
     call_type:     Ident,
 
     /// for call data decoding
@@ -190,9 +211,24 @@ impl Parse for MacroParse {
         input.parse::<Token![,]>()?;
         let call_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let log_type: Ident = input.parse()?;
-        input.parse::<Token![,]>()?;
 
+        let mut log_types = Vec::new();
+
+        let content;
+        bracketed!(content in input);
+
+        loop {
+            let Ok(log_type) = content.parse::<Ident>() else {
+                break;
+            };
+            log_types.push(log_type);
+
+            let Ok(_) = content.parse::<Token![,]>() else {
+                break;
+            };
+        }
+
+        input.parse::<Token![,]>()?;
         let exchange_mod_name: Ident = input.parse()?;
 
         let mut logs = false;
@@ -250,7 +286,7 @@ impl Parse for MacroParse {
 
         Ok(Self {
             give_returns: return_data,
-            log_type,
+            log_types,
             call_function,
             give_logs: logs,
             give_calldata: call_data,
@@ -316,7 +352,10 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             logs: logs.clone(),
                             action: res.clone()
                         };
-                        tx.send(::brontes_pricing::types::DexPriceMsg::Update(pool_update)).unwrap();
+
+                        tx.send(
+                            ::brontes_pricing::types::DexPriceMsg::Update(pool_update)
+                        ).unwrap();
                     }
 
                     return res
@@ -338,7 +377,10 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                                 tx_idx,
                                 action: res.clone()
                             };
-                            tx.send(::brontes_pricing::types::DexPriceMsg::Update(pool_update)).unwrap();
+
+                            tx.send(
+                                ::brontes_pricing::types::DexPriceMsg::Update(pool_update)
+                            ).unwrap();
 
                         }
                             return res
