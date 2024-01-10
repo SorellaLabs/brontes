@@ -12,8 +12,6 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion, measureme
 use reth_db::cursor::DbCursorRO;
 
 pub fn init_bench_harness() -> Libmdbx {
-    init_tracing();
-
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
     Libmdbx::init_db(brontes_db_endpoint, None).unwrap()
 }
@@ -163,8 +161,6 @@ criterion_main!(benches);
 fn group<'a>(c: &'a mut Criterion, group_name: &str) -> BenchmarkGroup<'a, WallTime> {
     let mut g = c.benchmark_group(group_name);
     g.noise_threshold(0.03)
-        .warm_up_time(Duration::from_secs(1))
-        .measurement_time(Duration::from_secs(3))
-        .sample_size(200);
+        .warm_up_time(Duration::from_secs(1));
     g
 }
