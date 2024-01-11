@@ -17,6 +17,7 @@ pub mod test_utils;
 
 mod action_classifiers;
 pub use action_classifiers::*;
+mod discovery_classifiers;
 use alloy_sol_types::{sol, SolInterface};
 use brontes_types::normalized_actions::Actions;
 
