@@ -93,6 +93,11 @@ impl Libmdbx {
         Ok(())
     }
 
+    pub fn contains_pool(&self, address: Address) -> bool {
+        let tx = self.ro_tx().unwrap();
+        tx.get::<AddressToProtocol>(address).unwrap().is_some()
+    }
+
     pub fn insert_quotes(&self, block_num: u64, quotes: DexPrices) -> eyre::Result<()> {
         self.write_table::<PoolState, PoolStateData>(
             &quotes
