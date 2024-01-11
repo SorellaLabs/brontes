@@ -230,11 +230,8 @@ impl PairGraph {
                 vec![]
             })
             .into_iter()
-            .tuple_windows()
-            .map(|(base, quote)| {
-                self.graph
-                    .edge_weight(self.graph.find_edge(base, quote).unwrap())
-                    .unwrap()
+            .map(|(base, edge_info)| {
+                edge_info
                     .iter()
                     .map(|pool_info| {
                         let token_0_edge = *self.addr_to_index.get(&pool_info.token_0).unwrap();
@@ -275,9 +272,14 @@ impl PairGraph {
 /// This modification to dijkstra weights the distance between nodes based of of
 /// a max(1, 20 - connectivity). this is to favour better connected nodes as
 /// there price will be more accurate
-pub fn dijkstra_path<G>(graph: G, start: G::NodeId, goal: G::NodeId) -> Option<Vec<G::NodeId>>
+pub fn dijkstra_path<G>(
+    graph: G,
+    start: G::NodeId,
+    goal: G::NodeId,
+) -> Option<Vec<(G::NodeId, G::EdgeWeight)>>
 where
     G: IntoEdges + Visitable,
+    G::EdgeWeight: Clone,
     G::NodeId: Eq + Hash,
 {
     let mut visited = graph.visit_map();
@@ -318,13 +320,13 @@ where
                     if next_score < *ent.get() {
                         *ent.into_mut() = next_score;
                         visit_next.push(MinScored(next_score, next));
-                        predecessor.insert(next, node);
+                        predecessor.insert(next, (node, edge.weight().clone()));
                     }
                 }
                 Vacant(ent) => {
                     ent.insert(next_score);
                     visit_next.push(MinScored(next_score, next));
-                    predecessor.insert(next, node);
+                    predecessor.insert(next, (node, edge.weight().clone()));
                 }
             }
         }
@@ -333,15 +335,13 @@ where
 
     let mut path = Vec::new();
 
-    let mut prev = predecessor.remove(&goal)?;
-    path.push(goal);
+    let (mut prev, mut weight) = predecessor.remove(&goal)?;
+    path.push((prev, weight));
 
-    while let Some(next_prev) = predecessor.remove(&prev) {
-        path.push(prev);
+    while let Some((next_prev, weight)) = predecessor.remove(&prev) {
+        path.push((prev, weight));
         prev = next_prev;
     }
-    // add prev
-    path.push(prev);
     // make start to finish
     path.reverse();
 
