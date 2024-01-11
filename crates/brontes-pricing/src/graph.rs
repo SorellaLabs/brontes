@@ -9,13 +9,14 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair};
+use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, tree::Node};
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use petgraph::{
     graph::{self, UnGraph},
     prelude::*,
-    visit::{IntoEdges, VisitMap, Visitable},
+    visit::{Bfs, GraphBase, IntoEdges, IntoNeighbors, VisitMap, Visitable},
+    Graph,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,7 @@ pub struct PoolPairInformation {
     pub token_1:   Address,
 }
 
+//TODO: Louvain Method for graph clustering
 impl PoolPairInformation {
     fn new(
         pool_addr: Address,
@@ -60,6 +62,7 @@ const CAPACITY: usize = 650_000;
 
 #[derive(Debug, Clone)]
 pub struct PairGraph {
+    //TODO: Try add address to nodes directly in the graph
     graph:         UnGraph<(), Vec<PoolPairInformation>, usize>,
     /// token address to node index in the graph
     addr_to_index: HashMap<Address, usize>,
@@ -108,12 +111,12 @@ impl PairGraph {
                 },
             );
 
-            // crate node if doesn't exist for addr or get node otherwise
+            // fetch the node or create node it if it doesn't exist
             let addr0 = *addr_to_index
                 .entry(pair.0)
                 .or_insert(graph.add_node(()).index());
 
-            // crate node if doesn't exist for addr or get node otherwise
+            // fetch the node or create node it if it doesn't exist
             let addr1 = *addr_to_index
                 .entry(pair.1)
                 .or_insert(graph.add_node(()).index());
@@ -123,8 +126,8 @@ impl PairGraph {
                 .entry(pair.0)
                 .or_insert_with(|| (addr0, HashMap::default()));
 
-            // if we find a already inserted edge, we append the address otherwise we insert
-            // both
+            // if we find an already inserted edge, we append the address otherwise we
+            // insert both
             if let Some(inner) = token_0_entry.1.get_mut(&pair.1) {
                 inner
                     .0
@@ -218,6 +221,7 @@ impl PairGraph {
         pair: Pair,
     ) -> impl Iterator<Item = Vec<PoolPairInfoDirection>> + '_ {
         if pair.0 == pair.1 {
+            error!("Invalid pair, both tokens have the same address");
             return vec![].into_iter()
         }
 
@@ -259,7 +263,6 @@ impl PairGraph {
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
-
         self.known_pairs.insert(pair, path.clone());
 
         path.into_iter()
@@ -359,7 +362,7 @@ where
             // be more accurate than routing though a shit-coin. This will also
             // help as nodes with better connectivity will be searched more than low
             // connectivity nodes
-            let next_score = node_score + max(1, 20 - connectivity);
+            let next_score = node_score + max(1, 1000 - connectivity);
 
             match scores.entry(next) {
                 Occupied(ent) => {
