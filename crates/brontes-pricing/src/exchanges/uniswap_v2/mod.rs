@@ -395,8 +395,12 @@ impl UniswapV2Pool {
         }
     }
 
-    pub fn get_tvl(&self) -> Rational {
-        self.reserve_0.to_scaled_rational(0) + self.reserve_1.to_scaled_rational(0)
+    pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
+        if self.token_0 == base {
+            (self.reserve_0.to_scaled_rational(0), self.reserve_1.to_scaled_rational(0))
+        } else {
+        (self.reserve_1.to_scaled_rational(0), self.reserve_0.to_scaled_rational(0))
+        }
     }
 
     pub fn get_amount_out(&self, amount_in: U256, reserve_in: U256, reserve_out: U256) -> U256 {
