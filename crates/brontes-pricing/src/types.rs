@@ -246,6 +246,7 @@ impl Decodable for PoolStateSnapShot {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct PoolState {
     update_nonce: u16,
     variant:      PoolVariants,
@@ -274,6 +275,23 @@ impl PoolState {
         match &self.variant {
             PoolVariants::UniswapV2(v) => v.address(),
             PoolVariants::UniswapV3(v) => v.address(),
+        }
+    }
+
+    pub fn get_price(&self, base: Address) -> Rational {
+        match self.variant {
+            PoolVariants::UniswapV2(v) => {
+                Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
+            }
+            PoolVariants::UniswapV3(v) => {
+                let price = v.calculate_price(base);
+                if price.is_err() {
+                    tracing::error!(?price, "failed to get price");
+                    return Rational::ZERO
+                }
+
+                Rational::try_from(price.unwrap()).unwrap()
+            }
         }
     }
 }
