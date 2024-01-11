@@ -1,3 +1,6 @@
+mod registry;
+mod subgraph;
+
 use std::{
     cmp::{max, Ordering},
     collections::{
@@ -20,6 +23,8 @@ use petgraph::{
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
+
+use self::registry::SubGraphRegistry;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInformation {
@@ -60,16 +65,17 @@ const CAPACITY: usize = 650_000;
 
 #[derive(Debug, Clone)]
 pub struct PairGraph {
-    graph:         UnGraph<(), HashSet<PoolPairInformation>, usize>,
+    graph:             UnGraph<(), HashSet<PoolPairInformation>, usize>,
     /// token address to node index in the graph
-    addr_to_index: HashMap<Address, usize>,
+    addr_to_index:     HashMap<Address, usize>,
+    subgraph_registry: SubGraphRegistry,
     /// known pairs is a cache of pairs that have been requested before. This
     /// significatnly speeds up the graph as it reduces the amount of times
     /// that we search through the graph. it is set up to return all pools
     /// that can represent a swap leg e.g Curve WETH <> BTC UniV2 WETH <> BTC.
     /// This also supports the idea of a virtual pair. A virtual pair is a pair
     /// that can be represented by 2 or more sub pairs.
-    known_pairs:   HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>>,
+    known_pairs:       HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>>,
 }
 
 impl PairGraph {
@@ -173,7 +179,7 @@ impl PairGraph {
 
         info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph in {}us", delta);
 
-        Self { graph, addr_to_index, known_pairs }
+        Self { graph, addr_to_index, known_pairs, subgraph_resistry: SubGraphRegistry::new() }
     }
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
