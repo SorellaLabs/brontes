@@ -2,7 +2,7 @@ use alloy_primitives::{Bytes, Log};
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
 };
-use brontes_pricing::types::DexPriceMsg;
+use brontes_pricing::types::{DexPriceMsg, DiscoveredPool};
 use brontes_types::{
     extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
@@ -12,12 +12,13 @@ use brontes_types::{
 use hex_literal::hex;
 use itertools::MultiUnzip;
 use malachite::strings::ToLowerHexString;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::trace::parity::{Action, Action::Call};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{impls::*, ActionCollection, StaticBindings};
+use crate::{impls::*, ActionCollection, PoolUpdate, StaticBindings};
 
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -43,49 +44,42 @@ impl<'db> Classifier<'db> {
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
-        let (missing_data_requests, further_classification_requests, tx_roots): (
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-        ) = traces
-            .into_iter()
+        // TODO: this needs to be cleaned up this is so ugly
+        let (
+            missing_data_requests,
+            pool_updates,
+            pool_discovery,
+            further_classification_requests,
+            tx_roots,
+        ): (Vec<_>, Vec<_>, Vec<_>, Vec<_>, Vec<_>) = traces
+            .into_par_iter()
             .enumerate()
             .filter_map(|(tx_idx, mut trace)| {
                 if trace.trace.is_empty() || !trace.is_success {
                     return None
                 }
 
+                // post classification processing collectors
                 let mut missing_decimals = Vec::new();
                 let mut further_classification_requests = Vec::new();
+                let mut pool_updates: Vec<DexPriceMsg> = Vec::new();
+                let mut pool_discovery: Vec<DiscoveredPool> = Vec::new();
+
+                let classification = self.process_classification(
+                    header.number,
+                    tx_idx as u64,
+                    0,
+                    trace.trace.remove(0),
+                    &mut missing_decimals,
+                    &mut further_classification_requests,
+                    &mut pool_discovery,
+                    &mut pool_updates,
+                );
 
                 let root_trace = trace.trace[0].clone();
                 let address = root_trace.get_from_addr();
 
-                let classification =
-                    self.classify_node(header.number, tx_idx as u64, trace.trace.remove(0), 0);
-
-                // Here we are marking more complex actions that require data
-                // that can only be retrieved by classifying it's action and
-                // all subsequent child actions.
-                if classification.continue_classification() {
-                    further_classification_requests.push(classification.get_trace_index());
-                }
-
-                if let Actions::Transfer(transfer) = &classification {
-                    if self.libmdbx.try_get_decimals(transfer.token).is_none() {
-                        missing_decimals.push(transfer.token);
-                    }
-                }
-
-                let node = Node {
-                    inner: vec![],
-                    index: 0,
-                    finalized: false,
-                    subactions: vec![],
-                    address,
-                    data: classification.clone(),
-                    trace_address: vec![],
-                };
+                let node = Node::new(0, address, classification, vec![]);
 
                 let mut tx_root = Root {
                     position:    tx_idx,
@@ -111,36 +105,29 @@ impl<'db> Classifier<'db> {
                             self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
                     }
 
-                    let from_addr = trace.get_from_addr();
-                    let classification = self.classify_node(
+                    let classification = self.process_classification(
                         header.number,
                         tx_idx as u64,
-                        trace.clone(),
                         (index + 1) as u64,
+                        trace.clone(),
+                        &mut missing_decimals,
+                        &mut further_classification_requests,
+                        &mut pool_discovery,
+                        &mut pool_updates,
                     );
 
-                    if classification.continue_classification() {
-                        further_classification_requests.push(classification.get_trace_index());
-                    }
+                    let from_addr = trace.get_from_addr();
 
-                    if let Actions::Transfer(transfer) = &classification {
-                        if self.libmdbx.try_get_decimals(transfer.token).is_none() {
-                            missing_decimals.push(transfer.token);
-                        }
-                    }
-
-                    let node = Node {
-                        index:         (index + 1) as u64,
-                        inner:         vec![],
-                        finalized:     false,
-                        subactions:    vec![],
-                        address:       from_addr,
-                        data:          classification,
-                        trace_address: trace.trace.trace_address,
-                    };
+                    let node = Node::new(
+                        (index + 1) as u64,
+                        from_addr,
+                        classification,
+                        trace.trace.trace_address,
+                    );
 
                     tx_root.insert(node);
                 }
+
                 // Here we reverse the requests to ensure that we always classify the most
                 // nested action & its children first. This is to prevent the
                 // case where we classify a parent action where its children also require
@@ -152,9 +139,23 @@ impl<'db> Classifier<'db> {
                     None
                 };
 
-                Some((missing_decimals, tx_classification_requests, tx_root))
+                Some((
+                    missing_decimals,
+                    pool_updates,
+                    pool_discovery,
+                    tx_classification_requests,
+                    tx_root,
+                ))
             })
+            .collect::<Vec<_>>()
+            .into_iter()
             .multiunzip();
+
+        // send out all updates
+        pool_updates
+            .into_iter()
+            .flatten()
+            .for_each(|update| self.sender.send(update).unwrap());
 
         let mut tree =
             BlockTree { tx_roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
@@ -178,6 +179,52 @@ impl<'db> Classifier<'db> {
         let processing = ExtraProcessing { tokens_decimal_fill: dec };
 
         (processing, tree)
+    }
+
+    fn process_classification(
+        &self,
+        block_number: u64,
+        tx_index: u64,
+        trace_index: u64,
+        trace: TransactionTraceWithLogs,
+        missing_decimals: &mut Vec<Address>,
+        further_classification_requests: &mut Vec<u64>,
+        pool_discovery: &mut Vec<DiscoveredPool>,
+        pool_updates: &mut Vec<DexPriceMsg>,
+    ) -> Actions {
+        let (update, classification) =
+            self.classify_node(block_number, tx_index as u64, trace, trace_index);
+
+        // Here we are marking more complex actions that require data
+        // that can only be retrieved by classifying it's action and
+        // all subsequent child actions.
+        if classification.continue_classification() {
+            further_classification_requests.push(classification.get_trace_index());
+        }
+
+        if let Actions::Transfer(transfer) = &classification {
+            if self.libmdbx.try_get_decimals(transfer.token).is_none() {
+                missing_decimals.push(transfer.token);
+            }
+        }
+
+        // if we have a discovered pool, check if its new
+        match update {
+            Some(DexPriceMsg::DiscoveredPool(pool)) => {
+                if !self.libmdbx.contains_pool(pool.pool_address) {
+                    self.sender
+                        .send(DexPriceMsg::DiscoveredPool(pool.clone()))
+                        .unwrap();
+                    pool_discovery.push(pool);
+                }
+            }
+            Some(rest) => {
+                pool_updates.push(rest);
+            }
+            _ => {}
+        };
+
+        classification
     }
 
     fn remove_swap_transfers(&self, tree: &mut BlockTree<Actions>) {
@@ -311,13 +358,13 @@ impl<'db> Classifier<'db> {
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
-    ) -> Actions {
+    ) -> (Option<DexPriceMsg>, Actions) {
         // we don't classify static calls
         if trace.is_static_call() {
-            return Actions::Unclassified(trace)
+            return (None, Actions::Unclassified(trace))
         }
         if trace.trace.error.is_some() {
-            return Actions::Revert
+            return (None, Actions::Revert)
         }
 
         let from_address = trace.get_from_addr();
@@ -353,7 +400,6 @@ impl<'db> Classifier<'db> {
                         target_address,
                         &trace.logs,
                         &db_tx,
-                        self.sender.clone(),
                         block,
                         tx_idx,
                     )
@@ -362,7 +408,7 @@ impl<'db> Classifier<'db> {
                 .flatten();
 
             if let Some(res) = res {
-                return res
+                return (Some(DexPriceMsg::Update(res.0)), res.1)
             } else {
                 let selector = match &trace.trace.action {
                     Call(action) => &action.input[0..4],
@@ -383,17 +429,20 @@ impl<'db> Classifier<'db> {
         // don't want to classify it
         if trace.logs.len() == 1 {
             if let Some((addr, from, to, value)) = self.decode_transfer(&trace.logs[0]) {
-                return Actions::Transfer(NormalizedTransfer {
-                    trace_index,
-                    to,
-                    from,
-                    token: addr,
-                    amount: value,
-                })
+                return (
+                    None,
+                    Actions::Transfer(NormalizedTransfer {
+                        trace_index,
+                        to,
+                        from,
+                        token: addr,
+                        amount: value,
+                    }),
+                )
             }
         }
 
-        Actions::Unclassified(trace)
+        (None, Actions::Unclassified(trace))
     }
 
     /// This function is used to finalize the classification of complex actions
