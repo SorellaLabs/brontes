@@ -194,7 +194,8 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
-            PoolCreationBlocks
+            PoolCreationBlocks,
+            AddressToFactory
         );
     } else {
         match_table!(
@@ -209,6 +210,7 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
+            AddressToFactory,
             PoolCreationBlocks = &command.key
         );
     }
