@@ -313,7 +313,7 @@ where
             // be more accurate than routing though a shit-coin. This will also
             // help as nodes with better connectivity will be searched more than low
             // connectivity nodes
-            let next_score = node_score + max(1, 20 - connectivity);
+            let next_score = node_score + max(1, 100 - connectivity);
 
             match scores.entry(next) {
                 Occupied(ent) => {
