@@ -293,8 +293,30 @@ impl PairGraph {
             return vec![]
         };
 
-        //let edge_cost =
-        //   |edge: petgraph::graph::EdgeReference<Vec<PoolPairInformation>>| edge.weight();
+        let result = yen(
+            start_idx,
+            |cur_node| {
+                let cur_node: NodeIndex<usize> = (*cur_node).into();
+                self.graph
+                    .edges(cur_node)
+                    .into_iter()
+                    .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
+                    .map(|n| (n.index(), 1))
+                    .collect_vec()
+            },
+            |node| node == end_idx,
+            |node0, node1| {
+                self.graph
+                    .edge_weight(
+                        self.graph
+                            .find_edge((*node0).into(), (*node1).into())
+                            .unwrap(),
+                    )
+                    .unwrap()
+                    .clone()
+            },
+            4,
+        );
 
         return vec![]
     }

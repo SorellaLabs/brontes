@@ -79,170 +79,93 @@ type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 ///                       |&p| p == GOAL);
 /// assert_eq!(result.expect("no path found").1, 4);
 /// ```
-pub fn dijkstra<N, C, FN, IN, FS>(
-    start: &N,
-    mut successors: FN,
-    mut success: FS,
-) -> Option<(Vec<N>, C)>
-where
-    N: Eq + Hash + Clone,
-    C: Zero + Ord + Copy,
-    FN: FnMut(&N) -> IN,
-    IN: IntoIterator<Item = (N, C)>,
-    FS: FnMut(&N) -> bool,
-{
-    dijkstra_internal(start, &mut successors, &mut success)
-}
+// pub fn dijkstra<N, C, E, FN, IN, FS, PV>(
+//     start: &N,
+//     mut successors: FN,
+//     path_value: &PV,
+//     mut success: FS,
+// ) -> Option<(Vec<E>, C)>
+// where
+//     N: Eq + Hash + Clone,
+//     E: Clone + Default,
+//     C: Zero + Ord + Copy,
+//     FN: FnMut(&N) -> IN,
+//     PV: FnMut(&N, &N) -> E,
+//     IN: IntoIterator<Item = (N, C)>,
+//     FS: FnMut(&N) -> bool,
+// {
+//     dijkstra_internal(start, &mut successors, path_value, &mut success)
+// }
 
-pub(crate) fn dijkstra_internal<N, C, FN, IN, FS>(
+pub(crate) fn dijkstra_internal<N, C, E, FN, IN, FS, PV>(
     start: &N,
     successors: &mut FN,
+    path_value: &mut PV,
     success: &mut FS,
-) -> Option<(Vec<N>, C)>
+) -> Option<(Vec<E>, Vec<N>, C)>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
+    E: Clone + Default,
     FN: FnMut(&N) -> IN,
+    PV: FnMut(&N, &N) -> E,
     IN: IntoIterator<Item = (N, C)>,
     FS: FnMut(&N) -> bool,
 {
-    let (parents, reached) = run_dijkstra(start, successors, success);
+    let (parents, reached) = run_dijkstra(start, successors, path_value, success);
     reached.map(|target| {
-        (reverse_path(&parents, |&(p, _)| p, target), parents.get_index(target).unwrap().1 .1)
+        (
+            reverse_path(&parents, |&(p, ..)| p, |_, (_, _, e)| e, target),
+            reverse_path(&parents, |&(p, ..)| p, |v, (..)| v, target),
+            parents.get_index(target).unwrap().1 .1,
+        )
     })
 }
 
-/// Determine all reachable nodes from a starting point as well as the
-/// minimum cost to reach them and a possible optimal parent node
-/// using the [Dijkstra search
-/// algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///
-/// - `start` is the starting node.
-/// - `successors` returns a list of successors for a given node, along with the
-///   cost for moving
-/// from the node to the successor.
-///
-/// The result is a map where every reachable node (not including `start`) is
-/// associated with an optimal parent node and a cost from the start node.
-///
-/// The [`build_path`] function can be used to build a full path from the
-/// starting point to one of the reachable targets.
-///
-/// # Example
-///
-/// We use a graph of integer nodes from 1 to 9, each node leading to its double
-/// and the value after it with a cost of 10 at every step.
-///
-/// ```
-/// use pathfinding::prelude::dijkstra_all;
-///
-/// fn successors(&n: &u32) -> Vec<(u32, usize)> {
-///   if n <= 4 { vec![(n*2, 10), (n*2+1, 10)] } else { vec![] }
-/// }
-///
-/// let reachables = dijkstra_all(&1, successors);
-/// assert_eq!(reachables.len(), 8);
-/// assert_eq!(reachables[&2], (1, 10));  // 1 -> 2
-/// assert_eq!(reachables[&3], (1, 10));  // 1 -> 3
-/// assert_eq!(reachables[&4], (2, 20));  // 1 -> 2 -> 4
-/// assert_eq!(reachables[&5], (2, 20));  // 1 -> 2 -> 5
-/// assert_eq!(reachables[&6], (3, 20));  // 1 -> 3 -> 6
-/// assert_eq!(reachables[&7], (3, 20));  // 1 -> 3 -> 7
-/// assert_eq!(reachables[&8], (4, 30));  // 1 -> 2 -> 4 -> 8
-/// assert_eq!(reachables[&9], (4, 30));  // 1 -> 2 -> 4 -> 9
-/// ```
-pub fn dijkstra_all<N, C, FN, IN>(start: &N, successors: FN) -> HashMap<N, (N, C)>
-where
-    N: Eq + Hash + Clone,
-    C: Zero + Ord + Copy,
-    FN: FnMut(&N) -> IN,
-    IN: IntoIterator<Item = (N, C)>,
-{
-    dijkstra_partial(start, successors, |_| false).0
-}
-
-/// Determine some reachable nodes from a starting point as well as the minimum
-/// cost to reach them and a possible optimal parent node
-/// using the [Dijkstra search algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///
-/// - `start` is the starting node.
-/// - `successors` returns a list of successors for a given node, along with the
-///   cost for moving
-/// from the node to the successor.
-/// - `stop` is a function which is called every time a node is examined
-///   (including `start`). A `true` return value will stop the algorithm.
-///
-/// The result is a map where every node examined before the algorithm stopped
-/// (not including `start`) is associated with an optimal parent node and a cost
-/// from the start node, as well as the node which caused the algorithm to stop
-/// if any.
-///
-/// The [`build_path`] function can be used to build a full path from the
-/// starting point to one of the reachable targets.
-#[allow(clippy::missing_panics_doc)]
-pub fn dijkstra_partial<N, C, FN, IN, FS>(
-    start: &N,
-    mut successors: FN,
-    mut stop: FS,
-) -> (HashMap<N, (N, C)>, Option<N>)
-where
-    N: Eq + Hash + Clone,
-    C: Zero + Ord + Copy,
-    FN: FnMut(&N) -> IN,
-    IN: IntoIterator<Item = (N, C)>,
-    FS: FnMut(&N) -> bool,
-{
-    let (parents, reached) = run_dijkstra(start, &mut successors, &mut stop);
-    (
-        parents
-            .iter()
-            .skip(1)
-            .map(|(n, (p, c))| (n.clone(), (parents.get_index(*p).unwrap().0.clone(), *c))) // unwrap() cannot fail
-            .collect(),
-        reached.map(|i| parents.get_index(i).unwrap().0.clone()),
-    )
-}
-
-fn run_dijkstra<N, C, FN, IN, FS>(
+fn run_dijkstra<N, C, E, FN, IN, FS, PV>(
     start: &N,
     successors: &mut FN,
+    path_value: &mut PV,
     stop: &mut FS,
-) -> (FxIndexMap<N, (usize, C)>, Option<usize>)
+) -> (FxIndexMap<N, (usize, C, E)>, Option<usize>)
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
+    E: Clone + Default,
     FN: FnMut(&N) -> IN,
+    PV: FnMut(&N, &N) -> E,
     IN: IntoIterator<Item = (N, C)>,
     FS: FnMut(&N) -> bool,
 {
     let mut to_see = BinaryHeap::new();
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0 });
-    let mut parents: FxIndexMap<N, (usize, C)> = FxIndexMap::default();
-    parents.insert(start.clone(), (usize::max_value(), Zero::zero()));
+    let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
+    parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
     let mut target_reached = None;
     while let Some(SmallestHolder { cost, index }) = to_see.pop() {
-        let successors = {
-            let (node, _) = parents.get_index(index).unwrap();
-            if stop(node) {
-                target_reached = Some(index);
-                break;
-            }
-            successors(node)
-        };
+        let (node, _) = parents.get_index(index).unwrap();
+        if stop(node) {
+            target_reached = Some(index);
+            break
+        }
+        let successors = successors(node);
+        let base_node = node.clone();
+
         for (successor, move_cost) in successors {
             let new_cost = cost + move_cost;
+            let value = path_value(&base_node, &successor);
             let n;
             match parents.entry(successor) {
                 Vacant(e) => {
                     n = e.index();
-                    e.insert((index, new_cost));
+                    e.insert((index, new_cost, value));
                 }
                 Occupied(mut e) => {
                     if e.get().1 > new_cost {
                         n = e.index();
-                        e.insert((index, new_cost));
+                        e.insert((index, new_cost, value));
                     } else {
-                        continue;
+                        continue
                     }
                 }
             }
@@ -356,7 +279,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(SmallestHolder { cost, index }) = self.to_see.pop() {
             if !self.seen.insert(index) {
-                continue;
+                continue
             }
             let item;
             let successors = {
@@ -384,7 +307,7 @@ where
                             e.insert((index, new_cost));
                             self.total_costs.insert(successor.clone(), new_cost);
                         } else {
-                            continue;
+                            continue
                         }
                     }
                 }
@@ -392,7 +315,7 @@ where
                 self.to_see
                     .push(SmallestHolder { cost: new_cost, index: n });
             }
-            return item;
+            return item
         }
 
         None
@@ -427,20 +350,27 @@ where
 }
 
 #[allow(clippy::needless_collect)]
-fn reverse_path<N, V, F>(parents: &FxIndexMap<N, V>, mut parent: F, start: usize) -> Vec<N>
+fn reverse_path<N, V, F, K, E>(
+    parents: &FxIndexMap<N, V>,
+    mut parent: F,
+    mut collect: K,
+    start: usize,
+) -> Vec<E>
 where
+    E: Clone,
     N: Eq + Hash + Clone,
+    K: for<'a> FnMut(&'a N, &'a V) -> &'a E,
     F: FnMut(&V) -> usize,
 {
     let mut i = start;
     let path = std::iter::from_fn(|| {
         parents.get_index(i).map(|(node, value)| {
             i = parent(value);
-            node
+            collect(node, value)
         })
     })
-    .collect::<Vec<&N>>();
+    .collect::<Vec<&E>>();
     // Collecting the going through the vector is needed to revert the path because
     // the unfold iterator is not double-ended due to its iterative nature.
-    path.into_iter().rev().cloned().collect()
+    path.into_iter().cloned().rev().collect()
 }

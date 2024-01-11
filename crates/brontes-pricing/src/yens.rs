@@ -13,16 +13,19 @@ pub use crate::dijkstras::*;
 
 /// A representation of a path.
 #[derive(Eq, PartialEq, Debug)]
-struct Path<N: Eq + Hash + Clone, C: Zero + Ord + Copy> {
+struct Path<N: Eq + Hash + Clone, E: Eq + Hash + Clone, C: Zero + Ord + Copy> {
     /// The nodes along the path
-    nodes: Vec<N>,
+    nodes:   Vec<N>,
+    /// wieghts,
+    weights: Vec<E>,
     /// The total cost of the path
-    cost:  C,
+    cost:    C,
 }
 
-impl<N, C> PartialOrd for Path<N, C>
+impl<N, E, C> PartialOrd for Path<N, E, C>
 where
     N: Eq + Hash + Clone,
+    E: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -30,9 +33,10 @@ where
     }
 }
 
-impl<N, C> Ord for Path<N, C>
+impl<N, E, C> Ord for Path<N, E, C>
 where
     N: Eq + Hash + Clone,
+    E: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
 {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -99,39 +103,45 @@ where
 /// assert!(empty.is_empty());
 /// ```
 
-pub fn yen<N, C, FN, IN, FS>(
+pub fn yen<N, C, E, FN, IN, FS, PV>(
     start: &N,
     mut successors: FN,
     mut success: FS,
+    mut path_value: PV,
     k: usize,
-) -> Vec<(Vec<N>, C)>
+) -> Vec<(Vec<E>, C)>
 where
     N: Eq + Hash + Clone,
+    E: Clone + Default + Eq + Hash,
     C: Zero + Ord + Copy,
     FN: FnMut(&N) -> IN,
+    PV: FnMut(&N, &N) -> E,
     IN: IntoIterator<Item = (N, C)>,
     FS: FnMut(&N) -> bool,
 {
-    let Some((n, c)) = dijkstra_internal(start, &mut successors, &mut success) else {
+    let Some((e, n, c)) = dijkstra_internal(start, &mut successors, &mut path_value, &mut success)
+    else {
         return vec![];
     };
 
     let mut visited = HashSet::new();
     // A vector containing our paths.
-    let mut routes = vec![Path { nodes: n, cost: c }];
+    let mut routes = vec![Path { nodes: n, weights: e, cost: c }];
     // A min-heap to store our lowest-cost route candidate
     let mut k_routes = BinaryHeap::new();
     for ki in 0..(k - 1) {
         if routes.len() <= ki || routes.len() == k {
             // We have no more routes to explore, or we have found enough.
-            break;
+            break
         }
         // Take the most recent route to explore new spurs.
         let previous = &routes[ki].nodes;
+        let prev_weight = &routes[ki].weights;
         // Iterate over every node except the sink node.
         for i in 0..(previous.len() - 1) {
             let spur_node = &previous[i];
             let root_path = &previous[0..i];
+            let weight_root_path = &prev_weight[0..i];
 
             let mut filtered_edges = HashSet::new();
             for path in &routes {
@@ -155,15 +165,16 @@ where
             };
 
             // Let us find the spur path from the spur node to the sink using.
-            if let Some((spur_path, _)) =
-                dijkstra_internal(spur_node, &mut filtered_successor, &mut success)
+            if let Some((values, spur_path, _)) =
+                dijkstra_internal(spur_node, &mut filtered_successor, &mut path_value, &mut success)
             {
                 let nodes: Vec<N> = root_path.iter().cloned().chain(spur_path).collect();
+                let weights: Vec<E> = weight_root_path.iter().cloned().chain(values).collect();
                 // If we have found the same path before, we will not add it.
                 if !visited.contains(&nodes) {
                     // Since we don't know the root_path cost, we need to recalculate.
                     let cost = make_cost(&nodes, &mut successors);
-                    let path = Path { nodes, cost };
+                    let path = Path { nodes, weights, cost };
                     // Mark as visited
                     visited.insert(path.nodes.clone());
                     // Build a min-heap
@@ -187,7 +198,7 @@ where
                     };
                     routes.push(k_route.0);
                 } else {
-                    break; // Other routes have higher cost
+                    break // Other routes have higher cost
                 }
             }
         }
@@ -196,7 +207,7 @@ where
     routes.sort_unstable();
     routes
         .into_iter()
-        .map(|Path { nodes, cost }| (nodes, cost))
+        .map(|Path { weights, cost, .. }| (weights, cost))
         .collect()
 }
 
