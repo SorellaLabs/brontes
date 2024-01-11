@@ -11,7 +11,10 @@ use std::{
 use alloy_primitives::Address;
 use brontes_types::exchanges::StaticBindingsDb;
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::basic::traits::{One, Zero},
+    Rational,
+};
 use petgraph::{
     data::DataMap,
     graph::{self, DiGraph, UnGraph},
@@ -138,7 +141,7 @@ where
     let mut visit_next = BinaryHeap::new();
     let zero_score = Rational::ZERO;
     scores.insert(start, zero_score);
-    visit_next.push(MinScored(zero_score, (start, Rational::from(1))));
+    visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
 
     while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
         if visited.is_visited(&node) {
@@ -158,13 +161,20 @@ where
                 continue
             }
 
+            // given we have the previous price of the given node,
+            // we can quote all tvl into the start asset by just keeping track of price.
+            //
+            // we sum up all the edges and get the total tvl plus
             let edge_weight = edge.weight();
+            let (price_weight_sum, total_tvl) = edge_weight
+                .iter()
+                .map(|info| {
+                    let pool_state = state.get(&info.info.info.pool_addr).unwrap();
+                    (pool_state.get_price(info.info.get_base_token()), pool_state.get_tvl())
+                })
+                .fold((Rational::ONE, Rational::ZERO), |a, b| (a.0 + (b.0 * b.1), a.1 + b.1));
 
-            edge_weight.iter().map(|info| {
-                let pool_state = state.get(&info.info.info.pool_addr).unwrap();
-            })
-
-
+            let weighted_price_by_tvl = price_weight_sum * total_tvl;
 
             // Nodes that are more connected are given a shorter length. This
             // is done as we want to prioritize routing through a

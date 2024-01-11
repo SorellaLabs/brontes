@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use alloy_primitives::{Address, Log};
+use alloy_primitives::{Address, Log, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::{
     exchanges::StaticBindingsDb,
@@ -275,6 +275,13 @@ impl PoolState {
         match &self.variant {
             PoolVariants::UniswapV2(v) => v.address(),
             PoolVariants::UniswapV3(v) => v.address(),
+        }
+    }
+
+    pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
+        match self.variant {
+            PoolVariants::UniswapV2(v) => v.get_tvl(base),
+            PoolVariants::UniswapV3(v) => v.get_tvl(base),
         }
     }
 
