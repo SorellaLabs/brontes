@@ -2,10 +2,9 @@ use std::fmt::Debug;
 
 use alloy_primitives::Log;
 use brontes_database_libmdbx::implementation::tx::LibmdbxTx;
-use brontes_pricing::types::DexPriceMsg;
+use brontes_pricing::types::PoolUpdate;
 use reth_db::mdbx::RO;
 use reth_primitives::{Address, Bytes};
-use tokio::sync::mpsc::UnboundedSender;
 
 pub mod classifier;
 pub use classifier::*;
@@ -41,10 +40,9 @@ pub trait ActionCollection: Sync + Send {
         target_address: Address,
         logs: &Vec<Log>,
         db_tx: &LibmdbxTx<RO>,
-        tx: UnboundedSender<DexPriceMsg>,
         block: u64,
         tx_idx: u64,
-    ) -> Option<Actions>;
+    ) -> Option<(PoolUpdate, Actions)>;
 }
 
 /// implements the above trait for decoding on the different binding enums

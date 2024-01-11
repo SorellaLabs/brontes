@@ -483,7 +483,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                     }) => {
                         if tokens.len() == 2 {
                             self.pair_graph.add_node(
-                                Pair(*tokens[0], tokens[1]),
+                                Pair(tokens[0], tokens[1]),
                                 pool_address,
                                 protocol,
                             )

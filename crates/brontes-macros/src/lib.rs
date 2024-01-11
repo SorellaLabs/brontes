@@ -330,12 +330,11 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: Address,
                 logs: &Vec<::alloy_primitives::Log>,
                 db_tx: &LibmdbxTx<RO>,
-                tx: UnboundedSender<::brontes_pricing::types::DexPriceMsg>,
                 block: u64,
                 tx_idx: u64,
-            ) -> Option<Actions> {
+            ) -> Option<(PoolUpdate, Actions)> {
                 if sig == self.0.get_signature() {
-                    let res = self.0.decode_trace_data(
+                    return self.0.decode_trace_data(
                             index,
                             data,
                             return_data,
@@ -343,25 +342,19 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             target_address,
                             logs,
                             db_tx
-                        );
-
-                    if let Some(res) = &res {
-                        let pool_update = PoolUpdate {
+                        ).map(|res| {
+                        (PoolUpdate {
                             block,
                             tx_idx,
                             logs: logs.clone(),
                             action: res.clone()
-                        };
+                        },
+                        res)
+                    })
 
-                        tx.send(
-                            ::brontes_pricing::types::DexPriceMsg::Update(pool_update)
-                        ).unwrap();
-                    }
-
-                    return res
                 }
                 #( else if sig == self.#i.get_signature() {
-                    let res = self.#i.decode_trace_data(
+                     return self.#i.decode_trace_data(
                             index,
                             data,
                             return_data,
@@ -369,21 +362,14 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             target_address,
                             logs,
                             db_tx
-                    );
-                        if let Some(res) = &res {
-                            let pool_update = PoolUpdate {
-                                logs: logs.clone(),
-                                block,
-                                tx_idx,
-                                action: res.clone()
-                            };
-
-                            tx.send(
-                                ::brontes_pricing::types::DexPriceMsg::Update(pool_update)
-                            ).unwrap();
-
-                        }
-                            return res
+                    ).map(|res| {
+                        (PoolUpdate {
+                            block,
+                            tx_idx,
+                            logs: logs.clone(),
+                            action: res.clone()
+                        },
+                        res)})
                     }
                 )*
 
