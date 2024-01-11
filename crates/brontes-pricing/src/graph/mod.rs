@@ -1,3 +1,4 @@
+mod all_pair_graph;
 mod registry;
 mod subgraph;
 
@@ -16,6 +17,7 @@ use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, tree::N
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use petgraph::{
+    data::DataMap,
     graph::{self, UnGraph},
     prelude::*,
     visit::{Bfs, GraphBase, IntoEdges, IntoNeighbors, VisitMap, Visitable},
@@ -25,7 +27,8 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
-use self::registry::SubGraphRegistry;
+use self::{all_pair_graph::AllPairGraph, registry::SubGraphRegistry, subgraph::SubGraphEdge};
+use crate::types::PoolState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInformation {
@@ -35,7 +38,6 @@ pub struct PoolPairInformation {
     pub token_1:   Address,
 }
 
-//TODO: Louvain Method for graph clustering
 impl PoolPairInformation {
     fn new(
         pool_addr: Address,
@@ -63,28 +65,36 @@ impl PoolPairInfoDirection {
     }
 }
 
+pub struct GraphManager {
+    all_pair_graph: AllPairGraph,
+    sub_graphs:     SubGraphRegistry,
+}
+
+impl GraphManager {
+    pub fn init_from_db_state(
+        all_pool_data: HashMap<(Address, StaticBindingsDb), Pair>,
+        sub_graphs: HashMap<Pair, Vec<SubGraphEdge>>,
+    ) -> Self {
+        todo!()
+    }
+}
+
 const CAPACITY: usize = 650_000;
 
 #[derive(Debug, Clone)]
 pub struct PairGraph {
     //TODO: Try add address to nodes directly in the graph
-    graph:             UnGraph<(), Vec<PoolPairInformation>, usize>,
+    graph: UnGraph<(), Vec<PoolPairInformation>, usize>,
+
     /// token address to node index in the graph
     addr_to_index:     HashMap<Address, usize>,
-    subgraph_registry: SubGraphRegistry,
-    /// known pairs is a cache of pairs that have been requested before. This
-    /// significatnly speeds up the graph as it reduces the amount of times
-    /// that we search through the graph. it is set up to return all pools
-    /// that can represent a swap leg e.g Curve WETH <> BTC UniV2 WETH <> BTC.
-    /// This also supports the idea of a virtual pair. A virtual pair is a pair
-    /// that can be represented by 2 or more sub pairs.
-    known_pairs:       HashMap<Pair, Vec<Vec<PoolPairInfoDirection>>>,
 }
 
 impl PairGraph {
-    pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
-        let mut graph =
-            UnGraph::<(), Vec<PoolPairInformation>, usize>::with_capacity(CAPACITY / 2, CAPACITY);
+    pub fn init_from_hashmap(map: HashMap<(Address, StaticBindingsDb), Pair>)
+-> Self {         let mut graph =
+            UnGraph::<(), Vec<PoolPairInformation>,
+usize>::with_capacity(CAPACITY / 2, CAPACITY);
 
         let mut addr_to_index = HashMap::with_capacity(CAPACITY);
 
@@ -103,8 +113,8 @@ impl PairGraph {
             insert_known_pair(
                 entry,
                 PoolPairInfoDirection {
-                    info:       PoolPairInformation::new(pool_addr, dex, pair.0, pair.1),
-                    token_0_in: true,
+                    info:       PoolPairInformation::new(pool_addr, dex,
+pair.0, pair.1),                     token_0_in: true,
                 },
             );
 
@@ -112,8 +122,8 @@ impl PairGraph {
             insert_known_pair(
                 entry,
                 PoolPairInfoDirection {
-                    info:       PoolPairInformation::new(pool_addr, dex, pair.0, pair.1),
-                    token_0_in: false,
+                    info:       PoolPairInformation::new(pool_addr, dex,
+pair.0, pair.1),                     token_0_in: false,
                 },
             );
 
@@ -132,34 +142,34 @@ impl PairGraph {
                 .entry(pair.0)
                 .or_insert_with(|| (addr0, HashMap::default()));
 
-            // if we find an already inserted edge, we append the address otherwise we
-            // insert both
+            // if we find an already inserted edge, we append the address
+// otherwise we             // insert both
             if let Some(inner) = token_0_entry.1.get_mut(&pair.1) {
                 inner
                     .0
-                    .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
-            } else {
+                    .push(PoolPairInformation::new(pool_addr, dex, pair.0,
+pair.1));             } else {
                 token_0_entry.1.insert(
                     pair.1,
-                    (vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)], addr1),
-                );
+                    (vec![PoolPairInformation::new(pool_addr, dex, pair.0,
+pair.1)], addr1),                 );
             }
 
             // insert token1
             let token_1_entry = connections
                 .entry(pair.1)
                 .or_insert_with(|| (addr1, HashMap::default()));
-            // if we find a already inserted edge, we append the address otherwise we insert
-            // both
+            // if we find a already inserted edge, we append the address
+// otherwise we insert             // both
             if let Some(inner) = token_1_entry.1.get_mut(&pair.0) {
                 inner
                     .0
-                    .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
-            } else {
+                    .push(PoolPairInformation::new(pool_addr, dex, pair.0,
+pair.1));             } else {
                 token_1_entry.1.insert(
                     pair.0,
-                    (vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)], addr0),
-                );
+                    (vec![PoolPairInformation::new(pool_addr, dex, pair.0,
+pair.1)], addr0),                 );
             }
         }
 
@@ -168,8 +178,8 @@ impl PairGraph {
         info!("linked all graph edges in {}us", delta);
 
         let t0 = SystemTime::now();
-        graph.extend_with_edges(connections.into_values().flat_map(|(node0, edges)| {
-            edges
+        graph.extend_with_edges(connections.into_values().flat_map(|(node0,
+edges)| {             edges
                 .into_par_iter()
                 .map(move |(_, (pools, adjacent))| {
                     (node0, adjacent, pools.into_iter().collect::<Vec<_>>())
@@ -180,20 +190,21 @@ impl PairGraph {
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
 
-        info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph in {}us", delta);
+        info!(nodes=%graph.node_count(), edges=%graph.edge_count(),tokens=%addr_to_index.len(), "built graph in {}us", delta);
 
-        Self { graph, addr_to_index, known_pairs, subgraph_registry: SubGraphRegistry::new() }
-    }
+        Self { graph, addr_to_index      }}
 
-    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
-        let t0 = SystemTime::now();
-        let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
+    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex:
+StaticBindingsDb) {         let t0 = SystemTime::now();
+        let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0,
+pair.1);
 
-        let direction0 = PoolPairInfoDirection { info: pool_pair, token_0_in: true };
-        let direction1 = PoolPairInfoDirection { info: pool_pair, token_0_in: false };
+        let direction0 = PoolPairInfoDirection { info: pool_pair, token_0_in:
+true };         let direction1 = PoolPairInfoDirection { info: pool_pair,
+token_0_in: false };
 
-        self.known_pairs.insert(pair, vec![vec![direction0]]);
-        self.known_pairs.insert(pair.flip(), vec![vec![direction1]]);
+        // self.known_pairs.insert(pair, vec![vec![direction0]]);
+        // self.known_pairs.insert(pair.flip(), vec![vec![direction1]]);
 
         let node_0 = *self
             .addr_to_index
@@ -205,11 +216,11 @@ impl PairGraph {
             .entry(pair.1)
             .or_insert(self.graph.add_node(()).index());
 
-        if let Some(edge) = self.graph.find_edge(node_0.into(), node_1.into()) {
-            let mut pools = self.graph.edge_weight(edge).unwrap().clone();
-            pools.push(pool_pair);
-            self.graph.update_edge(node_0.into(), node_1.into(), pools);
-        } else {
+        if let Some(edge) = self.graph.find_edge(node_0.into(),
+node_1.into()) {             let mut pools =
+self.graph.edge_weight(edge).unwrap().clone();
+pools.push(pool_pair);             self.graph.update_edge(node_0.into(),
+node_1.into(), pools);         } else {
             let mut pair = vec![pool_pair];
 
             self.graph.add_edge(node_0.into(), node_1.into(), pair);
@@ -220,8 +231,8 @@ impl PairGraph {
         info!(us = delta, "added new node in");
     }
 
-    /// fetches the path from start to end for the given pair inserting it into
-    /// a hash map for quick lookups on additional queries.
+    /// fetches the path from start to end for the given pair inserting it
+ /// a hash map for quick lookups on additional queries.
     pub fn get_path(
         &mut self,
         pair: Pair,
@@ -231,9 +242,9 @@ impl PairGraph {
             return vec![].into_iter()
         }
 
-        if let Some(pools) = self.known_pairs.get(&pair) {
-            return pools.clone().into_iter()
-        }
+        // if let Some(pools) = self.known_pairs.get(&pair) {
+        //     return pools.clone().into_iter()
+        // }
 
         let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
             let addr = pair.0;
@@ -246,8 +257,8 @@ impl PairGraph {
             return vec![].into_iter()
         };
 
-        let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
-            .unwrap_or_else(|| {
+        let path = dijkstra_path(&self.graph, (*start_idx).into(),
+(*end_idx).into())             .unwrap_or_else(|| {
                 error!(?pair, "couldn't find path between pairs");
                 vec![]
             })
@@ -259,21 +270,22 @@ impl PairGraph {
                     .unwrap()
                     .iter()
                     .map(|pool_info| {
-                        let token_0_edge = *self.addr_to_index.get(&pool_info.token_0).unwrap();
-                        if base.index() == token_0_edge {
-                            PoolPairInfoDirection { info: *pool_info, token_0_in: true }
-                        } else {
-                            PoolPairInfoDirection { info: *pool_info, token_0_in: false }
-                        }
+                        let token_0_edge =
+*self.addr_to_index.get(&pool_info.token_0).unwrap();
+if base.index() == token_0_edge {
+PoolPairInfoDirection { info: *pool_info, token_0_in: true }
+} else {                             PoolPairInfoDirection { info:
+*pool_info, token_0_in: false }                         }
                     })
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
-        self.known_pairs.insert(pair, path.clone());
+        // self.known_pairs.insert(pair, path.clone());
 
         path.into_iter()
     }
 }
+
 
 #[cfg(feature = "benchmarking")]
 impl PairGraph {
@@ -281,7 +293,7 @@ impl PairGraph {
         self.addr_to_index.keys().copied().collect()
     }
 
-    /// fetches the path from start to end for the given pair inserting it into
+    /// fetches the path from start to end for the given pair inserting it into     
     /// a hash map for quick lookups on additional queries.
     pub fn get_path_no_cache(&self, pair: Pair) {
         if pair.0 == pair.1 {
@@ -299,8 +311,8 @@ impl PairGraph {
             return
         };
 
-        let path = dijkstra_path(&self.graph, (*start_idx).into(), (*end_idx).into())
-            .unwrap_or_else(|| {
+        let path = dijkstra_path(&self.graph, (*start_idx).into(),
+(*end_idx).into())             .unwrap_or_else(|| {
                 error!(?pair, "couldn't find path between pairs");
                 vec![]
             })
@@ -312,12 +324,12 @@ impl PairGraph {
                     .unwrap()
                     .iter()
                     .map(|pool_info| {
-                        let token_0_edge = *self.addr_to_index.get(&pool_info.token_0).unwrap();
-                        if base.index() == token_0_edge {
-                            PoolPairInfoDirection { info: *pool_info, token_0_in: true }
-                        } else {
-                            PoolPairInfoDirection { info: *pool_info, token_0_in: false }
-                        }
+                        let token_0_edge =
+*self.addr_to_index.get(&pool_info.token_0).unwrap();
+if base.index() == token_0_edge {
+PoolPairInfoDirection { info: *pool_info, token_0_in: true }
+} else {                             PoolPairInfoDirection { info:
+*pool_info, token_0_in: false }                         }
                     })
                     .collect::<Vec<_>>()
             })
@@ -329,10 +341,12 @@ impl PairGraph {
     }
 }
 
-/// This modification to dijkstra weights the distance between nodes based of of
-/// a max(1, 20 - connectivity). this is to favour better connected nodes as
-/// there price will be more accurate
-pub fn dijkstra_path<G>(graph: G, start: G::NodeId, goal: G::NodeId) -> Option<Vec<G::NodeId>>
+
+pub fn dijkstra_path<G>(
+    graph: G,
+    start: G::NodeId,
+    goal: G::NodeId,
+) -> Option<Vec<G::NodeId>>
 where
     G: IntoEdges + Visitable,
     G::NodeId: Eq + Hash,
@@ -365,9 +379,9 @@ where
             // Nodes that are more connected are given a shorter length. This
             // is done as we want to prioritize routing through a
             // commonly used token as the liquidity and pricing will
-            // be more accurate than routing though a shit-coin. This will also
-            // help as nodes with better connectivity will be searched more than low
-            // connectivity nodes
+            // be more accurate than routing though a shit-coin. This will
+            // also             // help as nodes with better connectivity will be searched
+            // more than low             // connectivity nodes
             let next_score = node_score + max(1, 1000 - connectivity);
 
             match scores.entry(next) {
