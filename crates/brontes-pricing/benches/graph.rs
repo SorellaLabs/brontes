@@ -62,26 +62,26 @@ pub fn bench_graph_building(c: &mut Criterion) {
     let db = init_bench_harness();
     let (_, fifty_thousand) = load_amount_of_pools_starting_from(&db, 0, 50_000);
 
-    // g.bench_function("50_000 pool graph", move |b| {
-    //     b.iter(|| black_box(PairGraph::init_from_hashmap(fifty_thousand.clone())))
-    // });
-    //
-    // let (_, hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
-    //
-    // g.bench_function("100_000 pool graph", move |b| {
-    //     b.iter(|| black_box(PairGraph::init_from_hashmap(hundred_thousand.clone())))
-    // });
-    //
-    // let (_, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 200_000);
-    //
-    // g.bench_function("200_000 pool graph", move |b| {
-    //     b.iter(|| black_box(PairGraph::init_from_hashmap(two_hundred_thousand.clone())))
-    // });
-    //
-    // let (_, all_known_pools) = load_amount_of_pools_starting_from(&db, 0, usize::MAX);
-    // g.bench_function("all known pool graph", move |b| {
-    //     b.iter(|| black_box(PairGraph::init_from_hashmap(all_known_pools.clone())))
-    // });
+    g.bench_function("50_000 pool graph", move |b| {
+        b.iter(|| black_box(PairGraph::init_from_hashmap(fifty_thousand.clone())))
+    });
+
+    let (_, hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
+
+    g.bench_function("100_000 pool graph", move |b| {
+        b.iter(|| black_box(PairGraph::init_from_hashmap(hundred_thousand.clone())))
+    });
+
+    let (_, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 200_000);
+
+    g.bench_function("200_000 pool graph", move |b| {
+        b.iter(|| black_box(PairGraph::init_from_hashmap(two_hundred_thousand.clone())))
+    });
+
+    let (_, all_known_pools) = load_amount_of_pools_starting_from(&db, 0, usize::MAX);
+    g.bench_function("all known pool graph", move |b| {
+        b.iter(|| black_box(PairGraph::init_from_hashmap(all_known_pools.clone())))
+    });
 }
 
 pub fn bench_graph_insertions(c: &mut Criterion) {
@@ -118,19 +118,19 @@ pub fn bench_graph_path_search(c: &mut Criterion) {
     let mut g = group(c, "pricing-graph/path_search");
     let db = init_bench_harness();
 
-    // let (_, hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
-    // bench_path_search(
-    //     "path search graph 100_000 pools, 50 pairs to usdt",
-    //     PairGraph::init_from_hashmap(hundred_thousand),
-    //     &mut g,
-    // );
-    //
-    // let (_, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 200_000);
-    // bench_path_search(
-    //     "path search graph 200_000 pools, 50 pairs to usdt",
-    //     PairGraph::init_from_hashmap(two_hundred_thousand),
-    //     &mut g,
-    // );
+    let (_, hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
+    bench_path_search(
+        "path search graph 100_000 pools, 50 pairs to usdt",
+        PairGraph::init_from_hashmap(hundred_thousand),
+        &mut g,
+    );
+
+    let (_, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 200_000);
+    bench_path_search(
+        "path search graph 200_000 pools, 50 pairs to usdt",
+        PairGraph::init_from_hashmap(two_hundred_thousand),
+        &mut g,
+    );
 
     let (_, all_known_pools) = load_amount_of_pools_starting_from(&db, 0, usize::MAX);
     bench_path_search(
@@ -142,12 +142,11 @@ pub fn bench_graph_path_search(c: &mut Criterion) {
 
 fn bench_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGroup<'_, WallTime>) {
     graph.clear_pair_cache();
-    let copy_graph = graph.clone();
 
     g.bench_function(name, move |b| {
         b.iter_batched(
             || {
-                copy_graph
+                graph
                     .get_all_known_addresses()
                     .choose_multiple(&mut rand::thread_rng(), 50)
                     .map(|address| Pair(*address, USDT_ADDRESS))
