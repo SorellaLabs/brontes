@@ -18,7 +18,7 @@ use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256}
 use reth_rpc_types::trace::parity::{Action, Action::Call};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{impls::*, ActionCollection, PoolUpdate, StaticBindings};
+use crate::{action_classifiers::*, ActionCollection, PoolUpdate, StaticBindings};
 
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
