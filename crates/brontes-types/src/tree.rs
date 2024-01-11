@@ -304,6 +304,18 @@ pub struct Node<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Node<V> {
+    pub fn new(index: u64, address: Address, data: V, trace_address: Vec<usize>) -> Self {
+        Self {
+            index,
+            trace_address,
+            address,
+            finalized: false,
+            data,
+            inner: vec![],
+            subactions: vec![],
+        }
+    }
+
     pub fn is_finalized(&self) -> bool {
         self.finalized
     }
