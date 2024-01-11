@@ -68,7 +68,7 @@ const CAPACITY: usize = 650_000;
 #[derive(Debug, Clone)]
 pub struct PairGraph {
     //TODO: Try add address to nodes directly in the graph
-    graph:         UnGraph<(), Vec<PoolPairInformation>, usize>,
+    graph:             UnGraph<(), Vec<PoolPairInformation>, usize>,
     /// token address to node index in the graph
     addr_to_index:     HashMap<Address, usize>,
     subgraph_registry: SubGraphRegistry,
@@ -182,7 +182,7 @@ impl PairGraph {
 
         info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%addr_to_index.len(), "built graph in {}us", delta);
 
-        Self { graph, addr_to_index, known_pairs, subgraph_resistry: SubGraphRegistry::new() }
+        Self { graph, addr_to_index, known_pairs, subgraph_registry: SubGraphRegistry::new() }
     }
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
