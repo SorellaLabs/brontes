@@ -82,6 +82,22 @@ impl LiquidationInspector<'_> {
                 })
                 .collect::<Vec<_>>();
 
+        let liqs = liq.iter()
+            .map(|l| {
+                l.iter()
+                    .filter_map(|action| {
+                        if let Actions::Liquidation(liq) = action {
+                            Some(liq)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        let flat_swaps = liq.into_iter().flatten().collect::<Vec<_>>();
+
         let mev = ClassifiedMev {
             block_number: metadata.block_num,
             eoa,
@@ -93,16 +109,38 @@ impl LiquidationInspector<'_> {
             mev_type: MevType::Liquidation,
         };
 
+        // TODO: filter swaps not related to liqs?
         let new_liquidation = Liquidation {
             liquidation_tx_hash: tx_hash,
-            trigger: todo!(),
-            liquidation_swaps_index: todo!(),
-            liquidation_swaps_from: todo!(),
-            liquidation_swaps_pool: todo!(),
-            liquidation_swaps_token_in: todo!(),
-            liquidation_swaps_token_out: todo!(),
-            liquidation_swaps_amount_in: todo!(),
-            liquidation_swaps_amount_out: todo!(),
+            trigger: B256::default(),
+            liquidation_swaps_index: flat_swaps.iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().trace_index)
+                .collect::<Vec<_>>(),
+            liquidation_swaps_from: flat_swaps.iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().from)
+                .collect::<Vec<_>>(),
+            liquidation_swaps_pool: flat_swaps.iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().pool)
+                .collect::<Vec<_>>(),
+            liquidation_swaps_token_in: flat_swaps.iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().token_in)
+                .collect::<Vec<_>>(),
+            liquidation_swaps_token_out: flat_swaps.iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().token_out)
+                .collect::<Vec<_>>(),
+            liquidation_swaps_amount_in: flat_swaps.iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().amount_in.to())
+                .collect::<Vec<_>>(),
+            liquidation_swaps_amount_out: flat_swaps.iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap().amount_out.to())
+                .collect::<Vec<_>>(),
             liquidations_index: todo!(),
             liquidations_liquidator: todo!(),
             liquidations_liquidatee: todo!(),
