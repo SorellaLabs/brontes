@@ -109,7 +109,7 @@ impl LiquidationInspector<'_> {
             liquidations_tokens: todo!(),
             liquidations_amounts: todo!(),
             liquidations_rewards: todo!(),
-            gas_details: todo!(),
+            gas_details: gas_details.clone(),
         };
 
         Some((mev, Box::new(new_liquidation)))
