@@ -31,16 +31,15 @@ use crate::types::{PoolKey, PoolKeysForPair, PoolState};
 
 /// # Brontes Batch Pricer
 /// ## Reasoning
-/// uses a token graph in order to provide the price of any
-/// token in a wanted quote token. A token graph is used here so that we can
-/// keep our pricing strictly to DEFI. This allows us to see delta between
+/// We create a token graph in order to provide the price of any
+/// token in a wanted quote token. This allows us to see delta between
 /// centralized and decentralized prices which allows us to classify
 ///
-/// ## Implimentation
+/// ## Implementation
 /// The Brontes Batch pricer runs on a block by block basis, This process is as
 /// followed:
 ///
-/// 1) On a new highest block recieved from the update channel. All new pools
+/// 1) On a new highest block received from the update channel. All new pools
 /// are added to the token graph as there are now valid paths.
 ///
 /// 2) All new pools touched are loaded by the lazy loader.
@@ -409,8 +408,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.last_update.insert(addr, key);
             self.mut_state.insert(addr, state);
 
-            // pool was initted this block. lets set the override to avoid invalid state
-            // if
+            // pool was initialized this block. lets set the override to avoid invalid state
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
