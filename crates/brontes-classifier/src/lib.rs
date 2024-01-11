@@ -15,10 +15,10 @@ use bindings::*;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-mod impls;
+mod action_classifiers;
+pub use action_classifiers::*;
 use alloy_sol_types::{sol, SolInterface};
 use brontes_types::normalized_actions::Actions;
-pub use impls::*;
 
 sol!(UniswapV2, "./abis/UniswapV2.json");
 sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
