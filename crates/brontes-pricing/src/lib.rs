@@ -23,9 +23,7 @@ pub use graph::GraphManager;
 use graph::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
-use types::{
-    DexPriceMsg,  DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate,
-};
+use types::{DexPriceMsg, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
 
@@ -207,7 +205,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let Some(price) = self.graph_manager.get_price(pool_pair) else {
             error!("no price from graph manager");
             return
-         };
+        };
 
         // insert the pool keys into the price map
         match self.dex_quotes.entry(block) {

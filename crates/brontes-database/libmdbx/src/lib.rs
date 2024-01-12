@@ -29,7 +29,6 @@ use types::{
     dex_price::{make_filter_key_range, DexPriceData},
     metadata::MetadataInner,
     mev_block::{MevBlockWithClassified, MevBlocksData},
-    pool_state::{PoolStateData, PoolStateType},
     token_decimals::TokenDecimalsData,
 };
 
@@ -389,7 +388,7 @@ impl Libmdbx {
                 block_timestamp: block_meta.block_timestamp,
                 mempool_flow: block_meta.mempool_flow.into_iter().collect(),
             },
-            dex_quotes: DexPrices::new(Default::default(), DexQuotes(dex_quotes)),
+            dex_quotes: DexQuotes(dex_quotes),
         })
     }
 

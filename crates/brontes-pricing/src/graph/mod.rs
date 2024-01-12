@@ -82,7 +82,8 @@ impl GraphManager {
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {}
 
-    /// creates a subpool for the pair returning all pools that need to be loaded
+    /// creates a subpool for the pair returning all pools that need to be
+    /// loaded
     pub fn create_subpool(&mut self, pair: Pair) -> Vec<Vec<PoolPairInfoDirection>> {
         todo!()
     }
@@ -91,9 +92,7 @@ impl GraphManager {
         todo!()
     }
 
-    pub fn new_state(&mut self, address: Address, state: PoolState) {
-
-    }
+    pub fn new_state(&mut self, address: Address, state: PoolState) {}
 
     pub fn update_state(&mut self, state: PoolUpdate) {
         todo!()
