@@ -304,7 +304,7 @@ impl PairGraph {
             },
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
-            1,
+            4,
         )
         .into_iter()
         .map(|(i, _)| i)

@@ -170,28 +170,21 @@ pub fn bench_yen_graph_path_search(c: &mut Criterion) {
     let (_, fifty_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
     println!("loaded from db");
     bench_yen_path_search(
-        "yen path search graph 100_000 pools, 50 pairs to usdt",
+        "yen path search graph 100_000 pools, 10 pairs to usdt",
         PairGraph::init_from_hashmap(fifty_thousand),
-        &mut g,
-    );
-
-    let (_, hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
-    bench_yen_path_search(
-        "yen path search graph 100_000 pools, 50 pairs to usdt",
-        PairGraph::init_from_hashmap(hundred_thousand),
         &mut g,
     );
 
     let (_, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 200_000);
     bench_yen_path_search(
-        "yen path search graph 200_000 pools, 50 pairs to usdt",
+        "yen path search graph 200_000 pools, 10 pairs to usdt",
         PairGraph::init_from_hashmap(two_hundred_thousand),
         &mut g,
     );
 
     let (_, all_known_pools) = load_amount_of_pools_starting_from(&db, 0, usize::MAX);
     bench_yen_path_search(
-        "yen path search graph all pools, 50 pairs to usdt",
+        "yen path search graph all pools, 10 pairs to usdt",
         PairGraph::init_from_hashmap(all_known_pools),
         &mut g,
     );
@@ -206,7 +199,7 @@ fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGrou
             || {
                 copy_graph
                     .get_all_known_addresses()
-                    .choose_multiple(&mut rand::thread_rng(), 1)
+                    .choose_multiple(&mut rand::thread_rng(), 50)
                     .map(|address| Pair(*address, USDT_ADDRESS))
                     .collect::<Vec<Pair>>()
             },
