@@ -256,7 +256,6 @@ impl<K: Ord> Ord for SmallestHolder<K> {
     }
 }
 
-
 #[allow(clippy::needless_collect)]
 fn reverse_path<N, V, F, K, E>(
     parents: &FxIndexMap<N, V>,

@@ -308,7 +308,9 @@ impl PairGraph {
             4,
         )
         .into_iter()
-        .map(|(nodes, _)| {
+        .map(|(mut nodes, _)| {
+            // first entry is always default
+            nodes.remove(0);
             nodes
                 .into_iter()
                 .map(|(node0, node1)| {
