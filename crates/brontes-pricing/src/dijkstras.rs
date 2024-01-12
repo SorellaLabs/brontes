@@ -3,7 +3,7 @@
 
 use std::{
     cmp::Ordering,
-    collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap, HashMap, HashSet},
     hash::{BuildHasherDefault, Hash},
     usize,
 };
@@ -137,6 +137,7 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FS: FnMut(&N) -> bool,
 {
+    let mut visited = HashSet::new();
     let mut to_see = BinaryHeap::new();
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0 });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
@@ -144,6 +145,10 @@ where
     let mut target_reached = None;
     while let Some(SmallestHolder { cost, index }) = to_see.pop() {
         let (node, _) = parents.get_index(index).unwrap();
+        if visited.contains(node) {
+            continue
+        }
+
         if stop(node) {
             target_reached = Some(index);
             break
@@ -152,6 +157,10 @@ where
         let base_node = node.clone();
 
         for (successor, move_cost) in successors {
+            if visited.contains(&successor) {
+                continue
+            }
+
             let new_cost = cost + move_cost;
             let value = path_value(&base_node, &successor);
             let n;
@@ -172,6 +181,7 @@ where
 
             to_see.push(SmallestHolder { cost: new_cost, index: n });
         }
+        visited.insert(base_node);
     }
     (parents, target_reached)
 }
