@@ -163,14 +163,78 @@ fn bench_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGroup<'_
     });
 }
 
-criterion_group!(benches, bench_graph_building, bench_graph_insertions, bench_graph_path_search);
+pub fn bench_yen_graph_path_search(c: &mut Criterion) {
+    let mut g = group(c, "pricing-graph/yen_path_search");
+    let db = init_bench_harness();
 
-criterion_main!(benches);
+    let (_, fifty_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
+    bench_yen_path_search(
+        "yen path search graph 100_000 pools, 50 pairs to usdt",
+        PairGraph::init_from_hashmap(fifty_thousand),
+        &mut g,
+    );
+
+    let (_, hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
+    bench_yen_path_search(
+        "yen path search graph 100_000 pools, 50 pairs to usdt",
+        PairGraph::init_from_hashmap(hundred_thousand),
+        &mut g,
+    );
+
+    let (_, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 200_000);
+    bench_yen_path_search(
+        "yen path search graph 200_000 pools, 50 pairs to usdt",
+        PairGraph::init_from_hashmap(two_hundred_thousand),
+        &mut g,
+    );
+
+    let (_, all_known_pools) = load_amount_of_pools_starting_from(&db, 0, usize::MAX);
+    bench_yen_path_search(
+        "yen path search graph all pools, 50 pairs to usdt",
+        PairGraph::init_from_hashmap(all_known_pools),
+        &mut g,
+    );
+}
+
+fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGroup<'_, WallTime>) {
+    graph.clear_pair_cache();
+    let copy_graph = graph.clone();
+
+    g.bench_function(name, move |b| {
+        b.iter_batched(
+            || {
+                copy_graph
+                    .get_all_known_addresses()
+                    .choose_multiple(&mut rand::thread_rng(), 50)
+                    .map(|address| Pair(*address, USDT_ADDRESS))
+                    .collect::<Vec<Pair>>()
+            },
+            |test_pairs| {
+                for pair in test_pairs {
+                    black_box(graph.get_paths(pair))
+                }
+            },
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+criterion_group!(graph_building_benches, bench_graph_building);
+criterion_group!(graph_insertions_benches, bench_graph_insertions);
+criterion_group!(graph_path_search_benches, bench_graph_path_search);
+criterion_group!(yen_graph_path_search_benches, bench_yen_graph_path_search);
+
+criterion_main!(
+    graph_building_benches,
+    graph_insertions_benches,
+    graph_path_search_benches,
+    yen_graph_path_search_benches
+);
 
 fn group<'a>(c: &'a mut Criterion, group_name: &str) -> BenchmarkGroup<'a, WallTime> {
     let mut g = c.benchmark_group(group_name);
     g.noise_threshold(0.03)
-        .warm_up_time(Duration::from_secs(1))
+        .warm_up_time(Duration::from_secs(10))
         .sample_size(40);
     g
 }
