@@ -123,6 +123,7 @@ where
     else {
         return vec![];
     };
+    println!("dijkstr interal ran");
 
     let mut visited = HashSet::new();
     // A vector containing our paths.

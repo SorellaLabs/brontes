@@ -168,6 +168,7 @@ pub fn bench_yen_graph_path_search(c: &mut Criterion) {
     let db = init_bench_harness();
 
     let (_, fifty_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
+    println!("loaded from db");
     bench_yen_path_search(
         "yen path search graph 100_000 pools, 50 pairs to usdt",
         PairGraph::init_from_hashmap(fifty_thousand),
