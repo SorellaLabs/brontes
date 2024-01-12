@@ -660,14 +660,14 @@ pub struct Liquidation {
     #[serde(with = "vec_fixed_string")]
     #[serde(rename = "liquidations.liquidatee")]
     pub liquidations_liquidatee: Vec<Address>,
-    #[serde(with = "vec_vec_fixed_string")]
+    #[serde(with = "vec_fixed_string")]
     #[serde(rename = "liquidations.tokens")]
-    pub liquidations_tokens: Vec<Vec<Address>>,
-    #[serde(with = "vec_vec_u256")]
+    pub liquidations_tokens: Vec<Address>,
+    #[serde(with = "vec_u256")]
     #[serde(rename = "liquidations.amounts")]
-    pub liquidations_amounts: Vec<Vec<U256>>,
+    pub liquidations_amounts: Vec<U256>,
     #[serde(rename = "liquidations.rewards")]
-    pub liquidations_rewards: Vec<Vec<u128>>,
+    pub liquidations_rewards: Vec<u128>,
     #[serde(with = "gas_details_tuple")]
     pub gas_details: GasDetails,
 }
