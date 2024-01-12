@@ -19,7 +19,7 @@ use malachite::{
     Rational,
 };
 use petgraph::{
-    data::DataMap,
+    data::{Build, DataMap},
     graph::{self, DiGraph, UnGraph},
     prelude::*,
     visit::{
@@ -39,6 +39,16 @@ pub struct SubGraphEdge {
 
     distance_to_start_node: usize,
     distance_to_end_node:   usize,
+}
+
+impl SubGraphEdge {
+    pub fn new(
+        info: PoolPairInfoDirection,
+        distance_to_start_node: usize,
+        distance_to_end_node: usize,
+    ) -> Self {
+        Self { info, distance_to_end_node, distance_to_start_node }
+    }
 }
 
 /// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
@@ -125,12 +135,25 @@ impl PairSubGraph {
             .expect("dijsktrs on a subgraph failed, should be impossible")
     }
 
-    pub fn add_new_node(&mut self, edge: PoolPairInfoDirection) {
-        let t0 = edge.info.token_0;
-        let t1 = edge.info.token_1;
+    pub fn add_new_edge(&mut self, edge_info: PoolPairInfoDirection) {
+        let t0 = edge_info.info.token_0;
+        let t1 = edge_info.info.token_1;
 
+        // tokens have to already be in the graph for this edge to be added
         let node0 = self.token_to_index.get(&t0).unwrap();
         let node1 = self.token_to_index.get(&t1).unwrap();
+
+        if let Some(edge) = self.graph.find_edge((*node0).into(), (*node1).into()) {
+            let weights = self.graph.edge_weight_mut(edge).unwrap();
+            let first = weights.first().unwrap();
+
+            let start_dis = first.distance_to_start_node;
+            let end_dis = first.distance_to_end_node;
+
+            let new_edge = SubGraphEdge::new(edge_info, start_dis, end_dis);
+            weights.push(new_edge);
+        } else {
+        }
     }
 }
 
