@@ -2,14 +2,13 @@ use std::collections::HashMap;
 
 use alloy_primitives::TxHash;
 use alloy_rlp::{Decodable, Encodable};
-use brontes_pricing::types::PoolKeysForPair;
 use brontes_types::{extra_processing::Pair, impl_compress_decompress_for_encoded_decoded};
 use bytes::BufMut;
+use malachite::Rational;
 use reth_db::table::Table;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{clickhouse, Row};
 
-use super::utils::dex_quote;
 use crate::{tables::DexPrice, LibmdbxData};
 
 pub fn make_key(block_number: u64, tx_idx: u16) -> TxHash {
@@ -44,7 +43,6 @@ pub fn make_filter_key_range(block_number: u64) -> (TxHash, TxHash) {
 pub struct DexPriceData {
     pub block_number: u64,
     pub tx_idx:       u16,
-    #[serde(with = "dex_quote")]
     pub quote:        DexQuote,
 }
 
@@ -71,7 +69,7 @@ impl LibmdbxDupData<DexPrice> for DexPriceData {
 }
 */
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DexQuote(pub HashMap<Pair, Vec<PoolKeysForPair>>);
+pub struct DexQuote(pub HashMap<Pair, Rational>);
 
 impl From<DexQuoteWithIndex> for DexQuote {
     fn from(value: DexQuoteWithIndex) -> Self {
@@ -79,7 +77,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-impl From<DexQuote> for Vec<(Pair, Vec<PoolKeysForPair>)> {
+impl From<DexQuote> for Vec<(Pair, Rational)> {
     fn from(val: DexQuote) -> Self {
         val.0.into_iter().collect()
     }
@@ -88,7 +86,7 @@ impl From<DexQuote> for Vec<(Pair, Vec<PoolKeysForPair>)> {
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
-    pub quote:  Vec<(Pair, Vec<PoolKeysForPair>)>,
+    pub quote:  Vec<(Pair, Rational)>,
 }
 
 impl Encodable for DexQuoteWithIndex {
