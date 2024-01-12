@@ -156,39 +156,9 @@ impl PairSubGraph {
         let node1 = (*self.token_to_index.get(&t1).unwrap()).into();
 
         if let Some(edge) = self.graph.find_edge(node0, node1) {
-            let weights = self.graph.edge_weight_mut(edge).unwrap();
-            let first = weights.first().unwrap();
-
-            let to_start = first.distance_to_start_node;
-            let to_end = first.distance_to_end_node;
-
-            if !(to_start <= 1 && to_end <= 1) {
-                return false
-            }
-
-            let new_edge = SubGraphEdge::new(
-                PoolPairInfoDirection { info: edge_info, token_0_in: true },
-                to_start,
-                to_end,
-            );
-            weights.push(new_edge);
+            return add_edge(&mut self.graph, edge, edge_info, true)
         } else if let Some(edge) = self.graph.find_edge(node1, node0) {
-            let weights = self.graph.edge_weight_mut(edge).unwrap();
-            let first = weights.first().unwrap();
-
-            let to_start = first.distance_to_start_node;
-            let to_end = first.distance_to_end_node;
-
-            if !(to_start <= 1 && to_end <= 1) {
-                return false
-            }
-
-            let new_edge = SubGraphEdge::new(
-                PoolPairInfoDirection { info: edge_info, token_0_in: false },
-                to_start,
-                to_end,
-            );
-            weights.push(new_edge);
+            return add_edge(&mut self.graph, edge, edge_info, false)
         } else {
             // find the edge with shortest path
             let to_start = self
@@ -209,12 +179,43 @@ impl PairSubGraph {
                 return false
             }
 
+            let d0 = PoolPairInfoDirection { info: edge_info.clone(), token_0_in: true };
+            let d1 = PoolPairInfoDirection { info: edge_info, token_0_in: false };
 
-            let new_edge = SubGraphEdge::new(edge_info, to_start, to_end);
-            self.graph.add_edge(node0, node1, vec![new_edge]);
+            let new_edge0 = SubGraphEdge::new(d0, to_start, to_end);
+            let new_edge1 = SubGraphEdge::new(d1, to_start, to_end);
+
+            self.graph.add_edge(node0, node1, vec![new_edge0]);
+            self.graph.add_edge(node1, node0, vec![new_edge1]);
         }
         true
     }
+}
+
+fn add_edge(
+    graph: &mut DiGraph<(), Vec<SubGraphEdge>, usize>,
+    edge_idx: EdgeIndex<usize>,
+    edge_info: PoolPairInformation,
+    direction: bool,
+) -> bool {
+    let weights = graph.edge_weight_mut(edge_idx).unwrap();
+    let first = weights.first().unwrap();
+
+    let to_start = first.distance_to_start_node;
+    let to_end = first.distance_to_end_node;
+
+    if !(to_start <= 1 && to_end <= 1) {
+        return false
+    }
+
+    let new_edge = SubGraphEdge::new(
+        PoolPairInfoDirection { info: edge_info, token_0_in: direction },
+        to_start,
+        to_end,
+    );
+    weights.push(new_edge);
+
+    true
 }
 
 pub fn dijkstra_path<G>(
