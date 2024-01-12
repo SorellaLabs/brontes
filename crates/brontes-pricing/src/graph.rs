@@ -376,6 +376,60 @@ impl PairGraph {
             .collect::<Vec<_>>();
     }
 
+    pub fn get_k_paths_no_cache(&mut self, pair: Pair) {
+        if pair.0 == pair.1 {
+            error!("Invalid pair, both tokens have the same address");
+            return vec![]
+        }
+
+        let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
+            let addr = pair.0;
+            error!(?addr, "no node for address");
+            return vec![]
+        };
+        let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
+            let addr = pair.1;
+            error!(?addr, "no node for address");
+            return vec![]
+        };
+
+        yen(
+            start_idx,
+            |cur_node| {
+                let cur_node: NodeIndex<usize> = (*cur_node).into();
+                let edges = self.graph.edges(cur_node).collect_vec();
+                let edge_len = edges.len();
+
+                edges
+                    .into_iter()
+                    .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
+                    .map(|n| (n.index(), edge_len))
+                    .collect_vec()
+            },
+            |node| node == end_idx,
+            |node0, node1| {
+                self.graph
+                    .edge_weight(
+                        self.graph
+                            .find_edge((*node0).into(), (*node1).into())
+                            .unwrap(),
+                    )
+                    .unwrap()
+                    .clone()
+                    .into_iter()
+                    .map(|info| {
+                        let index = self.addr_to_index.get(&info.token_0).unwrap();
+                        PoolPairInfoDirection { info, token_0_in: node0 == index }
+                    })
+                    .collect_vec()
+            },
+            4,
+        )
+        .into_iter()
+        .map(|(i, _)| i)
+        .collect_vec();
+    }
+
     pub fn clear_pair_cache(&mut self) {
         self.known_pairs.clear();
     }
