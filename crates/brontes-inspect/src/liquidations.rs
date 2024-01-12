@@ -6,6 +6,7 @@ use brontes_types::{
     classified_mev::{ClassifiedMev, Liquidation, MevType, SpecificMev},
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node, Root},
+    ToFloatNearest,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
@@ -88,6 +89,8 @@ impl LiquidationInspector<'_> {
             )
             .collect::<Vec<_>>();
 
+        let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
+
         let mev = ClassifiedMev {
             block_number: metadata.block_num,
             eoa,
@@ -95,7 +98,7 @@ impl LiquidationInspector<'_> {
             mev_contract,
             mev_profit_collector: todo!(),
             finalized_profit_usd: todo!(),
-            finalized_bribe_usd: todo!(),
+            finalized_bribe_usd: gas_finalized.to_float(),
             mev_type: MevType::Liquidation,
         };
 
@@ -122,7 +125,7 @@ impl LiquidationInspector<'_> {
                 // to be the collateral or
                 // the debt asset?
                 .collect::<Vec<_>>(),
-            liquidations_amounts: todo!(),
+            liquidations_amounts: liqs.iter().map(|s| s.amount.to()).collect::<Vec<_>>(),
             liquidations_rewards: todo!(),
             gas_details: gas_details.clone(),
         };
