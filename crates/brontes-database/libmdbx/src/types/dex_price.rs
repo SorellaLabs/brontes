@@ -4,7 +4,7 @@ use alloy_primitives::TxHash;
 use alloy_rlp::{Decodable, Encodable};
 use brontes_types::{extra_processing::Pair, impl_compress_decompress_for_encoded_decoded};
 use bytes::BufMut;
-use malachite::Rational;
+use malachite::{Natural, Rational};
 use reth_db::table::Table;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{clickhouse, Row};
@@ -94,8 +94,17 @@ impl Encodable for DexQuoteWithIndex {
         Encodable::encode(&self.tx_idx, out);
         let (keys, vals): (Vec<_>, Vec<_>) = self.quote.clone().into_iter().unzip();
 
+        let (nums, denoms): (Vec<_>, Vec<_>) = vals
+            .into_iter()
+            .map(|val| {
+                let (n, d) = val.to_numerator_and_denominator();
+                (n.to_limbs_asc(), d.to_limbs_asc())
+            })
+            .unzip();
+
         keys.encode(out);
-        vals.encode(out);
+        nums.encode(out);
+        denoms.encode(out);
     }
 }
 
@@ -104,9 +113,14 @@ impl Decodable for DexQuoteWithIndex {
         let tx_idx = u16::decode(buf)?;
 
         let keys = Vec::decode(buf)?;
-        let vals = Vec::decode(buf)?;
+        let nums: Vec<Vec<u64>> = Vec::decode(buf)?;
+        let denoms: Vec<Vec<u64>> = Vec::decode(buf)?;
 
-        let map = keys.into_iter().zip(vals).collect::<Vec<_>>();
+        let prices = nums.into_iter().zip(denoms).map(|(num, denom)| {
+            Rational::from_naturals(Natural::from_limbs_asc(&num), Natural::from_limbs_asc(&denom))
+        });
+
+        let map = keys.into_iter().zip(prices).collect::<Vec<_>>();
 
         Ok(Self { tx_idx, quote: map })
     }
