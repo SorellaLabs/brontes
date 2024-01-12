@@ -118,7 +118,6 @@ impl GraphManager {
         todo!()
     }
 
-
     pub fn new_state(&mut self, address: Address, state: PoolState) {}
 
     pub fn update_state(&mut self, state: PoolUpdate) {
