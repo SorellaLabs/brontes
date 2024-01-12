@@ -307,9 +307,24 @@ impl PairGraph {
             4,
         )
         .into_iter()
-        .map(|(i, _)| i)
-        .collect_vec();
-        return vec![]
+        .map(|(nodes, _)| {
+            nodes
+                .into_iter()
+                .map(|(node0, node1)| {
+                    self.graph
+                        .edge_weight(self.graph.find_edge(node0.into(), node1.into()).unwrap())
+                        .unwrap()
+                        .clone()
+                        .into_iter()
+                        .map(|info| {
+                            let index = *self.addr_to_index.get(&info.token_0).unwrap();
+                            PoolPairInfoDirection { info, token_0_in: node0 == index }
+                        })
+                        .collect_vec()
+                })
+                .collect_vec()
+        })
+        .collect_vec()
     }
 }
 
