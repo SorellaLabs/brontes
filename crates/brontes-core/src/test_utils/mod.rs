@@ -9,7 +9,7 @@ use brontes_database_libmdbx::Libmdbx;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use log::Level;
-use reth_primitives::B256;
+use reth_primitives::{Header, B256};
 use reth_rpc_types::{
     trace::parity::{TraceResults, TransactionTrace},
     TransactionReceipt,
@@ -203,4 +203,13 @@ pub async fn store_traces_for_block(block_number: u64) {
     let stringified = serde_json::to_string(&(block_trace, header)).unwrap();
     std::fs::write(&file, stringified).unwrap();
     drop(b)
+}
+
+pub fn load_traces_for_block(block_number: u64) -> (Vec<TxTrace>, Header) {
+    let file = PathBuf::from(format!(
+        "./crates/brontes-core/src/test_utils/liquidation_traces/{}.json",
+        block_number
+    ));
+
+    serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap()
 }
