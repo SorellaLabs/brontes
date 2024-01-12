@@ -1,8 +1,8 @@
 mod all_pair_graph;
+mod dijkstras;
 mod registry;
 mod subgraph;
 mod yens;
-mod dijkstras;
 
 use std::{
     cmp::{max, Ordering},
@@ -11,6 +11,7 @@ use std::{
         BinaryHeap, HashMap, HashSet,
     },
     hash::Hash,
+    ops::{Deref, DerefMut},
     time::SystemTime,
 };
 
@@ -59,6 +60,20 @@ pub struct PoolPairInfoDirection {
     pub token_0_in: bool,
 }
 
+impl Deref for PoolPairInfoDirection {
+    type Target = PoolPairInformation;
+
+    fn deref(&self) -> &Self::Target {
+        &self.info
+    }
+}
+
+impl DerefMut for PoolPairInfoDirection {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.info
+    }
+}
+
 impl PoolPairInfoDirection {
     pub fn get_base_token(&self) -> Address {
         if self.token_0_in {
@@ -83,17 +98,26 @@ impl GraphManager {
         todo!()
     }
 
-    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {}
+    pub fn add_pool(
+        &mut self,
+        pair: Pair,
+        pool_addr: Address,
+        dex: StaticBindingsDb,
+    ) -> Option<PoolPairInfoDirection> {
+        self.all_pair_graph.add_node(pair, pool_addr, dex);
+        None
+    }
 
     /// creates a subpool for the pair returning all pools that need to be
     /// loaded
-    pub fn create_subpool(&mut self, pair: Pair) -> Vec<Vec<PoolPairInfoDirection>> {
+    pub fn create_subpool(&mut self, pair: Pair) -> Vec<Vec<Vec<PoolPairInfoDirection>>> {
         todo!()
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
         todo!()
     }
+
 
     pub fn new_state(&mut self, address: Address, state: PoolState) {}
 
