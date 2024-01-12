@@ -276,7 +276,7 @@ impl PairGraph {
         pair: Pair,
         pool_addr: Address,
         dex: StaticBindingsDb,
-    ) -> Vec<Vec<PoolPairInfoDirection>> {
+    ) -> Vec<Vec<Vec<PoolPairInfoDirection>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
             return vec![]
@@ -293,7 +293,7 @@ impl PairGraph {
             return vec![]
         };
 
-        let result = yen(
+        yen(
             start_idx,
             |cur_node| {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
@@ -316,11 +316,18 @@ impl PairGraph {
                     )
                     .unwrap()
                     .clone()
+                    .into_iter()
+                    .map(|info| {
+                        let index = self.addr_to_index.get(&info.token_0).unwrap();
+                        PoolPairInfoDirection { info, token_0_in: node0 == index }
+                    })
+                    .collect_vec()
             },
             4,
-        );
-
-        return vec![]
+        )
+        .into_iter()
+        .map(|(i, _)| i)
+        .collect_vec()
     }
 }
 
