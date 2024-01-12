@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use alloy_rlp::{Decodable, Encodable};
 use reth_db::{
@@ -40,6 +40,13 @@ impl Display for StaticBindingsDb {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = self.as_string();
         writeln!(f, "{string}")
+    }
+}
+impl FromStr for StaticBindingsDb {
+    type Err = u8;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(s.to_string().into())
     }
 }
 
