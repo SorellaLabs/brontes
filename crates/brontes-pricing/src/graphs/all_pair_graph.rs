@@ -7,7 +7,6 @@ use std::{
     hash::Hash,
     time::SystemTime,
 };
-use super::yens::yen;
 
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, tree::Node};
@@ -24,7 +23,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
-use super::{subgraph::SubGraphEdge, PoolPairInfoDirection, PoolPairInformation};
+use super::{subgraph::SubGraphEdge, yens::yen, PoolPairInfoDirection, PoolPairInformation};
 
 const CAPACITY: usize = 650_000;
 
@@ -141,7 +140,7 @@ impl AllPairGraph {
         }
     }
 
-    pub fn get_paths(&mut self, pair: Pair) -> Vec<Vec<Vec<PoolPairInfoDirection>>> {
+    pub fn get_paths(&mut self, pair: Pair) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
             return vec![]
@@ -179,11 +178,13 @@ impl AllPairGraph {
         )
         .into_iter()
         .map(|(mut nodes, _)| {
+            let path_length = nodes.len();
             nodes
                 .into_iter()
                 // default entry
                 .filter(|(n0, n1)| n0 != n1)
-                .map(|(node0, node1)| {
+                .enumerate()
+                .map(|(i, (node0, node1))| {
                     self.graph
                         .edge_weight(
                             self.graph
@@ -195,7 +196,11 @@ impl AllPairGraph {
                         .into_iter()
                         .map(|info| {
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
-                            PoolPairInfoDirection { info, token_0_in: node1 == index }
+                            SubGraphEdge::new(
+                                PoolPairInfoDirection { info, token_0_in: node1 == index },
+                                i,
+                                path_length - i,
+                            )
                         })
                         .collect_vec()
                 })
