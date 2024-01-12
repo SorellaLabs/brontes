@@ -23,7 +23,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
-use super::{PoolPairInfoDirection, PoolPairInformation, subgraph::SubGraphEdge};
+use super::{subgraph::SubGraphEdge, PoolPairInfoDirection, PoolPairInformation};
 
 const CAPACITY: usize = 650_000;
 

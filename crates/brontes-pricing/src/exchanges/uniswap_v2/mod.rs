@@ -396,10 +396,10 @@ impl UniswapV2Pool {
     }
 
     pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
-        if self.token_0 == base {
+        if self.token_a == base {
             (self.reserve_0.to_scaled_rational(0), self.reserve_1.to_scaled_rational(0))
         } else {
-        (self.reserve_1.to_scaled_rational(0), self.reserve_0.to_scaled_rational(0))
+            (self.reserve_1.to_scaled_rational(0), self.reserve_0.to_scaled_rational(0))
         }
     }
 
