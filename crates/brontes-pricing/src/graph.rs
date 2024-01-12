@@ -314,7 +314,6 @@ impl PairGraph {
                 // default entry
                 .filter(|(n0, n1)| n0 != n1)
                 .map(|(node0, node1)| {
-                    println!("{}, {}", node0, node1);
                     self.graph
                         .edge_weight(
                             self.graph
