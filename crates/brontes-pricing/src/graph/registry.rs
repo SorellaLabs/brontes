@@ -2,8 +2,10 @@ use std::collections::HashMap;
 
 use alloy_primitives::Address;
 use brontes_types::extra_processing::Pair;
+use malachite::Rational;
 
 use super::{subgraph::PairSubGraph, PoolState};
+use crate::types::{PoolStateSnapShot, PoolUpdate};
 
 /// stores all sub-graphs and supports the update mechanisms
 #[derive(Debug, Clone)]
@@ -28,5 +30,23 @@ impl SubGraphRegistry {
         token_to_sub_graph: HashMap<Address, Vec<Pair>>,
     ) -> Self {
         todo!()
+    }
+
+    pub fn update_pool_state(
+        &mut self,
+        pool_address: Address,
+        update: PoolUpdate,
+    ) -> Option<(u16, PoolStateSnapShot)> {
+        Some(
+            self.edge_state
+                .get_mut(&pool_address)?
+                .increment_state(update),
+        )
+    }
+
+    pub fn get_price(&self, pair: Pair) -> Option<Rational> {
+        self.sub_graphs
+            .get(&pair)
+            .map(|graph| graph.fetch_price(&self.edge_state))
     }
 }
