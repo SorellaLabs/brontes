@@ -5,7 +5,6 @@ pub mod initialize;
 
 use alloy_primitives::Address;
 use brontes_database::{clickhouse::Clickhouse, MetadataDB, Pair};
-use brontes_pricing::types::DexPrices;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     exchanges::StaticBindingsDb,
@@ -93,27 +92,8 @@ impl Libmdbx {
         Ok(())
     }
 
-    pub fn insert_quotes(&self, block_num: u64, quotes: DexPrices) -> eyre::Result<()> {
-        self.write_table::<PoolState, PoolStateData>(
-            &quotes
-                .state
-                .iter()
-                .map(|(k, v)| {
-                    PoolStateData {
-                        pool:         k.pool,
-                        batch:        k.batch,
-                        run:          k.run,
-                        update_nonce: k.update_nonce,
-                        // doesn't get encoded
-                        pool_type:    PoolStateType::UniswapV2,
-                        pool_state:   v.clone(),
-                    }
-                })
-                .collect::<Vec<_>>(),
-        )?;
-
+    pub fn insert_quotes(&self, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
         let mut data = quotes
-            .quotes
             .0
             .into_iter()
             .enumerate()
