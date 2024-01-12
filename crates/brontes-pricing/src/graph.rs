@@ -309,10 +309,10 @@ impl PairGraph {
         )
         .into_iter()
         .map(|(mut nodes, _)| {
-            // first entry is always default
-            nodes.remove(0);
             nodes
                 .into_iter()
+                // default entry
+                .filter(|(n0, n1)| n0 != n1)
                 .map(|(node0, node1)| {
                     println!("{}, {}", node0, node1);
                     self.graph
