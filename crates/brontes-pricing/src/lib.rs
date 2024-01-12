@@ -1,6 +1,5 @@
 #![allow(unused)]
 pub mod exchanges;
-mod graph;
 pub mod types;
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
@@ -18,9 +17,10 @@ use brontes_types::{
 use ethers::core::k256::elliptic_curve::bigint::Zero;
 use exchanges::lazy::{LazyExchangeLoader, LazyResult};
 pub use exchanges::*;
+mod graphs;
 use futures::{Future, Stream, StreamExt};
-pub use graph::GraphManager;
-use graph::{PoolPairInfoDirection, PoolPairInformation};
+use graphs::{PoolPairInfoDirection, PoolPairInformation};
+pub use graphs::GraphManager;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
 use types::{DexPriceMsg, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};

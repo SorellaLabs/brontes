@@ -17,7 +17,7 @@ use serde_with::DisplayFromStr;
 use tracing::warn;
 
 use crate::{
-    graph::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
+    graphs::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
     AutomatedMarketMaker,
 };
 
