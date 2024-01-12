@@ -298,7 +298,7 @@ impl PairGraph {
 
                 edges
                     .into_iter()
-                    .filter(|e| e.source() == cur_node && e.target() == cur_node)
+                    .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
                     .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
                     .map(|n| (n.index(), edge_len))
                     .collect_vec()
