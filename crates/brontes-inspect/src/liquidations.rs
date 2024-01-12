@@ -29,12 +29,12 @@ impl Inspector for LiquidationInspector<'_> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let liq_txs =
-            tree.collect_all(|node| (
-                    node.data.is_liquidation(),
-                    node.subactions.iter().any(|action| action.is_liquidation())
-                )
-            );
+        let liq_txs = tree.collect_all(|node| {
+            (
+                node.data.is_liquidation(),
+                node.subactions.iter().any(|action| action.is_liquidation()),
+            )
+        });
 
         liq_txs
             .into_par_iter()
@@ -72,24 +72,20 @@ impl LiquidationInspector<'_> {
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let swaps = actions
             .iter()
-            .filter_map(|action| {
-                if let Actions::Swap(swap) = action {
-                    Some(swap)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
             .collect::<Vec<_>>();
 
         let liqs = actions
             .iter()
-            .filter_map(|action| {
-                if let Actions::Liquidation(liq) = action {
-                    Some(liq)
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |action| {
+                    if let Actions::Liquidation(liq) = action {
+                        Some(liq)
+                    } else {
+                        None
+                    }
+                },
+            )
             .collect::<Vec<_>>();
 
         let mev = ClassifiedMev {
@@ -107,46 +103,19 @@ impl LiquidationInspector<'_> {
         let new_liquidation = Liquidation {
             liquidation_tx_hash: tx_hash,
             trigger: todo!(),
-            liquidation_swaps_index: swaps
-                .iter()
-                .map(|s| s.trace_index)
-                .collect::<Vec<_>>(),
-            liquidation_swaps_from: swaps
-                .iter()
-                .map(|s| s.from)
-                .collect::<Vec<_>>(),
-            liquidation_swaps_pool: swaps
-                .iter()
-                .map(|s| s.pool)
-                .collect::<Vec<_>>(),
-            liquidation_swaps_token_in: swaps
-                .iter()
-                .map(|s| s.token_in)
-                .collect::<Vec<_>>(),
-            liquidation_swaps_token_out: swaps
-                .iter()
-                .map(|s| s.token_out)
-                .collect::<Vec<_>>(),
-            liquidation_swaps_amount_in: swaps
-                .iter()
-                .map(|s| s.amount_in.to())
-                .collect::<Vec<_>>(),
+            liquidation_swaps_index: swaps.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
+            liquidation_swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
+            liquidation_swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
+            liquidation_swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
+            liquidation_swaps_token_out: swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
+            liquidation_swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
             liquidation_swaps_amount_out: swaps
                 .iter()
                 .map(|s| s.amount_out.to())
                 .collect::<Vec<_>>(),
-            liquidations_index: liqs
-                .iter()
-                .map(|s| s.trace_index)
-                .collect::<Vec<_>>(),
-            liquidations_liquidator: liqs
-                .iter()
-                .map(|s| s.liquidator)
-                .collect::<Vec<_>>(),
-            liquidations_liquidatee: liqs
-                .iter()
-                .map(|s| s.debtor)
-                .collect::<Vec<_>>(),
+            liquidations_index: liqs.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
+            liquidations_liquidator: liqs.iter().map(|s| s.liquidator).collect::<Vec<_>>(),
+            liquidations_liquidatee: liqs.iter().map(|s| s.debtor).collect::<Vec<_>>(),
             liquidations_tokens: liqs
                 .iter()
                 .map(|s| s.collateral_asset) // TODO: is this supposed
