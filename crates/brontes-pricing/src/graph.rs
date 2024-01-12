@@ -319,7 +319,7 @@ impl PairGraph {
                     })
                     .collect_vec()
             },
-            4,
+            1,
         )
         .into_iter()
         .map(|(i, _)| i)
