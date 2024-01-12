@@ -24,7 +24,7 @@ use graph::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
 use types::{
-    DexPriceMsg, DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate,
+    DexPriceMsg,  DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate,
 };
 
 use crate::types::{PoolKey, PoolKeysForPair, PoolState};
@@ -292,7 +292,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     // called when we try to progress to the next block
-    fn try_resolve_block(&mut self) -> Option<(u64, DexPrices)> {
+    fn try_resolve_block(&mut self) -> Option<(u64, DexQuotes)> {
         // if there are still requests for the given block or the current block isn't
         // complete yet, then we wait
         if !self.can_progress() {
@@ -339,7 +339,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         self.completed_block += 1;
 
         // add new nodes to pair graph
-        Some((block, DexPrices::new(res)))
+        Some((block, res))
     }
 
     fn on_pool_resolve(&mut self, state: LazyResult) {
@@ -357,7 +357,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
-    fn on_close(&mut self) -> Option<(u64, DexPrices)> {
+    fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
         if self.completed_block >= self.current_block + 1 {
             return None
         }
@@ -395,12 +395,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         self.completed_block += 1;
 
-        Some((block, DexPrices::new( res)))
+        Some((block, res))
     }
 }
 
 impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
-    type Item = (u64, DexPrices);
+    type Item = (u64, DexQuotes);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
