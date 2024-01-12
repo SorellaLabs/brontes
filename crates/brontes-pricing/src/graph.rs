@@ -298,6 +298,7 @@ impl PairGraph {
 
                 edges
                     .into_iter()
+                    .filter(|e| e.source() == cur_node && e.target() == cur_node)
                     .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
                     .map(|n| (n.index(), edge_len))
                     .collect_vec()
@@ -315,7 +316,7 @@ impl PairGraph {
                     self.graph
                         .edge_weight(
                             self.graph
-                                .find_edge(node1.into(), node0.into())
+                                .find_edge(node0.into(), node1.into())
                                 .expect("no edge found"),
                         )
                         .unwrap()
