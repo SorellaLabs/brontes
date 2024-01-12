@@ -12,7 +12,10 @@ use alloy_primitives::Address;
 use brontes_types::exchanges::StaticBindingsDb;
 use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::{
+        arithmetic::traits::{Reciprocal, ReciprocalAssign},
+        basic::traits::{One, Zero},
+    },
     Rational,
 };
 use petgraph::{
@@ -52,7 +55,7 @@ pub struct PairSubGraph {
 }
 
 impl PairSubGraph {
-    pub fn init(pair: Pair, edges: Vec<SubGraphEdge>) -> Self {
+    pub fn init(pair: Pair, edges: Vec<Vec<SubGraphEdge>>) -> Self {
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, usize>::default();
 
         let mut token_to_index = HashMap::new();
@@ -62,7 +65,7 @@ impl PairSubGraph {
             (usize, HashMap<Address, (Vec<SubGraphEdge>, usize)>),
         > = HashMap::default();
 
-        for edge in edges {
+        for edge in edges.into_iter().flatten() {
             let token_0 = edge.info.info.token_0;
             let token_1 = edge.info.info.token_1;
 
@@ -137,7 +140,7 @@ where
 {
     let mut visited = graph.visit_map();
     let mut scores = HashMap::new();
-    let mut predecessor = HashMap::new();
+    let mut node_price = HashMap::new();
     let mut visit_next = BinaryHeap::new();
     let zero_score = Rational::ZERO;
     scores.insert(start, zero_score);
@@ -151,10 +154,6 @@ where
             break
         }
 
-        // grab the connectivity of the
-        let edges = graph.edges(node).collect::<Vec<_>>();
-        let connectivity = edges.len() as isize;
-
         for edge in graph.edges(node) {
             let next = edge.target();
             if visited.is_visited(&next) {
@@ -164,66 +163,58 @@ where
             // given we have the previous price of the given node,
             // we can quote all tvl into the start asset by just keeping track of price.
             //
-            // we sum up all the edges and get the total tvl plus
+            // this is only the have
             let edge_weight = edge.weight();
 
-            let (price_weight_sum, total_tvl) = edge_weight
-                .iter()
-                .map(|info| {
-                    let pool_state = state.get(&info.info.info.pool_addr).unwrap();
-                    let (t0, t1) = pool_state.get_tvl(info.info.get_base_token());
+            let mut pxw = Rational::ZERO;
+            let mut weight = Rational::ZERO;
+            let mut token_0_am = Rational::ZERO;
+            let mut token_1_am = Rational::ZERO;
 
+            for info in edge_weight {
+                let pool_state = state.get(&info.info.info.pool_addr).unwrap();
+                let price = pool_state.get_price(info.info.get_base_token());
+                let (t0, t1) = pool_state.get_tvl(info.info.get_base_token());
 
+                pxw += (price * (t0 + t1));
+                weight += (t0 + t1);
+                token_0_am += t0;
+                token_1_am += t1;
+            }
 
-                    // (pool_state.get_price(info.info.get_base_token()), pool_state.get_tvl(info.info.get_base_token()))
-                });
-                // .fold((Rational::ONE, Rational::ZERO), |a, b| (a.0 + (b.0 * b.1), a.1 + b.1));
+            if weight == Rational::ZERO {
+                continue
+            }
 
-            let weighted_price_by_tvl = price_weight_sum * total_tvl;
+            let local_weighted_price = pxw / weight;
 
-            // Nodes that are more connected are given a shorter length. This
-            // is done as we want to prioritize routing through a
-            // commonly used token as the liquidity and pricing will
-            // be more accurate than routing though a shit-coin. This will
-            // also             // help as nodes with better connectivity will be searched
-            // more than low             // connectivity nodes
-            let next_score = node_score;
-            let new_price = price;
+            let token_0_priced = token_0_am * price;
+            let new_price = price * local_weighted_price.reciprocal();
+            let token_1_priced = token_1_am * new_price;
+
+            let tvl = token_0_priced + token_1_priced;
+
+            let next_score = node_score + tvl.reciprocal();
 
             match scores.entry(next) {
                 Occupied(ent) => {
                     if next_score < *ent.get() {
                         *ent.into_mut() = next_score;
                         visit_next.push(MinScored(next_score, (next, new_price)));
-                        predecessor.insert(next, node);
+                        node_price.insert(next, new_price);
                     }
                 }
                 Vacant(ent) => {
                     ent.insert(next_score);
                     visit_next.push(MinScored(next_score, (next, new_price)));
-                    predecessor.insert(next, node);
+                    node_price.insert(next, new_price);
                 }
             }
         }
         visited.visit(node);
     }
 
-    let mut path = Vec::new();
-
-    let mut prev = predecessor.remove(&goal)?;
-    path.push(goal);
-
-    while let Some(next_prev) = predecessor.remove(&prev) {
-        path.push(prev);
-        prev = next_prev;
-    }
-    // add prev
-    path.push(prev);
-    // make start to finish
-    path.reverse();
-
-    // Some(path)
-    None
+    node_price.remove(&goal).map(|p| p.reciprocal())
 }
 
 fn insert_known_pair(entry: &mut Vec<Vec<PoolPairInfoDirection>>, pool: PoolPairInfoDirection) {
