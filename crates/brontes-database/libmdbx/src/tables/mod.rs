@@ -1,8 +1,8 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
-use paste::paste;
 
+use paste::paste;
 use sorella_db_databases::Database;
 
 mod const_sql;
@@ -201,7 +201,6 @@ pub trait IntoTableKey<T, K, D> {
     fn into_key(value: T) -> K;
     fn into_table_data(key: T, value: T) -> D;
 }
-
 
 /// Macro to declare key value table + extra impl
 #[macro_export]
