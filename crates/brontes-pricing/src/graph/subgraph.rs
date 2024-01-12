@@ -37,8 +37,8 @@ use crate::{types::PoolState, Pair};
 pub struct SubGraphEdge {
     info: PoolPairInfoDirection,
 
-    distance_to_token_0: usize,
-    distance_to_token_1: usize,
+    distance_to_start_node: usize,
+    distance_to_end_node:   usize,
 }
 
 /// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
@@ -47,8 +47,9 @@ pub struct SubGraphEdge {
 /// most correct.
 #[derive(Debug, Clone)]
 pub struct PairSubGraph {
-    pair:  Pair,
-    graph: DiGraph<(), Vec<SubGraphEdge>, usize>,
+    pair:           Pair,
+    graph:          DiGraph<(), Vec<SubGraphEdge>, usize>,
+    token_to_index: HashMap<Address, usize>,
 
     start_node: usize,
     end_node:   usize,
@@ -65,6 +66,7 @@ impl PairSubGraph {
             (usize, HashMap<Address, (Vec<SubGraphEdge>, usize)>),
         > = HashMap::default();
 
+        // TODO: will this is lazy just peek the first edge and be done with it
         for edge in edges.into_iter().flatten() {
             let token_0 = edge.info.info.token_0;
             let token_1 = edge.info.info.token_1;
@@ -112,20 +114,26 @@ impl PairSubGraph {
                 .collect::<Vec<_>>()
         }));
 
-        let start_node = token_to_index.remove(&pair.0).unwrap();
-        let end_node = token_to_index.remove(&pair.1).unwrap();
+        let start_node = *token_to_index.get(&pair.0).unwrap();
+        let end_node = *token_to_index.get(&pair.1).unwrap();
 
-        Self { pair, graph, start_node, end_node }
+        Self { pair, graph, start_node, end_node, token_to_index }
     }
 
     pub fn fetch_price(&self, edge_state: &HashMap<Address, PoolState>) -> Rational {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
-            .expect("dijsktr on a subgraph failed, should be inpossible")
+            .expect("dijsktrs on a subgraph failed, should be impossible")
+    }
+
+    pub fn add_new_node(&self, edge: PoolPairInfoDirection) {
+        let t0 = edge.info.token_0;
+        let t1 = edge.info.token_1;
+
+        let node0 = self.token_to_index.get(&t0).unwrap();
+        let node1 = self.token_to_index.get(&t1).unwrap();
     }
 }
 
-// type EdgeRef: EdgeRef<NodeId = Self::NodeId, EdgeId = Self::EdgeId, Weight =
-// Self::EdgeWeight>;
 pub fn dijkstra_path<G>(
     graph: G,
     start: G::NodeId,
@@ -133,7 +141,6 @@ pub fn dijkstra_path<G>(
     state: &HashMap<Address, PoolState>,
 ) -> Option<Rational>
 where
-    // G::EdgeWeight = Vec<SubGraphEdge>,
     G: IntoEdgeReferences<EdgeWeight = Vec<SubGraphEdge>>,
     G: IntoEdges + Visitable,
     G::NodeId: Eq + Hash,
@@ -160,10 +167,7 @@ where
                 continue
             }
 
-            // given we have the previous price of the given node,
-            // we can quote all tvl into the start asset by just keeping track of price.
-            //
-            // this is only the have
+            // calculate tvl of pool using the start token as the quote
             let edge_weight = edge.weight();
 
             let mut pxw = Rational::ZERO;
@@ -193,7 +197,6 @@ where
             let token_1_priced = token_1_am * new_price;
 
             let tvl = token_0_priced + token_1_priced;
-
             let next_score = node_score + tvl.reciprocal();
 
             match scores.entry(next) {
@@ -217,13 +220,6 @@ where
     node_price.remove(&goal).map(|p| p.reciprocal())
 }
 
-fn insert_known_pair(entry: &mut Vec<Vec<PoolPairInfoDirection>>, pool: PoolPairInfoDirection) {
-    if entry.is_empty() {
-        entry.push(vec![pool]);
-    } else {
-        entry.get_mut(0).unwrap().push(pool);
-    }
-}
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in
 /// a pair for use with a `BinaryHeap`.
 ///
