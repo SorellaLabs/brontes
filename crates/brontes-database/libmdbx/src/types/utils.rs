@@ -242,7 +242,6 @@ pub(crate) mod pool_state {
     }
 }
 
-
 pub mod pools_libmdbx {
 
     use std::str::FromStr;
