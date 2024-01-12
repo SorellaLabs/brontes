@@ -89,6 +89,10 @@ impl LiquidationInspector<'_> {
             )
             .collect::<Vec<_>>();
 
+        // TODO: check this
+        let addr_usd_deltas = self.inner.usd_delta_by_address(idx, todo!(), metadata.clone(), true)?;
+        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
         let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
 
         let mev = ClassifiedMev {
@@ -96,7 +100,7 @@ impl LiquidationInspector<'_> {
             eoa,
             tx_hash,
             mev_contract,
-            mev_profit_collector: todo!(),
+            mev_profit_collector,
             finalized_profit_usd: todo!(),
             finalized_bribe_usd: gas_finalized.to_float(),
             mev_type: MevType::Liquidation,
