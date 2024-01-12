@@ -113,7 +113,6 @@ where
     FS: FnMut(&N) -> bool,
 {
     let (parents, reached) = run_dijkstra(start, successors, path_value, success);
-    println!("reverse pathing");
     reached.map(|target| {
         (
             reverse_path(&parents, |&(p, ..)| p, |_, (_, _, e)| e, target),
