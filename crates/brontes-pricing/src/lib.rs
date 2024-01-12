@@ -115,7 +115,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .remove(&self.current_block)
                 .unwrap_or_default()
             {
-                self.graph_manager.add_node(pair, pool_addr, dex);
+                self.graph_manager.add_pool(pair, pool_addr, dex);
             }
         }
 
@@ -144,13 +144,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .create_subpool(pair)
             .into_iter()
             .flatten()
+            .flatten()
         {
             // load exchange only if its not loaded already
-            if !self.lazy_loader.is_loading(&pool_info.info.pool_addr) {
+            if !self.lazy_loader.is_loading(&pool_info.pool_addr) {
                 self.lazy_loader.lazy_load_exchange(
-                    pool_info.info.pool_addr,
+                    pool_info.pool_addr,
                     trigger_update.block,
-                    pool_info.info.dex_type,
+                    pool_info.dex_type,
                 );
             }
 
@@ -159,7 +160,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .updates
                 .entry(trigger_update.block)
                 .or_default()
-                .push_back((pool_info.info.pool_addr, trigger_update.clone()));
+                .push_back((pool_info.pool_addr, trigger_update.clone()));
         }
     }
 
