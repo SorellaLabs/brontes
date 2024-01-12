@@ -311,8 +311,13 @@ impl PairGraph {
             nodes
                 .into_iter()
                 .map(|(node0, node1)| {
+                    println!("{}, {}", node0, node1);
                     self.graph
-                        .edge_weight(self.graph.find_edge(node1.into(), node0.into()).expect("no edge found"))
+                        .edge_weight(
+                            self.graph
+                                .find_edge(node1.into(), node0.into())
+                                .expect("no edge found"),
+                        )
                         .unwrap()
                         .clone()
                         .into_iter()
