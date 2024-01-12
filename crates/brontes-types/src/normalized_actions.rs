@@ -59,6 +59,13 @@ impl Serialize for Actions {
 }
 
 impl Actions {
+    pub fn force_liquidation(self) -> NormalizedLiquidation {
+        match self {
+            Actions::Liquidation(l) => l,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn force_swap(self) -> NormalizedSwap {
         match self {
             Actions::Swap(s) => s,
