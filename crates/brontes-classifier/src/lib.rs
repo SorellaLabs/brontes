@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use alloy_primitives::LogData;
+use alloy_primitives::Log;
 use brontes_database_libmdbx::implementation::tx::LibmdbxTx;
 use brontes_pricing::types::DexPriceMsg;
 use reth_db::mdbx::RO;
@@ -39,7 +39,7 @@ pub trait ActionCollection: Sync + Send {
         return_data: Bytes,
         from_address: Address,
         target_address: Address,
-        logs: &Vec<LogData>,
+        logs: &Vec<Log>,
         db_tx: &LibmdbxTx<RO>,
         tx: UnboundedSender<DexPriceMsg>,
         block: u64,
@@ -71,7 +71,7 @@ pub trait IntoAction: Debug + Send + Sync {
         return_data: Bytes,
         from_address: Address,
         target_address: Address,
-        logs: &Vec<LogData>,
+        logs: &Vec<Log>,
         db_tx: &LibmdbxTx<RO>,
     ) -> Option<Actions>;
 }

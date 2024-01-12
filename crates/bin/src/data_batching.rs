@@ -14,7 +14,7 @@ use brontes_core::{
 use brontes_database::{Metadata, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
-use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
+use brontes_pricing::{types::DexQuotes, BrontesBatchPricer, GraphManager};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::BlockTree};
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
@@ -63,7 +63,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         }
 
         trace!("initializing pair graph");
-        let pair_graph = PairGraph::init_from_hashmap(pairs);
+        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default());
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
@@ -195,7 +195,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
 }
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
-    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexPrices)>)>,
+    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
     pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataDB)>,
 }
 
