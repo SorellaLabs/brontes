@@ -7,6 +7,7 @@ use std::{
     hash::Hash,
     time::SystemTime,
 };
+use super::yens::yen;
 
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, tree::Node};
@@ -138,6 +139,69 @@ impl AllPairGraph {
 
             self.graph.add_edge(node_0.into(), node_1.into(), pair);
         }
+    }
+
+    pub fn get_paths(&mut self, pair: Pair) -> Vec<Vec<Vec<PoolPairInfoDirection>>> {
+        if pair.0 == pair.1 {
+            error!("Invalid pair, both tokens have the same address");
+            return vec![]
+        }
+
+        let Some(start_idx) = self.token_to_index.get(&pair.0) else {
+            let addr = pair.0;
+            error!(?addr, "no node for address");
+            return vec![]
+        };
+        let Some(end_idx) = self.token_to_index.get(&pair.1) else {
+            let addr = pair.1;
+            error!(?addr, "no node for address");
+            return vec![]
+        };
+
+        yen(
+            start_idx,
+            |cur_node| {
+                let cur_node: NodeIndex<usize> = (*cur_node).into();
+                let edges = self.graph.edges(cur_node).collect_vec();
+                let edge_len = edges.len() as isize;
+                let weight = max(1, 100_isize - edge_len);
+
+                edges
+                    .into_iter()
+                    .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
+                    .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
+                    .map(|n| (n.index(), edge_len))
+                    .collect_vec()
+            },
+            |node| node == end_idx,
+            |node0, node1| (*node0, *node1),
+            4,
+        )
+        .into_iter()
+        .map(|(mut nodes, _)| {
+            nodes
+                .into_iter()
+                // default entry
+                .filter(|(n0, n1)| n0 != n1)
+                .map(|(node0, node1)| {
+                    self.graph
+                        .edge_weight(
+                            self.graph
+                                .find_edge(node0.into(), node1.into())
+                                .expect("no edge found"),
+                        )
+                        .unwrap()
+                        .clone()
+                        .into_iter()
+                        .map(|info| {
+                            let index = *self.token_to_index.get(&info.token_0).unwrap();
+                            PoolPairInfoDirection { info, token_0_in: node1 == index }
+                        })
+                        .collect_vec()
+                })
+                .collect_vec()
+        })
+        .collect_vec()
     }
 }
 
