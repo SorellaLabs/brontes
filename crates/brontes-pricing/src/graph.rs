@@ -293,7 +293,8 @@ impl PairGraph {
             |cur_node| {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
                 let edges = self.graph.edges(cur_node).collect_vec();
-                let edge_len = edges.len();
+                let edge_len = edges.len() as isize;
+                let weight = max(1, 100_isize - edge_len);
 
                 edges
                     .into_iter()
