@@ -1,10 +1,11 @@
 use std::fmt::Debug;
 
-use alloy_primitives::Log;
+use alloy_primitives::LogData;
 use brontes_database_libmdbx::implementation::tx::LibmdbxTx;
-use brontes_pricing::types::PoolUpdate;
+use brontes_pricing::types::DexPriceMsg;
 use reth_db::mdbx::RO;
 use reth_primitives::{Address, Bytes};
+use tokio::sync::mpsc::UnboundedSender;
 
 pub mod classifier;
 pub use classifier::*;
@@ -15,11 +16,10 @@ use bindings::*;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-mod action_classifiers;
-pub use action_classifiers::*;
-mod discovery_classifiers;
+mod impls;
 use alloy_sol_types::{sol, SolInterface};
 use brontes_types::normalized_actions::Actions;
+pub use impls::*;
 
 sol!(UniswapV2, "./abis/UniswapV2.json");
 sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
@@ -30,7 +30,6 @@ sol!(AaveV2, "./abis/AaveV2Pool.json");
 sol!(AaveV3, "./abis/AaveV3Pool.json");
 sol!(UniswapX, "./abis/UniswapXExclusiveDutchOrderReactor.json");
 
-
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
         &self,
@@ -40,11 +39,12 @@ pub trait ActionCollection: Sync + Send {
         return_data: Bytes,
         from_address: Address,
         target_address: Address,
-        logs: &Vec<Log>,
+        logs: &Vec<LogData>,
         db_tx: &LibmdbxTx<RO>,
+        tx: UnboundedSender<DexPriceMsg>,
         block: u64,
         tx_idx: u64,
-    ) -> Option<(PoolUpdate, Actions)>;
+    ) -> Option<Actions>;
 }
 
 /// implements the above trait for decoding on the different binding enums
@@ -71,7 +71,7 @@ pub trait IntoAction: Debug + Send + Sync {
         return_data: Bytes,
         from_address: Address,
         target_address: Address,
-        logs: &Vec<Log>,
+        logs: &Vec<LogData>,
         db_tx: &LibmdbxTx<RO>,
     ) -> Option<Actions>;
 }
