@@ -15,7 +15,7 @@ use futures::{
 use tracing::{error, info};
 
 use crate::{
-    errors::AmmError, graph::PoolPairInfoDirection, types::PoolState, uniswap_v2::UniswapV2Pool,
+    errors::AmmError, graphs::PoolPairInfoDirection, types::PoolState, uniswap_v2::UniswapV2Pool,
     uniswap_v3::UniswapV3Pool, PoolUpdate,
 };
 
