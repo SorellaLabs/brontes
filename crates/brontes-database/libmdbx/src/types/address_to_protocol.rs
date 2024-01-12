@@ -17,6 +17,12 @@ pub struct AddressToProtocolData {
     pub classifier_name: StaticBindingsDb,
 }
 
+impl AddressToProtocolData {
+    pub fn new(address: Address, classifier_name: StaticBindingsDb) -> Self {
+        Self { classifier_name, address }
+    }
+}
+
 impl LibmdbxData<AddressToProtocol> for AddressToProtocolData {
     fn into_key_val(
         &self,
