@@ -13,7 +13,8 @@ use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, tree::N
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use petgraph::{
-    graph::{self, UnGraph},
+    algo::k_shortest_path,
+    graph::{self, EdgeReference, UnGraph},
     prelude::*,
     visit::{Bfs, GraphBase, IntoEdges, IntoNeighbors, VisitMap, Visitable},
     Graph,
@@ -21,6 +22,8 @@ use petgraph::{
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
+
+use crate::yens::yen;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInformation {
@@ -30,7 +33,6 @@ pub struct PoolPairInformation {
     pub token_1:   Address,
 }
 
-//TODO: Louvain Method for graph clustering
 impl PoolPairInformation {
     fn new(
         pool_addr: Address,
@@ -267,6 +269,70 @@ impl PairGraph {
 
         path.into_iter()
     }
+
+    //TODO
+    pub fn get_paths(&mut self, pair: Pair) -> Vec<Vec<Vec<PoolPairInfoDirection>>> {
+        if pair.0 == pair.1 {
+            error!("Invalid pair, both tokens have the same address");
+            return vec![]
+        }
+
+        let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
+            let addr = pair.0;
+            error!(?addr, "no node for address");
+            return vec![]
+        };
+        let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
+            let addr = pair.1;
+            error!(?addr, "no node for address");
+            return vec![]
+        };
+
+        yen(
+            start_idx,
+            |cur_node| {
+                let cur_node: NodeIndex<usize> = (*cur_node).into();
+                let edges = self.graph.edges(cur_node).collect_vec();
+                let edge_len = edges.len() as isize;
+                let weight = max(1, 100_isize - edge_len);
+
+                edges
+                    .into_iter()
+                    .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
+                    .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
+                    .map(|n| (n.index(), edge_len))
+                    .collect_vec()
+            },
+            |node| node == end_idx,
+            |node0, node1| (*node0, *node1),
+            4,
+        )
+        .into_iter()
+        .map(|(mut nodes, _)| {
+            nodes
+                .into_iter()
+                // default entry
+                .filter(|(n0, n1)| n0 != n1)
+                .map(|(node0, node1)| {
+                    self.graph
+                        .edge_weight(
+                            self.graph
+                                .find_edge(node0.into(), node1.into())
+                                .expect("no edge found"),
+                        )
+                        .unwrap()
+                        .clone()
+                        .into_iter()
+                        .map(|info| {
+                            let index = *self.addr_to_index.get(&info.token_0).unwrap();
+                            PoolPairInfoDirection { info, token_0_in: node1 == index }
+                        })
+                        .collect_vec()
+                })
+                .collect_vec()
+        })
+        .collect_vec()
+    }
 }
 
 #[cfg(feature = "benchmarking")]
@@ -318,10 +384,16 @@ impl PairGraph {
             .collect::<Vec<_>>();
     }
 
+    pub fn get_k_paths_no_cache(&mut self, pair: Pair) {
+        self.get_paths(pair);
+    }
+
     pub fn clear_pair_cache(&mut self) {
         self.known_pairs.clear();
     }
 }
+
+//TODO: Implement K simple shortest path algorithm to form subgraphs
 
 /// This modification to dijkstra weights the distance between nodes based of of
 /// a max(1, 20 - connectivity). this is to favour better connected nodes as
@@ -362,7 +434,7 @@ where
             // be more accurate than routing though a shit-coin. This will also
             // help as nodes with better connectivity will be searched more than low
             // connectivity nodes
-            let next_score = node_score + max(1, 1000 - connectivity);
+            let next_score = node_score + max(1, 100 - connectivity);
 
             match scores.entry(next) {
                 Occupied(ent) => {
