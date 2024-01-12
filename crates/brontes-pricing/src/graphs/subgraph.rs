@@ -5,6 +5,7 @@ use std::{
         BinaryHeap, HashMap, HashSet,
     },
     hash::Hash,
+    ops::{Deref, DerefMut},
     time::SystemTime,
 };
 
@@ -40,6 +41,18 @@ pub struct SubGraphEdge {
     distance_to_start_node: usize,
     distance_to_end_node:   usize,
 }
+impl Deref for SubGraphEdge {
+    type Target = PoolPairInfoDirection;
+
+    fn deref(&self) -> &Self::Target {
+        &self.info
+    }
+}
+impl DerefMut for SubGraphEdge {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.info
+    }
+}
 
 impl SubGraphEdge {
     pub fn new(
@@ -66,7 +79,7 @@ pub struct PairSubGraph {
 }
 
 impl PairSubGraph {
-    pub fn init(pair: Pair, edges: Vec<Vec<SubGraphEdge>>) -> Self {
+    pub fn init(pair: Pair, edges: Vec<Vec<Vec<SubGraphEdge>>>) -> Self {
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, usize>::default();
 
         let mut token_to_index = HashMap::new();
@@ -76,8 +89,7 @@ impl PairSubGraph {
             (usize, HashMap<Address, (Vec<SubGraphEdge>, usize)>),
         > = HashMap::default();
 
-        // TODO: will this is lazy just peek the first edge and be done with it
-        for edge in edges.into_iter().flatten() {
+        for edge in edges.into_iter().flatten().flatten() {
             let token_0 = edge.info.info.token_0;
             let token_1 = edge.info.info.token_1;
 
@@ -135,25 +147,73 @@ impl PairSubGraph {
             .expect("dijsktrs on a subgraph failed, should be impossible")
     }
 
-    pub fn add_new_edge(&mut self, edge_info: PoolPairInfoDirection) {
-        let t0 = edge_info.info.token_0;
-        let t1 = edge_info.info.token_1;
+    pub fn add_new_edge(&mut self, edge_info: PoolPairInformation) -> bool {
+        let t0 = edge_info.token_0;
+        let t1 = edge_info.token_1;
 
         // tokens have to already be in the graph for this edge to be added
-        let node0 = self.token_to_index.get(&t0).unwrap();
-        let node1 = self.token_to_index.get(&t1).unwrap();
+        let node0 = (*self.token_to_index.get(&t0).unwrap()).into();
+        let node1 = (*self.token_to_index.get(&t1).unwrap()).into();
 
-        if let Some(edge) = self.graph.find_edge((*node0).into(), (*node1).into()) {
+        if let Some(edge) = self.graph.find_edge(node0, node1) {
             let weights = self.graph.edge_weight_mut(edge).unwrap();
             let first = weights.first().unwrap();
 
-            let start_dis = first.distance_to_start_node;
-            let end_dis = first.distance_to_end_node;
+            let to_start = first.distance_to_start_node;
+            let to_end = first.distance_to_end_node;
 
-            let new_edge = SubGraphEdge::new(edge_info, start_dis, end_dis);
+            if !(to_start <= 1 && to_end <= 1) {
+                return false
+            }
+
+            let new_edge = SubGraphEdge::new(
+                PoolPairInfoDirection { info: edge_info, token_0_in: true },
+                to_start,
+                to_end,
+            );
+            weights.push(new_edge);
+        } else if let Some(edge) = self.graph.find_edge(node1, node0) {
+            let weights = self.graph.edge_weight_mut(edge).unwrap();
+            let first = weights.first().unwrap();
+
+            let to_start = first.distance_to_start_node;
+            let to_end = first.distance_to_end_node;
+
+            if !(to_start <= 1 && to_end <= 1) {
+                return false
+            }
+
+            let new_edge = SubGraphEdge::new(
+                PoolPairInfoDirection { info: edge_info, token_0_in: false },
+                to_start,
+                to_end,
+            );
             weights.push(new_edge);
         } else {
+            // find the edge with shortest path
+            let to_start = self
+                .graph
+                .edges(node0)
+                .map(|e| e.weight().first().unwrap().distance_to_start_node)
+                .min_by(|e0, e1| e0.cmp(e1))
+                .unwrap();
+
+            let to_end = self
+                .graph
+                .edges(node1)
+                .map(|e| e.weight().first().unwrap().distance_to_end_node)
+                .min_by(|e0, e1| e0.cmp(e1))
+                .unwrap();
+
+            if !(to_start <= 1 && to_end <= 1) {
+                return false
+            }
+
+
+            let new_edge = SubGraphEdge::new(edge_info, to_start, to_end);
+            self.graph.add_edge(node0, node1, vec![new_edge]);
         }
+        true
     }
 }
 
