@@ -171,9 +171,13 @@ where
                 .iter()
                 .map(|info| {
                     let pool_state = state.get(&info.info.info.pool_addr).unwrap();
-                    (pool_state.get_price(info.info.get_base_token()), pool_state.get_tvl(info.info.get_base_token()))
-                })
-                .fold((Rational::ONE, Rational::ZERO), |a, b| (a.0 + (b.0 * b.1), a.1 + b.1));
+                    let (t0, t1) = pool_state.get_tvl(info.info.get_base_token());
+
+
+
+                    // (pool_state.get_price(info.info.get_base_token()), pool_state.get_tvl(info.info.get_base_token()))
+                });
+                // .fold((Rational::ONE, Rational::ZERO), |a, b| (a.0 + (b.0 * b.1), a.1 + b.1));
 
             let weighted_price_by_tvl = price_weight_sum * total_tvl;
 
