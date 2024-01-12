@@ -108,7 +108,8 @@ impl DexPrices {
             for hop_pool in &hop.0 {
                 let pair_detail = self.state.get(&hop_pool.key).unwrap();
                 let res = pair_detail.get_price(hop_pool.base);
-                let tvl = pair_detail.get_tvl();
+                let (t1, t2) = pair_detail.get_tvl(hop_pool.base);
+                let tvl = t1 + t2;
 
                 let weight_price = res * &tvl;
 
@@ -170,10 +171,10 @@ pub enum PoolStateSnapShot {
 impl_compress_decompress_for_encoded_decoded!(PoolStateSnapShot);
 
 impl PoolStateSnapShot {
-    pub fn get_tvl(&self) -> Rational {
+    pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
         match self {
-            PoolStateSnapShot::UniswapV2(v) => v.get_tvl(),
-            PoolStateSnapShot::UniswapV3(v) => v.get_tvl(),
+            PoolStateSnapShot::UniswapV2(v) => v.get_tvl(base),
+            PoolStateSnapShot::UniswapV3(v) => v.get_tvl(base),
         }
     }
 
