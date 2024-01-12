@@ -32,11 +32,7 @@ impl SubGraphRegistry {
         todo!()
     }
 
-    pub fn update_pool_state(
-        &mut self,
-        pool_address: Address,
-        update: PoolUpdate,
-    ) -> Option<()> {
+    pub fn update_pool_state(&mut self, pool_address: Address, update: PoolUpdate) -> Option<()> {
         Some(
             self.edge_state
                 .get_mut(&pool_address)?
