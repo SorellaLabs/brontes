@@ -206,7 +206,7 @@ fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGrou
             || {
                 copy_graph
                     .get_all_known_addresses()
-                    .choose_multiple(&mut rand::thread_rng(), 50)
+                    .choose_multiple(&mut rand::thread_rng(), 1)
                     .map(|address| Pair(*address, USDT_ADDRESS))
                     .collect::<Vec<Pair>>()
             },
