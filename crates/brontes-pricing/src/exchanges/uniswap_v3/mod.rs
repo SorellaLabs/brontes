@@ -1156,13 +1156,13 @@ impl UniswapV3Pool {
         Ok(())
     }
 
-    pub fn get_tvl(&self, base: Address) -> (Rational,Rational) {
+    pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
         if self.token_a == base {
-     (   self.reserve_0.to_scaled_rational(0) , self.reserve_1.to_scaled_rational(0))
+            (self.reserve_0.to_scaled_rational(0), self.reserve_1.to_scaled_rational(0))
         } else {
-     (   self.reserve_1.to_scaled_rational(0) , self.reserve_0.to_scaled_rational(0))
+            (self.reserve_1.to_scaled_rational(0), self.reserve_0.to_scaled_rational(0))
         }
-     }
+    }
 
     //
     // pub async fn get_token_decimals<M: TracingProvider>(
