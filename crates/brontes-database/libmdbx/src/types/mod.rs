@@ -5,7 +5,6 @@ pub mod cex_price;
 pub mod dex_price;
 pub mod metadata;
 pub mod pool_creation_block;
-pub mod pool_state;
 pub mod token_decimals;
 mod utils;
 pub(crate) use token_decimals::*;
