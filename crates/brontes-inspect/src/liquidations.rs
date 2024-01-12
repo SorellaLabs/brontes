@@ -30,7 +30,11 @@ impl Inspector for LiquidationInspector<'_> {
         metadata: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let liq_txs =
-            tree.inspect_all(|node| node.subactions.iter().any(|action| action.is_liquidation()));
+            tree.collect_all(|node| (
+                    node.data.is_liquidation(),
+                    node.subactions.iter().any(|action| action.is_liquidation())
+                )
+            );
 
         liq_txs
             .into_par_iter()
@@ -63,41 +67,30 @@ impl LiquidationInspector<'_> {
         mev_contract: Address,
         eoa: Address,
         metadata: Arc<Metadata>,
-        liq: Vec<Vec<Actions>>,
+        actions: Vec<Actions>,
         gas_details: &GasDetails,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let liq_swap_sequences =
-            liq.iter()
-                .map(|liq_swap_seq| {
-                    liq_swap_seq
-                        .iter()
-                        .filter_map(|action| {
-                            if let Actions::Swap(swap) = action {
-                                Some(swap)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>();
-
-        let liqs = liq
+        let swaps = actions
             .iter()
-            .map(|l| {
-                l.iter()
-                    .filter_map(|action| {
-                        if let Actions::Liquidation(liq) = action {
-                            Some(liq)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
+            .filter_map(|action| {
+                if let Actions::Swap(swap) = action {
+                    Some(swap)
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>();
 
-        let flattened = liq.into_iter().flatten().collect::<Vec<_>>();
+        let liqs = actions
+            .iter()
+            .filter_map(|action| {
+                if let Actions::Liquidation(liq) = action {
+                    Some(liq)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
         let mev = ClassifiedMev {
             block_number: metadata.block_num,
@@ -113,61 +106,50 @@ impl LiquidationInspector<'_> {
         // TODO: filter swaps not related to liqs?
         let new_liquidation = Liquidation {
             liquidation_tx_hash: tx_hash,
-            trigger: B256::default(),
-            liquidation_swaps_index: flattened
+            trigger: todo!(),
+            liquidation_swaps_index: swaps
                 .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().trace_index)
+                .map(|s| s.trace_index)
                 .collect::<Vec<_>>(),
-            liquidation_swaps_from: flattened
+            liquidation_swaps_from: swaps
                 .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().from)
+                .map(|s| s.from)
                 .collect::<Vec<_>>(),
-            liquidation_swaps_pool: flattened
+            liquidation_swaps_pool: swaps
                 .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().pool)
+                .map(|s| s.pool)
                 .collect::<Vec<_>>(),
-            liquidation_swaps_token_in: flattened
+            liquidation_swaps_token_in: swaps
                 .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().token_in)
+                .map(|s| s.token_in)
                 .collect::<Vec<_>>(),
-            liquidation_swaps_token_out: flattened
+            liquidation_swaps_token_out: swaps
                 .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().token_out)
+                .map(|s| s.token_out)
                 .collect::<Vec<_>>(),
-            liquidation_swaps_amount_in: flattened
+            liquidation_swaps_amount_in: swaps
                 .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().amount_in.to())
+                .map(|s| s.amount_in.to())
                 .collect::<Vec<_>>(),
-            liquidation_swaps_amount_out: flattened
+            liquidation_swaps_amount_out: swaps
                 .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().amount_out.to())
+                .map(|s| s.amount_out.to())
                 .collect::<Vec<_>>(),
-            liquidations_index: flattened
+            liquidations_index: liqs
                 .iter()
-                .filter(|s| s.is_liquidation())
-                .map(|s| s.clone().force_liquidation().trace_index)
+                .map(|s| s.trace_index)
                 .collect::<Vec<_>>(),
-            liquidations_liquidator: flattened
+            liquidations_liquidator: liqs
                 .iter()
-                .filter(|s| s.is_liquidation())
-                .map(|s| s.clone().force_liquidation().liquidator)
+                .map(|s| s.liquidator)
                 .collect::<Vec<_>>(),
-            liquidations_liquidatee: flattened
+            liquidations_liquidatee: liqs
                 .iter()
-                .filter(|s| s.is_liquidation())
-                .map(|s| s.clone().force_liquidation().debtor)
+                .map(|s| s.debtor)
                 .collect::<Vec<_>>(),
-            liquidations_tokens: flattened
+            liquidations_tokens: liqs
                 .iter()
-                .filter(|s| s.is_liquidation())
-                .map(|s| s.clone().force_liquidation().collateral_asset) // TODO: is this supposed
+                .map(|s| s.collateral_asset) // TODO: is this supposed
                 // to be the collateral or
                 // the debt asset?
                 .collect::<Vec<_>>(),
