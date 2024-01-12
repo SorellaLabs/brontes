@@ -23,7 +23,7 @@ pub enum Commands {
     QueryDb(DatabaseQuery),
     #[command(name = "db_add")]
     AddToDb(AddToDb),
-    #[cfg(features = "tests")]
+    #[cfg(feature = "tests")]
     #[command(name = "store_trace")]
     Traces(TraceArg),
 }
