@@ -166,11 +166,12 @@ where
             //
             // we sum up all the edges and get the total tvl plus
             let edge_weight = edge.weight();
+
             let (price_weight_sum, total_tvl) = edge_weight
                 .iter()
                 .map(|info| {
                     let pool_state = state.get(&info.info.info.pool_addr).unwrap();
-                    (pool_state.get_price(info.info.get_base_token()), pool_state.get_tvl())
+                    (pool_state.get_price(info.info.get_base_token()), pool_state.get_tvl(info.info.get_base_token()))
                 })
                 .fold((Rational::ONE, Rational::ZERO), |a, b| (a.0 + (b.0 * b.1), a.1 + b.1));
 
@@ -217,7 +218,8 @@ where
     // make start to finish
     path.reverse();
 
-    Some(path)
+    // Some(path)
+    None
 }
 
 fn insert_known_pair(entry: &mut Vec<Vec<PoolPairInfoDirection>>, pool: PoolPairInfoDirection) {
