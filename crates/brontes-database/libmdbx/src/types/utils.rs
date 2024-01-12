@@ -194,54 +194,6 @@ pub(crate) mod pool_key {
     }
 }
 
-pub(crate) mod pool_state {
-
-    use brontes_pricing::types::PoolStateSnapShot;
-    use serde::{
-        de::{Deserialize, Deserializer, Error as DesError},
-        ser::{Error as SerError, Serialize, Serializer},
-    };
-
-    use crate::types::pool_state::PoolStateType;
-
-    pub fn serialize<S: Serializer>(
-        u: &PoolStateSnapShot,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let pool_state = match u {
-            PoolStateSnapShot::UniswapV2(pool) => {
-                serde_json::to_string(pool).map_err(|err| S::Error::custom(err.to_string()))?
-            }
-            PoolStateSnapShot::UniswapV3(pool) => {
-                serde_json::to_string(pool).map_err(|err| S::Error::custom(err.to_string()))?
-            }
-        };
-
-        pool_state.serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<PoolStateSnapShot, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let (pool_type, pool_state): (PoolStateType, String) =
-            Deserialize::deserialize(deserializer)?;
-
-        let pool = match pool_type {
-            PoolStateType::UniswapV2 => PoolStateSnapShot::UniswapV2(
-                serde_json::from_str(&pool_state)
-                    .map_err(|err| D::Error::custom(err.to_string()))?,
-            ),
-            PoolStateType::UniswapV3 => PoolStateSnapShot::UniswapV2(
-                serde_json::from_str(&pool_state)
-                    .map_err(|err| D::Error::custom(err.to_string()))?,
-            ),
-        };
-
-        Ok(pool)
-    }
-}
-
 pub mod pools_libmdbx {
 
     use std::str::FromStr;
