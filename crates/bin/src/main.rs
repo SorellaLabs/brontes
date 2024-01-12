@@ -34,7 +34,9 @@ mod banner;
 mod cli;
 
 use banner::print_banner;
-use cli::{AddToDb, Args, Commands, DatabaseQuery, DexPricingArgs, Init, RunArgs, TraceArg};
+#[cfg(feature = "tests")]
+use cli::TraceArg;
+use cli::{AddToDb, Args, Commands, DatabaseQuery, DexPricingArgs, Init, RunArgs};
 
 type Inspectors<'a> = [&'a Box<dyn Inspector>; 4];
 
@@ -110,7 +112,6 @@ async fn run() -> Result<(), Box<dyn Error>> {
         Commands::AddToDb(command) => add_to_db(command).await,
         #[cfg(feature = "tests")]
         Commands::Traces(args) => save_trace(args).await,
-
     }
 }
 
@@ -139,23 +140,24 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
         };
     }
 
-    write_to_table!(req.table,
-            CexPrice,
-            Metadata,
-            DexPrice,
-            PoolState,
-            MevBlocks,
-            TokenDecimals,
-            AddressToTokens,
-            AddressToProtocol,
-            PoolCreationBlocks = &req.key, &req.value
+    write_to_table!(
+        req.table,
+        CexPrice,
+        Metadata,
+        DexPrice,
+        PoolState,
+        MevBlocks,
+        TokenDecimals,
+        AddressToTokens,
+        AddressToProtocol,
+        PoolCreationBlocks = &req.key,
+        &req.value
     );
-
 
     Ok(())
 }
 
-fn process_range_query<T,E>(
+fn process_range_query<T, E>(
     mut cursor: LibmdbxCursor<T, RO>,
     command: DatabaseQuery,
 ) -> Result<Vec<T::Value>, Box<dyn Error>>
