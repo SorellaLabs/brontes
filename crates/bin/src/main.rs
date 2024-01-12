@@ -108,13 +108,13 @@ async fn run() -> Result<(), Box<dyn Error>> {
         Commands::RunBatchWithPricing(command) => run_batch_with_pricing(command).await,
         Commands::QueryDb(command) => query_db(command).await,
         Commands::AddToDb(command) => add_to_db(command).await,
-        #[cfg(features = "tests")]
+        #[cfg(feature = "tests")]
         Command::Traces(args) => save_trace(args).await,
 
     }
 }
 
-#[cfg(features = "tests")]
+#[cfg(feature = "tests")]
 async fn save_trace(req: TraceArg) -> Result<(), Box<dyn Error>> {
     brontes_core::store_traces_for_block(req.block_num).await;
 
