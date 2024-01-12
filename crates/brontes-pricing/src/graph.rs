@@ -297,11 +297,13 @@ impl PairGraph {
             start_idx,
             |cur_node| {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
-                self.graph
-                    .edges(cur_node)
+                let edges = self.graph.edges(cur_node).collect_vec();
+                let edge_len = edges.len();
+
+                edges
                     .into_iter()
                     .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
-                    .map(|n| (n.index(), 1))
+                    .map(|n| (n.index(), edge_len))
                     .collect_vec()
             },
             |node| node == end_idx,
