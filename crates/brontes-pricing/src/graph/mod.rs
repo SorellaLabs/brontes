@@ -16,6 +16,7 @@ use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, tree::Node};
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
+use malachite::Rational;
 use petgraph::{
     data::DataMap,
     graph::{self, UnGraph},
@@ -28,6 +29,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 use self::{all_pair_graph::AllPairGraph, registry::SubGraphRegistry, subgraph::SubGraphEdge};
+use super::PoolUpdate;
 use crate::types::PoolState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -76,5 +78,28 @@ impl GraphManager {
         sub_graphs: HashMap<Pair, Vec<SubGraphEdge>>,
     ) -> Self {
         todo!()
+    }
+
+    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {}
+
+    /// creates a subpool for the pair returning all pools that need to be loaded
+    pub fn create_subpool(&mut self, pair: Pair) -> Vec<Vec<PoolPairInfoDirection>> {
+        todo!()
+    }
+
+    pub fn get_price(&self, pair: Pair) -> Option<Rational> {
+        todo!()
+    }
+
+    pub fn new_state(&mut self, address: Address, state: PoolState) {
+
+    }
+
+    pub fn update_state(&mut self, state: PoolUpdate) {
+        todo!()
+    }
+
+    pub fn has_state(&self, address: &Address) -> bool {
+        false
     }
 }

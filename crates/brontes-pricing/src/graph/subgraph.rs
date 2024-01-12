@@ -125,7 +125,7 @@ impl PairSubGraph {
             .expect("dijsktrs on a subgraph failed, should be impossible")
     }
 
-    pub fn add_new_node(&self, edge: PoolPairInfoDirection) {
+    pub fn add_new_node(&mut self, edge: PoolPairInfoDirection) {
         let t0 = edge.info.token_0;
         let t1 = edge.info.token_1;
 
@@ -150,7 +150,7 @@ where
     let mut node_price = HashMap::new();
     let mut visit_next = BinaryHeap::new();
     let zero_score = Rational::ZERO;
-    scores.insert(start, zero_score);
+    scores.insert(start, zero_score.clone());
     visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
 
     while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
@@ -180,8 +180,8 @@ where
                 let price = pool_state.get_price(info.info.get_base_token());
                 let (t0, t1) = pool_state.get_tvl(info.info.get_base_token());
 
-                pxw += (price * (t0 + t1));
-                weight += (t0 + t1);
+                pxw += (price * (&t0 + &t1));
+                weight += (&t0 + &t1);
                 token_0_am += t0;
                 token_1_am += t1;
             }
@@ -192,24 +192,24 @@ where
 
             let local_weighted_price = pxw / weight;
 
-            let token_0_priced = token_0_am * price;
-            let new_price = price * local_weighted_price.reciprocal();
-            let token_1_priced = token_1_am * new_price;
+            let token_0_priced = token_0_am * &price;
+            let new_price = &price * local_weighted_price.reciprocal();
+            let token_1_priced = token_1_am * &new_price;
 
             let tvl = token_0_priced + token_1_priced;
-            let next_score = node_score + tvl.reciprocal();
+            let next_score = &node_score + tvl.reciprocal();
 
             match scores.entry(next) {
                 Occupied(ent) => {
                     if next_score < *ent.get() {
-                        *ent.into_mut() = next_score;
-                        visit_next.push(MinScored(next_score, (next, new_price)));
+                        *ent.into_mut() = next_score.clone();
+                        visit_next.push(MinScored(next_score, (next, new_price.clone())));
                         node_price.insert(next, new_price);
                     }
                 }
                 Vacant(ent) => {
-                    ent.insert(next_score);
-                    visit_next.push(MinScored(next_score, (next, new_price)));
+                    ent.insert(next_score.clone());
+                    visit_next.push(MinScored(next_score, (next, new_price.clone())));
                     node_price.insert(next, new_price);
                 }
             }
