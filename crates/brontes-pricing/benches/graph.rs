@@ -225,9 +225,9 @@ criterion_group!(graph_path_search_benches, bench_graph_path_search);
 criterion_group!(yen_graph_path_search_benches, bench_yen_graph_path_search);
 
 criterion_main!(
-    graph_building_benches,
+    /*graph_building_benches,
     graph_insertions_benches,
-    graph_path_search_benches,
+    graph_path_search_benches,*/
     yen_graph_path_search_benches
 );
 

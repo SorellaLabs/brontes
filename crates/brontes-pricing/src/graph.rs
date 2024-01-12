@@ -379,18 +379,17 @@ impl PairGraph {
     pub fn get_k_paths_no_cache(&mut self, pair: Pair) {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
-            return vec![]
         }
 
         let Some(start_idx) = self.addr_to_index.get(&pair.0) else {
             let addr = pair.0;
             error!(?addr, "no node for address");
-            return vec![]
+            return
         };
         let Some(end_idx) = self.addr_to_index.get(&pair.1) else {
             let addr = pair.1;
             error!(?addr, "no node for address");
-            return vec![]
+            return
         };
 
         yen(
