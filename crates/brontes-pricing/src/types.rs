@@ -83,54 +83,19 @@ impl_compress_decompress_for_encoded_decoded!(PoolKey);
 #[derive(Debug, Clone)]
 pub struct DexPrices {
     pub quotes: DexQuotes,
-    pub state:  Arc<HashMap<PoolKey, PoolStateSnapShot>>,
 }
 
 impl DexPrices {
-    pub fn new(state: Arc<HashMap<PoolKey, PoolStateSnapShot>>, quotes: DexQuotes) -> Self {
-        Self { state, quotes }
+    pub fn new(quotes: DexQuotes) -> Self {
+        Self { quotes }
     }
 
     pub fn price_after(&self, pair: Pair, tx: usize) -> Option<Rational> {
         if pair.0 == pair.1 {
             return Some(Rational::from(1))
         }
-        let Some(keys) = self.quotes.get_pair_keys(pair, tx) else {
-            warn!(?pair, tx_idx=%tx, "failed to get price for");
-            return None
-        };
-        let mut price = Rational::ZERO;
 
-        for hop in keys {
-            let mut pxw = Rational::ZERO;
-            let mut weight = Rational::ZERO;
-
-            for hop_pool in &hop.0 {
-                let pair_detail = self.state.get(&hop_pool.key).unwrap();
-                let res = pair_detail.get_price(hop_pool.base);
-                let (t1, t2) = pair_detail.get_tvl(hop_pool.base);
-                let tvl = t1 + t2;
-
-                let weight_price = res * &tvl;
-
-                pxw += weight_price;
-                weight += tvl;
-            }
-
-            if weight == Rational::ZERO {
-                // can no longer convert
-                tracing::error!(?pair, "no hops for pool");
-                return None
-            }
-
-            if price == Rational::ZERO {
-                price = pxw / weight;
-            } else {
-                price *= (pxw / weight);
-            }
-        }
-
-        Some(price)
+        self.quotes.get_price(pair, tx).cloned()
     }
 }
 
@@ -152,10 +117,10 @@ impl PoolKeyWithDirection {
 pub struct PoolKeysForPair(pub Vec<PoolKeyWithDirection>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Vec<PoolKeysForPair>>>>);
+pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Rational>>>);
 
 impl DexQuotes {
-    pub fn get_pair_keys(&self, pair: Pair, tx: usize) -> Option<&Vec<PoolKeysForPair>> {
+    pub fn get_price(&self, pair: Pair, tx: usize) -> Option<&Rational> {
         self.0.get(tx)?.as_ref()?.get(&pair)
     }
 }
@@ -280,14 +245,14 @@ impl PoolState {
     }
 
     pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
-        match self.variant {
+        match &self.variant {
             PoolVariants::UniswapV2(v) => v.get_tvl(base),
             PoolVariants::UniswapV3(v) => v.get_tvl(base),
         }
     }
 
     pub fn get_price(&self, base: Address) -> Rational {
-        match self.variant {
+        match &self.variant {
             PoolVariants::UniswapV2(v) => {
                 Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
             }
