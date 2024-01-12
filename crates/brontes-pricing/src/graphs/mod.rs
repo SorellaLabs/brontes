@@ -1,6 +1,8 @@
 mod all_pair_graph;
 mod registry;
 mod subgraph;
+mod yens;
+mod dijkstras;
 
 use std::{
     cmp::{max, Ordering},
