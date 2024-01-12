@@ -77,6 +77,7 @@ impl GraphManager {
         all_pool_data: HashMap<(Address, StaticBindingsDb), Pair>,
         sub_graphs: HashMap<Pair, Vec<SubGraphEdge>>,
     ) -> Self {
+        let graph = AllPairGraph::init_from_hashmap(all_pool_data);
         todo!()
     }
 

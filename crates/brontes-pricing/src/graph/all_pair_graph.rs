@@ -35,10 +35,7 @@ pub struct AllPairGraph {
 }
 
 impl AllPairGraph {
-    pub fn init_from_hashmap(
-        all_pool_data: HashMap<(Address, StaticBindingsDb), Pair>,
-        sub_graphs: HashMap<Pair, Vec<SubGraphEdge>>,
-    ) -> Self {
+    pub fn init_from_hashmap(all_pool_data: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
         let mut graph =
             UnGraph::<(), Vec<PoolPairInformation>, usize>::with_capacity(CAPACITY / 2, CAPACITY);
 
