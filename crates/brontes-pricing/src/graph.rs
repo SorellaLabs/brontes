@@ -271,12 +271,7 @@ impl PairGraph {
     }
 
     //TODO
-    fn get_paths(
-        &mut self,
-        pair: Pair,
-        pool_addr: Address,
-        dex: StaticBindingsDb,
-    ) -> Vec<Vec<Vec<PoolPairInfoDirection>>> {
+    pub fn get_paths(&mut self, pair: Pair) -> Vec<Vec<Vec<PoolPairInfoDirection>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
             return vec![]
