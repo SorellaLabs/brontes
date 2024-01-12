@@ -109,7 +109,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
         Commands::QueryDb(command) => query_db(command).await,
         Commands::AddToDb(command) => add_to_db(command).await,
         #[cfg(feature = "tests")]
-        Command::Traces(args) => save_trace(args).await,
+        Commands::Traces(args) => save_trace(args).await,
 
     }
 }
