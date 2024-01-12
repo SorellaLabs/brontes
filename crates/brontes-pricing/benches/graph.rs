@@ -199,7 +199,7 @@ fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGrou
             || {
                 copy_graph
                     .get_all_known_addresses()
-                    .choose_multiple(&mut rand::thread_rng(), 50)
+                    .choose_multiple(&mut rand::thread_rng(), 10)
                     .map(|address| Pair(*address, USDT_ADDRESS))
                     .collect::<Vec<Pair>>()
             },
@@ -228,7 +228,7 @@ criterion_main!(
 fn group<'a>(c: &'a mut Criterion, group_name: &str) -> BenchmarkGroup<'a, WallTime> {
     let mut g = c.benchmark_group(group_name);
     g.noise_threshold(0.03)
-        .warm_up_time(Duration::from_secs(10))
+        .warm_up_time(Duration::from_secs(1))
         .sample_size(40);
     g
 }
