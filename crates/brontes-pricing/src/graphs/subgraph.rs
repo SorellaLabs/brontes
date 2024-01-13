@@ -222,9 +222,9 @@ where
     let mut visit_next = BinaryHeap::new();
     let zero_score = Rational::ZERO;
     scores.insert(start, zero_score.clone());
-    visit_next.push(MinScored(zero_score, (start, Rational::ONE, Rational::ZERO)));
+    visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
 
-    while let Some(MinScored(node_score, (node, price, t0_am))) = visit_next.pop() {
+    while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
         if visited.is_visited(&node) {
             continue
         }
@@ -244,21 +244,25 @@ where
 
             let mut pxw = Rational::ZERO;
             let mut weight = Rational::ZERO;
-            let mut token_0_am = t0_am.clone();
+            let mut token_0_am = Rational::ZERO;
             let mut token_1_am = Rational::ZERO;
 
             for info in edge_weight {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
                     continue;
                 };
-                let Ok(price) = pool_state.get_price(info.get_base_token()) else {
+
+                // returns t1 / t0
+                let Ok(pool_price) = pool_state.get_price(info.get_base_token()) else {
                     continue;
                 };
 
                 let (t0, t1) = pool_state.get_tvl(info.get_base_token());
+                // because we only know the tvl of the first token and we can normalize it
+                // to get a proper weight, its all we use.
                 let t0_p = &t0 * &price;
 
-                pxw += (price * &t0_p);
+                pxw += (pool_price * &t0_p);
                 weight += (&t0_p);
 
                 token_0_am += t0;
@@ -272,22 +276,22 @@ where
             let local_weighted_price = pxw / weight;
             let token_0_priced = token_0_am * &price;
             let new_price = &price * local_weighted_price;
+            let token_1_priced = token_1_am * &new_price;
 
-            let tvl = token_0_priced;
+            let tvl = token_0_priced + token_1_priced;
             let next_score = &node_score + tvl.reciprocal();
 
             match scores.entry(next) {
                 Occupied(ent) => {
                     if next_score < *ent.get() {
                         *ent.into_mut() = next_score.clone();
-                        visit_next
-                            .push(MinScored(next_score, (next, new_price.clone(), token_1_am)));
+                        visit_next.push(MinScored(next_score, (next, new_price.clone())));
                         node_price.insert(next, new_price);
                     }
                 }
                 Vacant(ent) => {
                     ent.insert(next_score.clone());
-                    visit_next.push(MinScored(next_score, (next, new_price.clone(), token_1_am)));
+                    visit_next.push(MinScored(next_score, (next, new_price.clone())));
                     node_price.insert(next, new_price);
                 }
             }
