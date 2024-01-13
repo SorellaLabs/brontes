@@ -39,6 +39,15 @@ impl Pair {
             Pair(self.1, self.0)
         }
     }
+
+    /// returns ordered version aswell as if the order changed
+    pub fn ordered_changed(&self) -> (bool, Self) {
+        if self.0 <= self.1 {
+            (false, Pair(self.0, self.1))
+        } else {
+            (true, Pair(self.1, self.0))
+        }
+    }
 }
 
 impl Encode for Pair {

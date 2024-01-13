@@ -178,8 +178,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         // add pool pair
         self.queue_loading(pair, msg.clone());
-        // flipped pool pair
-        self.queue_loading(pair.flip(), msg.clone());
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
@@ -208,6 +206,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         // query graph for all keys needed to properly query price for a given pair
         let Some(price) = self.graph_manager.get_price(pool_pair) else {
+
             error!(?pool_pair, "no price from graph manager");
             return
         };

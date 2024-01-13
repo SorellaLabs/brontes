@@ -4,7 +4,7 @@ use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair};
 use indexmap::set::Intersection;
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 
 use super::{
     subgraph::{PairSubGraph, SubGraphEdge},
@@ -50,12 +50,12 @@ impl SubGraphRegistry {
     }
 
     pub fn has_subpool(&self, pair: &Pair) -> bool {
-        self.sub_graphs.contains_key(&pair)
+        self.sub_graphs.contains_key(&pair.ordered())
     }
 
     pub fn fetch_unloaded_state(&self, pair: &Pair) -> Vec<PoolPairInfoDirection> {
         self.sub_graphs
-            .get(pair)
+            .get(&pair.ordered())
             .unwrap()
             .get_all_pools()
             .flatten()
@@ -122,7 +122,7 @@ impl SubGraphRegistry {
                 .insert(pair);
         });
         // init subgraph
-        let subgraph = PairSubGraph::init(pair, path);
+        let subgraph = PairSubGraph::init(pair.ordered(), path);
         self.sub_graphs.insert(pair, subgraph);
 
         unloaded_state
@@ -146,9 +146,12 @@ impl SubGraphRegistry {
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
+        let (swapped, pair) = pair.ordered_changed();
+
         self.sub_graphs
             .get(&pair)
             .map(|graph| graph.fetch_price(&self.edge_state))
+            .map(|res| if swapped { res.reciprocal() } else { res })
     }
 
     pub fn has_state(&self, addr: &Address) -> bool {
