@@ -14,6 +14,7 @@ use std::{
     time::SystemTime,
 };
 
+pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, tree::Node};
 use ethers::core::k256::sha2::digest::HashMarker;
@@ -31,7 +32,7 @@ use serde::{Deserialize, Serialize};
 pub use subgraph::SubGraphEdge;
 use tracing::{error, info};
 
-use self::{all_pair_graph::AllPairGraph, registry::SubGraphRegistry};
+use self::{ registry::SubGraphRegistry};
 use super::PoolUpdate;
 use crate::types::PoolState;
 
