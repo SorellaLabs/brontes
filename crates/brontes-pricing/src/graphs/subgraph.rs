@@ -32,7 +32,7 @@ use petgraph::{
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
-use tracing::{warn,error};
+use tracing::{error, warn};
 
 use super::{PoolPairInfoDirection, PoolPairInformation};
 use crate::{
