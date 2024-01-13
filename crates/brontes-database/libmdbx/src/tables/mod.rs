@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
+use crate::Pair;
 
 use paste::paste;
 use sorella_db_databases::Database;
@@ -24,6 +25,7 @@ use crate::{
         metadata::{MetadataData, MetadataInner},
         mev_block::{MevBlockWithClassified, MevBlocksData},
         pool_creation_block::{PoolCreationBlocksData, PoolsLibmdbx},
+        subgraphs::{SubGraphsData, SubGraphsEntry},
         *,
     },
     Libmdbx,
@@ -285,6 +287,13 @@ table!(
     /// block number -> mev block with classified mev
     ( MevBlocks ) u64 | MevBlockWithClassified = False
 );
+
+
+table!(
+    /// pair -> Vec<(block_number, entry)>
+    ( SubGraphs ) Pair | SubGraphsEntry = False
+);
+
 
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where

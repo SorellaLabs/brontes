@@ -9,6 +9,7 @@ use std::{
     time::SystemTime,
 };
 
+use serde::{Deserialize, Serialize};
 use alloy_primitives::Address;
 use brontes_types::exchanges::StaticBindingsDb;
 use itertools::Itertools;
@@ -34,7 +35,7 @@ use tracing::error;
 use super::{PoolPairInfoDirection, PoolPairInformation};
 use crate::{types::PoolState, Pair};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubGraphEdge {
     pub info: PoolPairInfoDirection,
 
