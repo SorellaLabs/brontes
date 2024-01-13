@@ -1,3 +1,4 @@
+use core::panic;
 use std::{
     cmp::{max, Ordering},
     collections::{
@@ -246,7 +247,10 @@ where
             let mut token_1_am = Rational::ZERO;
 
             for info in edge_weight {
-                let pool_state = state.get(&info.pool_addr).unwrap();
+                let Some(pool_state) = state.get(&info.pool_addr) else {
+                    error!(addr=?info.pool_addr, "no state for this pool");
+                    panic!();
+                };
                 let price = pool_state.get_price(info.get_base_token());
                 let (t0, t1) = pool_state.get_tvl(info.get_base_token());
 
