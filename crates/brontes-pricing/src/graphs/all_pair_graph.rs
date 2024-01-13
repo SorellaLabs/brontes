@@ -166,7 +166,7 @@ impl AllPairGraph {
                         .map(|info| {
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
                             SubGraphEdge::new(
-                                PoolPairInfoDirection { info, token_0_in: node0 == index },
+                                PoolPairInfoDirection { info, token_0_in: node0 != index },
                                 i,
                                 path_length - i,
                             )
