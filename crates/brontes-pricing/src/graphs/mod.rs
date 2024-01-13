@@ -117,6 +117,7 @@ impl GraphManager {
             /// fetch all state to be loaded
             return self.sub_graph_registry.fetch_unloaded_state(&pair)
         } else if let Some((pair, edges)) = (&mut self.db_load)(block, pair) {
+            info!(?pair, "loaded subgraph from db");
             return self.sub_graph_registry.create_new_subgraph(pair, edges)
         }
 
@@ -130,6 +131,7 @@ impl GraphManager {
 
         // search failed
         if paths.is_empty() {
+            info!(?pair, "empty search path");
             return vec![]
         }
 
