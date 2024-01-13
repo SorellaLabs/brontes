@@ -1,10 +1,13 @@
+use std::str::FromStr;
+
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
 use reth_codecs::derive_arbitrary;
+use reth_db::table::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 #[derive_arbitrary(compact)]
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Pair(pub Address, pub Address);
 
 impl Pair {
@@ -36,19 +39,63 @@ impl Pair {
             Pair(self.1, self.0)
         }
     }
+
+    /// returns ordered version aswell as if the order changed
+    pub fn ordered_changed(&self) -> (bool, Self) {
+        if self.0 <= self.1 {
+            (false, Pair(self.0, self.1))
+        } else {
+            (true, Pair(self.1, self.0))
+        }
+    }
+}
+
+impl Encode for Pair {
+    type Encoded = [u8; 40];
+
+    fn encode(self) -> Self::Encoded {
+        let k0 = self.0.encode();
+        let k1 = self.1.encode();
+        let mut slice = [0; 40];
+        slice[0..20].copy_from_slice(&k0);
+        slice[20..].copy_from_slice(&k1);
+
+        slice
+    }
+}
+
+impl Decode for Pair {
+    fn decode<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
+        let address0 = &value.as_ref()[0..20];
+        let address1 = &value.as_ref()[20..];
+
+        Ok(Pair(Address::from_slice(address0), Address::from_slice(address1)))
+    }
+}
+
+impl FromStr for Pair {
+    type Err = alloy_primitives::AddressError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let addrs = s.split(':').collect::<Vec<_>>();
+
+        let addr0 = addrs[0].parse()?;
+        let addr1 = addrs[1].parse()?;
+        Ok(Pair(addr0, addr1))
+    }
 }
 
 impl Encodable for Pair {
     fn encode(&self, out: &mut dyn BufMut) {
-        self.0.encode(out);
-        self.1.encode(out);
+        Encodable::encode(&self.0, out);
+        Encodable::encode(&self.1, out);
     }
 }
 
 impl Decodable for Pair {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let token0 = Address::decode(buf)?;
-        let token1 = Address::decode(buf)?;
+        let token0 = <Address as Decodable>::decode(buf)?;
+        let token1 = <Address as Decodable>::decode(buf)?;
 
         Ok(Self(token0, token1))
     }

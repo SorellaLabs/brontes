@@ -145,11 +145,11 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
         CexPrice,
         Metadata,
         DexPrice,
-        PoolState,
         MevBlocks,
         TokenDecimals,
         AddressToTokens,
         AddressToProtocol,
+        SubGraphs,
         PoolCreationBlocks = &req.key,
         &req.value
     );
@@ -236,12 +236,12 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             CexPrice,
             Metadata,
             DexPrice,
-            PoolState,
             MevBlocks,
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
-            PoolCreationBlocks
+            PoolCreationBlocks,
+            SubGraphs
         );
     } else {
         match_table!(
@@ -251,11 +251,11 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             CexPrice,
             Metadata,
             DexPrice,
-            PoolState,
             MevBlocks,
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
+            SubGraphs,
             PoolCreationBlocks = &command.key
         );
     }
@@ -451,7 +451,7 @@ async fn spawn_batches(
     start_block: u64,
     end_block: u64,
     parser: &DParser<'_, TracingClient>,
-    libmdbx: &Libmdbx,
+    libmdbx: &'static Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
     DataBatching::new(

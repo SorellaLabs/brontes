@@ -9,9 +9,13 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
-use malachite::Rational;
+use malachite::{
+    num::{arithmetic::traits::Pow, logic::traits::BitConvertible},
+    Natural, Rational,
+};
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
+use tracing::{error, info};
 
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
@@ -19,6 +23,7 @@ use crate::{
 };
 
 sol!(
+    #[derive(Debug)]
     interface IUniswapV2Pair {
         function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
         function token0() external view returns (address);
@@ -79,7 +84,6 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 
         if event_signature == SYNC_EVENT_SIGNATURE {
             let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false).unwrap();
-
             self.reserve_0 = sync_event.reserve0;
             self.reserve_1 = sync_event.reserve1;
 
@@ -91,8 +95,8 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 
     //Calculates base/quote, meaning the price of base token per quote (ie.
     // exchange rate is X base per 1 quote)
-    fn calculate_price(&self, base_token: Address) -> Result<f64, ArithmeticError> {
-        Ok(q64_to_f64(self.calculate_price_64_x_64(base_token)?))
+    fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError> {
+        self.calculate_price_64_x_64(base_token)
     }
 
     fn tokens(&self) -> Vec<Address> {
@@ -366,37 +370,40 @@ impl UniswapV2Pool {
     //     Ok(token1)
     // }
 
-    pub fn calculate_price_64_x_64(&self, base_token: Address) -> Result<u128, ArithmeticError> {
-        let decimal_shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
-
-        let (r_0, r_1) = if decimal_shift < 0 {
-            (
-                U256::from(self.reserve_0)
-                    * U256::from(10u128.pow(decimal_shift.unsigned_abs() as u32)),
-                U256::from(self.reserve_1),
-            )
-        } else {
-            (
-                U256::from(self.reserve_0),
-                U256::from(self.reserve_1) * U256::from(10u128.pow(decimal_shift as u32)),
-            )
-        };
+    pub fn calculate_price_64_x_64(
+        &self,
+        base_token: Address,
+    ) -> Result<Rational, ArithmeticError> {
+        let (r_0, r_1) = (
+            Rational::from_naturals(
+                Natural::from(self.reserve_0),
+                Natural::from(10u64).pow(self.token_a_decimals as u64),
+            ),
+            Rational::from_naturals(
+                Natural::from(self.reserve_1),
+                Natural::from(10u64).pow(self.token_b_decimals as u64),
+            ),
+        );
 
         if base_token == self.token_a {
-            if r_0.is_zero() {
-                Ok(U128_0X10000000000000000)
-            } else {
-                div_uu(r_1, r_0)
-            }
-        } else if r_1.is_zero() {
-            Ok(U128_0X10000000000000000)
+            Ok(r_1 / r_0)
         } else {
-            div_uu(r_0, r_1)
+            Ok(r_0 / r_1)
         }
     }
 
-    pub fn get_tvl(&self) -> Rational {
-        self.reserve_0.to_scaled_rational(0) + self.reserve_1.to_scaled_rational(0)
+    pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
+        if self.token_a == base {
+            (
+                self.reserve_0.to_scaled_rational(self.token_a_decimals),
+                self.reserve_1.to_scaled_rational(self.token_b_decimals),
+            )
+        } else {
+            (
+                self.reserve_1.to_scaled_rational(self.token_b_decimals),
+                self.reserve_0.to_scaled_rational(self.token_a_decimals),
+            )
+        }
     }
 
     pub fn get_amount_out(&self, amount_in: U256, reserve_in: U256, reserve_out: U256) -> U256 {
