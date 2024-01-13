@@ -30,11 +30,23 @@ pub struct SubGraphRegistry {
 }
 
 impl SubGraphRegistry {
-    pub fn new(
-        cached_subgraphs: HashMap<Pair, PairSubGraph>,
-        token_to_sub_graph: HashMap<Address, Vec<Pair>>,
-    ) -> Self {
+    pub fn new(sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>) -> Self {
         todo!()
+    }
+
+    pub fn has_subpool(&self, pair: &Pair) -> bool {
+        self.sub_graphs.contains_key(&pair)
+    }
+
+    pub fn fetch_unloaded_state(&self, pair: &Pair) -> Vec<PoolPairInfoDirection> {
+        self.sub_graphs
+            .get(pair)
+            .unwrap()
+            .get_all_pools()
+            .flatten()
+            .filter(|pool| self.edge_state.contains_key(&pool.pool_addr))
+            .map(|pool| pool.info)
+            .collect_vec()
     }
 
     pub fn try_extend_subgraphs(
@@ -42,13 +54,14 @@ impl SubGraphRegistry {
         pool_address: Address,
         dex: StaticBindingsDb,
         pair: Pair,
-    ) -> bool {
+    ) -> Vec<(Pair, Vec<SubGraphEdge>)> {
         let token_0 = pair.0;
         let token_1 = pair.1;
 
-        let Some(t0_subgraph) = self.token_to_sub_graph.get(&token_0) else { return false };
-        let Some(t1_subgraph) = self.token_to_sub_graph.get(&token_1) else { return false };
-        let intersection = t0_subgraph
+        let Some(t0_subgraph) = self.token_to_sub_graph.get(&token_0) else { return vec![] };
+        let Some(t1_subgraph) = self.token_to_sub_graph.get(&token_1) else { return vec![] };
+
+        t0_subgraph
             .intersection(t1_subgraph)
             .map(|subgraph_pair| {
                 (
@@ -63,19 +76,27 @@ impl SubGraphRegistry {
             })
             .map(|(pair, info)| {
                 let subgraph = self.sub_graphs.get_mut(pair).unwrap();
-                subgraph.add_new_edge(info)
+                subgraph.add_new_edge(info);
+                (*pair, subgraph.get_all_pools().flatten().cloned().collect_vec())
             })
-            .collect_vec();
-
-        return intersection.into_iter().any(|f| f)
+            .collect_vec()
     }
 
-    pub fn create_new_subgraph(&mut self, pair: Pair, path: Vec<Vec<Vec<SubGraphEdge>>>) {
+    pub fn create_new_subgraph(
+        &mut self,
+        pair: Pair,
+        path: Vec<SubGraphEdge>,
+    ) -> Vec<PoolPairInfoDirection> {
+        // all edges
+        let edge_state = path
+            .iter()
+            .filter(|e| !self.edge_state.contains_key(&e.pool_addr))
+            .map(|f| f.info)
+            .collect_vec();
+
         // add to sub_graph lookup
         let tokens = path
             .iter()
-            .flatten()
-            .flatten()
             .flat_map(|i| [i.token_0, i.token_1])
             .collect::<HashSet<_>>();
 
@@ -85,17 +106,22 @@ impl SubGraphRegistry {
                 .or_default()
                 .insert(pair);
         });
-
+        // init subgraph
         let subgraph = PairSubGraph::init(pair, path);
         self.sub_graphs.insert(pair, subgraph);
+
+        edge_state
     }
 
-    pub fn update_pool_state(&mut self, pool_address: Address, update: PoolUpdate) -> Option<()> {
-        Some(
-            self.edge_state
-                .get_mut(&pool_address)?
-                .increment_state(update),
-        )
+    pub fn update_pool_state(&mut self, pool_address: Address, update: PoolUpdate) {
+        self.edge_state
+            .get_mut(&pool_address)
+            .unwrap()
+            .increment_state(update);
+    }
+
+    pub fn new_pool_state(&mut self, address: Address, state: PoolState) {
+        self.edge_state.insert(address, state);
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {

@@ -19,7 +19,8 @@ use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info};
+
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
 
@@ -36,7 +37,7 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     end_block:     u64,
     batch_id:      u64,
 
-    libmdbx:    &'db Libmdbx,
+    libmdbx:    &'static Libmdbx,
     inspectors: &'db [&'db Box<dyn Inspector>; N],
 }
 
@@ -48,7 +49,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         start_block: u64,
         end_block: u64,
         parser: &'db Parser<'db, T>,
-        libmdbx: &'db Libmdbx,
+        libmdbx: &'static Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>; N],
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
@@ -62,8 +63,18 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             rest_pairs.insert(i, pairs);
         }
 
-        trace!("initializing pair graph");
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default());
+        let pair_graph = GraphManager::init_from_db_state(
+            pairs,
+            HashMap::default(),
+            Box::new(|block, pair| {
+                libmdbx.try_load_pair_before(block, pair).ok()
+            }),
+            Box::new(|block, pair, edges| {
+                if libmdbx.save_pair_at(block, pair, edges).is_err() {
+                    error!(?pair, %block, "failed to save pair subgraph");
+                }
+            }),
+        );
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
