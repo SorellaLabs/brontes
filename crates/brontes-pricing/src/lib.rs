@@ -123,12 +123,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             }
         }
 
-        let addr = msg.get_pool_address();
+        let pair = msg.get_pair(self.quote_asset).unwrap();
 
-        // if we already have the state, we want to buffer the update to allow for all
-        // init fetches to be done so that we can then go through and apply all
-        // price transitions correctly to ensure order
-        if self.graph_manager.has_state(&addr) || self.lazy_loader.is_loading(&addr) {
+        // if we already have the pair subgraph we don't want to create another one
+        if self.graph_manager.has_subgraph(pair) {
+            let addr = msg.get_pool_address();
             self.buffer
                 .updates
                 .entry(msg.block)
@@ -499,8 +498,8 @@ const fn make_fake_swap(pair: Pair) -> Actions {
 //     use std::env;
 //
 //     use brontes_classifier::*;
-//     use brontes_core::{decoding::parser::TraceParser, init_trace_parser, init_tracing};
-//     use brontes_database_libmdbx::{
+//     use brontes_core::{decoding::parser::TraceParser, init_trace_parser,
+// init_tracing};     use brontes_database_libmdbx::{
 //         tables::{AddressToProtocol, AddressToTokens},
 //         Libmdbx,
 //     };
@@ -518,7 +517,8 @@ const fn make_fake_swap(pair: Pair) -> Actions {
 //     ) -> BrontesBatchPricer<Box<dyn TracingProvider>> {
 //         let tx = libmdbx.ro_tx().unwrap();
 //         let binding_tx = libmdbx.ro_tx().unwrap();
-//         let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
+//         let mut all_addr_to_tokens =
+// tx.cursor_read::<AddressToTokens>().unwrap();
 //
 //         let pairs = libmdbx.addresses_inited_before(block).unwrap();
 //
@@ -527,23 +527,25 @@ const fn make_fake_swap(pair: Pair) -> Actions {
 //         info!("initing pair graph");
 //         let pair_graph = AllPairGraph::init_from_hashmap(pairs);
 //
-//         BrontesBatchPricer::new(quote, 0, 0, pair_graph, rx, parser.get_tracer(), block, rest_pairs)
-//     }
+//         BrontesBatchPricer::new(quote, 0, 0, pair_graph, rx,
+// parser.get_tracer(), block, rest_pairs)     }
 //     #[tokio::test]
 //     async fn test_pool() {
 //         dotenv::dotenv().ok();
 //         init_tracing();
 //         info!("initing tests");
 //
-//         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-//         let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
-//         let (tx, rx) = unbounded_channel();
+//         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No
+// BRONTES_DB_PATH in .env");         let libmdbx =
+// Libmdbx::init_db(brontes_db_endpoint, None).unwrap();         let (tx, rx) =
+// unbounded_channel();
 //
 //         let (a, b) = unbounded_channel();
 //         let tracer =
-//             brontes_core::init_trace_parser(tokio::runtime::Handle::current(), a, &libmdbx, 10);
-//         let quote = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-//             .parse()
+//
+// brontes_core::init_trace_parser(tokio::runtime::Handle::current(), a,
+// &libmdbx, 10);         let quote =
+// "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"             .parse()
 //             .unwrap();
 //
 //         let mut pricer = init(&libmdbx, rx, quote, 18500000, &tracer).await;
@@ -621,5 +623,5 @@ const fn make_fake_swap(pair: Pair) -> Actions {
 //
 //     // TODO: test on:
 //     // 0xc04c9540da17ee0e1043e3e07087e1f1149c788e5fe70773f64866f81269c6e6
-//     // TODO: 0x58cb209340e36a688ad75bc1166b6ad9f427840a8206a015e45bca6a41cb30b1
-// }
+//     // TODO:
+// 0x58cb209340e36a688ad75bc1166b6ad9f427840a8206a015e45bca6a41cb30b1 }
