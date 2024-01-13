@@ -9,16 +9,16 @@ use super::{tables::Tables, Libmdbx};
 pub struct LibmdbxInitializer {
     libmdbx:    Arc<Libmdbx>,
     clickhouse: Arc<Clickhouse>,
-    tracer:     Arc<TracingClient>,
+    //tracer:     Arc<TracingClient>,
 }
 
 impl LibmdbxInitializer {
     pub fn new(
         libmdbx: Arc<Libmdbx>,
         clickhouse: Arc<Clickhouse>,
-        tracer: Arc<TracingClient>,
+        //tracer: Arc<TracingClient>,
     ) -> Self {
-        Self { libmdbx, clickhouse, tracer }
+        Self { libmdbx, clickhouse } //, tracer }
     }
 
     pub async fn initialize(
@@ -29,7 +29,7 @@ impl LibmdbxInitializer {
         join_all(tables.iter().map(|table| {
             table.initialize_table(
                 self.libmdbx.clone(),
-                self.tracer.clone(),
+                //self.tracer.clone(),
                 self.clickhouse.clone(),
                 block_range,
             )
@@ -70,20 +70,31 @@ mod tests {
         let db = Arc::new(init_db()?);
         let clickhouse = Clickhouse::default();
 
-        let db_path = env::var("DB_PATH")
-            .map_err(|_| Box::new(std::env::VarError::NotPresent))
-            .unwrap();
-        let (manager, tracer) =
-            TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), 10);
-        tokio::spawn(manager);
-
-        let tracer = Arc::new(tracer);
-        let db_initializer = LibmdbxInitializer::new(db.clone(), Arc::new(clickhouse), tracer);
+        let db_initializer = LibmdbxInitializer::new(db.clone(), Arc::new(clickhouse));
         db_initializer.initialize(tables, None).await?;
 
         Ok(db)
     }
 
+    /*
+       async fn initialize_tables(tables: &[Tables]) -> eyre::Result<Arc<Libmdbx>> {
+           let db = Arc::new(init_db()?);
+           let clickhouse = Clickhouse::default();
+
+           let db_path = env::var("DB_PATH")
+               .map_err(|_| Box::new(std::env::VarError::NotPresent))
+               .unwrap();
+           let (manager, tracer) =
+               TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), 10);
+           tokio::spawn(manager);
+
+           let tracer = Arc::new(tracer);
+           let db_initializer = LibmdbxInitializer::new(db.clone(), Arc::new(clickhouse), tracer);
+           db_initializer.initialize(tables, None).await?;
+
+           Ok(db)
+       }
+    */
     async fn test_tokens_decimals_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
         let tx = LibmdbxTx::new_ro_tx(&db.0)?;
         assert_ne!(tx.entries::<TokenDecimals>()?, 0);
@@ -261,7 +272,7 @@ mod tests {
         assert!(q.is_ok());
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 20)]
     #[serial]
     async fn test_intialize_tables() {
         let db = initialize_tables(&[
@@ -269,11 +280,11 @@ mod tests {
             //Tables::AddressToTokens,
             //Tables::AddressToProtocol,
             //Tables::CexPrice,
-            //Tables::Metadata,
+            Tables::Metadata,
             //Tables::PoolState,
             //Tables::DexPrice,
             //Tables::PoolCreationBlocks,
-           // Tables::TxTraces,
+            // Tables::TxTraces,
         ])
         .await;
         assert!(db.is_ok());
@@ -283,7 +294,7 @@ mod tests {
         //assert!(test_address_to_tokens_table(&db, false).await.is_ok());
         //assert!(test_address_to_protocols_table(&db, false).await.is_ok());
         //assert!(test_cex_mapping_table(&db, false).await.is_ok());
-        //assert!(test_metadata_table(&db, false).await.is_ok());
+        assert!(test_metadata_table(&db, false).await.is_ok());
         //assert!(test_pool_state_table(&db, false).await.is_ok());
         //assert!(test_dex_price_table(&db, false).await.is_ok());
         //assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
