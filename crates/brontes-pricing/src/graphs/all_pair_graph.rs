@@ -209,11 +209,3 @@ impl AllPairGraph {
         .collect_vec()
     }
 }
-
-fn insert_known_pair(entry: &mut Vec<Vec<PoolPairInfoDirection>>, pool: PoolPairInfoDirection) {
-    if entry.is_empty() {
-        entry.push(vec![pool]);
-    } else {
-        entry.get_mut(0).unwrap().push(pool);
-    }
-}
