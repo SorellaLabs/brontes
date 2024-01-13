@@ -20,6 +20,7 @@ use malachite::{
     Rational,
 };
 use petgraph::{
+    algo::connected_components,
     data::{Build, DataMap},
     graph::{self, DiGraph, UnGraph},
     prelude::*,
@@ -82,13 +83,7 @@ pub struct PairSubGraph {
 impl PairSubGraph {
     pub fn init(pair: Pair, edges: Vec<SubGraphEdge>) -> Self {
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, usize>::default();
-
         let mut token_to_index = HashMap::new();
-
-        let mut connections: HashMap<
-            Address,
-            (usize, HashMap<Address, (Vec<SubGraphEdge>, usize)>),
-        > = HashMap::default();
 
         for edge in edges.into_iter() {
             let token_0 = edge.token_0;
@@ -122,6 +117,9 @@ impl PairSubGraph {
 
         let start_node = *token_to_index.get(&pair.0).unwrap();
         let end_node = *token_to_index.get(&pair.1).unwrap();
+
+        let comp = connected_components(&graph);
+        assert!(comp == 1, "have a disjoint graph");
 
         Self { pair, graph, start_node, end_node, token_to_index }
     }
@@ -248,9 +246,9 @@ where
             let mut token_1_am = Rational::ZERO;
 
             for info in edge_weight {
-                let pool_state = state.get(&info.info.info.pool_addr).unwrap();
-                let price = pool_state.get_price(info.info.get_base_token());
-                let (t0, t1) = pool_state.get_tvl(info.info.get_base_token());
+                let pool_state = state.get(&info.pool_addr).unwrap();
+                let price = pool_state.get_price(info.get_base_token());
+                let (t0, t1) = pool_state.get_tvl(info.get_base_token());
 
                 pxw += (price * (&t0 + &t1));
                 weight += (&t0 + &t1);
