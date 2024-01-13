@@ -136,9 +136,17 @@ impl SubGraphRegistry {
     }
 
     pub fn update_pool_state(&mut self, pool_address: Address, update: PoolUpdate) {
-        self.edge_state
-            .get_mut(&pool_address)
-            .map(|state| state.increment_state(update));
+        self.edge_state.get_mut(&pool_address).map(|state| {
+            state.increment_state(update);
+            let pair = state.pair();
+            let price = state.get_price(pair.0).unwrap();
+            let mut opts = ToSciOptions::default();
+            opts.set_precision(10);
+            let str_price = price.to_sci_with_options(opts).to_string();
+
+            info!(?pool_address, %str_price, ?pair, "updated pool to get new price")
+
+        });
     }
 
     pub fn new_pool_state(
