@@ -278,6 +278,7 @@ where
             }
 
             let local_weighted_price = pxw / weight;
+
             let token_0_priced = token_0_am * &price;
             let new_price = &price * local_weighted_price;
             let token_1_priced = token_1_am * &new_price;
@@ -407,7 +408,7 @@ pub mod test {
             let mut bytes = [0u8; 20];
             $(
                 let $var = Address::new(bytes);
-                bytes[20] += 1;
+                bytes[19] += 1;
             )*;
         };
     }
@@ -425,7 +426,7 @@ pub mod test {
         let e3 = build_edge(t3, t3, t4, 3, 4);
 
         let pair = Pair(t0, t4);
-        let subgraph = PairSubGraph::init(pair, vec![e0, e1, e2, e3]);
+        PairSubGraph::init(pair, vec![e0, e1, e2, e3])
     }
 
     #[test]
@@ -446,24 +447,23 @@ pub mod test {
 
         // t3 / t2 == 1 / 1500
         let e2_price = MockPoolState::new(
-            Rational::from_unsigneds(1, 1500),
+            Rational::from_unsigneds(1usize, 1500usize),
             Rational::from(10_000),
             Rational::from(10_000),
         );
         state_map.insert(t2, e2_price);
 
-        // t4 / t3 ==  1/15
+        // t4 / t3 ==  1/52
         let e3_price = MockPoolState::new(
-            Rational::from_signeds(1, 15),
+            Rational::from_unsigneds(1usize, 52usize),
             Rational::from(10_000),
             Rational::from(10_000),
         );
         state_map.insert(t3, e3_price);
 
         // (t4 / t0) = 10 * 20 * 1 /500 * 1/52 = 1/130
-
         let price = graph.fetch_price(&state_map);
 
-        assert_eq!(price, Rational::from_unsigneds(1, 130))
+        assert_eq!(price, Rational::from_unsigneds(1usize, 390usize))
     }
 }
