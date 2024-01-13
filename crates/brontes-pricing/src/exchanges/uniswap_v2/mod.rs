@@ -2,6 +2,7 @@ pub mod batch_request;
 pub mod factory;
 
 use std::sync::Arc;
+use tracing::info;
 
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
 use alloy_rlp::{RlpDecodable, RlpEncodable};
@@ -84,7 +85,7 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 
         if event_signature == SYNC_EVENT_SIGNATURE {
             let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false).unwrap();
-            println!("{sync_event:#?}");
+            info!("{sync_event:#?}");
 
             self.reserve_0 = sync_event.reserve0;
             self.reserve_1 = sync_event.reserve1;
