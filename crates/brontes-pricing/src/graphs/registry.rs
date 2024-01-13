@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use tracing::info;
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair};
 use indexmap::set::Intersection;
@@ -12,6 +11,7 @@ use malachite::{
     },
     Rational,
 };
+use tracing::info;
 
 use super::{
     subgraph::{PairSubGraph, SubGraphEdge},
@@ -162,7 +162,7 @@ impl SubGraphRegistry {
                 let mut opts = ToSciOptions::default();
                 opts.set_precision(5);
                 let str_price = price.to_sci_with_options(opts).to_string();
-                info!(?unordered_pair, price=%str_price, "price:");
+                info!(?pair, price=%str_price, "price:");
                 price
             })
             .map(|res| if swapped { res.reciprocal() } else { res })
