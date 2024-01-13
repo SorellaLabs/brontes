@@ -1,10 +1,17 @@
 use std::collections::{HashMap, HashSet};
 
+use tracing::info;
 use alloy_primitives::Address;
 use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair};
 use indexmap::set::Intersection;
 use itertools::Itertools;
-use malachite::{num::arithmetic::traits::Reciprocal, Rational};
+use malachite::{
+    num::{
+        arithmetic::traits::Reciprocal,
+        conversion::{string::options::ToSciOptions, traits::ToSci},
+    },
+    Rational,
+};
 
 use super::{
     subgraph::{PairSubGraph, SubGraphEdge},
@@ -145,12 +152,19 @@ impl SubGraphRegistry {
         self.try_extend_subgraphs(address, dex, pair)
     }
 
-    pub fn get_price(&self, pair: Pair) -> Option<Rational> {
-        let (swapped, pair) = pair.ordered_changed();
+    pub fn get_price(&self, unordered_pair: Pair) -> Option<Rational> {
+        let (swapped, pair) = unordered_pair.ordered_changed();
 
         self.sub_graphs
             .get(&pair)
             .map(|graph| graph.fetch_price(&self.edge_state))
+            .map(|price| {
+                let mut opts = ToSciOptions::default();
+                opts.set_precision(5);
+                let str_price = price.to_sci_with_options(opts).to_string();
+                info!(?unordered_pair, price=%str_price, "price:");
+                price
+            })
             .map(|res| if swapped { res.reciprocal() } else { res })
     }
 
