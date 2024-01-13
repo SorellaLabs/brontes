@@ -114,6 +114,7 @@ impl GraphManager {
     /// loaded
     pub fn create_subpool(&mut self, block: u64, pair: Pair) -> Vec<PoolPairInfoDirection> {
         if self.sub_graph_registry.has_subpool(&pair) {
+            info!(?pair, "already have subgraph");
             /// fetch all state to be loaded
             return self.sub_graph_registry.fetch_unloaded_state(&pair)
         } else if let Some((pair, edges)) = (&mut self.db_load)(block, pair) {
@@ -135,6 +136,7 @@ impl GraphManager {
             return vec![]
         }
 
+        info!(?pair, "creating subgraph");
         self.sub_graph_registry
             .create_new_subgraph(pair, paths.clone())
     }
