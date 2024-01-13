@@ -81,7 +81,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             pair_graph,
             rx,
             parser.get_tracer(),
-            start_block,
+            start_block + 1,
             rest_pairs,
         );
 
