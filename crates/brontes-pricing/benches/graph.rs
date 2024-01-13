@@ -6,7 +6,7 @@ use brontes_database::{clickhouse::USDT_ADDRESS, Pair};
 use brontes_database_libmdbx::{
     tables::PoolCreationBlocks, AddressToProtocol, AddressToTokens, Libmdbx,
 };
-use brontes_pricing::PairGraph;
+use brontes_pricing::AllPairGraph as PairGraph;
 use brontes_types::exchanges::StaticBindingsDb;
 use criterion::{
     black_box, criterion_group, criterion_main, measurement::WallTime, BenchmarkGroup, Criterion,
@@ -156,7 +156,7 @@ fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGrou
             },
             |test_pairs| {
                 for pair in test_pairs {
-                    black_box(graph.get_k_paths_no_cache(pair))
+                    black_box(graph.get_k_paths_no_cache(pair));
                 }
             },
             criterion::BatchSize::SmallInput,
