@@ -2,7 +2,6 @@ pub mod batch_request;
 pub mod factory;
 
 use std::sync::Arc;
-use tracing::info;
 
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
 use alloy_rlp::{RlpDecodable, RlpEncodable};
@@ -16,7 +15,7 @@ use malachite::{
 };
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},

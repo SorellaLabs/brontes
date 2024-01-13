@@ -146,6 +146,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return
         }
 
+        // make sure that the update is buffered
+        self.buffer
+            .updates
+            .entry(trigger_update.block)
+            .or_default()
+            .push_back((trigger_update.get_pool_address(), trigger_update.clone()));
+
         for pool_info in self
             .graph_manager
             .create_subpool(self.current_block, pair)
@@ -161,13 +168,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     pool_info.dex_type,
                 );
             }
-
-            // we buffer the update for all of the pool state with there specific addresses
-            self.buffer
-                .updates
-                .entry(trigger_update.block)
-                .or_default()
-                .push_back((pool_info.pool_addr, trigger_update.clone()));
         }
     }
 
