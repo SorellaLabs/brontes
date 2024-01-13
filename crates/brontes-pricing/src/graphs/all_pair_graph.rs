@@ -57,7 +57,7 @@ impl AllPairGraph {
             // fetch the node or create node it if it doesn't exist
             let addr1 = *token_to_index
                 .entry(ordered_pair.1)
-                .or_insert_with(|| graph.add_node(()).index());
+                .or_insert_with(graph.add_node(()).index());
 
             let info = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
             connections.entry((addr0, addr1)).or_default().push(info);
@@ -135,18 +135,18 @@ impl AllPairGraph {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
                 let edges = self.graph.edges(cur_node).collect_vec();
                 let edge_len = edges.len() as isize;
-                let weight = max(1, 30 - edge_len);
+                let weight = max(1, 1000_isize - edge_len);
 
                 edges
                     .into_iter()
                     .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
                     .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
-                    .map(|n| (n.index(), edge_len))
+                    .map(|n| (n.index(), weight))
                     .collect_vec()
             },
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
-            5,
+            4,
         )
         .into_iter()
         .map(|(mut nodes, _)| {
