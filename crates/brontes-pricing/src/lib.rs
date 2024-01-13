@@ -17,7 +17,7 @@ use brontes_types::{
 use ethers::core::k256::elliptic_curve::bigint::Zero;
 use exchanges::lazy::{LazyExchangeLoader, LazyResult};
 pub use exchanges::*;
-pub use graphs::{GraphManager, SubGraphEdge};
+pub use graphs::{AllPairGraph, GraphManager, SubGraphEdge};
 
 mod graphs;
 
