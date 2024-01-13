@@ -57,7 +57,7 @@ impl AllPairGraph {
             // fetch the node or create node it if it doesn't exist
             let addr1 = *token_to_index
                 .entry(ordered_pair.1)
-                .or_insert_with(graph.add_node(()).index());
+                .or_insert_with(|| graph.add_node(()).index());
 
             let info = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
             connections.entry((addr0, addr1)).or_default().push(info);
