@@ -908,7 +908,8 @@ impl UniswapV3Pool {
     }
 
     pub fn data_is_populated(&self) -> bool {
-        !(self.token_a.is_zero() || self.token_b.is_zero()) || !(self.sqrt_price >= MIN_SQRT_RATIO && self.sqrt_price< MAX_SQRT_RATIO)
+        !(self.token_a.is_zero() || self.token_b.is_zero())
+            || !(self.sqrt_price >= MIN_SQRT_RATIO && self.sqrt_price < MAX_SQRT_RATIO)
     }
 
     // pub async fn get_tick_word<M: TracingProvider>(
