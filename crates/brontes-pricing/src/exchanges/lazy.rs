@@ -74,7 +74,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         block_number: u64,
         ex_type: StaticBindingsDb,
     ) {
-        info!(%block_number, dex=%ex_type,"loading exchange");
+        info!(%block_number, dex=%ex_type, ?address, "loading exchange");
         let provider = self.provider.clone();
         *self.req_per_block.entry(block_number).or_default() += 1;
         self.pool_buf.insert(address);
