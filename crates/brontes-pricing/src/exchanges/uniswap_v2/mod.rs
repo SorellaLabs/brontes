@@ -386,9 +386,9 @@ impl UniswapV2Pool {
         );
 
         if base_token == self.token_a {
-            Ok(r_1 / r_0)
-        } else {
             Ok(r_0 / r_1)
+        } else {
+            Ok(r_1 / r_0)
         }
     }
 
