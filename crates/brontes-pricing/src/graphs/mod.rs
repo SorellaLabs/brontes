@@ -157,7 +157,7 @@ impl GraphManager {
         self.sub_graph_registry.update_pool_state(address, update);
     }
 
-    pub fn has_state(&self, address: &Address) -> bool {
-        false
+    pub fn has_state(&self, addr: &Address) -> bool {
+        self.sub_graph_registry.has_state(addr)
     }
 }
