@@ -2,6 +2,7 @@ pub mod batch_request;
 pub mod factory;
 
 use std::sync::Arc;
+use tracing::error;
 
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
 use alloy_rlp::{RlpDecodable, RlpEncodable};
@@ -386,12 +387,20 @@ impl UniswapV2Pool {
             if r_0.is_zero() {
                 Ok(U128_0X10000000000000000)
             } else {
-                div_uu(r_1, r_0)
+                let res = div_uu(r_1, r_0);
+                if res.is_err() {
+                    error!(?self.address, "overflow on price calcs");
+                }
+                res
             }
         } else if r_1.is_zero() {
             Ok(U128_0X10000000000000000)
         } else {
-            div_uu(r_0, r_1)
+            let res = div_uu(r_0, r_1);
+                if res.is_err() {
+                    error!(?self.address, "overflow on price calcs");
+                }
+                res
         }
     }
 
