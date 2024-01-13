@@ -135,7 +135,7 @@ impl AllPairGraph {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
                 let edges = self.graph.edges(cur_node).collect_vec();
                 let edge_len = edges.len() as isize;
-                let weight = 1;
+                let weight = max(1, 30 - edge_len);
 
                 edges
                     .into_iter()
@@ -146,7 +146,7 @@ impl AllPairGraph {
             },
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
-            4,
+            5,
         )
         .into_iter()
         .map(|(mut nodes, _)| {
