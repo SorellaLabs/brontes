@@ -248,10 +248,12 @@ where
 
             for info in edge_weight {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
-                    error!("missing pool_state");
                     continue;
                 };
-                let price = pool_state.get_price(info.get_base_token());
+                let Ok(price) = pool_state.get_price(info.get_base_token()) else {
+                    continue;
+                };
+
                 let (t0, t1) = pool_state.get_tvl(info.get_base_token());
 
                 pxw += (price * (&t0 + &t1));

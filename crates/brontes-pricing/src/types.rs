@@ -17,8 +17,8 @@ use serde_with::DisplayFromStr;
 use tracing::warn;
 
 use crate::{
-    graphs::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
-    AutomatedMarketMaker,
+    errors::ArithmeticError, graphs::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool,
+    uniswap_v3::UniswapV3Pool, AutomatedMarketMaker,
 };
 
 #[derive(
@@ -242,14 +242,10 @@ impl PoolState {
         }
     }
 
-    pub fn get_price(&self, base: Address) -> Rational {
+    pub fn get_price(&self, base: Address) -> Result<Rational, ArithmeticError> {
         match &self.variant {
-            PoolVariants::UniswapV2(v) => {
-                v.calculate_price(base).unwrap()
-            }
-            PoolVariants::UniswapV3(v) => {
-                v.calculate_price(base).unwrap()
-            }
+            PoolVariants::UniswapV2(v) => v.calculate_price(base),
+            PoolVariants::UniswapV3(v) => v.calculate_price(base),
         }
     }
 }
