@@ -173,6 +173,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     Poll::Ready(Some(res))
                 }
                 Err((address, dex, block, e)) => {
+                    error!(?address, "failed to load pool");
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
