@@ -452,11 +452,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
     }
 }
 
-pub enum BatchPricerResult {
-    NewQuotes(u64, DexQuotes),
-    SubgraphChange(u64, u64, Pair, Vec<SubGraphEdge>),
-}
-
 /// a ordered buffer for holding state transitions for a block while the lazy
 /// loading of pools is being applied
 pub struct StateBuffer {
