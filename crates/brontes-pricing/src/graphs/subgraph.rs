@@ -260,7 +260,7 @@ where
             }
 
             if weight == Rational::ZERO {
-                continue;
+                continue
             }
 
             let local_weighted_price = pxw / weight;
