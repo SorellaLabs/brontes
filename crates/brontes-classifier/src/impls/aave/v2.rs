@@ -5,7 +5,6 @@ use brontes_macros::{action_dispatch, action_impl};
 use brontes_pricing::types::PoolUpdate;
 use brontes_types::normalized_actions::{Actions, NormalizedLiquidation};
 use reth_db::{mdbx::RO, transaction::DbTx};
-use reth_rpc_types::Log;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
