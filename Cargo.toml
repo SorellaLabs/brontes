@@ -179,8 +179,11 @@ strip = "none"
 debug = true
 
 
-[profile.maxperf]
-inherits = "release"
-lto = "fat"
-codegen-units = 1
-incremental = false
+[profile.dev]
+opt-level = 0           # No optimizations
+debug = true            # Generate debug information
+rpath = false           # Don't set the rpath in executables
+lto = false             # No link-time optimization
+debug-assertions = true # Enable assertions in debug mode
+codegen-units = 16      # Increase parallel code generation units for faster compiles
+incremental = true      # Enable incremental compilation
