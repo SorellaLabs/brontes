@@ -108,14 +108,6 @@ impl GraphManager {
 
     pub fn add_pool(&mut self, block: u64, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
         self.all_pair_graph.add_node(pair, pool_addr, dex);
-        // add to pool to subgraphs if it exists. if a new subgraph is made we save it
-        // to db
-        // self.sub_graph_registry
-        //     .try_extend_subgraphs(pool_addr, dex, pair)
-        //     .into_iter()
-        //     .for_each(|(pair, edges)| {
-        //         (&mut self.db_save)(block, pair, edges);
-        //     });
     }
 
     /// creates a subpool for the pair returning all pools that need to be
@@ -149,8 +141,13 @@ impl GraphManager {
         self.sub_graph_registry.get_price(pair)
     }
 
-    pub fn new_state(&mut self, address: Address, state: PoolState) {
-        self.sub_graph_registry.new_pool_state(address, state);
+    pub fn new_state(&mut self, block: u64, address: Address, state: PoolState) {
+        self.sub_graph_registry
+            .new_pool_state(address, state)
+            .into_iter()
+            .for_each(|(pair, edges)| {
+                (&mut self.db_save)(block, pair, edges);
+            });
     }
 
     pub fn update_state(&mut self, address: Address, update: PoolUpdate) {

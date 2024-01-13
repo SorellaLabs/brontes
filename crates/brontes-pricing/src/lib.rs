@@ -351,7 +351,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if let Some(state) = state {
             let addr = state.address();
 
-            self.graph_manager.new_state(addr, state);
+            self.graph_manager
+                .new_state(self.completed_block, addr, state);
 
             // pool was initialized this block. lets set the override to avoid invalid state
             if !load_result.is_ok() {
