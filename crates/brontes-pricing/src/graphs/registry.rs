@@ -103,7 +103,7 @@ impl SubGraphRegistry {
         path: Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
         // all edges
-        let edge_state = path
+        let unloaded_state = path
             .iter()
             .filter(|e| !self.edge_state.contains_key(&e.pool_addr))
             .map(|f| f.info)
@@ -125,7 +125,7 @@ impl SubGraphRegistry {
         let subgraph = PairSubGraph::init(pair, path);
         self.sub_graphs.insert(pair, subgraph);
 
-        edge_state
+        unloaded_state
     }
 
     pub fn update_pool_state(&mut self, pool_address: Address, update: PoolUpdate) {
@@ -135,8 +135,15 @@ impl SubGraphRegistry {
             .increment_state(update);
     }
 
-    pub fn new_pool_state(&mut self, address: Address, state: PoolState) {
+    pub fn new_pool_state(
+        &mut self,
+        address: Address,
+        state: PoolState,
+    ) -> Vec<(Pair, Vec<SubGraphEdge>)> {
+        let dex = state.dex();
+        let pair = state.pair();
         self.edge_state.insert(address, state);
+        self.try_extend_subgraphs(address, dex, pair)
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
