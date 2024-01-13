@@ -208,7 +208,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         // query graph for all keys needed to properly query price for a given pair
         let Some(price) = self.graph_manager.get_price(pool_pair) else {
-            error!("no price from graph manager");
+            error!(?pool_pair, "no price from graph manager");
             return
         };
 
