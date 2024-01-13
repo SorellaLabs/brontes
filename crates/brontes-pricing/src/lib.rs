@@ -25,9 +25,9 @@ use futures::{Future, Stream, StreamExt};
 use graphs::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
-use types::{DexPriceMsg, DexQuotes,  PoolUpdate};
+use types::{DexPriceMsg, DexQuotes, PoolUpdate};
 
-use crate::types::{ PoolState};
+use crate::types::PoolState;
 
 /// # Brontes Batch Pricer
 /// ## Reasoning
@@ -278,6 +278,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             error!(?addr, "failed to get pair for pool");
             return;
         };
+        info!(?pool_pair, "updating pair state");
         self.graph_manager.update_state(addr, msg);
 
         // generate all variants of the price that might be used in the inspectors
