@@ -89,7 +89,8 @@ pub struct GraphManager {
     all_pair_graph:     AllPairGraph,
     sub_graph_registry: SubGraphRegistry,
     /// this is degen but don't want to reorganize all types so that
-    /// this struct can hold the db so these closures allow for access...
+    /// this struct can hold the db so these closures allow for the wanted
+    /// interactions.
     db_load: Box<dyn FnMut(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
     db_save:            Box<dyn FnMut(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
 }
