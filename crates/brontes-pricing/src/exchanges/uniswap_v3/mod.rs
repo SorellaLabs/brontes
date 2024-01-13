@@ -1022,8 +1022,8 @@ impl UniswapV3Pool {
     //
     pub fn sync_from_burn_log(&mut self, log: Log) -> Result<(), AbiError> {
         let burn_event = IUniswapV3Pool::Burn::decode_log_data(&log, false).unwrap();
-        self.reserve_0 -= burn_event.amount0;
-        self.reserve_1 -= burn_event.amount1;
+        // self.reserve_0 -= burn_event.amount0;
+        // self.reserve_1 -= burn_event.amount1;
 
         self.modify_position(
             burn_event.tickLower,
@@ -1037,8 +1037,8 @@ impl UniswapV3Pool {
     pub fn sync_from_mint_log(&mut self, log: Log) -> Result<(), AbiError> {
         let mint_event = IUniswapV3Pool::Mint::decode_log_data(&log, false).unwrap();
 
-        self.reserve_0 += mint_event.amount0;
-        self.reserve_1 += mint_event.amount1;
+        // self.reserve_0 += mint_event.amount0;
+        // self.reserve_1 += mint_event.amount1;
         self.modify_position(mint_event.tickLower, mint_event.tickUpper, mint_event.amount as i128);
 
         Ok(())
@@ -1142,13 +1142,13 @@ impl UniswapV3Pool {
     pub fn sync_from_swap_log(&mut self, log: Log) -> Result<(), AbiError> {
         let swap_event = IUniswapV3Pool::Swap::decode_log_data(&log, false).unwrap();
 
-        if swap_event.amount0.is_negative() {
-            self.reserve_0 -= swap_event.amount0.unsigned_abs();
-            self.reserve_1 += swap_event.amount1.unsigned_abs();
-        } else {
-            self.reserve_0 += swap_event.amount0.unsigned_abs();
-            self.reserve_1 -= swap_event.amount1.unsigned_abs();
-        }
+        // if swap_event.amount0.is_negative() {
+        //     self.reserve_0 -= swap_event.amount0.unsigned_abs();
+        //     self.reserve_1 += swap_event.amount1.unsigned_abs();
+        // } else {
+        //     self.reserve_0 += swap_event.amount0.unsigned_abs();
+        //     self.reserve_1 -= swap_event.amount1.unsigned_abs();
+        // }
 
         self.sqrt_price = swap_event.sqrtPriceX96;
         self.liquidity = swap_event.liquidity;
