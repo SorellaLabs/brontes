@@ -135,7 +135,7 @@ impl AllPairGraph {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
                 let edges = self.graph.edges(cur_node).collect_vec();
                 let edge_len = edges.len() as isize;
-                let weight = max(1, 100_isize - edge_len);
+                let weight = 1;
 
                 edges
                     .into_iter()
