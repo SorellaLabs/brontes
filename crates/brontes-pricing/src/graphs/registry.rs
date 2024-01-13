@@ -144,4 +144,8 @@ impl SubGraphRegistry {
             .get(&pair)
             .map(|graph| graph.fetch_price(&self.edge_state))
     }
+
+    pub fn has_state(&self, addr: &Address) -> bool {
+        self.edge_state.contains_key(addr)
+    }
 }
