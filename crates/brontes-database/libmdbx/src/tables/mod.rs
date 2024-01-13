@@ -32,7 +32,7 @@ use crate::{
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 8;
+pub const NUM_TABLES: usize = 9;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tables {
@@ -44,6 +44,7 @@ pub enum Tables {
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
+    SubGraphs,
 }
 
 impl Tables {
@@ -56,8 +57,9 @@ impl Tables {
         Tables::DexPrice,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
+        Tables::SubGraphs,
     ];
-    pub const ALL_NO_DEX: [Tables; NUM_TABLES - 1] = [
+    pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
         Tables::TokenDecimals,
         Tables::AddressToTokens,
         Tables::AddressToProtocol,
@@ -78,6 +80,7 @@ impl Tables {
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
             Tables::MevBlocks => TableType::Table,
+            Tables::SubGraphs => TableType::Table,
         }
     }
 
@@ -91,6 +94,7 @@ impl Tables {
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
             Tables::MevBlocks => MevBlocks::NAME,
+            Tables::SubGraphs => SubGraphs::NAME,
         }
     }
 
@@ -168,6 +172,11 @@ impl Tables {
             Tables::MevBlocks => {
                 Box::pin(
                     async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
+                )
+            }
+            Tables::SubGraphs => {
+                Box::pin(
+                    async move { libmdbx.initialize_table::<SubGraphs, SubGraphsData>(&vec![]) },
                 )
             }
         }
