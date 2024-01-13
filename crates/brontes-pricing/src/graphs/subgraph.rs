@@ -358,4 +358,112 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
 }
 
 #[cfg(test)]
-pub mod test {}
+pub mod test {
+    use alloy_primitives::Address;
+
+    use super::*;
+
+    struct MockPoolState {
+        // tvl scaled by tokens
+        tvl:   (Rational, Rational),
+        // price as token1 / token0 where token0 is the base
+        price: Rational,
+    }
+
+    impl MockPoolState {
+        pub fn new(price: Rational, token0_tvl: Rational, token1_tvl: Rational) -> Self {
+            Self { price, tvl: (token0_tvl, token1_tvl) }
+        }
+    }
+
+    impl ProtocolState for MockPoolState {
+        fn price(&self, base: Address) -> Result<Rational, crate::errors::ArithmeticError> {
+            Ok(self.price.clone())
+        }
+
+        fn tvl(&self, base: Address) -> (Rational, Rational) {
+            self.tvl.clone()
+        }
+    }
+
+    fn build_edge(
+        lookup_pair: Address,
+        t0: Address,
+        t1: Address,
+        d0: usize,
+        d1: usize,
+    ) -> SubGraphEdge {
+        SubGraphEdge::new(
+            PoolPairInfoDirection::new(
+                PoolPairInformation::new(lookup_pair, StaticBindingsDb::UniswapV2, t0, t1),
+                true,
+            ),
+            d0,
+            d1,
+        )
+    }
+    macro_rules! addresses {
+        ($($var:ident),*) => {
+            let mut bytes = [0u8; 20];
+            $(
+                let $var = Address::new(bytes);
+                bytes[20] += 1;
+            )*;
+        };
+    }
+
+    /// returns a graph that is just a straight line
+    fn make_simple_graph() -> PairSubGraph {
+        addresses!(t0, t1, t2, t3, t4);
+        // t0 -> t1
+        let e0 = build_edge(t0, t0, t1, 0, 7);
+        // t1 -> t2
+        let e1 = build_edge(t1, t1, t2, 1, 6);
+        // t2 -> t3
+        let e2 = build_edge(t2, t2, t3, 2, 5);
+        // t3 -> t4
+        let e3 = build_edge(t3, t3, t4, 3, 4);
+
+        let pair = Pair(t0, t7);
+        let subgraph = PairSubGraph::init(pair, vec![e0, e1, e2, e3]);
+    }
+
+    #[test]
+    fn test_dijkstra_pricing() {
+        addresses!(t0, t1, t2, t3, t4);
+        let mut graph = make_simple_graph();
+        let mut state_map = HashMap::new();
+
+        // t1 / t0 == 10
+        let e0_price =
+            MockPoolState::new(Rational::from(10), Rational::from(10_000), Rational::from(10_000));
+        state_map.insert(t0, e0_price);
+
+        // t2 / t1 == 20
+        let e1_price =
+            MockPoolState::new(Rational::from(20), Rational::from(10_000), Rational::from(10_000));
+        state_map.insert(t1, e1_price);
+
+        // t3 / t2 == 1 / 1500
+        let e2_price = MockPoolState::new(
+            Rational::from_unsigneds(1, 1500),
+            Rational::from(10_000),
+            Rational::from(10_000),
+        );
+        state_map.insert(t2, e2_price);
+
+        // t4 / t3 ==  1/15
+        let e3_price = MockPoolState::new(
+            Rational::from_unsigneds(1, 15),
+            Rational::from(10_000),
+            Rational::from(10_000),
+        );
+        state_map.insert(t3, e3_price);
+
+        // (t4 / t0) = 10 * 20 * 1 /500 * 1/52 = 1/130
+
+        let price = graph.fetch_price(&state_map);
+
+        assert_eq!(price, Rational::from_unsigneds(1, 130))
+    }
+}

@@ -55,11 +55,16 @@ impl PoolPairInformation {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInfoDirection {
     pub info:       PoolPairInformation,
     pub token_0_in: bool,
+}
+
+impl PoolPairInfoDirection {
+    pub fn new(info: PoolPairInformation, token_0_in: bool) -> Self {
+        Self { info, token_0_in }
+    }
 }
 
 impl Deref for PoolPairInfoDirection {
