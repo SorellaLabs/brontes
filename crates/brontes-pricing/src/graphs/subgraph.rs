@@ -255,19 +255,16 @@ where
                 let Some(pool_state) = state.get(&info.pool_addr) else {
                     continue;
                 };
-
-                // returns t1 / t0
+                // returns is t1  / t0
                 let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
                     continue;
                 };
-
                 let (t0, t1) = pool_state.tvl(info.get_base_token());
-                // because we only know the tvl of the first token and we can normalize it
-                // to get a proper weight, its all we use.
-                let t0_p = &t0 * &price;
 
-                pxw += (pool_price * &t0_p);
-                weight += (&t0_p);
+                // we only weight by the first token
+                let t0xt1 = &t0 * &t1;
+                pxw += (pool_price * &t0xt1);
+                weight += t0xt1;
 
                 token_0_am += t0;
                 token_1_am += t1;
