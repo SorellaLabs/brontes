@@ -149,6 +149,7 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
         TokenDecimals,
         AddressToTokens,
         AddressToProtocol,
+        SubGraphs,
         PoolCreationBlocks = &req.key,
         &req.value
     );
@@ -239,7 +240,7 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
-            PoolCreationBlocks
+            PoolCreationBlocks, SubGraphs
         );
     } else {
         match_table!(
@@ -253,6 +254,7 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
+            SubGraphs,
             PoolCreationBlocks = &command.key
         );
     }
