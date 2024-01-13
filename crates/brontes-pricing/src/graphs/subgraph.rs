@@ -85,6 +85,7 @@ impl PairSubGraph {
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, usize>::default();
         let mut token_to_index = HashMap::new();
 
+        let mut connections: HashMap<(usize, usize), Vec<SubGraphEdge>> = HashMap::new();
         for edge in edges.into_iter() {
             let token_0 = edge.token_0;
             let token_1 = edge.token_1;
@@ -101,19 +102,19 @@ impl PairSubGraph {
 
             // based on the direction. insert properly
             if edge.token_0_in {
-                if let Some(edge_idx) = graph.find_edge(addr0.into(), addr1.into()) {
-                    graph.edge_weight_mut(edge_idx).unwrap().push(edge);
-                } else {
-                    graph.add_edge(addr0.into(), addr1.into(), vec![edge]);
-                }
+                connections.entry((addr0, addr1)).or_default().push(edge);
             } else {
-                if let Some(edge_idx) = graph.find_edge(addr1.into(), addr0.into()) {
-                    graph.edge_weight_mut(edge_idx).unwrap().push(edge);
-                } else {
-                    graph.add_edge(addr1.into(), addr0.into(), vec![edge]);
-                }
+                connections.entry((addr1, addr0)).or_default().push(edge);
             }
         }
+
+        println!("{connections:#?}");
+        graph.extend_with_edges(
+            connections
+                .into_par_iter()
+                .map(|((n0, n1), v)| (n0, n1, v))
+                .collect::<Vec<_>>(),
+        );
 
         let start_node = *token_to_index.get(&pair.0).unwrap();
         let end_node = *token_to_index.get(&pair.1).unwrap();
