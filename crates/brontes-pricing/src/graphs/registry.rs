@@ -157,7 +157,7 @@ impl SubGraphRegistry {
 
         self.sub_graphs
             .get(&pair)
-            .map(|graph| graph.fetch_price(&self.edge_state))
+            .and_then(|graph| graph.fetch_price(&self.edge_state))
             .map(|res| if swapped { res.reciprocal() } else { res })
     }
 
