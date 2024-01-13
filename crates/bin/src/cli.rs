@@ -21,6 +21,17 @@ pub enum Commands {
     RunBatchWithPricing(DexPricingArgs),
     #[command(name = "db")]
     QueryDb(DatabaseQuery),
+    #[command(name = "db_add")]
+    AddToDb(AddToDb),
+    #[cfg(feature = "tests")]
+    #[command(name = "store_trace")]
+    Traces(TraceArg),
+}
+
+#[derive(Debug, Parser)]
+pub struct TraceArg {
+    #[arg(long, short)]
+    pub block_num: u64,
 }
 
 #[derive(Debug, Parser)]
@@ -64,6 +75,19 @@ pub struct Init {
     /// false it will run the dex pricing locally using raw on-chain data
     #[arg(long, short, default_value = "false")]
     pub download_dex_pricing: bool,
+}
+
+#[derive(Debug, Parser)]
+pub struct AddToDb {
+    /// that table to be queried
+    #[arg(long, short)]
+    pub table: Tables,
+    // key of value
+    #[arg(long, short)]
+    pub key:   String,
+    // value
+    #[arg(long, short)]
+    pub value: String,
 }
 
 #[derive(Debug, Parser)]

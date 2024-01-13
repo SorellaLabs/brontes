@@ -1,26 +1,26 @@
-use alloy_primitives::{Address, Bytes, U256};
+use alloy_primitives::{Address, Bytes, LogData, U256};
 use alloy_sol_types::{SolCall, SolEvent};
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_pricing::types::PoolUpdate;
 use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::{mdbx::RO, transaction::DbTx};
-use reth_rpc_types::Log;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
-    UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, UniswapV2Calls},
+    UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, Sync, UniswapV2Calls},
 };
 action_impl!(
     V2SwapImpl,
     Swap,
     swapCall,
-    [Swap],
+    [Sync, Swap],
     UniswapV2,
     call_data: true,
     logs: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, data: Swap, db_tx: &LibmdbxTx<RO>| {
+    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, log_data: (Sync,Swap), db_tx: &LibmdbxTx<RO>| {
+        let data = log_data.1;
         let recipient = call_data.to;
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -57,7 +57,7 @@ action_impl!(
     V2MintImpl,
     Mint,
     mintCall,
-    [Mint],
+    [Sync,Mint],
     UniswapV2,
     logs: true,
     call_data: true,
@@ -65,7 +65,8 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
-     log_data: Mint, db_tx: &LibmdbxTx<RO>| {
+     log_data: (Sync,Mint), db_tx: &LibmdbxTx<RO>| {
+        let log_data = log_data.1;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedMint {
@@ -82,7 +83,7 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    [Burn],
+    [Sync, Burn],
     UniswapV2,
     call_data: true,
     logs: true,
@@ -90,7 +91,8 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: burnCall,
-     log_data: Burn, db_tx: &LibmdbxTx<RO>| {
+     log_data: (Sync,Burn), db_tx: &LibmdbxTx<RO>| {
+        let log_data = log_data.1;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedBurn {
