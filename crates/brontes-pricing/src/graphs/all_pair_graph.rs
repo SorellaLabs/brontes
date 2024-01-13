@@ -44,8 +44,11 @@ impl AllPairGraph {
 
         let t0 = SystemTime::now();
         for ((pool_addr, dex), pair) in all_pool_data {
-            // we do this so we can avoid lookups
+            // because this is undirected, doesn't matter what order the nodes are connected
+            // so we sort so we can just have a collection of edges for just one
+            // way
             let ordered_pair = pair.ordered();
+
             // fetch the node or create node it if it doesn't exist
             let addr0 = *token_to_index
                 .entry(ordered_pair.0)
