@@ -59,7 +59,7 @@ impl SubGraphRegistry {
             .unwrap()
             .get_all_pools()
             .flatten()
-            .filter(|pool| self.edge_state.contains_key(&pool.pool_addr))
+            .filter(|pool| !self.edge_state.contains_key(&pool.pool_addr))
             .map(|pool| pool.info)
             .collect_vec()
     }
