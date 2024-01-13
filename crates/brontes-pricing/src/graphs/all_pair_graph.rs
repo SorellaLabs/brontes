@@ -29,6 +29,7 @@ const CAPACITY: usize = 650_000;
 
 /// All known pairs represented in the graph. All sub-graphs are generated off
 /// of a k-shortest-path algorithm that is ran on this graph
+#[derive(Debug, Clone)]
 pub struct AllPairGraph {
     graph:          UnGraph<(), Vec<PoolPairInformation>, usize>,
     token_to_index: HashMap<Address, usize>,
@@ -179,5 +180,9 @@ impl AllPairGraph {
                 .collect_vec()
         })
         .collect_vec()
+    }
+
+    pub fn get_all_known_addresses(&self) -> Vec<Address> {
+        self.token_to_index.keys().copied().collect_vec()
     }
 }

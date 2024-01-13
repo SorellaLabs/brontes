@@ -142,7 +142,6 @@ pub fn bench_yen_graph_path_search(c: &mut Criterion) {
 }
 
 fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGroup<'_, WallTime>) {
-    graph.clear_pair_cache();
     let copy_graph = graph.clone();
 
     g.bench_function(name, move |b| {
@@ -156,7 +155,7 @@ fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGrou
             },
             |test_pairs| {
                 for pair in test_pairs {
-                    black_box(graph.get_k_paths_no_cache(pair));
+                    black_box(graph.get_paths(pair));
                 }
             },
             criterion::BatchSize::SmallInput,

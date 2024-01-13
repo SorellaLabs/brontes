@@ -525,7 +525,7 @@ pub mod test {
         let mut rest_pairs = HashMap::default();
 
         info!("initing pair graph");
-        let pair_graph = PairGraph::init_from_hashmap(pairs);
+        let pair_graph = AllPairGraph::init_from_hashmap(pairs);
 
         BrontesBatchPricer::new(quote, 0, 0, pair_graph, rx, parser.get_tracer(), block, rest_pairs)
     }
