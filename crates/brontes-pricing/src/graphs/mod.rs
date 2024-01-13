@@ -138,6 +138,7 @@ impl GraphManager {
             return vec![]
         }
 
+        info!(?pair, "created subgraph");
         self.sub_graph_registry
             .create_new_subgraph(pair.ordered(), paths.clone())
     }
