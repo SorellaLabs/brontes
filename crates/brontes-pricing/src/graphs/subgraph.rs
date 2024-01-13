@@ -257,7 +257,7 @@ where
             }
 
             if weight == Rational::ZERO {
-                continue
+                panic!("no weight");
             }
 
             let local_weighted_price = pxw / weight;
