@@ -162,37 +162,6 @@ pub(crate) mod option_address {
     }
 }
 
-pub(crate) mod pool_key {
-
-    use std::str::FromStr;
-
-    use alloy_primitives::Address;
-    use brontes_pricing::types::PoolKey;
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
-    #[allow(dead_code)]
-    pub fn serialize<S: Serializer>(u: &PoolKey, serializer: S) -> Result<S::Ok, S::Error> {
-        let val = (format!("{:?}", u.pool), u.run, u.batch, u.update_nonce);
-        val.serialize(serializer)
-    }
-    #[allow(dead_code)]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<PoolKey, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let (pool, run, batch, update_nonce): (String, u64, u64, u16) =
-            Deserialize::deserialize(deserializer)?;
-
-        Ok(PoolKey {
-            pool: Address::from_str(&pool).map_err(serde::de::Error::custom)?,
-            run,
-            batch,
-            update_nonce,
-        })
-    }
-}
 
 pub mod pools_libmdbx {
 

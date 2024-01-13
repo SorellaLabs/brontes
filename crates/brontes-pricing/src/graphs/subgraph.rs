@@ -35,7 +35,10 @@ use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use super::{PoolPairInfoDirection, PoolPairInformation};
-use crate::{types::PoolState, Pair};
+use crate::{
+    types::{PoolState, ProtocolState},
+    Pair,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubGraphEdge {
@@ -125,7 +128,7 @@ impl PairSubGraph {
         Self { pair, graph, start_node, end_node, token_to_index }
     }
 
-    pub fn fetch_price(&self, edge_state: &HashMap<Address, PoolState>) -> Rational {
+    pub fn fetch_price<T: ProtocolState>(&self, edge_state: &HashMap<Address, T>) -> Rational {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
             .expect("dijkstra on a subgraph failed, should be impossible")
     }
@@ -205,13 +208,14 @@ fn add_edge(
     true
 }
 
-pub fn dijkstra_path<G>(
+pub fn dijkstra_path<G, T>(
     graph: G,
     start: G::NodeId,
     goal: G::NodeId,
-    state: &HashMap<Address, PoolState>,
+    state: &HashMap<Address, T>,
 ) -> Option<Rational>
 where
+    T: ProtocolState,
     G: IntoEdgeReferences<EdgeWeight = Vec<SubGraphEdge>>,
     G: IntoEdges + Visitable,
     G::NodeId: Eq + Hash,
@@ -253,11 +257,11 @@ where
                 };
 
                 // returns t1 / t0
-                let Ok(pool_price) = pool_state.get_price(info.get_base_token()) else {
+                let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
                     continue;
                 };
 
-                let (t0, t1) = pool_state.get_tvl(info.get_base_token());
+                let (t0, t1) = pool_state.tvl(info.get_base_token());
                 // because we only know the tvl of the first token and we can normalize it
                 // to get a proper weight, its all we use.
                 let t0_p = &t0 * &price;
@@ -352,3 +356,6 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
         }
     }
 }
+
+#[cfg(test)]
+pub mod test {}
