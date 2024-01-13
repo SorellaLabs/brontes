@@ -160,7 +160,7 @@ impl SubGraphRegistry {
             .map(|graph| graph.fetch_price(&self.edge_state))
             .map(|price| {
                 let mut opts = ToSciOptions::default();
-                opts.set_precision(5);
+                opts.set_precision(10);
                 let str_price = price.to_sci_with_options(opts).to_string();
                 info!(?pair, price=%str_price, "price:");
                 price
