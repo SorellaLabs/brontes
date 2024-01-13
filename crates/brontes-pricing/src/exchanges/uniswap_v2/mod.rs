@@ -374,7 +374,6 @@ impl UniswapV2Pool {
         &self,
         base_token: Address,
     ) -> Result<Rational, ArithmeticError> {
-        let decimal_shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
         let (r_0, r_1) = (
             Rational::from_naturals(
                 Natural::from(self.reserve_0),
@@ -395,9 +394,15 @@ impl UniswapV2Pool {
 
     pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
         if self.token_a == base {
-            (self.reserve_0.to_scaled_rational(0), self.reserve_1.to_scaled_rational(0))
+            (
+                self.reserve_0.to_scaled_rational(self.token_a_decimals),
+                self.reserve_1.to_scaled_rational(self.token_b_decimals),
+            )
         } else {
-            (self.reserve_1.to_scaled_rational(0), self.reserve_0.to_scaled_rational(0))
+            (
+                self.reserve_1.to_scaled_rational(self.token_b_decimals),
+                self.reserve_0.to_scaled_rational(self.token_a_decimals),
+            )
         }
     }
 
