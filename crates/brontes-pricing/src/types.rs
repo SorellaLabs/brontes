@@ -30,7 +30,6 @@ impl DexQuotes {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Rational>>>);
 
@@ -80,7 +79,7 @@ impl PoolState {
     }
 
     pub fn increment_state(&mut self, state: PoolUpdate) {
-        self.variant.increment_state(state.action, state.logs);
+        self.variant.increment_state( state.logs);
     }
 
     pub fn address(&self) -> Address {
@@ -112,7 +111,7 @@ pub enum PoolVariants {
 }
 
 impl PoolVariants {
-    fn increment_state(&mut self, _action: Actions, logs: Vec<Log>) {
+    fn increment_state(&mut self, logs: Vec<Log>) {
         for log in logs {
             let _ = match self {
                 PoolVariants::UniswapV3(a) => a.sync_from_log(log),
