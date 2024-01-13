@@ -167,11 +167,7 @@ criterion_group!(graph_building_benches, bench_graph_building);
 criterion_group!(graph_insertions_benches, bench_graph_insertions);
 criterion_group!(yen_graph_path_search_benches, bench_yen_graph_path_search);
 
-criterion_main!(
-    graph_building_benches,
-    graph_insertions_benches,
-    yen_graph_path_search_benches
-);
+criterion_main!(graph_building_benches, graph_insertions_benches, yen_graph_path_search_benches);
 
 fn group<'a>(c: &'a mut Criterion, group_name: &str) -> BenchmarkGroup<'a, WallTime> {
     let mut g = c.benchmark_group(group_name);
