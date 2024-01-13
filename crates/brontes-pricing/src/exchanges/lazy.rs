@@ -74,7 +74,6 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         block_number: u64,
         ex_type: StaticBindingsDb,
     ) {
-        info!(%block_number, dex=%ex_type, ?address, "loading exchange");
         let provider = self.provider.clone();
         *self.req_per_block.entry(block_number).or_default() += 1;
         self.pool_buf.insert(address);
@@ -173,7 +172,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     Poll::Ready(Some(res))
                 }
                 Err((address, dex, block, e)) => {
-                    error!(?address, %e,"failed to load pool");
+                    error!(?address, %e,"failed to load pool, most likely pool never had state");
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
