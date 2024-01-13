@@ -270,7 +270,7 @@ where
 
             let token_0_priced = token_0_am * &price;
 
-            let new_price = &price * local_weighted_price.reciprocal();
+            let new_price = &price * local_weighted_price;
             let token_1_priced = token_1_am * &new_price;
 
             let tvl = token_0_priced + token_1_priced;
