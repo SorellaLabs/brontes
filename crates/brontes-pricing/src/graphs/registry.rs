@@ -50,7 +50,7 @@ impl SubGraphRegistry {
     }
 
     pub fn has_subpool(&self, pair: &Pair) -> bool {
-        self.sub_graphs.contains_key(&pair.ordered())
+        self.sub_graphs.contains_key(&pair)
     }
 
     pub fn fetch_unloaded_state(&self, pair: &Pair) -> Vec<PoolPairInfoDirection> {
@@ -122,7 +122,7 @@ impl SubGraphRegistry {
                 .insert(pair);
         });
         // init subgraph
-        let subgraph = PairSubGraph::init(pair.ordered(), path);
+        let subgraph = PairSubGraph::init(pair, path);
         self.sub_graphs.insert(pair, subgraph);
 
         unloaded_state
@@ -158,4 +158,3 @@ impl SubGraphRegistry {
         self.edge_state.contains_key(addr)
     }
 }
-

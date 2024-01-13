@@ -32,7 +32,7 @@ use serde::{Deserialize, Serialize};
 pub use subgraph::SubGraphEdge;
 use tracing::{error, info};
 
-use self::{ registry::SubGraphRegistry};
+use self::registry::SubGraphRegistry;
 use super::PoolUpdate;
 use crate::types::PoolState;
 
@@ -108,28 +108,25 @@ impl GraphManager {
     }
 
     pub fn add_pool(&mut self, block: u64, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
-        self.all_pair_graph.add_node(pair, pool_addr, dex);
+        self.all_pair_graph.add_node(pair.ordered(), pool_addr, dex);
     }
 
     /// creates a subpool for the pair returning all pools that need to be
     /// loaded
     pub fn create_subpool(&mut self, block: u64, pair: Pair) -> Vec<PoolPairInfoDirection> {
-        if self.sub_graph_registry.has_subpool(&pair.ordered()) {
+        let pair = pair.ordered();
+        if self.sub_graph_registry.has_subpool(&pair) {
             /// fetch all state to be loaded
-            return self
-                .sub_graph_registry
-                .fetch_unloaded_state(&pair.ordered())
-        } else if let Some((pair, edges)) = (&mut self.db_load)(block, pair.ordered()) {
+            return self.sub_graph_registry.fetch_unloaded_state(&pair)
+        } else if let Some((pair, edges)) = (&mut self.db_load)(block, pair) {
             info!(?pair, "loaded pair");
 
-            return self
-                .sub_graph_registry
-                .create_new_subgraph(pair.ordered(), edges)
+            return self.sub_graph_registry.create_new_subgraph(pair, edges)
         }
 
         let paths = self
             .all_pair_graph
-            .get_paths(pair.ordered())
+            .get_paths(pair)
             .into_iter()
             .flatten()
             .flatten()
@@ -143,7 +140,7 @@ impl GraphManager {
 
         info!(?pair, "created subgraph");
         self.sub_graph_registry
-            .create_new_subgraph(pair.ordered(), paths.clone())
+            .create_new_subgraph(pair, paths.clone())
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
