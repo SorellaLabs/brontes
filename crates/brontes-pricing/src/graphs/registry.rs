@@ -30,8 +30,23 @@ pub struct SubGraphRegistry {
 }
 
 impl SubGraphRegistry {
-    pub fn new(sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>) -> Self {
-        todo!()
+    pub fn new(subgraphs: HashMap<Pair, Vec<SubGraphEdge>>) -> Self {
+        let mut token_to_sub_graph: HashMap<Address, HashSet<Pair>> = HashMap::new();
+        let sub_graphs = subgraphs
+            .into_iter()
+            .map(|(pair, edges)| {
+                // add to lookup
+                edges
+                    .iter()
+                    .flat_map(|e| vec![e.token_0, e.token_1])
+                    .for_each(|token| {
+                        token_to_sub_graph.entry(token).or_default().insert(pair);
+                    });
+
+                (pair, PairSubGraph::init(pair, edges))
+            })
+            .collect();
+        Self { token_to_sub_graph, sub_graphs, edge_state: HashMap::default() }
     }
 
     pub fn has_subpool(&self, pair: &Pair) -> bool {
