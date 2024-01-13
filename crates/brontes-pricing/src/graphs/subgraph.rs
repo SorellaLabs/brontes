@@ -93,12 +93,12 @@ impl PairSubGraph {
             // fetch the node or create node it if it doesn't exist
             let addr0 = *token_to_index
                 .entry(token_0)
-                .or_insert(graph.add_node(()).index());
+                .or_insert_with(|| graph.add_node(()).index());
 
             // fetch the node or create node it if it doesn't exist
             let addr1 = *token_to_index
                 .entry(token_1)
-                .or_insert(graph.add_node(()).index());
+                .or_insert_with(|| graph.add_node(()).index());
 
             // based on the direction. insert properly
             if edge.token_0_in {
