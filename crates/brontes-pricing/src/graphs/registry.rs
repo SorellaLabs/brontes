@@ -145,7 +145,6 @@ impl SubGraphRegistry {
             let str_price = price.to_sci_with_options(opts).to_string();
 
             info!(?pool_address, %str_price, ?pair, "updated pool to get new price")
-
         });
     }
 

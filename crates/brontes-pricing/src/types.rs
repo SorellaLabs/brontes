@@ -79,7 +79,7 @@ impl PoolState {
     }
 
     pub fn increment_state(&mut self, state: PoolUpdate) {
-        self.variant.increment_state( state.logs);
+        self.variant.increment_state(state.logs);
     }
 
     pub fn address(&self) -> Address {
