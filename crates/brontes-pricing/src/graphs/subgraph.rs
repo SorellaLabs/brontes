@@ -248,8 +248,7 @@ where
 
             for info in edge_weight {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
-                    error!(addr=?info.pool_addr, "no state for this pool");
-                    panic!();
+                    continue;
                 };
                 let price = pool_state.get_price(info.get_base_token());
                 let (t0, t1) = pool_state.get_tvl(info.get_base_token());
@@ -261,7 +260,7 @@ where
             }
 
             if weight == Rational::ZERO {
-                panic!("no weight");
+                continue;
             }
 
             let local_weighted_price = pxw / weight;
