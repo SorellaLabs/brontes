@@ -109,7 +109,7 @@ impl Tables {
     pub(crate) fn initialize_table<'a>(
         &'a self,
         libmdbx: Arc<Libmdbx>,
-        tracer: Arc<TracingClient>,
+       // tracer: Arc<TracingClient>,
         clickhouse: Arc<Clickhouse>,
         _block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
@@ -313,7 +313,7 @@ table!(
 
 table!(
     /// block number -> vec of tx traces
-    ( TxTracesDB ) u64 | TxTracesInner
+    ( TxTracesDB ) u64 | TxTracesInner = False
 );
 
 
@@ -383,13 +383,16 @@ where
                         .collect::<Result<Vec<_>, _>>();
             */
 
-            let chunk = 10000;
+            let chunk = 100000;
+            let mut num_chunks = (block_range.1 - block_range.0) / chunk;
+
             let tasks = (block_range.0..block_range.1)
                 .filter(|block| block % chunk == 0)
                 .collect::<Vec<_>>();
 
-            let data = //futures::stream::iter(tasks)
-                join_all(tasks.into_iter().map(|block| {
+            
+            let mut data_stream = //futures::stream::iter(tasks)
+                futures::stream::iter(tasks).map(|block| {
                     let db_client = db_client.clone();
                     tokio::spawn(async move {
                         let data = db_client
@@ -409,9 +412,25 @@ where
 
                         data.unwrap()
                     })
-                })).await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
+                }).buffer_unordered(5);
 
-            libmdbx.write_table(&data)?;
+
+                let mut data = Vec::new();
+                println!("chunks remaining: {num_chunks}");
+                while let Some(val) = data_stream.next().await {
+                    data.extend(val?);
+                    num_chunks -= 1;
+                    println!("chunks remaining: {num_chunks}");
+                }
+                
+                //.await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
+
+                println!("finished querying");
+                if !data.is_empty() {
+                    libmdbx.write_table(&data)?;
+                }
+
+
             /* .buffer_unordered(50);
 
             while let Some(d) = data.next().await {
