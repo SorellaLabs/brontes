@@ -25,9 +25,9 @@ use futures::{Future, Stream, StreamExt};
 use graphs::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
-use types::{DexPriceMsg, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate};
+use types::{DexPriceMsg, DexQuotes,  PoolUpdate};
 
-use crate::types::{PoolKey, PoolKeysForPair, PoolState};
+use crate::types::{ PoolState};
 
 /// # Brontes Batch Pricer
 /// ## Reasoning
