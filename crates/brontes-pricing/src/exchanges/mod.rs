@@ -11,6 +11,7 @@ use alloy_primitives::{Address, Log, U256};
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
+use malachite::Rational;
 use reth_rpc_types::{CallInput, CallRequest};
 
 use super::errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError};
@@ -37,7 +38,7 @@ pub trait AutomatedMarketMaker {
     fn address(&self) -> Address;
     // fn sync_on_event_signatures(&self) -> Vec<B256>;
     fn tokens(&self) -> Vec<Address>;
-    fn calculate_price(&self, base_token: Address) -> Result<f64, ArithmeticError>;
+    fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError>;
     fn sync_from_action(&mut self, action: Actions) -> Result<(), EventLogError>;
     fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError>;
     async fn populate_data<M: TracingProvider>(

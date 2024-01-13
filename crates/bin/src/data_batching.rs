@@ -14,12 +14,13 @@ use brontes_core::{
 use brontes_database::{Metadata, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
-use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
+use brontes_pricing::{types::DexQuotes, BrontesBatchPricer, GraphManager};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::BlockTree};
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info};
+
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
 
@@ -36,7 +37,7 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     end_block:     u64,
     batch_id:      u64,
 
-    libmdbx:    &'db Libmdbx,
+    libmdbx:    &'static Libmdbx,
     inspectors: &'db [&'db Box<dyn Inspector>; N],
 }
 
@@ -48,7 +49,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         start_block: u64,
         end_block: u64,
         parser: &'db Parser<'db, T>,
-        libmdbx: &'db Libmdbx,
+        libmdbx: &'static Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>; N],
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
@@ -62,8 +63,16 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             rest_pairs.insert(i, pairs);
         }
 
-        trace!("initializing pair graph");
-        let pair_graph = PairGraph::init_from_hashmap(pairs);
+        let pair_graph = GraphManager::init_from_db_state(
+            pairs,
+            HashMap::default(),
+            Box::new(|block, pair| libmdbx.try_load_pair_before(block, pair).ok()),
+            Box::new(|block, pair, edges| {
+                if libmdbx.save_pair_at(block, pair, edges).is_err() {
+                    error!(?pair, %block, "failed to save pair subgraph");
+                }
+            }),
+        );
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
@@ -72,7 +81,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             pair_graph,
             rx,
             parser.get_tracer(),
-            start_block,
+            start_block + 1,
             rest_pairs,
         );
 
@@ -195,7 +204,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
 }
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
-    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexPrices)>)>,
+    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
     pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataDB)>,
 }
 
@@ -317,6 +326,7 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
                 block_details.cumulative_mev_finalized_profit_usd
             );
 
+            println!("{mev_details:#?}");
             if self
                 .database
                 .insert_classified_data(block_details, mev_details)
