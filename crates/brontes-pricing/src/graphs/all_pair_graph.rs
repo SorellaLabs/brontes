@@ -63,8 +63,8 @@ impl AllPairGraph {
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
         info!("linked all graph edges in {}us", delta);
-
         let t0 = SystemTime::now();
+
         graph.extend_with_edges(
             connections
                 .into_par_iter()
@@ -75,7 +75,12 @@ impl AllPairGraph {
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
 
-        info!(nodes=%graph.node_count(), edges=%graph.edge_count(), tokens=%token_to_index.len(), "built graph in {}us", delta);
+        info!(
+            nodes=%graph.node_count(),
+            edges=%graph.edge_count(),
+            tokens=%token_to_index.len(),
+            "built graph in {}us", delta
+        );
 
         Self { graph, token_to_index }
     }
