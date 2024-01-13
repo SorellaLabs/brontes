@@ -110,12 +110,12 @@ impl GraphManager {
         self.all_pair_graph.add_node(pair, pool_addr, dex);
         // add to pool to subgraphs if it exists. if a new subgraph is made we save it
         // to db
-        self.sub_graph_registry
-            .try_extend_subgraphs(pool_addr, dex, pair)
-            .into_iter()
-            .for_each(|(pair, edges)| {
-                (&mut self.db_save)(block, pair, edges);
-            });
+        // self.sub_graph_registry
+        //     .try_extend_subgraphs(pool_addr, dex, pair)
+        //     .into_iter()
+        //     .for_each(|(pair, edges)| {
+        //         (&mut self.db_save)(block, pair, edges);
+        //     });
     }
 
     /// creates a subpool for the pair returning all pools that need to be
