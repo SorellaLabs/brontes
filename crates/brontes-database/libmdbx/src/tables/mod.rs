@@ -5,10 +5,11 @@ use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 use paste::paste;
 use sorella_db_databases::Database;
 
+use crate::Pair;
+
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
-use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
 use const_sql::*;
 use futures::{future::join_all, Future};
 use reth_db::{table::Table, TableType};
@@ -25,7 +26,7 @@ use crate::{
         metadata::{MetadataData, MetadataInner},
         mev_block::{MevBlockWithClassified, MevBlocksData},
         pool_creation_block::{PoolCreationBlocksData, PoolsLibmdbx},
-        pool_state::PoolStateData,
+        subgraphs::{SubGraphsData, SubGraphsEntry},
         *,
     },
     Libmdbx,
@@ -40,10 +41,10 @@ pub enum Tables {
     AddressToProtocol,
     CexPrice,
     Metadata,
-    PoolState,
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
+    SubGraphs,
 }
 
 impl Tables {
@@ -53,10 +54,10 @@ impl Tables {
         Tables::AddressToProtocol,
         Tables::CexPrice,
         Tables::Metadata,
-        Tables::PoolState,
         Tables::DexPrice,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
+        Tables::SubGraphs,
     ];
     pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
         Tables::TokenDecimals,
@@ -76,10 +77,10 @@ impl Tables {
             Tables::AddressToProtocol => TableType::Table,
             Tables::CexPrice => TableType::Table,
             Tables::Metadata => TableType::Table,
-            Tables::PoolState => TableType::Table,
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
             Tables::MevBlocks => TableType::Table,
+            Tables::SubGraphs => TableType::Table,
         }
     }
 
@@ -90,10 +91,10 @@ impl Tables {
             Tables::AddressToProtocol => AddressToProtocol::NAME,
             Tables::CexPrice => CexPrice::NAME,
             Tables::Metadata => Metadata::NAME,
-            Tables::PoolState => PoolState::NAME,
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
             Tables::MevBlocks => MevBlocks::NAME,
+            Tables::SubGraphs => SubGraphs::NAME,
         }
     }
 
@@ -164,7 +165,6 @@ impl Tables {
                 println!("{} OK", Metadata::NAME);
                 Ok(())
             }),
-            Tables::PoolState => PoolState::initialize_table(libmdbx.clone(), clickhouse.clone()),
             Tables::DexPrice => DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone()),
             Tables::PoolCreationBlocks => {
                 PoolCreationBlocks::initialize_table(libmdbx.clone(), clickhouse.clone())
@@ -172,6 +172,11 @@ impl Tables {
             Tables::MevBlocks => {
                 Box::pin(
                     async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
+                )
+            }
+            Tables::SubGraphs => {
+                Box::pin(
+                    async move { libmdbx.initialize_table::<SubGraphs, SubGraphsData>(&vec![]) },
                 )
             }
         }
@@ -188,10 +193,10 @@ impl FromStr for Tables {
             AddressToProtocol::NAME => Ok(Tables::AddressToProtocol),
             CexPrice::NAME => Ok(Tables::CexPrice),
             Metadata::NAME => Ok(Tables::Metadata),
-            PoolState::NAME => Ok(Tables::PoolState),
             DexPrice::NAME => Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
             MevBlocks::NAME => Ok(Tables::MevBlocks),
+            SubGraphs::NAME => Ok(Tables::SubGraphs),
             _ => Err("Unknown table".to_string()),
         }
     }
@@ -280,11 +285,6 @@ table!(
 );
 
 table!(
-    /// pool key -> pool state
-    ( PoolState ) PoolKey | PoolStateSnapShot = False
-);
-
-table!(
     /// block number concat tx idx -> cex quotes
     ( DexPrice ) TxHash | DexQuoteWithIndex = False
 );
@@ -297,6 +297,11 @@ table!(
 table!(
     /// block number -> mev block with classified mev
     ( MevBlocks ) u64 | MevBlockWithClassified = False
+);
+
+table!(
+    /// pair -> Vec<(block_number, entry)>
+    ( SubGraphs ) Pair | SubGraphsEntry = False
 );
 
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
