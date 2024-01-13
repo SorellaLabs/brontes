@@ -196,6 +196,7 @@ impl FromStr for Tables {
             DexPrice::NAME => Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
             MevBlocks::NAME => Ok(Tables::MevBlocks),
+            SubGraphs::NAME => Ok(Tables::SubGraphs),
             _ => Err("Unknown table".to_string()),
         }
     }
