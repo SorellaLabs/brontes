@@ -367,7 +367,7 @@ impl UniswapV2Pool {
     //     Ok(token1)
     // }
 
-    pub fn calculate_price_64_x_64(&self, base_token: Address) -> Result<u128, ArithmeticError> {
+    pub fn calculate_price_64_x_64(&self, base_token: Address) -> Result<U256, ArithmeticError> {
         let decimal_shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
 
         let (r_0, r_1) = if decimal_shift < 0 {
@@ -385,22 +385,14 @@ impl UniswapV2Pool {
 
         if base_token == self.token_a {
             if r_0.is_zero() {
-                Ok(U128_0X10000000000000000)
+                Ok(U256::from(U128_0X10000000000000000))
             } else {
-                let res = div_uu(r_1, r_0);
-                if res.is_err() {
-                    error!(?self.address, "overflow on price calcs");
-                }
-                res
+                Ok(r_1 / r_0)
             }
         } else if r_1.is_zero() {
-            Ok(U128_0X10000000000000000)
+            Ok(U256::from(U128_0X10000000000000000))
         } else {
-            let res = div_uu(r_0, r_1);
-                if res.is_err() {
-                    error!(?self.address, "overflow on price calcs");
-                }
-                res
+            Ok(r_0 / r_1)
         }
     }
 
