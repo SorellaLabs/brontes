@@ -127,7 +127,7 @@ impl PairSubGraph {
 
     pub fn fetch_price(&self, edge_state: &HashMap<Address, PoolState>) -> Rational {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
-            .expect("dijsktrs on a subgraph failed, should be impossible")
+            .expect("dijkstra on a subgraph failed, should be impossible")
     }
 
     pub fn get_all_pools(&self) -> impl Iterator<Item = &Vec<SubGraphEdge>> + '_ {
@@ -248,6 +248,7 @@ where
 
             for info in edge_weight {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
+                    error!("missing pool_state");
                     continue;
                 };
                 let price = pool_state.get_price(info.get_base_token());
