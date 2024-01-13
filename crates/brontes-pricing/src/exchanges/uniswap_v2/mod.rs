@@ -3,6 +3,7 @@ pub mod factory;
 
 use std::sync::Arc;
 use tracing::error;
+use malachite::num::arithmetic::traits::Pow;
 
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
 use alloy_rlp::{RlpDecodable, RlpEncodable};
@@ -10,7 +11,7 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
-use malachite::Rational;
+use malachite::{Rational, Natural, num::logic::traits::BitConvertible};
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 
@@ -92,8 +93,8 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 
     //Calculates base/quote, meaning the price of base token per quote (ie.
     // exchange rate is X base per 1 quote)
-    fn calculate_price(&self, base_token: Address) -> Result<f64, ArithmeticError> {
-        Ok(q64_to_f64(self.calculate_price_64_x_64(base_token)?))
+    fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError> {
+        self.calculate_price_64_x_64(base_token)
     }
 
     fn tokens(&self) -> Vec<Address> {
@@ -367,31 +368,17 @@ impl UniswapV2Pool {
     //     Ok(token1)
     // }
 
-    pub fn calculate_price_64_x_64(&self, base_token: Address) -> Result<U256, ArithmeticError> {
+    pub fn calculate_price_64_x_64(&self, base_token: Address) -> Result<Rational, ArithmeticError> {
         let decimal_shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
-
-        let (r_0, r_1) = if decimal_shift < 0 {
-            (
-                U256::from(self.reserve_0)
-                    * U256::from(10u128.pow(decimal_shift.unsigned_abs() as u32)),
-                U256::from(self.reserve_1),
-            )
-        } else {
-            (
-                U256::from(self.reserve_0),
-                U256::from(self.reserve_1) * U256::from(10u128.pow(decimal_shift as u32)),
-            )
-        };
+        let (r_0, r_1) = (
+            Rational::from_naturals(Natural::from(self.reserve_0), Natural::from(10u64).pow(self.token_a_decimals as u64)),
+            Rational::from_naturals(Natural::from(self.reserve_1), Natural::from(10u64).pow(self.token_b_decimals as u64))
+            );
+        
 
         if base_token == self.token_a {
-            if r_0.is_zero() {
-                Ok(U256::from(U128_0X10000000000000000))
-            } else {
                 Ok(r_1 / r_0)
-            }
-        } else if r_1.is_zero() {
-            Ok(U256::from(U128_0X10000000000000000))
-        } else {
+                 } else {
             Ok(r_0 / r_1)
         }
     }
