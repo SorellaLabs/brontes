@@ -158,14 +158,14 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair)
             .map(|graph| graph.fetch_price(&self.edge_state))
+            .map(|res| if swapped { res.reciprocal() } else { res })
             .map(|price| {
                 let mut opts = ToSciOptions::default();
                 opts.set_precision(10);
                 let str_price = price.to_sci_with_options(opts).to_string();
-                info!(?pair, price=%str_price, "price:");
+                info!(?unordered_pair, price=%str_price, "price:");
                 price
             })
-            .map(|res| if swapped { res.reciprocal() } else { res })
     }
 
     pub fn has_state(&self, addr: &Address) -> bool {
