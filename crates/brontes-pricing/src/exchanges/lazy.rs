@@ -47,8 +47,9 @@ pub struct LazyResult {
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
-    pool_buf:          HashSet<Address>,
     pool_load_futures: FuturesOrdered<BoxFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
+    /// addresses currently being processed.
+    pool_buf:          HashSet<Address>,
     /// requests we are processing for a given block.
     req_per_block:     HashMap<u64, u64>,
 }
