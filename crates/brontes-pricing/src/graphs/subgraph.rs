@@ -269,6 +269,7 @@ where
             let local_weighted_price = pxw / weight;
 
             let token_0_priced = token_0_am * &price;
+
             let new_price = &price * local_weighted_price.reciprocal();
             let token_1_priced = token_1_am * &new_price;
 
