@@ -21,63 +21,6 @@ use crate::{
     uniswap_v3::UniswapV3Pool, AutomatedMarketMaker,
 };
 
-#[derive(
-    Debug,
-    Default,
-    Clone,
-    Hash,
-    PartialEq,
-    Eq,
-    Copy,
-    Serialize,
-    Deserialize,
-    Ord,
-    PartialOrd,
-    RlpEncodable,
-    RlpDecodable,
-)]
-pub struct PoolKey {
-    #[serde(with = "address_string")]
-    pub pool:         Address,
-    pub run:          u64,
-    pub batch:        u64,
-    pub update_nonce: u16,
-}
-
-impl FromStr for PoolKey {
-    type Err = u8;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let split = s.split('-').collect::<Vec<_>>();
-        let pool = Address::from_str(split[0]).unwrap();
-        let run = u64::from_str(split[1]).unwrap();
-        let batch = u64::from_str(split[2]).unwrap();
-        let update_nonce = u16::from_str(split[3]).unwrap();
-
-        Ok(Self { update_nonce, pool, run, batch })
-    }
-}
-
-impl reth_db::table::Decode for PoolKey {
-    fn decode<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-        let binding = value.as_ref().to_vec();
-        let buf = &mut binding.as_slice();
-        <PoolKey as Decodable>::decode(buf).map_err(|e| reth_db::DatabaseError::Decode)
-    }
-}
-
-impl reth_db::table::Encode for PoolKey {
-    type Encoded = Vec<u8>;
-
-    fn encode(self) -> Self::Encoded {
-        let mut buf = Vec::new();
-        <PoolKey as Encodable>::encode(&self, &mut buf);
-        buf
-    }
-}
-
-impl_compress_decompress_for_encoded_decoded!(PoolKey);
-
 impl DexQuotes {
     pub fn price_after(&self, pair: Pair, tx: usize) -> Option<Rational> {
         if pair.0 == pair.1 {
@@ -87,22 +30,6 @@ impl DexQuotes {
     }
 }
 
-#[derive(
-    Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable,
-)]
-pub struct PoolKeyWithDirection {
-    pub key:  PoolKey,
-    pub base: Address,
-}
-
-impl PoolKeyWithDirection {
-    pub fn new(key: PoolKey, base: Address) -> Self {
-        Self { key, base }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable)]
-pub struct PoolKeysForPair(pub Vec<PoolKeyWithDirection>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Rational>>>);
@@ -113,90 +40,18 @@ impl DexQuotes {
     }
 }
 
-/// a immutable version of pool state that is for a specific post-transition
-/// period
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum PoolStateSnapShot {
-    UniswapV2(UniswapV2Pool),
-    UniswapV3(UniswapV3Pool),
+pub(crate) trait ProtocolState {
+    fn price(&self, base: Address) -> Result<Rational, ArithmeticError>;
+    fn tvl(&self, base: Address) -> (Rational, Rational);
 }
 
-impl_compress_decompress_for_encoded_decoded!(PoolStateSnapShot);
-
-impl PoolStateSnapShot {
-    pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
-        match self {
-            PoolStateSnapShot::UniswapV2(v) => v.get_tvl(base),
-            PoolStateSnapShot::UniswapV3(v) => v.get_tvl(base),
-        }
+impl ProtocolState for PoolState {
+    fn tvl(&self, base: Address) -> (Rational, Rational) {
+        self.get_tvl(base)
     }
 
-    pub fn get_price(&self, base: Address) -> Rational {
-        match self {
-            PoolStateSnapShot::UniswapV2(v) => {
-                Rational::try_from(v.calculate_price(base).unwrap()).unwrap()
-            }
-            PoolStateSnapShot::UniswapV3(v) => {
-                let price = v.calculate_price(base);
-                if price.is_err() {
-                    tracing::error!(?price, "failed to get price");
-                    return Rational::ZERO
-                }
-
-                Rational::try_from(price.unwrap()).unwrap()
-            }
-        }
-    }
-
-    pub fn get_base_token(&self, token_0_in: bool) -> Address {
-        match self {
-            PoolStateSnapShot::UniswapV3(v) => {
-                if token_0_in {
-                    v.token_a
-                } else {
-                    v.token_b
-                }
-            }
-            PoolStateSnapShot::UniswapV2(v) => {
-                if token_0_in {
-                    v.token_a
-                } else {
-                    v.token_b
-                }
-            }
-        }
-    }
-
-    /// for encoding help
-    fn variant(&self) -> u8 {
-        match self {
-            PoolStateSnapShot::UniswapV2(_) => 0,
-            PoolStateSnapShot::UniswapV3(_) => 1,
-        }
-    }
-}
-
-impl Encodable for PoolStateSnapShot {
-    fn encode(&self, out: &mut dyn BufMut) {
-        self.variant().encode(out);
-        match self {
-            PoolStateSnapShot::UniswapV2(st) => st.encode(out),
-            PoolStateSnapShot::UniswapV3(st) => st.encode(out),
-        }
-    }
-}
-
-impl Decodable for PoolStateSnapShot {
-    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let variant = u8::decode(buf)?;
-
-        let this = match variant {
-            0 => PoolStateSnapShot::UniswapV2(UniswapV2Pool::decode(buf)?),
-            1 => PoolStateSnapShot::UniswapV3(UniswapV3Pool::decode(buf)?),
-            _ => unreachable!("can't decode this variant"),
-        };
-
-        Ok(this)
+    fn price(&self, base: Address) -> Result<Rational, ArithmeticError> {
+        self.get_price(base)
     }
 }
 
@@ -263,18 +118,6 @@ impl PoolVariants {
                 PoolVariants::UniswapV3(a) => a.sync_from_log(log),
                 PoolVariants::UniswapV2(a) => a.sync_from_log(log),
             };
-        }
-        // match self {
-        //     PoolVariants::UniswapV3(a) =>
-        // a.sync_from_action(action).unwrap(),
-        //     PoolVariants::UniswapV2(a) =>
-        // a.sync_from_action(action).unwrap(), }
-    }
-
-    fn into_snapshot(self) -> PoolStateSnapShot {
-        match self {
-            Self::UniswapV2(v) => PoolStateSnapShot::UniswapV2(v),
-            Self::UniswapV3(v) => PoolStateSnapShot::UniswapV3(v),
         }
     }
 }
