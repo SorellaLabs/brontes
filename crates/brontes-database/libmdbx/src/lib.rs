@@ -35,7 +35,7 @@ use types::{
     token_decimals::TokenDecimalsData,
 };
 
-use self::{implementation::tx::LibmdbxTx, tables::Tables, types::LibmdbxData};
+use self::{implementation::tx::LibmdbxTx, types::LibmdbxData};
 pub mod implementation;
 pub mod tables;
 pub mod types;
@@ -257,7 +257,9 @@ impl Libmdbx {
     }
 
     /// gets all addresses that were initialized in a given block
-    pub fn addresses_init_block(
+    //TODO: Joe - implement a range function so that we don't have to loop through
+    // the entire block range and can simply batch query
+    pub fn protocols_created_at_block(
         &self,
         block_num: u64,
     ) -> eyre::Result<Vec<(Address, StaticBindingsDb, Pair)>> {

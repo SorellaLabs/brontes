@@ -1,18 +1,26 @@
-use std::{env, path::Path, sync::Arc};
+use std::{
+    env,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
+use alloy_primitives::Log;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use log::Level;
-use reth_primitives::B256;
+use reth_primitives::{Header, B256};
 use reth_rpc_types::{
     trace::parity::{TraceResults, TransactionTrace},
-    Log, TransactionReceipt,
+    TransactionReceipt,
 };
 use reth_tracing_ext::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
+use tokio::{
+    runtime::Handle,
+    sync::mpsc::{unbounded_channel, UnboundedSender},
+};
 use tracing_subscriber::filter::Directive;
 
 use crate::decoding::{parser::TraceParser, TracingProvider};
@@ -176,4 +184,32 @@ pub fn init_trace_parser<'a>(
     let call = Box::new(|_: &_, _: &_| true);
 
     TraceParser::new(libmdbx, call, Arc::new(tracer), Arc::new(metrics_tx))
+}
+
+pub async fn store_traces_for_block(block_number: u64) {
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
+
+    let (a, b) = unbounded_channel();
+    let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, &libmdbx, 10);
+
+    let (block_trace, header) = tracer.execute_block(block_number).await.unwrap();
+
+    let file = PathBuf::from(format!(
+        "./crates/brontes-core/src/test_utils/liquidation_traces/{}.json",
+        block_number
+    ));
+
+    let stringified = serde_json::to_string(&(block_trace, header)).unwrap();
+    std::fs::write(&file, stringified).unwrap();
+    drop(b)
+}
+
+pub fn load_traces_for_block(block_number: u64) -> (Vec<TxTrace>, Header) {
+    let file = PathBuf::from(format!(
+        "./crates/brontes-core/src/test_utils/liquidation_traces/{}.json",
+        block_number
+    ));
+
+    serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap()
 }

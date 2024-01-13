@@ -89,10 +89,10 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                 #(
                     {
                     let log = &logs[#log_idx];
-                    #log_type::decode_log(log.topics.iter().map(|h|h.0), &log.data, false).ok()?
+                    #log_type::decode_log_data(&log.data, false).ok()?
                     }
 
-                )*
+                ),*
             );
         ));
     }
@@ -173,7 +173,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                 return_data: Bytes,
                 from_address: Address,
                 target_address: Address,
-                logs: &Vec<Log>,
+                logs: &Vec<::alloy_primitives::Log>,
                 db_tx: &LibmdbxTx<RO>,
             ) -> Option<Actions> {
                 #(#option_parsing)*
@@ -328,7 +328,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 return_data: Bytes,
                 from_address: Address,
                 target_address: Address,
-                logs: &Vec<Log>,
+                logs: &Vec<::alloy_primitives::Log>,
                 db_tx: &LibmdbxTx<RO>,
                 tx: UnboundedSender<::brontes_pricing::types::DexPriceMsg>,
                 block: u64,
