@@ -327,7 +327,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         vec![self.token_a, self.token_b]
     }
 
-    fn calculate_price(&self, base_token: Address) -> Result<f64, ArithmeticError> {
+    fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError> {
         let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)?;
         let shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
 
@@ -338,9 +338,9 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         };
 
         if base_token == self.token_a {
-            Ok(price)
+            Ok(Rational::try_from(price).unwrap())
         } else {
-            Ok(1.0 / price)
+            Ok(Rational::try_from((1.0 / price)).unwrap())
         }
     }
 
@@ -908,7 +908,7 @@ impl UniswapV3Pool {
     }
 
     pub fn data_is_populated(&self) -> bool {
-        !(self.token_a.is_zero() || self.token_b.is_zero())
+        !(self.token_a.is_zero() || self.token_b.is_zero()) || !(self.sqrt_price >= MIN_SQRT_RATIO && self.sqrt_price< MAX_SQRT_RATIO)
     }
 
     // pub async fn get_tick_word<M: TracingProvider>(
