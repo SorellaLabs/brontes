@@ -40,58 +40,24 @@ impl AllPairGraph {
             UnGraph::<(), Vec<PoolPairInformation>, usize>::with_capacity(CAPACITY / 2, CAPACITY);
 
         let mut token_to_index = HashMap::with_capacity(CAPACITY);
-
-        let mut connections: HashMap<
-            Address,
-            (usize, HashMap<Address, (Vec<PoolPairInformation>, usize)>),
-        > = HashMap::with_capacity(CAPACITY);
+        let mut connections: HashMap<(usize, usize), Vec<PoolPairInformation>> = HashMap::new();
 
         let t0 = SystemTime::now();
         for ((pool_addr, dex), pair) in all_pool_data {
+            // we do this so we can avoid lookups
+            let ordered_pair = pair.ordered();
             // fetch the node or create node it if it doesn't exist
             let addr0 = *token_to_index
-                .entry(pair.0)
+                .entry(ordered_pair.0)
                 .or_insert(graph.add_node(()).index());
 
             // fetch the node or create node it if it doesn't exist
             let addr1 = *token_to_index
-                .entry(pair.1)
+                .entry(ordered_pair.1)
                 .or_insert(graph.add_node(()).index());
 
-            // insert token0
-            let token_0_entry = connections
-                .entry(pair.0)
-                .or_insert_with(|| (addr0, HashMap::default()));
-
-            // if we find an already inserted edge, we append the address otherwise we
-            // insert both
-            if let Some(inner) = token_0_entry.1.get_mut(&pair.1) {
-                inner
-                    .0
-                    .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
-            } else {
-                token_0_entry.1.insert(
-                    pair.1,
-                    (vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)], addr1),
-                );
-            }
-
-            // insert token1
-            let token_1_entry = connections
-                .entry(pair.1)
-                .or_insert_with(|| (addr1, HashMap::default()));
-            // if we find a already inserted edge, we append the address otherwise we insert
-            // both
-            if let Some(inner) = token_1_entry.1.get_mut(&pair.0) {
-                inner
-                    .0
-                    .push(PoolPairInformation::new(pool_addr, dex, pair.0, pair.1));
-            } else {
-                token_1_entry.1.insert(
-                    pair.0,
-                    (vec![PoolPairInformation::new(pool_addr, dex, pair.0, pair.1)], addr0),
-                );
-            }
+            let info = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
+            connections.entry((addr0, addr1)).or_default().push(info);
         }
 
         let t1 = SystemTime::now();
@@ -99,14 +65,12 @@ impl AllPairGraph {
         info!("linked all graph edges in {}us", delta);
 
         let t0 = SystemTime::now();
-        graph.extend_with_edges(connections.into_values().flat_map(|(node0, edges)| {
-            edges
+        graph.extend_with_edges(
+            connections
                 .into_par_iter()
-                .map(move |(_, (pools, adjacent))| {
-                    (node0, adjacent, pools.into_iter().collect::<Vec<_>>())
-                })
-                .collect::<Vec<_>>()
-        }));
+                .map(|((n0, n1), v)| (n0, n1, v))
+                .collect::<Vec<_>>(),
+        );
 
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
