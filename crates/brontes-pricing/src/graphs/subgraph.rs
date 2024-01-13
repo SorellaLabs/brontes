@@ -36,7 +36,7 @@ use crate::{types::PoolState, Pair};
 
 #[derive(Debug, Clone)]
 pub struct SubGraphEdge {
-    info: PoolPairInfoDirection,
+    pub info: PoolPairInfoDirection,
 
     distance_to_start_node: usize,
     distance_to_end_node:   usize,
@@ -79,7 +79,7 @@ pub struct PairSubGraph {
 }
 
 impl PairSubGraph {
-    pub fn init(pair: Pair, edges: Vec<Vec<Vec<SubGraphEdge>>>) -> Self {
+    pub fn init(pair: Pair, edges: Vec<SubGraphEdge>) -> Self {
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, usize>::default();
 
         let mut token_to_index = HashMap::new();
@@ -89,9 +89,9 @@ impl PairSubGraph {
             (usize, HashMap<Address, (Vec<SubGraphEdge>, usize)>),
         > = HashMap::default();
 
-        for edge in edges.into_iter().flatten().flatten() {
-            let token_0 = edge.info.info.token_0;
-            let token_1 = edge.info.info.token_1;
+        for edge in edges.into_iter() {
+            let token_0 = edge.token_0;
+            let token_1 = edge.token_1;
 
             // fetch the node or create node it if it doesn't exist
             let addr0 = *token_to_index
@@ -103,38 +103,19 @@ impl PairSubGraph {
                 .entry(token_1)
                 .or_insert(graph.add_node(()).index());
 
-            // insert into connections
-            if edge.info.token_0_in {
-                let token_0_entry = connections
-                    .entry(token_0)
-                    .or_insert_with(|| (addr0, HashMap::default()));
-
-                if let Some(inner) = token_0_entry.1.get_mut(&token_1) {
-                    inner.0.push(edge);
+            // based on the direction. insert properly
+            if edge.token_0_in {
+                if let Some(edge) = graph.find_edge(addr0.into(), addr1.into()) {
                 } else {
-                    token_0_entry.1.insert(token_1, (vec![edge], addr1));
+                    graph.add_edge(addr0.into(), addr1.into(), vec![edge]);
                 }
             } else {
-                let token_1_entry = connections
-                    .entry(token_1)
-                    .or_insert_with(|| (addr1, HashMap::default()));
-
-                if let Some(inner) = token_1_entry.1.get_mut(&token_0) {
-                    inner.0.push(edge);
+                if let Some(edge) = graph.find_edge(addr1.into(), addr0.into()) {
                 } else {
-                    token_1_entry.1.insert(token_0, (vec![edge], addr0));
+                    graph.add_edge(addr1.into(), addr0.into(), vec![edge]);
                 }
             }
         }
-
-        graph.extend_with_edges(connections.into_values().flat_map(|(node0, edges)| {
-            edges
-                .into_par_iter()
-                .map(move |(_, (pools, adjacent))| {
-                    (node0, adjacent, pools.into_iter().collect::<Vec<_>>())
-                })
-                .collect::<Vec<_>>()
-        }));
 
         let start_node = *token_to_index.get(&pair.0).unwrap();
         let end_node = *token_to_index.get(&pair.1).unwrap();
@@ -145,6 +126,10 @@ impl PairSubGraph {
     pub fn fetch_price(&self, edge_state: &HashMap<Address, PoolState>) -> Rational {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
             .expect("dijsktrs on a subgraph failed, should be impossible")
+    }
+
+    pub fn get_all_pools(&self) -> impl Iterator<Item = &Vec<SubGraphEdge>> + '_ {
+        self.graph.edge_weights()
     }
 
     pub fn add_new_edge(&mut self, edge_info: PoolPairInformation) -> bool {

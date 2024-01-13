@@ -1,5 +1,6 @@
 use std::{cmp::max, collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
+use brontes_pricing::SubGraphEdge;
 use brontes_pricing::types::DexQuotes;
 pub mod initialize;
 
@@ -141,6 +142,14 @@ impl Libmdbx {
     pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
         let db_tx = self.ro_tx().unwrap();
         db_tx.get::<TokenDecimals>(address).ok()?
+    }
+
+    pub fn try_load_pair_before(&self, block: u64, pair: Pair) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
+        todo!()
+    }
+
+    pub fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
+        todo!()
     }
 
     /// Clears a table in the database
