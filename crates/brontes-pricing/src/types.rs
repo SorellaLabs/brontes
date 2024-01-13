@@ -210,6 +210,20 @@ impl PoolState {
         Self { variant }
     }
 
+    pub fn pair(&self) -> Pair {
+        match &self.variant {
+            PoolVariants::UniswapV2(v) => Pair(v.token_a, v.token_b),
+            PoolVariants::UniswapV3(v) => Pair(v.token_a, v.token_b),
+        }
+    }
+
+    pub fn dex(&self) -> StaticBindingsDb {
+        match &self.variant {
+            PoolVariants::UniswapV2(_) => StaticBindingsDb::UniswapV2,
+            PoolVariants::UniswapV3(_) => StaticBindingsDb::UniswapV3,
+        }
+    }
+
     pub fn increment_state(&mut self, state: PoolUpdate) {
         self.variant.increment_state(state.action, state.logs);
     }
