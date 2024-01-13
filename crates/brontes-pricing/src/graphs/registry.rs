@@ -131,8 +131,7 @@ impl SubGraphRegistry {
     pub fn update_pool_state(&mut self, pool_address: Address, update: PoolUpdate) {
         self.edge_state
             .get_mut(&pool_address)
-            .unwrap()
-            .increment_state(update);
+            .map(|state| state.increment_state(update));
     }
 
     pub fn new_pool_state(
