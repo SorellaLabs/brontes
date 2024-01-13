@@ -158,3 +158,4 @@ impl SubGraphRegistry {
         self.edge_state.contains_key(addr)
     }
 }
+
