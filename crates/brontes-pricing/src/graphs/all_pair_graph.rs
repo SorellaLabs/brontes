@@ -173,7 +173,7 @@ impl AllPairGraph {
                     .collect_vec()
             },
             |node| node == end_idx,
-            |node0, node1| (*node0, *node1),
+            |node0, node1| (*node1, *node0),
             4,
         )
         .into_iter()
@@ -197,7 +197,7 @@ impl AllPairGraph {
                         .map(|info| {
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
                             SubGraphEdge::new(
-                                PoolPairInfoDirection { info, token_0_in: node1 == index },
+                                PoolPairInfoDirection { info, token_0_in: node0 == index },
                                 i,
                                 path_length - i,
                             )

@@ -17,9 +17,11 @@ use brontes_types::{
 use ethers::core::k256::elliptic_curve::bigint::Zero;
 use exchanges::lazy::{LazyExchangeLoader, LazyResult};
 pub use exchanges::*;
+pub use graphs::{GraphManager, SubGraphEdge};
+
 mod graphs;
+
 use futures::{Future, Stream, StreamExt};
-pub use graphs::GraphManager;
 use graphs::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
@@ -115,7 +117,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .remove(&self.current_block)
                 .unwrap_or_default()
             {
-                self.graph_manager.add_pool(pair, pool_addr, dex);
+                // add pool
+                self.graph_manager
+                    .add_pool(self.current_block, pair, pool_addr, dex);
             }
         }
 
@@ -139,13 +143,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     /// takes the given pair fetching all pool state that needs to be loaded in
     /// order to properly price through the graph
     fn queue_loading(&mut self, pair: Pair, trigger_update: PoolUpdate) {
-        for pool_info in self
-            .graph_manager
-            .create_subpool(pair)
-            .into_iter()
-            .flatten()
-            .flatten()
-        {
+        for pool_info in self.graph_manager.create_subpool(self.current_block, pair).into_iter() {
             // load exchange only if its not loaded already
             if !self.lazy_loader.is_loading(&pool_info.pool_addr) {
                 self.lazy_loader.lazy_load_exchange(
@@ -273,7 +271,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             error!(?addr, "failed to get pair for pool");
             return;
         };
-        self.graph_manager.update_state(msg);
+        self.graph_manager.update_state(addr, msg);
 
         // generate all variants of the price that might be used in the inspectors
         let pair0 = Pair(pool_pair.0, self.quote_asset);
@@ -448,6 +446,11 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             }
         }
     }
+}
+
+pub enum BatchPricerResult {
+    NewQuotes(u64, DexQuotes),
+    SubgraphChange(u64, u64, Pair, Vec<SubGraphEdge>),
 }
 
 /// a ordered buffer for holding state transitions for a block while the lazy

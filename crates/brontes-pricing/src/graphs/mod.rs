@@ -3,7 +3,6 @@ mod dijkstras;
 mod registry;
 mod subgraph;
 mod yens;
-
 use std::{
     cmp::{max, Ordering},
     collections::{
@@ -29,9 +28,10 @@ use petgraph::{
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
+pub use subgraph::SubGraphEdge;
 use tracing::{error, info};
 
-use self::{all_pair_graph::AllPairGraph, registry::SubGraphRegistry, subgraph::SubGraphEdge};
+use self::{all_pair_graph::AllPairGraph, registry::SubGraphRegistry};
 use super::PoolUpdate;
 use crate::types::PoolState;
 
@@ -85,43 +85,71 @@ impl PoolPairInfoDirection {
 }
 
 pub struct GraphManager {
-    all_pair_graph: AllPairGraph,
-    sub_graphs:     SubGraphRegistry,
+    all_pair_graph:     AllPairGraph,
+    sub_graph_registry: SubGraphRegistry,
+    /// this is degen but don't want to reorganize all types so that
+    /// this struct can hold the db so these closures allow for access...
+    db_load: Box<dyn FnMut(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
+    db_save:            Box<dyn FnMut(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
 }
 
 impl GraphManager {
     pub fn init_from_db_state(
         all_pool_data: HashMap<(Address, StaticBindingsDb), Pair>,
-        sub_graphs: HashMap<Pair, Vec<SubGraphEdge>>,
+        sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>,
+        db_load: Box<dyn FnMut(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
+        db_save: Box<dyn FnMut(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
     ) -> Self {
         let graph = AllPairGraph::init_from_hashmap(all_pool_data);
-        todo!()
+        let registry = SubGraphRegistry::new(sub_graph_registry);
+
+        Self { all_pair_graph: graph, sub_graph_registry: registry, db_load, db_save }
     }
 
-    pub fn add_pool(
-        &mut self,
-        pair: Pair,
-        pool_addr: Address,
-        dex: StaticBindingsDb,
-    ) -> Option<PoolPairInfoDirection> {
+    pub fn add_pool(&mut self, block: u64, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
         self.all_pair_graph.add_node(pair, pool_addr, dex);
-        None
+        // add to pool to subgraphs if it exists. if a new subgraph is made we save it
+        // to db
+        self.sub_graph_registry
+            .try_extend_subgraphs(pool_addr, dex, pair)
+            .into_iter()
+            .for_each(|(pair, edges)| {
+                (&mut self.db_save)(block, pair, edges);
+            });
     }
 
     /// creates a subpool for the pair returning all pools that need to be
     /// loaded
-    pub fn create_subpool(&mut self, pair: Pair) -> Vec<Vec<Vec<PoolPairInfoDirection>>> {
-        todo!()
+    pub fn create_subpool(&mut self, block: u64, pair: Pair) -> Vec<PoolPairInfoDirection> {
+        if self.sub_graph_registry.has_subpool(&pair) {
+            /// fetch all state to be loaded
+            return self.sub_graph_registry.fetch_unloaded_state(&pair)
+        } else if let Some((pair, edges)) = (&mut self.db_load)(block, pair) {
+            return self.sub_graph_registry.create_new_subgraph(pair, edges)
+        }
+
+        let paths = self
+            .all_pair_graph
+            .get_paths(pair)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .collect_vec();
+
+        self.sub_graph_registry
+            .create_new_subgraph(pair, paths.clone())
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
-        todo!()
+        self.sub_graph_registry.get_price(pair)
     }
 
-    pub fn new_state(&mut self, address: Address, state: PoolState) {}
+    pub fn new_state(&mut self, address: Address, state: PoolState) {
+        self.sub_graph_registry.new_pool_state(address, state);
+    }
 
-    pub fn update_state(&mut self, state: PoolUpdate) {
-        todo!()
+    pub fn update_state(&mut self, address: Address, update: PoolUpdate) {
+        self.sub_graph_registry.update_pool_state(address, update);
     }
 
     pub fn has_state(&self, address: &Address) -> bool {

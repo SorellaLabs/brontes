@@ -448,7 +448,7 @@ async fn spawn_batches(
     start_block: u64,
     end_block: u64,
     parser: &DParser<'_, TracingClient>,
-    libmdbx: &Libmdbx,
+    libmdbx: &'static Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
     DataBatching::new(
