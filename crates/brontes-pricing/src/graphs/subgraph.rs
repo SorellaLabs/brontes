@@ -9,7 +9,6 @@ use std::{
     time::SystemTime,
 };
 
-use serde::{Deserialize, Serialize};
 use alloy_primitives::Address;
 use brontes_types::exchanges::StaticBindingsDb;
 use itertools::Itertools;
@@ -30,6 +29,7 @@ use petgraph::{
     Graph,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use super::{PoolPairInfoDirection, PoolPairInformation};

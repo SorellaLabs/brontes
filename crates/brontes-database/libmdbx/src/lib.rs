@@ -1,7 +1,6 @@
 use std::{cmp::max, collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
-use brontes_pricing::SubGraphEdge;
-use brontes_pricing::types::DexQuotes;
+use brontes_pricing::{types::DexQuotes, SubGraphEdge};
 pub mod initialize;
 
 use alloy_primitives::Address;
@@ -10,7 +9,7 @@ use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     exchanges::StaticBindingsDb,
 };
-use eyre::Context;
+use eyre::{anyhow, Context};
 use initialize::LibmdbxInitializer;
 use reth_db::{
     cursor::{DbCursorRO, DbCursorRW},
@@ -34,6 +33,7 @@ use types::{
 };
 
 use self::{implementation::tx::LibmdbxTx, types::LibmdbxData};
+use crate::types::subgraphs::SubGraphsData;
 pub mod implementation;
 pub mod tables;
 pub mod types;
@@ -144,12 +144,51 @@ impl Libmdbx {
         db_tx.get::<TokenDecimals>(address).ok()?
     }
 
-    pub fn try_load_pair_before(&self, block: u64, pair: Pair) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
-        todo!()
+    pub fn try_load_pair_before(
+        &self,
+        block: u64,
+        pair: Pair,
+    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
+        let tx = self.ro_tx()?;
+        let subgraphs = tx
+            .get::<SubGraphs>(pair)?
+            .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
+        // load the latest version of the sub graph relative to the block. if the
+        // sub graph is the last entry in the vector, we return an error as we cannot
+        // grantee that we have a run from last update to request block
+        let last_block = *subgraphs.0.keys().max().unwrap();
+        if block > last_block {
+            eyre::bail!("possible missing state");
+        }
+
+        let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
+
+        for (cur_block, update) in subgraphs.0 {
+            if cur_block > block {
+                return last.ok_or_else(|| eyre::eyre!("no subgraph found"))
+            }
+            last = Some((pair, update))
+        }
+
+        unreachable!()
     }
 
-    pub fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
-        todo!()
+    pub fn save_pair_at(
+        &self,
+        block: u64,
+        pair: Pair,
+        edges: Vec<SubGraphEdge>,
+    ) -> eyre::Result<()> {
+        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
+        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
+            entry.0.insert(block, edges);
+
+            let (key, value) = SubGraphsData { pair, data: entry }.into_key_val();
+            tx.put::<SubGraphs>(key, value)?;
+        }
+        tx.commit()?;
+
+        Ok(())
     }
 
     /// Clears a table in the database

@@ -3,8 +3,8 @@ use std::str::FromStr;
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
 use reth_codecs::derive_arbitrary;
+use reth_db::table::{Decode, Encode};
 use serde::{Deserialize, Serialize};
-
 
 #[derive_arbitrary(compact)]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
@@ -41,6 +41,29 @@ impl Pair {
     }
 }
 
+impl Encode for Pair {
+    type Encoded = [u8; 40];
+
+    fn encode(self) -> Self::Encoded {
+        let k0 = self.0.encode();
+        let k1 = self.1.encode();
+        let mut slice = [0; 40];
+        slice[0..20].copy_from_slice(&k0);
+        slice[20..].copy_from_slice(&k1);
+
+        slice
+    }
+}
+
+impl Decode for Pair {
+    fn decode<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
+        let address0 = &value.as_ref()[0..20];
+        let address1 = &value.as_ref()[20..];
+
+        Ok(Pair(Address::from_slice(address0), Address::from_slice(address1)))
+    }
+}
+
 impl FromStr for Pair {
     type Err = alloy_primitives::AddressError;
 
@@ -55,15 +78,15 @@ impl FromStr for Pair {
 
 impl Encodable for Pair {
     fn encode(&self, out: &mut dyn BufMut) {
-        self.0.encode(out);
-        self.1.encode(out);
+        Encodable::encode(&self.0, out);
+        Encodable::encode(&self.1, out);
     }
 }
 
 impl Decodable for Pair {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let token0 = Address::decode(buf)?;
-        let token1 = Address::decode(buf)?;
+        let token0 = <Address as Decodable>::decode(buf)?;
+        let token1 = <Address as Decodable>::decode(buf)?;
 
         Ok(Self(token0, token1))
     }

@@ -1,10 +1,11 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
-use crate::Pair;
 
 use paste::paste;
 use sorella_db_databases::Database;
+
+use crate::Pair;
 
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
@@ -288,12 +289,10 @@ table!(
     ( MevBlocks ) u64 | MevBlockWithClassified = False
 );
 
-
 table!(
     /// pair -> Vec<(block_number, entry)>
     ( SubGraphs ) Pair | SubGraphsEntry = False
 );
-
 
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
