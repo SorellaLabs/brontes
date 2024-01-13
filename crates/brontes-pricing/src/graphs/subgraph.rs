@@ -454,7 +454,7 @@ pub mod test {
 
         // t4 / t3 ==  1/15
         let e3_price = MockPoolState::new(
-            Rational::from_unsigneds(1, 15),
+            Rational::from_signeds(1, 15),
             Rational::from(10_000),
             Rational::from(10_000),
         );
