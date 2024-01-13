@@ -163,4 +163,8 @@ impl GraphManager {
     pub fn has_state(&self, addr: &Address) -> bool {
         self.sub_graph_registry.has_state(addr)
     }
+
+    pub fn has_subgraph(&self, pair: Pair) -> bool {
+        self.sub_graph_registry.has_subpool(&pair.ordered())
+    }
 }
