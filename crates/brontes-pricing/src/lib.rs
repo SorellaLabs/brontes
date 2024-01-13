@@ -142,6 +142,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     /// takes the given pair fetching all pool state that needs to be loaded in
     /// order to properly price through the graph
     fn queue_loading(&mut self, pair: Pair, trigger_update: PoolUpdate) {
+        if pair.0 == pair.1 {
+            return
+        }
+
         for pool_info in self
             .graph_manager
             .create_subpool(self.current_block, pair)
