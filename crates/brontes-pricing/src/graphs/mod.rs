@@ -136,6 +136,11 @@ impl GraphManager {
             .flatten()
             .collect_vec();
 
+        // search failed
+        if paths.is_empty() {
+            return vec![]
+        }
+
         self.sub_graph_registry
             .create_new_subgraph(pair, paths.clone())
     }
