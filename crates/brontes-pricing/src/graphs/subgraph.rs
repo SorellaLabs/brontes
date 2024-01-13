@@ -106,12 +106,14 @@ impl PairSubGraph {
 
             // based on the direction. insert properly
             if edge.token_0_in {
-                if let Some(edge) = graph.find_edge(addr0.into(), addr1.into()) {
+                if let Some(edge_idx) = graph.find_edge(addr0.into(), addr1.into()) {
+                    graph.edge_weight_mut(edge_idx).unwrap().push(edge);
                 } else {
                     graph.add_edge(addr0.into(), addr1.into(), vec![edge]);
                 }
             } else {
-                if let Some(edge) = graph.find_edge(addr1.into(), addr0.into()) {
+                if let Some(edge_idx) = graph.find_edge(addr1.into(), addr0.into()) {
+                    graph.edge_weight_mut(edge_idx).unwrap().push(edge);
                 } else {
                     graph.add_edge(addr1.into(), addr0.into(), vec![edge]);
                 }
