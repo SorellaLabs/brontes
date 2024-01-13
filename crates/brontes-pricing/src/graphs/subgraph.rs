@@ -424,7 +424,7 @@ pub mod test {
         // t3 -> t4
         let e3 = build_edge(t3, t3, t4, 3, 4);
 
-        let pair = Pair(t0, t7);
+        let pair = Pair(t0, t4);
         let subgraph = PairSubGraph::init(pair, vec![e0, e1, e2, e3]);
     }
 
