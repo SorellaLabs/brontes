@@ -2,8 +2,6 @@ pub mod batch_request;
 pub mod factory;
 
 use std::sync::Arc;
-use tracing::error;
-use malachite::num::arithmetic::traits::Pow;
 
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
 use alloy_rlp::{RlpDecodable, RlpEncodable};
@@ -11,9 +9,13 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
-use malachite::{Rational, Natural, num::logic::traits::BitConvertible};
+use malachite::{
+    num::{arithmetic::traits::Pow, logic::traits::BitConvertible},
+    Natural, Rational,
+};
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
@@ -368,17 +370,25 @@ impl UniswapV2Pool {
     //     Ok(token1)
     // }
 
-    pub fn calculate_price_64_x_64(&self, base_token: Address) -> Result<Rational, ArithmeticError> {
+    pub fn calculate_price_64_x_64(
+        &self,
+        base_token: Address,
+    ) -> Result<Rational, ArithmeticError> {
         let decimal_shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
         let (r_0, r_1) = (
-            Rational::from_naturals(Natural::from(self.reserve_0), Natural::from(10u64).pow(self.token_a_decimals as u64)),
-            Rational::from_naturals(Natural::from(self.reserve_1), Natural::from(10u64).pow(self.token_b_decimals as u64))
-            );
-        
+            Rational::from_naturals(
+                Natural::from(self.reserve_0),
+                Natural::from(10u64).pow(self.token_a_decimals as u64),
+            ),
+            Rational::from_naturals(
+                Natural::from(self.reserve_1),
+                Natural::from(10u64).pow(self.token_b_decimals as u64),
+            ),
+        );
 
         if base_token == self.token_a {
-                Ok(r_1 / r_0)
-                 } else {
+            Ok(r_1 / r_0)
+        } else {
             Ok(r_0 / r_1)
         }
     }
