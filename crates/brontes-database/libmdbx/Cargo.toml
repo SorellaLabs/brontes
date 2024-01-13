@@ -5,6 +5,11 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bench]]
+name = "compression"
+harness = false
+
+
 [dependencies]
 
 # brontes
@@ -73,6 +78,10 @@ eyre.workspace = true
 paste = "1.0.14"
 parking_lot.workspace = true
 dotenv.workspace = true
+
+# benches
+criterion = "0.5"
+parquet = "50"
 
 
 [dev-dependencies]

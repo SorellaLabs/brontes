@@ -151,11 +151,11 @@ impl Libmdbx {
     pub async fn clear_and_initialize_tables(
         self: Arc<Self>,
         clickhouse: Arc<Clickhouse>,
-        tracer: Arc<TracingClient>,
+        //tracer: Arc<TracingClient>,
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        let initializer = LibmdbxInitializer::new(self, clickhouse); //, tracer);
         initializer.initialize(tables, block_range).await?;
 
         Ok(())
