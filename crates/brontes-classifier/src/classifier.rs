@@ -16,6 +16,7 @@ use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::trace::parity::{Action, Action::Call};
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::info;
 
 use crate::{impls::*, ActionCollection, StaticBindings};
 
@@ -43,6 +44,8 @@ impl<'db> Classifier<'db> {
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
+        let len = traces.len();
+        info!(?len, "traces");
         let (missing_data_requests, further_classification_requests, tx_roots): (
             Vec<_>,
             Vec<_>,

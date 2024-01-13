@@ -119,6 +119,8 @@ impl GraphManager {
                 .sub_graph_registry
                 .fetch_unloaded_state(&pair.ordered())
         } else if let Some((pair, edges)) = (&mut self.db_load)(block, pair.ordered()) {
+            info!(?pair, "loaded pair");
+
             return self
                 .sub_graph_registry
                 .create_new_subgraph(pair.ordered(), edges)
