@@ -143,7 +143,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     /// takes the given pair fetching all pool state that needs to be loaded in
     /// order to properly price through the graph
     fn queue_loading(&mut self, pair: Pair, trigger_update: PoolUpdate) {
-        for pool_info in self.graph_manager.create_subpool(self.current_block, pair).into_iter() {
+        for pool_info in self
+            .graph_manager
+            .create_subpool(self.current_block, pair)
+            .into_iter()
+        {
             // load exchange only if its not loaded already
             if !self.lazy_loader.is_loading(&pool_info.pool_addr) {
                 self.lazy_loader.lazy_load_exchange(
