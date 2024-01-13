@@ -222,12 +222,13 @@ where
     let mut visit_next = BinaryHeap::new();
     let zero_score = Rational::ZERO;
     scores.insert(start, zero_score.clone());
-    visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
+    visit_next.push(MinScored(zero_score, (start, Rational::ONE, Rational::ZERO)));
 
-    while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
+    while let Some(MinScored(node_score, (node, price, t0_am))) = visit_next.pop() {
         if visited.is_visited(&node) {
             continue
         }
+
         if goal == node {
             break
         }
@@ -243,7 +244,7 @@ where
 
             let mut pxw = Rational::ZERO;
             let mut weight = Rational::ZERO;
-            let mut token_0_am = Rational::ZERO;
+            let mut token_0_am = t0_am.clone();
             let mut token_1_am = Rational::ZERO;
 
             for info in edge_weight {
@@ -255,9 +256,11 @@ where
                 };
 
                 let (t0, t1) = pool_state.get_tvl(info.get_base_token());
+                let t0_p = &t0 * &price;
 
-                pxw += (price * (&t0 + &t1));
-                weight += (&t0 + &t1);
+                pxw += (price * &t0_p);
+                weight += (&t0_p);
+
                 token_0_am += t0;
                 token_1_am += t1;
             }
@@ -267,26 +270,24 @@ where
             }
 
             let local_weighted_price = pxw / weight;
-
             let token_0_priced = token_0_am * &price;
-
             let new_price = &price * local_weighted_price;
-            let token_1_priced = token_1_am * &new_price;
 
-            let tvl = token_0_priced + token_1_priced;
+            let tvl = token_0_priced;
             let next_score = &node_score + tvl.reciprocal();
 
             match scores.entry(next) {
                 Occupied(ent) => {
                     if next_score < *ent.get() {
                         *ent.into_mut() = next_score.clone();
-                        visit_next.push(MinScored(next_score, (next, new_price.clone())));
+                        visit_next
+                            .push(MinScored(next_score, (next, new_price.clone(), token_1_am)));
                         node_price.insert(next, new_price);
                     }
                 }
                 Vacant(ent) => {
                     ent.insert(next_score.clone());
-                    visit_next.push(MinScored(next_score, (next, new_price.clone())));
+                    visit_next.push(MinScored(next_score, (next, new_price.clone(), token_1_am)));
                     node_price.insert(next, new_price);
                 }
             }
@@ -294,7 +295,7 @@ where
         visited.visit(node);
     }
 
-    node_price.remove(&goal).map(|p| p.reciprocal())
+    node_price.remove(&goal)
 }
 
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in
