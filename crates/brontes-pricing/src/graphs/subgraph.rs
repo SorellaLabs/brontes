@@ -108,7 +108,6 @@ impl PairSubGraph {
             }
         }
 
-        println!("{connections:#?}");
         graph.extend_with_edges(
             connections
                 .into_par_iter()
