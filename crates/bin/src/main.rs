@@ -240,7 +240,8 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
-            PoolCreationBlocks, SubGraphs
+            PoolCreationBlocks,
+            SubGraphs
         );
     } else {
         match_table!(
