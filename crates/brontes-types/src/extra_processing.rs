@@ -1,10 +1,13 @@
+use std::str::FromStr;
+
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
 use reth_codecs::derive_arbitrary;
 use serde::{Deserialize, Serialize};
 
+
 #[derive_arbitrary(compact)]
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Pair(pub Address, pub Address);
 
 impl Pair {
@@ -35,6 +38,18 @@ impl Pair {
         } else {
             Pair(self.1, self.0)
         }
+    }
+}
+
+impl FromStr for Pair {
+    type Err = alloy_primitives::AddressError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let addrs = s.split(':').collect::<Vec<_>>();
+
+        let addr0 = addrs[0].parse()?;
+        let addr1 = addrs[1].parse()?;
+        Ok(Pair(addr0, addr1))
     }
 }
 
