@@ -119,7 +119,7 @@ impl PairSubGraph {
         let end_node = *token_to_index.get(&pair.1).unwrap();
 
         let comp = connected_components(&graph);
-        assert!(comp == 1, "have a disjoint graph");
+        assert!(comp == 1, "have a disjoint graph {comp}");
 
         Self { pair, graph, start_node, end_node, token_to_index }
     }
