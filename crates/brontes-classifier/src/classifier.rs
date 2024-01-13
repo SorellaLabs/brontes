@@ -44,8 +44,6 @@ impl<'db> Classifier<'db> {
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
-        let len = traces.len();
-        info!(?len, "traces");
         let (missing_data_requests, further_classification_requests, tx_roots): (
             Vec<_>,
             Vec<_>,
