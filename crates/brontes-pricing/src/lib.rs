@@ -1,7 +1,9 @@
 #![allow(unused)]
+pub mod dijkstras;
 pub mod exchanges;
 mod graph;
 pub mod types;
+pub mod yens;
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     sync::Arc,
@@ -31,16 +33,15 @@ use crate::types::{PoolKey, PoolKeysForPair, PoolState};
 
 /// # Brontes Batch Pricer
 /// ## Reasoning
-/// uses a token graph in order to provide the price of any
-/// token in a wanted quote token. A token graph is used here so that we can
-/// keep our pricing strictly to DEFI. This allows us to see delta between
+/// We create a token graph in order to provide the price of any
+/// token in a wanted quote token. This allows us to see delta between
 /// centralized and decentralized prices which allows us to classify
 ///
-/// ## Implimentation
+/// ## Implementation
 /// The Brontes Batch pricer runs on a block by block basis, This process is as
 /// followed:
 ///
-/// 1) On a new highest block recieved from the update channel. All new pools
+/// 1) On a new highest block received from the update channel. All new pools
 /// are added to the token graph as there are now valid paths.
 ///
 /// 2) All new pools touched are loaded by the lazy loader.
@@ -61,11 +62,12 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     current_block:   u64,
     completed_block: u64,
 
-    /// receiver from classifier, classifier is ran sequential to grantee order
+    /// receiver from classifier, classifier is ran sequentially to guarantee
+    /// order
     update_rx:       UnboundedReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
-    /// how this works is that we process all state transitions for a block and
-    /// allow lazy loading to occur. Once lazy loading has occurred and there
+    /// it works by processing all state transitions for a block and
+    /// allowing lazy loading to occur. Once lazy loading has occurred and there
     /// are no more events for the current block, all the state transitions
     /// are applied in order with the price at the transaction index being
     /// calculated and inserted into the results and returned.
@@ -408,8 +410,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.last_update.insert(addr, key);
             self.mut_state.insert(addr, state);
 
-            // pool was initted this block. lets set the override to avoid invalid state
-            // if
+            // pool was initialized this block. lets set the override to avoid invalid state
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
@@ -568,7 +569,7 @@ pub mod test {
 
     async fn init(
         libmdbx: &Libmdbx,
-        rx: UnboundedReceiver<PoolUpdate>,
+        rx: UnboundedReceiver<DexPriceMsg>,
         quote: Address,
         block: u64,
         parser: &TraceParser<'_, Box<dyn TracingProvider>>,
@@ -576,15 +577,10 @@ pub mod test {
         let tx = libmdbx.ro_tx().unwrap();
         let binding_tx = libmdbx.ro_tx().unwrap();
         let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
-        let mut pairs = HashMap::new();
 
-        let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
+        let pairs = libmdbx.addresses_inited_before(block).unwrap();
 
         let mut rest_pairs = HashMap::default();
-        for i in start_block + 1..=end_block {
-            let pairs = libmdbx.addresses_init_block(i).unwrap();
-            rest_pairs.insert(i, pairs);
-        }
 
         info!("initing pair graph");
         let pair_graph = PairGraph::init_from_hashmap(pairs);
@@ -636,20 +632,20 @@ pub mod test {
             block:  18500000,
             tx_idx: 0,
             logs:   vec![],
-            action: BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t0, t1),
+            action: make_fake_swap(Pair(t0, t1)),
         };
 
         // send these two txes for the given block
-        let _ = tx.send(poolupdate.clone()).unwrap();
+        let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
         poolupdate.tx_idx = 69;
-        poolupdate.action = BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t0, t3);
-        let _ = tx.send(poolupdate.clone()).unwrap();
+        poolupdate.action = make_fake_swap(Pair(t0, t3));
+        let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
 
         info!("triggering next block");
         // trigger next block
         poolupdate.block += 1;
-        poolupdate.action = BrontesBatchPricer::<Box<dyn TracingProvider>>::make_fake_swap(t1, t3);
-        let _ = tx.send(poolupdate.clone()).unwrap();
+        poolupdate.action = make_fake_swap(Pair(t1, t3));
+        let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
 
         let (handle, dex_prices) = handle.await.unwrap();
 
