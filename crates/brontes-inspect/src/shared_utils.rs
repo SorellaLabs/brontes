@@ -3,7 +3,6 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
 };
-use tracing::info;
 
 use alloy_primitives::{hex, B256};
 use brontes_database::{Metadata, Pair};
@@ -13,11 +12,14 @@ use brontes_types::{
     ToScaledRational,
 };
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::{
+        basic::traits::{One, Zero},
+        conversion::{string::options::ToSciOptions, traits::ToSci},
+    },
     Rational,
 };
 use reth_primitives::Address;
-use tracing::log::debug;
+use tracing::{info, log::debug};
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {
@@ -148,7 +150,11 @@ impl SharedInspectorUtils<'_> {
                 if tx_hash
                     == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b")
                 {
-                    info!(?token_addr, ?pair, ?usd_amount, "usd price");
+                    let mut opts = ToSciOptions::default();
+                    opts.set_precision(10);
+
+                    let price = usd_amount.to_sci_with_options(opts).to_string();
+                    info!(?token_addr, ?pair, ?price, "usd price");
                 }
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
