@@ -95,7 +95,7 @@ impl SharedInspectorUtils<'_> {
     /// Calculates the usd delta by address
     pub fn usd_delta_by_address(
         &self,
-        block_position: usize,
+        tx_position: usize,
         deltas: SwapTokenDeltas,
         metadata: Arc<Metadata>,
         cex: bool,
@@ -109,7 +109,7 @@ impl SharedInspectorUtils<'_> {
                     // Fetch CEX price
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
                 } else {
-                    metadata.dex_quotes.price_after(pair, block_position)?
+                    metadata.dex_quotes.price_after(pair, tx_position)?
                 };
 
                 let usd_amount = amount * price;
