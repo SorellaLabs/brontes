@@ -175,9 +175,6 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
                 debug!("built tree");
                 let block = self.current_block;
                 self.pricer.add_pending_inspection(block, tree, meta);
-
-                cx.waker().wake_by_ref();
-                return Poll::Pending
             } else {
                 self.collection_future = Some(future);
             }
@@ -258,6 +255,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
                 info!(target:"brontes","Collected dex prices for block: {}", block);
 
                 let Some((tree, meta)) = self.pending_trees.remove(&block) else {
+                    error!("no tree");
                     return Poll::Ready(None)
                 };
 
