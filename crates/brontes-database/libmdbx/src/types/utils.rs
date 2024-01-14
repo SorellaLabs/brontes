@@ -1,4 +1,4 @@
-pub(crate) mod pool_tokens {
+pub mod pool_tokens {
 
     use serde::{
         de::{Deserialize, Deserializer},
@@ -26,7 +26,7 @@ pub(crate) mod pool_tokens {
     }
 }
 
-pub(crate) mod static_bindings {
+pub mod static_bindings {
 
     use serde::{
         de::{Deserialize, Deserializer},
@@ -54,7 +54,7 @@ pub(crate) mod static_bindings {
     }
 }
 
-pub(crate) mod u256 {
+pub mod u256 {
 
     use std::str::FromStr;
 
@@ -79,7 +79,7 @@ pub(crate) mod u256 {
     }
 }
 
-pub(crate) mod address {
+pub mod address {
 
     use std::str::FromStr;
 
@@ -104,7 +104,7 @@ pub(crate) mod address {
     }
 }
 
-pub(crate) mod vec_txhash {
+pub mod vec_txhash {
 
     use std::str::FromStr;
 
@@ -132,7 +132,7 @@ pub(crate) mod vec_txhash {
     }
 }
 
-pub(crate) mod option_address {
+pub mod option_address {
 
     use std::str::FromStr;
 
@@ -162,7 +162,7 @@ pub(crate) mod option_address {
     }
 }
 
-pub(crate) mod pool_key {
+pub mod pool_key {
 
     use std::str::FromStr;
 
@@ -194,7 +194,7 @@ pub(crate) mod pool_key {
     }
 }
 
-pub(crate) mod pool_state {
+pub mod pool_state {
 
     use brontes_pricing::types::PoolStateSnapShot;
     use serde::{
@@ -242,7 +242,7 @@ pub(crate) mod pool_state {
     }
 }
 
-pub(crate) mod dex_quote {
+pub mod dex_quote {
 
     use std::{collections::HashMap, str::FromStr};
 
