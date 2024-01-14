@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashSet, sync::Arc};
 
 use alloy_primitives::hex;
 use brontes_database::Metadata;
@@ -12,7 +9,6 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     ToFloatNearest,
 };
-use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
@@ -51,12 +47,13 @@ impl Inspector for AtomicBackrunInspector<'_> {
         {
             info!("interesting state has tx of intrest");
         } else {
-            if tree
-                .get_root(hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b").into())
-                .is_none()
-            {
-                info!("weird tx is missing tf");
-            }
+            let root = tree
+                .get_root(
+                    hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b").into(),
+                )
+                .unwrap();
+
+            info!("{:#?}", root.head.subactions);
         }
 
         intersting_state
