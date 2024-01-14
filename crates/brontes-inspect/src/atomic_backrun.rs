@@ -9,7 +9,13 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     ToFloatNearest,
 };
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::{
+        basic::traits::Zero,
+        conversion::{string::options::ToSciOptions, traits::ToSci},
+    },
+    Rational,
+};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
 use tracing::info;
@@ -81,7 +87,15 @@ impl AtomicBackrunInspector<'_> {
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
 
         if tx_hash == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b") {
-            info!("{addr_usd_deltas:#?}");
+            let deltas = addr_usd_deltas
+                .iter()
+                .map(|(a, v)| {
+                    let mut opts = ToSciOptions::default();
+                    opts.set_precision(10);
+                    (a, v.to_sci_with_options(opts).to_string())
+                })
+                .collect::<Vec<_>>();
+            info!("{deltas:#?}");
         }
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
