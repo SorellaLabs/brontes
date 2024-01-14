@@ -1,16 +1,22 @@
-use criterion::{criterion_group, BenchmarkId, Criterion};
+use criterion::{criterion_group, Criterion};
 
-const METADATA_QUERY: &str = "
-SELECT
-    block_number,
-    block_hash,
-    block_timestamp,
-    relay_timestamp,
-    p2p_timestamp,
-    proposer_fee_recipient,
-    proposer_mev_reward,
-    mempool_flow
-FROM brontes.metadata
-WHERE block_number >= ? AND block_number < ? ";
+use super::{rlp::MetadataRLP, setup, METADATA_PARQUET_FILE, METADATA_QUERY};
+use crate::benchmarks::{metadata::metadata_schema, setup::init_db, tables::InitializeTable};
 
-criterion_group!(metadata,);
+fn compare_metadata(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Metadata");
+
+    println!("Starting");
+
+    setup();
+
+    let libmdbx = init_db();
+
+    group.bench_function("Rlp", |b| {
+        b.iter(|| MetadataRLP::initialize_table(METADATA_PARQUET_FILE, &libmdbx))
+    });
+
+    group.finish();
+}
+
+criterion_group!(metadata, compare_metadata);

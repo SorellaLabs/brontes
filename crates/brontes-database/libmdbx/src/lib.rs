@@ -168,7 +168,7 @@ impl Libmdbx {
 
     /// Clears a table in the database
     /// Only called on initialization
-    pub(crate) fn initialize_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
+    pub fn initialize_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
     where
         T: Table,
         D: LibmdbxData<T>,
