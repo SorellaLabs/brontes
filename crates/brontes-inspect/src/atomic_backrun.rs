@@ -53,31 +53,6 @@ impl Inspector for AtomicBackrunInspector<'_> {
                 let root = tree.get_root(tx)?;
                 let idx = root.get_block_position();
 
-                // take all swaps and remove swaps that don't do more than a single swap. This
-                // removes all cex <> dex arbs and one off funky swaps
-                let mut tokens: HashMap<Address, Vec<Address>> = HashMap::new();
-                swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|f| f.clone().force_swap())
-                    .for_each(|swap| {
-                        let e = tokens.entry(swap.pool).or_default();
-                        e.push(swap.token_in);
-                        e.push(swap.token_out);
-                    });
-
-                let entries = tokens.len() * 2;
-                let overlaps = tokens
-                    .values()
-                    .flatten()
-                    .sorted()
-                    .dedup_with_count()
-                    .map(|(i, _)| i)
-                    .sum::<usize>();
-
-                if overlaps <= entries {
-                    return None
-                }
 
                 self.process_swaps(
                     tx,
