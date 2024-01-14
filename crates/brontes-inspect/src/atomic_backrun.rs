@@ -15,6 +15,7 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
+use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
@@ -106,7 +107,7 @@ impl AtomicBackrunInspector<'_> {
 
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+                .usd_delta_by_address(idx, deltas.clone(), metadata.clone(), false)?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
@@ -133,9 +134,7 @@ impl AtomicBackrunInspector<'_> {
         // exists within a single swap that can only be executed if you hold
         // inventory. Because of this 99% of the time it is normal users who
         // trigger this.
-        if unique_tokens.len() == 2
-            && gas_details.coinbase_transfer.is_none()
-        {
+        if unique_tokens.len() == 2 && gas_details.coinbase_transfer.is_none() {
             return None
         }
 
@@ -145,6 +144,8 @@ impl AtomicBackrunInspector<'_> {
             return None
         }
 
+
+        info!("{deltas:#?}");
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,
             tx_hash,
