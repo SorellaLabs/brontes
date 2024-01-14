@@ -46,13 +46,17 @@ impl Inspector for AtomicBackrunInspector<'_> {
             )
         });
 
+        if intersting_state.contains_key(&hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b")) {
+            info!("interesting state has tx of intrest");
+
+        }
+
         intersting_state
             .into_par_iter()
             .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
                 let idx = root.get_block_position();
-
 
                 self.process_swaps(
                     tx,
