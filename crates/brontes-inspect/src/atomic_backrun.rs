@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
@@ -75,6 +78,7 @@ impl Inspector for AtomicBackrunInspector<'_> {
                 }
 
                 self.process_swaps(
+                    tree.avg_priority_fee,
                     tx,
                     idx,
                     root.head.address,
@@ -91,6 +95,7 @@ impl Inspector for AtomicBackrunInspector<'_> {
 impl AtomicBackrunInspector<'_> {
     fn process_swaps(
         &self,
+        avg_priority_fee: u128,
         tx_hash: B256,
         idx: usize,
         eoa: Address,
@@ -113,6 +118,30 @@ impl AtomicBackrunInspector<'_> {
 
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+
+        let unique_tokens = searcher_actions
+            .iter()
+            .flatten()
+            .filter(|f| f.is_swap())
+            .map(|f| f.force_swap_ref())
+            .flat_map(|s| vec![s.token_in, s.token_out])
+            .collect::<HashSet<_>>();
+
+        // most likely just a false positive unless the person is holding shit_coin
+        // inventory.
+        // to keep the degens, if they coinbase.transfer or send 3x the average priority
+        // fee, we include them.
+        //
+        // False positives come from this due to there being a small opportunity that
+        // exists within a single swap that can only be executed if you hold
+        // inventory. Because of this 99% of the time it is normal users who
+        // trigger this.
+        if unique_tokens.len() == 2
+            && gas_details.coinbase_transfer.is_none()
+            && avg_priority_fee * 2 > gas_details.priority_fee
+        {
+            return None
+        }
 
         // Can change this later to check if people are subsidising arbs to kill ops for
         // competitors
@@ -149,6 +178,7 @@ impl AtomicBackrunInspector<'_> {
             swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
             swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
         });
+
         Some((classified, backrun))
     }
 }
