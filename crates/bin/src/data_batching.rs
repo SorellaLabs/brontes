@@ -175,6 +175,9 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
                 debug!("built tree");
                 let block = self.current_block;
                 self.pricer.add_pending_inspection(block, tree, meta);
+
+                cx.waker().wake_by_ref();
+                return Poll::Pending
             } else {
                 self.collection_future = Some(future);
             }
