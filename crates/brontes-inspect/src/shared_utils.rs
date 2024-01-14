@@ -125,46 +125,6 @@ impl SharedInspectorUtils<'_> {
         Some(usd_deltas)
     }
 
-    pub fn usd_delta_by_address_test(
-        &self,
-        tx_hash: B256,
-        tx_position: usize,
-        deltas: SwapTokenDeltas,
-        metadata: Arc<Metadata>,
-        cex: bool,
-    ) -> Option<HashMap<Address, Rational>> {
-        let mut usd_deltas = HashMap::new();
-
-        for (address, inner_map) in deltas {
-            for (token_addr, amount) in inner_map {
-                let pair = Pair(token_addr, self.quote);
-                let price = if cex {
-                    // Fetch CEX price
-                    metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
-                } else {
-                    metadata.dex_quotes.price_after(pair, tx_position)?
-                };
-
-                let usd_amount = amount * &price;
-
-                if tx_hash
-                    == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b")
-                {
-                    let mut opts = ToSciOptions::default();
-                    opts.set_precision(10);
-
-                    let amount = usd_amount.to_sci_with_options(opts).to_string();
-                    let price = price.clone().to_sci_with_options(opts).to_string();
-
-                    info!(?token_addr, ?pair, ?price, ?amount, "usd price");
-                }
-                *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
-            }
-        }
-
-        Some(usd_deltas)
-    }
-
     pub fn get_dex_usd_price(
         &self,
         block_position: usize,
