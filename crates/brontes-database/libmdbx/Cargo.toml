@@ -82,6 +82,7 @@ dotenv.workspace = true
 # benches
 criterion = "0.5"
 parquet = "50"
+arrow = "50"
 
 
 [dev-dependencies]
