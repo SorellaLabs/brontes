@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::hex;
 use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -105,9 +106,12 @@ impl AtomicBackrunInspector<'_> {
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
+        if tx_hash == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b") {
+            info!("{deltas:#?}");
+        }
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, deltas.clone(), metadata.clone(), false)?;
+                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
@@ -144,8 +148,6 @@ impl AtomicBackrunInspector<'_> {
             return None
         }
 
-
-        info!("{deltas:#?}");
         let classified = ClassifiedMev {
             mev_type: MevType::Backrun,
             tx_hash,
