@@ -84,19 +84,19 @@ impl AtomicBackrunInspector<'_> {
 
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+                .usd_delta_by_address_test(tx_hash, idx, deltas, metadata.clone(), false)?;
 
-        if tx_hash == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b") {
-            let deltas = addr_usd_deltas
-                .iter()
-                .map(|(a, v)| {
-                    let mut opts = ToSciOptions::default();
-                    opts.set_precision(10);
-                    (a, v.to_sci_with_options(opts).to_string())
-                })
-                .collect::<Vec<_>>();
-            info!("{deltas:#?}");
-        }
+        // if tx_hash == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b") {
+        //     let deltas = addr_usd_deltas
+        //         .iter()
+        //         .map(|(a, v)| {
+        //             let mut opts = ToSciOptions::default();
+        //             opts.set_precision(10);
+        //             (a, v.to_sci_with_options(opts).to_string())
+        //         })
+        //         .collect::<Vec<_>>();
+        //     info!("{deltas:#?}");
+        // }
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 

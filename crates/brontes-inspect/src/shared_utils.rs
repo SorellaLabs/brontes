@@ -3,7 +3,9 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
 };
+use tracing::info;
 
+use alloy_primitives::{hex, B256};
 use brontes_database::{Metadata, Pair};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -113,6 +115,41 @@ impl SharedInspectorUtils<'_> {
                 };
 
                 let usd_amount = amount * price;
+
+                *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
+            }
+        }
+
+        Some(usd_deltas)
+    }
+
+    pub fn usd_delta_by_address_test(
+        &self,
+        tx_hash: B256,
+        tx_position: usize,
+        deltas: SwapTokenDeltas,
+        metadata: Arc<Metadata>,
+        cex: bool,
+    ) -> Option<HashMap<Address, Rational>> {
+        let mut usd_deltas = HashMap::new();
+
+        for (address, inner_map) in deltas {
+            for (token_addr, amount) in inner_map {
+                let pair = Pair(token_addr, self.quote);
+                let price = if cex {
+                    // Fetch CEX price
+                    metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
+                } else {
+                    metadata.dex_quotes.price_after(pair, tx_position)?
+                };
+
+                let usd_amount = amount * price;
+
+                if tx_hash
+                    == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b")
+                {
+                    info!(?token_addr, ?pair, ?usd_amount, "usd price");
+                }
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
         }
