@@ -145,7 +145,7 @@ impl SharedInspectorUtils<'_> {
                     metadata.dex_quotes.price_after(pair, tx_position)?
                 };
 
-                let usd_amount = amount * price;
+                let usd_amount = amount * &price;
 
                 if tx_hash
                     == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b")
@@ -156,7 +156,7 @@ impl SharedInspectorUtils<'_> {
                     let amount = usd_amount.to_sci_with_options(opts).to_string();
                     let price = price.clone().to_sci_with_options(opts).to_string();
 
-                    info!(?token_addr, ?pair, ?amount, "usd price");
+                    info!(?token_addr, ?pair, ?price, ?amount, "usd price");
                 }
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
