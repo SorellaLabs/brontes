@@ -42,20 +42,6 @@ impl Inspector for AtomicBackrunInspector<'_> {
             )
         });
 
-        if intersting_state
-            .contains_key(&hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b"))
-        {
-            info!("interesting state has tx of intrest");
-        } else {
-            let root = tree
-                .get_root(
-                    hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b").into(),
-                )
-                .unwrap();
-
-            info!("subactions {:#?}", root.head.subactions);
-        }
-
         intersting_state
             .into_par_iter()
             .filter_map(|(tx, swaps)| {
@@ -90,12 +76,13 @@ impl AtomicBackrunInspector<'_> {
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
-        if tx_hash == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b") {
-            info!("{deltas:#?}");
-        }
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+
+        if tx_hash == hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b") {
+            info!("{addr_usd_deltas:#?}");
+        }
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
