@@ -191,8 +191,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         if self.current_block == self.end_block
             && self.collection_future.is_none()
             && self.processing_futures.is_empty()
-            // we have no more data and no more processing was queued
-            && self.pricer.poll_next_unpin(cx).map(|i| i.is_none()) == Poll::Ready(true)
+            && self.pricer.is_done()
         {
             return Poll::Ready(())
         }
@@ -218,6 +217,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         let handle = tokio::spawn(future);
 
         Self { handle, pending_trees: HashMap::default() }
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.pending_trees.is_empty()
     }
 
     fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
