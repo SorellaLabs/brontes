@@ -163,12 +163,20 @@ impl SandwichInspector<'_> {
         let mut pools = HashSet::new();
 
         for swap in &frontrun_swaps {
-            pools.insert((swap.pool, swap.amount_out));
+            pools.insert(swap.pool);
         }
+
+        let has_victim = victim_actions
+            .iter()
+            .flatten()
+            .filter(|action| action.is_swap())
+            .map(|f| f.force_swap_ref().pool)
+            .filter(|f| pools.contains(f))
+            .collect::<HashSet<_>>();
 
         if !backrun_swaps
             .iter()
-            .any(|inner| pools.contains(&(inner.pool, inner.amount_in)))
+            .any(|inner| pools.contains(&inner.pool) && has_victim.contains(&inner.pool))
         {
             return None
         }
