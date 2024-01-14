@@ -127,7 +127,8 @@ impl AtomicBackrunInspector<'_> {
 
         // most likely just a false positive unless the person is holding shit_coin
         // inventory.
-        // to keep the degens, we don't remove if there is a coinbase.transfer
+        // to keep the degens, if they coinbase.transfer or send 3x the average priority
+        // fee, we include them.
         //
         // False positives come from this due to there being a small opportunity that
         // exists within a single swap that can only be executed if you hold
