@@ -53,7 +53,7 @@ impl Inspector for AtomicBackrunInspector<'_> {
                 )
                 .unwrap();
 
-            info!("{:#?}", root.head.subactions);
+            info!("subactions {:#?}", root.head.subactions);
         }
 
         intersting_state
