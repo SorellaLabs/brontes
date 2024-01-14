@@ -42,6 +42,8 @@ crates/brontes-inspect/abis/**.json
 /crates/brontes-inspect/abi_cache/sources/*
 /crates/brontes-classifier/abi_cache/sources/*
 
+/crates/brontes-database/**/**.parquet
+
 .cargo/
 
 data/db/*
