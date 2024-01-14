@@ -46,9 +46,17 @@ impl Inspector for AtomicBackrunInspector<'_> {
             )
         });
 
-        if intersting_state.contains_key(&hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b")) {
+        if intersting_state
+            .contains_key(&hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b"))
+        {
             info!("interesting state has tx of intrest");
-
+        } else {
+            if tree
+                .get_root(hex!("cccb371805f0a269bbbe778bb3325ffb09421fd8e26f1c3aa4fe204fbdbb613b").into())
+                .is_none()
+            {
+                info!("weird tx is missing tf");
+            }
         }
 
         intersting_state
