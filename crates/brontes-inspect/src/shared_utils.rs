@@ -153,8 +153,10 @@ impl SharedInspectorUtils<'_> {
                     let mut opts = ToSciOptions::default();
                     opts.set_precision(10);
 
-                    let price = usd_amount.to_sci_with_options(opts).to_string();
-                    info!(?token_addr, ?pair, ?price, "usd price");
+                    let amount= usd_amount.to_sci_with_options(opts).to_string();
+                    let price = price.to_sci_with_options(opts).to_string();
+
+                    info!(?token_addr, ?pair, ?amount, "usd price");
                 }
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
