@@ -53,10 +53,7 @@ use crate::types::PoolState;
 /// 5) Once state transitions are all applied and we have our formatted data.
 /// The data is returned and the pricer continues onto the next block.
 pub struct BrontesBatchPricer<T: TracingProvider> {
-    quote_asset: Address,
-    run:         u64,
-    batch_id:    u64,
-
+    quote_asset:     Address,
     current_block:   u64,
     completed_block: u64,
 
@@ -84,8 +81,6 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 impl<T: TracingProvider> BrontesBatchPricer<T> {
     pub fn new(
         quote_asset: Address,
-        run: u64,
-        batch_id: u64,
         graph_manager: GraphManager,
         update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
@@ -96,8 +91,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             new_graph_pairs,
             quote_asset,
             buffer: StateBuffer::new(),
-            run,
-            batch_id,
             update_rx,
             graph_manager,
             dex_quotes: HashMap::default(),

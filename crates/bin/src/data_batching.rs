@@ -45,7 +45,6 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
         batch_id: u64,
-        run: u64,
         start_block: u64,
         end_block: u64,
         parser: &'db Parser<'db, T>,
@@ -72,8 +71,6 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
-            run,
-            batch_id,
             pair_graph,
             rx,
             parser.get_tracer(),
