@@ -108,10 +108,16 @@ impl SubGraphRegistry {
                     },
                 )
             })
-            .map(|(pair, info)| {
-                let subgraph = self.sub_graphs.get_mut(pair).unwrap();
-                subgraph.add_new_edge(info);
-                (*pair, subgraph.get_all_pools().flatten().cloned().collect_vec())
+            .filter_map(|(pair, info)| {
+                if let Some(subgraph) = self.sub_graphs.get_mut(pair) {
+                    if subgraph.add_new_edge(info) {
+                        return Some((
+                            *pair,
+                            subgraph.get_all_pools().flatten().cloned().collect_vec(),
+                        ))
+                    }
+                }
+                None
             })
             .collect_vec()
     }
