@@ -80,6 +80,8 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                     let mut further_classification_requests = Vec::new();
                     let mut pool_updates: Vec<DexPriceMsg> = Vec::new();
 
+                    let root_trace = trace.trace.remove(0);
+                    let address = root_trace.get_from_addr();
                     let classification = self
                         .process_classification(
                             header.number,
