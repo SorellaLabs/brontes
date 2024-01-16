@@ -66,10 +66,14 @@ impl SubGraphRegistry {
         pool_pair: Pair,
         pool_address: Address,
     ) -> bool {
-        self.sub_graphs
-            .remove(&subgraph)
-            .unwrap()
-            .remove_bad_node(pool_pair, pool_address)
+        let Some(mut graph) = self.sub_graphs.remove(&subgraph) else { return true };
+
+        let is_disjoint_graph = graph.remove_bad_node(pool_pair, pool_address);
+        if !is_disjoint_graph {
+            self.sub_graphs.insert(subgraph, graph);
+        }
+
+        is_disjoint_graph
     }
 
     pub fn fetch_unloaded_state(&self, pair: &Pair) -> Vec<PoolPairInfoDirection> {
