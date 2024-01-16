@@ -147,6 +147,24 @@ impl GraphManager {
             .create_new_subgraph(pair, paths.clone())
     }
 
+    pub fn bad_pool_state(
+        &mut self,
+        subgraph_pair: Pair,
+        pool_pair: Pair,
+        pool_address: Address,
+    ) -> bool {
+        let requery_subgraph = self.sub_graph_registry.bad_pool_state(
+            subgraph_pair.ordered(),
+            pool_pair,
+            pool_address,
+        );
+
+        self.all_pair_graph
+            .remove_empty_address(pool_pair, pool_address);
+
+        requery_subgraph
+    }
+
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
         self.sub_graph_registry.get_price(pair)
     }
