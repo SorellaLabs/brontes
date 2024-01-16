@@ -174,7 +174,9 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         } else if self.current_block != self.end_block {
             self.current_block += 1;
             self.start_next_block();
-        } else {
+        // if we have reached end block and there is only 1 pending tree left,
+        // send the close message to indicate to the dex pricer that it should return
+        } else if self.pricer.pending_trees.len() == 1 {
             self.classifier.close();
         }
         // poll insertion

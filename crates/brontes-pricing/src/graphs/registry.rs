@@ -148,7 +148,7 @@ impl SubGraphRegistry {
         // init subgraph
         let subgraph = PairSubGraph::init(pair, path);
 
-        let mut subgraph_size_bytes = path_len * std::mem::size_of::<SubGraphEdge>()
+        let subgraph_size_bytes = path_len * std::mem::size_of::<SubGraphEdge>()
             + 4
             + (22 * subgraph.token_to_index.len())
             + 48
