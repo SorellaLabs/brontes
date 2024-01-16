@@ -46,7 +46,7 @@ const USDC_ADDRESS: &str = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 //const USDT_ADDRESS: &str = ;
 
 #[derive(Debug)]
-pub struct Libmdbx(DatabaseEnv);
+pub struct Libmdbx(pub DatabaseEnv);
 
 impl Libmdbx {
     /// Opens up an existing database or creates a new one at the specified

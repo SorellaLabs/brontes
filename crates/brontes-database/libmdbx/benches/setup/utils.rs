@@ -2,9 +2,13 @@ use std::{env, fs::File, sync::Arc};
 
 use arrow::{datatypes::Schema, record_batch::RecordBatch};
 use brontes_database_libmdbx::Libmdbx;
+use owned_chunks::OwnedChunks;
 use parquet::arrow::{arrow_reader::ParquetRecordBatchReaderBuilder, ArrowWriter};
 use serde::Deserialize;
 use sorella_db_databases::{ClickhouseClient, Database, Row};
+
+use super::tables::{BenchTables, MetadataRLP};
+use crate::libmdbx_impl::LibmdbxBench;
 
 pub trait ToRecordBatch: Sized {
     fn into_record_batch(rows: Vec<Self>) -> RecordBatch;
@@ -20,16 +24,21 @@ where
         .unwrap();
     let database = ClickhouseClient::default();
 
-    println!("QUERYING DATA FROM CLICKHOUSE");
+    //println!("QUERYING DATA FROM CLICKHOUSE");
 
     let data = rt.block_on(database.query_many::<D>(query, &())).unwrap();
+    let data_chunks = data.owned_chunks(10000).collect::<Vec<_>>();
 
     let file = File::create(out_file).unwrap();
     let mut writer = ArrowWriter::try_new(file, Arc::new(schema.clone()), None).unwrap();
 
-    println!("WRITING DATA TO PARQUET");
+    //println!("WRITING DATA TO PARQUET");
 
-    writer.write(&D::into_record_batch(data)).unwrap();
+    data_chunks.into_iter().for_each(|chunk| {
+        writer
+            .write(&D::into_record_batch(chunk.collect()))
+            .unwrap()
+    });
 
     writer.close().unwrap();
 }
@@ -40,7 +49,7 @@ pub fn read_parquet<D: From<RecordBatch>>(file_path: &str) -> Vec<D> {
     let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
     let mut reader = builder.build().unwrap();
 
-    println!("READING DATA FROM PARQUET");
+    //println!("READING DATA FROM PARQUET");
 
     let mut rows = Vec::new();
 
@@ -48,14 +57,11 @@ pub fn read_parquet<D: From<RecordBatch>>(file_path: &str) -> Vec<D> {
         rows.push(row.map(|r| r.into()))
     }
 
-    println!("READ DATA FROM PARQUET");
+    //println!("READ DATA FROM PARQUET");
 
     rows.into_iter().collect::<Result<Vec<_>, _>>().unwrap()
 }
 
-pub fn init_db() -> Libmdbx {
-    dotenv::dotenv().ok();
-    let brontes_bench_db_path =
-        env::var("BRONTES_LIBMDBX_BENCHES_PATH").expect("No BRONTES_LIBMDBX_BENCHES_PATH in .env");
-    Libmdbx::init_db(&format!("{}{}", brontes_bench_db_path, "bench_db"), None).unwrap()
+pub fn init_db(db_path: &str, tables: &[BenchTables]) -> LibmdbxBench {
+    LibmdbxBench::init_db(db_path, tables, None).unwrap()
 }

@@ -1,11 +1,13 @@
 pub mod bench;
+pub mod bincode;
 pub mod rlp;
+pub mod zero_copy;
 
 use std::{env, sync::Arc};
 
 use alloy_primitives::{Address, TxHash, U256};
 use arrow::{
-    array::{Array, ArrayRef, BinaryArray, BinaryBuilder, ListArray, ListBuilder, UInt64Array},
+    array::{Array, BinaryArray, UInt64Array},
     datatypes::{DataType, Field, Schema},
     record_batch::RecordBatch,
 };
@@ -14,11 +16,14 @@ use parquet::data_type::AsBytes;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use sorella_db_databases::{clickhouse, Row};
-use test_fuzz::FromRef;
 
-use super::setup::{parquet_setup, ToRecordBatch};
+use crate::{
+    libmdbx_impl::LibmdbxBench,
+    setup::{tables::BenchTables, utils::ToRecordBatch},
+};
 
-pub const METADATA_PARQUET_FILE: &str = "benchmarks/metadata/metadata.parquet";
+const METADATA_PARQUET_FILE: &str = "benchmarks/metadata/data/metadata.parquet";
+const METADATA_LIBMDBX_DIR: &str = "benchmarks/metadata/data/db";
 
 pub const METADATA_QUERY: &str = "
 SELECT
@@ -31,24 +36,20 @@ SELECT
     proposer_mev_reward,
     mempool_flow
 FROM brontes.metadata
-WHERE block_number >= 17900000 AND block_number < 17900010 ";
-//WHERE block_number >= 17500000 AND block_number < 18000000 ";
+WHERE block_number >= 17000000 AND block_number < 18000000";
+// WHERE block_number >= 17500000 AND block_number < 18000000 ";
 
 // Define a schema for the Metadata struct
 pub fn metadata_schema() -> Schema {
     Schema::new(vec![
         Field::new("block_number", DataType::UInt64, false),
-        Field::new("block_hash", DataType::FixedSizeBinary(32), false),
+        Field::new("block_hash", DataType::Binary, false),
         Field::new("block_timestamp", DataType::UInt64, false),
         Field::new("relay_timestamp", DataType::UInt64, true),
         Field::new("p2p_timestamp", DataType::UInt64, true),
-        Field::new("proposer_fee_recipient", DataType::FixedSizeBinary(20), true),
-        Field::new("proposer_mev_reward", DataType::FixedSizeBinary(16), true),
-        Field::new(
-            "mempool_flow",
-            DataType::List(Arc::new(Field::new("tx_hash", DataType::FixedSizeBinary(32), false))),
-            false,
-        ),
+        Field::new("proposer_fee_recipient", DataType::Binary, true),
+        Field::new("proposer_mev_reward", DataType::Binary, true),
+        Field::new("mempool_flow", DataType::Binary, false),
     ])
 }
 
@@ -191,6 +192,7 @@ impl ToRecordBatch for MetadataBench {
                     .map(|reward| reward.to_be_bytes().to_vec())
             })
             .collect::<Vec<_>>();
+
         let proposer_mev_reward_array = BinaryArray::from_opt_vec(
             proposer_mev_rewards
                 .iter()
@@ -198,20 +200,18 @@ impl ToRecordBatch for MetadataBench {
                 .collect::<Vec<_>>(),
         );
 
-        let mut builder = ListBuilder::new(BinaryBuilder::new());
-        for row in &rows {
-            let tx_hashes = row
-                .mempool_flow
-                .iter()
-                .map(|tx_hash| tx_hash.as_bytes())
-                .collect::<Vec<_>>();
+        let mempool_flow: Vec<Vec<u8>> = rows
+            .into_iter()
+            .map(|row| {
+                let mut tx_hashes = Vec::new();
+                row.mempool_flow
+                    .into_iter()
+                    .for_each(|tx| tx_hashes.extend(tx.to_vec()));
+                tx_hashes
+            })
+            .collect::<Vec<_>>();
 
-            let tx_hashes_array = BinaryArray::from_vec(tx_hashes);
-
-            builder.append_value(&tx_hashes_array);
-            builder.append(true);
-        }
-        let mempool_flow_array = builder.finish();
+        let mempool_flow_array = BinaryArray::from_iter_values(mempool_flow.into_iter());
 
         RecordBatch::try_new(
             Arc::new(metadata_schema()),
@@ -230,14 +230,18 @@ impl ToRecordBatch for MetadataBench {
     }
 }
 
-fn setup() {
-    dotenv::dotenv().ok();
-
-    let parquet_file = format!(
+pub fn metadata_paquet_file() -> String {
+    format!(
         "{}/{}",
         env::var("BRONTES_LIBMDBX_BENCHES_PATH").expect("No BRONTES_LIBMDBX_BENCHES_PATH in .env"),
         METADATA_PARQUET_FILE
-    );
+    )
+}
 
-    parquet_setup::<MetadataBench>(METADATA_QUERY, &parquet_file, metadata_schema());
+pub fn metadata_libmdbx_dir() -> String {
+    format!(
+        "{}/{}",
+        env::var("BRONTES_LIBMDBX_BENCHES_PATH").expect("No BRONTES_LIBMDBX_BENCHES_PATH in .env"),
+        METADATA_LIBMDBX_DIR
+    )
 }
