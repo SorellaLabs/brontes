@@ -153,8 +153,6 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        info!("poll");
-
         // poll pricer
         if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
             if meta.block_num == self.end_block {
@@ -180,16 +178,17 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         } else if self.current_block != self.end_block {
             self.current_block += 1;
             self.start_next_block();
+        }
+
         // if we have reached end block and there is only 1 pending tree left,
         // send the close message to indicate to the dex pricer that it should
         // return
-        } else if self.pricer.pending_trees.len() <= 1 {
+        if self.pricer.pending_trees.len() <= 1 {
+            info!("poll_end");
             self.classifier.close();
         }
         // poll insertion
         while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
-
-        info!("poll_end");
 
         // return condition
         if self.current_block == self.end_block
