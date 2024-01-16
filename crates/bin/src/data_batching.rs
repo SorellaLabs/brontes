@@ -54,13 +54,9 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx);
 
-        let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
+        let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
-        let mut rest_pairs = HashMap::default();
-        for i in start_block + 1..end_block {
-            let pairs = libmdbx.protocols_created_at_block(i).unwrap_or_default();
-            rest_pairs.insert(i, pairs);
-        }
+        let rest_pairs = libmdbx.protocols_created_range(start_block + 1, end_block);
 
         let pair_graph = GraphManager::init_from_db_state(
             pairs,
