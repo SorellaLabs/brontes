@@ -356,6 +356,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
+        info!("on close");
         if self.completed_block >= self.current_block + 1 {
             return None
         }
@@ -422,7 +423,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
 
                 // check to close
-                if (self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty())
+                if self.lazy_loader.is_empty()
                     && s.is_some_and(|s| !s)
                 {
                     return Poll::Ready(self.on_close())
