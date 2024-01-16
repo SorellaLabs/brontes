@@ -6,8 +6,6 @@ pub use curve::*;
 pub use sushiswap::*;
 pub use uniswap::*;
 
-
-
 #[async_trait::async_trait]
 pub trait FactoryDecoder {
     fn get_signature(&self) -> [u8; 32];
@@ -17,7 +15,7 @@ pub trait FactoryDecoder {
         &self,
         node_handle: &'a dyn EthProvider,
         protocol: ContractProtocol,
-        logs: &Vec<Log>
+        logs: &Vec<Log>,
     ) -> Vec<PoolDB>;
 }
 
@@ -27,6 +25,6 @@ pub trait ActionCollection: Sync + Send {
         sig: [u8; 32],
         node_handle: &dyn EthProvider,
         protocol: ContractProtocol,
-        logs: &Vec<Log>
+        logs: &Vec<Log>,
     ) -> Vec<PoolDB>;
 }

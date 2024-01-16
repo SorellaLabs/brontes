@@ -111,8 +111,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .unwrap_or_default()
             {
                 // add pool
-                self.graph_manager
-                    .add_pool(self.current_block, pair, pool_addr, dex);
+                self.graph_manager.add_pool(pair, pool_addr, dex);
             }
         }
 
@@ -463,7 +462,11 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         pool_address,
                     }) => {
                         if tokens.len() == 2 {
-                            self..add_node(Pair(tokens[0], tokens[1]), pool_address, protocol)
+                            self.graph_manager.add_pool(
+                                Pair(tokens[0], tokens[1]),
+                                pool_address,
+                                protocol,
+                            );
                         } else {
                         }
                         true
