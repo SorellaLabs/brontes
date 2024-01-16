@@ -2,12 +2,14 @@
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 
+use paste::paste;
 use sorella_db_databases::Database;
+
+use crate::Pair;
 
 mod const_sql;
 use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
-use brontes_pricing::types::{PoolKey, PoolStateSnapShot};
 use const_sql::*;
 use futures::{future::join_all, Future};
 use reth_db::{table::Table, TableType};
@@ -25,7 +27,7 @@ use crate::{
         metadata::{MetadataData, MetadataInner},
         mev_block::{MevBlockWithClassified, MevBlocksData},
         pool_creation_block::{PoolCreationBlocksData, PoolsLibmdbx},
-        pool_state::PoolStateData,
+        subgraphs::{SubGraphsData, SubGraphsEntry},
         *,
     },
     Libmdbx,
@@ -40,11 +42,11 @@ pub enum Tables {
     AddressToProtocol,
     CexPrice,
     Metadata,
-    PoolState,
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
     AddressToFactory,
+    SubGraphs,
 }
 
 impl Tables {
@@ -54,11 +56,11 @@ impl Tables {
         Tables::AddressToProtocol,
         Tables::CexPrice,
         Tables::Metadata,
-        Tables::PoolState,
         Tables::DexPrice,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
-        Tables::AddressToFactory
+        Tables::AddressToFactory,
+        Tables::SubGraphs,
     ];
     pub const ALL_NO_DEX: [Tables; NUM_TABLES - 3] = [
         Tables::TokenDecimals,
@@ -78,12 +80,11 @@ impl Tables {
             Tables::AddressToProtocol => TableType::Table,
             Tables::CexPrice => TableType::Table,
             Tables::Metadata => TableType::Table,
-            Tables::PoolState => TableType::Table,
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
             Tables::MevBlocks => TableType::Table,
         Tables::AddressToFactory => TableType::Table,
-
+            Tables::SubGraphs => TableType::Table,
         }
     }
 
@@ -94,11 +95,11 @@ impl Tables {
             Tables::AddressToProtocol => AddressToProtocol::NAME,
             Tables::CexPrice => CexPrice::NAME,
             Tables::Metadata => Metadata::NAME,
-            Tables::PoolState => PoolState::NAME,
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
             Tables::MevBlocks => MevBlocks::NAME,
             Tables::AddressToFactory => AddressToFactory::NAME,
+            Tables::SubGraphs => SubGraphs::NAME,
         }
     }
 
@@ -169,7 +170,6 @@ impl Tables {
                 println!("{} OK", Metadata::NAME);
                 Ok(())
             }),
-            Tables::PoolState => PoolState::initialize_table(libmdbx.clone(), clickhouse.clone()),
             Tables::DexPrice => DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone()),
             Tables::PoolCreationBlocks => {
                 PoolCreationBlocks::initialize_table(libmdbx.clone(), clickhouse.clone())
@@ -181,7 +181,11 @@ impl Tables {
             }
             Tables::AddressToFactory => {
                 Box::pin(
-                    async move { libmdbx.initialize_table::<AddressToFactory, AddressToFactoryData>(&vec![]) },
+                    async move { libmdbx.initialize_table::<AddressToFactory, AddressToFactoryData>(&vec![]) })
+            }
+            Tables::SubGraphs => {
+                Box::pin(
+                    async move { libmdbx.initialize_table::<SubGraphs, SubGraphsData>(&vec![]) },
                 )
             }
         }
@@ -198,36 +202,38 @@ impl FromStr for Tables {
             AddressToProtocol::NAME => Ok(Tables::AddressToProtocol),
             CexPrice::NAME => Ok(Tables::CexPrice),
             Metadata::NAME => Ok(Tables::Metadata),
-            PoolState::NAME => Ok(Tables::PoolState),
             DexPrice::NAME => Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
             MevBlocks::NAME => Ok(Tables::MevBlocks),
             AddressToFactory::NAME => Ok(Tables::AddressToFactory),
+            SubGraphs::NAME => Ok(Tables::SubGraphs),
             _ => Err("Unknown table".to_string()),
         }
     }
 }
 
-pub trait IntoTableKey<T, K> {
+pub trait IntoTableKey<T, K, D> {
     fn into_key(value: T) -> K;
+    fn into_table_data(key: T, value: T) -> D;
 }
 
 /// Macro to declare key value table + extra impl
 #[macro_export]
 macro_rules! table {
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty) => {
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)*) => {
         $(#[$docs])+
-        ///
         #[doc = concat!("Takes [`", stringify!($key), "`] as a key and returns [`", stringify!($value), "`].")]
         #[derive(Clone, Copy, Debug, Default)]
         pub struct $table_name;
 
-        impl IntoTableKey<&str, $key> for $table_name {
+        impl IntoTableKey<&str, $key, paste!([<$table_name Data>])> for $table_name {
             fn into_key(value: &str) -> $key {
                 let key: $key = value.parse().unwrap();
                 println!("decoded key: {key:?}");
                 key
             }
+
+            table!($table_name, $key, $value, $($table)*);
         }
 
         impl reth_db::table::Table for $table_name {
@@ -244,55 +250,68 @@ macro_rules! table {
 
         impl<'db> InitializeTable<'db, paste::paste! {[<$table_name Data>]}> for $table_name {
             fn initialize_query() -> &'static str {
-                paste::paste! {[<$table_name InitQuery>]}
+                paste! {[<$table_name InitQuery>]}
             }
         }
     };
+    ($table_name:ident, $key:ty, $value:ty, True) => {
+        fn into_table_data(key: &str, value: &str) -> paste!([<$table_name Data>]) {
+            let key: $key = key.parse().unwrap();
+            let value: $value = value.parse().unwrap();
+            <paste!([<$table_name Data>])>::new(key, value)
+        }
+
+    };
+    ($table_name:ident, $key:ty, $value:ty, False) => {
+        fn into_table_data(_: &str, _: &str) -> paste!([<$table_name Data>]) {
+            panic!("inserts not supported for $table_name");
+        }
+    }
 }
 
 table!(
     /// token address -> decimals
-    ( TokenDecimals ) Address | u8
+    ( TokenDecimals ) Address | u8 = False
 );
 
 table!(
     /// Address -> tokens in pool
-    ( AddressToTokens ) Address | PoolTokens
+    ( AddressToTokens ) Address | PoolTokens = False
 );
 
 table!(
     /// Address -> Static protocol enum
-    ( AddressToProtocol ) Address | StaticBindingsDb
+    ( AddressToProtocol ) Address | StaticBindingsDb = True
 );
 
 table!(
     /// block num -> cex prices
-    ( CexPrice ) u64 | CexPriceMap
+    ( CexPrice ) u64 | CexPriceMap = False
 );
 
 table!(
     /// block num -> metadata
-    ( Metadata ) u64 | MetadataInner
-);
-
-table!(
-    /// pool key -> pool state
-    ( PoolState ) PoolKey | PoolStateSnapShot
+    ( Metadata ) u64 | MetadataInner = False
 );
 
 table!(
     /// block number concat tx idx -> cex quotes
-    ( DexPrice ) TxHash | DexQuoteWithIndex
+    ( DexPrice ) TxHash | DexQuoteWithIndex = False
 );
 
 table!(
     /// block number -> pools created in block
-    ( PoolCreationBlocks ) u64 | PoolsLibmdbx
+    ( PoolCreationBlocks ) u64 | PoolsLibmdbx = False
 );
 
 table!(
     /// block number -> mev block with classified mev
-    ( MevBlocks ) u64 | MevBlockWithClassified
+    ( MevBlocks ) u64 | MevBlockWithClassified = False
+);
+
+table!(
+    /// pair -> Vec<(block_number, entry)>
+    ( SubGraphs ) Pair | SubGraphsEntry = False
 );
 
 table!(

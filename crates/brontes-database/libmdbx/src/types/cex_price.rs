@@ -20,7 +20,7 @@ use sorella_db_databases::{clickhouse, Row};
 use crate::{tables::CexPrice, LibmdbxData};
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct CexPriceData {
+pub struct CexPriceData {
     pub block_num:     u64,
     pub cex_price_map: CexPriceMap,
 }

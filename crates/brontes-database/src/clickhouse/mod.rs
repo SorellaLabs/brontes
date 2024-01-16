@@ -11,9 +11,9 @@ use reth_primitives::{hex, revm_primitives::FixedBytes, Address};
 use sorella_db_databases::{
     clickhouse::{ClickhouseClient, Credentials},
     config::ClickhouseConfig,
+    tables::DatabaseTables,
     utils::format_query_array,
-    Database, Row, BACKRUN_TABLE, CEX_DEX_TABLE, CLASSIFIED_MEV_TABLE, JIT_SANDWICH_TABLE,
-    JIT_TABLE, LIQUIDATIONS_TABLE, MEV_BLOCKS_TABLE, SANDWICH_TABLE,
+    Database, Row,
 };
 use tracing::{error, info};
 
@@ -78,12 +78,10 @@ impl Clickhouse {
         Default::default()
     }
 
-    async fn insert_singe_classified_data<
-        T: SpecificMev + sorella_db_databases::serde::Serialize + Row + Clone,
-    >(
+    async fn insert_singe_classified_data<T: SpecificMev + ::serde::Serialize + Row + Clone>(
         db_client: &ClickhouseClient,
         mev_detail: Box<dyn SpecificMev>,
-        table: &str,
+        table: DatabaseTables,
     ) {
         let any = mev_detail.into_any();
         let this = any.downcast_ref::<T>().unwrap();
@@ -99,7 +97,7 @@ impl Clickhouse {
     ) {
         if let Err(e) = self
             .client
-            .insert_one(&block_details, MEV_BLOCKS_TABLE)
+            .insert_one(&block_details, DatabaseTables::MevBlocks)
             .await
         {
             error!(?e, "failed to insert block details");
@@ -114,14 +112,14 @@ impl Clickhouse {
                 .map(|(classified, specific)| async move {
                     if let Err(e) = self
                         .client
-                        .insert_one(&classified, CLASSIFIED_MEV_TABLE)
+                        .insert_one(&classified, DatabaseTables::ClassifiedMev)
                         .await
                     {
                         error!(?e, "failed to insert classified mev");
                     }
 
                     info!("inserted classified_mev");
-                    let table = &mev_table_type(&specific);
+                    let table = mev_table_type(&specific);
                     let mev_type = specific.mev_type();
                     match mev_type {
                         MevType::Sandwich => {
@@ -161,7 +159,7 @@ impl Clickhouse {
                         MevType::Unknown => unimplemented!("none yet"),
                     };
 
-                    info!(%table,"inserted specific mev type");
+                    info!("{:?}: inserted specific mev type", table);
                 }),
         )
         .await;
@@ -210,17 +208,16 @@ impl Clickhouse {
     }
 }
 
-fn mev_table_type(mev: &Box<dyn SpecificMev>) -> String {
+fn mev_table_type(mev: &Box<dyn SpecificMev>) -> DatabaseTables {
     match mev.mev_type() {
-        brontes_types::classified_mev::MevType::Sandwich => SANDWICH_TABLE,
-        brontes_types::classified_mev::MevType::Backrun => BACKRUN_TABLE,
-        brontes_types::classified_mev::MevType::JitSandwich => JIT_SANDWICH_TABLE,
-        brontes_types::classified_mev::MevType::Jit => JIT_TABLE,
-        brontes_types::classified_mev::MevType::CexDex => CEX_DEX_TABLE,
-        brontes_types::classified_mev::MevType::Liquidation => LIQUIDATIONS_TABLE,
-        brontes_types::classified_mev::MevType::Unknown => "",
+        brontes_types::classified_mev::MevType::Sandwich => DatabaseTables::Sandwich,
+        brontes_types::classified_mev::MevType::Backrun => DatabaseTables::Backrun,
+        brontes_types::classified_mev::MevType::JitSandwich => DatabaseTables::JitSandwich,
+        brontes_types::classified_mev::MevType::Jit => DatabaseTables::Jit,
+        brontes_types::classified_mev::MevType::CexDex => DatabaseTables::CexDex,
+        brontes_types::classified_mev::MevType::Liquidation => DatabaseTables::Liquidations,
+        brontes_types::classified_mev::MevType::Unknown => panic!("Unknown Table"),
     }
-    .to_string()
 }
 
 #[cfg(test)]

@@ -13,7 +13,7 @@ use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
 };
-use brontes_pricing::types::{DexPrices, DexQuotes};
+use brontes_pricing::types::DexQuotes;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
@@ -103,9 +103,7 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
         match self.classifier_future.poll_next_unpin(cx) {
             Poll::Ready(Some((meta_data, tree))) => {
-                let map = Arc::new(HashMap::new());
-                let meta_data =
-                    meta_data.into_finalized_metadata(DexPrices::new(map, DexQuotes(vec![])));
+                let meta_data = meta_data.into_finalized_metadata(DexQuotes(vec![]));
                 //TODO: wire in the dex pricing task here
 
                 self.composer_future =
