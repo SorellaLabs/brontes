@@ -149,6 +149,7 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
         TokenDecimals,
         AddressToTokens,
         AddressToProtocol,
+        AddressToFactory,
         SubGraphs,
         PoolCreationBlocks = &req.key,
         &req.value
@@ -241,7 +242,7 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             AddressToTokens,
             AddressToProtocol,
             PoolCreationBlocks,
-            AddressToFactory
+            AddressToFactory,
             SubGraphs
         );
     } else {
@@ -297,12 +298,12 @@ async fn run_brontes(run_config: RunArgs) -> Result<(), Box<dyn Error>> {
     let parser = DParser::new(
         metrics_tx,
         &libmdbx,
-        tracer,
+        tracer.clone(),
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
 
     let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
-    let classifier = Classifier::new(&libmdbx, tx.clone());
+    let classifier = Classifier::new(&libmdbx, tx.clone(), tracer.into());
 
     #[cfg(not(feature = "local"))]
     let chain_tip = parser.get_latest_block_number().unwrap();

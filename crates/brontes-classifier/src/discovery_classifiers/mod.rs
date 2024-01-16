@@ -2,29 +2,32 @@ pub mod curve;
 pub mod sushiswap;
 pub mod uniswap;
 
+use std::sync::Arc;
+
+use alloy_primitives::Log;
+use brontes_pricing::types::DiscoveredPool;
+use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
 pub use curve::*;
 pub use sushiswap::*;
 pub use uniswap::*;
 
-#[async_trait::async_trait]
-pub trait FactoryDecoder {
+pub trait FactoryDecoder<T: TracingProvider> {
     fn get_signature(&self) -> [u8; 32];
 
     #[allow(unused)]
     async fn decode_new_pool<'a>(
         &self,
-        node_handle: &'a dyn EthProvider,
-        protocol: ContractProtocol,
+        node_handle: Arc<T>,
+        protocol: StaticBindingsDb,
         logs: &Vec<Log>,
-    ) -> Vec<PoolDB>;
+    ) -> Vec<DiscoveredPool>;
 }
 
-#[async_trait::async_trait]
-pub trait ActionCollection: Sync + Send {
+pub trait FactoryDecoderDispatch<T: TracingProvider>: Sync + Send {
     async fn dispatch(
         sig: [u8; 32],
-        node_handle: &dyn EthProvider,
-        protocol: ContractProtocol,
+        node_handle: Arc<T>,
+        protocol: StaticBindingsDb,
         logs: &Vec<Log>,
-    ) -> Vec<PoolDB>;
+    ) -> Vec<DiscoveredPool>;
 }
