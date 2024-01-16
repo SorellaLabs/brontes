@@ -3655,7 +3655,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.5.5",
+ "socket2 0.4.10",
  "tokio",
  "tower-service",
  "tracing",
@@ -7743,7 +7743,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b1db321ccbdf3247a96e572632a8f30ab2a22e73"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#88f54aace7c5a8540fa1f8a7bb61bf96f99ee696"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7771,7 +7771,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b1db321ccbdf3247a96e572632a8f30ab2a22e73"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#88f54aace7c5a8540fa1f8a7bb61bf96f99ee696"
 dependencies = [
  "eyre",
  "futures",
@@ -7788,7 +7788,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b1db321ccbdf3247a96e572632a8f30ab2a22e73"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#88f54aace7c5a8540fa1f8a7bb61bf96f99ee696"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -7800,7 +7800,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b1db321ccbdf3247a96e572632a8f30ab2a22e73"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#88f54aace7c5a8540fa1f8a7bb61bf96f99ee696"
 dependencies = [
  "serde",
  "serde_json",
