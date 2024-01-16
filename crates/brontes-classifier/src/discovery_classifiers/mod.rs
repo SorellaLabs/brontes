@@ -9,23 +9,25 @@ use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
 pub use curve::*;
 pub use uniswap::*;
 
-pub trait FactoryDecoder<T: TracingProvider> {
+pub trait FactoryDecoder {
     fn get_signature(&self) -> [u8; 32];
 
     #[allow(unused)]
-    async fn decode_new_pool(
+    async fn decode_new_pool<T: TracingProvider>(
         &self,
         node_handle: Arc<T>,
         protocol: StaticBindingsDb,
         logs: &Vec<Log>,
+        block_number: u64,
     ) -> Vec<DiscoveredPool>;
 }
 
-pub trait FactoryDecoderDispatch<T: TracingProvider>: Sync + Send {
-    async fn dispatch(
+pub trait FactoryDecoderDispatch: Sync + Send {
+    async fn dispatch<T: TracingProvider>(
         sig: [u8; 32],
         node_handle: Arc<T>,
         protocol: StaticBindingsDb,
         logs: &Vec<Log>,
+        block_number: u64,
     ) -> Vec<DiscoveredPool>;
 }
