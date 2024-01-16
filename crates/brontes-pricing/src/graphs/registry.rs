@@ -25,15 +25,15 @@ pub struct SubGraphRegistry {
     /// tracks which tokens have a edge in the subgraph,
     /// this allows us to possibly insert a new node to a subgraph
     /// if it fits the criteria
-    token_to_sub_graph:  HashMap<Address, HashSet<Pair>>,
+    token_to_sub_graph: HashMap<Address, HashSet<Pair>>,
     /// all currently known sub-graphs
-    sub_graphs:          HashMap<Pair, PairSubGraph>,
+    sub_graphs:         HashMap<Pair, PairSubGraph>,
     /// This is used to store a given pools tvl.
     /// we do this here so that all subpools just have a pointer
     /// to this data which allows us to not worry about updating all subgraphs
     /// when the tvl of a pool changes.
     /// pool address -> pool tvl
-    edge_state:          HashMap<Address, PoolState>, // 212
+    edge_state:         HashMap<Address, PoolState>,
 }
 
 impl SubGraphRegistry {
@@ -53,11 +53,7 @@ impl SubGraphRegistry {
                 (pair, PairSubGraph::init(pair, edges))
             })
             .collect();
-        Self {
-            token_to_sub_graph,
-            sub_graphs,
-            edge_state: HashMap::default(),
-        }
+        Self { token_to_sub_graph, sub_graphs, edge_state: HashMap::default() }
     }
 
     pub fn has_subpool(&self, pair: &Pair) -> bool {
