@@ -113,6 +113,10 @@ impl GraphManager {
 
         Self { all_pair_graph: graph, sub_graph_registry: registry, db_load, db_save }
     }
+    
+    pub fn log_size(&self) {
+        self.sub_graph_registry.log_total_size();
+    }
 
     pub fn add_pool(&mut self, block: u64, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
         self.all_pair_graph.add_node(pair.ordered(), pool_addr, dex);
