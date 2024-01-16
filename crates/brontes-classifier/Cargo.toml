@@ -45,6 +45,7 @@ tracing.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
+futures.workspace = true
 # misc
 hex-literal.workspace = true
 rayon.workspace = true

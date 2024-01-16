@@ -17,14 +17,10 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
     if needs_reth_handle.value {
         option_parsing.push(quote!(
             let decoded_events_handle = logs.into_iter().filter_map(|log| {
-                let Some(tx_hash) = log.transaction_hash.clone().map(|hash| hash.0.into()) else {
-                    // error!(RawEthNewPoolsResults, 1, "No Tx Hash For Log", log, "In Protocol", protocol);
-                    return None;
-                };
-
+                let handle = node_handle.clone();
                 let pool_addr = Box::pin(async move {
                     let Some(transfer_log) =
-                        get_log_from_tx(node_handle, block_number, tx_hash, #factory_name::#event_type::SIGNATURE_HASH, 2).await
+                        get_log_from_tx(handle, block_number, tx_hash, #factory_name::#event_type::SIGNATURE_HASH, 2).await
                     else {
                         return None;
                     };
@@ -65,7 +61,7 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
         }
         (false, true) => {
             quote!(
-                (#address_call_function)(node_handle, protocol, decoded_events_handle)
+                (#address_call_function)(node_handle.clone(), protocol, decoded_events_handle)
             )
         }
         _ => unreachable!("Can't do this"),
@@ -88,6 +84,7 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
                 protocol: StaticBindingsDb,
                 logs: &Vec<Log>,
                 block_number: u64,
+                tx_hash: B256,
             ) -> Vec<DiscoveredPool> {
                 #(#option_parsing)*
                 #fn_call.await
@@ -165,6 +162,7 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
                 protocol: StaticBindingsDb,
                 logs: &Vec<Log>,
                 block_number: u64,
+                tx_hash: B256,
                 ) -> Vec<DiscoveredPool> {
                 let this = Self::default();
                 if sig == this.0.get_signature() {
@@ -174,6 +172,7 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
                             protocol,
                             logs,
                             block_number,
+                            tx_hash,
                         ).await
                 }
                 #( else if sig == this.#i.get_signature() {
@@ -182,6 +181,8 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
                             protocol,
                             logs,
                             block_number,
+                            tx_hash,
+
                         ).await
                     }
                 )*
