@@ -56,7 +56,9 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
 
         let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
-        let rest_pairs = libmdbx.protocols_created_range(start_block + 1, end_block).unwrap();
+        let rest_pairs = libmdbx
+            .protocols_created_range(start_block + 1, end_block)
+            .unwrap();
 
         let pair_graph = GraphManager::init_from_db_state(
             pairs,
