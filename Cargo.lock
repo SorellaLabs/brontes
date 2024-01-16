@@ -7684,7 +7684,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#45101e07ba7b253be19aef743e1b57325cfa0ab5"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#88f54aace7c5a8540fa1f8a7bb61bf96f99ee696"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -7696,12 +7696,15 @@ dependencies = [
  "hyper",
  "hyper-tls",
  "primitive-types",
+ "rand 0.8.5",
  "reqwest",
  "serde",
  "serde_json",
  "sorella-db-metrics",
  "sorella-db-metrics-derive",
  "sorella-db-tracing",
+ "strum",
+ "strum_macros",
  "thiserror",
  "tokio",
 ]
@@ -7709,7 +7712,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#45101e07ba7b253be19aef743e1b57325cfa0ab5"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#88f54aace7c5a8540fa1f8a7bb61bf96f99ee696"
 dependencies = [
  "eyre",
  "futures",
@@ -7726,7 +7729,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#45101e07ba7b253be19aef743e1b57325cfa0ab5"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#88f54aace7c5a8540fa1f8a7bb61bf96f99ee696"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -7738,7 +7741,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#45101e07ba7b253be19aef743e1b57325cfa0ab5"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#88f54aace7c5a8540fa1f8a7bb61bf96f99ee696"
 dependencies = [
  "serde",
  "serde_json",
