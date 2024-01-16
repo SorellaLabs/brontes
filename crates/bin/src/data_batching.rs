@@ -45,7 +45,6 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
         batch_id: u64,
-        run: u64,
         start_block: u64,
         end_block: u64,
         parser: &'db Parser<'db, T>,
@@ -66,18 +65,12 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         let pair_graph = GraphManager::init_from_db_state(
             pairs,
             HashMap::default(),
-            Box::new(|block, pair| libmdbx.try_load_pair_before(block, pair).ok()),
-            Box::new(|block, pair, edges| {
-                if libmdbx.save_pair_at(block, pair, edges).is_err() {
-                    error!(?pair, %block, "failed to save pair subgraph");
-                }
-            }),
+            Box::new(|block, pair| None),
+            Box::new(|block, pair, edges| {}),
         );
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
-            run,
-            batch_id,
             pair_graph,
             rx,
             parser.get_tracer(),
@@ -191,8 +184,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         if self.current_block == self.end_block
             && self.collection_future.is_none()
             && self.processing_futures.is_empty()
-            // we have no more data and no more processing was queued
-            && self.pricer.poll_next_unpin(cx).map(|i| i.is_none()) == Poll::Ready(true)
+            && self.pricer.is_done()
         {
             return Poll::Ready(())
         }
@@ -218,6 +210,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         let handle = tokio::spawn(future);
 
         Self { handle, pending_trees: HashMap::default() }
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.pending_trees.is_empty()
     }
 
     fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
@@ -255,6 +251,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
                 info!(target:"brontes","Collected dex prices for block: {}", block);
 
                 let Some((tree, meta)) = self.pending_trees.remove(&block) else {
+                    error!("no tree");
                     return Poll::Ready(None)
                 };
 
