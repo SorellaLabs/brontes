@@ -18,12 +18,12 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
         option_parsing.push(quote!(
             let decoded_events_handle = logs.into_iter().filter_map(|log| {
                 let Some(tx_hash) = log.transaction_hash.clone().map(|hash| hash.0.into()) else {
-                    log!(RawEthNewPoolsResults, 1, "No Tx Hash For Log", log, "In Protocol", protocol);
+                    // error!(RawEthNewPoolsResults, 1, "No Tx Hash For Log", log, "In Protocol", protocol);
                     return None;
                 };
 
                 let Some(block_num) = log.block_number.map(|num| num.to::<u64>()) else {
-                    log!(RawEthNewPoolsResults, 1, "No Block Number For Log", log, "In Protocol", protocol);
+                    // log!(RawEthNewPoolsResults, 1, "No Block Number For Log", log, "In Protocol", protocol);
                     return None;
                 };
 
@@ -35,15 +35,15 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
                     };
 
                     let Some(decoded_transfer_log) = Transfer::decode_log(&transfer_log, true).ok() else {
-                        log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Inner Log For Address", transfer_log);
+                        // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Inner Log For Address", transfer_log);
                         return None;
                     };
 
                     Some(decoded_transfer_log.to)
                 }) as Pin<Box<dyn Future<Output = Option<Address>> + Send>>;
 
-                let Some(val) = #factory_name::#event_type::decode_log(&rpc_to_alloy_log(&log), true).ok() else {
-                    log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Log", log);
+                let Some(val) = #factory_name::#event_type::decode_log(&log, true).ok() else {
+                    // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Log", log);
                     return None;
                 };
 
@@ -53,9 +53,9 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
     } else {
         option_parsing.push(quote!(
             let decoded_events = logs.into_iter().filter_map(|log| {
-                let val = #factory_name::#event_type::decode_log(&rpc_to_alloy_log(&log), true).ok();
+                let val = #factory_name::#event_type::decode_log(&log, true).ok();
                 if val.is_none() {
-                    log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Log", log);
+                    // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Log", log);
                 }
                 val.map(|v| (v, log.block_number.unwrap().to::<u64>()))
             }).collect::<Vec<_>>();
@@ -80,20 +80,19 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
         #[derive(Debug, Default)]
         pub struct #decoder_name;
 
-        #[async_trait::async_trait]
-        impl FactoryDecoder for #decoder_name {
+        impl<T: TracingProvider> FactoryDecoder<T> for #decoder_name {
             fn get_signature(&self) -> [u8; 32] {
                 #factory_name::#event_type::SIGNATURE_HASH.0
             }
 
 
             #[allow(unused)]
-            async fn decode_new_pool<'a>(
+            async fn decode_new_pool(
                 &self,
-                node_handle: &'a dyn EthProvider,
-                protocol: ContractProtocol,
+                node_handle: Arc<T>,
+                protocol: StaticBindingsDb,
                 logs: &Vec<Log>,
-            ) -> Vec<PoolDB> {
+            ) -> Vec<DiscoveredPool> {
                 #(#option_parsing)*
                 #fn_call.await
             }
@@ -163,9 +162,8 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
         #[derive(Default, Debug)]
         pub struct #struct_name(#(pub #name,)*);
 
-        #[async_trait::async_trait]
-        impl ActionCollection for #struct_name {
-            async fn dispatch(sig: [u8; 32], node_handle: &dyn EthProvider, protocol: ContractProtocol, logs: &Vec<reth_rpc_types::Log>) -> Vec<PoolDB> {
+        impl<T: TracingProvider> FactoryDecoderDispatch<T> for #struct_name {
+            async fn dispatch(sig: [u8; 32], node_handle: Arc<T>, protocol: StaticBindingsDb, logs: &Vec<Log>) -> Vec<DiscoveredPool> {
                 let this = Self::default();
                 if sig == this.0.get_signature() {
                     return

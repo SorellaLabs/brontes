@@ -23,7 +23,14 @@
 //
 //     ]"#;
 // );
-//
+use alloy_sol_macro::sol;
+
+sol!(
+    interface IUniswapV2Factory {
+        event PairCreated(address indexed token0, address indexed token1, address pair, uint256);
+    }
+);
+
 // pub const PAIR_CREATED_EVENT_SIGNATURE: H256 = H256([
 //     13, 54, 72, 189, 15, 107, 168, 1, 52, 163, 59, 169, 39, 90, 197, 133,
 // 217, 211, 21, 240, 173,     131, 85, 205, 222, 253, 227, 26, 250, 40, 208,
