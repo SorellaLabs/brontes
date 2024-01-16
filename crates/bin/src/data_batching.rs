@@ -14,12 +14,13 @@ use brontes_core::{
 use brontes_database::{Metadata, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
-use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
+use brontes_pricing::{types::DexQuotes, BrontesBatchPricer, GraphManager};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::BlockTree};
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info};
+
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
 
@@ -36,7 +37,7 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     end_block:     u64,
     batch_id:      u64,
 
-    libmdbx:    &'db Libmdbx,
+    libmdbx:    &'static Libmdbx,
     inspectors: &'db [&'db Box<dyn Inspector>; N],
 }
 
@@ -44,11 +45,10 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
         batch_id: u64,
-        run: u64,
         start_block: u64,
         end_block: u64,
         parser: &'db Parser<'db, T>,
-        libmdbx: &'db Libmdbx,
+        libmdbx: &'static Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>; N],
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
@@ -62,17 +62,19 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             rest_pairs.insert(i, pairs);
         }
 
-        trace!("initializing pair graph");
-        let pair_graph = PairGraph::init_from_hashmap(pairs);
+        let pair_graph = GraphManager::init_from_db_state(
+            pairs,
+            HashMap::default(),
+            Box::new(|block, pair| None),
+            Box::new(|block, pair, edges| {}),
+        );
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
-            run,
-            batch_id,
             pair_graph,
             rx,
             parser.get_tracer(),
-            start_block,
+            start_block + 1,
             rest_pairs,
         );
 
@@ -182,8 +184,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         if self.current_block == self.end_block
             && self.collection_future.is_none()
             && self.processing_futures.is_empty()
-            // we have no more data and no more processing was queued
-            && self.pricer.poll_next_unpin(cx).map(|i| i.is_none()) == Poll::Ready(true)
+            && self.pricer.is_done()
         {
             return Poll::Ready(())
         }
@@ -195,7 +196,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
 }
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
-    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexPrices)>)>,
+    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
     pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataDB)>,
 }
 
@@ -209,6 +210,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         let handle = tokio::spawn(future);
 
         Self { handle, pending_trees: HashMap::default() }
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.pending_trees.is_empty()
     }
 
     fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
@@ -246,6 +251,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
                 info!(target:"brontes","Collected dex prices for block: {}", block);
 
                 let Some((tree, meta)) = self.pending_trees.remove(&block) else {
+                    error!("no tree");
                     return Poll::Ready(None)
                 };
 
@@ -317,6 +323,7 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
                 block_details.cumulative_mev_finalized_profit_usd
             );
 
+            println!("{mev_details:#?}");
             if self
                 .database
                 .insert_classified_data(block_details, mev_details)

@@ -327,7 +327,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         vec![self.token_a, self.token_b]
     }
 
-    fn calculate_price(&self, base_token: Address) -> Result<f64, ArithmeticError> {
+    fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError> {
         let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)?;
         let shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
 
@@ -338,9 +338,9 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         };
 
         if base_token == self.token_a {
-            Ok(price)
+            Ok(Rational::try_from(price).unwrap())
         } else {
-            Ok(1.0 / price)
+            Ok(Rational::try_from((1.0 / price)).unwrap())
         }
     }
 
@@ -909,6 +909,7 @@ impl UniswapV3Pool {
 
     pub fn data_is_populated(&self) -> bool {
         !(self.token_a.is_zero() || self.token_b.is_zero())
+            || !(self.sqrt_price >= MIN_SQRT_RATIO && self.sqrt_price < MAX_SQRT_RATIO)
     }
 
     // pub async fn get_tick_word<M: TracingProvider>(
@@ -1021,6 +1022,8 @@ impl UniswapV3Pool {
     //
     pub fn sync_from_burn_log(&mut self, log: Log) -> Result<(), AbiError> {
         let burn_event = IUniswapV3Pool::Burn::decode_log_data(&log, false).unwrap();
+        self.reserve_0 -= burn_event.amount0;
+        self.reserve_1 -= burn_event.amount1;
 
         self.modify_position(
             burn_event.tickLower,
@@ -1034,6 +1037,8 @@ impl UniswapV3Pool {
     pub fn sync_from_mint_log(&mut self, log: Log) -> Result<(), AbiError> {
         let mint_event = IUniswapV3Pool::Mint::decode_log_data(&log, false).unwrap();
 
+        self.reserve_0 += mint_event.amount0;
+        self.reserve_1 += mint_event.amount1;
         self.modify_position(mint_event.tickLower, mint_event.tickUpper, mint_event.amount as i128);
 
         Ok(())
@@ -1137,6 +1142,14 @@ impl UniswapV3Pool {
     pub fn sync_from_swap_log(&mut self, log: Log) -> Result<(), AbiError> {
         let swap_event = IUniswapV3Pool::Swap::decode_log_data(&log, false).unwrap();
 
+        if swap_event.amount0.is_negative() {
+            self.reserve_0 -= swap_event.amount0.unsigned_abs();
+            self.reserve_1 += swap_event.amount1.unsigned_abs();
+        } else {
+            self.reserve_0 += swap_event.amount0.unsigned_abs();
+            self.reserve_1 -= swap_event.amount1.unsigned_abs();
+        }
+
         self.sqrt_price = swap_event.sqrtPriceX96;
         self.liquidity = swap_event.liquidity;
         self.tick = swap_event.tick;
@@ -1144,8 +1157,18 @@ impl UniswapV3Pool {
         Ok(())
     }
 
-    pub fn get_tvl(&self) -> Rational {
-        self.reserve_0.to_scaled_rational(0) + self.reserve_1.to_scaled_rational(0)
+    pub fn get_tvl(&self, base: Address) -> (Rational, Rational) {
+        if self.token_a == base {
+            (
+                self.reserve_0.to_scaled_rational(self.token_a_decimals),
+                self.reserve_1.to_scaled_rational(self.token_b_decimals),
+            )
+        } else {
+            (
+                self.reserve_1.to_scaled_rational(self.token_b_decimals),
+                self.reserve_0.to_scaled_rational(self.token_a_decimals),
+            )
+        }
     }
 
     //
