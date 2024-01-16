@@ -323,6 +323,8 @@ pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
     D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
+
+   
     fn initialize_query() -> &'static str;
 
     fn initialize_table(
