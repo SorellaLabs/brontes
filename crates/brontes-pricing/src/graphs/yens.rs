@@ -9,7 +9,7 @@ use std::{
 
 use pathfinding::num_traits::Zero;
 
-pub use crate::dijkstras::*;
+pub use crate::graphs::dijkstras::*;
 
 /// A representation of a path.
 #[derive(Eq, PartialEq, Debug)]

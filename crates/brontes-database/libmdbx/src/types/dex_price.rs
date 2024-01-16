@@ -2,14 +2,13 @@ use std::collections::HashMap;
 
 use alloy_primitives::TxHash;
 use alloy_rlp::{Decodable, Encodable};
-use brontes_pricing::types::PoolKeysForPair;
 use brontes_types::{extra_processing::Pair, impl_compress_decompress_for_encoded_decoded};
 use bytes::BufMut;
+use malachite::{Natural, Rational};
 use reth_db::table::Table;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{clickhouse, Row};
 
-use super::utils::dex_quote;
 use crate::{tables::DexPrice, LibmdbxData};
 
 pub fn make_key(block_number: u64, tx_idx: u16) -> TxHash {
@@ -44,7 +43,6 @@ pub fn make_filter_key_range(block_number: u64) -> (TxHash, TxHash) {
 pub struct DexPriceData {
     pub block_number: u64,
     pub tx_idx:       u16,
-    #[serde(with = "dex_quote")]
     pub quote:        DexQuote,
 }
 
@@ -71,7 +69,7 @@ impl LibmdbxDupData<DexPrice> for DexPriceData {
 }
 */
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DexQuote(pub HashMap<Pair, Vec<PoolKeysForPair>>);
+pub struct DexQuote(pub HashMap<Pair, Rational>);
 
 impl From<DexQuoteWithIndex> for DexQuote {
     fn from(value: DexQuoteWithIndex) -> Self {
@@ -79,7 +77,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-impl From<DexQuote> for Vec<(Pair, Vec<PoolKeysForPair>)> {
+impl From<DexQuote> for Vec<(Pair, Rational)> {
     fn from(val: DexQuote) -> Self {
         val.0.into_iter().collect()
     }
@@ -88,7 +86,7 @@ impl From<DexQuote> for Vec<(Pair, Vec<PoolKeysForPair>)> {
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
-    pub quote:  Vec<(Pair, Vec<PoolKeysForPair>)>,
+    pub quote:  Vec<(Pair, Rational)>,
 }
 
 impl Encodable for DexQuoteWithIndex {
@@ -96,8 +94,17 @@ impl Encodable for DexQuoteWithIndex {
         Encodable::encode(&self.tx_idx, out);
         let (keys, vals): (Vec<_>, Vec<_>) = self.quote.clone().into_iter().unzip();
 
+        let (nums, denoms): (Vec<_>, Vec<_>) = vals
+            .into_iter()
+            .map(|val| {
+                let (n, d) = val.to_numerator_and_denominator();
+                (n.to_limbs_asc(), d.to_limbs_asc())
+            })
+            .unzip();
+
         keys.encode(out);
-        vals.encode(out);
+        nums.encode(out);
+        denoms.encode(out);
     }
 }
 
@@ -106,9 +113,14 @@ impl Decodable for DexQuoteWithIndex {
         let tx_idx = u16::decode(buf)?;
 
         let keys = Vec::decode(buf)?;
-        let vals = Vec::decode(buf)?;
+        let nums: Vec<Vec<u64>> = Vec::decode(buf)?;
+        let denoms: Vec<Vec<u64>> = Vec::decode(buf)?;
 
-        let map = keys.into_iter().zip(vals).collect::<Vec<_>>();
+        let prices = nums.into_iter().zip(denoms).map(|(num, denom)| {
+            Rational::from_naturals(Natural::from_limbs_asc(&num), Natural::from_limbs_asc(&denom))
+        });
+
+        let map = keys.into_iter().zip(prices).collect::<Vec<_>>();
 
         Ok(Self { tx_idx, quote: map })
     }

@@ -145,11 +145,11 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
         CexPrice,
         Metadata,
         DexPrice,
-        PoolState,
         MevBlocks,
         TokenDecimals,
         AddressToTokens,
         AddressToProtocol,
+        SubGraphs,
         PoolCreationBlocks = &req.key,
         &req.value
     );
@@ -236,12 +236,12 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             CexPrice,
             Metadata,
             DexPrice,
-            PoolState,
             MevBlocks,
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
-            PoolCreationBlocks
+            PoolCreationBlocks,
+            SubGraphs
         );
     } else {
         match_table!(
@@ -251,11 +251,11 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             CexPrice,
             Metadata,
             DexPrice,
-            PoolState,
             MevBlocks,
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
+            SubGraphs,
             PoolCreationBlocks = &command.key
         );
     }
@@ -423,7 +423,6 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
         scope.spawn(spawn_batches(
             config.quote_asset.parse().unwrap(),
-            0,
             i as u64,
             start_block,
             end_block,
@@ -446,17 +445,15 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
 async fn spawn_batches(
     quote_asset: Address,
-    run_id: u64,
     batch_id: u64,
     start_block: u64,
     end_block: u64,
     parser: &DParser<'_, TracingClient>,
-    libmdbx: &Libmdbx,
+    libmdbx: &'static Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
     DataBatching::new(
         quote_asset,
-        run_id,
         batch_id,
         start_block,
         end_block,

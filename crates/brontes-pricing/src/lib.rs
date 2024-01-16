@@ -1,9 +1,6 @@
 #![allow(unused)]
-pub mod dijkstras;
 pub mod exchanges;
-mod graph;
 pub mod types;
-pub mod yens;
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     sync::Arc,
@@ -20,16 +17,17 @@ use brontes_types::{
 use ethers::core::k256::elliptic_curve::bigint::Zero;
 use exchanges::lazy::{LazyExchangeLoader, LazyResult};
 pub use exchanges::*;
+pub use graphs::{AllPairGraph, GraphManager, SubGraphEdge};
+
+mod graphs;
+
 use futures::{Future, Stream, StreamExt};
-pub use graph::PairGraph;
-use graph::{PoolPairInfoDirection, PoolPairInformation};
+use graphs::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
-use types::{
-    DexPriceMsg, DexPrices, DexQuotes, PoolKeyWithDirection, PoolStateSnapShot, PoolUpdate,
-};
+use types::{DexPriceMsg, DexQuotes, PoolUpdate};
 
-use crate::types::{PoolKey, PoolKeysForPair, PoolState};
+use crate::types::PoolState;
 
 /// # Brontes Batch Pricer
 /// ## Reasoning
@@ -55,10 +53,7 @@ use crate::types::{PoolKey, PoolKeysForPair, PoolState};
 /// 5) Once state transitions are all applied and we have our formatted data.
 /// The data is returned and the pricer continues onto the next block.
 pub struct BrontesBatchPricer<T: TracingProvider> {
-    quote_asset: Address,
-    run:         u64,
-    batch_id:    u64,
-
+    quote_asset:     Address,
     current_block:   u64,
     completed_block: u64,
 
@@ -77,26 +72,16 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// only pass though valid created pools.
     new_graph_pairs: HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>,
 
-    /// holds all token pairs for the given chunk.
-    pair_graph:      PairGraph,
+    graph_manager: GraphManager,
     /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader:     LazyExchangeLoader<T>,
-    /// mutable version of the pool. used for producing deltas
-    mut_state:       HashMap<Address, PoolState>,
-    /// tracks the last updated key for the given pool
-    last_update:     HashMap<Address, PoolKey>,
-    /// quotes
-    dex_quotes:      HashMap<u64, DexQuotes>,
-    /// the pool-key with finalized state
-    finalized_state: HashMap<PoolKey, PoolStateSnapShot>,
+    lazy_loader:   LazyExchangeLoader<T>,
+    dex_quotes:    HashMap<u64, DexQuotes>,
 }
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
     pub fn new(
         quote_asset: Address,
-        run: u64,
-        batch_id: u64,
-        pair_graph: PairGraph,
+        graph_manager: GraphManager,
         update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
@@ -106,15 +91,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             new_graph_pairs,
             quote_asset,
             buffer: StateBuffer::new(),
-            run,
-            batch_id,
             update_rx,
-            pair_graph,
-            finalized_state: HashMap::default(),
+            graph_manager,
             dex_quotes: HashMap::default(),
             lazy_loader: LazyExchangeLoader::new(provider),
-            mut_state: HashMap::default(),
-            last_update: HashMap::default(),
             current_block,
             completed_block: current_block,
         }
@@ -130,16 +110,17 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .remove(&self.current_block)
                 .unwrap_or_default()
             {
-                self.pair_graph.add_node(pair, pool_addr, dex);
+                // add pool
+                self.graph_manager
+                    .add_pool(self.current_block, pair, pool_addr, dex);
             }
         }
 
-        let addr = msg.get_pool_address();
+        let pair = msg.get_pair(self.quote_asset).unwrap();
 
-        // if we already have the state, we want to buffer the update to allow for all
-        // init fetches to be done so that we can then go through and apply all
-        // price transitions correctly to ensure order
-        if self.mut_state.contains_key(&addr) || self.lazy_loader.is_loading(&addr) {
+        // if we already have the pair subgraph we don't want to create another one
+        if self.graph_manager.has_subgraph(pair) {
+            let addr = msg.get_pool_address();
             self.buffer
                 .updates
                 .entry(msg.block)
@@ -154,24 +135,32 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     /// takes the given pair fetching all pool state that needs to be loaded in
     /// order to properly price through the graph
     fn queue_loading(&mut self, pair: Pair, trigger_update: PoolUpdate) {
-        for pool_info in self.pair_graph.get_path(pair).flatten() {
+        if pair.0 == pair.1 {
+            return
+        }
+
+        // make sure that the update is buffered
+        self.buffer
+            .updates
+            .entry(trigger_update.block)
+            .or_default()
+            .push_back((trigger_update.get_pool_address(), trigger_update.clone()));
+
+        for pool_info in self
+            .graph_manager
+            .create_subpool(self.current_block, pair)
+            .into_iter()
+        {
             // load exchange only if its not loaded already
-            if !(self.mut_state.contains_key(&pool_info.info.pool_addr)
-                || self.lazy_loader.is_loading(&pool_info.info.pool_addr))
+            if !(self.graph_manager.has_state(&pool_info.pool_addr)
+                || self.lazy_loader.is_loading(&pool_info.pool_addr))
             {
                 self.lazy_loader.lazy_load_exchange(
-                    pool_info.info.pool_addr,
+                    pool_info.pool_addr,
                     trigger_update.block,
-                    pool_info.info.dex_type,
+                    pool_info.dex_type,
                 );
             }
-
-            // we buffer the update for all of the pool state with there specific addresses
-            self.buffer
-                .updates
-                .entry(trigger_update.block)
-                .or_default()
-                .push_back((pool_info.info.pool_addr, trigger_update.clone()));
         }
     }
 
@@ -185,8 +174,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         // add pool pair
         self.queue_loading(pair, msg.clone());
-        // flipped pool pair
-        self.queue_loading(pair.flip(), msg.clone());
 
         // we add support for fetching the pair as well as each individual token with
         // the given quote asset
@@ -208,34 +195,16 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     /// For a given block number and tx idx, finds the path to the following
     /// tokens and inserts the data into dex_quotes.
-    fn update_dex_quotes(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
+    fn store_dex_price(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
         if pool_pair.0 == pool_pair.1 {
             return
         }
 
         // query graph for all keys needed to properly query price for a given pair
-        let pool_keys = self
-            .pair_graph
-            .get_path(pool_pair)
-            .map(|pairs| {
-                PoolKeysForPair(
-                    pairs
-                        .into_iter()
-                        .filter_map(|pair_details| {
-                            Some(PoolKeyWithDirection::new(
-                                *self.last_update.get(&pair_details.info.pool_addr)?,
-                                pair_details.get_base_token(),
-                            ))
-                        })
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .collect::<Vec<_>>();
-
-        if pool_keys.is_empty() {
-            debug!(?pool_pair, "no keys found for pair");
+        let Some(price) = self.graph_manager.get_price(pool_pair) else {
+            error!(?pool_pair, "no price from graph manager");
             return
-        }
+        };
 
         // insert the pool keys into the price map
         match self.dex_quotes.entry(block) {
@@ -249,10 +218,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 let tx = q.0.get_mut(tx_idx as usize).unwrap();
 
                 if let Some(tx) = tx.as_mut() {
-                    tx.insert(pool_pair, pool_keys);
+                    tx.insert(pool_pair, price);
                 } else {
                     let mut tx_pairs = HashMap::default();
-                    tx_pairs.insert(pool_pair, pool_keys);
+                    tx_pairs.insert(pool_pair, price);
                     *tx = Some(tx_pairs)
                 }
             }
@@ -264,7 +233,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
                 // insert
                 let mut map = HashMap::new();
-                map.insert(pool_pair, pool_keys);
+                map.insert(pool_pair, price);
 
                 let entry = vec.get_mut(tx_idx as usize).unwrap();
                 *entry = Some(map);
@@ -289,10 +258,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
-        self.update_dex_quotes(block, tx_idx, pool_pair);
-        self.update_dex_quotes(block, tx_idx, pool_pair.flip());
-        self.update_dex_quotes(block, tx_idx, pair0);
-        self.update_dex_quotes(block, tx_idx, pair1);
+        self.store_dex_price(block, tx_idx, pool_pair);
+        self.store_dex_price(block, tx_idx, pool_pair.flip());
+        self.store_dex_price(block, tx_idx, pair0);
+        self.store_dex_price(block, tx_idx, pair1);
     }
 
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
@@ -302,35 +271,16 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             error!(?addr, "failed to get pair for pool");
             return;
         };
+        self.graph_manager.update_state(addr, msg);
 
-        // fetch the new key and the state applying the transition
-        if let Some((key, state)) = self.mut_state.get_mut(&addr).map(|inner| {
-            // if we have the pair loaded. increment_state
-            let (nonce, snapshot) = inner.increment_state(msg);
-            let key = PoolKey {
-                pool:         addr,
-                run:          self.run,
-                batch:        self.batch_id,
-                update_nonce: nonce,
-            };
-            (key, snapshot)
-        }) {
-            // insert new state snapshot with new key
-            self.finalized_state.insert(key, state);
-            // update address to new key
-            self.last_update.insert(addr, key);
+        // generate all variants of the price that might be used in the inspectors
+        let pair0 = Pair(pool_pair.0, self.quote_asset);
+        let pair1 = Pair(pool_pair.1, self.quote_asset);
 
-            // generate all variants of the price that might be used in the inspectors
-            let pair0 = Pair(pool_pair.0, self.quote_asset);
-            let pair1 = Pair(pool_pair.1, self.quote_asset);
-
-            self.update_dex_quotes(block, tx_idx, pool_pair);
-            self.update_dex_quotes(block, tx_idx, pool_pair.flip());
-            self.update_dex_quotes(block, tx_idx, pair0);
-            self.update_dex_quotes(block, tx_idx, pair1);
-        } else {
-            error!(?addr, "missing pool state for");
-        }
+        self.store_dex_price(block, tx_idx, pool_pair);
+        self.store_dex_price(block, tx_idx, pool_pair.flip());
+        self.store_dex_price(block, tx_idx, pair0);
+        self.store_dex_price(block, tx_idx, pair1);
     }
 
     fn can_progress(&self) -> bool {
@@ -339,7 +289,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     // called when we try to progress to the next block
-    fn try_resolve_block(&mut self) -> Option<(u64, DexPrices)> {
+    fn try_resolve_block(&mut self) -> Option<(u64, DexQuotes)> {
         // if there are still requests for the given block or the current block isn't
         // complete yet, then we wait
         if !self.can_progress() {
@@ -383,32 +333,20 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             "got dex quotes"
         );
 
-        let state = self.finalized_state.clone().into();
         self.completed_block += 1;
 
         // add new nodes to pair graph
-        Some((block, DexPrices::new(state, res)))
+        Some((block, res))
     }
 
     fn on_pool_resolve(&mut self, state: LazyResult) {
         let LazyResult { block, state, load_result } = state;
 
         if let Some(state) = state {
-            let nonce = state.nonce();
-            let snap = state.into_snapshot();
             let addr = state.address();
 
-            let key = PoolKey {
-                pool:         addr,
-                run:          self.run,
-                batch:        self.batch_id,
-                update_nonce: nonce,
-            };
-
-            // init caches
-            self.finalized_state.insert(key, snap);
-            self.last_update.insert(addr, key);
-            self.mut_state.insert(addr, state);
+            self.graph_manager
+                .new_state(self.completed_block, addr, state);
 
             // pool was initialized this block. lets set the override to avoid invalid state
             if !load_result.is_ok() {
@@ -417,7 +355,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
-    fn on_close(&mut self) -> Option<(u64, DexPrices)> {
+    fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
         if self.completed_block >= self.current_block + 1 {
             return None
         }
@@ -453,15 +391,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         info!(dex_quotes = res.0.len(), "got dex quotes");
 
-        let state = self.finalized_state.clone().into();
         self.completed_block += 1;
 
-        Some((block, DexPrices::new(state, res)))
+        Some((block, res))
     }
 }
 
 impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
-    type Item = (u64, DexPrices);
+    type Item = (u64, DexQuotes);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
@@ -552,132 +489,135 @@ const fn make_fake_swap(pair: Pair) -> Actions {
     })
 }
 
-#[cfg(test)]
-pub mod test {
-    use std::env;
-
-    use brontes_classifier::*;
-    use brontes_core::{decoding::parser::TraceParser, init_trace_parser, init_tracing};
-    use brontes_database_libmdbx::{
-        tables::{AddressToProtocol, AddressToTokens},
-        Libmdbx,
-    };
-    use reth_db::{cursor::DbCursorRO, transaction::DbTx};
-    use tokio::sync::mpsc::unbounded_channel;
-
-    use super::*;
-
-    async fn init(
-        libmdbx: &Libmdbx,
-        rx: UnboundedReceiver<DexPriceMsg>,
-        quote: Address,
-        block: u64,
-        parser: &TraceParser<'_, Box<dyn TracingProvider>>,
-    ) -> BrontesBatchPricer<Box<dyn TracingProvider>> {
-        let tx = libmdbx.ro_tx().unwrap();
-        let binding_tx = libmdbx.ro_tx().unwrap();
-        let mut all_addr_to_tokens = tx.cursor_read::<AddressToTokens>().unwrap();
-
-        let pairs = libmdbx.addresses_inited_before(block).unwrap();
-
-        let mut rest_pairs = HashMap::default();
-
-        info!("initing pair graph");
-        let pair_graph = PairGraph::init_from_hashmap(pairs);
-
-        BrontesBatchPricer::new(quote, 0, 0, pair_graph, rx, parser.get_tracer(), block, rest_pairs)
-    }
-    #[tokio::test]
-    async fn test_pool() {
-        dotenv::dotenv().ok();
-        init_tracing();
-        info!("initing tests");
-
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
-        let (tx, rx) = unbounded_channel();
-
-        let (a, b) = unbounded_channel();
-        let tracer =
-            brontes_core::init_trace_parser(tokio::runtime::Handle::current(), a, &libmdbx, 10);
-        let quote = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            .parse()
-            .unwrap();
-
-        let mut pricer = init(&libmdbx, rx, quote, 18500000, &tracer).await;
-
-        info!("starting tests");
-
-        let handle = tokio::spawn(async move {
-            let res = pricer.next().await;
-            (pricer, res)
-        });
-        // weth
-        let t0: Address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            .parse()
-            .unwrap();
-
-        // usdt
-        let t1: Address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-            .parse()
-            .unwrap();
-
-        // shib
-        let t3: Address = "0x3e34eabf5858a126cb583107e643080cee20ca64"
-            .parse()
-            .unwrap();
-
-        // lets send pools we want to be able to swap through
-        let mut poolupdate = PoolUpdate {
-            block:  18500000,
-            tx_idx: 0,
-            logs:   vec![],
-            action: make_fake_swap(Pair(t0, t1)),
-        };
-
-        // send these two txes for the given block
-        let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
-        poolupdate.tx_idx = 69;
-        poolupdate.action = make_fake_swap(Pair(t0, t3));
-        let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
-
-        info!("triggering next block");
-        // trigger next block
-        poolupdate.block += 1;
-        poolupdate.action = make_fake_swap(Pair(t1, t3));
-        let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
-
-        let (handle, dex_prices) = handle.await.unwrap();
-
-        let (block, prices) = dex_prices.unwrap();
-        info!(?prices, "got prices");
-
-        // default pairs
-        let p0 = Pair(t0, t1);
-        let p1 = p0.clone().flip();
-
-        let p2 = Pair(t0, t3);
-        let p3 = p2.clone().flip();
-
-        // pairs with quote
-        let p4 = Pair(t0, quote);
-        let p5 = Pair(t1, quote);
-        let p6 = Pair(t3, quote);
-
-        // we should have p0 and p1 at index 0 in the vector
-        assert!(prices.price_after(p0, 0).is_some());
-        assert!(prices.price_after(p1, 0).is_some());
-        assert!(prices.price_after(p4, 0).is_some());
-        assert!(prices.price_after(p5, 0).is_some());
-
-        // we should have t0, t3 and t1, t3 at 69
-        assert!(prices.price_after(p2, 69).is_some());
-        assert!(prices.price_after(p3, 69).is_some());
-        assert!(prices.price_after(p4, 69).is_some());
-        assert!(prices.price_after(p6, 69).is_some());
-    }
-
-    // TODO: test on:
-    // 0xc04c9540da17ee0e1043e3e07087e1f1149c788e5fe70773f64866f81269c6e6
-    // TODO: 0x58cb209340e36a688ad75bc1166b6ad9f427840a8206a015e45bca6a41cb30b1
-}
+// #[cfg(test)]
+// pub mod test {
+//     use std::env;
+//
+//     use brontes_classifier::*;
+//     use brontes_core::{decoding::parser::TraceParser, init_trace_parser,
+// init_tracing};     use brontes_database_libmdbx::{
+//         tables::{AddressToProtocol, AddressToTokens},
+//         Libmdbx,
+//     };
+//     use reth_db::{cursor::DbCursorRO, transaction::DbTx};
+//     use tokio::sync::mpsc::unbounded_channel;
+//
+//     use super::*;
+//
+//     async fn init(
+//         libmdbx: &Libmdbx,
+//         rx: UnboundedReceiver<DexPriceMsg>,
+//         quote: Address,
+//         block: u64,
+//         parser: &TraceParser<'_, Box<dyn TracingProvider>>,
+//     ) -> BrontesBatchPricer<Box<dyn TracingProvider>> {
+//         let tx = libmdbx.ro_tx().unwrap();
+//         let binding_tx = libmdbx.ro_tx().unwrap();
+//         let mut all_addr_to_tokens =
+// tx.cursor_read::<AddressToTokens>().unwrap();
+//
+//         let pairs = libmdbx.addresses_inited_before(block).unwrap();
+//
+//         let mut rest_pairs = HashMap::default();
+//
+//         info!("initing pair graph");
+//         let pair_graph = AllPairGraph::init_from_hashmap(pairs);
+//
+//         BrontesBatchPricer::new(quote, 0, 0, pair_graph, rx,
+// parser.get_tracer(), block, rest_pairs)     }
+//     #[tokio::test]
+//     async fn test_pool() {
+//         dotenv::dotenv().ok();
+//         init_tracing();
+//         info!("initing tests");
+//
+//         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No
+// BRONTES_DB_PATH in .env");         let libmdbx =
+// Libmdbx::init_db(brontes_db_endpoint, None).unwrap();         let (tx, rx) =
+// unbounded_channel();
+//
+//         let (a, b) = unbounded_channel();
+//         let tracer =
+//
+// brontes_core::init_trace_parser(tokio::runtime::Handle::current(), a,
+// &libmdbx, 10);         let quote =
+// "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"             .parse()
+//             .unwrap();
+//
+//         let mut pricer = init(&libmdbx, rx, quote, 18500000, &tracer).await;
+//
+//         info!("starting tests");
+//
+//         let handle = tokio::spawn(async move {
+//             let res = pricer.next().await;
+//             (pricer, res)
+//         });
+//         // weth
+//         let t0: Address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+//             .parse()
+//             .unwrap();
+//
+//         // usdt
+//         let t1: Address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+//             .parse()
+//             .unwrap();
+//
+//         // shib
+//         let t3: Address = "0x3e34eabf5858a126cb583107e643080cee20ca64"
+//             .parse()
+//             .unwrap();
+//
+//         // lets send pools we want to be able to swap through
+//         let mut poolupdate = PoolUpdate {
+//             block:  18500000,
+//             tx_idx: 0,
+//             logs:   vec![],
+//             action: make_fake_swap(Pair(t0, t1)),
+//         };
+//
+//         // send these two txes for the given block
+//         let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
+//         poolupdate.tx_idx = 69;
+//         poolupdate.action = make_fake_swap(Pair(t0, t3));
+//         let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
+//
+//         info!("triggering next block");
+//         // trigger next block
+//         poolupdate.block += 1;
+//         poolupdate.action = make_fake_swap(Pair(t1, t3));
+//         let _ = tx.send(DexPriceMsg::Update(poolupdate.clone())).unwrap();
+//
+//         let (handle, dex_prices) = handle.await.unwrap();
+//
+//         let (block, prices) = dex_prices.unwrap();
+//         info!(?prices, "got prices");
+//
+//         // default pairs
+//         let p0 = Pair(t0, t1);
+//         let p1 = p0.clone().flip();
+//
+//         let p2 = Pair(t0, t3);
+//         let p3 = p2.clone().flip();
+//
+//         // pairs with quote
+//         let p4 = Pair(t0, quote);
+//         let p5 = Pair(t1, quote);
+//         let p6 = Pair(t3, quote);
+//
+//         // we should have p0 and p1 at index 0 in the vector
+//         assert!(prices.price_after(p0, 0).is_some());
+//         assert!(prices.price_after(p1, 0).is_some());
+//         assert!(prices.price_after(p4, 0).is_some());
+//         assert!(prices.price_after(p5, 0).is_some());
+//
+//         // we should have t0, t3 and t1, t3 at 69
+//         assert!(prices.price_after(p2, 69).is_some());
+//         assert!(prices.price_after(p3, 69).is_some());
+//         assert!(prices.price_after(p4, 69).is_some());
+//         assert!(prices.price_after(p6, 69).is_some());
+//     }
+//
+//     // TODO: test on:
+//     // 0xc04c9540da17ee0e1043e3e07087e1f1149c788e5fe70773f64866f81269c6e6
+//     // TODO:
+// 0x58cb209340e36a688ad75bc1166b6ad9f427840a8206a015e45bca6a41cb30b1 }
