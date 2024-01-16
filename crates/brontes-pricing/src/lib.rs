@@ -15,7 +15,7 @@ use brontes_types::{
     traits::TracingProvider,
 };
 use ethers::core::k256::elliptic_curve::bigint::Zero;
-use exchanges::lazy::{LazyExchangeLoader, LazyResult};
+use exchanges::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use exchanges::*;
 pub use graphs::{AllPairGraph, GraphManager, SubGraphEdge};
 
@@ -151,13 +151,44 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .create_subpool(self.current_block, pair)
             .into_iter()
         {
+            let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
+            // load exchange only if its not loaded already
+            if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
+                self.lazy_loader.lazy_load_exchange(
+                    pair,
+                    Pair(pool_info.token_0, pool_info.token_1),
+                    pool_info.pool_addr,
+                    trigger_update.block,
+                    pool_info.dex_type,
+                );
+            } else if lazy_loading {
+                self.lazy_loader
+                    .add_protocol_parent(pool_info.pool_addr, pair);
+            }
+        }
+    }
+
+    /// because we already have a state update for this pair in the buffer, we
+    /// don't wanna create another one
+    fn re_queue_bad_pair(&mut self, pair: Pair, block: u64) {
+        if pair.0 == pair.1 {
+            return
+        }
+
+        for pool_info in self
+            .graph_manager
+            .create_subpool(self.current_block, pair)
+            .into_iter()
+        {
             // load exchange only if its not loaded already
             if !(self.graph_manager.has_state(&pool_info.pool_addr)
                 || self.lazy_loader.is_loading(&pool_info.pool_addr))
             {
                 self.lazy_loader.lazy_load_exchange(
+                    pair,
+                    Pair(pool_info.token_0, pool_info.token_1),
                     pool_info.pool_addr,
-                    trigger_update.block,
+                    block,
                     pool_info.dex_type,
                 );
             }
@@ -352,6 +383,18 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
+        } else if let LoadResult::Err { pool_address, pool_pair, block } = load_result {
+            self.lazy_loader
+                .remove_protocol_parents(&pool_address)
+                .into_iter()
+                .for_each(|parent_pair| {
+                    if self
+                        .graph_manager
+                        .bad_pool_state(parent_pair, pool_pair, pool_address)
+                    {
+                        self.re_queue_bad_pair(parent_pair, block);
+                    }
+                });
         }
     }
 
