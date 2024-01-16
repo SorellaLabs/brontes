@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use brontes_pricing::types::DexPrices;
+use brontes_pricing::types::DexQuotes;
 pub mod cex;
 
 pub use brontes_types::extra_processing::Pair;
@@ -16,7 +16,7 @@ pub struct Metadata {
     #[deref]
     #[as_ref]
     pub db:         MetadataDB,
-    pub dex_quotes: DexPrices,
+    pub dex_quotes: DexQuotes,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -61,7 +61,7 @@ impl MetadataDB {
         }
     }
 
-    pub fn into_finalized_metadata(self, prices: DexPrices) -> Metadata {
+    pub fn into_finalized_metadata(self, prices: DexQuotes) -> Metadata {
         Metadata { db: self, dex_quotes: prices }
     }
 }
