@@ -45,7 +45,6 @@ alloy-sol-macro.workspace = true
 alloy-dyn-abi.workspace = true
 alloy-rlp.workspace = true
 parking_lot.workspace = true
-petgraph = "0.6.4"
 derive_more.workspace = true
 dyn-clone = "1.0.16"
 itertools.workspace = true
