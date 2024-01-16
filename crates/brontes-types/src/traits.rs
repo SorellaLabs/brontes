@@ -1,7 +1,9 @@
 use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
 use reth_rpc::eth::error::EthResult;
-use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
+use reth_rpc_types::{
+    state::StateOverride, BlockOverrides, CallRequest, Filter, Log, TransactionReceipt,
+};
 
 use crate::structured_trace::TxTrace;
 
@@ -33,4 +35,6 @@ pub trait TracingProvider: Send + Sync + 'static {
     ) -> ProviderResult<Option<Vec<TransactionReceipt>>>;
 
     async fn header_by_number(&self, number: BlockNumber) -> ProviderResult<Option<Header>>;
+
+    async fn logs_from_filter(&self, filter: Filter) -> ProviderResult<Vec<Log>>;
 }
