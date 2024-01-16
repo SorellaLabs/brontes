@@ -16,6 +16,7 @@ use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::trace::parity::{Action, Action::Call};
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::info;
 
 use crate::{impls::*, ActionCollection, StaticBindings};
 
