@@ -124,7 +124,21 @@ impl PoolVariants {
 #[derive(Debug, Clone)]
 pub enum DexPriceMsg {
     Update(PoolUpdate),
+    DiscoveredPool(DiscoveredPool),
     Closed,
+}
+
+#[derive(Debug, Clone)]
+pub struct DiscoveredPool {
+    pub protocol:     StaticBindingsDb,
+    pub pool_address: Address,
+    pub tokens:       Vec<Address>,
+}
+
+impl DiscoveredPool {
+    pub fn new(tokens: Vec<Address>, pool_address: Address, protocol: StaticBindingsDb) -> Self {
+        Self { protocol, pool_address, tokens }
+    }
 }
 
 #[derive(Debug, Clone)]

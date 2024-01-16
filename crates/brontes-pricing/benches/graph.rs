@@ -147,7 +147,7 @@ fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGrou
     g.bench_function(name, move |b| {
         b.iter_batched(
             || {
-                copy_graph
+                graph
                     .get_all_known_addresses()
                     .choose_multiple(&mut rand::thread_rng(), 10)
                     .map(|address| Pair(*address, USDT_ADDRESS))

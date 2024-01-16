@@ -25,9 +25,10 @@ use reth_rpc::{
         cache::{EthStateCache, EthStateCacheConfig},
         error::EthResult,
         gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
-        EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig, RPC_DEFAULT_GAS_CAP,
+        EthFilterConfig, EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig,
+        RPC_DEFAULT_GAS_CAP,
     },
-    BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
+    BlockingTaskGuard, BlockingTaskPool, EthApi, EthFilter, TraceApi,
 };
 use reth_rpc_types::{
     trace::parity::{TransactionTrace, *},
@@ -57,9 +58,11 @@ pub type RethTxPool = Pool<
     NoopBlobStore,
 >;
 
+#[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:   EthApi<Provider, RethTxPool, NoopNetwork>,
-    pub trace: TraceApi<Provider, RethApi>,
+    pub api:    EthApi<Provider, RethTxPool, NoopNetwork>,
+    pub filter: EthFilter<Provider, RethTxPool>,
+    pub trace:  TraceApi<Provider, RethApi>,
 }
 
 impl TracingClient {
@@ -110,7 +113,7 @@ impl TracingClient {
         // fee history cache
         let api = EthApi::new(
             provider.clone(),
-            tx_pool,
+            tx_pool.clone(),
             NoopNetwork::default(),
             state_cache.clone(),
             GasPriceOracle::new(
@@ -122,12 +125,20 @@ impl TracingClient {
             blocking,
             fee_history,
         );
+        let filter_config = EthFilterConfig::default();
+        let filter = EthFilter::new(
+            provider.clone(),
+            tx_pool,
+            state_cache.clone(),
+            filter_config,
+            Box::new(task_executor),
+        );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        (task_manager, Self { api, trace })
+        (task_manager, Self { api, trace, filter })
     }
 
     /// Replays all transactions in a block
