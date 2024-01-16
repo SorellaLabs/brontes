@@ -29,7 +29,7 @@ pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
     current_block: u64,
 
     parser:            &'inspector Parser<'inspector, T>,
-    classifier:        &'inspector Classifier<'inspector>,
+    classifier:        &'inspector Classifier<'inspector, T>,
     clickhouse:        &'inspector Clickhouse,
     database:          &'inspector Libmdbx,
     inspectors:        &'inspector [&'inspector Box<dyn Inspector>; N],
@@ -47,7 +47,7 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
         parser: &'inspector Parser<'inspector, T>,
         clickhouse: &'inspector Clickhouse,
         database: &'inspector Libmdbx,
-        classifier: &'inspector Classifier,
+        classifier: &'inspector Classifier<'_, T>,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
         current_block: u64,
     ) -> Self {
@@ -72,7 +72,7 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (_extra_data, mut tree) = self.classifier.build_block_tree(traces, header);
+            let (_extra_data, mut tree) = self.classifier.build_block_tree(traces, header).await;
 
             let meta = labeller_fut.await;
             tree.eth_price = meta.eth_prices.clone();

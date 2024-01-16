@@ -6,13 +6,13 @@ use reth_primitives::Header;
 
 use crate::Classifier;
 
-pub fn helper_build_block_tree(
-    classifier: &Classifier,
+pub async fn helper_build_block_tree<T: TracingProvider>(
+    classifier: &Classifier<'_, T>,
     traces: Vec<TxTrace>,
     header: Header,
     metadata: &Metadata,
 ) -> BlockTree<Actions> {
-    let (_, mut tree) = classifier.build_block_tree(traces, header);
+    let (_, mut tree) = classifier.build_block_tree(traces, header).await;
     tree.eth_price = metadata.eth_prices.clone();
     tree
 }
@@ -25,8 +25,8 @@ pub async fn build_raw_test_tree<T: TracingProvider>(
 ) -> BlockTree<Actions> {
     let (traces, header) = get_traces_with_meta(tracer, db, block_number).await;
     let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
-    let classifier = Classifier::new(&lib, tx);
-    let (_, tree) = classifier.build_block_tree(traces, header);
+    let classifier = Classifier::new(&lib, tx, tracer.get_tracer());
+    let (_, tree) = classifier.build_block_tree(traces, header).await;
     tree
 }
 
