@@ -231,6 +231,8 @@ impl<'de> serde::Deserialize<'de> for Box<dyn SpecificMev> {
     }
 }
 
+//TODO: Change all the mev types to directly store the normalized actions when
+// needed
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct Sandwich {
