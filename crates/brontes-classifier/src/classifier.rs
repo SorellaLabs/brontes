@@ -88,7 +88,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                             tx_idx as u64,
                             0,
                             tx_hash,
-                            trace.trace.remove(0),
+                            root_trace,
                             &mut missing_decimals,
                             &mut further_classification_requests,
                             &mut pool_updates,
