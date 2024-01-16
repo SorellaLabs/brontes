@@ -93,9 +93,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         )
                         .await;
 
-                    let root_trace = trace.trace[0].clone();
-                    let address = root_trace.get_from_addr();
-
                     let node = Node::new(0, address, classification, vec![]);
 
                     let mut tx_root = Root {
