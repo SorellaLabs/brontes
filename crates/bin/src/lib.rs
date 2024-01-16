@@ -35,7 +35,7 @@ pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     mode:             Mode,
     max_tasks:        u64,
     parser:           &'inspector Parser<'inspector, T>,
-    classifier:       &'inspector Classifier<'inspector>,
+    classifier:       &'inspector Classifier<'inspector, T>,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
     clickhouse:       &'inspector Clickhouse,
     database:         &'inspector Libmdbx,
@@ -52,7 +52,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         parser: &'inspector Parser<'inspector, T>,
         clickhouse: &'inspector Clickhouse,
         database: &'inspector Libmdbx,
-        classifier: &'inspector Classifier,
+        classifier: &'inspector Classifier<'_, T>,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {
         let mut brontes = Self {
