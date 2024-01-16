@@ -60,6 +60,18 @@ impl SubGraphRegistry {
         self.sub_graphs.contains_key(&pair)
     }
 
+    pub fn bad_pool_state(
+        &mut self,
+        subgraph: Pair,
+        pool_pair: Pair,
+        pool_address: Address,
+    ) -> bool {
+        self.sub_graphs
+            .remove(&subgraph)
+            .unwrap()
+            .remove_bad_node(pool_pair, pool_address)
+    }
+
     pub fn fetch_unloaded_state(&self, pair: &Pair) -> Vec<PoolPairInfoDirection> {
         self.sub_graphs
             .get(&pair.ordered())
