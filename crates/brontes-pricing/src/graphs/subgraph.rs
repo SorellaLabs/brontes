@@ -44,8 +44,8 @@ use crate::{
 pub struct SubGraphEdge {
     pub info: PoolPairInfoDirection,
 
-    distance_to_start_node: usize,
-    distance_to_end_node:   usize,
+    distance_to_start_node: u8,
+    distance_to_end_node:   u8,
 }
 impl Deref for SubGraphEdge {
     type Target = PoolPairInfoDirection;
@@ -63,8 +63,8 @@ impl DerefMut for SubGraphEdge {
 impl SubGraphEdge {
     pub fn new(
         info: PoolPairInfoDirection,
-        distance_to_start_node: usize,
-        distance_to_end_node: usize,
+        distance_to_start_node: u8,
+        distance_to_end_node: u8,
     ) -> Self {
         Self { info, distance_to_end_node, distance_to_start_node }
     }
@@ -76,20 +76,19 @@ impl SubGraphEdge {
 /// most correct.
 #[derive(Debug, Clone)]
 pub struct PairSubGraph {
-    pair:           Pair,
-    graph:          DiGraph<(), Vec<SubGraphEdge>, usize>,
-    token_to_index: HashMap<Address, usize>,
+    pub(super) graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
+    pub(super) token_to_index: HashMap<Address, u16>,
 
-    start_node: usize,
-    end_node:   usize,
+    start_node: u16,
+    end_node:   u16,
 }
 
 impl PairSubGraph {
     pub fn init(pair: Pair, edges: Vec<SubGraphEdge>) -> Self {
-        let mut graph = DiGraph::<(), Vec<SubGraphEdge>, usize>::default();
+        let mut graph = DiGraph::<(), Vec<SubGraphEdge>, u16>::default();
         let mut token_to_index = HashMap::new();
 
-        let mut connections: HashMap<(usize, usize), Vec<SubGraphEdge>> = HashMap::new();
+        let mut connections: HashMap<(u16, u16), Vec<SubGraphEdge>> = HashMap::new();
         for edge in edges.into_iter() {
             let token_0 = edge.token_0;
             let token_1 = edge.token_1;
@@ -97,12 +96,12 @@ impl PairSubGraph {
             // fetch the node or create node it if it doesn't exist
             let addr0 = *token_to_index
                 .entry(token_0)
-                .or_insert_with(|| graph.add_node(()).index());
+                .or_insert_with(|| graph.add_node(()).index().try_into().unwrap());
 
             // fetch the node or create node it if it doesn't exist
             let addr1 = *token_to_index
                 .entry(token_1)
-                .or_insert_with(|| graph.add_node(()).index());
+                .or_insert_with(|| graph.add_node(()).index().try_into().unwrap());
 
             // based on the direction. insert properly
             if edge.token_0_in {
@@ -125,7 +124,7 @@ impl PairSubGraph {
         let comp = connected_components(&graph);
         assert!(comp == 1, "have a disjoint graph {comp} {pair:?}");
 
-        Self { pair, graph, start_node, end_node, token_to_index }
+        Self { graph, start_node, end_node, token_to_index }
     }
 
     pub fn fetch_price<T: ProtocolState>(
@@ -185,8 +184,8 @@ impl PairSubGraph {
 }
 
 fn add_edge(
-    graph: &mut DiGraph<(), Vec<SubGraphEdge>, usize>,
-    edge_idx: EdgeIndex<usize>,
+    graph: &mut DiGraph<(), Vec<SubGraphEdge>, u16>,
+    edge_idx: EdgeIndex<u16>,
     edge_info: PoolPairInformation,
     direction: bool,
 ) -> bool {
@@ -387,13 +386,7 @@ pub mod test {
         }
     }
 
-    fn build_edge(
-        lookup_pair: Address,
-        t0: Address,
-        t1: Address,
-        d0: usize,
-        d1: usize,
-    ) -> SubGraphEdge {
+    fn build_edge(lookup_pair: Address, t0: Address, t1: Address, d0: u8, d1: u8) -> SubGraphEdge {
         SubGraphEdge::new(
             PoolPairInfoDirection::new(
                 PoolPairInformation::new(lookup_pair, StaticBindingsDb::UniswapV2, t0, t1),
@@ -462,7 +455,7 @@ pub mod test {
         state_map.insert(t3, e3_price);
 
         // (t4 / t0) = 10 * 20 * 1 /500 * 1/52 = 1/130
-        let price = graph.fetch_price(&state_map);
+        let price = graph.fetch_price(&state_map).unwrap();
 
         assert_eq!(price, Rational::from_unsigneds(1usize, 390usize))
     }
