@@ -30,6 +30,14 @@ sol!(AaveV2, "./abis/AaveV2Pool.json");
 sol!(AaveV3, "./abis/AaveV3Pool.json");
 sol!(UniswapX, "./abis/UniswapXExclusiveDutchOrderReactor.json");
 
+sol!(UniswapV2Factory, "./abis/UniswapV2Factory.json");
+sol!(UniswapV3Factory,"./abis/UniswapV3Factory.json");
+sol!(CurveV1MetapoolFactory,"./abis/CurveMetapoolFactoryV1.json");
+sol!(CurveV2MetapoolFactory,"./abis/CurveMetapoolFactoryV2.json");
+sol!(CurvecrvUSDFactory,"./abis/CurveCRVUSDFactory.json");
+sol!(CurveCryptoSwapFactory,"./abis/CurveCryptoSwapFactory.json");
+sol!(CurveTriCryptoFactory,"./abis/CurveTriCryptoFactory.json");
+
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
         &self,

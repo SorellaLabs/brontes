@@ -135,6 +135,12 @@ pub struct DiscoveredPool {
     pub tokens:       Vec<Address>,
 }
 
+impl DiscoveredPool {
+    pub fn new(tokens: Vec<Address>, pool_address: Address, protocol: StaticBindingsDb) -> Self {
+        Self { protocol, pool_address, tokens }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct PoolUpdate {
     pub block:  u64,
