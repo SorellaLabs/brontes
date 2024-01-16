@@ -1,0 +1,559 @@
+[
+    {
+        "name": "BasePoolAdded",
+        "inputs": [
+            {
+                "type": "address",
+                "name": "base_pool",
+                "indexed": false
+            },
+            {
+                "type": "address",
+                "name": "implementat",
+                "indexed": false
+            }
+        ],
+        "anonymous": false,
+        "type": "event"
+    },
+    {
+        "name": "MetaPoolDeployed",
+        "inputs": [
+            {
+                "type": "address",
+                "name": "coin",
+                "indexed": false
+            },
+            {
+                "type": "address",
+                "name": "base_pool",
+                "indexed": false
+            },
+            {
+                "type": "uint256",
+                "name": "A",
+                "indexed": false
+            },
+            {
+                "type": "uint256",
+                "name": "fee",
+                "indexed": false
+            },
+            {
+                "type": "address",
+                "name": "deployer",
+                "indexed": false
+            }
+        ],
+        "anonymous": false,
+        "type": "event"
+    },
+    {
+        "outputs": [],
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "name": "find_pool_for_coins",
+        "outputs": [
+            {
+                "type": "address",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_from"
+            },
+            {
+                "type": "address",
+                "name": "_to"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "name": "find_pool_for_coins",
+        "outputs": [
+            {
+                "type": "address",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_from"
+            },
+            {
+                "type": "address",
+                "name": "_to"
+            },
+            {
+                "type": "uint256",
+                "name": "i"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "name": "get_n_coins",
+        "outputs": [
+            {
+                "type": "uint256",
+                "name": ""
+            },
+            {
+                "type": "uint256",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 2795
+    },
+    {
+        "name": "get_coins",
+        "outputs": [
+            {
+                "type": "address[2]",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 2427
+    },
+    {
+        "name": "get_underlying_coins",
+        "outputs": [
+            {
+                "type": "address[8]",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 12195
+    },
+    {
+        "name": "get_decimals",
+        "outputs": [
+            {
+                "type": "uint256[2]",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1501
+    },
+    {
+        "name": "get_underlying_decimals",
+        "outputs": [
+            {
+                "type": "uint256[8]",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 10155
+    },
+    {
+        "name": "get_rates",
+        "outputs": [
+            {
+                "type": "uint256[2]",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1876
+    },
+    {
+        "name": "get_balances",
+        "outputs": [
+            {
+                "type": "uint256[2]",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1268
+    },
+    {
+        "name": "get_underlying_balances",
+        "outputs": [
+            {
+                "type": "uint256[8]",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 13247
+    },
+    {
+        "name": "get_A",
+        "outputs": [
+            {
+                "type": "uint256",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 958
+    },
+    {
+        "name": "get_fees",
+        "outputs": [
+            {
+                "type": "uint256",
+                "name": ""
+            },
+            {
+                "type": "uint256",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1584
+    },
+    {
+        "name": "get_admin_balances",
+        "outputs": [
+            {
+                "type": "uint256[2]",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1388
+    },
+    {
+        "name": "get_coin_indices",
+        "outputs": [
+            {
+                "type": "int128",
+                "name": ""
+            },
+            {
+                "type": "int128",
+                "name": ""
+            },
+            {
+                "type": "bool",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_pool"
+            },
+            {
+                "type": "address",
+                "name": "_from"
+            },
+            {
+                "type": "address",
+                "name": "_to"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 20309
+    },
+    {
+        "name": "add_base_pool",
+        "outputs": [],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_base_pool"
+            },
+            {
+                "type": "address",
+                "name": "_metapool_implementation"
+            },
+            {
+                "type": "address",
+                "name": "_fee_receiver"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "gas": 544334
+    },
+    {
+        "name": "deploy_metapool",
+        "outputs": [
+            {
+                "type": "address",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_base_pool"
+            },
+            {
+                "type": "string",
+                "name": "_name"
+            },
+            {
+                "type": "string",
+                "name": "_symbol"
+            },
+            {
+                "type": "address",
+                "name": "_coin"
+            },
+            {
+                "type": "uint256",
+                "name": "_A"
+            },
+            {
+                "type": "uint256",
+                "name": "_fee"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "gas": 851955
+    },
+    {
+        "name": "commit_transfer_ownership",
+        "outputs": [],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "addr"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "gas": 36668
+    },
+    {
+        "name": "accept_transfer_ownership",
+        "outputs": [],
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "gas": 56619
+    },
+    {
+        "name": "set_fee_receiver",
+        "outputs": [],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "_base_pool"
+            },
+            {
+                "type": "address",
+                "name": "_fee_receiver"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "gas": 36943
+    },
+    {
+        "name": "convert_fees",
+        "outputs": [
+            {
+                "type": "bool",
+                "name": ""
+            }
+        ],
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "gas": 5237
+    },
+    {
+        "name": "admin",
+        "outputs": [
+            {
+                "type": "address",
+                "name": ""
+            }
+        ],
+        "inputs": [],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1631
+    },
+    {
+        "name": "future_admin",
+        "outputs": [
+            {
+                "type": "address",
+                "name": ""
+            }
+        ],
+        "inputs": [],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1661
+    },
+    {
+        "name": "pool_list",
+        "outputs": [
+            {
+                "type": "address",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "uint256",
+                "name": "arg0"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1800
+    },
+    {
+        "name": "pool_count",
+        "outputs": [
+            {
+                "type": "uint256",
+                "name": ""
+            }
+        ],
+        "inputs": [],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1721
+    },
+    {
+        "name": "base_pool_list",
+        "outputs": [
+            {
+                "type": "address",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "uint256",
+                "name": "arg0"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1860
+    },
+    {
+        "name": "base_pool_count",
+        "outputs": [
+            {
+                "type": "uint256",
+                "name": ""
+            }
+        ],
+        "inputs": [],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 1781
+    },
+    {
+        "name": "fee_receiver",
+        "outputs": [
+            {
+                "type": "address",
+                "name": ""
+            }
+        ],
+        "inputs": [
+            {
+                "type": "address",
+                "name": "arg0"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "gas": 2026
+    }
+]
