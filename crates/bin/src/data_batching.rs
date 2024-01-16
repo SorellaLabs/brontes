@@ -67,9 +67,9 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
             HashMap::default(),
             Box::new(|block, pair| libmdbx.try_load_pair_before(block, pair).ok()),
             Box::new(|block, pair, edges| {
-               if  libmdbx.save_pair_at(block, pair, edges).is_err() {
-                   error!("failed to save subgraph to db");
-               }
+                if libmdbx.save_pair_at(block, pair, edges).is_err() {
+                    error!("failed to save subgraph to db");
+                }
             }),
         );
 
@@ -181,7 +181,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         // if we have reached end block and there is only 1 pending tree left,
         // send the close message to indicate to the dex pricer that it should
         // return
-        } else if self.pricer.pending_trees.len() == 1 {
+        } else if self.pricer.pending_trees.len() <= 1 {
             self.classifier.close();
         }
         // poll insertion
