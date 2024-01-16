@@ -19,10 +19,10 @@ use tracing::info;
 
 use crate::{
     types::{
+        address_to_factory::AddressToFactoryData,
         address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
         address_to_tokens::{AddressToTokensData, PoolTokens},
         cex_price::{CexPriceData, CexPriceMap},
-        address_to_factory::AddressToFactoryData,
         dex_price::{DexPriceData, DexQuoteWithIndex},
         metadata::{MetadataData, MetadataInner},
         mev_block::{MevBlockWithClassified, MevBlocksData},
@@ -83,7 +83,7 @@ impl Tables {
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
             Tables::MevBlocks => TableType::Table,
-        Tables::AddressToFactory => TableType::Table,
+            Tables::AddressToFactory => TableType::Table,
             Tables::SubGraphs => TableType::Table,
         }
     }
@@ -179,10 +179,9 @@ impl Tables {
                     async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
                 )
             }
-            Tables::AddressToFactory => {
-                Box::pin(
-                    async move { libmdbx.initialize_table::<AddressToFactory, AddressToFactoryData>(&vec![]) })
-            }
+            Tables::AddressToFactory => Box::pin(async move {
+                libmdbx.initialize_table::<AddressToFactory, AddressToFactoryData>(&vec![])
+            }),
             Tables::SubGraphs => {
                 Box::pin(
                     async move { libmdbx.initialize_table::<SubGraphs, SubGraphsData>(&vec![]) },
@@ -316,7 +315,7 @@ table!(
 
 table!(
     /// address -> factory
-    ( AddressToFactory ) Address | StaticBindingsDb
+    ( AddressToFactory ) Address | StaticBindingsDb = True
 );
 
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
