@@ -49,12 +49,7 @@ alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
 alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-transport = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-network = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
 
 # Serde 
 serde.workspace = true
