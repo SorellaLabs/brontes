@@ -183,7 +183,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         // if we have reached end block and there is only 1 pending tree left,
         // send the close message to indicate to the dex pricer that it should
         // return
-        if self.pricer.pending_trees.len() <= 1 {
+        if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block{
             info!("poll_end");
             self.classifier.close();
         }
