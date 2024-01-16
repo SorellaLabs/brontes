@@ -9,7 +9,7 @@ use brontes_types::{
     ToFloatNearest,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, B256};
+use reth_primitives::{Address, B256, b256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector};
 
@@ -109,7 +109,7 @@ impl LiquidationInspector<'_> {
         // TODO: filter swaps not related to liqs?
         let new_liquidation = Liquidation {
             liquidation_tx_hash: tx_hash,
-            trigger: todo!(),
+            trigger: b256!(),
             liquidation_swaps_index: swaps.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
             liquidation_swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
             liquidation_swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
