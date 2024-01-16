@@ -37,7 +37,7 @@ impl Inspector for CexDexInspector<'_> {
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // Get all normalized swaps
         let intersting_state =
-            tree.inspect_all(|node| node.subactions.iter().any(|action| action.is_swap()));
+            tree.collect_spans(|node| node.subactions.iter().any(|action| action.is_swap()));
 
         intersting_state
             .into_par_iter()
