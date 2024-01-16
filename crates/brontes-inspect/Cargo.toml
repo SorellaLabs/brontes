@@ -70,6 +70,17 @@ serial_test.workspace = true
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 tracing-subscriber.workspace = true
+reth-db.workspace = true
+brontes-types.workspace = true
+brontes-database.workspace = true
+brontes-database-libmdbx.workspace = true
+tokio.workspace = true
+reth-tracing-ext.workspace = true
+criterion = { version = "0.5" }
+rand = "0.8.5"
+
+
+
 
 [features]
 tests = []

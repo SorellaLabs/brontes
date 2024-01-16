@@ -85,11 +85,11 @@ impl TransactionTraceWithLogs {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
-    pub state_diff:      StateDiff,
     pub tx_hash:         B256,
     pub gas_used:        u128,
     pub effective_price: u128,
     pub tx_index:        u64,
+    // False if the transaction reverted
     pub is_success:      bool,
 }
 
@@ -101,8 +101,7 @@ impl TxTrace {
         gas_used: u128,
         effective_price: u128,
         is_success: bool,
-        state_diff: StateDiff,
     ) -> Self {
-        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success, state_diff }
+        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
     }
 }

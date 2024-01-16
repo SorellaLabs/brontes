@@ -34,7 +34,9 @@ mod banner;
 mod cli;
 
 use banner::print_banner;
-use cli::{Args, Commands, DatabaseQuery, DexPricingArgs, Init, RunArgs};
+#[cfg(feature = "tests")]
+use cli::TraceArg;
+use cli::{AddToDb, Args, Commands, DatabaseQuery, DexPricingArgs, Init, RunArgs};
 
 type Inspectors<'a> = [&'a Box<dyn Inspector>; 4];
 
@@ -107,16 +109,61 @@ async fn run() -> Result<(), Box<dyn Error>> {
         Commands::Init(command) => init_brontes(command).await,
         Commands::RunBatchWithPricing(command) => run_batch_with_pricing(command).await,
         Commands::QueryDb(command) => query_db(command).await,
+        Commands::AddToDb(command) => add_to_db(command).await,
+        #[cfg(feature = "tests")]
+        Commands::Traces(args) => save_trace(args).await,
     }
 }
 
-fn process_range_query<T>(
+#[cfg(feature = "tests")]
+async fn save_trace(req: TraceArg) -> Result<(), Box<dyn Error>> {
+    brontes_core::store_traces_for_block(req.block_num).await;
+
+    Ok(())
+}
+
+async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
+    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
+
+    macro_rules! write_to_table {
+        ($table:expr, $($tables:ident),+ = $arg0:expr, $arg1:expr) => {
+            match $table {
+                $(
+                    Tables::$tables => {
+                        db.write_table(
+                            &vec![brontes_database_libmdbx::tables::$tables::into_table_data($arg0, $arg1)]
+                            ).unwrap();
+                    }
+                )+
+            }
+        };
+    }
+
+    write_to_table!(
+        req.table,
+        CexPrice,
+        Metadata,
+        DexPrice,
+        MevBlocks,
+        TokenDecimals,
+        AddressToTokens,
+        AddressToProtocol,
+        SubGraphs,
+        PoolCreationBlocks = &req.key,
+        &req.value
+    );
+
+    Ok(())
+}
+
+fn process_range_query<T, E>(
     mut cursor: LibmdbxCursor<T, RO>,
     command: DatabaseQuery,
 ) -> Result<Vec<T::Value>, Box<dyn Error>>
 where
     T: Table,
-    T: for<'a> IntoTableKey<&'a str, T::Key>,
+    T: for<'a> IntoTableKey<&'a str, T::Key, E>,
 {
     let range = command.key.split("..").collect_vec();
     let start = range[0];
@@ -189,13 +236,13 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             CexPrice,
             Metadata,
             DexPrice,
-            PoolState,
             MevBlocks,
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
             PoolCreationBlocks,
             AddressToFactory
+            SubGraphs
         );
     } else {
         match_table!(
@@ -205,12 +252,12 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             CexPrice,
             Metadata,
             DexPrice,
-            PoolState,
             MevBlocks,
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
             AddressToFactory,
+            SubGraphs,
             PoolCreationBlocks = &command.key
         );
     }
@@ -378,7 +425,6 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
         scope.spawn(spawn_batches(
             config.quote_asset.parse().unwrap(),
-            0,
             i as u64,
             start_block,
             end_block,
@@ -401,25 +447,15 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
 async fn spawn_batches(
     quote_asset: Address,
-    run_id: u64,
     batch_id: u64,
     start_block: u64,
     end_block: u64,
     parser: &DParser<'_, TracingClient>,
-    libmdbx: &Libmdbx,
+    libmdbx: &'static Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
-    DataBatching::new(
-        quote_asset,
-        run_id,
-        batch_id,
-        start_block,
-        end_block,
-        &parser,
-        &libmdbx,
-        &inspectors,
-    )
-    .await
+    DataBatching::new(quote_asset, batch_id, start_block, end_block, &parser, &libmdbx, &inspectors)
+        .await
 }
 
 fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {

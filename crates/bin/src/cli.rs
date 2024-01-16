@@ -21,6 +21,17 @@ pub enum Commands {
     RunBatchWithPricing(DexPricingArgs),
     #[command(name = "db")]
     QueryDb(DatabaseQuery),
+    #[command(name = "db_add")]
+    AddToDb(AddToDb),
+    #[cfg(feature = "tests")]
+    #[command(name = "store_trace")]
+    Traces(TraceArg),
+}
+
+#[derive(Debug, Parser)]
+pub struct TraceArg {
+    #[arg(long, short)]
+    pub block_num: u64,
 }
 
 #[derive(Debug, Parser)]
@@ -67,13 +78,26 @@ pub struct Init {
 }
 
 #[derive(Debug, Parser)]
+pub struct AddToDb {
+    /// that table to be queried
+    #[arg(long, short)]
+    pub table: Tables,
+    // key of value
+    #[arg(long, short)]
+    pub key:   String,
+    // value
+    #[arg(long, short)]
+    pub value: String,
+}
+
+#[derive(Debug, Parser)]
 pub struct DexPricingArgs {
     #[arg(long, short)]
     pub start_block:    u64,
     /// Optional End Block, if omitted it will continue to run until killed
     #[arg(long, short)]
     pub end_block:      u64,
-    /// Optional Max Tasks, if omitted it will default to 80% of the number of
+    /// Optional Max Tasks, if omitted it will default to 50% of the number of
     /// physical cores on your machine
     pub max_tasks:      Option<u64>,
     /// Optional quote asset, if omitted it will default to USDC
