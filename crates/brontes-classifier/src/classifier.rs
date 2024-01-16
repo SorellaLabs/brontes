@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
 use alloy_primitives::{Bytes, Log};
+use alloy_sol_types::SolEvent;
 use brontes_database_libmdbx::{
-    tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
+    tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, AddressToFactory,
+    Libmdbx,
 };
 use brontes_pricing::types::{DexPriceMsg, DiscoveredPool};
 use brontes_types::{
@@ -12,17 +14,21 @@ use brontes_types::{
     traits::TracingProvider,
     tree::{BlockTree, GasDetails, Node, Root},
 };
+use futures::future::join_all;
 use hex_literal::hex;
-use itertools::MultiUnzip;
+use itertools::Itertools;
 use malachite::strings::ToLowerHexString;
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::trace::parity::{Action, Action::Call};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
+use tracing::error;
 
-use crate::{action_classifiers::*, ActionCollection, PoolUpdate, StaticBindings};
+use super::discovery_classifiers::FactoryDecoderDispatch;
+use crate::{
+    action_classifiers::*, discovery_classifiers::UniswapDecoder, ActionCollection, StaticBindings,
+    UniswapV2Factory, UniswapV3Factory,
+};
 
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -54,111 +60,112 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
         // TODO: this needs to be cleaned up this is so ugly
-        let (
-            missing_data_requests,
-            pool_updates,
-            pool_discovery,
-            further_classification_requests,
-            tx_roots,
-        ): (Vec<_>, Vec<_>, Vec<_>, Vec<_>, Vec<_>) = traces
-            .into_iter()
-            .enumerate()
-            .filter_map(|(tx_idx, mut trace)| {
-                if trace.trace.is_empty() || !trace.is_success {
-                    return None
-                }
+        let (missing_data_requests, pool_updates, further_classification_requests, tx_roots): (
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+        ) = join_all(
+            traces
+                .into_iter()
+                .enumerate()
+                .map(|(tx_idx, mut trace)| async move {
+                    if trace.trace.is_empty() || !trace.is_success {
+                        return None
+                    }
+                    let tx_hash = trace.tx_hash;
 
-                // post classification processing collectors
-                let mut missing_decimals = Vec::new();
-                let mut further_classification_requests = Vec::new();
-                let mut pool_updates: Vec<DexPriceMsg> = Vec::new();
-                let mut pool_discovery: Vec<DiscoveredPool> = Vec::new();
+                    // post classification processing collectors
+                    let mut missing_decimals = Vec::new();
+                    let mut further_classification_requests = Vec::new();
+                    let mut pool_updates: Vec<DexPriceMsg> = Vec::new();
 
-                let classification = self.process_classification(
-                    header.number,
-                    tx_idx as u64,
-                    0,
-                    trace.trace.remove(0),
-                    &mut missing_decimals,
-                    &mut further_classification_requests,
-                    &mut pool_discovery,
-                    &mut pool_updates,
-                );
+                    let classification = self
+                        .process_classification(
+                            header.number,
+                            tx_idx as u64,
+                            0,
+                            tx_hash,
+                            trace.trace.remove(0),
+                            &mut missing_decimals,
+                            &mut further_classification_requests,
+                            &mut pool_updates,
+                        )
+                        .await;
 
-                let root_trace = trace.trace[0].clone();
-                let address = root_trace.get_from_addr();
+                    let root_trace = trace.trace[0].clone();
+                    let address = root_trace.get_from_addr();
 
-                let node = Node::new(0, address, classification, vec![]);
+                    let node = Node::new(0, address, classification, vec![]);
 
-                let mut tx_root = Root {
-                    position:    tx_idx,
-                    head:        node,
-                    tx_hash:     trace.tx_hash,
-                    private:     false,
-                    gas_details: GasDetails {
-                        coinbase_transfer:   None,
-                        gas_used:            trace.gas_used,
-                        effective_gas_price: trace.effective_price,
-                        priority_fee:        trace.effective_price
-                            - (header.base_fee_per_gas.unwrap() as u128),
-                    },
-                };
+                    let mut tx_root = Root {
+                        position:    tx_idx,
+                        head:        node,
+                        tx_hash:     trace.tx_hash,
+                        private:     false,
+                        gas_details: GasDetails {
+                            coinbase_transfer:   None,
+                            gas_used:            trace.gas_used,
+                            effective_gas_price: trace.effective_price,
+                            priority_fee:        trace.effective_price
+                                - (header.base_fee_per_gas.unwrap() as u128),
+                        },
+                    };
 
-                for (index, trace) in trace.trace.into_iter().enumerate() {
-                    if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
-                        *coinbase += self
-                            .get_coinbase_transfer(header.beneficiary, &trace.trace.action)
-                            .unwrap_or_default()
-                    } else {
-                        tx_root.gas_details.coinbase_transfer =
-                            self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                    for (index, trace) in trace.trace.into_iter().enumerate() {
+                        if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
+                            *coinbase += self
+                                .get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                                .unwrap_or_default()
+                        } else {
+                            tx_root.gas_details.coinbase_transfer =
+                                self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                        }
+
+                        let classification = self
+                            .process_classification(
+                                header.number,
+                                tx_idx as u64,
+                                (index + 1) as u64,
+                                tx_hash,
+                                trace.clone(),
+                                &mut missing_decimals,
+                                &mut further_classification_requests,
+                                &mut pool_updates,
+                            )
+                            .await;
+
+                        let from_addr = trace.get_from_addr();
+
+                        let node = Node::new(
+                            (index + 1) as u64,
+                            from_addr,
+                            classification,
+                            trace.trace.trace_address,
+                        );
+
+                        tx_root.insert(node);
                     }
 
-                    let classification = self.process_classification(
-                        header.number,
-                        tx_idx as u64,
-                        (index + 1) as u64,
-                        trace.clone(),
-                        &mut missing_decimals,
-                        &mut further_classification_requests,
-                        &mut pool_discovery,
-                        &mut pool_updates,
-                    );
+                    // Here we reverse the requests to ensure that we always classify the most
+                    // nested action & its children first. This is to prevent the
+                    // case where we classify a parent action where its children also require
+                    // further classification
+                    let tx_classification_requests = if !further_classification_requests.is_empty()
+                    {
+                        further_classification_requests.reverse();
+                        Some((tx_idx, further_classification_requests))
+                    } else {
+                        None
+                    };
 
-                    let from_addr = trace.get_from_addr();
-
-                    let node = Node::new(
-                        (index + 1) as u64,
-                        from_addr,
-                        classification,
-                        trace.trace.trace_address,
-                    );
-
-                    tx_root.insert(node);
-                }
-
-                // Here we reverse the requests to ensure that we always classify the most
-                // nested action & its children first. This is to prevent the
-                // case where we classify a parent action where its children also require
-                // further classification
-                let tx_classification_requests = if !further_classification_requests.is_empty() {
-                    further_classification_requests.reverse();
-                    Some((tx_idx, further_classification_requests))
-                } else {
-                    None
-                };
-
-                Some((
-                    missing_decimals,
-                    pool_updates,
-                    pool_discovery,
-                    tx_classification_requests,
-                    tx_root,
-                ))
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
-            .multiunzip();
+                    Some((missing_decimals, pool_updates, tx_classification_requests, tx_root))
+                }),
+        )
+        .await
+        .into_iter()
+        .filter_map(|f| f)
+        .multiunzip();
 
         // send out all updates
         pool_updates
@@ -190,19 +197,20 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         (processing, tree)
     }
 
-    fn process_classification(
+    async fn process_classification(
         &self,
         block_number: u64,
         tx_index: u64,
         trace_index: u64,
+        tx_hash: B256,
         trace: TransactionTraceWithLogs,
         missing_decimals: &mut Vec<Address>,
         further_classification_requests: &mut Vec<u64>,
-        pool_discovery: &mut Vec<DiscoveredPool>,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
-        let (update, classification) =
-            self.classify_node(block_number, tx_index as u64, trace, trace_index);
+        let (update, classification) = self
+            .classify_node(block_number, tx_index as u64, trace, trace_index, tx_hash)
+            .await;
 
         // Here we are marking more complex actions that require data
         // that can only be retrieved by classifying it's action and
@@ -218,20 +226,33 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         }
 
         // if we have a discovered pool, check if its new
-        match update {
-            Some(DexPriceMsg::DiscoveredPool(pool)) => {
-                if !self.libmdbx.contains_pool(pool.pool_address) {
-                    self.sender
-                        .send(DexPriceMsg::DiscoveredPool(pool.clone()))
-                        .unwrap();
-                    pool_discovery.push(pool);
+        update.into_iter().for_each(|update| {
+            match update {
+                DexPriceMsg::DiscoveredPool(pool) => {
+                    if !self.libmdbx.contains_pool(pool.pool_address) {
+                        self.sender
+                            .send(DexPriceMsg::DiscoveredPool(pool.clone()))
+                            .unwrap();
+
+                        if self
+                            .libmdbx
+                            .insert_pool(
+                                block_number,
+                                pool.pool_address,
+                                [pool.tokens[0], pool.tokens[1]],
+                                pool.protocol,
+                            )
+                            .is_err()
+                        {
+                            error!("failed to insert discovered pool into libmdbx");
+                        }
+                    }
                 }
-            }
-            Some(rest) => {
-                pool_updates.push(rest);
-            }
-            _ => {}
-        };
+                rest => {
+                    pool_updates.push(rest);
+                }
+            };
+        });
 
         classification
     }
@@ -361,19 +382,20 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         }
     }
 
-    fn classify_node(
+    async fn classify_node(
         &self,
         block: u64,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
-    ) -> (Option<DexPriceMsg>, Actions) {
+        tx_hash: B256,
+    ) -> (Vec<DexPriceMsg>, Actions) {
         // we don't classify static calls
         if trace.is_static_call() {
-            return (None, Actions::Unclassified(trace))
+            return (vec![], Actions::Unclassified(trace))
         }
         if trace.trace.error.is_some() {
-            return (None, Actions::Revert)
+            return (vec![], Actions::Revert)
         }
 
         let from_address = trace.get_from_addr();
@@ -417,7 +439,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 .flatten();
 
             if let Some(res) = res {
-                return (Some(DexPriceMsg::Update(res.0)), res.1)
+                return (vec![DexPriceMsg::Update(res.0)], res.1)
             } else {
                 let selector = match &trace.trace.action {
                     Call(action) => &action.input[0..4],
@@ -434,12 +456,48 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             }
         }
 
+        if let Some(protocol) = db_tx.get::<AddressToFactory>(target_address).unwrap() {
+            let discovered_pools = match protocol {
+                StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
+                    UniswapDecoder::dispatch(
+                        UniswapV2Factory::PairCreated::SIGNATURE_HASH.0,
+                        self.provider.clone(),
+                        protocol,
+                        &trace.logs,
+                        block,
+                        tx_hash,
+                    )
+                    .await
+                }
+                StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
+                    UniswapDecoder::dispatch(
+                        UniswapV3Factory::PoolCreated::SIGNATURE_HASH.0,
+                        self.provider.clone(),
+                        protocol,
+                        &trace.logs,
+                        block,
+                        tx_hash,
+                    )
+                    .await
+                }
+                _ => {
+                    vec![]
+                }
+            }
+            .into_iter()
+            .map(DexPriceMsg::DiscoveredPool)
+            .collect_vec();
+
+            // TODO: do we want to make a normalized pool deploy?
+            return (discovered_pools, Actions::Unclassified(trace))
+        }
+
         // if there is more than one transfer then it is strictly not a transfer and we
         // don't want to classify it
         if trace.logs.len() == 1 {
             if let Some((addr, from, to, value)) = self.decode_transfer(&trace.logs[0]) {
                 return (
-                    None,
+                    vec![],
                     Actions::Transfer(NormalizedTransfer {
                         trace_index,
                         to,
@@ -451,7 +509,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             }
         }
 
-        (None, Actions::Unclassified(trace))
+        (vec![], Actions::Unclassified(trace))
     }
 
     /// This function is used to finalize the classification of complex actions
