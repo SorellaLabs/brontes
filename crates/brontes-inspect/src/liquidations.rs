@@ -109,7 +109,7 @@ impl LiquidationInspector<'_> {
         // TODO: filter swaps not related to liqs?
         let new_liquidation = Liquidation {
             liquidation_tx_hash: tx_hash,
-            trigger: b256!(),
+            trigger: b256!(), // b256!() is the zero address
             liquidation_swaps_index: swaps.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
             liquidation_swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
             liquidation_swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
