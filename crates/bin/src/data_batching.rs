@@ -183,6 +183,8 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         // return
         } else if self.pricer.pending_trees.len() <= 1 {
             self.classifier.close();
+        } else {
+            println!("{}", self.pricer.pending_trees.len());
         }
         // poll insertion
         while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
