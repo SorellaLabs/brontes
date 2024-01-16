@@ -76,8 +76,8 @@ impl SubGraphEdge {
 /// most correct.
 #[derive(Debug, Clone)]
 pub struct PairSubGraph {
-    pub(super) graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
-    pub(super) token_to_index: HashMap<Address, u16>,
+    graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
+    token_to_index: HashMap<Address, u16>,
 
     start_node: u16,
     end_node:   u16,
@@ -125,6 +125,24 @@ impl PairSubGraph {
         assert!(comp == 1, "have a disjoint graph {comp} {pair:?}");
 
         Self { graph, start_node, end_node, token_to_index }
+    }
+
+    pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {
+        let n0 = (*self.token_to_index.get(&pool_pair.0).unwrap()).into();
+        let n1 = (*self.token_to_index.get(&pool_pair.1).unwrap()).into();
+
+        if let Some(edge) = self.graph.find_edge(n0, n1) {
+            let weights = self.graph.edge_weight_mut(edge).unwrap();
+            weights.retain(|e| e.pool_addr != pool_address);
+            weights.len() == 0
+        } else if let Some(edge) = self.graph.find_edge(n1, n0) {
+            let weights = self.graph.edge_weight_mut(edge).unwrap();
+            weights.retain(|e| e.pool_addr != pool_address);
+            weights.len() == 0
+        } else {
+            error!("tried to remove bad node from subgraph that didn't exist");
+            true
+        }
     }
 
     pub fn fetch_price<T: ProtocolState>(
