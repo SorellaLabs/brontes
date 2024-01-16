@@ -135,10 +135,6 @@ impl SandwichInspector<'_> {
             .values()
             .fold(Rational::ZERO, |acc, delta| acc + delta);
 
-        if rev_usd.le(&Rational::ZERO) {
-            return None
-        }
-
         let gas_used = searcher_gas_details
             .iter()
             .map(|g| g.gas_paid())

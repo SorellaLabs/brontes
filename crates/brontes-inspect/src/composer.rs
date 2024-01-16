@@ -244,7 +244,12 @@ impl<'a, const N: usize> Composer<'a, N> {
                     self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
                 }
             });
-        let flattened_mev = sorted_mev.into_values().flatten().collect::<Vec<_>>();
+
+        let flattened_mev = sorted_mev
+            .into_values()
+            .flatten()
+            .filter(|(classified, _)| classified.finalized_profit_usd > 0.0)
+            .collect::<Vec<_>>();
 
         // set the mev count now that all reductions and merges have been made
         let mev_count = flattened_mev.len();

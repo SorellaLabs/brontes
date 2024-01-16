@@ -22,8 +22,6 @@ use crate::types::PoolUpdate;
 /// stores all sub-graphs and supports the update mechanisms
 #[derive(Debug, Clone)]
 pub struct SubGraphRegistry {
-    total_subgraph_size: usize,
-    total_state_size:    usize,
     /// tracks which tokens have a edge in the subgraph,
     /// this allows us to possibly insert a new node to a subgraph
     /// if it fits the criteria
@@ -59,17 +57,7 @@ impl SubGraphRegistry {
             token_to_sub_graph,
             sub_graphs,
             edge_state: HashMap::default(),
-            total_subgraph_size: 0,
-            total_state_size: 0,
         }
-    }
-
-    pub fn log_total_size(&self) {
-        let state_size = 212 * self.edge_state.len();
-        let state_size_mb = state_size / 1_000_000;
-
-        let subgraph_size_mb = self.total_subgraph_size / 1_000_000;
-        info!(%state_size_mb, %subgraph_size_mb, "current size");
     }
 
     pub fn has_subpool(&self, pair: &Pair) -> bool {
@@ -144,19 +132,8 @@ impl SubGraphRegistry {
                 .or_default()
                 .insert(pair);
         });
-        let mut path_len = path.len();
         // init subgraph
         let subgraph = PairSubGraph::init(pair, path);
-
-        let subgraph_size_bytes = path_len * std::mem::size_of::<SubGraphEdge>()
-            + 4
-            + (22 * subgraph.token_to_index.len())
-            + 48
-            + (subgraph.graph.node_count() * 4)
-            + (subgraph.graph.edge_count() * 8);
-
-        self.total_subgraph_size += subgraph_size_bytes;
-
         self.sub_graphs.insert(pair, subgraph);
 
         unloaded_state
