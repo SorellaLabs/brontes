@@ -1,10 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use malachite::Rational;
-use rayon::{
-    iter::IntoParallelIterator,
-    prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
-};
+use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
