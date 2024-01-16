@@ -16,7 +16,7 @@ use crate::{tables::AddressToTokens, types::utils::pool_tokens, LibmdbxData};
 
 #[serde_as]
 #[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct AddressToTokensData {
+pub struct AddressToTokensData {
     #[serde(with = "address_string")]
     pub address: Address,
     #[serde(with = "pool_tokens")]

@@ -14,12 +14,13 @@ use brontes_core::{
 use brontes_database::{Metadata, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{composer::Composer, Inspector};
-use brontes_pricing::{types::DexPrices, BrontesBatchPricer, PairGraph};
+use brontes_pricing::{types::DexQuotes, BrontesBatchPricer, GraphManager};
 use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::BlockTree};
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info};
+
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
 
@@ -36,7 +37,7 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     end_block:     u64,
     batch_id:      u64,
 
-    libmdbx:    &'db Libmdbx,
+    libmdbx:    &'static Libmdbx,
     inspectors: &'db [&'db Box<dyn Inspector>; N],
 }
 
@@ -44,31 +45,34 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
         batch_id: u64,
-        run: u64,
         start_block: u64,
         end_block: u64,
         parser: &'db Parser<'db, T>,
-        libmdbx: &'db Libmdbx,
+        libmdbx: &'static Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>; N],
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx);
 
-        let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
+        let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
-        let mut rest_pairs = HashMap::default();
-        for i in start_block + 1..end_block {
-            let pairs = libmdbx.addresses_init_block(i).unwrap_or_default();
-            rest_pairs.insert(i, pairs);
-        }
+        let rest_pairs = libmdbx
+            .protocols_created_range(start_block + 1, end_block)
+            .unwrap();
 
-        trace!("initing pair graph");
-        let pair_graph = PairGraph::init_from_hashmap(pairs);
+        let pair_graph = GraphManager::init_from_db_state(
+            pairs,
+            HashMap::default(),
+            Box::new(|block, pair| libmdbx.try_load_pair_before(block, pair).ok()),
+            Box::new(|block, pair, edges| {
+                if libmdbx.save_pair_at(block, pair, edges).is_err() {
+                    error!("failed to save subgraph to db");
+                }
+            }),
+        );
 
         let pricer = BrontesBatchPricer::new(
             quote_asset,
-            run,
-            batch_id,
             pair_graph,
             rx,
             parser.get_tracer(),
@@ -148,7 +152,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // poll pricer
-        while let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
+        if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
             if meta.block_num == self.end_block {
                 info!(
                     batch_id = self.batch_id,
@@ -172,7 +176,14 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         } else if self.current_block != self.end_block {
             self.current_block += 1;
             self.start_next_block();
-        } else {
+        }
+
+        // If we have reached end block and there is only 1 pending tree left,
+        // send the close message to indicate to the dex pricer that it should
+        // return. This will spam it till the pricer closes but this is needed as it
+        // could take multiple polls until the pricing is done for the final
+        // block.
+        if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
             self.classifier.close();
         }
         // poll insertion
@@ -182,20 +193,18 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         if self.current_block == self.end_block
             && self.collection_future.is_none()
             && self.processing_futures.is_empty()
-            // we have no more data and no more processing was queued
-            && self.pricer.poll_next_unpin(cx).map(|i| i.is_none()) == Poll::Ready(true)
+            && self.pricer.is_done()
         {
             return Poll::Ready(())
         }
 
         cx.waker().wake_by_ref();
-
         Poll::Pending
     }
 }
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
-    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexPrices)>)>,
+    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
     pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataDB)>,
 }
 
@@ -209,6 +218,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         let handle = tokio::spawn(future);
 
         Self { handle, pending_trees: HashMap::default() }
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.pending_trees.is_empty()
     }
 
     fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
@@ -317,6 +330,7 @@ impl<const N: usize> Future for ResultProcessing<'_, N> {
                 block_details.cumulative_mev_finalized_profit_usd
             );
 
+            println!("{mev_details:#?}");
             if self
                 .database
                 .insert_classified_data(block_details, mev_details)
