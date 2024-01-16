@@ -1139,17 +1139,11 @@ name = "brontes-classifier"
 version = "0.1.0"
 dependencies = [
  "alloy-json-abi",
- "alloy-json-rpc",
- "alloy-network",
  "alloy-primitives",
- "alloy-providers",
  "alloy-rlp",
- "alloy-rpc-client",
  "alloy-rpc-types",
  "alloy-sol-macro",
  "alloy-sol-types",
- "alloy-transport",
- "alloy-transport-http",
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
@@ -1182,7 +1176,6 @@ dependencies = [
  "serial_test",
  "tokio",
  "tracing",
- "unstringify",
 ]
 
 [[package]]
@@ -1191,16 +1184,11 @@ version = "0.1.0"
 dependencies = [
  "alloy-dyn-abi",
  "alloy-json-abi",
- "alloy-json-rpc",
- "alloy-network",
  "alloy-primitives",
  "alloy-providers",
- "alloy-rpc-client",
  "alloy-rpc-types",
  "alloy-sol-macro",
  "alloy-sol-types",
- "alloy-transport",
- "alloy-transport-http",
  "async-trait",
  "auto_impl",
  "brontes-core",
@@ -1342,16 +1330,10 @@ name = "brontes-inspect"
 version = "0.1.0"
 dependencies = [
  "alloy-json-abi",
- "alloy-json-rpc",
- "alloy-network",
  "alloy-primitives",
- "alloy-providers",
- "alloy-rpc-client",
  "alloy-rpc-types",
  "alloy-sol-macro",
  "alloy-sol-types",
- "alloy-transport",
- "alloy-transport-http",
  "async-scoped",
  "async-trait",
  "auto_impl",
@@ -1502,7 +1484,6 @@ dependencies = [
  "itertools 0.11.0",
  "malachite",
  "parking_lot 0.12.1",
- "petgraph",
  "phf",
  "phf_codegen",
  "rayon",
@@ -3655,7 +3636,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.4.10",
+ "socket2 0.5.5",
  "tokio",
  "tower-service",
  "tracing",
@@ -8753,12 +8734,6 @@ dependencies = [
  "generic-array",
  "subtle",
 ]
-
-[[package]]
-name = "unstringify"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9612d66420ead229348915b911ad9689e79dfc347fe7a876a82551c8eab36b5e"
 
 [[package]]
 name = "untrusted"
