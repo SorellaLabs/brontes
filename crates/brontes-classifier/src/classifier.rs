@@ -179,6 +179,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         self.remove_swap_transfers(&mut tree);
         self.remove_mint_transfers(&mut tree);
         self.remove_collect_transfers(&mut tree);
+        self.finish_classification(&mut tree, further_classification_requests);
 
         tree.finalize_tree();
 
@@ -513,7 +514,8 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
     }
 
     /// This function is used to finalize the classification of complex actions
-    /// that contain nested sub-actions.
+    /// that contain nested sub-actions that are required to finalize the higher
+    /// level classification (e.g: flashloan actions)
     fn finish_classification(
         &self,
         tree: &mut BlockTree<Actions>,
