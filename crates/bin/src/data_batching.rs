@@ -186,6 +186,7 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         // could take multiple polls until the pricing is done for the final
         // block.
         if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
+            info!("poll_end");
             self.classifier.close();
         }
         // poll insertion
