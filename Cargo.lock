@@ -1440,12 +1440,14 @@ dependencies = [
  "ethers",
  "eyre",
  "futures",
+ "indexmap 2.1.0",
  "itertools 0.12.0",
  "malachite",
  "modular-bitfield",
  "num-bigfloat",
  "parity-scale-codec",
  "parking_lot 0.12.1",
+ "pathfinding",
  "petgraph",
  "phf",
  "proptest",
@@ -1457,6 +1459,7 @@ dependencies = [
  "reth-primitives",
  "reth-rpc-types",
  "reth-tracing-ext",
+ "rustc-hash",
  "serde",
  "serde_json",
  "serde_repr",
@@ -2303,6 +2306,18 @@ checksum = "e4355c25cbf99edcb6b4a0e906f6bdc6956eda149e84455bea49696429b2f8e8"
 dependencies = [
  "futures",
  "tokio-util",
+]
+
+[[package]]
+name = "deprecate-until"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a3767f826efbbe5a5ae093920b58b43b01734202be697e1354914e862e8e704"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "semver 1.0.21",
+ "syn 2.0.48",
 ]
 
 [[package]]
@@ -3998,6 +4013,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "integer-sqrt"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "276ec31bcb4a9ee45f58bec6f9ec700ae4cf4f4f8f2fa7e06cb406bd5ffdd770"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "ipconfig"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5205,6 +5229,21 @@ name = "path-slash"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e91099d4268b0e11973f036e885d652fb0b21fedcf69738c627f94db6a44f42"
+
+[[package]]
+name = "pathfinding"
+version = "4.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35df0d074a99be583b76dc771329be9f7be45ebae444d601285dc7a094c2ac0a"
+dependencies = [
+ "deprecate-until",
+ "fixedbitset",
+ "indexmap 2.1.0",
+ "integer-sqrt",
+ "num-traits",
+ "rustc-hash",
+ "thiserror",
+]
 
 [[package]]
 name = "pbkdf2"
