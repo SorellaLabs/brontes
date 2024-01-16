@@ -452,16 +452,8 @@ async fn spawn_batches(
     libmdbx: &'static Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
-    DataBatching::new(
-        quote_asset,
-        batch_id,
-        start_block,
-        end_block,
-        &parser,
-        &libmdbx,
-        &inspectors,
-    )
-    .await
+    DataBatching::new(quote_asset, batch_id, start_block, end_block, &parser, &libmdbx, &inspectors)
+        .await
 }
 
 fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
