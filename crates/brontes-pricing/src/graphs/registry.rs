@@ -60,6 +60,22 @@ impl SubGraphRegistry {
         self.sub_graphs.contains_key(&pair)
     }
 
+    pub fn bad_pool_state(
+        &mut self,
+        subgraph: Pair,
+        pool_pair: Pair,
+        pool_address: Address,
+    ) -> bool {
+        let Some(mut graph) = self.sub_graphs.remove(&subgraph) else { return true };
+
+        let is_disjoint_graph = graph.remove_bad_node(pool_pair, pool_address);
+        if !is_disjoint_graph {
+            self.sub_graphs.insert(subgraph, graph);
+        }
+
+        is_disjoint_graph
+    }
+
     pub fn fetch_unloaded_state(&self, pair: &Pair) -> Vec<PoolPairInfoDirection> {
         self.sub_graphs
             .get(&pair.ordered())
@@ -96,10 +112,16 @@ impl SubGraphRegistry {
                     },
                 )
             })
-            .map(|(pair, info)| {
-                let subgraph = self.sub_graphs.get_mut(pair).unwrap();
-                subgraph.add_new_edge(info);
-                (*pair, subgraph.get_all_pools().flatten().cloned().collect_vec())
+            .filter_map(|(pair, info)| {
+                if let Some(subgraph) = self.sub_graphs.get_mut(pair) {
+                    if subgraph.add_new_edge(info) {
+                        return Some((
+                            *pair,
+                            subgraph.get_all_pools().flatten().cloned().collect_vec(),
+                        ))
+                    }
+                }
+                None
             })
             .collect_vec()
     }
@@ -159,13 +181,13 @@ impl SubGraphRegistry {
             .get(&pair)
             .and_then(|graph| graph.fetch_price(&self.edge_state))
             .map(|res| if swapped { res.reciprocal() } else { res })
-            // .map(|price| {
-            //     let mut opts = ToSciOptions::default();
-            //     opts.set_precision(10);
-            //     let str_price = price.to_sci_with_options(opts).to_string();
-            //     info!(?unordered_pair, price=%str_price, "price:");
-            //     price
-            // })
+        // .map(|price| {
+        //     let mut opts = ToSciOptions::default();
+        //     opts.set_precision(10);
+        //     let str_price = price.to_sci_with_options(opts).to_string();
+        //     info!(?unordered_pair, price=%str_price, "price:");
+        //     price
+        // })
     }
 
     pub fn has_state(&self, addr: &Address) -> bool {
