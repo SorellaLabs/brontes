@@ -1,6 +1,6 @@
 use alloy_rlp::{Decodable, Encodable};
 use brontes_database_libmdbx::types::{utils::*, LibmdbxData};
-pub use brontes_types::extra_processing::Pair;
+
 use bytes::BufMut;
 use reth_db::{
     table::{Compress, Decompress},
@@ -10,12 +10,9 @@ use reth_primitives::{Address, TxHash, U256};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use sorella_db_databases::{clickhouse, Row};
-
+use std::str::FromStr;
 use super::MetadataBench;
-use crate::{
-    bench_table,
-    benchmarks::tables::{InitializeTable, IntoTableKey},
-};
+use crate::setup::tables::MetadataRLP;
 
 #[serde_as]
 #[derive(Debug, Clone, Row,  Serialize, Deserialize)]
@@ -99,8 +96,21 @@ impl Compress for MetadataRLPInner {
     type Compressed = Vec<u8>;
 
     fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
+
+        
+
         let mut encoded = Vec::new();
+
         self.encode(&mut encoded);
+
+        /* 
+        let block_hash =
+        U256::from_str("0x10a27d25828e24f7b12257bbedda621a6d94f01a2f06fee4828d931027992283")
+            .unwrap();
+        if block_hash == self.block_hash {
+            println!("RLP COMPRESSED LEN: {}", encoded.len());
+        }
+        */
         buf.put_slice(&encoded);
     }
 }
@@ -131,7 +141,3 @@ impl From<MetadataBench> for MetadataRLPData {
     }
 }
 
-bench_table!(
-    /// rlp metadata
-    ( MetadataRLP ) u64 | MetadataRLPInner | MetadataBench
-);
