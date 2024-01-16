@@ -333,8 +333,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             "got dex quotes"
         );
 
-        self.graph_manager.log_size();
-
         self.completed_block += 1;
 
         // add new nodes to pair graph
