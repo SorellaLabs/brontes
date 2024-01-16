@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::{hex, B256};
 use brontes_database::{Metadata, Pair};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -11,11 +12,14 @@ use brontes_types::{
     ToScaledRational,
 };
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::{
+        basic::traits::{One, Zero},
+        conversion::{string::options::ToSciOptions, traits::ToSci},
+    },
     Rational,
 };
 use reth_primitives::Address;
-use tracing::log::debug;
+use tracing::{info, log::debug};
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {
@@ -95,7 +99,7 @@ impl SharedInspectorUtils<'_> {
     /// Calculates the usd delta by address
     pub fn usd_delta_by_address(
         &self,
-        block_position: usize,
+        tx_position: usize,
         deltas: SwapTokenDeltas,
         metadata: Arc<Metadata>,
         cex: bool,
@@ -109,10 +113,11 @@ impl SharedInspectorUtils<'_> {
                     // Fetch CEX price
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
                 } else {
-                    metadata.dex_quotes.price_after(pair, block_position)?
+                    metadata.dex_quotes.price_after(pair, tx_position)?
                 };
 
                 let usd_amount = amount * price;
+
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
         }
