@@ -180,11 +180,12 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
             self.start_next_block();
         }
 
-        // if we have reached end block and there is only 1 pending tree left,
+        // If we have reached end block and there is only 1 pending tree left,
         // send the close message to indicate to the dex pricer that it should
-        // return
-        if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block{
-            info!("poll_end");
+        // return. This will spam it till the pricer closes but this is needed as it
+        // could take multiple polls until the pricing is done for the final
+        // block.
+        if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
             self.classifier.close();
         }
         // poll insertion
