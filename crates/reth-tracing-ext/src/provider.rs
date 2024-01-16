@@ -3,8 +3,10 @@ use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc::eth::error::EthResult;
-use reth_rpc_api::EthApiServer;
-use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
+use reth_rpc_api::{EthApiServer, EthFilterApiServer};
+use reth_rpc_types::{
+    state::StateOverride, BlockOverrides, CallRequest, Filter, Log, TransactionReceipt,
+};
 
 use crate::TracingClient;
 
@@ -61,5 +63,11 @@ impl TracingProvider for TracingClient {
 
     async fn header_by_number(&self, number: BlockNumber) -> ProviderResult<Option<Header>> {
         self.trace.provider().header_by_number(number)
+    }
+
+    async fn logs_from_filter(&self, filter: Filter) -> ProviderResult<Vec<Log>> {
+        EthFilterApiServer::logs(&self.filter, filter)
+            .await
+            .map_err(|_| reth_provider::ProviderError::StateRootNotAvailableForHistoricalBlock)
     }
 }

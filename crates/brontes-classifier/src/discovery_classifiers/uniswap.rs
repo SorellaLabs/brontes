@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use alloy_primitives::Log;
+use alloy_primitives::{Log, B256};
 use alloy_sol_types::SolEvent;
 use brontes_macros::{discovery_dispatch, discovery_impl};
 use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
