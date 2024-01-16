@@ -346,6 +346,7 @@ impl<V: NormalizedAction> Node<V> {
             }
 
             self.data.finalize_classification(results);
+
         }
 
         if self.inner.len() <= 1 {
