@@ -166,9 +166,17 @@ impl SandwichInspector<'_> {
             pools.insert(swap.pool);
         }
 
+        let has_victim = victim_actions
+            .iter()
+            .flatten()
+            .filter(|action| action.is_swap())
+            .map(|f| f.force_swap_ref().pool)
+            .filter(|f| pools.contains(f))
+            .collect::<HashSet<_>>();
+
         if !backrun_swaps
             .iter()
-            .any(|inner| pools.contains(&inner.pool))
+            .any(|inner| pools.contains(&inner.pool) && has_victim.contains(&inner.pool))
         {
             return None
         }

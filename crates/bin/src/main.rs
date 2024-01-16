@@ -423,7 +423,6 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
         scope.spawn(spawn_batches(
             config.quote_asset.parse().unwrap(),
-            0,
             i as u64,
             start_block,
             end_block,
@@ -446,7 +445,6 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
 async fn spawn_batches(
     quote_asset: Address,
-    run_id: u64,
     batch_id: u64,
     start_block: u64,
     end_block: u64,
@@ -456,7 +454,6 @@ async fn spawn_batches(
 ) {
     DataBatching::new(
         quote_asset,
-        run_id,
         batch_id,
         start_block,
         end_block,
