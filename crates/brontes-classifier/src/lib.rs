@@ -38,6 +38,14 @@ sol!(CurvecrvUSDFactory, "./abis/CurveCRVUSDFactory.json");
 sol!(CurveCryptoSwapFactory, "./abis/CurveCryptoSwapFactory.json");
 sol!(CurveTriCryptoFactory, "./abis/CurveTriCryptoFactory.json");
 
+sol! {
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    function name() public view returns (string);
+    function symbol() public view returns (string);
+    function decimals() public view returns (uint8);
+    function totalSupply() public view returns (uint256);
+}
+
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
         &self,
