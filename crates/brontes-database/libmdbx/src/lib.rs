@@ -252,7 +252,7 @@ impl Libmdbx {
         self.write_table(&vec![TokenDecimalsData { address, decimals }])
     }
 
-    pub fn addresses_inited_before(
+    pub fn protocols_created_before(
         &self,
         block_num: u64,
     ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
@@ -277,6 +277,40 @@ impl Libmdbx {
         }
 
         info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
+
+        Ok(map)
+    }
+
+    pub fn protocols_created_range(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>> {
+        let tx = self.ro_tx()?;
+        let binding_tx = self.ro_tx()?;
+        let info_tx = self.ro_tx()?;
+
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
+        let mut map = HashMap::default();
+
+        for result in cursor.walk_range(start_block..end_block)? {
+            let (block, res) = result?;
+            for addr in res.0.into_iter() {
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
+                    continue;
+                };
+                let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
+                    continue;
+                };
+                map.entry(block).or_insert(vec![]).push((
+                    addr,
+                    protocol,
+                    Pair(info.token0, info.token1),
+                ));
+            }
+        }
+
+        info!(target:"brontes-libmdbx", "loaded {} pairs range: {}..{}", map.len(), start_block, end_block);
 
         Ok(map)
     }
