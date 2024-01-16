@@ -6,7 +6,7 @@ use brontes_database::{clickhouse::USDT_ADDRESS, Pair};
 use brontes_database_libmdbx::{
     tables::PoolCreationBlocks, AddressToProtocol, AddressToTokens, Libmdbx,
 };
-use brontes_pricing::PairGraph;
+use brontes_pricing::AllPairGraph as PairGraph;
 use brontes_types::exchanges::StaticBindingsDb;
 use criterion::{
     black_box, criterion_group, criterion_main, measurement::WallTime, BenchmarkGroup, Criterion,
@@ -114,55 +114,6 @@ fn bench_insertions(
     });
 }
 
-pub fn bench_graph_path_search(c: &mut Criterion) {
-    let mut g = group(c, "pricing-graph/path_search");
-    let db = init_bench_harness();
-
-    let (_, hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 100_000);
-    bench_path_search(
-        "path search graph 100_000 pools, 50 pairs to usdt",
-        PairGraph::init_from_hashmap(hundred_thousand),
-        &mut g,
-    );
-
-    let (_, two_hundred_thousand) = load_amount_of_pools_starting_from(&db, 0, 200_000);
-    bench_path_search(
-        "path search graph 200_000 pools, 50 pairs to usdt",
-        PairGraph::init_from_hashmap(two_hundred_thousand),
-        &mut g,
-    );
-
-    let (_, all_known_pools) = load_amount_of_pools_starting_from(&db, 0, usize::MAX);
-    bench_path_search(
-        "path search graph all pools, 50 pairs to usdt",
-        PairGraph::init_from_hashmap(all_known_pools),
-        &mut g,
-    );
-}
-
-fn bench_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGroup<'_, WallTime>) {
-    graph.clear_pair_cache();
-    let copy_graph = graph.clone();
-
-    g.bench_function(name, move |b| {
-        b.iter_batched(
-            || {
-                copy_graph
-                    .get_all_known_addresses()
-                    .choose_multiple(&mut rand::thread_rng(), 50)
-                    .map(|address| Pair(*address, USDT_ADDRESS))
-                    .collect::<Vec<Pair>>()
-            },
-            |test_pairs| {
-                for pair in test_pairs {
-                    black_box(graph.get_path_no_cache(pair))
-                }
-            },
-            criterion::BatchSize::SmallInput,
-        )
-    });
-}
-
 pub fn bench_yen_graph_path_search(c: &mut Criterion) {
     let mut g = group(c, "pricing-graph/yen_path_search");
     let db = init_bench_harness();
@@ -191,7 +142,6 @@ pub fn bench_yen_graph_path_search(c: &mut Criterion) {
 }
 
 fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGroup<'_, WallTime>) {
-    graph.clear_pair_cache();
     let copy_graph = graph.clone();
 
     g.bench_function(name, move |b| {
@@ -205,7 +155,7 @@ fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGrou
             },
             |test_pairs| {
                 for pair in test_pairs {
-                    black_box(graph.get_k_paths_no_cache(pair))
+                    black_box(graph.get_paths(pair));
                 }
             },
             criterion::BatchSize::SmallInput,
@@ -215,15 +165,9 @@ fn bench_yen_path_search(name: &str, mut graph: PairGraph, g: &mut BenchmarkGrou
 
 criterion_group!(graph_building_benches, bench_graph_building);
 criterion_group!(graph_insertions_benches, bench_graph_insertions);
-criterion_group!(graph_path_search_benches, bench_graph_path_search);
 criterion_group!(yen_graph_path_search_benches, bench_yen_graph_path_search);
 
-criterion_main!(
-    /*graph_building_benches,
-    graph_insertions_benches,
-    graph_path_search_benches,*/
-    yen_graph_path_search_benches
-);
+criterion_main!(graph_building_benches, graph_insertions_benches, yen_graph_path_search_benches);
 
 fn group<'a>(c: &'a mut Criterion, group_name: &str) -> BenchmarkGroup<'a, WallTime> {
     let mut g = c.benchmark_group(group_name);

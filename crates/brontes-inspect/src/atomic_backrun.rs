@@ -1,5 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
+use alloy_primitives::hex;
 use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -12,6 +16,7 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
+use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
@@ -114,6 +119,26 @@ impl AtomicBackrunInspector<'_> {
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
+        let unique_tokens = searcher_actions
+            .iter()
+            .flatten()
+            .filter(|f| f.is_swap())
+            .map(|f| f.force_swap_ref())
+            .flat_map(|s| vec![s.token_in, s.token_out])
+            .collect::<HashSet<_>>();
+
+        // most likely just a false positive unless the person is holding shit_coin
+        // inventory.
+        // to keep the degens, we don't remove if there is a coinbase.transfer
+        //
+        // False positives come from this due to there being a small opportunity that
+        // exists within a single swap that can only be executed if you hold
+        // inventory. Because of this 99% of the time it is normal users who
+        // trigger this.
+        if unique_tokens.len() == 2 && gas_details.coinbase_transfer.is_none() {
+            return None
+        }
+
         // Can change this later to check if people are subsidising arbs to kill ops for
         // competitors
         if &rev_usd - &gas_used_usd <= Rational::ZERO {
@@ -149,6 +174,7 @@ impl AtomicBackrunInspector<'_> {
             swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
             swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
         });
+
         Some((classified, backrun))
     }
 }

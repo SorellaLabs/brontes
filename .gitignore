@@ -28,6 +28,11 @@ crates/tracing/src/main.rs
 **/const_sql.rs
 
 
+/crates/brontes-database/**/**.parquet
+/crates/brontes-database/**/**.dat
+/crates/brontes-database/**/**.lck
+/crates/brontes-database/**/**.version
+
 
 # But not bindings.rs
 !abi-builds/bindings.rs
@@ -52,4 +57,3 @@ crates/brontes-inspect/abis/**.json
 data/db/*
 abi-builds/dex_price_map.rs
 abi-builds/protocol_addr_set.rs
-

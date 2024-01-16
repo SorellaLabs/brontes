@@ -117,9 +117,9 @@ pub struct MetadataRkyvInner {
 
 impl Encodable for MetadataRkyvInner {
     fn encode(&self, out: &mut dyn BufMut) {
-        let bytes = rkyv::to_bytes::<_, 256>(self).unwrap();
+        let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
 
-        out.put_slice(&bytes)
+        out.put_slice(&encoded)
     }
 }
 
@@ -138,26 +138,20 @@ impl Compress for MetadataRkyvInner {
 
     fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
         let mut encoded = Vec::new();
-
         self.encode(&mut encoded);
+        let encoded_compressed = zstd::encode_all(&*encoded, 0).unwrap();
 
-        /*
-
-                let block_hash =
-            U256::from_str("0x10a27d25828e24f7b12257bbedda621a6d94f01a2f06fee4828d931027992283")
-                .unwrap();
-        if block_hash.to_le_bytes() == self.block_hash.0 {
-            println!("RKYV COMPRESSED LEN: {}", encoded.len());
-        }
-        */
-        buf.put_slice(&encoded);
+        buf.put_slice(&encoded_compressed);
     }
 }
 
 impl Decompress for MetadataRkyvInner {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
-        let buf = &mut binding.as_slice();
+
+        let encoded_decompressed = zstd::decode_all(&*binding).unwrap();
+        let buf = &mut encoded_decompressed.as_slice();
+
         MetadataRkyvInner::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }

@@ -15,7 +15,7 @@ use futures::{
 use tracing::{error, info};
 
 use crate::{
-    errors::AmmError, graph::PoolPairInfoDirection, types::PoolState, uniswap_v2::UniswapV2Pool,
+    errors::AmmError, graphs::PoolPairInfoDirection, types::PoolState, uniswap_v2::UniswapV2Pool,
     uniswap_v3::UniswapV3Pool, PoolUpdate,
 };
 
@@ -47,8 +47,9 @@ pub struct LazyResult {
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
-    pool_buf:          HashSet<Address>,
     pool_load_futures: FuturesOrdered<BoxFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
+    /// addresses currently being processed.
+    pool_buf:          HashSet<Address>,
     /// requests we are processing for a given block.
     req_per_block:     HashMap<u64, u64>,
 }
@@ -171,6 +172,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     Poll::Ready(Some(res))
                 }
                 Err((address, dex, block, e)) => {
+                    error!(?address, %e,"failed to load pool, most likely pool never had state");
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
