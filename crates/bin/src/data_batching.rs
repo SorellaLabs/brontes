@@ -261,7 +261,6 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
                 info!(target:"brontes","Collected dex prices for block: {}", block);
 
                 let Some((tree, meta)) = self.pending_trees.remove(&block) else {
-                    error!("no tree");
                     return Poll::Ready(None)
                 };
 
