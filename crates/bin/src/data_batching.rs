@@ -24,9 +24,9 @@ use tracing::{debug, error, info};
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
 
-pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
+pub struct DataBatching<'db, T: TracingProvider + Clone, const N: usize> {
     parser:     &'db Parser<'db, T>,
-    classifier: Classifier<'db>,
+    classifier: Classifier<'db, T>,
 
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
@@ -41,7 +41,7 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     inspectors: &'db [&'db Box<dyn Inspector>; N],
 }
 
-impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
+impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
         batch_id: u64,
@@ -52,7 +52,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         inspectors: &'db [&'db Box<dyn Inspector>; N],
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let classifier = Classifier::new(libmdbx, tx);
+        let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
 
         let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
@@ -100,12 +100,12 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         meta: MetadataDB,
         traces: Vec<TxTrace>,
         header: Header,
-        classifier: Classifier<'db>,
+        classifier: Classifier<'db, T>,
         tracer: Arc<T>,
         libmdbx: &'db Libmdbx,
     ) -> CollectionFut<'db> {
-        let (extra, tree) = classifier.build_block_tree(traces, header);
         Box::pin(async move {
+            let (extra, tree) = classifier.build_block_tree(traces, header).await;
             MissingDecimals::new(tracer, libmdbx, extra.tokens_decimal_fill).await;
 
             (tree, meta)
@@ -147,7 +147,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     }
 }
 
-impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
+impl<T: TracingProvider + Clone, const N: usize> Future for DataBatching<'_, T, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

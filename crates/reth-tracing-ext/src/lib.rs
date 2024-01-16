@@ -57,6 +57,7 @@ pub type RethTxPool = Pool<
     NoopBlobStore,
 >;
 
+#[derive(Debug, Clone)]
 pub struct TracingClient {
     pub api:   EthApi<Provider, RethTxPool, NoopNetwork>,
     pub trace: TraceApi<Provider, RethApi>,

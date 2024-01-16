@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use alloy_primitives::{Bytes, Log};
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
@@ -7,6 +9,7 @@ use brontes_types::{
     extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
+    traits::TracingProvider,
     tree::{BlockTree, GasDetails, Node, Root},
 };
 use hex_literal::hex;
@@ -26,21 +29,26 @@ const TRANSFER_TOPIC: B256 =
 
 /// goes through and classifies all exchanges as-well as missing data
 #[derive(Debug, Clone)]
-pub struct Classifier<'db> {
-    libmdbx: &'db Libmdbx,
-    sender:  UnboundedSender<DexPriceMsg>,
+pub struct Classifier<'db, T: TracingProvider> {
+    libmdbx:  &'db Libmdbx,
+    provider: Arc<T>,
+    sender:   UnboundedSender<DexPriceMsg>,
 }
 
-impl<'db> Classifier<'db> {
-    pub fn new(libmdbx: &'db Libmdbx, sender: UnboundedSender<DexPriceMsg>) -> Self {
-        Self { libmdbx, sender }
+impl<'db, T: TracingProvider> Classifier<'db, T> {
+    pub fn new(
+        libmdbx: &'db Libmdbx,
+        sender: UnboundedSender<DexPriceMsg>,
+        provider: Arc<T>,
+    ) -> Self {
+        Self { libmdbx, sender, provider }
     }
 
     pub fn close(&self) {
         self.sender.send(DexPriceMsg::Closed).unwrap();
     }
 
-    pub fn build_block_tree(
+    pub async fn build_block_tree(
         &self,
         traces: Vec<TxTrace>,
         header: Header,
@@ -53,7 +61,7 @@ impl<'db> Classifier<'db> {
             further_classification_requests,
             tx_roots,
         ): (Vec<_>, Vec<_>, Vec<_>, Vec<_>, Vec<_>) = traces
-            .into_par_iter()
+            .into_iter()
             .enumerate()
             .filter_map(|(tx_idx, mut trace)| {
                 if trace.trace.is_empty() || !trace.is_success {
