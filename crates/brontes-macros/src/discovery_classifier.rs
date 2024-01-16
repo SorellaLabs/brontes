@@ -22,14 +22,9 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
                     return None;
                 };
 
-                let Some(block_num) = log.block_number.map(|num| num.to::<u64>()) else {
-                    // log!(RawEthNewPoolsResults, 1, "No Block Number For Log", log, "In Protocol", protocol);
-                    return None;
-                };
-
                 let pool_addr = Box::pin(async move {
                     let Some(transfer_log) =
-                        get_log_from_tx(node_handle, block_num, tx_hash, #factory_name::#event_type::SIGNATURE_HASH, 2).await
+                        get_log_from_tx(node_handle, block_number, tx_hash, #factory_name::#event_type::SIGNATURE_HASH, 2).await
                     else {
                         return None;
                     };
@@ -47,7 +42,7 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
                     return None;
                 };
 
-                Some((val, log.block_number.unwrap().to::<u64>(), pool_addr))
+                Some((val, block_number, pool_addr))
             }).collect::<Vec<_>>();
         ));
     } else {
@@ -57,7 +52,7 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
                 if val.is_none() {
                     // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Log", log);
                 }
-                val.map(|v| (v, log.block_number.unwrap().to::<u64>()))
+                val.map(|v| (v, block_number))
             }).collect::<Vec<_>>();
         ));
     }
@@ -80,18 +75,19 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
         #[derive(Debug, Default)]
         pub struct #decoder_name;
 
-        impl<T: TracingProvider> FactoryDecoder<T> for #decoder_name {
+        impl FactoryDecoder for #decoder_name {
             fn get_signature(&self) -> [u8; 32] {
                 #factory_name::#event_type::SIGNATURE_HASH.0
             }
 
 
             #[allow(unused)]
-            async fn decode_new_pool(
+            async fn decode_new_pool<T: TracingProvider> (
                 &self,
                 node_handle: Arc<T>,
                 protocol: StaticBindingsDb,
                 logs: &Vec<Log>,
+                block_number: u64,
             ) -> Vec<DiscoveredPool> {
                 #(#option_parsing)*
                 #fn_call.await
@@ -162,22 +158,30 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
         #[derive(Default, Debug)]
         pub struct #struct_name(#(pub #name,)*);
 
-        impl<T: TracingProvider> FactoryDecoderDispatch<T> for #struct_name {
-            async fn dispatch(sig: [u8; 32], node_handle: Arc<T>, protocol: StaticBindingsDb, logs: &Vec<Log>) -> Vec<DiscoveredPool> {
+        impl FactoryDecoderDispatch for #struct_name {
+            async fn dispatch<T: TracingProvider>(
+                sig: [u8; 32],
+                node_handle: Arc<T>,
+                protocol: StaticBindingsDb,
+                logs: &Vec<Log>,
+                block_number: u64,
+                ) -> Vec<DiscoveredPool> {
                 let this = Self::default();
                 if sig == this.0.get_signature() {
                     return
                         this.0.decode_new_pool(
                             node_handle,
                             protocol,
-                            logs
+                            logs,
+                            block_number,
                         ).await
                 }
                 #( else if sig == this.#i.get_signature() {
                         return this.#i.decode_new_pool(
                             node_handle,
                             protocol,
-                            logs
+                            logs,
+                            block_number,
                         ).await
                     }
                 )*
