@@ -93,8 +93,9 @@ impl AllPairGraph {
         let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return };
         let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return };
 
-        let edge = self.graph.find_edge((*n0).into(), (*n1).into()).unwrap();
-        let weights = self.graph.edge_weight_mut(edge).unwrap();
+        let Some(edge) = self.graph.find_edge((*n0).into(), (*n1).into()) else { return };
+        let Some(weights) = self.graph.edge_weight_mut(edge) else { return; };
+
         weights.retain(|e| e.pool_addr != pool_addr);
         if weights.len() == 0 {
             self.graph.remove_edge(edge);
