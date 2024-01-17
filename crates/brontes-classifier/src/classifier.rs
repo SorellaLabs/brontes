@@ -228,10 +228,10 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         // if we have a discovered pool, check if its new
         update.into_iter().for_each(|update| {
             match update {
-                DexPriceMsg::DiscoveredPool(pool) => {
+                DexPriceMsg::DiscoveredPool(pool, block) => {
                     if !self.libmdbx.contains_pool(pool.pool_address) {
                         self.sender
-                            .send(DexPriceMsg::DiscoveredPool(pool.clone()))
+                            .send(DexPriceMsg::DiscoveredPool(pool.clone(), block))
                             .unwrap();
 
                         if self
@@ -485,7 +485,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 }
             }
             .into_iter()
-            .map(DexPriceMsg::DiscoveredPool)
+            .map(|data| DexPriceMsg::DiscoveredPool(data, block))
             .collect_vec();
 
             // TODO: do we want to make a normalized pool deploy?
