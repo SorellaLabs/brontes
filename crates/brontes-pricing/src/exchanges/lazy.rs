@@ -50,7 +50,7 @@ pub struct LazyResult {
 
 type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-const MAX_CALLS: usize = 15;
+const MAX_CALLS: usize = 25;
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
