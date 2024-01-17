@@ -430,7 +430,7 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
     let chunks_amount = (range / chunk_size) + 1;
     // because these are lightweight tasks, we can stack them pretty easily without
     // much overhead concern
-    let max_pool_loading_tasks = remaining_cpus / chunks_amount * 5;
+    let max_pool_loading_tasks = (remaining_cpus / chunks_amount + 1) * 5;
 
     for (i, mut chunk) in (config.start_block..=config.end_block)
         .chunks(chunk_size.try_into().unwrap())
