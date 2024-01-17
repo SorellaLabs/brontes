@@ -137,6 +137,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_message_many(&mut self, updates: Vec<PoolUpdate>) {
+        if updates.is_empty() {
+            return
+        };
+
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
                 self.current_block = msg.block;
@@ -551,7 +555,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                             return Poll::Ready(self.on_close())
                         }
                     }
-                    _ => {}
+                    Poll::Pending => break,
                 }
             }
 
