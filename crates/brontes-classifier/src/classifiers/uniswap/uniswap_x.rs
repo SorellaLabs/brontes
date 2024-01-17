@@ -14,7 +14,12 @@ action_impl!(
     UniswapX,
     call_data: true,
     logs: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: executeCall, logs: Fill, db_tx: &LibmdbxTx<RO>| {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: executeCall,
+    logs: Fill,
+    db_tx: &LibmdbxTx<RO>| {
 
         //TODO: Finish implementing this
         Some(NormalizedBatch {
