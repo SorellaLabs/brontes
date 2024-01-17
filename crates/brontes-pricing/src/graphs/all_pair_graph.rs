@@ -122,7 +122,7 @@ impl AllPairGraph {
         }
     }
 
-    pub fn get_paths(&mut self, pair: Pair) -> Vec<Vec<Vec<SubGraphEdge>>> {
+    pub fn get_paths(&self, pair: Pair) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
             return vec![]

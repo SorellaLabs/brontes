@@ -18,6 +18,7 @@ use ethers::core::k256::elliptic_curve::bigint::Zero;
 use exchanges::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use exchanges::*;
 pub use graphs::{AllPairGraph, GraphManager, SubGraphEdge};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 mod graphs;
 
@@ -72,10 +73,13 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// only pass though valid created pools.
     new_graph_pairs: HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>,
 
-    graph_manager: GraphManager,
+    graph_manager:  GraphManager,
     /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader:   LazyExchangeLoader<T>,
-    dex_quotes:    HashMap<u64, DexQuotes>,
+    lazy_loader:    LazyExchangeLoader<T>,
+    dex_quotes:     HashMap<u64, DexQuotes>,
+    /// when we are pulling from the channel, because its not peekable we always
+    /// pull out one more than we want. this acts as a cache for it
+    overlap_update: Option<PoolUpdate>,
 }
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
@@ -97,6 +101,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             lazy_loader: LazyExchangeLoader::new(provider),
             current_block,
             completed_block: current_block,
+            overlap_update: None,
         }
     }
 
@@ -129,6 +134,68 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             // the update for the pool is buffered at queue loading
             self.on_new_pool(msg)
         }
+    }
+
+    fn on_message_many(&mut self, updates: Vec<PoolUpdate>) {
+        if let Some(msg) = updates.first() {
+            if msg.block > self.current_block {
+                self.current_block = msg.block;
+
+                for (pool_addr, dex, pair) in self
+                    .new_graph_pairs
+                    .remove(&self.current_block)
+                    .unwrap_or_default()
+                {
+                    // add pool
+                    self.graph_manager.add_pool(pair, pool_addr, dex);
+                }
+            }
+        }
+
+        let (state, pools): (Vec<_>, Vec<_>) = updates
+            .into_par_iter()
+            .map(|msg| {
+                let pair = msg.get_pair(self.quote_asset).unwrap();
+                if self.graph_manager.has_subgraph(pair) {
+                    let addr = msg.get_pool_address();
+                    (Some(vec![(addr, msg)]), None)
+                } else {
+                    let (state, path) = self.on_new_pool_pair(msg);
+                    (Some(state), Some(path))
+                }
+            })
+            .unzip();
+
+        state
+            .into_iter()
+            .filter_map(|s| s)
+            .flatten()
+            .for_each(|(addr, update)| {
+                self.buffer
+                    .updates
+                    .entry(update.block)
+                    .or_default()
+                    .push_back((addr, update));
+            });
+
+        pools.into_iter().filter_map(|s| s).flatten().for_each(
+            |(pool_infos, graph_edges, pair)| {
+                for pool_info in pool_infos {
+                    if !(self.graph_manager.has_state(&pool_info.pool_addr)
+                        || self.lazy_loader.is_loading(&pool_info.pool_addr))
+                    {
+                        self.lazy_loader.lazy_load_exchange(
+                            pair,
+                            Pair(pool_info.token_0, pool_info.token_1),
+                            pool_info.pool_addr,
+                            self.current_block,
+                            pool_info.dex_type,
+                        );
+                    }
+                }
+                self.graph_manager.add_subgraph(pair, graph_edges);
+            },
+        );
     }
 
     /// takes the given pair fetching all pool state that needs to be loaded in
@@ -192,6 +259,66 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 );
             }
         }
+    }
+
+    fn queue_loading_returns(
+        &self,
+        pair: Pair,
+        trigger_update: PoolUpdate,
+    ) -> Option<((Address, PoolUpdate), (Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair))>
+    {
+        if pair.0 == pair.1 {
+            return None
+        }
+
+        Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
+            let (state, subgraph) = self
+                .graph_manager
+                .crate_subpool_multithread(self.current_block, pair);
+            (state, subgraph, pair)
+        }))
+    }
+
+    fn on_new_pool_pair(
+        &self,
+        msg: PoolUpdate,
+    ) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair)>)
+    {
+        let pair = msg.get_pair(self.quote_asset).unwrap();
+
+        let mut buf_pending = Vec::new();
+        let mut path_pending = Vec::new();
+        // add pool pair
+        if let Some((buf, path)) = self.queue_loading_returns(pair, msg.clone()) {
+            buf_pending.push(buf);
+            path_pending.push(path);
+        }
+
+        // we add support for fetching the pair as well as each individual token with
+        // the given quote asset
+        let mut trigger_update = msg;
+        // we want to make sure no updates occur to the state of the virtual pool when
+        // we load it
+        trigger_update.logs = vec![];
+
+        // add first pair
+        let pair0 = Pair(pair.0, self.quote_asset);
+        trigger_update.action = make_fake_swap(pair0);
+        if let Some((buf, path)) = self.queue_loading_returns(pair0, trigger_update.clone()) {
+            buf_pending.push(buf);
+            path_pending.push(path);
+        }
+
+        // add second direction
+        let pair1 = Pair(pair.1, self.quote_asset);
+        trigger_update.action = make_fake_swap(pair1);
+
+        if let Some((buf, path)) = self.queue_loading_returns(pair1, trigger_update.clone()) {
+            buf_pending.push(buf);
+            path_pending.push(path);
+        }
+
+        (buf_pending, path_pending)
     }
 
     /// Called when we don't have the state for a given pool. starts the
@@ -451,41 +578,51 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         // the amount of work is low here due to yens algo being slow
         let mut work = 256;
         loop {
-            if let Poll::Ready(s) = self.update_rx.poll_recv(cx).map(|inner| {
-                inner.map(|action| match action {
-                    DexPriceMsg::Update(update) => {
-                        self.on_message(update);
-                        true
-                    }
-                    DexPriceMsg::DiscoveredPool(DiscoveredPool {
-                        protocol,
-                        tokens,
-                        pool_address,
-                    }) => {
-                        if tokens.len() == 2 {
-                            self.graph_manager.add_pool(
-                                Pair(tokens[0], tokens[1]),
-                                pool_address,
-                                protocol,
-                            );
-                        } else {
+            let mut block_updates = Vec::new();
+            loop {
+                match self.update_rx.poll_recv(cx).map(|inner| {
+                    inner.and_then(|action| match action {
+                        DexPriceMsg::Update(update) => Some(update),
+                        DexPriceMsg::DiscoveredPool(DiscoveredPool {
+                            protocol,
+                            tokens,
+                            pool_address,
+                        }) => {
+                            if tokens.len() == 2 {
+                                self.graph_manager.add_pool(
+                                    Pair(tokens[0], tokens[1]),
+                                    pool_address,
+                                    protocol,
+                                );
+                            } else {
+                            }
+                            None
                         }
-                        true
-                    }
-                    DexPriceMsg::Closed => false,
-                })
-            }) {
-                if s.is_none() && self.lazy_loader.is_empty() {
-                    return Poll::Ready(self.on_close())
-                }
+                        DexPriceMsg::Closed => None,
+                    })
+                }) {
+                    Poll::Ready(Some(u)) => {
+                        if let Some(update) = self.overlap_update.take() {
+                            block_updates.push(update);
+                        }
 
-                // check to close
-                if (self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty())
-                    && s.is_some_and(|s| !s)
-                {
-                    return Poll::Ready(self.on_close())
+                        if u.block == self.current_block {
+                            block_updates.push(u);
+                        } else {
+                            self.overlap_update = Some(u);
+                            break
+                        }
+                    }
+                    Poll::Ready(None) => {
+                        if (self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty()) {
+                            return Poll::Ready(self.on_close())
+                        }
+                    }
+                    _ => {}
                 }
             }
+
+            self.on_message_many(block_updates);
 
             // drain all loaded pools
             while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
@@ -530,6 +667,10 @@ impl StateBuffer {
     pub fn new() -> Self {
         Self { updates: HashMap::default(), overrides: HashMap::default() }
     }
+}
+
+pub struct AllPairFindRequests {
+    updates: Vec<PoolUpdate>,
 }
 
 /// Makes a swap for initializing a virtual pool with the quote token.
