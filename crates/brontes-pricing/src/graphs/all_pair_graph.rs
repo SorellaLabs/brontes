@@ -98,8 +98,6 @@ impl AllPairGraph {
         weights.retain(|e| e.pool_addr != pool_addr);
         if weights.len() == 0 {
             self.graph.remove_edge(edge);
-            self.token_to_index.remove(&pool_pair.0);
-            self.token_to_index.remove(&pool_pair.1);
         }
     }
 
