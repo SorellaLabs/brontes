@@ -219,7 +219,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Poll::Ready(Some((result))) = self.pool_load_futures.poll_next_unpin(cx) {
             if let Some(next) = self.buf.pop_front() {
-                self.pool_load_futures.push_back(next);
+                self.pool_load_futures.push(next);
             }
 
             match result {
