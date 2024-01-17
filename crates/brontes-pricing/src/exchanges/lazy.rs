@@ -46,12 +46,14 @@ pub struct LazyResult {
     pub block:       u64,
     pub load_result: LoadResult,
 }
+type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'a>>;
 
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider: Arc<T>,
-    pool_load_futures: FuturesOrdered<BoxFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
+    pool_load_futures:
+        FuturesOrdered<BoxedFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
     /// addresses currently being processed.
     pool_buf: HashSet<Address>,
     /// requests we are processing for a given block.
