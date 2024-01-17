@@ -1,16 +1,18 @@
-use alloy_primitives::{Address, Bytes};
+use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::SolCall;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_pricing::types::PoolUpdate;
-use brontes_types::normalized_actions::{Actions, NormalizedLiquidation, NormalizedFlashLoan};
+use brontes_types::normalized_actions::{Actions, NormalizedFlashLoan, NormalizedLiquidation};
 use reth_db::{mdbx::RO, transaction::DbTx};
 use tokio::sync::mpsc::UnboundedSender;
-use alloy_primitives::U256;
 
 use crate::{
     enum_unwrap,
-    AaveV2::{liquidationCallCall, AaveV2Calls, flashLoanCall, FlashLoan as FlashLoanEvent, LiquidationCall as LiquidationEvent},
+    AaveV2::{
+        flashLoanCall, liquidationCallCall, AaveV2Calls, FlashLoan as FlashLoanEvent,
+        LiquidationCall as LiquidationEvent,
+    },
     ActionCollection, IntoAction, StaticReturnBindings,
 };
 
@@ -53,7 +55,7 @@ action_impl!(
 
         return Some(NormalizedFlashLoan {
             trace_index,
-            from: from_address, 
+            from: from_address,
             pool: target_address,
             receiver_contract: call_data.receiverAddress,
             assets: call_data.assets,
@@ -62,14 +64,12 @@ action_impl!(
             // Set to zero at this stage, will be calculated upon finalized classification
             child_actions: vec![],
             repayments: vec![],
-            fees_paid: vec![], 
+            fees_paid: vec![],
         })
 
     }
 
 
 );
-
-
 
 action_dispatch!(AaveV2Classifier, LiquidationCallImplV2, FlashloanImplV2);
