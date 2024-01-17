@@ -18,7 +18,12 @@ action_impl!(
     SushiSwapV3,
     call_data: true,
     return_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, return_data: swapReturn,  db_tx: &LibmdbxTx<RO>| {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: swapCall,
+    return_data: swapReturn,
+    db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
@@ -87,7 +92,11 @@ action_impl!(
     [Burn],
     SushiSwapV3,
     return_data: true,
-    |trace_index, from_address: Address, target_address: Address, return_data: burnReturn,  db_tx: &LibmdbxTx<RO>| {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    return_data: burnReturn,
+    db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
 

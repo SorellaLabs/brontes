@@ -92,7 +92,11 @@ action_impl!(
     [Burn],
     UniswapV3,
     return_data: true,
-    |trace_index, from_address: Address, target_address: Address, return_data: burnReturn,  db_tx: &LibmdbxTx<RO>| {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    return_data: burnReturn,
+    db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
 
