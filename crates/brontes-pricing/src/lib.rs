@@ -167,7 +167,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 let block = update.block;
                 self.buffer
                     .updates
-                    .entry(self.current_block)
+                    .entry(block)
                     .or_default()
                     .push_back((addr, update));
             });
@@ -244,15 +244,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return
         }
 
-        for pool_info in self
-            .graph_manager
-            .create_subpool(self.current_block, pair)
-            .into_iter()
-        {
+        for pool_info in self.graph_manager.create_subpool(block, pair).into_iter() {
+            let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
             // load exchange only if its not loaded already
-            if !(self.graph_manager.has_state(&pool_info.pool_addr)
-                || self.lazy_loader.is_loading(&pool_info.pool_addr))
-            {
+            if !(self.graph_manager.has_state(&pool_info.pool_addr) || is_loading) {
                 self.lazy_loader.lazy_load_exchange(
                     pair,
                     Pair(pool_info.token_0, pool_info.token_1),
@@ -260,6 +255,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     block,
                     pool_info.dex_type,
                 );
+            } else if is_loading {
+                self.lazy_loader
+                    .add_protocol_parent(pool_info.pool_addr, pair)
             }
         }
     }
