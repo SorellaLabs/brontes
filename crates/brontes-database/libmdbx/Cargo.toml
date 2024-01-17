@@ -80,6 +80,7 @@ parking_lot.workspace = true
 dotenv.workspace = true
 owned_chunks = "0.1.1"
 bincode = "2.0.0-rc.3"
+redefined = { git = "https://github.com/0xlagrange/redefined" }
 
 # benches
 criterion = "0.5"

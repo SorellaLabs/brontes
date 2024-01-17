@@ -20,7 +20,7 @@ use serde::Deserialize;
 use sorella_db_databases::Row;
 use tracing::info;
 use paste::paste;
-use crate::types::traces::TxTracesDBData;
+//use crate::types::traces::TxTracesDBData;
 use crate::{
     types::{
         address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
@@ -439,6 +439,7 @@ where
 }
 
 
+/* 
 
 impl TxTracesDB {
     pub async fn initialize_table_node(libmdbx: Arc<Libmdbx>, tracer: Arc<TracingClient>) -> eyre::Result<()> {
@@ -471,4 +472,4 @@ impl TxTracesDB {
     Ok(())
 
     }
-}
+}*/
