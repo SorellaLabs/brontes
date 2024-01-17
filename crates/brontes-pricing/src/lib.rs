@@ -514,54 +514,54 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         // because of how heavy this loop is when running, we want to give back to the
         // runtime scheduler less in order to boost performance.
         // the amount of work is low here due to yens algo being slow
-        let mut work = 256;
+        let mut block_updates = Vec::new();
         loop {
-            let mut block_updates = Vec::new();
-            loop {
-                match self.update_rx.poll_recv(cx).map(|inner| {
-                    inner.and_then(|action| match action {
-                        DexPriceMsg::Update(update) => Some(update),
-                        DexPriceMsg::DiscoveredPool(DiscoveredPool {
-                            protocol,
-                            tokens,
-                            pool_address,
-                        }) => {
-                            if tokens.len() == 2 {
-                                self.graph_manager.add_pool(
-                                    Pair(tokens[0], tokens[1]),
-                                    pool_address,
-                                    protocol,
-                                );
-                            } else {
-                            }
-                            None
-                        }
-                        DexPriceMsg::Closed => None,
-                    })
-                }) {
-                    Poll::Ready(Some(u)) => {
-                        if let Some(update) = self.overlap_update.take() {
-                            block_updates.push(update);
-                        }
-
-                        if u.block == self.current_block {
-                            block_updates.push(u);
+            match self.update_rx.poll_recv(cx).map(|inner| {
+                inner.and_then(|action| match action {
+                    DexPriceMsg::Update(update) => Some(update),
+                    DexPriceMsg::DiscoveredPool(DiscoveredPool {
+                        protocol,
+                        tokens,
+                        pool_address,
+                    }) => {
+                        if tokens.len() == 2 {
+                            self.graph_manager.add_pool(
+                                Pair(tokens[0], tokens[1]),
+                                pool_address,
+                                protocol,
+                            );
                         } else {
-                            self.overlap_update = Some(u);
-                            break
                         }
+                        None
                     }
-                    Poll::Ready(None) => {
-                        if (self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty()) {
-                            return Poll::Ready(self.on_close())
-                        }
+                    DexPriceMsg::Closed => None,
+                })
+            }) {
+                Poll::Ready(Some(u)) => {
+                    if let Some(update) = self.overlap_update.take() {
+                        block_updates.push(update);
                     }
-                    Poll::Pending => break,
+
+                    if u.block == self.current_block {
+                        block_updates.push(u);
+                    } else {
+                        self.overlap_update = Some(u);
+                        break
+                    }
                 }
+                Poll::Ready(None) => {
+                    if (self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty()) {
+                        return Poll::Ready(self.on_close())
+                    }
+                }
+                Poll::Pending => break,
             }
+        }
 
-            self.on_message_many(block_updates);
+        self.on_message_many(block_updates);
 
+        let mut work = 512;
+        loop {
             // drain all loaded pools
             while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                 info!("lazy resolve\n\n\n\n\n\n\n\n");
