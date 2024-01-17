@@ -90,10 +90,10 @@ impl AllPairGraph {
     }
 
     pub fn remove_empty_address(&mut self, pool_pair: Pair, pool_addr: Address) {
-        let n0 = (*self.token_to_index.get(&pool_pair.0).unwrap()).into();
-        let n1 = (*self.token_to_index.get(&pool_pair.1).unwrap()).into();
+        let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return };
+        let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return };
 
-        let edge = self.graph.find_edge(n0, n1).unwrap();
+        let edge = self.graph.find_edge((*n0).into(), (*n1).into()).unwrap();
         let weights = self.graph.edge_weight_mut(edge).unwrap();
         weights.retain(|e| e.pool_addr != pool_addr);
         if weights.len() == 0 {
