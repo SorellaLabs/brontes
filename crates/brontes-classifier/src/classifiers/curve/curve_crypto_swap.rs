@@ -1,21 +1,14 @@
-use alloy_primitives::{hex, FixedBytes, LogData};
-use alloy_sol_types::{SolCall, SolEvent};
+use alloy_primitives::{hex, FixedBytes};
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
-use brontes_pricing::types::PoolUpdate;
-use brontes_types::normalized_actions::{Actions, NormalizedSwap};
+use brontes_types::normalized_actions::NormalizedSwap;
 use reth_db::{mdbx::RO, transaction::DbTx};
-use reth_primitives::{Address, Bytes, U256};
-use tokio::sync::mpsc::UnboundedSender;
+use reth_primitives::{Address, U256};
 
-use crate::{
-    enum_unwrap, ActionCollection,
-    CurveCryptoSwap::{
-        exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call,
-        CurveCryptoSwapCalls, TokenExchange,
-    },
-    IntoAction, StaticReturnBindings,
+use crate::CurveCryptoSwap::{
+    exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call, TokenExchange,
 };
+
 pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
 pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
 

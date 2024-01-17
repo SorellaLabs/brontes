@@ -9,7 +9,7 @@ use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     exchanges::StaticBindingsDb,
 };
-use eyre::{anyhow, Context};
+use eyre::Context;
 use initialize::LibmdbxInitializer;
 use reth_db::{
     cursor::{DbCursorRO, DbCursorRW},
