@@ -412,13 +412,14 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
     let cpus = determine_max_tasks(config.max_tasks);
     let range = config.end_block - config.start_block;
     let cpus_min = range / config.min_batch_size;
+
     let cpus = std::cmp::min(cpus_min, cpus);
     let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
     let remaining_cpus = if config.max_tasks.is_some() {
-        determine_max_tasks(config.max_tasks)
-    } else {
         determine_max_tasks(None) * 2 - config.max_tasks.unwrap()
+    } else {
+        determine_max_tasks(None)
     };
 
     let chunks_amount = range / chunk_size;
