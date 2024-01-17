@@ -169,6 +169,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         pools.into_iter().filter_map(|s| s).flatten().for_each(
             |(pool_infos, graph_edges, pair)| {
+                if graph_edges.is_empty() {
+                    return
+                }
+
                 for pool_info in pool_infos {
                     if !(self.graph_manager.has_state(&pool_info.pool_addr)
                         || self.lazy_loader.is_loading(&pool_info.pool_addr))
