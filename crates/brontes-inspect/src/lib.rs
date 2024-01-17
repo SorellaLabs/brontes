@@ -1,9 +1,16 @@
 //! # Brontes Inspect Crate
 //!
-//! The `brontes_inspect` crate is a part of the Brontes system, designed to
-//! detect and analyze Miner Extractable Value (MEV) strategies in Ethereum
-//! transactions. This crate provides a set of inspectors, each responsible for
-//! identifying specific types of MEV strategies.
+//! The `brontes_inspect` crate is designed to efficiently detect and analyze
+//! MEV. Emphasizing modularity and ease of use, this crate provides a robust
+//! foundation for developing custom inspectors, streamlining the process of MEV
+//! strategy identification.
+//!
+//! By abstracting complex tasks such as decoding, normalization, metadata
+//! fetching, and price tracking, `brontes_inspect` allows developers to
+//! concentrate on the unique logic of their MEV detection strategies. This
+//! design philosophy ensures that users can easily integrate their own
+//! inspectors, tailored to specific MEV strategies, without delving
+//! into the underlying infrastructure details.
 //!
 //! ## Inspector
 //!
@@ -22,10 +29,11 @@
 //! }
 //! ```
 //!
-//! The `BlockTree` represents a block of Ethereum transactions, and the
-//! `Metadata` contains additional information about the block. The
-//! `process_tree` method analyzes the block and identifies instances of the MEV
-//! strategy that the inspector is designed to detect.
+//! The `BlockTree` represents a block of classified & normalized Ethereum
+//! transactions & their traces, and the `Metadata` contains additional
+//! information about the block. The `process_tree` method analyzes the block
+//! and identifies instances of the MEV strategy that the inspector is designed
+//! to detect.
 //!
 //! ## Individual Inspectors
 //!
@@ -33,10 +41,10 @@
 //! designed to detect a specific type of MEV strategy. These inspectors are
 //! defined in their respective modules:
 //!
-//! - `atomic_backrun`
-//! - `cex_dex`
-//! - `jit`
-//! - `sandwich`
+//! - [`atomic_backrun`](atomic_backrun/index.html)
+//! - [`cex_dex`](cex_dex/index.html)
+//! - [`jit`](jit/index.html)
+//! - [`sandwich`](sandwich/index.html)
 //!
 //! Each inspector implements the `Inspector` trait and provides its own
 //! implementation of the `process_tree` method.
@@ -61,8 +69,8 @@
 //! composition.
 //!
 //! Additionally, the `Composer` provides a `Future` implementation for use in
-//! asynchronous contexts. When polled, it runs the individual inspectors on the
-//! block and collects their results, processing them to identify complex MEV
+//! asynchronous contexts. When polled, it runs the individual inspectors in
+//! parallel and collects their results, processing them to identify complex MEV
 //! strategies.
 //!
 //! In summary, the `brontes_inspect` crate offers tools for detecting and
