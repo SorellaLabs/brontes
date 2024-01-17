@@ -211,6 +211,15 @@ fn add_edge(
     direction: bool,
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
+    // if we already have the edge, then we don't add it again
+    if weights
+        .iter()
+        .find(|w| w.pool_addr == edge_info.pool_addr)
+        .is_some()
+    {
+        return false
+    }
+
     let first = weights.first().unwrap();
 
     let to_start = first.distance_to_start_node;
