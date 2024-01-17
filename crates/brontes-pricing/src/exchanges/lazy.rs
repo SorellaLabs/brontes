@@ -46,7 +46,8 @@ pub struct LazyResult {
     pub block:       u64,
     pub load_result: LoadResult,
 }
-type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'a>>;
+
+type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send +  'a>>;
 
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.

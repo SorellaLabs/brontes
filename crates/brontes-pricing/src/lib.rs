@@ -152,19 +152,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             }
         }
 
-        let (state, pools): (Vec<_>, Vec<_>) = updates
-            .into_par_iter()
-            .map(|msg| {
-                let pair = msg.get_pair(self.quote_asset).unwrap();
-                if self.graph_manager.has_subgraph(pair) {
-                    let addr = msg.get_pool_address();
-                    (Some(vec![(addr, msg)]), None)
-                } else {
-                    let (state, path) = self.on_new_pool_pair(msg);
-                    (Some(state), Some(path))
-                }
-            })
-            .unzip();
+        let (state, pools) =
+            graph_search_par(&self.graph_manager, self.quote_asset, self.current_block, updates);
 
         state
             .into_iter()
@@ -259,66 +248,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 );
             }
         }
-    }
-
-    fn queue_loading_returns(
-        &self,
-        pair: Pair,
-        trigger_update: PoolUpdate,
-    ) -> Option<((Address, PoolUpdate), (Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair))>
-    {
-        if pair.0 == pair.1 {
-            return None
-        }
-
-        Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
-            let (state, subgraph) = self
-                .graph_manager
-                .crate_subpool_multithread(self.current_block, pair);
-            (state, subgraph, pair)
-        }))
-    }
-
-    fn on_new_pool_pair(
-        &self,
-        msg: PoolUpdate,
-    ) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair)>)
-    {
-        let pair = msg.get_pair(self.quote_asset).unwrap();
-
-        let mut buf_pending = Vec::new();
-        let mut path_pending = Vec::new();
-        // add pool pair
-        if let Some((buf, path)) = self.queue_loading_returns(pair, msg.clone()) {
-            buf_pending.push(buf);
-            path_pending.push(path);
-        }
-
-        // we add support for fetching the pair as well as each individual token with
-        // the given quote asset
-        let mut trigger_update = msg;
-        // we want to make sure no updates occur to the state of the virtual pool when
-        // we load it
-        trigger_update.logs = vec![];
-
-        // add first pair
-        let pair0 = Pair(pair.0, self.quote_asset);
-        trigger_update.action = make_fake_swap(pair0);
-        if let Some((buf, path)) = self.queue_loading_returns(pair0, trigger_update.clone()) {
-            buf_pending.push(buf);
-            path_pending.push(path);
-        }
-
-        // add second direction
-        let pair1 = Pair(pair.1, self.quote_asset);
-        trigger_update.action = make_fake_swap(pair1);
-
-        if let Some((buf, path)) = self.queue_loading_returns(pair1, trigger_update.clone()) {
-            buf_pending.push(buf);
-            path_pending.push(path);
-        }
-
-        (buf_pending, path_pending)
     }
 
     /// Called when we don't have the state for a given pool. starts the
@@ -686,6 +615,90 @@ const fn make_fake_swap(pair: Pair) -> Actions {
         amount_in:   U256::ZERO,
         amount_out:  U256::ZERO,
     })
+}
+
+fn graph_search_par(
+    graph: &GraphManager,
+    quote: Address,
+    block: u64,
+    updates: Vec<PoolUpdate>,
+) -> (
+    Vec<Option<Vec<(Address, PoolUpdate)>>>,
+    Vec<Option<Vec<(Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair)>>>,
+) {
+    let (state, pools): (Vec<_>, Vec<_>) = updates
+        .into_par_iter()
+        .map(|msg| {
+            let pair = msg.get_pair(quote).unwrap();
+            if graph.has_subgraph(pair) {
+                let addr = msg.get_pool_address();
+                (Some(vec![(addr, msg)]), None)
+            } else {
+                let (state, path) = on_new_pool_pair(graph, quote, block, msg);
+                (Some(state), Some(path))
+            }
+        })
+        .unzip();
+
+    (state, pools)
+}
+fn on_new_pool_pair(
+    graph: &GraphManager,
+    quote: Address,
+    block: u64,
+    msg: PoolUpdate,
+) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair)>) {
+    let pair = msg.get_pair(quote).unwrap();
+
+    let mut buf_pending = Vec::new();
+    let mut path_pending = Vec::new();
+    // add pool pair
+    if let Some((buf, path)) = queue_loading_returns(graph, block, pair, msg.clone()) {
+        buf_pending.push(buf);
+        path_pending.push(path);
+    }
+
+    // we add support for fetching the pair as well as each individual token with
+    // the given quote asset
+    let mut trigger_update = msg;
+    // we want to make sure no updates occur to the state of the virtual pool when
+    // we load it
+    trigger_update.logs = vec![];
+
+    // add first pair
+    let pair0 = Pair(pair.0, quote);
+    trigger_update.action = make_fake_swap(pair0);
+    if let Some((buf, path)) = queue_loading_returns(graph, block, pair0, trigger_update.clone()) {
+        buf_pending.push(buf);
+        path_pending.push(path);
+    }
+
+    // add second direction
+    let pair1 = Pair(pair.1, quote);
+    trigger_update.action = make_fake_swap(pair1);
+
+    if let Some((buf, path)) = queue_loading_returns(graph, block, pair1, trigger_update.clone()) {
+        buf_pending.push(buf);
+        path_pending.push(path);
+    }
+
+    (buf_pending, path_pending)
+}
+
+fn queue_loading_returns(
+    graph: &GraphManager,
+    block: u64,
+    pair: Pair,
+    trigger_update: PoolUpdate,
+) -> Option<((Address, PoolUpdate), (Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair))> {
+    if pair.0 == pair.1 {
+        return None
+    }
+
+    Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
+        let (state, subgraph) = graph.crate_subpool_multithread(block, pair);
+        (state, subgraph, pair)
+    }))
 }
 
 // #[cfg(test)]
