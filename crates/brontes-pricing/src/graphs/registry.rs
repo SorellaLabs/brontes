@@ -126,6 +126,14 @@ impl SubGraphRegistry {
             .collect_vec()
     }
 
+    pub fn all_unloaded_state(&self, edges: &Vec<SubGraphEdge>) -> Vec<PoolPairInfoDirection> {
+         edges
+            .into_iter()
+            .filter(|e| !self.edge_state.contains_key(&e.pool_addr))
+            .map(|f| f.info)
+            .collect_vec()
+    }
+
     pub fn create_new_subgraph(
         &mut self,
         pair: Pair,
