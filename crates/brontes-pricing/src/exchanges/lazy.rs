@@ -57,7 +57,7 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
     pool_load_futures: FuturesOrdered<JoinHandle<Result<PoolFetchSuccess, PoolFetchError>>>,
 
-    buf: VecDeque<Pin<Box<dyn Future<Output = Result<PoolFetchSuccess, PoolFetchError>>>>>,
+    buf: VecDeque<Pin<Box<dyn Future<Output = Result<PoolFetchSuccess, PoolFetchError>> + Send>>>,
     /// addresses currently being processed.
     pool_buf: HashSet<Address>,
     /// requests we are processing for a given block.
@@ -220,7 +220,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Poll::Ready(Some((result))) = self.pool_load_futures.poll_next_unpin(cx) {
             if let Some(next) = self.buf.pop_front() {
-                self.pool_load_futures.push_back(next);
+                self.pool_load_futures.push_back(tokio::spawn(next));
             }
 
             match result {
