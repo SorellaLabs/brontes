@@ -128,6 +128,7 @@ impl GraphManager {
             /// fetch all state to be loaded
             return (self.sub_graph_registry.fetch_unloaded_state(&pair), vec![])
         } else if let Some((pair, edges)) = (&self.db_load)(block, pair) {
+            info!("db load");
             return (self.sub_graph_registry.all_unloaded_state(&edges), edges)
         }
 
