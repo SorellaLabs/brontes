@@ -28,7 +28,7 @@ pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
     block_number: u64,
 
     parser:            &'inspector Parser<'inspector, T>,
-    classifier:        &'inspector Classifier<'inspector>,
+    classifier:        &'inspector Classifier<'inspector, T>,
     database:          &'inspector Libmdbx,
     inspectors:        &'inspector [&'inspector Box<dyn Inspector>; N],
     composer_future:   Option<Pin<Box<dyn Future<Output = ComposerResults> + Send + 'inspector>>>,
@@ -42,7 +42,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
     pub fn new(
         parser: &'inspector Parser<'inspector, T>,
         database: &'inspector Libmdbx,
-        classifier: &'inspector Classifier,
+        classifier: &'inspector Classifier<'_, T>,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
         block_number: u64,
     ) -> Self {
@@ -65,7 +65,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             debug!("Got {} traces + header", traces.len());
-            let (extra_data, mut tree) = self.classifier.build_block_tree(traces, header);
+            let (extra_data, mut tree) = self.classifier.build_block_tree(traces, header).await;
 
             MissingDecimals::new(
                 self.parser.get_tracer(),

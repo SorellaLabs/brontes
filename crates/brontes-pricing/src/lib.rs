@@ -25,7 +25,7 @@ use futures::{Future, Stream, StreamExt};
 use graphs::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
-use types::{DexPriceMsg, DexQuotes, PoolUpdate};
+use types::{DexPriceMsg, DexQuotes, DiscoveredPool, PoolUpdate};
 
 use crate::types::PoolState;
 
@@ -111,8 +111,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .unwrap_or_default()
             {
                 // add pool
-                self.graph_manager
-                    .add_pool(self.current_block, pair, pool_addr, dex);
+                self.graph_manager.add_pool(pair, pool_addr, dex);
             }
         }
 
@@ -455,6 +454,21 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 inner.map(|action| match action {
                     DexPriceMsg::Update(update) => {
                         self.on_message(update);
+                        true
+                    }
+                    DexPriceMsg::DiscoveredPool(DiscoveredPool {
+                        protocol,
+                        tokens,
+                        pool_address,
+                    }) => {
+                        if tokens.len() == 2 {
+                            self.graph_manager.add_pool(
+                                Pair(tokens[0], tokens[1]),
+                                pool_address,
+                                protocol,
+                            );
+                        } else {
+                        }
                         true
                     }
                     DexPriceMsg::Closed => false,
