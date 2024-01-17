@@ -562,7 +562,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
                 Poll::Pending => break,
             }
-            // pool loading is slowest part so want to poll a lot
+            // drain all loaded pools
             while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                 self.on_pool_resolve(state)
             }
@@ -570,25 +570,14 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
 
         self.on_message_many(block_updates);
 
-        let mut work = 2048;
-        loop {
-            // drain all loaded pools
-            while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                self.on_pool_resolve(state)
-            }
-
-            // check if we can progress to the next block.
-            let block_prices = self.try_resolve_block();
-            if block_prices.is_some() {
-                return Poll::Ready(block_prices)
-            }
-
-            work -= 1;
-            if work == 0 {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
-            }
+        // check if we can progress to the next block.
+        let block_prices = self.try_resolve_block();
+        if block_prices.is_some() {
+            return Poll::Ready(block_prices)
         }
+
+        cx.waker().wake_by_ref();
+        return Poll::Pending
     }
 }
 
