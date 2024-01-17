@@ -55,7 +55,7 @@ const MAX_CALLS: usize = 15;
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
     pool_load_futures:
-        FuturesUnordered<BoxedFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
+        FuturesOrdered<BoxedFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
 
     buf: VecDeque<BoxedFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
     /// addresses currently being processed.
@@ -73,7 +73,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
             pool_buf: HashSet::default(),
-            pool_load_futures: FuturesUnordered::default(),
+            pool_load_futures: FuturesOrdered::default(),
             buf: VecDeque::new(),
             provider,
             req_per_block: HashMap::default(),
@@ -152,7 +152,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 if self.pool_load_futures.len() >= MAX_CALLS {
                     self.buf.push_back(fut);
                 } else {
-                    self.pool_load_futures.push(fut);
+                    self.pool_load_futures.push_back(fut);
                 }
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
@@ -192,7 +192,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 if self.pool_load_futures.len() >= MAX_CALLS {
                     self.buf.push_back(fut);
                 } else {
-                    self.pool_load_futures.push(fut);
+                    self.pool_load_futures.push_back(fut);
                 }
             }
             rest => {
@@ -219,7 +219,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Poll::Ready(Some((result))) = self.pool_load_futures.poll_next_unpin(cx) {
             if let Some(next) = self.buf.pop_front() {
-                self.pool_load_futures.push(next);
+                self.pool_load_futures.push_back(next);
             }
 
             match result {
