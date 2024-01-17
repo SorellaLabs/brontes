@@ -84,6 +84,7 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 
         if event_signature == SYNC_EVENT_SIGNATURE {
             let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false).unwrap();
+
             self.reserve_0 = sync_event.reserve0;
             self.reserve_1 = sync_event.reserve1;
 
@@ -215,7 +216,7 @@ impl UniswapV2Pool {
             reserve_1:        0,
             fee:              0,
         };
-        batch_request::get_v2_pool_data(&mut pool, Some(block), middleware.clone()).await?;
+        pool.populate_data(Some(block), middleware).await?;
 
         if !pool.data_is_populated() {
             return Err(AmmError::PoolDataError)
