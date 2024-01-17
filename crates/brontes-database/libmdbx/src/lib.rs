@@ -1,3 +1,4 @@
+#[allow(non_camel_case_types)]
 use std::{cmp::max, collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
 use brontes_pricing::{types::DexQuotes, SubGraphEdge};

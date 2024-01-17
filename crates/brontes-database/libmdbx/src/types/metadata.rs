@@ -6,7 +6,11 @@ use reth_db::{
     DatabaseError,
 };
 use reth_primitives::{Address, TxHash, U256};
-use serde::{Deserialize, Serialize};
+use rkyv::{
+    ser::{ScratchSpace, Serializer},
+    vec::{ArchivedVec, VecResolver},
+    Archive, Archived, Deserialize, Fallible, Infallible, Serialize,
+};
 use serde_with::{serde_as, DisplayFromStr};
 use sorella_db_databases::{clickhouse, Row};
 
@@ -17,7 +21,7 @@ use super::{
 use crate::tables::Metadata;
 
 #[serde_as]
-#[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MetadataData {
     pub block_number: u64,
     //#[serde(flatten)]
@@ -34,7 +38,9 @@ impl LibmdbxData<Metadata> for MetadataData {
 }
 
 #[serde_as]
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, Clone, serde::Serialize, serde::Deserialize, Serialize, Deserialize, Archive,
+)]
 pub struct MetadataInner {
     #[serde(with = "u256")]
     pub block_hash:             U256,
@@ -50,47 +56,19 @@ pub struct MetadataInner {
 
 impl Encodable for MetadataInner {
     fn encode(&self, out: &mut dyn BufMut) {
-        self.block_hash.encode(out);
-        self.block_timestamp.encode(out);
-        self.relay_timestamp.unwrap_or_default().encode(out);
-        self.p2p_timestamp.unwrap_or_default().encode(out);
-        self.proposer_fee_recipient.unwrap_or_default().encode(out);
-        self.proposer_mev_reward.unwrap_or_default().encode(out);
-        self.mempool_flow.encode(out);
+        let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
+
+        out.put_slice(&encoded)
     }
 }
 
 impl Decodable for MetadataInner {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let block_hash = U256::decode(buf)?;
-        let block_timestamp = u64::decode(buf)?;
-        let mut relay_timestamp = Some(u64::decode(buf)?);
-        if relay_timestamp.as_ref().unwrap() == &0 {
-            relay_timestamp = None
-        }
-        let mut p2p_timestamp = Some(u64::decode(buf)?);
-        if p2p_timestamp.as_ref().unwrap() == &0 {
-            p2p_timestamp = None
-        }
-        let mut proposer_fee_recipient = Some(Address::decode(buf)?);
-        if proposer_fee_recipient.as_ref().unwrap().is_zero() {
-            proposer_fee_recipient = None
-        }
-        let mut proposer_mev_reward = Some(u128::decode(buf)?);
-        if proposer_mev_reward.as_ref().unwrap() == &0 {
-            proposer_mev_reward = None
-        }
-        let mempool_flow = Vec::<TxHash>::decode(buf)?;
+        let archived: &ArchivedMetadataInner = unsafe { rkyv::archived_root::<Self>(buf) };
 
-        Ok(Self {
-            block_hash,
-            block_timestamp,
-            relay_timestamp,
-            p2p_timestamp,
-            proposer_fee_recipient,
-            proposer_mev_reward,
-            mempool_flow,
-        })
+        let this = archived.deserialize(&mut rkyv::Infallible).unwrap();
+
+        Ok(this)
     }
 }
 
@@ -100,14 +78,19 @@ impl Compress for MetadataInner {
     fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
         let mut encoded = Vec::new();
         self.encode(&mut encoded);
-        buf.put_slice(&encoded);
+        let encoded_compressed = zstd::encode_all(&*encoded, 0).unwrap();
+
+        buf.put_slice(&encoded_compressed);
     }
 }
 
 impl Decompress for MetadataInner {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
-        let buf = &mut binding.as_slice();
-        MetadataInner::decode(buf).map_err(|_| DatabaseError::Decode)
+
+        let encoded_decompressed = zstd::decode_all(&*binding).unwrap();
+        let buf = &mut encoded_decompressed.as_slice();
+
+        ArchivedMetadataInner::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }

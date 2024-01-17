@@ -45,6 +45,7 @@ mod tests {
     use std::{env, path::Path, sync::Arc};
 
     use brontes_database::clickhouse::Clickhouse;
+    use brontes_pricing::types::PoolState;
     use brontes_types::classified_mev::{ClassifiedMev, Sandwich};
     use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
     use reth_tracing_ext::TracingClient;
@@ -55,7 +56,7 @@ mod tests {
         initialize::LibmdbxInitializer,
         tables::{
             AddressToProtocol, AddressToTokens, CexPrice, Metadata, MevBlocks, PoolCreationBlocks,
-            PoolState, Tables, TokenDecimals, TxTracesDB,
+            Tables, TokenDecimals,
         },
         Libmdbx, MevBlock,
     };
