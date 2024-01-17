@@ -144,8 +144,10 @@ impl GraphManager {
 
     /// only used for multithread
     pub fn add_subgraph(&mut self, pair: Pair, edges: Vec<SubGraphEdge>) {
-        self.sub_graph_registry
-            .create_new_subgraph(pair.ordered(), edges);
+        if !self.sub_graph_registry.has_subpool(&pair.ordered()) {
+            self.sub_graph_registry
+                .create_new_subgraph(pair.ordered(), edges);
+        }
     }
 
     /// creates a subpool for the pair returning all pools that need to be
