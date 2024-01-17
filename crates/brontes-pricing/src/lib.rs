@@ -551,6 +551,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
                 Poll::Ready(None) => {
                     if (self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty()) {
+                        info!("on close");
                         return Poll::Ready(self.on_close())
                     }
                 }
