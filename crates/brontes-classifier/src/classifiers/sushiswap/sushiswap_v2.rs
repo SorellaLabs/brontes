@@ -4,7 +4,7 @@ use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::{mdbx::RO, transaction::DbTx};
 
-use crate::SushiSwapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, Sync};
+use crate::SushiSwapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, Sync, Transfer};
 
 action_impl!(
     V2SwapImpl,
@@ -57,7 +57,7 @@ action_impl!(
     V2MintImpl,
     Mint,
     mintCall,
-    [Sync, Mint],
+    [Transfer, Sync, Mint],
     SushiSwapV2,
     logs: true,
     call_data: true,
@@ -65,8 +65,8 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
-     log_data: (Sync, Mint), db_tx: &LibmdbxTx<RO>| {
-        let log_data = log_data.1;
+     log_data: (Transfer, Sync, Mint), db_tx: &LibmdbxTx<RO>| {
+        let log_data = log_data.2;
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
@@ -85,7 +85,7 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    [Sync, Burn],
+    [Transfer, Sync, Burn],
     SushiSwapV2,
     call_data: true,
     logs: true,
@@ -93,8 +93,8 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: burnCall,
-     log_data: (Sync, Burn), db_tx: &LibmdbxTx<RO>| {
-        let log_data = log_data.1;
+     log_data: (Transfer, Sync, Burn), db_tx: &LibmdbxTx<RO>| {
+        let log_data = log_data.2;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedBurn {
