@@ -516,9 +516,16 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        // because of how heavy this loop is when running, we want to give back to the
-        // runtime scheduler less in order to boost performance.
-        // the amount of work is low here due to yens algo being slow
+        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+            self.on_pool_resolve(state)
+        }
+
+        // check if we can progress to the next block.
+        let block_prices = self.try_resolve_block();
+        if block_prices.is_some() {
+            return Poll::Ready(block_prices)
+        }
+
         let mut block_updates = Vec::new();
         loop {
             match self.update_rx.poll_recv(cx).map(|inner| {
@@ -569,12 +576,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         }
 
         self.on_message_many(block_updates);
-
-        // check if we can progress to the next block.
-        let block_prices = self.try_resolve_block();
-        if block_prices.is_some() {
-            return Poll::Ready(block_prices)
-        }
 
         cx.waker().wake_by_ref();
         return Poll::Pending
