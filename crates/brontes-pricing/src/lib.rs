@@ -560,7 +560,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
 
         self.on_message_many(block_updates);
 
-        let mut work = 512;
+        let mut work = 2048;
         loop {
             // drain all loaded pools
             while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
