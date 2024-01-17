@@ -3,13 +3,13 @@ use alloy_sol_types::SolCall;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_pricing::types::PoolUpdate;
-use brontes_types::normalized_actions::{Actions, NormalizedLiquidation, NormalizedFlashLoan};
+use brontes_types::normalized_actions::{Actions, NormalizedFlashLoan, NormalizedLiquidation};
 use reth_db::{mdbx::RO, transaction::DbTx};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     enum_unwrap,
-    AaveV3::{liquidationCallCall, AaveV3Calls, flashLoanCall, flashLoanSimpleCall},
+    AaveV3::{flashLoanCall, flashLoanSimpleCall, liquidationCallCall, AaveV3Calls},
     ActionCollection, IntoAction, StaticReturnBindings,
 };
 
@@ -38,7 +38,6 @@ action_impl!(
     }
 );
 
-
 action_impl!(
     FlashloanImplV3,
     FlashLoan,
@@ -53,13 +52,13 @@ action_impl!(
 
         return Some(NormalizedFlashLoan {
             trace_index,
-            from: from_address, 
+            from: from_address,
             pool: target_address,
             receiver_contract: call_data.receiverAddress,
             assets: call_data.assets,
             amounts: call_data.amounts,
             aave_mode: Some((call_data.interestRateModes, call_data.onBehalfOf)),
-            // These fields are all empty at this stage, they will be filled upon finalized classification  
+            // These fields are all empty at this stage, they will be filled upon finalized classification
             child_actions: vec![],
             repayments: vec![],
             fees_paid: vec![],
@@ -69,8 +68,6 @@ action_impl!(
 
     }
 );
-
-
 
 action_impl!(
     FlashloanSimpleImplV3,
@@ -86,13 +83,13 @@ action_impl!(
 
         return Some(NormalizedFlashLoan {
             trace_index,
-            from: from_address, 
+            from: from_address,
             pool: target_address,
             receiver_contract: call_data.receiverAddress,
             assets: vec![call_data.asset],
             amounts: vec![call_data.amount],
             aave_mode: None,
-            // These fields are all empty at this stage, they will be filled upon finalized classification  
+            // These fields are all empty at this stage, they will be filled upon finalized classification
             child_actions: vec![],
             repayments: vec![],
             fees_paid: vec![],
@@ -102,6 +99,5 @@ action_impl!(
 
     }
 );
-
 
 action_dispatch!(AaveV3Classifier, LiquidationCallImplV3, FlashloanImplV3, FlashloanSimpleImplV3);
