@@ -187,7 +187,7 @@ impl GraphManager {
     ) -> bool {
         let requery_subgraph = self.sub_graph_registry.bad_pool_state(
             subgraph_pair.ordered(),
-            pool_pair,
+            pool_pair.ordered(),
             pool_address,
         );
 

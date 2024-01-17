@@ -38,11 +38,13 @@ pub struct SubGraphRegistry {
 
 impl SubGraphRegistry {
     pub fn new(subgraphs: HashMap<Pair, Vec<SubGraphEdge>>) -> Self {
+        
         let mut token_to_sub_graph: HashMap<Address, HashSet<Pair>> = HashMap::new();
         let sub_graphs = subgraphs
             .into_iter()
             .map(|(pair, edges)| {
                 // add to lookup
+        println!("subgraph");
                 edges
                     .iter()
                     .flat_map(|e| vec![e.token_0, e.token_1])
