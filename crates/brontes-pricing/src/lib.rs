@@ -72,14 +72,13 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
     new_graph_pairs: HashMap<Address, (StaticBindingsDb, Pair)>,
-
-    graph_manager:  GraphManager,
+    graph_manager:   GraphManager,
     /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader:    LazyExchangeLoader<T>,
-    dex_quotes:     HashMap<u64, DexQuotes>,
+    lazy_loader:     LazyExchangeLoader<T>,
+    dex_quotes:      HashMap<u64, DexQuotes>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
-    overlap_update: Option<PoolUpdate>,
+    overlap_update:  Option<PoolUpdate>,
 }
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
@@ -463,7 +462,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                     }
                 }
                 Poll::Ready(None) => {
-                    if (self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty()) {
+                    if self.lazy_loader.is_empty() {
                         return Poll::Ready(self.on_close())
                     }
                 }
