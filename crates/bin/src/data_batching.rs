@@ -215,7 +215,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             (pricer, res)
         });
 
-        let handle = tokio::spawn(future);
+        let rt_handle = tokio::runtime::Handle::current();
+        let move_handle = rt_handle.clone();
+
+        let handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
 
         Self { handle, pending_trees: HashMap::default() }
     }
@@ -230,8 +233,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             (pricer, res)
         });
 
-        let handle = tokio::spawn(future);
-        self.handle = handle;
+        let rt_handle = tokio::runtime::Handle::current();
+        let move_handle = rt_handle.clone();
+
+        self.handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
     }
 
     pub fn add_pending_inspection(
