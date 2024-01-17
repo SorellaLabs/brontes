@@ -176,6 +176,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
                     // load exchange only if its not loaded already
                     if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
+                        info!("lazy loading");
                         self.lazy_loader.lazy_load_exchange(
                             pair,
                             Pair(pool_info.token_0, pool_info.token_1),
@@ -561,7 +562,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             }
 
             self.on_message_many(block_updates);
-            info!("sent messages");
 
             // drain all loaded pools
             while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
