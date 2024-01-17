@@ -13,7 +13,11 @@ action_impl!(
     [LiquidationEvent],
     AaveV3,
     call_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: liquidationCallCall, db_tx: &LibmdbxTx<RO> | {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: liquidationCallCall,
+    db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -38,7 +42,11 @@ action_impl!(
     [],
     AaveV3,
     call_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: flashLoanCall, db_tx: &LibmdbxTx<RO> | {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: flashLoanCall,
+    db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -69,7 +77,11 @@ action_impl!(
     [],
     AaveV3,
     call_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: flashLoanSimpleCall, db_tx: &LibmdbxTx<RO> | {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: flashLoanSimpleCall,
+    db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
