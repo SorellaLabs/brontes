@@ -71,7 +71,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
-    new_graph_pairs: HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>,
+    new_graph_pairs: HashMap<Address, (StaticBindingsDb, Pair)>,
 
     graph_manager:  GraphManager,
     /// lazy loads dex pairs so we only fetch init state that is needed
@@ -90,7 +90,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
-        new_graph_pairs: HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>,
+        new_graph_pairs: HashMap<Address, (StaticBindingsDb, Pair)>,
     ) -> Self {
         Self {
             new_graph_pairs,
@@ -106,38 +106,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
-    /// Handles new updates from the classifier, these will always be in order
-    fn on_message(&mut self, msg: PoolUpdate) {
-        if msg.block > self.current_block {
-            self.current_block = msg.block;
-
-            for (pool_addr, dex, pair) in self
-                .new_graph_pairs
-                .remove(&self.current_block)
-                .unwrap_or_default()
-            {
-                // add pool
-                self.graph_manager.add_pool(pair, pool_addr, dex);
-            }
-        }
-
-        let pair = msg.get_pair(self.quote_asset).unwrap();
-
-        // if we already have the pair subgraph we don't want to create another one
-        if self.graph_manager.has_subgraph(pair) {
-            let addr = msg.get_pool_address();
-            self.buffer
-                .updates
-                .entry(msg.block)
-                .or_default()
-                .push_back((addr, msg));
-        } else {
-            // the update for the pool is buffered at queue loading
-            self.on_new_pool(msg)
-        }
-    }
-
-    fn on_message_many(&mut self, updates: Vec<PoolUpdate>) {
+    fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
             return
         };
@@ -145,17 +114,20 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
                 self.current_block = msg.block;
-
-                for (pool_addr, dex, pair) in self
-                    .new_graph_pairs
-                    .remove(&self.current_block)
-                    .unwrap_or_default()
-                {
-                    // add pool
-                    self.graph_manager.add_pool(pair, pool_addr, dex);
-                }
             }
         }
+
+        // only add a new pool to the graph when we have a update for it. this will help
+        // us avoid dead pools in the graph;
+        let new_pools = updates
+            .iter()
+            .filter_map(|update| {
+                let (protocol, pair) = self.new_graph_pairs.remove(&update.get_pool_address())?;
+                Some((update.get_pool_address(), protocol, pair))
+            })
+            .for_each(|(pool_addr, protocol, pair)| {
+                self.graph_manager.add_pool(pair, pool_addr, protocol);
+            });
 
         let (state, pools) =
             graph_search_par(&self.graph_manager, self.quote_asset, self.current_block, updates);
@@ -202,42 +174,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             })
     }
 
-    /// takes the given pair fetching all pool state that needs to be loaded in
-    /// order to properly price through the graph
-    fn queue_loading(&mut self, pair: Pair, trigger_update: PoolUpdate) {
-        if pair.0 == pair.1 {
-            return
-        }
-
-        // make sure that the update is buffered
-        self.buffer
-            .updates
-            .entry(trigger_update.block)
-            .or_default()
-            .push_back((trigger_update.get_pool_address(), trigger_update.clone()));
-
-        for pool_info in self
-            .graph_manager
-            .create_subpool(self.current_block, pair)
-            .into_iter()
-        {
-            let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
-            // load exchange only if its not loaded already
-            if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
-                self.lazy_loader.lazy_load_exchange(
-                    pair,
-                    Pair(pool_info.token_0, pool_info.token_1),
-                    pool_info.pool_addr,
-                    trigger_update.block,
-                    pool_info.dex_type,
-                );
-            } else if lazy_loading {
-                self.lazy_loader
-                    .add_protocol_parent(pool_info.pool_addr, pair);
-            }
-        }
-    }
-
     /// because we already have a state update for this pair in the buffer, we
     /// don't wanna create another one
     fn re_queue_bad_pair(&mut self, pair: Pair, block: u64) {
@@ -261,35 +197,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     .add_protocol_parent(pool_info.pool_addr, pair)
             }
         }
-    }
-
-    /// Called when we don't have the state for a given pool. starts the
-    /// lazy load
-    fn on_new_pool(&mut self, msg: PoolUpdate) {
-        let Some(pair) = msg.get_pair(self.quote_asset) else {
-            warn!(pool_update=?msg, "was not able to derive pair from update");
-            return
-        };
-
-        // add pool pair
-        self.queue_loading(pair, msg.clone());
-
-        // we add support for fetching the pair as well as each individual token with
-        // the given quote asset
-        let mut trigger_update = msg;
-        // we want to make sure no updates occur to the state of the virtual pool when
-        // we load it
-        trigger_update.logs = vec![];
-
-        // add first pair
-        let pair0 = Pair(pair.0, self.quote_asset);
-        trigger_update.action = make_fake_swap(pair0);
-        self.queue_loading(pair0, trigger_update.clone());
-
-        // add second direction
-        let pair1 = Pair(pair.1, self.quote_asset);
-        trigger_update.action = make_fake_swap(pair1);
-        self.queue_loading(pair1, trigger_update);
     }
 
     /// For a given block number and tx idx, finds the path to the following
@@ -535,16 +442,8 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         block,
                     ) => {
                         if tokens.len() == 2 {
-                            // we add one to the block as we want to give a single block buffer
-                            // before we insert the new pool to avoid
-                            // the rare edge case where a graph search
-                            // path uses this pool before the init tx in
-                            // the same block.
-                            self.new_graph_pairs.entry(block + 1).or_default().push((
-                                pool_address,
-                                protocol,
-                                Pair(tokens[0], tokens[1]),
-                            ))
+                            self.new_graph_pairs
+                                .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
                         };
                         None
                     }
@@ -577,7 +476,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             }
         }
 
-        self.on_message_many(block_updates);
+        self.on_pool_updates(block_updates);
 
         cx.waker().wake_by_ref();
         return Poll::Pending

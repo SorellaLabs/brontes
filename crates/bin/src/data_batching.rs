@@ -61,11 +61,13 @@ impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
             .protocols_created_range(start_block + 1, end_block)
             .unwrap()
             .into_iter()
-            // we add one as we want to give a single block buffer before we insert the new pool
-            // to avoid the rare edge case where a graph search path uses this pool before the init
-            // tx in the same block
-            .map(|(k, v)| (k + 1, v))
-            .collect();
+            .flat_map(|(_, pools)| {
+                pools
+                    .into_iter()
+                    .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<HashMap<_, _>>();
 
         let pair_graph = GraphManager::init_from_db_state(
             pairs,
