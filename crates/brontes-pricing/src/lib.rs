@@ -447,8 +447,9 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         // because of how heavy this loop is when running, we want to give back to the
-        // runtime scheduler less in order to boost performance
-        let mut work = 512;
+        // runtime scheduler less in order to boost performance.
+        // the amount of work is low here due to yens algo being slow
+        let mut work = 256;
         loop {
             if let Poll::Ready(s) = self.update_rx.poll_recv(cx).map(|inner| {
                 inner.map(|action| match action {
