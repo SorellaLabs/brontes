@@ -97,16 +97,16 @@ pub struct GraphManager {
     /// this is degen but don't want to reorganize all types so that
     /// this struct can hold the db so these closures allow for the wanted
     /// interactions.
-    db_load: Box<dyn FnMut(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
-    db_save:            Box<dyn FnMut(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
+    db_load:            Box<dyn Fn(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
+    db_save:            Box<dyn Fn(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
 }
 
 impl GraphManager {
     pub fn init_from_db_state(
         all_pool_data: HashMap<(Address, StaticBindingsDb), Pair>,
         sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>,
-        db_load: Box<dyn FnMut(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
-        db_save: Box<dyn FnMut(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
+        db_load: Box<dyn Fn(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
+        db_save: Box<dyn Fn(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
     ) -> Self {
         let graph = AllPairGraph::init_from_hashmap(all_pool_data);
         let registry = SubGraphRegistry::new(sub_graph_registry);
@@ -116,6 +116,35 @@ impl GraphManager {
 
     pub fn add_pool(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
         self.all_pair_graph.add_node(pair.ordered(), pool_addr, dex);
+    }
+
+    pub fn crate_subpool_multithread(
+        &self,
+        block: u64,
+        pair: Pair,
+    ) -> (Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>) {
+        let pair = pair.ordered();
+        if self.sub_graph_registry.has_subpool(&pair) {
+            /// fetch all state to be loaded
+            return (self.sub_graph_registry.fetch_unloaded_state(&pair), vec![])
+        } else if let Some((pair, edges)) = (&self.db_load)(block, pair) {
+            return (self.sub_graph_registry.all_unloaded_state(&edges), edges)
+        }
+
+        let paths = self
+            .all_pair_graph
+            .get_paths(pair)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .collect_vec();
+
+        (self.sub_graph_registry.all_unloaded_state(&paths), paths)
+    }
+
+    /// only used for multithread
+    pub fn add_subgraph(&mut self, pair: Pair, edges: Vec<SubGraphEdge>) {
+        self.sub_graph_registry.create_new_subgraph(pair, edges);
     }
 
     /// creates a subpool for the pair returning all pools that need to be

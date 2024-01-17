@@ -709,7 +709,9 @@ impl UniswapV3Pool {
         pool.sync_ticks_around_current(block_number, 100, middleware.clone())
             .await;
 
-        pool.populate_data(Some(block_number), middleware).await?;
+
+        batch_request::get_v3_pool_data_batch_request(&mut pool, Some(block_number), middleware.clone())
+            .await?;
 
         if !pool.data_is_populated() {
             return Err(AmmError::PoolDataError);
