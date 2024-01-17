@@ -49,13 +49,13 @@ pub struct LazyResult {
 
 type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-const MAX_CALLS: usize = 10;
+const MAX_CALLS: usize = 15;
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider:          Arc<T>,
     pool_load_futures:
-        FuturesOrdered<BoxedFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
+        FuturesUnordered<BoxedFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
 
     buf: VecDeque<BoxedFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
     /// addresses currently being processed.
@@ -73,7 +73,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
             pool_buf: HashSet::default(),
-            pool_load_futures: FuturesOrdered::default(),
+            pool_load_futures: FuturesUnordered::default(),
             buf: VecDeque::new(),
             provider,
             req_per_block: HashMap::default(),
@@ -152,7 +152,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 if self.pool_load_futures.len() >= MAX_CALLS {
                     self.buf.push_back(fut);
                 } else {
-                    self.pool_load_futures.push_back(fut);
+                    self.pool_load_futures.push(fut);
                 }
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
@@ -192,7 +192,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 if self.pool_load_futures.len() >= MAX_CALLS {
                     self.buf.push_back(fut);
                 } else {
-                    self.pool_load_futures.push_back(fut);
+                    self.pool_load_futures.push(fut);
                 }
             }
             rest => {
