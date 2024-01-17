@@ -177,6 +177,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .filter_map(|s| s)
             .flatten()
             .for_each(|(pool_infos, graph_edges, pair)| {
+                if graph_edges.is_empty() {
+                    return
+                }
                 for pool_info in pool_infos {
                     let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
                     // load exchange only if its not loaded already
@@ -194,9 +197,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     }
                 }
 
-                if graph_edges.is_empty() {
-                    return
-                }
                 self.graph_manager.add_subgraph(pair, graph_edges);
             })
     }
