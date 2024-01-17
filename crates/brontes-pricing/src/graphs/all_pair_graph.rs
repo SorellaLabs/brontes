@@ -139,7 +139,8 @@ impl AllPairGraph {
             return vec![]
         };
 
-        yen(
+        let t0 = SystemTime::now();
+        let res = yen(
             start_idx,
             |cur_node| {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
@@ -188,7 +189,12 @@ impl AllPairGraph {
                 })
                 .collect_vec()
         })
-        .collect_vec()
+        .collect_vec();
+
+        let t1 = SystemTime::now();
+        let dur = t1.duration_since(t0).unwrap().as_millis();
+        info!("yens took {}ms", dur);
+        res
     }
 
     pub fn get_all_known_addresses(&self) -> Vec<Address> {
