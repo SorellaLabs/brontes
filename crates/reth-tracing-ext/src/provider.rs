@@ -2,7 +2,7 @@ use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
-use reth_rpc::{eth::error::EthResult, EthApi, EthFilter};
+use reth_rpc::eth::error::EthResult;
 use reth_rpc_api::{EthApiServer, EthFilterApiServer};
 use reth_rpc_types::{
     state::StateOverride, BlockOverrides, CallRequest, Filter, Log, TransactionReceipt,

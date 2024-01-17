@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use alloy_primitives::{Bytes, Log};
+use alloy_primitives::Log;
 use alloy_sol_types::SolEvent;
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, AddressToFactory,
     Libmdbx,
 };
-use brontes_pricing::types::{DexPriceMsg, DiscoveredPool};
+use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
@@ -17,18 +17,13 @@ use brontes_types::{
 use futures::future::join_all;
 use hex_literal::hex;
 use itertools::Itertools;
-use malachite::strings::ToLowerHexString;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
-use reth_rpc_types::trace::parity::{Action, Action::Call};
+use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::error;
 
-use super::discovery_classifiers::FactoryDecoderDispatch;
-use crate::{
-    action_classifiers::*, discovery_classifiers::UniswapDecoder, ActionCollection, StaticBindings,
-    UniswapV2Factory, UniswapV3Factory,
-};
+use crate::{classifiers::*, ActionCollection, FactoryDecoderDispatch, StaticBindings};
 
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
@@ -440,19 +435,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
 
             if let Some(res) = res {
                 return (vec![DexPriceMsg::Update(res.0)], res.1)
-            } else {
-                let selector = match &trace.trace.action {
-                    Call(action) => &action.input[0..4],
-                    _ => unreachable!(),
-                };
-
-                let hex_selector: Bytes = Bytes::copy_from_slice(selector);
-
-                tracing::warn!(
-                    "Classification failed on contract address: {:?}, with function selector: {:?}",
-                    target_address.0,
-                    hex_selector.to_lower_hex_string()
-                );
             }
         }
 
@@ -460,7 +442,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             let discovered_pools = match protocol {
                 StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
                     UniswapDecoder::dispatch(
-                        UniswapV2Factory::PairCreated::SIGNATURE_HASH.0,
+                        crate::UniswapV2Factory::PairCreated::SIGNATURE_HASH.0,
                         self.provider.clone(),
                         protocol,
                         &trace.logs,
@@ -471,7 +453,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 }
                 StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
                     UniswapDecoder::dispatch(
-                        UniswapV3Factory::PoolCreated::SIGNATURE_HASH.0,
+                        crate::UniswapV3Factory::PoolCreated::SIGNATURE_HASH.0,
                         self.provider.clone(),
                         protocol,
                         &trace.logs,

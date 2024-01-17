@@ -1,38 +1,32 @@
-use alloy_primitives::{Address, Bytes, LogData, U256};
-use alloy_sol_types::{SolCall, SolEvent};
+use alloy_primitives::{Address, U256};
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
-use brontes_pricing::types::PoolUpdate;
-use brontes_types::normalized_actions::{Actions, NormalizedBurn, NormalizedMint, NormalizedSwap};
+use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::{mdbx::RO, transaction::DbTx};
-use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{
-    enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
-    SushiSwapV2::{burnCall, mintCall, swapCall, Burn, Mint, SushiSwapV2Calls, Swap, Sync},
-};
+use crate::UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, Sync};
 
 action_impl!(
     V2SwapImpl,
     Swap,
     swapCall,
     [Sync, Swap],
-    SushiSwapV2,
+    UniswapV2,
     call_data: true,
     logs: true,
     |trace_index,
     from_address: Address,
     target_address: Address,
     call_data: swapCall,
-    logs: (Sync,Swap),
+    log_data: (Sync,Swap),
     db_tx: &LibmdbxTx<RO>| {
-        let logs = logs.1;
-
+        let data = log_data.1;
         let recipient = call_data.to;
+
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let amount_0_in: U256 = logs.amount0In;
+        let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
             return Some(NormalizedSwap {
                 pool: target_address,
@@ -41,8 +35,8 @@ action_impl!(
                 recipient,
                 token_in: token_1,
                 token_out: token_0,
-                amount_in: logs.amount1In,
-                amount_out: logs.amount0Out,
+                amount_in: data.amount1In,
+                amount_out: data.amount0Out,
             })
         } else {
             return Some(NormalizedSwap {
@@ -52,8 +46,8 @@ action_impl!(
                 recipient,
                 token_in: token_0,
                 token_out: token_1,
-                amount_in: logs.amount0In,
-                amount_out: logs.amount1Out,
+                amount_in: data.amount0In,
+                amount_out: data.amount1Out,
             })
         }
     }
@@ -64,16 +58,15 @@ action_impl!(
     Mint,
     mintCall,
     [Sync, Mint],
-    SushiSwapV2,
+    UniswapV2,
     logs: true,
     call_data: true,
     |trace_index,
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
-     log_data: (Sync, Mint), db_tx: &LibmdbxTx<RO>| {
+     log_data: (Sync,Mint), db_tx: &LibmdbxTx<RO>| {
         let log_data = log_data.1;
-
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedMint {
@@ -86,20 +79,19 @@ action_impl!(
         })
     }
 );
-
 action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
     [Sync, Burn],
-    SushiSwapV2,
+    UniswapV2,
     call_data: true,
     logs: true,
     |trace_index,
      from_address: Address,
      target_address: Address,
      call_data: burnCall,
-     log_data: (Sync, Burn), db_tx: &LibmdbxTx<RO>| {
+     log_data: (Sync,Burn), db_tx: &LibmdbxTx<RO>| {
         let log_data = log_data.1;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
@@ -114,4 +106,4 @@ action_impl!(
     }
 );
 
-action_dispatch!(SushiSwapV2Classifier, V2SwapImpl, V2BurnImpl, V2MintImpl);
+action_dispatch!(UniswapV2Classifier, V2SwapImpl, V2BurnImpl, V2MintImpl);
