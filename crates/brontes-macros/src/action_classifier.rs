@@ -17,7 +17,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     let mut option_parsing = Vec::new();
 
-    let (log_idx, log_type): (Vec<Index>, Vec<Ident>) = log_types
+    let (log_idx, log_types): (Vec<Index>, Vec<Ident>) = log_types
         .into_iter()
         .enumerate()
         .map(|(i, n)| (Index::from(i), n))
@@ -28,7 +28,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     if give_calldata {
         option_parsing.push(quote!(
-                let call_data = enum_unwrap!(data, #exchange_mod_name, #decalled);
+                let call_data = crate::enum_unwrap!(data, #exchange_mod_name, #decalled);
         ));
     }
 
@@ -39,7 +39,8 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                 #(
                     {
                     let log = &logs[#log_idx];
-                    #log_type::decode_log_data(&log.data, false).ok()?
+                    <crate::#exchange_mod_name::#log_types as ::alloy_sol_types::SolEvent>
+                        ::decode_log_data(&log.data, false).ok()?
                     }
 
                 ),*
@@ -49,7 +50,9 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     if give_returns {
         option_parsing.push(quote!(
-                let return_data = #call_type::abi_decode_returns(&return_data, false).map_err(|e| {
+                let return_data = <crate::#exchange_mod_name::#call_type
+                as alloy_sol_types::SolCall>
+                ::abi_decode_returns(&return_data, false).map_err(|e| {
                     tracing::error!("return data failed to decode {:#?}", return_data);
                     e
                 }).unwrap();
@@ -107,27 +110,30 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     };
 
     quote! {
+
         #[derive(Debug, Default)]
         pub struct #exchange_name;
 
-        impl IntoAction for #exchange_name {
+        impl crate::IntoAction for #exchange_name {
             fn get_signature(&self) -> [u8; 4] {
-                #call_type::SELECTOR
+                <#call_type as alloy_sol_types::SolCall>::SELECTOR
             }
 
             #[allow(unused)]
             fn decode_trace_data(
                 &self,
                 index: u64,
-                data: StaticReturnBindings,
-                return_data: Bytes,
-                from_address: Address,
-                target_address: Address,
+                data: crate::StaticReturnBindings,
+                return_data: ::alloy_primitives::Bytes,
+                from_address: ::alloy_primitives::Address,
+                target_address: ::alloy_primitives::Address,
                 logs: &Vec<::alloy_primitives::Log>,
-                db_tx: &LibmdbxTx<RO>,
-            ) -> Option<Actions> {
+                db_tx: &::brontes_database_libmdbx::implementation::tx::LibmdbxTx<
+                ::reth_db::mdbx::RO
+                >,
+            ) -> Option<::brontes_types::normalized_actions::Actions> {
                 #(#option_parsing)*
-                Some(Actions::#action_type(#fn_call?))
+                Some(::brontes_types::normalized_actions::Actions::#action_type(#fn_call?))
             }
         }
     }
@@ -267,23 +273,31 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
         pub struct #struct_name(#(pub #name,)*);
 
 
-        impl ActionCollection for #struct_name {
+        impl crate::ActionCollection for #struct_name {
 
             fn dispatch(
                 &self,
                 sig: &[u8],
                 index: u64,
-                data: StaticReturnBindings,
-                return_data: Bytes,
-                from_address: Address,
-                target_address: Address,
+                data: crate::StaticReturnBindings,
+                return_data: ::alloy_primitives::Bytes,
+                from_address: ::alloy_primitives::Address,
+                target_address: ::alloy_primitives::Address,
                 logs: &Vec<::alloy_primitives::Log>,
-                db_tx: &LibmdbxTx<RO>,
+                db_tx: &::brontes_database_libmdbx::implementation::tx::LibmdbxTx<
+                    ::reth_db::mdbx::RO
+                >,
                 block: u64,
                 tx_idx: u64,
-            ) -> Option<(PoolUpdate, Actions)> {
-                if sig == self.0.get_signature() {
-                    return self.0.decode_trace_data(
+            ) -> Option<(
+                    ::brontes_pricing::types::PoolUpdate,
+                    ::brontes_types::normalized_actions::Actions
+                )> {
+                let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(sig);
+
+                if sig == crate::IntoAction::get_signature(&self.0) {
+                    return crate::IntoAction::decode_trace_data(
+                            &self.0,
                             index,
                             data,
                             return_data,
@@ -292,18 +306,27 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             logs,
                             db_tx
                         ).map(|res| {
-                        (PoolUpdate {
+                        (::brontes_pricing::types::PoolUpdate {
                             block,
                             tx_idx,
                             logs: logs.clone(),
                             action: res.clone()
                         },
-                        res)
-                    })
+                        res)}).or_else(|| {
+                            ::tracing::error!(
+                                "classifier failed on function sig: {:?} for address: {:?}",
+                                ::malachite::strings::ToLowerHexString::to_lower_hex_string(
+                                    &hex_selector
+                                ),
+                                target_address.0,
+                            );
+                            None
+                        })
 
                 }
-                #( else if sig == self.#i.get_signature() {
-                     return self.#i.decode_trace_data(
+                #( else if sig == crate::IntoAction::get_signature(&self.#i) {
+                     return crate::IntoAction::decode_trace_data(
+                            &self.#i,
                             index,
                             data,
                             return_data,
@@ -312,15 +335,33 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             logs,
                             db_tx
                     ).map(|res| {
-                        (PoolUpdate {
+                        (::brontes_pricing::types::PoolUpdate {
                             block,
                             tx_idx,
                             logs: logs.clone(),
                             action: res.clone()
                         },
-                        res)})
+                        res)}).or_else(|| {
+                            ::tracing::error!(
+                                "classifier failed on function sig: {:?} for address: {:?}",
+                                ::malachite::strings::ToLowerHexString::to_lower_hex_string(
+                                    &hex_selector
+                                ),
+                                target_address.0,
+                            );
+                            None
+                        })
+
                     }
                 )*
+
+                ::tracing::debug!(
+                    "no inspector for function selector: {:?} with contract address: {:?}",
+                    ::malachite::strings::ToLowerHexString::to_lower_hex_string(
+                        &hex_selector
+                    ),
+                    target_address.0,
+                );
 
                 None
             }

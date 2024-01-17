@@ -1,21 +1,15 @@
-use alloy_primitives::{Address, Bytes, LogData, U256};
-use alloy_sol_types::SolCall;
+use alloy_primitives::{Address, U256};
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
-use brontes_pricing::types::PoolUpdate;
 use brontes_types::normalized_actions::{
-    Actions, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
+    NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
 use reth_db::{mdbx::RO, transaction::DbTx};
-use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{
-    enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
-    UniswapV3::{
-        burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
-        swapReturn, UniswapV3Calls,
-    },
+use crate::UniswapV3::{
+    burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall, swapReturn,
 };
+
 action_impl!(
     V3SwapImpl,
     Swap,
@@ -24,7 +18,12 @@ action_impl!(
     UniswapV3,
     call_data: true,
     return_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, return_data: swapReturn,  db_tx: &LibmdbxTx<RO>| {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: swapCall,
+    return_data: swapReturn,
+    db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;

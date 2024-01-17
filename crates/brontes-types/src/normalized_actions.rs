@@ -338,7 +338,6 @@ impl NormalizedAction for Actions {
             Self::Collect(_) => false,
             Self::Unclassified(_) => false,
             Self::Revert => false,
-            _ => unreachable!(),
         }
     }
 
@@ -364,7 +363,7 @@ impl NormalizedAction for Actions {
             }
             Actions::Collect(_) => unreachable!(),
             Actions::Unclassified(_) => unreachable!(),
-            _ => unreachable!(),
+            Actions::Revert => unreachable!(),
         }
     }
 
@@ -379,24 +378,24 @@ impl NormalizedAction for Actions {
             Self::Liquidation(t) => t.trace_index,
             Self::Collect(c) => c.trace_index,
             Self::Unclassified(u) => u.trace_idx,
-            _ => unreachable!(),
+            Self::Revert => unreachable!(),
         }
     }
 
     fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) -> Vec<u64> {
         match self {
-            Self::Swap(s) => unreachable!("Swap type never requires complex classification"),
+            Self::Swap(_) => unreachable!("Swap type never requires complex classification"),
             Self::FlashLoan(f) => f.finish_classification(actions),
-            Self::Batch(b) => todo!(),
-            Self::Mint(m) => unreachable!(),
-            Self::Burn(b) => unreachable!(),
-            Self::Transfer(t) => unreachable!(),
-            Self::Liquidation(t) => todo!(),
-            Self::Collect(c) => unreachable!("Collect type never requires complex classification"),
-            Self::Unclassified(u) => {
+            Self::Batch(_) => todo!(),
+            Self::Mint(_) => unreachable!(),
+            Self::Burn(_) => unreachable!(),
+            Self::Transfer(_) => unreachable!(),
+            Self::Liquidation(_) => todo!(),
+            Self::Collect(_) => unreachable!("Collect type never requires complex classification"),
+            Self::Unclassified(_) => {
                 unreachable!("Unclassified type never requires complex classification")
             }
-            _ => unreachable!(),
+            Self::Revert => unreachable!("a revert should never require complex classification"),
         }
     }
 }

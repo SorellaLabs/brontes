@@ -1,17 +1,10 @@
-use alloy_primitives::{Address, Bytes, LogData};
-use alloy_sol_types::SolCall;
+use alloy_primitives::Address;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
-use brontes_pricing::types::PoolUpdate;
-use brontes_types::normalized_actions::{Actions, NormalizedFlashLoan, NormalizedLiquidation};
+use brontes_types::normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation};
 use reth_db::{mdbx::RO, transaction::DbTx};
-use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{
-    enum_unwrap,
-    AaveV3::{flashLoanCall, flashLoanSimpleCall, liquidationCallCall, AaveV3Calls},
-    ActionCollection, IntoAction, StaticReturnBindings,
-};
+use crate::AaveV3::{flashLoanCall, flashLoanSimpleCall, liquidationCallCall};
 
 action_impl!(
     LiquidationCallImplV3,
