@@ -72,6 +72,12 @@ impl SubGraphRegistry {
         let is_disjoint_graph = graph.remove_bad_node(pool_pair, pool_address);
         if !is_disjoint_graph {
             self.sub_graphs.insert(subgraph, graph);
+        } else {
+            // remove pair from token lookup 
+            self.token_to_sub_graph.retain(|k, v| {
+                v.remove(&subgraph);
+                !v.is_empty()
+            });
         }
 
         is_disjoint_graph
