@@ -50,14 +50,14 @@ pub struct LazyResult {
 
 type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-const MAX_CALLS: usize = 25;
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
+    max_tasks:         usize,
     provider:          Arc<T>,
     pool_load_futures: FuturesOrdered<JoinHandle<Result<PoolFetchSuccess, PoolFetchError>>>,
 
-    buf: VecDeque<JoinHandle<Result<PoolFetchSuccess, PoolFetchError>>>,
+    buf: VecDeque<Pin<Box<dyn Future<Output = Result<PoolFetchSuccess, PoolFetchError>>>>>,
     /// addresses currently being processed.
     pool_buf: HashSet<Address>,
     /// requests we are processing for a given block.
@@ -70,8 +70,9 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
-    pub fn new(provider: Arc<T>) -> Self {
+    pub fn new(provider: Arc<T>, max_tasks: usize) -> Self {
         Self {
+            max_tasks,
             pool_buf: HashSet::default(),
             pool_load_futures: FuturesOrdered::default(),
             buf: VecDeque::new(),
@@ -113,7 +114,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
         match ex_type {
             StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
-                let fut = tokio::spawn(async move {
+                let fut = Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let (pool, res) = if let Ok(pool) = UniswapV2Pool::new_load_on_block(
@@ -149,14 +150,14 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                     ))
                 });
 
-                if self.pool_load_futures.len() >= MAX_CALLS {
+                if self.pool_load_futures.len() >= self.max_tasks {
                     self.buf.push_back(fut);
                 } else {
-                    self.pool_load_futures.push_back(fut);
+                    self.pool_load_futures.push_back(tokio::spawn(fut));
                 }
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
-                let fut = tokio::spawn(async move {
+                let fut = Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let (pool, res) = if let Ok(pool) =
@@ -189,10 +190,10 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                     ))
                 });
 
-                if self.pool_load_futures.len() >= MAX_CALLS {
+                if self.pool_load_futures.len() >= self.max_tasks {
                     self.buf.push_back(fut);
                 } else {
-                    self.pool_load_futures.push_back(fut);
+                    self.pool_load_futures.push_back(tokio::spawn(fut));
                 }
             }
             rest => {

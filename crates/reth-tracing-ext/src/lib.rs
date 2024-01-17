@@ -8,11 +8,9 @@ use reth_blockchain_tree::{
 };
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{Address, BlockId, Bytes, PruneModes, MAINNET, U64};
-use reth_provider::{providers::BlockchainProvider, ProviderFactory, StateProvider};
+use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
+use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{
-    database::StateProviderDatabase,
-    db::CacheDB,
     inspectors::GasInspector,
     tracing::{
         types::{CallKind, CallTraceNode},
@@ -40,7 +38,7 @@ use reth_transaction_pool::{
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use revm::interpreter::InstructionResult;
-use revm_primitives::{Account, ExecutionResult, HashMap, SpecId, KECCAK_EMPTY};
+use revm_primitives::{ExecutionResult, SpecId, KECCAK_EMPTY};
 use tokio::runtime::Handle;
 
 mod provider;
