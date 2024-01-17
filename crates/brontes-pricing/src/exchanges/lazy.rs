@@ -49,7 +49,7 @@ pub struct LazyResult {
 
 type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-const MAX_CALLS: usize = 50;
+const MAX_CALLS: usize = 15;
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
@@ -219,7 +219,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Poll::Ready(Some((result))) = self.pool_load_futures.poll_next_unpin(cx) {
             if let Some(next) = self.buf.pop_front() {
-            self.pool_load_futures.push_back(next);
+                self.pool_load_futures.push_back(next);
             }
 
             match result {
