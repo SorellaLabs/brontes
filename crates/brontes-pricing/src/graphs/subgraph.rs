@@ -128,8 +128,8 @@ impl PairSubGraph {
     }
 
     pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {
-        let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return false};
-        let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return false};
+        let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return false };
+        let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return false };
 
         let n0 = (*n0).into();
         let n1 = (*n1).into();
