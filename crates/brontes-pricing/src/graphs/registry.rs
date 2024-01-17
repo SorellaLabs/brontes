@@ -127,7 +127,7 @@ impl SubGraphRegistry {
     }
 
     pub fn all_unloaded_state(&self, edges: &Vec<SubGraphEdge>) -> Vec<PoolPairInfoDirection> {
-         edges
+        edges
             .into_iter()
             .filter(|e| !self.edge_state.contains_key(&e.pool_addr))
             .map(|f| f.info)
