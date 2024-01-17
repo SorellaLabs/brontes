@@ -132,8 +132,13 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
                 $(
                     Tables::$tables => {
                         db.write_table(
-                            &vec![brontes_database_libmdbx::tables::$tables::into_table_data($arg0, $arg1)]
-                            ).unwrap();
+                            &vec![
+                            brontes_database_libmdbx::tables::$tables::into_table_data(
+                                    $arg0,
+                                    $arg1
+                                )
+                            ]
+                        ).unwrap();
                     }
                 )+
             }
