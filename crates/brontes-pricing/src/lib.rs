@@ -84,6 +84,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
     pub fn new(
+        max_pool_loading_tasks: usize,
         quote_asset: Address,
         graph_manager: GraphManager,
         update_rx: UnboundedReceiver<DexPriceMsg>,
@@ -98,7 +99,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             update_rx,
             graph_manager,
             dex_quotes: HashMap::default(),
-            lazy_loader: LazyExchangeLoader::new(provider),
+            lazy_loader: LazyExchangeLoader::new(provider, max_pool_loading_tasks),
             current_block,
             completed_block: current_block,
             overlap_update: None,
@@ -529,19 +530,22 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             match self.update_rx.poll_recv(cx).map(|inner| {
                 inner.and_then(|action| match action {
                     DexPriceMsg::Update(update) => Some(update),
-                    DexPriceMsg::DiscoveredPool(DiscoveredPool {
-                        protocol,
-                        tokens,
-                        pool_address,
-                    }) => {
+                    DexPriceMsg::DiscoveredPool(
+                        DiscoveredPool { protocol, tokens, pool_address },
+                        block,
+                    ) => {
                         if tokens.len() == 2 {
-                            self.graph_manager.add_pool(
-                                Pair(tokens[0], tokens[1]),
+                            // we add one to the block as we want to give a single block buffer
+                            // before we insert the new pool to avoid
+                            // the rare edge case where a graph search
+                            // path uses this pool before the init tx in
+                            // the same block.
+                            self.new_graph_pairs.entry(block + 1).or_default().push((
                                 pool_address,
                                 protocol,
-                            );
-                        } else {
-                        }
+                                Pair(tokens[0], tokens[1]),
+                            ))
+                        };
                         None
                     }
                     DexPriceMsg::Closed => None,
@@ -561,12 +565,12 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
                 Poll::Ready(None) => {
                     if (self.lazy_loader.is_empty() && self.new_graph_pairs.is_empty()) {
-                        info!("on close");
                         return Poll::Ready(self.on_close())
                     }
                 }
                 Poll::Pending => break,
             }
+
             // drain all loaded pools
             while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                 self.on_pool_resolve(state)

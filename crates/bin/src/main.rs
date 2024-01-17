@@ -376,8 +376,7 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
     let db_path = get_env_vars()?;
 
-    let max_tasks = determine_max_tasks(config.max_tasks);
-
+    let tracing_max_tasks = determine_max_tasks(config.max_tasks);
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
     let metrics_listener = PoirotMetricsListener::new(metrics_rx);
@@ -391,8 +390,12 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
         Box::leak(Box::new(InspectorHolder::new(config.quote_asset.parse().unwrap(), &libmdbx)));
     let inspectors: Inspectors = inspector_holder.get_inspectors();
 
-    let (manager, tracer) =
-        TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), max_tasks);
+    let (manager, tracer) = TracingClient::new(
+        Path::new(&db_path),
+        tokio::runtime::Handle::current(),
+        tracing_max_tasks,
+    );
+
     tokio::spawn(manager);
 
     let parser = DParser::new(
@@ -402,17 +405,26 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
 
-    let cpus = determine_max_tasks(config.max_tasks);
-
-    let range = config.end_block - config.start_block;
-
-    let cpus_min = range / config.min_batch_size;
-
     let mut scope: TokioScope<'_, ()> = unsafe { Scope::create() };
 
-    // the amount of cpu's we want to use
+    // calculate the chunk size using min batch size and max_tasks.
+    // max tasks defaults to 50% of physical threads of the system if not set
+    let cpus = determine_max_tasks(config.max_tasks);
+    let range = config.end_block - config.start_block;
+    let cpus_min = range / config.min_batch_size;
     let cpus = std::cmp::min(cpus_min, cpus);
     let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
+
+    let remaining_cpus = if config.max_tasks.is_some() {
+        determine_max_tasks(config.max_tasks)
+    } else {
+        determine_max_tasks(None) * 2 - config.max_tasks.unwrap()
+    };
+
+    let chunks_amount = range / chunk_size;
+    // because these are lightweight tasks, we can stack them pretty easily without
+    // much overhead concern
+    let max_pool_loading_tasks = remaining_cpus / chunks_amount * 5;
 
     for (i, mut chunk) in (config.start_block..=config.end_block)
         .chunks(chunk_size.try_into().unwrap())
@@ -426,6 +438,7 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
         scope.spawn(spawn_batches(
             config.quote_asset.parse().unwrap(),
+            max_pool_loading_tasks as usize,
             i as u64,
             start_block,
             end_block,
@@ -448,6 +461,7 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
 async fn spawn_batches(
     quote_asset: Address,
+    max_pool_loading_tasks: usize,
     batch_id: u64,
     start_block: u64,
     end_block: u64,
@@ -455,8 +469,17 @@ async fn spawn_batches(
     libmdbx: &'static Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
-    DataBatching::new(quote_asset, batch_id, start_block, end_block, &parser, &libmdbx, &inspectors)
-        .await
+    DataBatching::new(
+        quote_asset,
+        max_pool_loading_tasks,
+        batch_id,
+        start_block,
+        end_block,
+        &parser,
+        &libmdbx,
+        &inspectors,
+    )
+    .await
 }
 
 fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
