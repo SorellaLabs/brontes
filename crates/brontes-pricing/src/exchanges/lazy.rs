@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     pin::Pin,
     sync::Arc,
     task::Poll,
@@ -49,12 +49,15 @@ pub struct LazyResult {
 
 type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
+const MAX_CALLS: usize = 50;
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
-    provider: Arc<T>,
+    provider:          Arc<T>,
     pool_load_futures:
         FuturesOrdered<BoxedFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
+
+    buf: VecDeque<BoxedFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
     /// addresses currently being processed.
     pool_buf: HashSet<Address>,
     /// requests we are processing for a given block.
@@ -71,6 +74,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         Self {
             pool_buf: HashSet::default(),
             pool_load_futures: FuturesOrdered::default(),
+            buf: VecDeque::new(),
             provider,
             req_per_block: HashMap::default(),
             protocol_address_to_parent_pairs: HashMap::default(),
@@ -109,7 +113,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
         match ex_type {
             StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
-                self.pool_load_futures.push_back(Box::pin(async move {
+                let fut = Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let (pool, res) = if let Ok(pool) = UniswapV2Pool::new_load_on_block(
@@ -143,10 +147,16 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                         PoolState::new(crate::types::PoolVariants::UniswapV2(pool)),
                         res,
                     ))
-                }))
+                });
+
+                if self.pool_load_futures.len() >= MAX_CALLS {
+                    self.buf.push_back(fut);
+                } else {
+                    self.pool_load_futures.push_back(fut);
+                }
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
-                self.pool_load_futures.push_back(Box::pin(async move {
+                let fut = Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let (pool, res) = if let Ok(pool) =
@@ -177,7 +187,13 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                         PoolState::new(crate::types::PoolVariants::UniswapV3(pool)),
                         res,
                     ))
-                }));
+                });
+
+                if self.pool_load_futures.len() >= MAX_CALLS {
+                    self.buf.push_back(fut);
+                } else {
+                    self.pool_load_futures.push_back(fut);
+                }
             }
             rest => {
                 error!(exchange=?ex_type, "no state updater is build for");
@@ -202,6 +218,10 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Poll::Ready(Some((result))) = self.pool_load_futures.poll_next_unpin(cx) {
+            if let Some(next) = self.buf.pop_front() {
+            self.pool_load_futures.push_back(next);
+            }
+
             match result {
                 Ok((block, addr, state, load)) => {
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
