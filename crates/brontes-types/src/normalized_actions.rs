@@ -3,7 +3,10 @@ use std::{collections::HashMap, fmt::Debug};
 use alloy_primitives::Log;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::clickhouse::{self, InsertRow, Row};
+use sorella_db_databases::{
+    clickhouse,
+    clickhouse::{DbRow, InsertRow, Row},
+};
 
 use crate::structured_trace::TransactionTraceWithLogs;
 
@@ -253,7 +256,7 @@ pub struct NormalizedTransfer {
     pub amount:      U256,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedMint {
     pub trace_index: u64,
     pub from:        Address,
@@ -263,7 +266,7 @@ pub struct NormalizedMint {
     pub amount:      Vec<U256>,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBurn {
     pub trace_index: u64,
     pub from:        Address,
@@ -273,7 +276,7 @@ pub struct NormalizedBurn {
     pub amount:      Vec<U256>,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedCollect {
     pub trace_index: u64,
     pub to:          Address,
