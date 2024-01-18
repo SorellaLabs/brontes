@@ -7,7 +7,6 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_primitives::{Address, FixedBytes};
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_database::Metadata;
@@ -35,9 +34,7 @@ type ComposeFunction = Box<
 >;
 
 //TODO: Improve docs after reading
-/// This macro is used to define an `MEV_FILTER`
-/// It ensures that the MEV types are ordered correctly and that
-/// lower-level actions are composed before higher-level ones.
+/// This macro is used to define an `MEV_COMPOSABILITY_FILTER`
 ///
 /// The macro takes pairs of MEV types and their dependencies. Each pair is
 /// defined as `MevType => DependentMevTypes;`.
@@ -49,28 +46,14 @@ type ComposeFunction = Box<
 ///   given type.
 /// - A `Vec<MevType>` which is a vector of MEV types that the current MEV type
 ///   depends on.
-///
-/// # Example
-///
-/// ```compile_fail
-/// mev_composability! {
-///     MevType1 => DependentMevType1, DependentMevType2;
-///     MevType2 => DependentMevType3;
-/// }
-/// ```
-///
-/// In this example, `MevType1` depends on `DependentMevType1` and
-/// `DependentMevType2`, and `MevType2` depends on `DependentMevType3`.
-/// The macro will ensure that the dependencies are composed before the
-/// dependent MEV types.
 
 #[macro_export]
 macro_rules! mev_composability {
     ($($mev_type:ident => $($deps:ident),+;)+) => {
         lazy_static! {
-        static ref MEV_FILTER: &'static [(
+        static ref MEV_COMPOSABILITY_FILTER: &'static [(
                 MevType,
-                Option<ComposeFunction>,
+                ComposeFunction,
                 Vec<MevType>)] = {
             &*Box::leak(Box::new([
                 $((
@@ -85,18 +68,39 @@ macro_rules! mev_composability {
 }
 
 mev_composability!(
+    JitSandwich => Sandwich, Jit;
+);
+
+#[macro_export]
+macro_rules! mev_deduplication {
+    ($($mev_type:ident => $($deps:ident),+;)+) => {
+        lazy_static! {
+        static ref MEV_DEDUPLICATION_FILTER: &'static [(
+                MevType,
+                Vec<MevType>)] = {
+            &*Box::leak(Box::new([
+                $((
+                        MevType::$mev_type,
+                        [$(MevType::$deps,)+].to_vec()),
+                   )+
+            ]))
+        };
+    }
+    };
+}
+
+mev_deduplication!(
     Sandwich => Backrun;
     CexDex => Backrun;
     Sandwich => CexDex;
-    JitSandwich => Sandwich, Jit;
 );
 
 /// the compose function is used in order to be able to properly cast
 /// in the lazy static
-fn get_compose_fn(mev_type: MevType) -> Option<ComposeFunction> {
+fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     match mev_type {
-        MevType::JitSandwich => Some(Box::new(compose_sandwich_jit)),
-        _ => None,
+        MevType::JitSandwich => Box::new(compose_sandwich_jit),
+        _ => unreachable!("This mev type does not have a compose function"),
     }
 }
 
@@ -159,14 +163,16 @@ impl<'a, const N: usize> Composer<'a, N> {
 
         let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
-        MEV_FILTER
+        MEV_COMPOSABILITY_FILTER
             .iter()
             .for_each(|(head_mev_type, compose_fn, dependencies)| {
-                if let Some(compose_fn) = compose_fn {
-                    self.try_compose_mev(head_mev_type, dependencies, compose_fn, &mut sorted_mev);
-                } else {
-                    self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
-                }
+                self.try_compose_mev(head_mev_type, dependencies, compose_fn, &mut sorted_mev);
+            });
+
+        MEV_DEDUPLICATION_FILTER
+            .iter()
+            .for_each(|(head_mev_type, dependencies)| {
+                self.deduplicate_mev(head_mev_type, dependencies, &mut sorted_mev);
             });
 
         let flattened_mev = sorted_mev
@@ -183,15 +189,15 @@ impl<'a, const N: usize> Composer<'a, N> {
         Poll::Ready((header, flattened_mev))
     }
 
-    fn replace_dep_filter(
+    //TODO: Clean up this function
+    fn deduplicate_mev(
         &mut self,
         head_mev_type: &MevType,
         deps: &[MevType],
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
     ) {
-        // TODO
         let Some(head_mev) = sorted_mev.get(head_mev_type) else { return };
-        let flattend_indexes = head_mev
+        let flattened_indexes = head_mev
             .iter()
             .flat_map(|(_, specific)| {
                 let hashes = specific.mev_transaction_hashes();
@@ -224,7 +230,7 @@ impl<'a, const N: usize> Composer<'a, N> {
             })
             .collect::<Vec<(MevType, usize)>>();
 
-        for (mev_type, index) in flattend_indexes {
+        for (mev_type, index) in flattened_indexes {
             let entry = sorted_mev.get_mut(&mev_type).unwrap();
             if entry.len() > index {
                 entry.remove(index);
@@ -347,7 +353,7 @@ pub mod tests {
     use super::*;
     use crate::{
         atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
-        sandwich::SandwichInspector,
+        sandwich::LongTailInspector,
     };
 
     unsafe fn cast_lifetime<'f, 'a, I>(item: &'a I) -> &'f I {
@@ -446,7 +452,7 @@ pub mod tests {
         let cex_dex = Box::new(CexDexInspector::new(USDC)) as Box<dyn Inspector>;
         let backrun = Box::new(AtomicBackrunInspector::new(USDC)) as Box<dyn Inspector>;
         let jit = Box::new(JitInspector::new(USDC)) as Box<dyn Inspector>;
-        let sandwich = Box::new(SandwichInspector::new(USDC)) as Box<dyn Inspector>;
+        let sandwich = Box::new(LongTailInspector::new(USDC)) as Box<dyn Inspector>;
 
         let inspectors: [&'static Box<dyn Inspector>; 2] = unsafe {
             [

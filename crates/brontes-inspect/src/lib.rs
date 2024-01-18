@@ -84,6 +84,7 @@ pub mod composer;
 pub mod jit;
 #[allow(dead_code, unused_imports)]
 pub mod liquidations;
+pub mod long_tail;
 pub mod sandwich;
 pub mod shared_utils;
 
