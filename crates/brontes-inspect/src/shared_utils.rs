@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{hex, B256};
 use brontes_database::{Metadata, Pair};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -12,14 +11,11 @@ use brontes_types::{
     ToScaledRational,
 };
 use malachite::{
-    num::{
-        basic::traits::{One, Zero},
-        conversion::{string::options::ToSciOptions, traits::ToSci},
-    },
+    num::basic::traits::{One, Zero},
     Rational,
 };
 use reth_primitives::Address;
-use tracing::{info, log::debug};
+use tracing::log::debug;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {
@@ -167,17 +163,17 @@ impl SharedInspectorUtils<'_> {
                 // add to transfer recipient
                 let mut inner = deltas.entry(transfer.to).or_default();
                 apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-                continue
             }
 
             // fill backwards
-            if deltas.contains_key(&transfer.to) {
-                let mut inner = deltas.entry(transfer.from).or_default();
-                apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
-
-                let mut inner = deltas.entry(transfer.to).or_default();
-                apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-            }
+            // if deltas.contains_key(&transfer.to) {
+            //     let mut inner = deltas.entry(transfer.from).or_default();
+            //     apply_entry(transfer.token, -adjusted_amount.clone(), &mut
+            // inner);
+            //
+            //     let mut inner = deltas.entry(transfer.to).or_default();
+            //     apply_entry(transfer.token, adjusted_amount.clone(), &mut
+            // inner); }
         }
     }
 }
