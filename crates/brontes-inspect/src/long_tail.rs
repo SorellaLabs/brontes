@@ -38,7 +38,6 @@ impl Inspector for LongTailInspector<'_> {
         todo!()
     }
 }
-
-- atomically profitable 
-- (leading zeros could be an indicator but I really doubt they would bother for long tail)
-- fresh contract with repeated calls to the same function
+//atomically profitable
+// (leading zeros could be an indicator but I really doubt they would bother for
+// long tail) fresh contract with repeated calls to the same function
