@@ -12,8 +12,10 @@ pub use classifier::*;
 pub mod bindings;
 use bindings::*;
 
+/*
 #[cfg(feature = "tests")]
 pub mod test_utils;
+*/
 
 mod action_classifiers;
 pub use action_classifiers::*;

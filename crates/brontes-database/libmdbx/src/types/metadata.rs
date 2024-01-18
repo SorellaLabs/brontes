@@ -8,7 +8,7 @@ use reth_db::{
 use reth_primitives::{Address, TxHash, U256};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use super::{
     utils::{option_address, u256},
