@@ -80,12 +80,15 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.tx_roots.iter().map(|r| r.tx_hash).collect()
     }
 
-    pub fn inspect<F>(&self, hash: B256, call: F) -> Vec<Vec<V>>
+    /// Collects all subsets of actions that match the action criteria specified
+    /// by the closure. This is useful for collecting the subtrees of a
+    /// transaction that contain the wanted actions.
+    pub fn collect_spans<F>(&self, hash: B256, call: F) -> Vec<Vec<V>>
     where
         F: Fn(&Node<V>) -> bool,
     {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
-            root.inspect(&call)
+            root.collect_spans(&call)
         } else {
             vec![]
         }
@@ -133,13 +136,13 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// Collects all subsets of actions that match the action criteria specified
     /// by the closure. This is useful for collecting the subtrees of a
     /// transaction that contain the wanted actions.
-    pub fn collect_spans<F>(&self, call: F) -> HashMap<B256, Vec<Vec<V>>>
+    pub fn collect_spans_all<F>(&self, call: F) -> HashMap<B256, Vec<Vec<V>>>
     where
         F: Fn(&Node<V>) -> bool + Send + Sync,
     {
         self.tx_roots
             .par_iter()
-            .map(|r| (r.tx_hash, r.inspect(&call)))
+            .map(|r| (r.tx_hash, r.collect_spans(&call)))
             .collect()
     }
 
@@ -156,6 +159,16 @@ impl<V: NormalizedAction> BlockTree<V> {
             .par_iter_mut()
             .flat_map(|root| root.dyn_classify(&find, &call))
             .collect()
+    }
+
+    pub fn modify_node_if_contains_childs<T, F>(&mut self, find: T, modify: F)
+    where
+        T: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
+        F: Fn(&mut Node<V>) + Send + Sync,
+    {
+        self.tx_roots
+            .par_iter_mut()
+            .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
     }
 
     pub fn remove_duplicate_data<FindActionHead, FindRemoval, ClassifyRemovalIndex, WantedData, R>(
@@ -194,12 +207,12 @@ impl<V: NormalizedAction> Root<V> {
         self.head.insert(node)
     }
 
-    pub fn inspect<F>(&self, call: &F) -> Vec<Vec<V>>
+    pub fn collect_spans<F>(&self, call: &F) -> Vec<Vec<V>>
     where
         F: Fn(&Node<V>) -> bool,
     {
         let mut result = Vec::new();
-        self.head.inspect(&mut result, call);
+        self.head.collect_spans(&mut result, call);
 
         result
     }
@@ -213,6 +226,14 @@ impl<V: NormalizedAction> Root<V> {
             .collect(&mut result, call, &|data| data.data.clone());
 
         result
+    }
+
+    pub fn modify_node_if_contains_childs<T, F>(&mut self, find: &T, modify: &F)
+    where
+        T: Fn(&Node<V>) -> (bool, bool),
+        F: Fn(&mut Node<V>),
+    {
+        self.head.modify_node_if_contains_childs(find, modify);
     }
 
     pub fn collect_child_traces_and_classify(&mut self, heads: &Vec<u64>) {
@@ -419,6 +440,29 @@ impl<V: NormalizedAction> Node<V> {
         error!("was not able to find node in tree");
     }
 
+    pub fn modify_node_if_contains_childs<T, F>(&mut self, find: &T, modify: &F) -> bool
+    where
+        T: Fn(&Self) -> (bool, bool),
+        F: Fn(&mut Self),
+    {
+        let (is_parent_node, has_lower_set) = find(&self);
+        if !has_lower_set {
+            return false
+        }
+
+        let lower_classification_results = self
+            .inner
+            .iter_mut()
+            .map(|node| node.modify_node_if_contains_childs(find, modify))
+            .collect::<Vec<_>>();
+
+        if !lower_classification_results.into_iter().any(|n| n) && is_parent_node {
+            modify(self);
+        }
+
+        true
+    }
+
     pub fn finalize(&mut self) {
         self.finalized = false;
         self.subactions = self.get_all_sub_actions();
@@ -448,15 +492,15 @@ impl<V: NormalizedAction> Node<V> {
         if self.finalized {
             self.subactions.clone()
         } else {
-            let mut inner = self
-                .inner
-                .iter()
-                .flat_map(|inner| inner.get_all_sub_actions())
-                .collect::<Vec<V>>();
+            let mut res = vec![self.data.clone()];
+            res.extend(
+                self.inner
+                    .iter()
+                    .flat_map(|inner| inner.get_all_sub_actions())
+                    .collect::<Vec<V>>(),
+            );
 
-            inner.push(self.data.clone());
-
-            inner
+            res
         }
     }
 
@@ -530,7 +574,7 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     // only grabs the lowest subset of specified actions
-    pub fn inspect<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
+    pub fn collect_spans<F>(&self, result: &mut Vec<Vec<V>>, call: &F) -> bool
     where
         F: Fn(&Node<V>) -> bool,
     {
@@ -542,7 +586,7 @@ impl<V: NormalizedAction> Node<V> {
         let lower_has_better_collect = self
             .inner
             .iter()
-            .map(|i| i.inspect(result, call))
+            .map(|i| i.collect_spans(result, call))
             .collect::<Vec<bool>>();
 
         let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);

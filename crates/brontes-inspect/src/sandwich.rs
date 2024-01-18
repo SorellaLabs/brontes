@@ -129,8 +129,6 @@ impl LongTailInspector<'_> {
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
 
-
-
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
         let rev_usd = addr_usd_deltas
