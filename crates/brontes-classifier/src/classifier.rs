@@ -280,7 +280,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 node.collect(
                     &mut swap_idx,
                     &|node| {
-                        (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
+                        (node.data.is_swap(), node.get_all_sub_actions().iter().any(|action| action.is_swap()))
                     },
                     &|node| node.index,
                 );
