@@ -6,20 +6,18 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-
+mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{compose_sandwich_jit, ClassifiedMev, MevBlock, MevType, SpecificMev},
     normalized_actions::Actions,
     tree::BlockTree,
-    ToScaledRational,
 };
 use futures::FutureExt;
 use lazy_static::lazy_static;
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
-use reth_primitives::Address;
 use tracing::info;
+use utils::{build_mev_header, pre_process, BlockPreprocessing};
 
 use crate::Inspector;
 
@@ -36,9 +34,35 @@ type ComposeFunction = Option<
     >,
 >;
 
-/// we use this to define a filter that we can iterate over such that
-/// everything is ordered properly and we have already composed lower level
-/// actions that could effect the higher level composing.
+/// This macro is used to define a filter for MEV (Miner Extractable Value)
+/// types. It ensures that the MEV types are ordered correctly and that
+/// lower-level actions are composed before higher-level ones.
+///
+/// The macro takes pairs of MEV types and their dependencies. Each pair is
+/// defined as `MevType => DependentMevTypes;`.
+///
+/// The macro creates a static reference, `MEV_FILTER`, to an array of tuples.
+/// Each tuple contains:
+/// - An `MevType` which is the type of MEV being processed.
+/// - A `ComposeFunction` which is the function used to compose the MEV of the
+///   given type.
+/// - A `Vec<MevType>` which is a vector of MEV types that the current MEV type
+///   depends on.
+///
+/// # Example
+///
+/// ```
+/// mev_composability! {
+///     MevType1 => DependentMevType1, DependentMevType2;
+///     MevType2 => DependentMevType3;
+/// }
+/// ```
+///
+/// In this example, `MevType1` depends on `DependentMevType1` and
+/// `DependentMevType2`, and `MevType2` depends on `DependentMevType3`.
+/// The macro will ensure that the dependencies are composed before the
+/// dependent MEV types.
+
 macro_rules! mev_composability {
     ($($mev_type:ident => $($deps:ident),+;)+) => {
         lazy_static! {
@@ -76,18 +100,12 @@ fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     }
 }
 
+//TODO: Move to the database crate & track each block
 // So for the master inspector we should get the address of the vertically
 // integrated builders and know searcher addresses so we can also see when they
 // are unprofitable and also better account for the profit given that they could
 // be camouflaging thier trade by overbribing the builder given that
 // they are one and the same
-
-pub struct BlockPreprocessing {
-    meta_data:           Arc<Metadata>,
-    cumulative_gas_used: u128,
-    cumulative_gas_paid: u128,
-    builder_address:     Address,
-}
 
 type InspectorFut<'a> =
     Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>;
@@ -100,6 +118,7 @@ pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>
 pub struct Composer<'a, const N: usize> {
     inspectors_execution: InspectorFut<'a>,
     pre_processing:       BlockPreprocessing,
+    metadata:             Arc<Metadata>,
 }
 
 impl<'a, const N: usize> Composer<'a, N> {
@@ -108,7 +127,8 @@ impl<'a, const N: usize> Composer<'a, N> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
-        let processing = Self::pre_process(tree.clone(), meta_data.clone());
+        let processing = pre_process(tree.clone(), meta_data.clone());
+        let meta_data_clone = meta_data.clone();
         let future = Box::pin(async move {
             let mut scope: TokioScope<'a, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
                 unsafe { Scope::create() };
@@ -132,82 +152,7 @@ impl<'a, const N: usize> Composer<'a, N> {
             // an error
             inspectors_execution: unsafe { std::mem::transmute(future) },
             pre_processing:       processing,
-        }
-    }
-
-    fn pre_process(tree: Arc<BlockTree<Actions>>, meta_data: Arc<Metadata>) -> BlockPreprocessing {
-        let builder_address = tree.header.beneficiary;
-        let cumulative_gas_used = tree
-            .tx_roots
-            .iter()
-            .map(|root| root.gas_details.gas_used)
-            .sum::<u128>();
-
-        let cumulative_gas_paid = tree
-            .tx_roots
-            .iter()
-            .map(|root| root.gas_details.effective_gas_price * root.gas_details.gas_used)
-            .sum::<u128>();
-
-        BlockPreprocessing { meta_data, cumulative_gas_used, cumulative_gas_paid, builder_address }
-    }
-
-    fn build_mev_header(
-        &mut self,
-        orchestra_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
-    ) -> MevBlock {
-        let pre_processing = &self.pre_processing;
-
-        let total_bribe = orchestra_data
-            .iter()
-            .map(|(_, mev)| mev.bribe())
-            .sum::<u128>();
-
-        let cum_mev_priority_fee_paid = orchestra_data
-            .iter()
-            .map(|(_, mev)| mev.priority_fee_paid())
-            .sum::<u128>();
-
-        //TODO: need to substract proposer payement + fees paid for gas
-        let builder_eth_profit = (total_bribe + pre_processing.cumulative_gas_paid) as i128;
-
-        MevBlock {
-            block_hash: pre_processing.meta_data.block_hash.into(),
-            block_number: pre_processing.meta_data.block_num,
-            mev_count: orchestra_data.len() as u64,
-            finalized_eth_price: f64::rounding_from(
-                &pre_processing.meta_data.eth_prices,
-                RoundingMode::Nearest,
-            )
-            .0,
-            cumulative_gas_used: pre_processing.cumulative_gas_used,
-            cumulative_gas_paid: pre_processing.cumulative_gas_paid,
-            total_bribe,
-            cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
-            builder_address: pre_processing.builder_address,
-            builder_eth_profit,
-            builder_finalized_profit_usd: f64::rounding_from(
-                builder_eth_profit.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
-                RoundingMode::Nearest,
-            )
-            .0,
-            proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
-            proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
-            proposer_finalized_profit_usd: pre_processing.meta_data.proposer_mev_reward.map(
-                |mev_reward| {
-                    f64::rounding_from(
-                        mev_reward.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
-                        RoundingMode::Nearest,
-                    )
-                    .0
-                },
-            ),
-            cumulative_mev_finalized_profit_usd: f64::rounding_from(
-                (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(12)
-                    * &pre_processing.meta_data.eth_prices,
-                RoundingMode::Nearest,
-            )
-            .0,
+            metadata:             meta_data_clone,
         }
     }
 
@@ -216,7 +161,8 @@ impl<'a, const N: usize> Composer<'a, N> {
         orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> Poll<ComposerResults> {
         info!("starting to compose classified mev");
-        let mut header = self.build_mev_header(&orchestra_data);
+        let mut header =
+            build_mev_header(self.metadata.clone(), &self.pre_processing, &orchestra_data);
 
         let mut sorted_mev = orchestra_data
             .into_iter()
