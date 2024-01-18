@@ -3,7 +3,7 @@ use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::impl_compress_decompress_for_encoded_decoded;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use super::{utils::pools_libmdbx, LibmdbxData};
 use crate::tables::PoolCreationBlocks;
