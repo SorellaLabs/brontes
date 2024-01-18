@@ -457,14 +457,16 @@ impl<V: NormalizedAction> Node<V> {
             .collect::<Vec<_>>();
 
         if !lower_classification_results.into_iter().any(|n| n) {
+            // if we don't collect because of parent node
+            // we return false
             if is_parent_node {
                 modify(self);
+                return true
             } else {
                 return false
             }
         }
-
-        true
+        false
     }
 
     pub fn finalize(&mut self) {
