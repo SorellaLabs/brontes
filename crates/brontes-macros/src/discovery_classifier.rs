@@ -20,21 +20,30 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
                 let handle = node_handle.clone();
                 let pool_addr = Box::pin(async move {
                     let Some(transfer_log) =
-                        get_log_from_tx(handle, block_number, tx_hash, #factory_name::#event_type::SIGNATURE_HASH, 2).await
+                        get_log_from_tx(
+                            handle,
+                            block_number,
+                            tx_hash,
+                            crate::#factory_name::#event_type::SIGNATURE_HASH,
+                            2).await
                     else {
                         return None;
                     };
 
-                    let Some(decoded_transfer_log) = Transfer::decode_log(&transfer_log, true).ok() else {
-                        // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Inner Log For Address", transfer_log);
+                    let Some(decoded_transfer_log) = <crate::Transfer
+                        as ::alloy_sol_types::SolEvent>
+                        ::decode_log(&transfer_log, true).ok() else {
+                        // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Inner ::alloy_primitives::Log For Address", transfer_log);
                         return None;
                     };
 
                     Some(decoded_transfer_log.to)
-                }) as Pin<Box<dyn Future<Output = Option<Address>> + Send>>;
+                }) as ::std::pin::Pin<Box<dyn ::futures::Future<Output =
+                Option<::alloy_primitives::Address>> + Send>>;
 
-                let Some(val) = #factory_name::#event_type::decode_log(&log, true).ok() else {
-                    // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Log", log);
+                let Some(val) = <#factory_name::#event_type as ::alloy_sol_types::SolEvent>
+                    ::decode_log(&log, true).ok() else {
+                    // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "::alloy_primitives::Log", log);
                     return None;
                 };
 
@@ -44,9 +53,10 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
     } else {
         option_parsing.push(quote!(
             let decoded_events = logs.into_iter().filter_map(|log| {
-                let val = #factory_name::#event_type::decode_log(&log, true).ok();
+                let val = <crate::#factory_name::#event_type as ::alloy_sol_types::SolEvent>
+                    ::decode_log(&log, true).ok();
                 if val.is_none() {
-                    // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "Log", log);
+                    // log!(RawEthNewPoolsResults, 1, "Error Decoding", protocol, "::alloy_primitives::Log", log);
                 }
                 val.map(|v| (v, block_number))
             }).collect::<Vec<_>>();
@@ -71,21 +81,21 @@ pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
         #[derive(Debug, Default)]
         pub struct #decoder_name;
 
-        impl FactoryDecoder for #decoder_name {
+        impl crate::FactoryDecoder for #decoder_name {
             fn get_signature(&self) -> [u8; 32] {
-                #factory_name::#event_type::SIGNATURE_HASH.0
+                <crate::#factory_name::#event_type as ::alloy_sol_types::SolEvent>::SIGNATURE_HASH.0
             }
 
 
             #[allow(unused)]
-            async fn decode_new_pool<T: TracingProvider> (
+            async fn decode_new_pool<T: ::brontes_types::traits::TracingProvider> (
                 &self,
-                node_handle: Arc<T>,
-                protocol: StaticBindingsDb,
-                logs: &Vec<Log>,
+                node_handle: ::std::sync::Arc<T>,
+                protocol: ::brontes_types::exchanges::StaticBindingsDb,
+                logs: &Vec<::alloy_primitives::Log>,
                 block_number: u64,
                 tx_hash: B256,
-            ) -> Vec<DiscoveredPool> {
+            ) -> Vec<::brontes_pricing::types::DiscoveredPool> {
                 #(#option_parsing)*
                 #fn_call.await
             }
@@ -155,19 +165,20 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
         #[derive(Default, Debug)]
         pub struct #struct_name(#(pub #name,)*);
 
-        impl FactoryDecoderDispatch for #struct_name {
-            async fn dispatch<T: TracingProvider>(
+        impl crate::FactoryDecoderDispatch for #struct_name {
+            async fn dispatch<T: ::brontes_types::traits::TracingProvider>(
                 sig: [u8; 32],
-                node_handle: Arc<T>,
-                protocol: StaticBindingsDb,
-                logs: &Vec<Log>,
+                node_handle: ::std::sync::Arc<T>,
+                protocol: ::brontes_types::exchanges::StaticBindingsDb,
+                logs: &Vec<::alloy_primitives::Log>,
                 block_number: u64,
                 tx_hash: B256,
-                ) -> Vec<DiscoveredPool> {
+                ) -> Vec<::brontes_pricing::types::DiscoveredPool> {
                 let this = Self::default();
-                if sig == this.0.get_signature() {
+                if sig == crate::FactoryDecoder::get_signature(&this.0) {
                     return
-                        this.0.decode_new_pool(
+                        crate::FactoryDecoder::decode_new_pool(
+                            &this.0,
                             node_handle,
                             protocol,
                             logs,
@@ -175,8 +186,9 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
                             tx_hash,
                         ).await
                 }
-                #( else if sig == this.#i.get_signature() {
-                        return this.#i.decode_new_pool(
+                #( else if sig == crate::FactoryDecoder::get_signature(&this.#i) {
+                        return crate::FactoryDecoder::decode_new_pool(
+                            &this.#i,
                             node_handle,
                             protocol,
                             logs,
