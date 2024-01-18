@@ -14,7 +14,6 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
-use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
@@ -124,7 +123,6 @@ impl LongTailInspector<'_> {
         }
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
-        info!(?deltas);
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
@@ -338,7 +336,6 @@ impl LongTailInspector<'_> {
 
     fn get_possible_sandwich(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
         let iter = tree.tx_roots.iter();
-        info!("roots len: {:?}", iter.len());
         if iter.len() < 3 {
             return vec![]
         }
