@@ -1,17 +1,10 @@
-use alloy_primitives::{Address, Bytes, LogData};
-use alloy_sol_types::SolCall;
+use alloy_primitives::Address;
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
-use brontes_pricing::types::PoolUpdate;
-use brontes_types::normalized_actions::{Actions, NormalizedFlashLoan, NormalizedLiquidation};
+use brontes_types::normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation};
 use reth_db::{mdbx::RO, transaction::DbTx};
-use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{
-    enum_unwrap,
-    AaveV3::{flashLoanCall, flashLoanSimpleCall, liquidationCallCall, AaveV3Calls},
-    ActionCollection, IntoAction, StaticReturnBindings,
-};
+use crate::AaveV3::{flashLoanCall, flashLoanSimpleCall, liquidationCallCall};
 
 action_impl!(
     LiquidationCallImplV3,
@@ -20,7 +13,11 @@ action_impl!(
     [LiquidationEvent],
     AaveV3,
     call_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: liquidationCallCall, db_tx: &LibmdbxTx<RO> | {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: liquidationCallCall,
+    db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -45,7 +42,11 @@ action_impl!(
     [],
     AaveV3,
     call_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: flashLoanCall, db_tx: &LibmdbxTx<RO> | {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: flashLoanCall,
+    db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -76,7 +77,11 @@ action_impl!(
     [],
     AaveV3,
     call_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: flashLoanSimpleCall, db_tx: &LibmdbxTx<RO> | {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: flashLoanSimpleCall,
+    db_tx: &LibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];

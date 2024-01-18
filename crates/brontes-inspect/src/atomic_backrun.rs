@@ -161,17 +161,7 @@ impl AtomicBackrunInspector<'_> {
             .map(|s| s.force_swap())
             .collect::<Vec<_>>();
 
-        let backrun = Box::new(AtomicBackrun {
-            tx_hash,
-            gas_details,
-            swaps_index: swaps.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
-            swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
-            swaps_token_out: swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
-            swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
-            swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
-        });
+        let backrun = Box::new(AtomicBackrun { tx_hash, gas_details, swaps });
 
         Some((classified, backrun))
     }

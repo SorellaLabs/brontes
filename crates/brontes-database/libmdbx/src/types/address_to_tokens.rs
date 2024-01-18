@@ -10,7 +10,7 @@ use reth_db::{
 use reth_primitives::{bytes, Address, BufMut};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::{tables::AddressToTokens, types::utils::pool_tokens, LibmdbxData};
 
