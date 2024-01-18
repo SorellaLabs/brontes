@@ -4,7 +4,7 @@ use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::{mdbx::RO, transaction::DbTx};
 
-use crate::SushiSwapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap};
+use crate::SushiSwapV2::{burnCall, mintCall, swapCall};
 
 action_impl!(
     V2SwapImpl,
@@ -80,6 +80,7 @@ action_impl!(
         })
     }
 );
+
 action_impl!(
     V2BurnImpl,
     Burn,
