@@ -3,7 +3,7 @@ use brontes_pricing::SubGraphEdge;
 use brontes_types::impl_compress_decompress_for_serde;
 use reth_primitives::revm_primitives::HashMap;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::{LibmdbxData, SubGraphs};
 

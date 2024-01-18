@@ -3,7 +3,10 @@ use std::{collections::HashMap, fmt::Debug};
 use alloy_primitives::Log;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::clickhouse::{self, InsertRow, Row};
+use sorella_db_databases::{
+    clickhouse,
+    clickhouse::{DbRow, InsertRow, Row},
+};
 
 use crate::structured_trace::TransactionTraceWithLogs;
 
@@ -253,7 +256,7 @@ pub struct NormalizedTransfer {
     pub amount:      U256,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedMint {
     pub trace_index: u64,
     pub from:        Address,
@@ -263,7 +266,7 @@ pub struct NormalizedMint {
     pub amount:      Vec<U256>,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBurn {
     pub trace_index: u64,
     pub from:        Address,
@@ -273,7 +276,7 @@ pub struct NormalizedBurn {
     pub amount:      Vec<U256>,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedCollect {
     pub trace_index: u64,
     pub to:          Address,
@@ -338,7 +341,6 @@ impl NormalizedAction for Actions {
             Self::Collect(_) => false,
             Self::Unclassified(_) => false,
             Self::Revert => false,
-            _ => unreachable!(),
         }
     }
 
@@ -364,7 +366,7 @@ impl NormalizedAction for Actions {
             }
             Actions::Collect(_) => unreachable!(),
             Actions::Unclassified(_) => unreachable!(),
-            _ => unreachable!(),
+            Actions::Revert => unreachable!(),
         }
     }
 
@@ -379,24 +381,24 @@ impl NormalizedAction for Actions {
             Self::Liquidation(t) => t.trace_index,
             Self::Collect(c) => c.trace_index,
             Self::Unclassified(u) => u.trace_idx,
-            _ => unreachable!(),
+            Self::Revert => unreachable!(),
         }
     }
 
     fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) -> Vec<u64> {
         match self {
-            Self::Swap(s) => unreachable!("Swap type never requires complex classification"),
+            Self::Swap(_) => unreachable!("Swap type never requires complex classification"),
             Self::FlashLoan(f) => f.finish_classification(actions),
-            Self::Batch(b) => todo!(),
-            Self::Mint(m) => unreachable!(),
-            Self::Burn(b) => unreachable!(),
-            Self::Transfer(t) => unreachable!(),
-            Self::Liquidation(t) => todo!(),
-            Self::Collect(c) => unreachable!("Collect type never requires complex classification"),
-            Self::Unclassified(u) => {
+            Self::Batch(_) => todo!(),
+            Self::Mint(_) => unreachable!(),
+            Self::Burn(_) => unreachable!(),
+            Self::Transfer(_) => unreachable!(),
+            Self::Liquidation(_) => todo!(),
+            Self::Collect(_) => unreachable!("Collect type never requires complex classification"),
+            Self::Unclassified(_) => {
                 unreachable!("Unclassified type never requires complex classification")
             }
-            _ => unreachable!(),
+            Self::Revert => unreachable!("a revert should never require complex classification"),
         }
     }
 }

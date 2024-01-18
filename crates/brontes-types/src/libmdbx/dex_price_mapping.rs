@@ -1,7 +1,7 @@
 use alloy_primitives::Address;
 use alloy_rlp::{RlpDecodable, RlpEncodable};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use super::serde::address_string;
 
