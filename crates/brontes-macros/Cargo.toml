@@ -11,7 +11,9 @@ proc-macro = true
 [dependencies]
 syn = "2.0.37"
 quote = "1.0.33"
+itertools.workspace = true
 
 
 [features]
 tests = []
+

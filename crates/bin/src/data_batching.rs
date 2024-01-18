@@ -44,6 +44,7 @@ pub struct DataBatching<'db, T: TracingProvider + Clone, const N: usize> {
 impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
+        max_pool_loading_tasks: usize,
         batch_id: u64,
         start_block: u64,
         end_block: u64,
@@ -58,7 +59,15 @@ impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
 
         let rest_pairs = libmdbx
             .protocols_created_range(start_block + 1, end_block)
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .flat_map(|(_, pools)| {
+                pools
+                    .into_iter()
+                    .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<HashMap<_, _>>();
 
         let pair_graph = GraphManager::init_from_db_state(
             pairs,
@@ -72,6 +81,7 @@ impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
         );
 
         let pricer = BrontesBatchPricer::new(
+            max_pool_loading_tasks,
             quote_asset,
             pair_graph,
             rx,
@@ -215,7 +225,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             (pricer, res)
         });
 
-        let handle = tokio::spawn(future);
+        let rt_handle = tokio::runtime::Handle::current();
+        let move_handle = rt_handle.clone();
+
+        let handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
 
         Self { handle, pending_trees: HashMap::default() }
     }
@@ -230,8 +243,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             (pricer, res)
         });
 
-        let handle = tokio::spawn(future);
-        self.handle = handle;
+        let rt_handle = tokio::runtime::Handle::current();
+        let move_handle = rt_handle.clone();
+
+        self.handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
     }
 
     pub fn add_pending_inspection(
