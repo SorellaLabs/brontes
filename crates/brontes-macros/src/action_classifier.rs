@@ -86,6 +86,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
             let field = Ident::new(&(res.to_string() + "_field"), Span::call_site().into());
 
             Some(if optional.value {
+                // don't unwrap optional
                 quote!(#field : self.#field)
             } else {
                 quote!(#field : self.#field.unwrap())
@@ -139,16 +140,15 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     if give_logs {
         option_parsing.push(quote!(
             let mut log_res = #log_return_builder_struct_name::new();
-            println!("{}", logs.len());
             #(
                 'possible: {
                 #(
-                    if let Some(log)= &logs.get(#log_idx) {
+                    if let Some(log) = &logs.get(#log_idx) {
                         if let Some(decoded)= <crate::#exchange_mod_name::#log_ident
                             as ::alloy_sol_types::SolEvent>
                             ::decode_log_data(&log.data, false).ok() {
                                 log_res.#log_field = Some(decoded);
-                               break 'possible
+                                break 'possible
                             }
                     }
                 )*
