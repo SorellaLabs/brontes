@@ -273,7 +273,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         has_swap = true;
                     }
                 }
-                if node.data.is_transfer() && has_swap{
+                if node.data.is_transfer() && has_swap && has_transfer{
                     println!("{node:#?}");
                 }
                 (node.data.is_transfer(), has_swap && has_transfer)
