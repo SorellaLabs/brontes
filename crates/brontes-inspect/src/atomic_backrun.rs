@@ -3,7 +3,6 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::hex;
 use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -16,7 +15,6 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
-use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
