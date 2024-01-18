@@ -362,11 +362,15 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .remove_protocol_parents(&pool_address)
                 .into_iter()
                 .for_each(|parent_pair| {
-                    if self
-                        .graph_manager
-                        .bad_pool_state(parent_pair, pool_pair, pool_address)
-                    {
+                    let (re_query, bad_state) =
+                        self.graph_manager
+                            .bad_pool_state(parent_pair, pool_pair, pool_address);
+                    if re_query {
                         self.re_queue_bad_pair(parent_pair, block);
+                    }
+
+                    if let Some((address, protocol, pair)) = bad_state {
+                        self.new_graph_pairs.insert(address, (protocol, pair));
                     }
                 });
         }
@@ -421,10 +425,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-            self.on_pool_resolve(state)
-        }
-
         // check if we can progress to the next block.
         let block_prices = self.try_resolve_block();
         if block_prices.is_some() {
@@ -470,11 +470,10 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             }
 
             // drain all loaded pools
-            while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                 self.on_pool_resolve(state)
             }
         }
-
         self.on_pool_updates(block_updates);
 
         cx.waker().wake_by_ref();
