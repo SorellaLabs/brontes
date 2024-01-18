@@ -34,6 +34,7 @@ type ComposeFunction = Option<
     >,
 >;
 
+//TODO: Improve docs after reading
 /// This macro is used to define a filter for MEV (Miner Extractable Value)
 /// types. It ensures that the MEV types are ordered correctly and that
 /// lower-level actions are composed before higher-level ones.
@@ -51,7 +52,7 @@ type ComposeFunction = Option<
 ///
 /// # Example
 ///
-/// ```
+/// ```compile_fail
 /// mev_composability! {
 ///     MevType1 => DependentMevType1, DependentMevType2;
 ///     MevType2 => DependentMevType3;
@@ -63,6 +64,7 @@ type ComposeFunction = Option<
 /// The macro will ensure that the dependencies are composed before the
 /// dependent MEV types.
 
+#[macro_export]
 macro_rules! mev_composability {
     ($($mev_type:ident => $($deps:ident),+;)+) => {
         lazy_static! {
@@ -82,16 +84,15 @@ macro_rules! mev_composability {
     };
 }
 
+//TODO: comment this
 mev_composability!(
-    // reduce first
     Sandwich => Backrun;
     CexDex => Backrun;
     Sandwich => CexDex;
-    // try compose
     JitSandwich => Sandwich, Jit;
 );
 
-/// the compose function is used in order to be able to properly be able to cast
+/// the compose function is used in order to be able to properly cast
 /// in the lazy static
 fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     match mev_type {
@@ -99,13 +100,6 @@ fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
         _ => None,
     }
 }
-
-//TODO: Move to the database crate & track each block
-// So for the master inspector we should get the address of the vertically
-// integrated builders and know searcher addresses so we can also see when they
-// are unprofitable and also better account for the profit given that they could
-// be camouflaging thier trade by overbribing the builder given that
-// they are one and the same
 
 type InspectorFut<'a> =
     Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>;
@@ -321,6 +315,13 @@ impl<const N: usize> Future for Composer<'_, N> {
         Poll::Pending
     }
 }
+
+//TODO: Move to the database crate & track each block
+// So for the master inspector we should get the address of the vertically
+// integrated builders and know searcher addresses so we can also see when they
+// are unprofitable and also better account for the profit given that they could
+// be camouflaging thier trade by overbribing the builder given that
+// they are one and the same
 /*q
 #[cfg(test)]
 pub mod tests {
