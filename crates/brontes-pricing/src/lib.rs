@@ -476,8 +476,18 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         }
         self.on_pool_updates(block_updates);
 
-        cx.waker().wake_by_ref();
-        return Poll::Pending
+        let mut work = 512;
+        loop {
+            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                self.on_pool_resolve(state)
+            }
+
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
+            }
+        }
     }
 }
 
