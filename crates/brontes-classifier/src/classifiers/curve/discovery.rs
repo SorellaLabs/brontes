@@ -4,14 +4,10 @@ use alloy_primitives::{Address, Log, B256};
 use alloy_rpc_types::Filter;
 use alloy_sol_types::SolEvent;
 use brontes_macros::{discovery_dispatch, discovery_impl};
-use brontes_types::traits::TracingProvider;
+use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
 use futures::{future::join_all, Future};
 
-use super::StaticBindingsDb;
 use crate::{
-    discovery_classifiers::{
-        DiscoveredPool, FactoryDecoder, FactoryDecoderDispatch, CURVE_BASE_POOLS_TOKENS,
-    },
     CurveV1MetapoolFactory::{
         self, BasePoolAdded as V1BasePoolAdded, MetaPoolDeployed as V1MetaPoolDeployed,
     },
@@ -23,7 +19,7 @@ use crate::{
         self, BasePoolAdded as crvUSDBasePoolAdded, MetaPoolDeployed as crvUSDMetaPoolDeployed,
         PlainPoolDeployed as crvUSDPlainPoolDeployed,
     },
-    Transfer,
+    DiscoveredPool, CURVE_BASE_POOLS_TOKENS,
 };
 
 macro_rules! curve_plain_pool {
@@ -37,7 +33,11 @@ macro_rules! curve_plain_pool {
                         async move {
                             let Some(pool_addr) = pool_addr_future.await else { return None };
 
-                            Some(DiscoveredPool::new(evt.coins.to_vec(), pool_addr, protocol_clone))
+                            Some(::brontes_pricing::types::DiscoveredPool::new(
+                                evt.coins.to_vec(),
+                                pool_addr,
+                                protocol_clone,
+                            ))
                         }
                     }),
             )
@@ -69,7 +69,7 @@ macro_rules! curve_meta_pool {
 
                             let Some(pool_addr) = pool_addr_future.await else { return None };
 
-                            Some(DiscoveredPool::new(
+                            Some(::brontes_pricing::types::DiscoveredPool::new(
                                 pool_tokens
                                     .into_iter()
                                     .map(|token| token.0 .0.into())
