@@ -148,22 +148,22 @@ impl SharedInspectorUtils<'_> {
     fn transfer_deltas(&self, transfers: Vec<&NormalizedTransfer>, deltas: &mut SwapTokenDeltas) {
         for transfer in transfers.into_iter() {
             // normalize token decimals
-            let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
-                debug!("token decimals not found");
-                continue;
-            };
-            let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
-
-            // fill forward
-            if deltas.contains_key(&transfer.from) {
-                // subtract balance from sender
-                let mut inner = deltas.entry(transfer.from).or_default();
-                apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
-
-                // add to transfer recipient
-                let mut inner = deltas.entry(transfer.to).or_default();
-                apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-            }
+            // let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
+            //     debug!("token decimals not found");
+            //     continue;
+            // };
+            // let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
+            //
+            // // fill forward
+            // if deltas.contains_key(&transfer.from) {
+            //     // subtract balance from sender
+            //     let mut inner = deltas.entry(transfer.from).or_default();
+            //     apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
+            //
+            //     // add to transfer recipient
+            //     let mut inner = deltas.entry(transfer.to).or_default();
+            //     apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
+            // }
 
             // fill backwards
             // if deltas.contains_key(&transfer.to) {
