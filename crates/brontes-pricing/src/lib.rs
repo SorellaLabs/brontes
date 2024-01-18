@@ -425,6 +425,25 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        // because results tend to stack up, we always want to progress them first
+        let mut work = 512;
+        loop {
+            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                self.on_pool_resolve(state)
+            }
+
+            // check if we can progress to the next block.
+            let block_prices = self.try_resolve_block();
+            if block_prices.is_some() {
+                return Poll::Ready(block_prices)
+            }
+
+            work -= 1;
+            if work == 0 {
+                break
+            }
+        }
+
         let mut block_updates = Vec::new();
         loop {
             match self.update_rx.poll_recv(cx).map(|inner| {
@@ -462,27 +481,16 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
                 Poll::Pending => break,
             }
-        }
-        self.on_pool_updates(block_updates);
 
-        let mut work = 512;
-        loop {
+            // we poll here to continuously progress state fetches as they are slow
             if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                 self.on_pool_resolve(state)
             }
-
-            // check if we can progress to the next block.
-            let block_prices = self.try_resolve_block();
-            if block_prices.is_some() {
-                return Poll::Ready(block_prices)
-            }
-
-            work -= 1;
-            if work == 0 {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
-            }
         }
+        self.on_pool_updates(block_updates);
+
+        cx.waker().wake_by_ref();
+        return Poll::Pending
     }
 }
 
