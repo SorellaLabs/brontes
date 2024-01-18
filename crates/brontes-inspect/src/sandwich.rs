@@ -122,12 +122,14 @@ impl LongTailInspector<'_> {
         if searcher_actions.len() < 2 {
             return None
         }
-
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
+        info!(?deltas);
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+
+
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
