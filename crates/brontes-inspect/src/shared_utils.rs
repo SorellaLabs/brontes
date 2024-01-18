@@ -15,7 +15,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-use tracing::log::debug;
+use tracing::debug;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {

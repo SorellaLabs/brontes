@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use proc_macro::{Span, TokenStream};
 use quote::quote;
 use syn::{bracketed, parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
@@ -17,39 +18,151 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     let mut option_parsing = Vec::new();
 
-    let (log_idx, log_type): (Vec<Index>, Vec<Ident>) = log_types
+    let mut is_possible_count = 0usize;
+    let (log_idx, log_optional, log_field, log_ident): (
+        Vec<Vec<Index>>,
+        Vec<LitBool>,
+        Vec<Ident>,
+        Vec<Ident>,
+    ) = log_types
         .into_iter()
         .enumerate()
-        .map(|(i, n)| (Index::from(i), n))
-        .unzip();
+        // collect to set all indexes
+        .collect_vec()
+        .into_iter()
+        .filter_map(|(i, n)| {
+            // is possible, need to increment count
+            if n.0 {
+                is_possible_count += 1;
+            }
+            if n.1 {
+                return None
+            }
+
+            Some((
+                (0..=is_possible_count)
+                    .into_iter()
+                    .filter_map(|shift| {
+                        if i < shift {
+                            return None
+                        }
+                        Some(Index::from(i - shift))
+                    })
+                    .collect_vec(),
+                LitBool::new(n.0, Span::call_site().into()),
+                Ident::new(&(n.2.to_string() + "_field"), Span::call_site().into()),
+                n.2,
+            ))
+        })
+        .multiunzip();
+
+    let log_return_struct_name = Ident::new(
+        &(exchange_name.to_string() + &action_type.to_string()),
+        Span::call_site().into(),
+    );
+    let log_return_builder_struct_name = Ident::new(
+        &(exchange_name.to_string() + &action_type.to_string() + "Builder"),
+        Span::call_site().into(),
+    );
+
+    let res_struct_fields = log_optional
+        .iter()
+        .zip(log_ident.iter())
+        .filter_map(|(optional, res)| {
+            let field = Ident::new(&(res.to_string() + "_field"), Span::call_site().into());
+
+            Some(if optional.value {
+                quote!(#field : Option<crate::#exchange_mod_name::#res>)
+            } else {
+                quote!(#field : crate::#exchange_mod_name::#res)
+            })
+        })
+        .collect_vec();
+
+    let return_struct_build_fields = log_optional
+        .iter()
+        .zip(log_ident.iter())
+        .filter_map(|(optional, res)| {
+            let field = Ident::new(&(res.to_string() + "_field"), Span::call_site().into());
+
+            Some(if optional.value {
+                // don't unwrap optional
+                quote!(#field : self.#field)
+            } else {
+                quote!(#field : self.#field.unwrap())
+            })
+        })
+        .collect_vec();
+
+    let log_struct = if give_logs {
+        quote!(
+            struct #log_return_builder_struct_name {
+                #(
+                    #log_field: Option<crate::#exchange_mod_name::#log_ident>
+                ),*
+            }
+
+            struct #log_return_struct_name {
+                #(#res_struct_fields),*
+            }
+
+            impl #log_return_builder_struct_name {
+                fn new() -> Self {
+                    Self {
+                        #(
+                            #log_field: None
+                        ),*
+                    }
+                }
+
+                fn build(self) -> #log_return_struct_name {
+                    #log_return_struct_name {
+                        #(
+                            #return_struct_build_fields
+                        ),*
+                    }
+                }
+            }
+        )
+    } else {
+        quote!()
+    };
 
     let a = call_type.to_string();
     let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
 
     if give_calldata {
         option_parsing.push(quote!(
-                let call_data = enum_unwrap!(data, #exchange_mod_name, #decalled);
+                let call_data = crate::enum_unwrap!(data, #exchange_mod_name, #decalled);
         ));
     }
 
     if give_logs {
         option_parsing.push(quote!(
-            let log_data =
-            (
+            let mut log_res = #log_return_builder_struct_name::new();
+            #(
+                'possible: {
                 #(
-                    {
-                    let log = &logs[#log_idx];
-                    #log_type::decode_log_data(&log.data, false).ok()?
+                    if let Some(log) = &logs.get(#log_idx) {
+                        if let Some(decoded)= <crate::#exchange_mod_name::#log_ident
+                            as ::alloy_sol_types::SolEvent>
+                            ::decode_log_data(&log.data, false).ok() {
+                                log_res.#log_field = Some(decoded);
+                                break 'possible
+                            }
                     }
-
-                ),*
-            );
+                )*
+                }
+            )*
+            let log_data = log_res.build();
         ));
     }
 
     if give_returns {
         option_parsing.push(quote!(
-                let return_data = #call_type::abi_decode_returns(&return_data, false).map_err(|e| {
+                let return_data = <crate::#exchange_mod_name::#call_type
+                as alloy_sol_types::SolCall>
+                ::abi_decode_returns(&return_data, false).map_err(|e| {
                     tracing::error!("return data failed to decode {:#?}", return_data);
                     e
                 }).unwrap();
@@ -107,27 +220,31 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     };
 
     quote! {
+        #log_struct
+
         #[derive(Debug, Default)]
         pub struct #exchange_name;
 
-        impl IntoAction for #exchange_name {
+        impl crate::IntoAction for #exchange_name {
             fn get_signature(&self) -> [u8; 4] {
-                #call_type::SELECTOR
+                <#call_type as alloy_sol_types::SolCall>::SELECTOR
             }
 
             #[allow(unused)]
             fn decode_trace_data(
                 &self,
                 index: u64,
-                data: StaticReturnBindings,
-                return_data: Bytes,
-                from_address: Address,
-                target_address: Address,
+                data: crate::StaticReturnBindings,
+                return_data: ::alloy_primitives::Bytes,
+                from_address: ::alloy_primitives::Address,
+                target_address: ::alloy_primitives::Address,
                 logs: &Vec<::alloy_primitives::Log>,
-                db_tx: &LibmdbxTx<RO>,
-            ) -> Option<Actions> {
+                db_tx: &::brontes_database_libmdbx::implementation::tx::LibmdbxTx<
+                ::reth_db::mdbx::RO
+                >,
+            ) -> Option<::brontes_types::normalized_actions::Actions> {
                 #(#option_parsing)*
-                Some(Actions::#action_type(#fn_call?))
+                Some(::brontes_types::normalized_actions::Actions::#action_type(#fn_call?))
             }
         }
     }
@@ -138,7 +255,8 @@ struct MacroParse {
     // required for all
     exchange_name: Ident,
     action_type:   Ident,
-    log_types:     Vec<Ident>,
+    // (sometimes, ignore, ident)
+    log_types:     Vec<(bool, bool, Ident)>,
     call_type:     Ident,
 
     /// for call data decoding
@@ -168,10 +286,52 @@ impl Parse for MacroParse {
         bracketed!(content in input);
 
         loop {
+            let mut possible = false;
+            let mut ignore = false;
+
+            if content.peek2(Token![<]) {
+                let new_content = content.parse::<Ident>()?;
+                if new_content.to_string().starts_with("Possible") {
+                    possible = true;
+                } else if new_content.to_string().starts_with("Ignore") {
+                    ignore = true;
+                } else {
+                    return Err(syn::Error::new(
+                        content.span(),
+                        "Only valid modifiers are Possible and Ignore",
+                    ))
+                }
+                let _ = content.parse::<Token![<]>()?;
+            }
+
+            // another modifier
+            if content.peek2(Token![<]) {
+                let new_content = content.parse::<Ident>()?;
+                if new_content.to_string().starts_with("Possible") {
+                    possible = true;
+                } else if new_content.to_string().starts_with("Ignore") {
+                    ignore = true;
+                } else {
+                    return Err(syn::Error::new(
+                        content.span(),
+                        "Only valid modifiers are Possible and Ignore",
+                    ))
+                }
+                let _ = content.parse::<Token![<]>()?;
+            }
+
             let Ok(log_type) = content.parse::<Ident>() else {
                 break;
             };
-            log_types.push(log_type);
+
+            if content.peek(Token![>]) {
+                let _ = content.parse::<Token![>]>()?;
+            }
+            if content.peek(Token![>]) {
+                let _ = content.parse::<Token![>]>()?;
+            }
+
+            log_types.push((possible, ignore, log_type));
 
             let Ok(_) = content.parse::<Token![,]>() else {
                 break;
@@ -267,23 +427,31 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
         pub struct #struct_name(#(pub #name,)*);
 
 
-        impl ActionCollection for #struct_name {
+        impl crate::ActionCollection for #struct_name {
 
             fn dispatch(
                 &self,
                 sig: &[u8],
                 index: u64,
-                data: StaticReturnBindings,
-                return_data: Bytes,
-                from_address: Address,
-                target_address: Address,
+                data: crate::StaticReturnBindings,
+                return_data: ::alloy_primitives::Bytes,
+                from_address: ::alloy_primitives::Address,
+                target_address: ::alloy_primitives::Address,
                 logs: &Vec<::alloy_primitives::Log>,
-                db_tx: &LibmdbxTx<RO>,
+                db_tx: &::brontes_database_libmdbx::implementation::tx::LibmdbxTx<
+                    ::reth_db::mdbx::RO
+                >,
                 block: u64,
                 tx_idx: u64,
-            ) -> Option<(PoolUpdate, Actions)> {
-                if sig == self.0.get_signature() {
-                    return self.0.decode_trace_data(
+            ) -> Option<(
+                    ::brontes_pricing::types::PoolUpdate,
+                    ::brontes_types::normalized_actions::Actions
+                )> {
+                let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(sig);
+
+                if sig == crate::IntoAction::get_signature(&self.0) {
+                    return crate::IntoAction::decode_trace_data(
+                            &self.0,
                             index,
                             data,
                             return_data,
@@ -292,18 +460,27 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             logs,
                             db_tx
                         ).map(|res| {
-                        (PoolUpdate {
+                        (::brontes_pricing::types::PoolUpdate {
                             block,
                             tx_idx,
                             logs: logs.clone(),
                             action: res.clone()
                         },
-                        res)
-                    })
+                        res)}).or_else(|| {
+                            ::tracing::error!(
+                                "classifier failed on function sig: {:?} for address: {:?}",
+                                ::malachite::strings::ToLowerHexString::to_lower_hex_string(
+                                    &hex_selector
+                                ),
+                                target_address.0,
+                            );
+                            None
+                        })
 
                 }
-                #( else if sig == self.#i.get_signature() {
-                     return self.#i.decode_trace_data(
+                #( else if sig == crate::IntoAction::get_signature(&self.#i) {
+                     return crate::IntoAction::decode_trace_data(
+                            &self.#i,
                             index,
                             data,
                             return_data,
@@ -312,15 +489,33 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                             logs,
                             db_tx
                     ).map(|res| {
-                        (PoolUpdate {
+                        (::brontes_pricing::types::PoolUpdate {
                             block,
                             tx_idx,
                             logs: logs.clone(),
                             action: res.clone()
                         },
-                        res)})
+                        res)}).or_else(|| {
+                            ::tracing::error!(
+                                "classifier failed on function sig: {:?} for address: {:?}",
+                                ::malachite::strings::ToLowerHexString::to_lower_hex_string(
+                                    &hex_selector
+                                ),
+                                target_address.0,
+                            );
+                            None
+                        })
+
                     }
                 )*
+
+                ::tracing::debug!(
+                    "no inspector for function selector: {:?} with contract address: {:?}",
+                    ::malachite::strings::ToLowerHexString::to_lower_hex_string(
+                        &hex_selector
+                    ),
+                    target_address.0,
+                );
 
                 None
             }
