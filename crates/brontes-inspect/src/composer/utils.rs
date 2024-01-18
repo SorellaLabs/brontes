@@ -1,8 +1,9 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
+use alloy_primitives::FixedBytes;
 use brontes_database::Metadata;
 use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev},
     normalized_actions::Actions,
     tree::BlockTree,
     ToScaledRational,
@@ -100,4 +101,45 @@ pub(crate) fn build_mev_header(
         )
         .0,
     }
+}
+
+/// Sorts the given MEV data by type.
+///
+/// This function takes a vector of tuples, where each tuple contains a
+/// `ClassifiedMev` and a `SpecificMev`. It returns a HashMap where the keys are
+/// `MevType` and the values are vectors of tuples (same as input). Each vector
+/// contains all the MEVs of the corresponding type.
+pub(crate) fn sort_mev_by_type(
+    orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+) -> HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> {
+    orchestra_data
+        .into_iter()
+        .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
+        .fold(
+            HashMap::default(),
+            |mut acc: HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
+             (mev_type, v)| {
+                acc.entry(mev_type).or_default().push(v);
+                acc
+            },
+        )
+}
+
+/// Finds the index of the first classified mev in the list whose transaction
+/// hashes match any of the provided hashes.
+pub(crate) fn find_mev_with_matching_tx_hashes(
+    mev_data_list: &[(ClassifiedMev, Box<dyn SpecificMev>)],
+    tx_hashes: &[FixedBytes<32>],
+) -> Option<usize> {
+    mev_data_list
+        .iter()
+        .enumerate()
+        .find_map(|(index, (_, mev_data))| {
+            let tx_hashes_in_mev = mev_data.mev_transaction_hashes();
+            if tx_hashes_in_mev.iter().any(|hash| tx_hashes.contains(hash)) {
+                Some(index)
+            } else {
+                None
+            }
+        })
 }

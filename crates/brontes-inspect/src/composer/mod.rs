@@ -6,6 +6,8 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
+
+use alloy_primitives::{Address, FixedBytes};
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_database::Metadata;
@@ -17,26 +19,24 @@ use brontes_types::{
 use futures::FutureExt;
 use lazy_static::lazy_static;
 use tracing::info;
-use utils::{build_mev_header, pre_process, BlockPreprocessing};
+use utils::{
+    build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
+    BlockPreprocessing,
+};
 
 use crate::Inspector;
 
-type ComposeFunction = Option<
-    Box<
-        dyn Fn(
-                Box<dyn Any + 'static>,
-                Box<dyn Any + 'static>,
-                ClassifiedMev,
-                ClassifiedMev,
-            ) -> (ClassifiedMev, Box<dyn SpecificMev>)
-            + Send
-            + Sync,
-    >,
+type ComposeFunction = Box<
+    dyn Fn(
+            Vec<(ClassifiedMev, Box<dyn Any + Send + Sync>)>,
+        ) -> (ClassifiedMev, Box<dyn SpecificMev>)
+        + Send
+        + Sync,
 >;
 
 //TODO: Improve docs after reading
-/// This macro is used to define a filter for MEV (Miner Extractable Value)
-/// types. It ensures that the MEV types are ordered correctly and that
+/// This macro is used to define an `MEV_FILTER`
+/// It ensures that the MEV types are ordered correctly and that
 /// lower-level actions are composed before higher-level ones.
 ///
 /// The macro takes pairs of MEV types and their dependencies. Each pair is
@@ -70,7 +70,7 @@ macro_rules! mev_composability {
         lazy_static! {
         static ref MEV_FILTER: &'static [(
                 MevType,
-                ComposeFunction,
+                Option<ComposeFunction>,
                 Vec<MevType>)] = {
             &*Box::leak(Box::new([
                 $((
@@ -84,7 +84,6 @@ macro_rules! mev_composability {
     };
 }
 
-//TODO: comment this
 mev_composability!(
     Sandwich => Backrun;
     CexDex => Backrun;
@@ -94,7 +93,7 @@ mev_composability!(
 
 /// the compose function is used in order to be able to properly cast
 /// in the lazy static
-fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
+fn get_compose_fn(mev_type: MevType) -> Option<ComposeFunction> {
     match mev_type {
         MevType::JitSandwich => Some(Box::new(compose_sandwich_jit)),
         _ => None,
@@ -142,7 +141,7 @@ impl<'a, const N: usize> Composer<'a, N> {
         Self {
             // The rust compiler struggles to prove that the tokio-scope lifetime is the same as
             // the futures lifetime and errors. the transmute is simply casting the
-            // lifetime to what it truely is. This is totally safe and will never cause
+            // lifetime to what it truly is. This is totally safe and will never cause
             // an error
             inspectors_execution: unsafe { std::mem::transmute(future) },
             pre_processing:       processing,
@@ -158,28 +157,13 @@ impl<'a, const N: usize> Composer<'a, N> {
         let mut header =
             build_mev_header(self.metadata.clone(), &self.pre_processing, &orchestra_data);
 
-        let mut sorted_mev = orchestra_data
-            .into_iter()
-            .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
-            .fold(
-                HashMap::default(),
-                |mut acc: HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
-                 (mev_type, v)| {
-                    acc.entry(mev_type).or_default().push(v);
-                    acc
-                },
-            );
+        let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
         MEV_FILTER
             .iter()
             .for_each(|(head_mev_type, compose_fn, dependencies)| {
                 if let Some(compose_fn) = compose_fn {
-                    self.compose_dep_filter(
-                        head_mev_type,
-                        dependencies,
-                        compose_fn,
-                        &mut sorted_mev,
-                    );
+                    self.try_compose_mev(head_mev_type, dependencies, compose_fn, &mut sorted_mev);
                 } else {
                     self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
                 }
@@ -248,58 +232,79 @@ impl<'a, const N: usize> Composer<'a, N> {
         }
     }
 
-    fn compose_dep_filter(
+    /// Attempts to compose a new complex MEV occurrence from a list of
+    /// MEV types that can be composed together.
+    ///
+    /// # Functionality:
+    ///
+    /// The function first checks if there are any MEV of the first type in
+    /// `composable_types` in `sorted_mev`. If there are, it iterates over them.
+    /// For each MEV, it gets the transaction hashes associated with that MEV
+    /// and attempts to find other MEV in `sorted_mev` that have matching
+    /// transaction hashes. If it finds matching MEV for all types in
+    /// `composable_types`, it uses the `compose` function to create a new MEV
+    /// and adds it to `sorted_mev` under `parent_mev_type`. It also records the
+    /// indices of the composed MEV in `removal_indices`.
+    ///
+    /// After attempting to compose MEV for all MEV of the first type in
+    /// `composable_types`, it removes all the composed MEV from `sorted_mev`
+    /// using the indices stored in `removal_indices`.
+    ///
+    /// This function does not return any value. Its purpose is to modify
+    /// `sorted_mev` by composing new MEV and removing the composed MEV.
+    fn try_compose_mev(
         &mut self,
         parent_mev_type: &MevType,
         composable_types: &[MevType],
-        compose: &Box<
-            dyn Fn(
-                    Box<dyn Any>,
-                    Box<dyn Any>,
-                    ClassifiedMev,
-                    ClassifiedMev,
-                ) -> (ClassifiedMev, Box<dyn SpecificMev>)
-                + Send
-                + Sync,
-        >,
+        compose: &ComposeFunction,
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
     ) {
-        if composable_types.len() != 2 {
-            panic!("we only support sequential compatibility for our specific mev");
+        let first_mev_type = composable_types[0];
+        let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
+
+        if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
+            for (classified, mev_data) in first_mev_list {
+                let tx_hashes = mev_data.mev_transaction_hashes();
+                let mut to_compose = vec![(classified, mev_data.into_any())];
+                let mut temp_removal_indices = Vec::new();
+
+                for &other_mev_type in composable_types.iter().skip(1) {
+                    if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
+                        match find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes) {
+                            Some(index) => {
+                                let (other_classified, other_mev_data) =
+                                    &other_mev_data_list[index];
+                                to_compose.push((
+                                    other_classified.clone(),
+                                    other_mev_data.clone().into_any(),
+                                ));
+                                temp_removal_indices.push((other_mev_type, index));
+                            }
+                            None => break,
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                if to_compose.len() == composable_types.len() {
+                    sorted_mev
+                        .entry(*parent_mev_type)
+                        .or_default()
+                        .push(compose(to_compose));
+                    for (mev_type, index) in temp_removal_indices {
+                        removal_indices.entry(mev_type).or_default().push(index);
+                    }
+                }
+            }
         }
 
-        let Some(zero_txes) = sorted_mev.remove(&composable_types[0]) else { return };
-
-        for (classified, mev_data) in zero_txes {
-            let addresses = mev_data.mev_transaction_hashes();
-
-            if let Some((index, _)) = sorted_mev.get(&composable_types[1]).and_then(|mev_type| {
-                mev_type.iter().enumerate().find(|(_, (_, v))| {
-                    let o_addrs = v.mev_transaction_hashes();
-                    o_addrs == addresses || addresses.iter().any(|a| o_addrs.contains(a))
-                })
-            }) {
-                // remove composed type
-                let (classifed_1, mev_data_1) = sorted_mev
-                    .get_mut(&composable_types[1])
-                    .unwrap()
-                    .remove(index);
-                // insert new type
-                sorted_mev
-                    .entry(*parent_mev_type)
-                    .or_default()
-                    .push(compose(
-                        mev_data.into_any(),
-                        mev_data_1.into_any(),
-                        classified,
-                        classifed_1,
-                    ));
-            } else {
-                // if no prev match, then add back old type
-                sorted_mev
-                    .entry(composable_types[0])
-                    .or_default()
-                    .push((classified, mev_data));
+        // Remove the mev data that was composed from the sorted mev list
+        for (mev_type, indices) in removal_indices {
+            if let Some(mev_list) = sorted_mev.get_mut(&mev_type) {
+                for &index in indices.iter().rev() {
+                    mev_list.remove(index);
+                }
             }
         }
     }
