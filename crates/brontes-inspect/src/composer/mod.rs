@@ -7,42 +7,51 @@ use std::{
     task::{Context, Poll},
 };
 
+mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{compose_sandwich_jit, ClassifiedMev, MevBlock, MevType, SpecificMev},
     normalized_actions::Actions,
     tree::BlockTree,
-    ToScaledRational,
 };
 use futures::FutureExt;
 use lazy_static::lazy_static;
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
-use reth_primitives::Address;
 use tracing::info;
+use utils::{
+    build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
+    BlockPreprocessing,
+};
 
 use crate::Inspector;
 
-type ComposeFunction = Option<
-    Box<
-        dyn Fn(
-                Box<dyn Any + 'static>,
-                Box<dyn Any + 'static>,
-                ClassifiedMev,
-                ClassifiedMev,
-            ) -> (ClassifiedMev, Box<dyn SpecificMev>)
-            + Send
-            + Sync,
-    >,
+type ComposeFunction = Box<
+    dyn Fn(
+            Vec<(ClassifiedMev, Box<dyn Any + Send + Sync>)>,
+        ) -> (ClassifiedMev, Box<dyn SpecificMev>)
+        + Send
+        + Sync,
 >;
 
-/// we use this to define a filter that we can iterate over such that
-/// everything is ordered properly and we have already composed lower level
-/// actions that could effect the higher level composing.
+//TODO: Improve docs after reading
+/// This macro is used to define an `MEV_COMPOSABILITY_FILTER`
+///
+/// The macro takes pairs of MEV types and their dependencies. Each pair is
+/// defined as `MevType => DependentMevTypes;`.
+///
+/// The macro creates a static reference, `MEV_FILTER`, to an array of tuples.
+/// Each tuple contains:
+/// - An `MevType` which is the type of MEV being processed.
+/// - A `ComposeFunction` which is the function used to compose the MEV of the
+///   given type.
+/// - A `Vec<MevType>` which is a vector of MEV types that the current MEV type
+///   depends on.
+
+#[macro_export]
 macro_rules! mev_composability {
     ($($mev_type:ident => $($deps:ident),+;)+) => {
         lazy_static! {
-        static ref MEV_FILTER: &'static [(
+        static ref MEV_COMPOSABILITY_FILTER: &'static [(
                 MevType,
                 ComposeFunction,
                 Vec<MevType>)] = {
@@ -59,34 +68,41 @@ macro_rules! mev_composability {
 }
 
 mev_composability!(
-    // reduce first
+    JitSandwich => Sandwich, Jit;
+);
+//TODO: (Ludwig): Support arbitrary amount of dominant => dependent
+// deduplication relationships so we can support long tail inspection and dedup
+#[macro_export]
+macro_rules! mev_deduplication {
+    ($($mev_type:ident => $($deps:ident),+;)+) => {
+        lazy_static! {
+        static ref MEV_DEDUPLICATION_FILTER: &'static [(
+                MevType,
+                Vec<MevType>)] = {
+            &*Box::leak(Box::new([
+                $((
+                        MevType::$mev_type,
+                        [$(MevType::$deps,)+].to_vec()),
+                   )+
+            ]))
+        };
+    }
+    };
+}
+
+mev_deduplication!(
     Sandwich => Backrun;
     CexDex => Backrun;
     Sandwich => CexDex;
-    // try compose
-    JitSandwich => Sandwich, Jit;
 );
 
-/// the compose function is used in order to be able to properly be able to cast
+/// the compose function is used in order to be able to properly cast
 /// in the lazy static
 fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     match mev_type {
-        MevType::JitSandwich => Some(Box::new(compose_sandwich_jit)),
-        _ => None,
+        MevType::JitSandwich => Box::new(compose_sandwich_jit),
+        _ => unreachable!("This mev type does not have a compose function"),
     }
-}
-
-// So for the master inspector we should get the address of the vertically
-// integrated builders and know searcher addresses so we can also see when they
-// are unprofitable and also better account for the profit given that they could
-// be camouflaging thier trade by overbribing the builder given that
-// they are one and the same
-
-pub struct BlockPreprocessing {
-    meta_data:           Arc<Metadata>,
-    cumulative_gas_used: u128,
-    cumulative_gas_paid: u128,
-    builder_address:     Address,
 }
 
 type InspectorFut<'a> =
@@ -100,6 +116,7 @@ pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>
 pub struct Composer<'a, const N: usize> {
     inspectors_execution: InspectorFut<'a>,
     pre_processing:       BlockPreprocessing,
+    metadata:             Arc<Metadata>,
 }
 
 impl<'a, const N: usize> Composer<'a, N> {
@@ -108,7 +125,8 @@ impl<'a, const N: usize> Composer<'a, N> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
-        let processing = Self::pre_process(tree.clone(), meta_data.clone());
+        let processing = pre_process(tree.clone(), meta_data.clone());
+        let meta_data_clone = meta_data.clone();
         let future = Box::pin(async move {
             let mut scope: TokioScope<'a, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
                 unsafe { Scope::create() };
@@ -128,86 +146,11 @@ impl<'a, const N: usize> Composer<'a, N> {
         Self {
             // The rust compiler struggles to prove that the tokio-scope lifetime is the same as
             // the futures lifetime and errors. the transmute is simply casting the
-            // lifetime to what it truely is. This is totally safe and will never cause
+            // lifetime to what it truly is. This is totally safe and will never cause
             // an error
             inspectors_execution: unsafe { std::mem::transmute(future) },
             pre_processing:       processing,
-        }
-    }
-
-    fn pre_process(tree: Arc<BlockTree<Actions>>, meta_data: Arc<Metadata>) -> BlockPreprocessing {
-        let builder_address = tree.header.beneficiary;
-        let cumulative_gas_used = tree
-            .tx_roots
-            .iter()
-            .map(|root| root.gas_details.gas_used)
-            .sum::<u128>();
-
-        let cumulative_gas_paid = tree
-            .tx_roots
-            .iter()
-            .map(|root| root.gas_details.effective_gas_price * root.gas_details.gas_used)
-            .sum::<u128>();
-
-        BlockPreprocessing { meta_data, cumulative_gas_used, cumulative_gas_paid, builder_address }
-    }
-
-    fn build_mev_header(
-        &mut self,
-        orchestra_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
-    ) -> MevBlock {
-        let pre_processing = &self.pre_processing;
-
-        let total_bribe = orchestra_data
-            .iter()
-            .map(|(_, mev)| mev.bribe())
-            .sum::<u128>();
-
-        let cum_mev_priority_fee_paid = orchestra_data
-            .iter()
-            .map(|(_, mev)| mev.priority_fee_paid())
-            .sum::<u128>();
-
-        //TODO: need to substract proposer payement + fees paid for gas
-        let builder_eth_profit = (total_bribe + pre_processing.cumulative_gas_paid) as i128;
-
-        MevBlock {
-            block_hash: pre_processing.meta_data.block_hash.into(),
-            block_number: pre_processing.meta_data.block_num,
-            mev_count: orchestra_data.len() as u64,
-            finalized_eth_price: f64::rounding_from(
-                &pre_processing.meta_data.eth_prices,
-                RoundingMode::Nearest,
-            )
-            .0,
-            cumulative_gas_used: pre_processing.cumulative_gas_used,
-            cumulative_gas_paid: pre_processing.cumulative_gas_paid,
-            total_bribe,
-            cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
-            builder_address: pre_processing.builder_address,
-            builder_eth_profit,
-            builder_finalized_profit_usd: f64::rounding_from(
-                builder_eth_profit.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
-                RoundingMode::Nearest,
-            )
-            .0,
-            proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
-            proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
-            proposer_finalized_profit_usd: pre_processing.meta_data.proposer_mev_reward.map(
-                |mev_reward| {
-                    f64::rounding_from(
-                        mev_reward.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
-                        RoundingMode::Nearest,
-                    )
-                    .0
-                },
-            ),
-            cumulative_mev_finalized_profit_usd: f64::rounding_from(
-                (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(12)
-                    * &pre_processing.meta_data.eth_prices,
-                RoundingMode::Nearest,
-            )
-            .0,
+            metadata:             meta_data_clone,
         }
     }
 
@@ -216,33 +159,21 @@ impl<'a, const N: usize> Composer<'a, N> {
         orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> Poll<ComposerResults> {
         info!("starting to compose classified mev");
-        let mut header = self.build_mev_header(&orchestra_data);
+        let mut header =
+            build_mev_header(self.metadata.clone(), &self.pre_processing, &orchestra_data);
 
-        let mut sorted_mev = orchestra_data
-            .into_iter()
-            .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
-            .fold(
-                HashMap::default(),
-                |mut acc: HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
-                 (mev_type, v)| {
-                    acc.entry(mev_type).or_default().push(v);
-                    acc
-                },
-            );
+        let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
-        MEV_FILTER
+        MEV_COMPOSABILITY_FILTER
             .iter()
             .for_each(|(head_mev_type, compose_fn, dependencies)| {
-                if let Some(compose_fn) = compose_fn {
-                    self.compose_dep_filter(
-                        head_mev_type,
-                        dependencies,
-                        compose_fn,
-                        &mut sorted_mev,
-                    );
-                } else {
-                    self.replace_dep_filter(head_mev_type, dependencies, &mut sorted_mev);
-                }
+                self.try_compose_mev(head_mev_type, dependencies, compose_fn, &mut sorted_mev);
+            });
+
+        MEV_DEDUPLICATION_FILTER
+            .iter()
+            .for_each(|(head_mev_type, dependencies)| {
+                self.deduplicate_mev(head_mev_type, dependencies, &mut sorted_mev);
             });
 
         let flattened_mev = sorted_mev
@@ -259,15 +190,15 @@ impl<'a, const N: usize> Composer<'a, N> {
         Poll::Ready((header, flattened_mev))
     }
 
-    fn replace_dep_filter(
+    //TODO: Clean up this function
+    fn deduplicate_mev(
         &mut self,
         head_mev_type: &MevType,
         deps: &[MevType],
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
     ) {
-        // TODO
         let Some(head_mev) = sorted_mev.get(head_mev_type) else { return };
-        let flattend_indexes = head_mev
+        let flattened_indexes = head_mev
             .iter()
             .flat_map(|(_, specific)| {
                 let hashes = specific.mev_transaction_hashes();
@@ -300,7 +231,7 @@ impl<'a, const N: usize> Composer<'a, N> {
             })
             .collect::<Vec<(MevType, usize)>>();
 
-        for (mev_type, index) in flattend_indexes {
+        for (mev_type, index) in flattened_indexes {
             let entry = sorted_mev.get_mut(&mev_type).unwrap();
             if entry.len() > index {
                 entry.remove(index);
@@ -308,58 +239,79 @@ impl<'a, const N: usize> Composer<'a, N> {
         }
     }
 
-    fn compose_dep_filter(
+    /// Attempts to compose a new complex MEV occurrence from a list of
+    /// MEV types that can be composed together.
+    ///
+    /// # Functionality:
+    ///
+    /// The function first checks if there are any MEV of the first type in
+    /// `composable_types` in `sorted_mev`. If there are, it iterates over them.
+    /// For each MEV, it gets the transaction hashes associated with that MEV
+    /// and attempts to find other MEV in `sorted_mev` that have matching
+    /// transaction hashes. If it finds matching MEV for all types in
+    /// `composable_types`, it uses the `compose` function to create a new MEV
+    /// and adds it to `sorted_mev` under `parent_mev_type`. It also records the
+    /// indices of the composed MEV in `removal_indices`.
+    ///
+    /// After attempting to compose MEV for all MEV of the first type in
+    /// `composable_types`, it removes all the composed MEV from `sorted_mev`
+    /// using the indices stored in `removal_indices`.
+    ///
+    /// This function does not return any value. Its purpose is to modify
+    /// `sorted_mev` by composing new MEV and removing the composed MEV.
+    fn try_compose_mev(
         &mut self,
         parent_mev_type: &MevType,
         composable_types: &[MevType],
-        compose: &Box<
-            dyn Fn(
-                    Box<dyn Any>,
-                    Box<dyn Any>,
-                    ClassifiedMev,
-                    ClassifiedMev,
-                ) -> (ClassifiedMev, Box<dyn SpecificMev>)
-                + Send
-                + Sync,
-        >,
+        compose: &ComposeFunction,
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
     ) {
-        if composable_types.len() != 2 {
-            panic!("we only support sequential compatibility for our specific mev");
+        let first_mev_type = composable_types[0];
+        let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
+
+        if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
+            for (classified, mev_data) in first_mev_list {
+                let tx_hashes = mev_data.mev_transaction_hashes();
+                let mut to_compose = vec![(classified, mev_data.into_any())];
+                let mut temp_removal_indices = Vec::new();
+
+                for &other_mev_type in composable_types.iter().skip(1) {
+                    if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
+                        match find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes) {
+                            Some(index) => {
+                                let (other_classified, other_mev_data) =
+                                    &other_mev_data_list[index];
+                                to_compose.push((
+                                    other_classified.clone(),
+                                    other_mev_data.clone().into_any(),
+                                ));
+                                temp_removal_indices.push((other_mev_type, index));
+                            }
+                            None => break,
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                if to_compose.len() == composable_types.len() {
+                    sorted_mev
+                        .entry(*parent_mev_type)
+                        .or_default()
+                        .push(compose(to_compose));
+                    for (mev_type, index) in temp_removal_indices {
+                        removal_indices.entry(mev_type).or_default().push(index);
+                    }
+                }
+            }
         }
 
-        let Some(zero_txes) = sorted_mev.remove(&composable_types[0]) else { return };
-
-        for (classified, mev_data) in zero_txes {
-            let addresses = mev_data.mev_transaction_hashes();
-
-            if let Some((index, _)) = sorted_mev.get(&composable_types[1]).and_then(|mev_type| {
-                mev_type.iter().enumerate().find(|(_, (_, v))| {
-                    let o_addrs = v.mev_transaction_hashes();
-                    o_addrs == addresses || addresses.iter().any(|a| o_addrs.contains(a))
-                })
-            }) {
-                // remove composed type
-                let (classifed_1, mev_data_1) = sorted_mev
-                    .get_mut(&composable_types[1])
-                    .unwrap()
-                    .remove(index);
-                // insert new type
-                sorted_mev
-                    .entry(*parent_mev_type)
-                    .or_default()
-                    .push(compose(
-                        mev_data.into_any(),
-                        mev_data_1.into_any(),
-                        classified,
-                        classifed_1,
-                    ));
-            } else {
-                // if no prev match, then add back old type
-                sorted_mev
-                    .entry(composable_types[0])
-                    .or_default()
-                    .push((classified, mev_data));
+        // Remove the mev data that was composed from the sorted mev list
+        for (mev_type, indices) in removal_indices {
+            if let Some(mev_list) = sorted_mev.get_mut(&mev_type) {
+                for &index in indices.iter().rev() {
+                    mev_list.remove(index);
+                }
             }
         }
     }
@@ -375,6 +327,13 @@ impl<const N: usize> Future for Composer<'_, N> {
         Poll::Pending
     }
 }
+
+//TODO: Move to the database crate & track each block
+// So for the master inspector we should get the address of the vertically
+// integrated builders and know searcher addresses so we can also see when they
+// are unprofitable and also better account for the profit given that they could
+// be camouflaging thier trade by overbribing the builder given that
+// they are one and the same
 /*q
 #[cfg(test)]
 pub mod tests {
@@ -395,7 +354,7 @@ pub mod tests {
     use super::*;
     use crate::{
         atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
-        sandwich::SandwichInspector,
+        sandwich::LongTailInspector,
     };
 
     unsafe fn cast_lifetime<'f, 'a, I>(item: &'a I) -> &'f I {
@@ -494,7 +453,7 @@ pub mod tests {
         let cex_dex = Box::new(CexDexInspector::new(USDC)) as Box<dyn Inspector>;
         let backrun = Box::new(AtomicBackrunInspector::new(USDC)) as Box<dyn Inspector>;
         let jit = Box::new(JitInspector::new(USDC)) as Box<dyn Inspector>;
-        let sandwich = Box::new(SandwichInspector::new(USDC)) as Box<dyn Inspector>;
+        let sandwich = Box::new(LongTailInspector::new(USDC)) as Box<dyn Inspector>;
 
         let inspectors: [&'static Box<dyn Inspector>; 2] = unsafe {
             [
