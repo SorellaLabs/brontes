@@ -462,11 +462,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 }
                 Poll::Pending => break,
             }
-
-            // drain all loaded pools
-            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                self.on_pool_resolve(state)
-            }
         }
         self.on_pool_updates(block_updates);
 
