@@ -66,7 +66,8 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
-     log_data: V2MintImplMint, db_tx: &LibmdbxTx<RO>| {
+     log_data: V2MintImplMint,
+     db_tx: &LibmdbxTx<RO>| {
         let log_data = log_data.Mint_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
@@ -85,7 +86,7 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    [Ignore<Transfer>, Ignore<Sync>, Burn],
+    [Transfer, Sync, Burn],
     SushiSwapV2,
     call_data: true,
     logs: true,
@@ -93,7 +94,8 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: burnCall,
-     log_data: V2BurnImplBurn, db_tx: &LibmdbxTx<RO>| {
+     log_data: V2BurnImplBurn,
+     db_tx: &LibmdbxTx<RO>| {
         let log_data = log_data.Burn_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
