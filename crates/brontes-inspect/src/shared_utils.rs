@@ -15,7 +15,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-use tracing::debug;
+use tracing::error;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {
@@ -48,11 +48,11 @@ impl SharedInspectorUtils<'_> {
             // properly.
             if let Actions::Swap(swap) = action {
                 let Some(decimals_in) = self.db.try_get_decimals(swap.token_in) else {
-                    debug!("token decimals not found");
+                    error!("token decimals not found");
                     continue;
                 };
                 let Some(decimals_out) = self.db.try_get_decimals(swap.token_out) else {
-                    debug!("token decimals not found");
+                    error!("token decimals not found");
                     continue;
                 };
 
@@ -149,7 +149,7 @@ impl SharedInspectorUtils<'_> {
         for transfer in transfers.into_iter() {
             // normalize token decimals
             let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
-                debug!("token decimals not found");
+                error!("token decimals not found");
                 continue;
             };
             let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
