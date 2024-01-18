@@ -21,7 +21,7 @@ use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{classifiers::*, ActionCollection, FactoryDecoderDispatch, StaticBindings};
 
@@ -276,6 +276,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 (node.data.is_transfer(), has_swap && has_transfer)
             },
             |node| {
+                info!("removing transfer with swap");
                 let mut swap_idx = Vec::new();
                 node.collect(
                     &mut swap_idx,
