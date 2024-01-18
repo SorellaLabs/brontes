@@ -114,56 +114,25 @@ impl CexDexInspector<'_> {
             .map(|(dex_price, cex1)| (dex_price.to_float(), cex1.to_float()))
             .collect::<Vec<_>>();
 
-        let flat_swaps = swaps.into_iter().collect::<Vec<_>>();
+        let flat_swaps = swaps
+            .into_iter()
+            .filter(|act| act.is_swap())
+            .map(|swap| swap.force_swap())
+            .collect::<Vec<_>>();
 
         let cex_dex = CexDex {
-            tx_hash:          hash,
-            gas_details:      gas_details.clone(),
-            swaps_index:      flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().trace_index)
-                .collect::<Vec<_>>(),
-            swaps_from:       flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().from)
-                .collect::<Vec<_>>(),
-            swaps_pool:       flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().pool)
-                .collect::<Vec<_>>(),
-            swaps_token_in:   flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().token_in)
-                .collect::<Vec<_>>(),
-            swaps_token_out:  flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().token_out)
-                .collect::<Vec<_>>(),
-            swaps_amount_in:  flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().amount_in.to())
-                .collect::<Vec<_>>(),
-            swaps_amount_out: flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().amount_out.to())
-                .collect::<Vec<_>>(),
-            prices_kind:      prices
+            tx_hash:        hash,
+            gas_details:    gas_details.clone(),
+            swaps:          flat_swaps.clone(),
+            prices_kind:    prices
                 .iter()
                 .flat_map(|_| vec![PriceKind::Dex, PriceKind::Cex])
                 .collect(),
-            prices_address:   flat_swaps
+            prices_address: flat_swaps
                 .iter()
-                .filter(|s| s.is_swap())
-                .flat_map(|s| vec![s.clone().force_swap().token_in].repeat(2))
+                .flat_map(|s| vec![s.token_in].repeat(2))
                 .collect(),
-            prices_price:     prices
+            prices_price:   prices
                 .iter()
                 .flat_map(|(dex, cex)| vec![*dex, *cex])
                 .collect(),

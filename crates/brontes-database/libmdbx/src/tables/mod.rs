@@ -14,7 +14,7 @@ use const_sql::*;
 use futures::{future::join_all, Future};
 use reth_db::{table::Table, TableType};
 use serde::Deserialize;
-use sorella_db_databases::Row;
+use sorella_db_databases::clickhouse::DbRow;
 use tracing::info;
 
 use crate::{
@@ -320,7 +320,7 @@ table!(
 
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
-    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    D: LibmdbxData<Self> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
     fn initialize_query() -> &'static str;
 
