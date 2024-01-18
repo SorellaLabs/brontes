@@ -27,6 +27,9 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     ) = log_types
         .into_iter()
         .enumerate()
+        // collect to set all indexes
+        .collect_vec()
+        .into_iter()
         .filter_map(|(i, n)| {
             // is possible, need to increment count
             if n.0 {
@@ -139,7 +142,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                             as ::alloy_sol_types::SolEvent>
                             ::decode_log_data(&log.data, false).ok() {
                                 log_res.#log_field = Some(decoded);
-                               break 'possible 
+                               break 'possible
                             }
                     }
                 )*
