@@ -139,6 +139,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     if give_logs {
         option_parsing.push(quote!(
             let mut log_res = #log_return_builder_struct_name::new();
+            println!("{}", logs.len());
             #(
                 'possible: {
                 #(
