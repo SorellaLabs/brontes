@@ -273,6 +273,9 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         has_swap = true;
                     }
                 }
+                if node.data.is_transfer() && has_swap {
+                    println!("{node:#?}");
+                }
                 (node.data.is_transfer(), has_swap && has_transfer)
             },
             |node| {
@@ -309,7 +312,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 (node.data.is_swap(), has_swap && has_transfer)
             },
             |node| {
-                info!("making swap with fee");
                 // collect all sub transfers
                 let mut transfers = Vec::new();
                 node.collect(
