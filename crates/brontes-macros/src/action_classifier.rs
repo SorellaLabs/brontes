@@ -18,8 +18,9 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     let mut option_parsing = Vec::new();
 
+    let mut is_possible_count = 0usize;
     let (log_idx, log_optional, log_field, log_ident): (
-        Vec<Index>,
+        Vec<Vec<Index>>,
         Vec<LitBool>,
         Vec<Ident>,
         Vec<Ident>,
@@ -27,12 +28,19 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         .into_iter()
         .enumerate()
         .filter_map(|(i, n)| {
+            // is possible, need to increment count
+            if n.0 {
+                is_possible_count += 1;
+            }
             if n.1 {
                 return None
             }
 
             Some((
-                Index::from(i),
+                (0..is_possible_count)
+                    .into_iter()
+                    .map(|shift| Index::from(i - shift))
+                    .collect_vec(),
                 LitBool::new(n.0, Span::call_site().into()),
                 Ident::new(&(n.2.to_string() + "_field"), Span::call_site().into()),
                 n.2,
@@ -123,27 +131,16 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     if give_logs {
         option_parsing.push(quote!(
             let mut log_res = #log_return_builder_struct_name::new();
-
-            // we have more log varents that optonal
-            let mut offset_count = 0;
             #(
-                if #log_optional {
-                    let log = &logs[#log_idx - offset_count];
-                    if let Some(decoded) = <crate::#exchange_mod_name::#log_ident
-                        as ::alloy_sol_types::SolEvent>
-                        ::decode_log_data(&log.data, false).ok() {
-                        log_res.#log_field = Some(decoded);
-                    } else {
-                        offset_count +=1;
+                #(
+                    if let Some(log)= &logs.get(#log_idx) {
+                        if let Some(decoded)= <crate::#exchange_mod_name::#log_ident
+                            as ::alloy_sol_types::SolEvent>
+                            ::decode_log_data(&log.data, false).ok() {
+                                log_res.#log_field = Some(decoded);
+                            }
                     }
-                } else {
-                    let log = &logs[#log_idx - offset_count];
-                    let decoded = <crate::#exchange_mod_name::#log_ident
-                        as ::alloy_sol_types::SolEvent>
-                        ::decode_log_data(&log.data, false).ok()?;
-
-                    log_res.#log_field = Some(decoded);
-                }
+                )*
             )*
             let log_data = log_res.build();
         ));
