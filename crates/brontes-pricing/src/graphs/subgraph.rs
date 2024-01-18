@@ -78,8 +78,9 @@ impl SubGraphEdge {
 pub struct PairSubGraph {
     graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
     token_to_index: HashMap<Address, u16>,
-    start_node:     u16,
-    end_node:       u16,
+
+    start_node: u16,
+    end_node:   u16,
 }
 
 impl PairSubGraph {
@@ -150,7 +151,7 @@ impl PairSubGraph {
     pub fn fetch_price<T: ProtocolState>(
         &self,
         edge_state: &HashMap<Address, T>,
-    ) -> Option<(Rational, Rational)> {
+    ) -> Option<Rational> {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
     }
 
@@ -210,7 +211,6 @@ fn add_edge(
     direction: bool,
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
-    // if we already have the edge, then we don't add it again
     if weights
         .iter()
         .find(|w| w.pool_addr == edge_info.pool_addr)
@@ -243,7 +243,7 @@ pub fn dijkstra_path<G, T>(
     start: G::NodeId,
     goal: G::NodeId,
     state: &HashMap<Address, T>,
-) -> Option<(Rational, Rational)>
+) -> Option<Rational>
 where
     T: ProtocolState,
     G: IntoEdgeReferences<EdgeWeight = Vec<SubGraphEdge>>,
@@ -256,9 +256,9 @@ where
     let mut visit_next = BinaryHeap::new();
     let zero_score = Rational::ZERO;
     scores.insert(start, zero_score.clone());
-    visit_next.push(MinScored(zero_score.clone(), (start, Rational::ONE, zero_score)));
+    visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
 
-    while let Some(MinScored(node_score, (node, price, prev_tvl))) = visit_next.pop() {
+    while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
         if visited.is_visited(&node) {
             continue
         }
@@ -312,24 +312,20 @@ where
             let token_1_priced = token_1_am * &new_price;
 
             let tvl = token_0_priced + token_1_priced;
-            let next_score = &node_score + tvl.clone().reciprocal();
+            let next_score = &node_score + tvl.reciprocal();
 
             match scores.entry(next) {
                 Occupied(ent) => {
                     if next_score < *ent.get() {
                         *ent.into_mut() = next_score.clone();
-                        visit_next.push(MinScored(
-                            next_score,
-                            (next, new_price.clone(), &prev_tvl + &tvl),
-                        ));
-                        node_price.insert(next, (new_price, &prev_tvl + &tvl));
+                        visit_next.push(MinScored(next_score, (next, new_price.clone())));
+                        node_price.insert(next, new_price);
                     }
                 }
                 Vacant(ent) => {
                     ent.insert(next_score.clone());
-                    visit_next
-                        .push(MinScored(next_score, (next, new_price.clone(), &prev_tvl + &tvl)));
-                    node_price.insert(next, (new_price, &prev_tvl + &tvl));
+                    visit_next.push(MinScored(next_score, (next, new_price.clone())));
+                    node_price.insert(next, new_price);
                 }
             }
         }
