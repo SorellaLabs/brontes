@@ -75,10 +75,6 @@ pub enum MevType {
     Unknown     = 6,
 }
 
-//impl DbRow for MevType {
-//  const COLUMN_NAMES: &'static [&'static str] = &[];
-//}
-
 pub trait SpecificMev:
     InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
 {
