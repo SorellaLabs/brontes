@@ -1,3 +1,5 @@
+//TODO: Finish this once all other crates have been documented.
+
 //! # Brontes
 //!
 //! This is the main binary crate for the Brontes project. It uses several other
@@ -181,6 +183,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
 impl<const N: usize, T: TracingProvider> Future for Brontes<'_, N, T> {
     type Output = ();
 
+    //TODO: Fix this comment
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // This loop drives the entire state of network and does a lot of work.
         // Under heavy load (many messages/events), data may arrive faster than it can
