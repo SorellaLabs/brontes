@@ -273,7 +273,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         has_swap = true;
                     }
                 }
-                if node.data.is_transfer() {
+                if node.data.is_transfer() && has_swap{
                     println!("{node:#?}");
                 }
                 (node.data.is_transfer(), has_swap && has_transfer)
@@ -589,7 +589,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         }
 
         if trace.logs.len() > 0 {
-            // A transfer should always be in its own call trace and have 1 log.  
+            // A transfer should always be in its own call trace and have 1 log.
             // if forever reason there is a case with multiple logs, we take the first
             // transfer
             for log in &trace.logs {
