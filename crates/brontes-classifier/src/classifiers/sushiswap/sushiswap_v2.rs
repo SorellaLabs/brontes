@@ -80,7 +80,6 @@ action_impl!(
         })
     }
 );
-
 action_impl!(
     V2BurnImpl,
     Burn,
