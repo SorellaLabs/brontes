@@ -89,19 +89,28 @@ impl AllPairGraph {
         Self { graph, token_to_index }
     }
 
-    pub fn remove_empty_address(&mut self, pool_pair: Pair, pool_addr: Address) {
-        let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return };
-        let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return };
+    pub fn remove_empty_address(
+        &mut self,
+        pool_pair: Pair,
+        pool_addr: Address,
+    ) -> Option<(Address, StaticBindingsDb, Pair)> {
+        let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return None };
+        let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return None };
 
-        let Some(edge) = self.graph.find_edge((*n0).into(), (*n1).into()) else { return };
+        let Some(edge) = self.graph.find_edge((*n0).into(), (*n1).into()) else { return None };
         let Some(weights) = self.graph.edge_weight_mut(edge) else {
-            return;
+            return None;
         };
 
+        let Some(bad_pool) = weights.iter().find(|e| e.pool_addr == pool_addr).cloned() else {
+             return None;
+        };
         weights.retain(|e| e.pool_addr != pool_addr);
         if weights.len() == 0 {
             self.graph.remove_edge(edge);
         }
+
+        Some((bad_pool.pool_addr, bad_pool.dex_type, pool_pair))
     }
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {

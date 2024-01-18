@@ -185,17 +185,18 @@ impl GraphManager {
         subgraph_pair: Pair,
         pool_pair: Pair,
         pool_address: Address,
-    ) -> bool {
+    ) -> (bool, Option<(Address, StaticBindingsDb, Pair)>) {
         let requery_subgraph = self.sub_graph_registry.bad_pool_state(
             subgraph_pair.ordered(),
             pool_pair.ordered(),
             pool_address,
         );
 
-        self.all_pair_graph
-            .remove_empty_address(pool_pair, pool_address);
-
-        requery_subgraph
+        (
+            requery_subgraph,
+            self.all_pair_graph
+                .remove_empty_address(pool_pair, pool_address),
+        )
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
