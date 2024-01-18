@@ -263,8 +263,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
-        self.store_dex_price(block, tx_idx, pool_pair);
-        self.store_dex_price(block, tx_idx, pool_pair.flip());
         self.store_dex_price(block, tx_idx, pair0);
         self.store_dex_price(block, tx_idx, pair1);
     }
@@ -282,8 +280,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
-        self.store_dex_price(block, tx_idx, pool_pair);
-        self.store_dex_price(block, tx_idx, pool_pair.flip());
         self.store_dex_price(block, tx_idx, pair0);
         self.store_dex_price(block, tx_idx, pair1);
     }
