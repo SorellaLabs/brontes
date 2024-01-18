@@ -76,20 +76,7 @@ impl Inspector for JitInspector<'_> {
                         tree.get_gas_details(backrun_tx).cloned().unwrap(),
                     ];
 
-                    // grab all the pools that had liquidity events on them
-                    let liquidity_addresses = searcher_actions
-                        .iter()
-                        .flatten()
-                        .filter_map(|action| match action {
-                            Actions::Mint(m) => Some(m.to),
-                            Actions::Burn(b) => Some(b.to),
-                            Actions::Collect(c) => Some(c.to),
-                            _ => None,
-                        })
-                        .collect::<HashSet<_>>();
-
                     // grab all victim swaps dropping swaps that don't touch addresses with
-                    // liquidity deltas
                     let (victims, victim_actions): (Vec<B256>, Vec<Vec<Actions>>) = victims
                         .iter()
                         .map(|victim| {
@@ -102,11 +89,6 @@ impl Inspector for JitInspector<'_> {
                                     )
                                 }),
                             )
-                        })
-                        .filter(|(_, actions)| {
-                            actions
-                                .iter()
-                                .any(|s| liquidity_addresses.contains(&s.force_swap_ref().pool))
                         })
                         .unzip();
 
