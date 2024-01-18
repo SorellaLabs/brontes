@@ -18,11 +18,11 @@ use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
 
-pub struct SandwichInspector<'db> {
+pub struct LongTailInspector<'db> {
     inner: SharedInspectorUtils<'db>,
 }
 
-impl<'db> SandwichInspector<'db> {
+impl<'db> LongTailInspector<'db> {
     pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
@@ -38,7 +38,7 @@ pub struct PossibleSandwich {
 }
 
 #[async_trait::async_trait]
-impl Inspector for SandwichInspector<'_> {
+impl Inspector for LongTailInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
@@ -104,7 +104,7 @@ impl Inspector for SandwichInspector<'_> {
     }
 }
 
-impl SandwichInspector<'_> {
+impl LongTailInspector<'_> {
     fn calculate_sandwich(
         &self,
         idx: usize,
@@ -426,7 +426,7 @@ mod tests {
 
         let (missing_token_decimals, tree) = classifier.build_block_tree(tx, block.1);
         let tree = Arc::new(tree);
-        let inspector = SandwichInspector::new(
+        let inspector = LongTailInspector::new(
             Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
         );
 
@@ -463,7 +463,7 @@ mod tests {
         let (tokens_missing_decimals, tree) = classifier.build_block_tree(block.0, block.1);
         let tree = Arc::new(tree);
 
-        let inspector = SandwichInspector::new(
+        let inspector = LongTailInspector::new(
             Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
         );
 
