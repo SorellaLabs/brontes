@@ -4,13 +4,13 @@ use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::{mdbx::RO, transaction::DbTx};
 
-use crate::UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, Sync, Transfer};
+use crate::UniswapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap};
 
 action_impl!(
     V2SwapImpl,
     Swap,
     swapCall,
-    [Sync, Swap],
+    [Ignore<Sync>, Swap],
     UniswapV2,
     call_data: true,
     logs: true,
@@ -18,9 +18,9 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     call_data: swapCall,
-    log_data: (Sync,Swap),
+    log_data: V2SwapImplSwap,
     db_tx: &LibmdbxTx<RO>| {
-        let data = log_data.1;
+        let data = log_data.Swap_field;
         let recipient = call_data.to;
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -57,7 +57,7 @@ action_impl!(
     V2MintImpl,
     Mint,
     mintCall,
-    [Transfer, Sync, Mint],
+    [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Mint],
     UniswapV2,
     logs: true,
     call_data: true,
@@ -65,9 +65,9 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
-     log_data: (Transfer, Sync, Mint),
+     log_data: V2MintImplMint,
      db_tx: &LibmdbxTx<RO>| {
-        let log_data = log_data.2;
+        let log_data = log_data.Mint_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedMint {
@@ -84,7 +84,7 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    [Transfer, Sync, Burn],
+    [Ignore<Transfer>, Ignore<Sync>, Burn],
     UniswapV2,
     call_data: true,
     logs: true,
@@ -92,9 +92,9 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: burnCall,
-     log_data: (Transfer, Sync, Burn),
+     log_data: V2BurnImplBurn,
      db_tx: &LibmdbxTx<RO>| {
-        let log_data = log_data.2;
+        let log_data = log_data.Burn_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedBurn {

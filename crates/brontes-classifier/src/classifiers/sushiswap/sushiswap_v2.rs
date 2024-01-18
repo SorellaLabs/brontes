@@ -4,13 +4,13 @@ use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::{mdbx::RO, transaction::DbTx};
 
-use crate::SushiSwapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap, Sync, Transfer};
+use crate::SushiSwapV2::{burnCall, mintCall, swapCall, Burn, Mint, Swap};
 
 action_impl!(
     V2SwapImpl,
     Swap,
     swapCall,
-    [Sync, Swap],
+    [Ignore<Sync>, Swap],
     SushiSwapV2,
     call_data: true,
     logs: true,
@@ -18,9 +18,9 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     call_data: swapCall,
-    logs: (Sync,Swap),
+    logs: V2SwapImplSwap,
     db_tx: &LibmdbxTx<RO>| {
-        let logs = logs.1;
+        let logs = logs.Swap_field;
 
         let recipient = call_data.to;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -57,7 +57,8 @@ action_impl!(
     V2MintImpl,
     Mint,
     mintCall,
-    [Transfer, Sync, Mint],
+    // can be a double transfer if the pool has no liquidity
+    [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Mint],
     SushiSwapV2,
     logs: true,
     call_data: true,
@@ -65,9 +66,8 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: mintCall,
-     log_data: (Transfer, Sync, Mint), db_tx: &LibmdbxTx<RO>| {
-        let log_data = log_data.2;
-
+     log_data: V2MintImplMint, db_tx: &LibmdbxTx<RO>| {
+        let log_data = log_data.Mint_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedMint {
@@ -85,7 +85,7 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    [Transfer, Sync, Burn],
+    [Ignore<Transfer>, Ignore<Sync>, Burn],
     SushiSwapV2,
     call_data: true,
     logs: true,
@@ -93,8 +93,8 @@ action_impl!(
      from_address: Address,
      target_address: Address,
      call_data: burnCall,
-     log_data: (Transfer, Sync, Burn), db_tx: &LibmdbxTx<RO>| {
-        let log_data = log_data.2;
+     log_data: V2BurnImplBurn, db_tx: &LibmdbxTx<RO>| {
+        let log_data = log_data.Burn_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedBurn {

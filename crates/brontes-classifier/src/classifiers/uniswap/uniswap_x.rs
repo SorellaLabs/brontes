@@ -4,7 +4,7 @@ use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::NormalizedBatch;
 use reth_db::mdbx::RO;
 
-use crate::UniswapX::{executeCall, Fill};
+use crate::UniswapX::executeCall;
 
 action_impl!(
     UniXExecuteImpl,
@@ -18,8 +18,9 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     call_data: executeCall,
-    logs: Fill,
+    logs: UniXExecuteImplBatch,
     db_tx: &LibmdbxTx<RO>| {
+        let logs = logs.Fill_field;
 
         //TODO: Finish implementing this
         Some(NormalizedBatch {
