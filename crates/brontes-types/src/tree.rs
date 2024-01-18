@@ -456,8 +456,12 @@ impl<V: NormalizedAction> Node<V> {
             .map(|node| node.modify_node_if_contains_childs(find, modify))
             .collect::<Vec<_>>();
 
-        if !lower_classification_results.into_iter().any(|n| n) && is_parent_node {
-            modify(self);
+        if !lower_classification_results.into_iter().any(|n| n) {
+            if is_parent_node {
+                modify(self);
+            } else {
+                return false
+            }
         }
 
         true
