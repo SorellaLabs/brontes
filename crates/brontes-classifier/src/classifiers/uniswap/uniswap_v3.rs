@@ -1,20 +1,13 @@
-use alloy_primitives::{Address, Bytes, LogData, U256};
-use alloy_sol_types::SolCall;
+use alloy_primitives::{Address, U256};
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
-use brontes_pricing::types::PoolUpdate;
 use brontes_types::normalized_actions::{
-    Actions, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
+    NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
 use reth_db::{mdbx::RO, transaction::DbTx};
-use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{
-    enum_unwrap, ActionCollection, IntoAction, StaticReturnBindings,
-    SushiSwapV3::{
-        burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall,
-        swapReturn, SushiSwapV3Calls,
-    },
+use crate::UniswapV3::{
+    burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall, swapReturn,
 };
 
 action_impl!(
@@ -22,10 +15,15 @@ action_impl!(
     Swap,
     swapCall,
     [Swap],
-    SushiSwapV3,
+    UniswapV3,
     call_data: true,
     return_data: true,
-    |trace_index, from_address: Address, target_address: Address, call_data: swapCall, return_data: swapReturn,  db_tx: &LibmdbxTx<RO>| {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    call_data: swapCall,
+    return_data: swapReturn,
+    db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
@@ -64,7 +62,7 @@ action_impl!(
     Mint,
     mintCall,
     [Mint],
-    SushiSwapV3,
+    UniswapV3,
     return_data: true,
     call_data: true,
     |trace_index,
@@ -92,9 +90,13 @@ action_impl!(
     Burn,
     burnCall,
     [Burn],
-    SushiSwapV3,
+    UniswapV3,
     return_data: true,
-    |trace_index, from_address: Address, target_address: Address, return_data: burnReturn,  db_tx: &LibmdbxTx<RO>| {
+    |trace_index,
+    from_address: Address,
+    target_address: Address,
+    return_data: burnReturn,
+    db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
 
@@ -118,7 +120,7 @@ action_impl!(
     Collect,
     collectCall,
     [Collect],
-    SushiSwapV3,
+    UniswapV3,
     call_data: true,
     return_data: true,
     |
@@ -141,4 +143,4 @@ action_impl!(
     }
 );
 
-action_dispatch!(SushiSwapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);
+action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);

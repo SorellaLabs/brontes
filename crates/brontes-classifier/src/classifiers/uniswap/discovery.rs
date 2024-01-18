@@ -1,15 +1,9 @@
-use std::sync::Arc;
-
-use alloy_primitives::{Log, B256};
-use alloy_sol_types::SolEvent;
+use alloy_primitives::B256;
 use brontes_macros::{discovery_dispatch, discovery_impl};
-use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
+use brontes_pricing::types::DiscoveredPool;
+use brontes_types::exchanges::StaticBindingsDb;
 
-use super::{DiscoveredPool, FactoryDecoder, FactoryDecoderDispatch};
-use crate::{
-    UniswapV2Factory, UniswapV2Factory::PairCreated, UniswapV3Factory,
-    UniswapV3Factory::PoolCreated,
-};
+use crate::{UniswapV2Factory::PairCreated, UniswapV3Factory::PoolCreated};
 
 discovery_impl!(
     UniswapV2Decoder,

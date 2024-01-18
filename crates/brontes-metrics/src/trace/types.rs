@@ -1,6 +1,6 @@
 use colored::Colorize;
 use reth_primitives::B256;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::PoirotMetricEvents;
 
@@ -40,7 +40,7 @@ impl BlockStats {
             self.block_num
         );
 
-        info!("{}", msg);
+        debug!("{}", msg);
     }
 }
 
@@ -70,7 +70,7 @@ impl TransactionStats {
             self.tx_hash
         );
 
-        info!("{}", msg);
+        debug!("{}", msg);
     }
 }
 

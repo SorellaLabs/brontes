@@ -408,7 +408,12 @@ where
 
                         data.unwrap()
                     })
-                })).await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
+                })).await
+                    .into_iter()
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>();
 
             libmdbx.write_table(&data)?;
             /* .buffer_unordered(50);
