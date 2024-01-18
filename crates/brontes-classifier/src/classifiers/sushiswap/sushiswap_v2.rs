@@ -86,7 +86,7 @@ action_impl!(
     V2BurnImpl,
     Burn,
     burnCall,
-    [Ignore<Transfer>, Ignore<Sync>, Burn],
+    [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Burn],
     SushiSwapV2,
     call_data: true,
     logs: true,
