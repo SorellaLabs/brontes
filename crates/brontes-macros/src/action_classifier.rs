@@ -42,7 +42,12 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
             Some((
                 (0..=is_possible_count)
                     .into_iter()
-                    .map(|shift| Index::from(i - shift))
+                    .filter_map(|shift| {
+                        if i < shift {
+                            return None
+                        }
+                        Some(Index::from(i - shift))
+                    })
                     .collect_vec(),
                 LitBool::new(n.0, Span::call_site().into()),
                 Ident::new(&(n.2.to_string() + "_field"), Span::call_site().into()),
