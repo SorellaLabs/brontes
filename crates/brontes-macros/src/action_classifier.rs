@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use proc_macro::{Span, TokenStream};
 use quote::quote;
 use syn::{bracketed, parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
@@ -17,11 +18,98 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     let mut option_parsing = Vec::new();
 
-    let (log_idx, log_types): (Vec<Index>, Vec<Ident>) = log_types
+    let (log_idx, log_optional, log_field, log_ident): (
+        Vec<Index>,
+        Vec<LitBool>,
+        Vec<Ident>,
+        Vec<Ident>,
+    ) = log_types
         .into_iter()
         .enumerate()
-        .map(|(i, n)| (Index::from(i), n))
-        .unzip();
+        .filter_map(|(i, n)| {
+            if n.1 {
+                return None
+            }
+
+            Some((
+                Index::from(i),
+                LitBool::new(n.0, Span::call_site().into()),
+                Ident::new(&(n.2.to_string() + "_field"), Span::call_site().into()),
+                n.2,
+            ))
+        })
+        .multiunzip();
+
+    let log_return_struct_name = Ident::new(
+        &(exchange_name.to_string() + &action_type.to_string()),
+        Span::call_site().into(),
+    );
+    let log_return_builder_struct_name = Ident::new(
+        &(exchange_name.to_string() + &action_type.to_string() + "Builder"),
+        Span::call_site().into(),
+    );
+
+    let res_struct_fields = log_optional
+        .iter()
+        .zip(log_ident.iter())
+        .filter_map(|(optional, res)| {
+            let field = Ident::new(&(res.to_string() + "_field"), Span::call_site().into());
+
+            Some(if optional.value {
+                quote!(#field : Option<crate::#exchange_mod_name::#res>)
+            } else {
+                quote!(#field : crate::#exchange_mod_name::#res)
+            })
+        })
+        .collect_vec();
+
+    let return_struct_build_fields = log_optional
+        .iter()
+        .zip(log_ident.iter())
+        .filter_map(|(optional, res)| {
+            let field = Ident::new(&(res.to_string() + "_field"), Span::call_site().into());
+
+            Some(if optional.value {
+                quote!(#field : self.#field)
+            } else {
+                quote!(#field : self.#field.unwrap())
+            })
+        })
+        .collect_vec();
+
+    let log_struct = if give_logs {
+        quote!(
+            struct #log_return_builder_struct_name {
+                #(
+                    #log_field: Option<crate::#exchange_mod_name::#log_ident>
+                ),*
+            }
+
+            struct #log_return_struct_name {
+                #(#res_struct_fields),*
+            }
+
+            impl #log_return_builder_struct_name {
+                fn new() -> Self {
+                    Self {
+                        #(
+                            #log_field: None
+                        ),*
+                    }
+                }
+
+                fn build(self) -> #log_return_struct_name {
+                    #log_return_struct_name {
+                        #(
+                            #return_struct_build_fields
+                        ),*
+                    }
+                }
+            }
+        )
+    } else {
+        quote!()
+    };
 
     let a = call_type.to_string();
     let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
@@ -34,17 +122,30 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
     if give_logs {
         option_parsing.push(quote!(
-            let log_data =
-            (
-                #(
-                    {
-                    let log = &logs[#log_idx];
-                    <crate::#exchange_mod_name::#log_types as ::alloy_sol_types::SolEvent>
-                        ::decode_log_data(&log.data, false).ok()?
-                    }
+            let mut log_res = #log_return_builder_struct_name::new();
 
-                ),*
-            );
+            // we have more log varents that optonal
+            let mut offset_count = 0;
+            #(
+                if #log_optional {
+                    let log = &logs[#log_idx - offset_count];
+                    if let Some(decoded) = <crate::#exchange_mod_name::#log_ident
+                        as ::alloy_sol_types::SolEvent>
+                        ::decode_log_data(&log.data, false).ok() {
+                        log_res.#log_field = Some(decoded);
+                    } else {
+                        offset_count +=1;
+                    }
+                } else {
+                    let log = &logs[#log_idx - offset_count];
+                    let decoded = <crate::#exchange_mod_name::#log_ident
+                        as ::alloy_sol_types::SolEvent>
+                        ::decode_log_data(&log.data, false).ok()?;
+
+                    log_res.#log_field = Some(decoded);
+                }
+            )*
+            let log_data = log_res.build();
         ));
     }
 
@@ -110,6 +211,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     };
 
     quote! {
+        #log_struct
 
         #[derive(Debug, Default)]
         pub struct #exchange_name;
@@ -144,7 +246,8 @@ struct MacroParse {
     // required for all
     exchange_name: Ident,
     action_type:   Ident,
-    log_types:     Vec<Ident>,
+    // (sometimes, ignore, ident)
+    log_types:     Vec<(bool, bool, Ident)>,
     call_type:     Ident,
 
     /// for call data decoding
@@ -174,10 +277,52 @@ impl Parse for MacroParse {
         bracketed!(content in input);
 
         loop {
+            let mut possible = false;
+            let mut ignore = false;
+
+            if content.peek2(Token![<]) {
+                let new_content = content.parse::<Ident>()?;
+                if new_content.to_string().starts_with("Possible") {
+                    possible = true;
+                } else if new_content.to_string().starts_with("Ignore") {
+                    ignore = true;
+                } else {
+                    return Err(syn::Error::new(
+                        content.span(),
+                        "Only valid modifiers are Possible and Ignore",
+                    ))
+                }
+                let _ = content.parse::<Token![<]>()?;
+            }
+
+            // another modifier
+            if content.peek2(Token![<]) {
+                let new_content = content.parse::<Ident>()?;
+                if new_content.to_string().starts_with("Possible") {
+                    possible = true;
+                } else if new_content.to_string().starts_with("Ignore") {
+                    ignore = true;
+                } else {
+                    return Err(syn::Error::new(
+                        content.span(),
+                        "Only valid modifiers are Possible and Ignore",
+                    ))
+                }
+                let _ = content.parse::<Token![<]>()?;
+            }
+
             let Ok(log_type) = content.parse::<Ident>() else {
                 break;
             };
-            log_types.push(log_type);
+
+            if content.peek(Token![>]) {
+                let _ = content.parse::<Token![>]>()?;
+            }
+            if content.peek(Token![>]) {
+                let _ = content.parse::<Token![>]>()?;
+            }
+
+            log_types.push((possible, ignore, log_type));
 
             let Ok(_) = content.parse::<Token![,]>() else {
                 break;
