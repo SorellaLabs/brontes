@@ -15,8 +15,10 @@ pub use classifier::*;
 pub mod bindings;
 use bindings::*;
 
+/*
 #[cfg(feature = "tests")]
 pub mod test_utils;
+*/
 
 mod classifiers;
 use alloy_sol_types::{sol, SolInterface};

@@ -1,7 +1,7 @@
 use reth_rpc_types::trace::parity::{
     CallAction, TraceResultsWithTransactionHash, TransactionTrace,
 };
-use sorella_db_databases::ClickhouseClient;
+use sorella_db_databases::clickhouse::db::ClickhouseClient;
 
 use crate::{normalized_actions::Actions, tree::BlockTree};
 
