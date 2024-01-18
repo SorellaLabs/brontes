@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{hex, B256};
 use brontes_database::{Metadata, Pair};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -12,14 +11,11 @@ use brontes_types::{
     ToScaledRational,
 };
 use malachite::{
-    num::{
-        basic::traits::{One, Zero},
-        conversion::{string::options::ToSciOptions, traits::ToSci},
-    },
+    num::basic::traits::{One, Zero},
     Rational,
 };
 use reth_primitives::Address;
-use tracing::{info, log::debug};
+use tracing::debug;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {

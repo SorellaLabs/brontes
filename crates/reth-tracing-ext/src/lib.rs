@@ -8,17 +8,15 @@ use reth_blockchain_tree::{
 };
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{Address, BlockId, Bytes, PruneModes, MAINNET, U64};
-use reth_provider::{providers::BlockchainProvider, ProviderFactory, StateProvider};
+use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
+use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{
-    database::StateProviderDatabase,
-    db::CacheDB,
     inspectors::GasInspector,
     tracing::{
         types::{CallKind, CallTraceNode},
         TracingInspectorConfig, *,
     },
-    DatabaseRef, EvmProcessorFactory,
+    EvmProcessorFactory,
 };
 use reth_rpc::{
     eth::{
@@ -40,7 +38,7 @@ use reth_transaction_pool::{
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use revm::interpreter::InstructionResult;
-use revm_primitives::{Account, ExecutionResult, HashMap, SpecId, KECCAK_EMPTY};
+use revm_primitives::{ExecutionResult, SpecId};
 use tokio::runtime::Handle;
 
 mod provider;
@@ -400,25 +398,4 @@ pub struct StackStep {
 /// Opens up an existing database at the specified path.
 pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
     reth_db::open_db(path.as_ref(), None)
-}
-
-#[inline]
-pub(crate) fn load_account_code<DB: DatabaseRef>(
-    db: DB,
-    db_acc: &revm::primitives::AccountInfo,
-) -> Option<Bytes> {
-    db_acc
-        .code
-        .as_ref()
-        .map(|code| code.original_bytes())
-        .or_else(|| {
-            if db_acc.code_hash == KECCAK_EMPTY {
-                None
-            } else {
-                db.code_by_hash_ref(db_acc.code_hash)
-                    .ok()
-                    .map(|code| code.original_bytes())
-            }
-        })
-        .map(Into::into)
 }

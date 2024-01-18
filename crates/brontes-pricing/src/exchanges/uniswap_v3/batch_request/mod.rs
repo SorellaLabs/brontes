@@ -7,10 +7,8 @@ use brontes_types::traits::TracingProvider;
 use futures::join;
 use reth_rpc_types::{CallInput, CallRequest};
 
-use super::{IUniswapV3Pool::*, UniswapV3Pool};
-use crate::{
-    errors::AmmError, exchanges::make_call_request, uniswap_v3::IErc20, AutomatedMarketMaker,
-};
+use super::{IErc20, UniswapV3Pool};
+use crate::{errors::AmmError, exchanges::make_call_request, AutomatedMarketMaker};
 sol!(
     IGetUniswapV3PoolDataBatchRequest,
     "./src/exchanges/uniswap_v3/batch_request/GetUniswapV3PoolDataBatchRequestABI.json"
@@ -25,11 +23,27 @@ sol!(
 );
 
 sol!(
+    struct PoolData {
+        address tokenA;
+        uint8 tokenADecimals;
+        address tokenB;
+        uint8 tokenBDecimals;
+        uint128 liquidity;
+        uint160 sqrtPrice;
+        int24 tick;
+        int24 tickSpacing;
+        uint24 fee;
+        int128 liquidityNet;
+    }
     struct TickData {
         bool initialized;
         int24 tick;
         int128 liquidityNet;
     }
+
+    function data_constructor(
+        address[] memory pools
+    ) returns(PoolData[]);
 
     function tick_constructor(
         address pool,
@@ -40,54 +54,51 @@ sol!(
     ) returns (TickData[], uint64);
 );
 
+fn populate_pool_data_from_tokens(mut pool: UniswapV3Pool, tokens: PoolData) -> UniswapV3Pool {
+    pool.token_a = tokens.tokenA;
+    pool.token_a_decimals = tokens.tokenADecimals;
+    pool.token_b = tokens.tokenB;
+    pool.token_b_decimals = tokens.tokenBDecimals;
+    pool.liquidity = tokens.liquidity;
+    pool.sqrt_price = tokens.sqrtPrice;
+    pool.tick = tokens.tick;
+    pool.tick_spacing = tokens.tickSpacing;
+    pool.fee = tokens.fee;
+
+    pool
+}
+
 pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     pool: &mut UniswapV3Pool,
-    block: Option<u64>,
-    provider: Arc<M>,
+    block_number: Option<u64>,
+    middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    let to = pool.address;
+    let mut bytecode = IGetUniswapV3PoolDataBatchRequest::BYTECODE.to_vec();
+    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
-    let (token_a, token_b, liquidity, fee, tick_spacing, slot0) = join!(
-        make_call_request(token0Call::new(()), provider.clone(), to, block),
-        make_call_request(token1Call::new(()), provider.clone(), to, block),
-        make_call_request(liquidityCall::new(()), provider.clone(), to, block),
-        make_call_request(feeCall::new(()), provider.clone(), to, block),
-        make_call_request(tickSpacingCall::new(()), provider.clone(), to, block),
-        make_call_request(slot0Call::new(()), provider.clone(), to, block)
-    );
+    let req =
+        CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
 
-    pool.token_a = token_a?._0;
-    pool.token_b = token_b?._0;
-    pool.liquidity = liquidity?._0;
-    pool.fee = fee?._0;
-    pool.tick_spacing = tick_spacing?._0;
+    let res = middleware
+        .eth_call(req, block_number.map(|i| i.into()), None, None)
+        .await
+        .unwrap();
 
-    let slot0 = slot0?;
-    let (sqrt_price, tick) = (slot0._0, slot0._1);
-
-    pool.sqrt_price = sqrt_price;
-    pool.tick = tick;
-
-    let (dec_a, dec_b) = join!(
-        make_call_request(IErc20::decimalsCall::new(()), provider.clone(), pool.token_a, block),
-        make_call_request(IErc20::decimalsCall::new(()), provider.clone(), pool.token_b, block)
-    );
-
-    pool.token_a_decimals = dec_a?._0;
-    pool.token_b_decimals = dec_b?._0;
+    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false).unwrap();
+    *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
 
     let (r0, r1) = join!(
         make_call_request(
             IErc20::balanceOfCall::new((pool.address,)),
-            provider.clone(),
+            middleware.clone(),
             pool.token_a,
-            block,
+            block_number,
         ),
         make_call_request(
             IErc20::balanceOfCall::new((pool.address,)),
-            provider,
+            middleware,
             pool.token_b,
-            block,
+            block_number,
         )
     );
 
@@ -123,7 +134,7 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
         .await
         .unwrap();
 
-    let return_data = tick_constructorCall::abi_decode_returns(&res, false).unwrap();
+    let return_data = tick_constructorCall::abi_decode_returns(&*res, false).unwrap();
 
     Ok((return_data._0, return_data._1))
 }

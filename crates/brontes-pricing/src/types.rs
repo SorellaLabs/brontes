@@ -124,7 +124,7 @@ impl PoolVariants {
 #[derive(Debug, Clone)]
 pub enum DexPriceMsg {
     Update(PoolUpdate),
-    DiscoveredPool(DiscoveredPool),
+    DiscoveredPool(DiscoveredPool, u64),
     Closed,
 }
 
