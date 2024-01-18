@@ -22,9 +22,9 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    log: TokenExchange,
+    log: CurveCryptoExchange0Swap,
     db_tx: &LibmdbxTx<RO>| {
-
+        let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
@@ -66,9 +66,10 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     call_data: exchange_1Call,
-    log: TokenExchange,
+    log: CurveCryptoExchange1Swap,
     db_tx: &LibmdbxTx<RO>| {
 
+        let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
@@ -121,9 +122,10 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     call_data: exchange_2Call,
-    log: TokenExchange,
+    log: CurveCryptoExchange2Swap,
     db_tx: &LibmdbxTx<RO>| {
 
+        let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
@@ -176,8 +178,9 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    log: TokenExchange,
+    log: CurveCryptoExchangeUnderlyingSwap,
     db_tx: &LibmdbxTx<RO>| {
+        let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
