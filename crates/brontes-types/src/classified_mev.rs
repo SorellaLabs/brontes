@@ -319,14 +319,28 @@ pub struct Sandwich {
     pub backrun_swaps_amount_out: Vec<U256>,
 }
 
+//TODO: Potentially requires clean up later
 pub fn compose_sandwich_jit(
-    sandwich: Box<dyn Any>,
-    jit: Box<dyn Any>,
-    sandwich_classified: ClassifiedMev,
-    jit_classified: ClassifiedMev,
+    mev: Vec<(ClassifiedMev, Box<dyn Any + Send + Sync>)>,
 ) -> (ClassifiedMev, Box<dyn SpecificMev>) {
-    let sandwich: Sandwich = *sandwich.downcast().unwrap();
-    let jit: JitLiquidity = *jit.downcast().unwrap();
+    let mut sandwich: Sandwich = Sandwich::default();
+    let mut jit: JitLiquidity = JitLiquidity::default();
+    let mut classified_sandwich: ClassifiedMev = ClassifiedMev::default();
+    let mut jit_classified: ClassifiedMev = ClassifiedMev::default();
+
+    for (classified, mev_data) in mev {
+        match classified.mev_type {
+            MevType::Sandwich => {
+                sandwich = *mev_data.downcast().unwrap();
+                classified_sandwich = classified;
+            }
+            MevType::Jit => {
+                jit = *mev_data.downcast().unwrap();
+                jit_classified = classified;
+            }
+            _ => unreachable!(),
+        }
+    }
 
     let jit_sand = Box::new(JitLiquiditySandwich {
         frontrun_tx_hash: sandwich.frontrun_tx_hash,
@@ -377,12 +391,12 @@ pub fn compose_sandwich_jit(
     let new_classifed = ClassifiedMev {
         tx_hash:              sandwich.frontrun_tx_hash,
         mev_type:             MevType::JitSandwich,
-        block_number:         sandwich_classified.block_number,
+        block_number:         classified_sandwich.block_number,
         eoa:                  jit_classified.eoa,
-        mev_contract:         sandwich_classified.mev_contract,
-        mev_profit_collector: sandwich_classified.mev_profit_collector,
-        finalized_bribe_usd:  sandwich_classified.finalized_bribe_usd,
-        finalized_profit_usd: sandwich_classified.finalized_profit_usd
+        mev_contract:         classified_sandwich.mev_contract,
+        mev_profit_collector: classified_sandwich.mev_profit_collector,
+        finalized_bribe_usd:  classified_sandwich.finalized_bribe_usd,
+        finalized_profit_usd: classified_sandwich.finalized_profit_usd
             + jit_classified.finalized_profit_usd,
     };
 
