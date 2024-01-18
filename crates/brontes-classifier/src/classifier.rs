@@ -588,20 +588,23 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             return (discovered_pools, Actions::Unclassified(trace))
         }
 
-        // if there is more than one transfer then it is strictly not a transfer and we
-        // don't want to classify it
-        if trace.logs.len() == 1 {
-            if let Some((addr, from, to, value)) = self.decode_transfer(&trace.logs[0]) {
-                return (
-                    vec![],
-                    Actions::Transfer(NormalizedTransfer {
-                        trace_index,
-                        to,
-                        from,
-                        token: addr,
-                        amount: value,
-                    }),
-                )
+        if trace.logs.len() > 0 {
+            // A transfer should always be in its own call trace and have 1 log.  
+            // if forever reason there is a case with multiple logs, we take the first
+            // transfer
+            for log in &trace.logs {
+                if let Some((addr, from, to, value)) = self.decode_transfer(log) {
+                    return (
+                        vec![],
+                        Actions::Transfer(NormalizedTransfer {
+                            trace_index,
+                            to,
+                            from,
+                            token: addr,
+                            amount: value,
+                        }),
+                    )
+                }
             }
         }
 
