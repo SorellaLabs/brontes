@@ -273,13 +273,9 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         has_swap = true;
                     }
                 }
-                if node.data.is_transfer() && has_swap && has_transfer{
-                    println!("{node:#?}");
-                }
                 (node.data.is_transfer(), has_swap && has_transfer)
             },
             |node| {
-                info!("removing transfer with swap");
                 let mut swap_idx = Vec::new();
                 node.collect(
                     &mut swap_idx,
@@ -288,6 +284,8 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                     },
                     &|node| node.index,
                 );
+
+                info!("removing transfer with swap: {swap_idx:?}");
 
                 swap_idx.into_iter().for_each(|idx| {
                     node.remove_node_and_children(idx);
