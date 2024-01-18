@@ -37,7 +37,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
             }
 
             Some((
-                (0..is_possible_count)
+                (0..=is_possible_count)
                     .into_iter()
                     .map(|shift| Index::from(i - shift))
                     .collect_vec(),
