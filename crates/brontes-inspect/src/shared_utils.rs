@@ -81,10 +81,6 @@ impl SharedInspectorUtils<'_> {
             }
         }
 
-        println!("{:#?}", deltas);
-        println!("{:#?}", transfers);
-
-
         self.transfer_deltas(transfers, &mut deltas);
 
         // Prunes proxy contracts that receive and immediately send, like router
