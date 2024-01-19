@@ -323,7 +323,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_sandwich() {
+    async fn test_sandwich_different_contract_address() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
@@ -342,6 +342,12 @@ mod tests {
             .run_inspector::<Sandwich>(config, None)
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_sandwich_different_eoa() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
             .with_mev_tx_hashes(vec![
@@ -359,9 +365,32 @@ mod tests {
             .unwrap();
     }
 
+    // https://eigenphi.io/mev/ethereum/tx/0xb8087e675fd49eb2cc41e4b9354955d60ae7da354661bae52d70257848906145
     #[tokio::test]
     #[serial]
-    async fn test_complex_sandwich() {
+    async fn test_sandwich_part_of_jit_sandwich_simple() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+
+        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+            .with_mev_tx_hashes(vec![
+                hex!("a203940b1d15c1c395b4b05cef9f0a05bf3c4a29fdb1bed47baddeac866e3729").into(),
+                hex!("af2143d2448a2e639637f9184bc2539428230226c281a174ba4ef4ef00e00220").into(),
+                hex!("3e9c6cbee7c8c85a3c1bbc0cc8b9e23674f86bc7aedc51f05eb9d0eda0f6247e").into(),
+                hex!("9ee36a8a24c3eb5406e7a651525bcfbd0476445bd291622f89ebf8d13d54b7ee").into(),
+            ])
+            .with_dex_prices()
+            .with_expected_gas_used(40.26)
+            .with_expected_profit_usd(1.056);
+
+        inspector_util
+            .run_inspector::<Sandwich>(config, None)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_sandwich_part_of_jit_sandwich() {
         // this is a jit sandwich
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
 
