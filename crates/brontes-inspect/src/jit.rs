@@ -202,56 +202,8 @@ impl JitInspector<'_> {
             victim_swaps_gas_details_tx_hashes: victim_txs.clone(),
             victim_swaps_gas_details: victim_gas,
             backrun_burn_tx_hash: txes[1],
-
             backrun_burn_gas_details: searcher_gas_details[1],
             backrun_burns: burns,
-            /*
-            jit_mints_index: mints.iter().map(|m| m.trace_index as u16).collect(),
-            jit_mints_from: mints.iter().map(|m| m.from).collect(),
-            jit_mints_to: mints.iter().map(|m| m.to).collect(),
-            jit_mints_recipient: mints.iter().map(|m| m.recipient).collect(),
-            jit_mints_tokens: mints.iter().map(|m| m.token.clone()).collect(),
-            jit_mints_amounts: mints
-                .iter()
-                .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
-                .collect(),
-            victim_swap_tx_hashes: victim_txs.clone(),
-            victim_swaps_tx_hash: victim_txs,
-            victim_gas_details_gas_used: victim_gas.iter().map(|s| s.gas_used).collect_vec(),
-            victim_gas_details_priority_fee: victim_gas
-                .iter()
-                .map(|s| s.priority_fee)
-                .collect_vec(),
-            victim_gas_details_coinbase_transfer: victim_gas
-                .iter()
-                .map(|s| s.coinbase_transfer)
-                .collect_vec(),
-            victim_gas_details_effective_gas_price: victim_gas
-                .iter()
-                .map(|s| s.effective_gas_price)
-                .collect_vec(),
-            victim_swaps_index: swaps
-                .iter()
-                .map(|s| s.trace_index as u16)
-                .collect::<Vec<_>>(),
-            victim_swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            victim_swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            victim_swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
-            victim_swaps_token_out: swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
-            victim_swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
-            victim_swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
-            burn_tx_hash: txes[1],
-            burn_gas_details: searcher_gas_details[1],
-            jit_burns_index: burns.iter().map(|m| m.trace_index as u16).collect(),
-            jit_burns_from: burns.iter().map(|m| m.from).collect(),
-            jit_burns_to: burns.iter().map(|m| m.to).collect(),
-            jit_burns_recipient: burns.iter().map(|m| m.recipient).collect(),
-            jit_burns_tokens: burns.iter().map(|m| m.token.clone()).collect(),
-            jit_burns_amounts: burns
-                .iter()
-                .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
-                .collect(),
-                */
         };
 
         Some((classified, Box::new(jit_details)))
