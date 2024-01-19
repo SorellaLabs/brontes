@@ -365,7 +365,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         tracing::info!(?token_in, ?amount_in, "simulating swap");
 
         if amount_in.is_zero() {
-            return Ok(U256::ZERO);
+            return Ok(U256::ZERO)
         }
 
         let zero_for_one = token_in == self.token_a;
@@ -395,7 +395,8 @@ impl AutomatedMarketMaker for UniswapV3Pool {
             //Initialize a new step struct to hold the dynamic state of the pool at each
             // step
             let mut step = StepComputations {
-                sqrt_price_start_x_96: current_state.sqrt_price_x_96, /* Set the sqrt_price_start_x_96 to the current sqrt_price_x_96 */
+                //Set the sqrt_price_start_x_96 to the current sqrt_price_x_96
+                sqrt_price_start_x_96: current_state.sqrt_price_x_96,
                 ..Default::default()
             };
 
@@ -467,7 +468,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
 
                     current_state.liquidity = if liquidity_net < 0 {
                         if current_state.liquidity < (-liquidity_net as u128) {
-                            return Err(SwapSimulationError::LiquidityUnderflow);
+                            return Err(SwapSimulationError::LiquidityUnderflow)
                         } else {
                             current_state.liquidity - (-liquidity_net as u128)
                         }
@@ -504,7 +505,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         tracing::info!(?token_in, ?amount_in, "simulating swap");
 
         if amount_in.is_zero() {
-            return Ok(U256::ZERO);
+            return Ok(U256::ZERO)
         }
 
         let zero_for_one = token_in == self.token_a;
@@ -534,7 +535,8 @@ impl AutomatedMarketMaker for UniswapV3Pool {
             //Initialize a new step struct to hold the dynamic state of the pool at each
             // step
             let mut step = StepComputations {
-                sqrt_price_start_x_96: current_state.sqrt_price_x_96, /* Set the sqrt_price_start_x_96 to the current sqrt_price_x_96 */
+                //Set the sqrt_price_start_x_96 to the current sqrt_price_x_96
+                sqrt_price_start_x_96: current_state.sqrt_price_x_96,
                 ..Default::default()
             };
 
@@ -606,7 +608,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
 
                     current_state.liquidity = if liquidity_net < 0 {
                         if current_state.liquidity < (-liquidity_net as u128) {
-                            return Err(SwapSimulationError::LiquidityUnderflow);
+                            return Err(SwapSimulationError::LiquidityUnderflow)
                         } else {
                             current_state.liquidity - (-liquidity_net as u128)
                         }
@@ -712,7 +714,7 @@ impl UniswapV3Pool {
         pool.populate_data(Some(block_number), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::PoolDataError);
+            return Err(AmmError::PoolDataError)
         }
 
         Ok(pool)

@@ -3,7 +3,7 @@ use brontes_types::libmdbx::serde::address_string;
 use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::{tables::AddressToProtocol, types::utils::static_bindings, LibmdbxData};
 

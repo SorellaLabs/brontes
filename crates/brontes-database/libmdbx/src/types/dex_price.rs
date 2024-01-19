@@ -7,7 +7,7 @@ use bytes::BufMut;
 use malachite::{Natural, Rational};
 use reth_db::table::Table;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::{tables::DexPrice, LibmdbxData};
 

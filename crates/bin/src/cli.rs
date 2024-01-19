@@ -97,7 +97,7 @@ pub struct DexPricingArgs {
     /// Optional End Block, if omitted it will continue to run until killed
     #[arg(long, short)]
     pub end_block:      u64,
-    /// Optional Max Tasks, if omitted it will default to 80% of the number of
+    /// Optional Max Tasks, if omitted it will default to 50% of the number of
     /// physical cores on your machine
     pub max_tasks:      Option<u64>,
     /// Optional quote asset, if omitted it will default to USDC

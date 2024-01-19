@@ -24,9 +24,9 @@ use tracing::{debug, error, info};
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
 
-pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
+pub struct DataBatching<'db, T: TracingProvider + Clone, const N: usize> {
     parser:     &'db Parser<'db, T>,
-    classifier: Classifier<'db>,
+    classifier: Classifier<'db, T>,
 
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
@@ -41,9 +41,10 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     inspectors: &'db [&'db Box<dyn Inspector>; N],
 }
 
-impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
+impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
+        max_pool_loading_tasks: usize,
         batch_id: u64,
         start_block: u64,
         end_block: u64,
@@ -52,29 +53,40 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         inspectors: &'db [&'db Box<dyn Inspector>; N],
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let classifier = Classifier::new(libmdbx, tx);
+        let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
 
-        let pairs = libmdbx.addresses_inited_before(start_block).unwrap();
+        let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
-        let mut rest_pairs = HashMap::default();
-        for i in start_block + 1..end_block {
-            let pairs = libmdbx.protocols_created_at_block(i).unwrap_or_default();
-            rest_pairs.insert(i, pairs);
-        }
+        let rest_pairs = libmdbx
+            .protocols_created_range(start_block + 1, end_block)
+            .unwrap()
+            .into_iter()
+            .flat_map(|(_, pools)| {
+                pools
+                    .into_iter()
+                    .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<HashMap<_, _>>();
 
         let pair_graph = GraphManager::init_from_db_state(
             pairs,
             HashMap::default(),
-            Box::new(|block, pair| None),
-            Box::new(|block, pair, edges| {}),
+            Box::new(|block, pair| libmdbx.try_load_pair_before(block, pair).ok()),
+            Box::new(|block, pair, edges| {
+                if libmdbx.save_pair_at(block, pair, edges).is_err() {
+                    error!("failed to save subgraph to db");
+                }
+            }),
         );
 
         let pricer = BrontesBatchPricer::new(
+            max_pool_loading_tasks,
             quote_asset,
             pair_graph,
             rx,
             parser.get_tracer(),
-            start_block + 1,
+            start_block,
             rest_pairs,
         );
 
@@ -98,12 +110,12 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         meta: MetadataDB,
         traces: Vec<TxTrace>,
         header: Header,
-        classifier: Classifier<'db>,
+        classifier: Classifier<'db, T>,
         tracer: Arc<T>,
         libmdbx: &'db Libmdbx,
     ) -> CollectionFut<'db> {
-        let (extra, tree) = classifier.build_block_tree(traces, header);
         Box::pin(async move {
+            let (extra, tree) = classifier.build_block_tree(traces, header).await;
             MissingDecimals::new(tracer, libmdbx, extra.tokens_decimal_fill).await;
 
             (tree, meta)
@@ -145,12 +157,12 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     }
 }
 
-impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
+impl<T: TracingProvider + Clone, const N: usize> Future for DataBatching<'_, T, N> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // poll pricer
-        while let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
+        if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
             if meta.block_num == self.end_block {
                 info!(
                     batch_id = self.batch_id,
@@ -174,7 +186,14 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         } else if self.current_block != self.end_block {
             self.current_block += 1;
             self.start_next_block();
-        } else {
+        }
+
+        // If we have reached end block and there is only 1 pending tree left,
+        // send the close message to indicate to the dex pricer that it should
+        // return. This will spam it till the pricer closes but this is needed as it
+        // could take multiple polls until the pricing is done for the final
+        // block.
+        if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
             self.classifier.close();
         }
         // poll insertion
@@ -190,7 +209,6 @@ impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
         }
 
         cx.waker().wake_by_ref();
-
         Poll::Pending
     }
 }
@@ -207,7 +225,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             (pricer, res)
         });
 
-        let handle = tokio::spawn(future);
+        let rt_handle = tokio::runtime::Handle::current();
+        let move_handle = rt_handle.clone();
+
+        let handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
 
         Self { handle, pending_trees: HashMap::default() }
     }
@@ -222,8 +243,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             (pricer, res)
         });
 
-        let handle = tokio::spawn(future);
-        self.handle = handle;
+        let rt_handle = tokio::runtime::Handle::current();
+        let move_handle = rt_handle.clone();
+
+        self.handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
     }
 
     pub fn add_pending_inspection(
@@ -251,7 +274,6 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
                 info!(target:"brontes","Collected dex prices for block: {}", block);
 
                 let Some((tree, meta)) = self.pending_trees.remove(&block) else {
-                    error!("no tree");
                     return Poll::Ready(None)
                 };
 

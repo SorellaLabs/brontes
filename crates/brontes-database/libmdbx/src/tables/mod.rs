@@ -17,12 +17,13 @@ use const_sql::*;
 use futures::{future::join_all, Future};
 use reth_db::{table::Table, TableType};
 use serde::Deserialize;
-use sorella_db_databases::Row;
+use sorella_db_databases::clickhouse::DbRow;
 use tracing::info;
 use paste::paste;
 //use crate::types::traces::TxTracesDBData;
 use crate::{
     types::{
+        address_to_factory::AddressToFactoryData,
         address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
         address_to_tokens::{AddressToTokensData, PoolTokens},
         cex_price::{CexPriceData, CexPriceMap},
@@ -36,7 +37,7 @@ use crate::{
     Libmdbx,
 };
 
-pub const NUM_TABLES: usize = 9;
+pub const NUM_TABLES: usize = 10;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tables {
@@ -48,6 +49,7 @@ pub enum Tables {
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
+    AddressToFactory,
     SubGraphs,
 }
 
@@ -61,9 +63,10 @@ impl Tables {
         Tables::DexPrice,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
+        Tables::AddressToFactory,
         Tables::SubGraphs,
     ];
-    pub const ALL_NO_DEX: [Tables; NUM_TABLES - 2] = [
+    pub const ALL_NO_DEX: [Tables; NUM_TABLES - 3] = [
         Tables::TokenDecimals,
         Tables::AddressToTokens,
         Tables::AddressToProtocol,
@@ -85,6 +88,7 @@ impl Tables {
             Tables::DexPrice => TableType::Table,
             Tables::PoolCreationBlocks => TableType::Table,
             Tables::MevBlocks => TableType::Table,
+            Tables::AddressToFactory => TableType::Table,
             Tables::SubGraphs => TableType::Table,
         }
     }
@@ -99,6 +103,7 @@ impl Tables {
             Tables::DexPrice => DexPrice::NAME,
             Tables::PoolCreationBlocks => PoolCreationBlocks::NAME,
             Tables::MevBlocks => MevBlocks::NAME,
+            Tables::AddressToFactory => AddressToFactory::NAME,
             Tables::SubGraphs => SubGraphs::NAME,
         }
     }
@@ -180,6 +185,9 @@ impl Tables {
                     async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
                 )
             }
+            Tables::AddressToFactory => Box::pin(async move {
+                libmdbx.initialize_table::<AddressToFactory, AddressToFactoryData>(&vec![])
+            }),
             Tables::SubGraphs => {
                 Box::pin(
                     async move { libmdbx.initialize_table::<SubGraphs, SubGraphsData>(&vec![]) },
@@ -202,6 +210,7 @@ impl FromStr for Tables {
             DexPrice::NAME => Ok(Tables::DexPrice),
             PoolCreationBlocks::NAME => Ok(Tables::PoolCreationBlocks),
             MevBlocks::NAME => Ok(Tables::MevBlocks),
+            AddressToFactory::NAME => Ok(Tables::AddressToFactory),
             SubGraphs::NAME => Ok(Tables::SubGraphs),
             _ => Err("Unknown table".to_string()),
         }
@@ -310,9 +319,14 @@ table!(
     ( SubGraphs ) Pair | SubGraphsEntry = False
 );
 
+table!(
+    /// address -> factory
+    ( AddressToFactory ) Address | StaticBindingsDb = True
+);
+
 pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
-    D: LibmdbxData<Self> + Row + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    D: LibmdbxData<Self> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
 
    

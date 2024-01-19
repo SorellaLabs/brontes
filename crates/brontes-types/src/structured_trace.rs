@@ -4,7 +4,7 @@ use alloy_rlp::{
     RlpEncodableWrapper,
 };
 use reth_primitives::{Address, Bytes, B256};
-use reth_rpc_types::trace::parity::{Action, CallType, StateDiff, TransactionTrace};
+use reth_rpc_types::trace::parity::{Action, CallType, TransactionTrace};
 use serde::{Deserialize, Serialize};
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
@@ -57,21 +57,21 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DecodedCallData {
     pub function_name: String,
     pub call_data:     Vec<DecodedParams>,
     pub return_data:   Vec<DecodedParams>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DecodedParams {
     pub field_name: String,
     pub field_type: String,
     pub value:      String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub logs:         Vec<Log>,
@@ -88,11 +88,11 @@ impl TransactionTraceWithLogs {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
-    pub state_diff:      StateDiff,
     pub tx_hash:         B256,
     pub gas_used:        u128,
     pub effective_price: u128,
     pub tx_index:        u64,
+    // False if the transaction reverted
     pub is_success:      bool,
 }
 
@@ -104,8 +104,7 @@ impl TxTrace {
         gas_used: u128,
         effective_price: u128,
         is_success: bool,
-        state_diff: StateDiff,
     ) -> Self {
-        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success, state_diff }
+        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
     }
 }

@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap},
     sync::Arc,
 };
 
@@ -76,20 +76,7 @@ impl Inspector for JitInspector<'_> {
                         tree.get_gas_details(backrun_tx).cloned().unwrap(),
                     ];
 
-                    // grab all the pools that had liquidity events on them
-                    let liquidity_addresses = searcher_actions
-                        .iter()
-                        .flatten()
-                        .filter_map(|action| match action {
-                            Actions::Mint(m) => Some(m.to),
-                            Actions::Burn(b) => Some(b.to),
-                            Actions::Collect(c) => Some(c.to),
-                            _ => None,
-                        })
-                        .collect::<HashSet<_>>();
-
                     // grab all victim swaps dropping swaps that don't touch addresses with
-                    // liquidity deltas
                     let (victims, victim_actions): (Vec<B256>, Vec<Vec<Actions>>) = victims
                         .iter()
                         .map(|victim| {
@@ -102,11 +89,6 @@ impl Inspector for JitInspector<'_> {
                                     )
                                 }),
                             )
-                        })
-                        .filter(|(_, actions)| {
-                            actions
-                                .iter()
-                                .any(|s| liquidity_addresses.contains(&s.force_swap_ref().pool))
                         })
                         .unzip();
 
@@ -200,16 +182,30 @@ impl JitInspector<'_> {
             finalized_bribe_usd: bribe.to_float(),
         };
 
-        let swaps = victim_actions
-            .into_iter()
-            .flatten()
-            .filter(|s| s.is_swap())
-            .map(|s| s.force_swap())
-            .collect::<Vec<_>>();
+        let victim_swaps = victim_actions
+            .iter()
+            .map(|tx_actions| {
+                tx_actions
+                    .iter()
+                    .filter(|action| action.is_swap())
+                    .map(|f| f.clone().force_swap())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
 
         let jit_details = JitLiquidity {
-            mint_tx_hash: txes[0],
-            mint_gas_details: searcher_gas_details[0],
+            frontrun_mint_tx_hash: txes[0],
+            frontrun_mint_gas_details: searcher_gas_details[0],
+            frontrun_mints: mints,
+            victim_swaps_tx_hashes: victim_txs.clone(),
+            victim_swaps,
+            victim_swaps_gas_details_tx_hashes: victim_txs.clone(),
+            victim_swaps_gas_details: victim_gas,
+            backrun_burn_tx_hash: txes[1],
+
+            backrun_burn_gas_details: searcher_gas_details[1],
+            backrun_burns: burns,
+            /*
             jit_mints_index: mints.iter().map(|m| m.trace_index as u16).collect(),
             jit_mints_from: mints.iter().map(|m| m.from).collect(),
             jit_mints_to: mints.iter().map(|m| m.to).collect(),
@@ -255,6 +251,7 @@ impl JitInspector<'_> {
                 .iter()
                 .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
                 .collect(),
+                */
         };
 
         Some((classified, Box::new(jit_details)))

@@ -1,6 +1,6 @@
-use std::{collections::HashSet, env, fs::File, io::Write, path::Path};
+use std::{env, fs::File, io::Write, path::Path};
 
-use brontes_core::{decoding::parser::TraceParser, init_tracing, test_utils::init_trace_parser};
+use brontes_core::{init_tracing, test_utils::init_trace_parser};
 use brontes_database_libmdbx::Libmdbx;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tokio::sync::mpsc::unbounded_channel;
