@@ -1,4 +1,4 @@
-//TODO: Finish this once all other crates have been documented.
+//TODO: (Ludwig) Finish this once all other crates have been documented.
 
 //! # Brontes
 //!
@@ -42,6 +42,7 @@ use tracing::info;
 
 mod banner;
 mod block_inspector;
+#[allow(unused_imports)]
 mod tip_inspector;
 
 mod data_batching;
