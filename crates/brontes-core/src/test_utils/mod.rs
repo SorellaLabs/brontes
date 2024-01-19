@@ -1,138 +1,218 @@
-mod test_loader;
-
 use std::{
     env,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use alloy_primitives::Log;
+use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_metrics::PoirotMetricEvents;
-use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
+use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
+use futures::future::join_all;
 use log::Level;
 use reth_primitives::{Header, B256};
-use reth_rpc_types::{
-    trace::parity::{TraceResults, TransactionTrace},
-    TransactionReceipt,
-};
+use reth_provider::ProviderError;
 use reth_tracing_ext::TracingClient;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-pub use test_loader::*;
+use thiserror::Error;
 use tokio::{
     runtime::Handle,
-    sync::mpsc::{unbounded_channel, UnboundedSender},
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
 };
 use tracing_subscriber::filter::Directive;
 
-use crate::decoding::{parser::TraceParser, TracingProvider};
+use crate::decoding::parser::TraceParser;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct TestTransactionTraceWithLogs {
-    pub trace: TransactionTrace,
-    pub logs:  Vec<Log>,
+/// Functionality to load all state needed for any testing requirements
+pub struct TraceLoader {
+    pub libmdbx:          &'static Libmdbx,
+    pub tracing_provider: TraceParser<'static, Box<dyn TracingProvider>>,
+    // store so when we trace we don't get a closed rx error
+    _metrics:             UnboundedReceiver<PoirotMetricEvents>,
 }
 
-impl From<TransactionTraceWithLogs> for TestTransactionTraceWithLogs {
-    fn from(value: TransactionTraceWithLogs) -> Self {
-        Self { trace: value.trace, logs: value.logs }
+impl TraceLoader {
+    pub fn new() -> Self {
+        let _ = dotenv::dotenv();
+        init_tracing();
+
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let libmdbx = Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None).unwrap()));
+
+        let (a, b) = unbounded_channel();
+        let tracing_provider = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10);
+        Self { libmdbx, tracing_provider, _metrics: b }
+    }
+
+    async fn trace_block(&self, block: u64) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
+        self.tracing_provider
+            .execute_block(block)
+            .await
+            .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
+    }
+
+    async fn get_metadata(&self, block: u64) -> Result<Metadata, TraceLoaderError> {
+        self.libmdbx
+            .get_metadata(block)
+            .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+    }
+
+    pub async fn get_block_traces_with_header(
+        &self,
+        block: u64,
+    ) -> Result<BlockTracesWithHeaderAnd<()>, TraceLoaderError> {
+        let (traces, header) = self.trace_block(block).await?;
+        Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
+    }
+
+    pub async fn get_block_traces_with_header_range(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
+        join_all(
+            (start_block..=end_block)
+                .into_iter()
+                .map(|block| async move {
+                    let (traces, header) = self.trace_block(block).await?;
+                    Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
+                }),
+        )
+        .await
+        .into_iter()
+        .collect()
+    }
+
+    pub async fn get_block_traces_with_header_and_metadata(
+        &self,
+        block: u64,
+    ) -> Result<BlockTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
+        let (traces, header) = self.trace_block(block).await?;
+        let metadata = self.get_metadata(block).await?;
+
+        Ok(BlockTracesWithHeaderAnd { block, traces, header, other: metadata })
+    }
+
+    pub async fn get_block_traces_with_header_and_metadata_range(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> Result<Vec<BlockTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
+        join_all(
+            (start_block..=end_block)
+                .into_iter()
+                .map(|block| async move {
+                    let (traces, header) = self.trace_block(block).await?;
+                    let metadata = self.get_metadata(block).await?;
+                    Ok(BlockTracesWithHeaderAnd { traces, header, block, other: metadata })
+                }),
+        )
+        .await
+        .into_iter()
+        .collect()
+    }
+
+    pub async fn get_tx_trace_with_header(
+        &self,
+        tx_hash: B256,
+    ) -> Result<TxTracesWithHeaderAnd<()>, TraceLoaderError> {
+        let (block, tx_idx) = self
+            .tracing_provider
+            .get_tracer()
+            .block_and_tx_index(tx_hash)
+            .await?;
+        let (traces, header) = self.trace_block(block).await?;
+        let trace = traces[tx_idx].clone();
+
+        Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: () })
+    }
+
+    pub async fn get_tx_traces_with_header(
+        &self,
+        tx_hashes: Vec<B256>,
+    ) -> Result<Vec<TxTracesWithHeaderAnd<()>>, TraceLoaderError> {
+        join_all(tx_hashes.into_iter().map(|tx_hash| async move {
+            let (block, tx_idx) = self
+                .tracing_provider
+                .get_tracer()
+                .block_and_tx_index(tx_hash)
+                .await?;
+            let (traces, header) = self.trace_block(block).await?;
+            let trace = traces[tx_idx].clone();
+
+            Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: () })
+        }))
+        .await
+        .into_iter()
+        .collect()
+    }
+
+    pub async fn get_tx_trace_with_header_and_metadata(
+        &self,
+        tx_hash: B256,
+    ) -> Result<TxTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
+        let (block, tx_idx) = self
+            .tracing_provider
+            .get_tracer()
+            .block_and_tx_index(tx_hash)
+            .await?;
+        let (traces, header) = self.trace_block(block).await?;
+        let metadata = self.get_metadata(block).await?;
+        let trace = traces[tx_idx].clone();
+
+        Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: metadata })
+    }
+
+    pub async fn get_tx_traces_with_header_and_metadata(
+        &self,
+        tx_hashes: Vec<B256>,
+    ) -> Result<Vec<TxTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
+        join_all(tx_hashes.into_iter().map(|tx_hash| async move {
+            let (block, tx_idx) = self
+                .tracing_provider
+                .get_tracer()
+                .block_and_tx_index(tx_hash)
+                .await?;
+            let (traces, header) = self.trace_block(block).await?;
+            let metadata = self.get_metadata(block).await?;
+            let trace = traces[tx_idx].clone();
+
+            Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: metadata })
+        }))
+        .await
+        .into_iter()
+        .collect()
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TestTxTrace {
-    pub trace:           Vec<TestTransactionTraceWithLogs>,
-    pub tx_hash:         B256,
-    pub gas_used:        u128,
-    pub effective_price: u128,
-    pub tx_index:        u64,
+#[derive(Debug, Error)]
+pub enum TraceLoaderError {
+    #[error("no metadata found in libmdbx for block: {0}")]
+    NoMetadataFound(u64),
+    #[error("failed to trace block: {0}")]
+    BlockTraceError(u64),
+    #[error(transparent)]
+    ProviderError(#[from] ProviderError),
 }
 
-impl From<TxTrace> for TestTxTrace {
-    fn from(value: TxTrace) -> Self {
-        Self {
-            trace:           value.trace.into_iter().map(|v| v.into()).collect(),
-            tx_hash:         value.tx_hash,
-            gas_used:        value.gas_used,
-            effective_price: value.effective_price,
-            tx_index:        value.tx_index,
-        }
-    }
+pub struct TxTracesWithHeaderAnd<T> {
+    pub block:   u64,
+    pub tx_hash: B256,
+    pub trace:   TxTrace,
+    pub header:  Header,
+    pub other:   T,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct TestTraceResults {
-    pub jsonrpc: String,
-    pub result:  TraceResults,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct TestTransactionReceipt {
-    pub jsonrpc: String,
-    pub result:  TransactionReceipt,
-}
-
-pub async fn get_full_tx_trace(tx_hash: B256) -> TraceResults {
-    let url = "https://reth.sorella-beechit.com:8489";
-    let headers = reqwest::header::HeaderMap::from_iter(
-        vec![(reqwest::header::CONTENT_TYPE, "application/json".parse().unwrap())].into_iter(),
-    );
-
-    let payload = json!({
-        "id": 1,
-        "jsonrpc": "2.0",
-        "method": "trace_replayTransaction",
-        "params": [&format!("{:#x}", &tx_hash), ["trace", "vmTrace"]]
-    });
-
-    let client = reqwest::Client::new();
-    let response: TestTraceResults = client
-        .post(url)
-        .headers(headers)
-        .json(&payload)
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    response.result
-}
-
-pub async fn get_tx_reciept(tx_hash: B256) -> TransactionReceipt {
-    let url = "https://reth.sorella-beechit.com:8489";
-    let headers = reqwest::header::HeaderMap::from_iter(
-        vec![(reqwest::header::CONTENT_TYPE, "application/json".parse().unwrap())].into_iter(),
-    );
-
-    let payload = json!({
-        "id": 1,
-        "jsonrpc": "2.0",
-        "method": "eth_getTransactionReceipt",
-        "params": [&format!("{:#x}", &tx_hash)]
-    });
-
-    let client = reqwest::Client::new();
-    let response: TestTransactionReceipt = client
-        .post(url)
-        .headers(headers)
-        .json(&payload)
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    response.result
+pub struct BlockTracesWithHeaderAnd<T> {
+    pub block:  u64,
+    pub traces: Vec<TxTrace>,
+    pub header: Header,
+    pub other:  T,
 }
 
 // if we want more tracing/logging/metrics layers, build and push to this vec
 // the stdout one (logging) is the only 1 we need
 // peep the Database repo -> bin/sorella-db/src/cli.rs line 34 for example
-pub fn init_tracing() {
+fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes
     // all, Debug includes all but Trace, ...)
     let verbosity_level = Level::Info; // Error >= Warn >= Info >= Debug >= Trace
@@ -158,7 +238,7 @@ pub fn init_tracing() {
     brontes_tracing::init(layers);
 }
 
-pub fn init_trace_parser<'a>(
+fn init_trace_parser<'a>(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &'a Libmdbx,
@@ -189,7 +269,8 @@ pub fn init_trace_parser<'a>(
     TraceParser::new(libmdbx, call, Arc::new(tracer), Arc::new(metrics_tx))
 }
 
-pub async fn store_traces_for_block(block_number: u64) {
+#[allow(unused)]
+async fn store_traces_for_block(block_number: u64) {
     let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
     let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
 
@@ -208,7 +289,8 @@ pub async fn store_traces_for_block(block_number: u64) {
     drop(b)
 }
 
-pub fn load_traces_for_block(block_number: u64) -> (Vec<TxTrace>, Header) {
+#[allow(unused)]
+fn load_traces_for_block(block_number: u64) -> (Vec<TxTrace>, Header) {
     let file = PathBuf::from(format!(
         "./crates/brontes-core/src/test_utils/liquidation_traces/{}.json",
         block_number

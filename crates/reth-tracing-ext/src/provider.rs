@@ -63,8 +63,7 @@ impl TracingProvider for TracingClient {
 
     async fn block_and_tx_index(&self, hash: TxHash) -> ProviderResult<(u64, usize)> {
         let tx = self.api.transaction_by_hash(hash).await.unwrap().unwrap();
-        Ok((tx.block_number.unwrap().to::<u64>(),
-        tx.transaction_index.unwrap().to::<usize>()))
+        Ok((tx.block_number.unwrap().to::<u64>(), tx.transaction_index.unwrap().to::<usize>()))
     }
 
     async fn header_by_number(&self, number: BlockNumber) -> ProviderResult<Option<Header>> {
