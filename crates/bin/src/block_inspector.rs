@@ -65,11 +65,13 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             debug!("Got {} traces + header", traces.len());
+            let block_number = header.number;
             let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
 
             MissingDecimals::new(
                 self.parser.get_tracer(),
                 self.database,
+                block_number,
                 extra_data.tokens_decimal_fill,
             )
             .await;
