@@ -3,11 +3,7 @@ use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsErr
 use brontes_core::TraceLoaderError;
 use brontes_database::Metadata;
 use brontes_pricing::types::DexQuotes;
-use brontes_types::{
-    classified_mev::{MevType},
-    normalized_actions::Actions,
-    tree::BlockTree,
-};
+use brontes_types::{classified_mev::MevType, normalized_actions::Actions, tree::BlockTree};
 use thiserror::Error;
 
 use crate::{
@@ -219,7 +215,7 @@ impl InspectorTestUtils {
         Ok(())
     }
 
-    pub async fn run_composer<E: 'static>(
+    pub async fn run_composer<E: 'static + Default>(
         &self,
         config: ComposerRunConfig,
         specific_state_tests: Option<Box<dyn Fn(Box<E>)>>,
