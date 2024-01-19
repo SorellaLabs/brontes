@@ -1,4 +1,5 @@
 use std::{
+    collections::{hash_map::Entry, HashMap},
     env,
     path::{Path, PathBuf},
     sync::Arc,
@@ -54,7 +55,7 @@ impl TraceLoader {
             .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
     }
 
-    async fn get_metadata(&self, block: u64) -> Result<Metadata, TraceLoaderError> {
+    pub async fn get_metadata(&self, block: u64) -> Result<Metadata, TraceLoaderError> {
         self.libmdbx
             .get_metadata(block)
             .map_err(|_| TraceLoaderError::NoMetadataFound(block))
@@ -133,7 +134,8 @@ impl TraceLoader {
     pub async fn get_tx_traces_with_header(
         &self,
         tx_hashes: Vec<B256>,
-    ) -> Result<Vec<TxTracesWithHeaderAnd<()>>, TraceLoaderError> {
+    ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
+        let mut flattened: HashMap<u64, BlockTracesWithHeaderAnd<()>> = HashMap::new();
         join_all(tx_hashes.into_iter().map(|tx_hash| async move {
             let (block, tx_idx) = self
                 .tracing_provider
@@ -147,7 +149,35 @@ impl TraceLoader {
         }))
         .await
         .into_iter()
-        .collect()
+        .for_each(|res: Result<TxTracesWithHeaderAnd<()>, TraceLoaderError>| {
+            if let Ok(res) = res {
+                match flattened.entry(res.block) {
+                    Entry::Occupied(mut o) => {
+                        let e = o.get_mut();
+                        e.traces.push(res.trace)
+                    }
+                    Entry::Vacant(v) => {
+                        let entry = BlockTracesWithHeaderAnd {
+                            traces: vec![res.trace],
+                            block:  res.block,
+                            other:  (),
+                            header: res.header,
+                        };
+                        v.insert(entry);
+                    }
+                }
+            }
+        });
+
+        Ok(flattened
+            .into_values()
+            .map(|mut traces| {
+                traces
+                    .traces
+                    .sort_by(|t0, t1| t0.tx_index.cmp(&t1.tx_index));
+                traces
+            })
+            .collect())
     }
 
     pub async fn get_tx_trace_with_header_and_metadata(
