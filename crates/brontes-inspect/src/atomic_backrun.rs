@@ -172,7 +172,6 @@ mod tests {
     use std::{env, str::FromStr, time::SystemTime};
 
     use brontes_classifier::Classifier;
-    use brontes_core::{init_tracing, test_utils::init_trace_parser};
     use brontes_database::clickhouse::Clickhouse;
     use brontes_database_libmdbx::Libmdbx;
     use serial_test::serial;
