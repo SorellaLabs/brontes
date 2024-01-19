@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use brontes_database::{Metadata, Pair};
 use brontes_database_libmdbx::Libmdbx;
@@ -9,7 +9,7 @@ use brontes_types::{
     ToFloatNearest,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, B256, b256};
+use reth_primitives::{b256, Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector};
 
@@ -32,8 +32,10 @@ impl Inspector for LiquidationInspector<'_> {
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let liq_txs = tree.collect_all(|node| {
             (
-                node.data.is_liquidation(),
-                node.subactions.iter().any(|action| action.is_liquidation()),
+                node.data.is_liquidation() || node.data.is_swap(),
+                node.subactions
+                    .iter()
+                    .any(|action| action.is_liquidation() || action.is_swap()),
             )
         });
 
@@ -74,6 +76,7 @@ impl LiquidationInspector<'_> {
         let swaps = actions
             .iter()
             .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
+            .cloned()
             .collect::<Vec<_>>();
 
         let liqs = actions
@@ -87,10 +90,25 @@ impl LiquidationInspector<'_> {
                     }
                 },
             )
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let liq_tokens = liqs
+            .iter()
+            .flat_map(|liq| vec![liq.debt_asset, liq.collateral_asset])
+            .collect::<HashSet<_>>();
+
+        let swaps = swaps
+            .into_iter()
+            .filter(|swap| {
+                liq_tokens.contains(&swap.token_out) || liq_tokens.contains(&swap.token_in)
+            })
             .collect::<Vec<_>>();
 
         // TODO: check this
-        let addr_usd_deltas = self.inner.usd_delta_by_address(idx, todo!(), metadata.clone(), true)?;
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(idx, todo!(), metadata.clone(), true)?;
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
         let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
@@ -109,29 +127,10 @@ impl LiquidationInspector<'_> {
         // TODO: filter swaps not related to liqs?
         let new_liquidation = Liquidation {
             liquidation_tx_hash: tx_hash,
-            trigger: b256!(), // b256!() is the zero address
-            liquidation_swaps_index: swaps.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
-            liquidation_swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            liquidation_swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            liquidation_swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
-            liquidation_swaps_token_out: swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
-            liquidation_swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
-            liquidation_swaps_amount_out: swaps
-                .iter()
-                .map(|s| s.amount_out.to())
-                .collect::<Vec<_>>(),
-            liquidations_index: liqs.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
-            liquidations_liquidator: liqs.iter().map(|s| s.liquidator).collect::<Vec<_>>(),
-            liquidations_liquidatee: liqs.iter().map(|s| s.debtor).collect::<Vec<_>>(),
-            liquidations_tokens: liqs
-                .iter()
-                .map(|s| s.collateral_asset) // TODO: is this supposed
-                // to be the collateral or
-                // the debt asset?
-                .collect::<Vec<_>>(),
-            liquidations_amounts: liqs.iter().map(|s| s.amount.to()).collect::<Vec<_>>(),
-            liquidations_rewards: todo!(),
-            gas_details: gas_details.clone(),
+            trigger:             b256!(),
+            liquidation_swaps:   swaps,
+            liquidations:        liqs,
+            gas_details:         gas_details.clone(),
         };
 
         Some((mev, Box::new(new_liquidation)))
