@@ -381,6 +381,7 @@ mod tests {
     use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
 
     #[tokio::test]
+    #[serial]
     async fn test_jit() {
         // eth price in usdc
         // 2146.65037178
