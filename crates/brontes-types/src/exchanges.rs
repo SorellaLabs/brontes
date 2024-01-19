@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use alloy_rlp::{Decodable, Encodable};
+use redefined::{self_convert, RedefinedConvert};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
@@ -9,7 +10,19 @@ use reth_primitives::BufMut;
 use serde::{Deserialize, Serialize};
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Copy,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+)]
 pub enum StaticBindingsDb {
     UniswapV2,
     SushiSwapV2,
@@ -124,3 +137,5 @@ impl Decompress for StaticBindingsDb {
         StaticBindingsDb::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }
+
+self_convert!(StaticBindingsDb);
