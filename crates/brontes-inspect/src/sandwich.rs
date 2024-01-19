@@ -118,9 +118,6 @@ impl SandwichInspector<'_> {
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        if searcher_actions.len() < 2 {
-            return None
-        }
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
         let addr_usd_deltas =
@@ -408,11 +405,7 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
-            .with_mev_tx_hashes(vec![
-                hex!("ff79c471b191c0021cfb62408cb1d7418d09334665a02106191f6ed16a47e36c").into(),
-                hex!("19122ffe65a714f0551edbb16a24551031056df16ccaab39db87a73ac657b722").into(),
-                hex!("67771f2e3b0ea51c11c5af156d679ccef6933db9a4d4d6cd7605b4eee27f9ac8").into(),
-            ])
+            .with_block(18522330)
             .with_dex_prices()
             .with_expected_gas_used(16.0)
             .with_expected_profit_usd(23.0);
