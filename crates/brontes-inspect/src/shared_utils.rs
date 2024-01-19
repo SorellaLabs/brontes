@@ -101,7 +101,8 @@ impl SharedInspectorUtils<'_> {
         cex: bool,
     ) -> Option<HashMap<Address, Rational>> {
         let mut usd_deltas = HashMap::new();
-        // flatten to remove zero delta tokens;
+        // flatten to remove zero delta tokens ;
+        println!("{:#?}", deltas);
 
         for (address, inner_map) in deltas {
             for (token_addr, amount) in inner_map {
