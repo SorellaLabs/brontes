@@ -10,7 +10,7 @@ use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     exchanges::StaticBindingsDb,
 };
-use eyre::{anyhow, Context};
+use eyre::Context;
 use initialize::LibmdbxInitializer;
 use reth_db::{
     cursor::{DbCursorRO, DbCursorRW},
@@ -27,10 +27,13 @@ use reth_tracing_ext::TracingClient;
 use tables::*;
 use tracing::info;
 use types::{
+    address_to_protocol::AddressToProtocolData,
+    address_to_tokens::{AddressToTokensData, PoolTokens},
     cex_price::CexPriceMap,
     dex_price::{make_filter_key_range, DexPriceData},
     metadata::MetadataInner,
     mev_block::{MevBlockWithClassified, MevBlocksData},
+    pool_creation_block::PoolCreationBlocksData,
     token_decimals::TokenDecimalsData,
 };
 
@@ -90,6 +93,49 @@ impl Libmdbx {
         }
 
         tx.commit()?;
+
+        Ok(())
+    }
+
+    pub fn contains_pool(&self, address: Address) -> bool {
+        let tx = self.ro_tx().unwrap();
+        tx.get::<AddressToProtocol>(address).unwrap().is_some()
+    }
+
+    pub fn insert_pool(
+        &self,
+        block: u64,
+        address: Address,
+        tokens: [Address; 2],
+        classifier_name: StaticBindingsDb,
+    ) -> eyre::Result<()> {
+        self.write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
+            AddressToProtocolData { address, classifier_name },
+        ])?;
+
+        let tx = self.ro_tx()?;
+        let mut addrs = tx
+            .get::<PoolCreationBlocks>(block)?
+            .map(|i| i.0)
+            .unwrap_or(vec![]);
+
+        addrs.push(address);
+        self.write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
+            PoolCreationBlocksData {
+                block_number: block,
+                pools:        types::pool_creation_block::PoolsLibmdbx(addrs),
+            },
+        ])?;
+
+        self.write_table::<AddressToTokens, AddressToTokensData>(&vec![AddressToTokensData {
+            address,
+            tokens: PoolTokens {
+                token0: tokens[0],
+                token1: tokens[1],
+                init_block: block,
+                ..Default::default()
+            },
+        }])?;
 
         Ok(())
     }
@@ -255,7 +301,7 @@ impl Libmdbx {
         self.write_table(&vec![TokenDecimalsData { address, decimals }])
     }
 
-    pub fn addresses_inited_before(
+    pub fn protocols_created_before(
         &self,
         block_num: u64,
     ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
@@ -280,6 +326,40 @@ impl Libmdbx {
         }
 
         info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
+
+        Ok(map)
+    }
+
+    pub fn protocols_created_range(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>> {
+        let tx = self.ro_tx()?;
+        let binding_tx = self.ro_tx()?;
+        let info_tx = self.ro_tx()?;
+
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
+        let mut map = HashMap::default();
+
+        for result in cursor.walk_range(start_block..end_block)? {
+            let (block, res) = result?;
+            for addr in res.0.into_iter() {
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
+                    continue;
+                };
+                let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
+                    continue;
+                };
+                map.entry(block).or_insert(vec![]).push((
+                    addr,
+                    protocol,
+                    Pair(info.token0, info.token1),
+                ));
+            }
+        }
+
+        info!(target:"brontes-libmdbx", "loaded {} pairs range: {}..{}", map.len(), start_block, end_block);
 
         Ok(map)
     }

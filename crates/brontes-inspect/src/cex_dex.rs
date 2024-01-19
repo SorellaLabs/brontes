@@ -36,12 +36,13 @@ impl Inspector for CexDexInspector<'_> {
         meta_data: Arc<Metadata>,
     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
         // Get all normalized swaps
-        let intersting_state =
-            tree.inspect_all(|node| node.subactions.iter().any(|action| action.is_swap()));
+        let intersting_state = tree.collect_all(|node| {
+            (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
+        });
 
         intersting_state
             .into_par_iter()
-            .filter_map(|(tx, nested_swaps)| {
+            .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?;
 
                 let root = tree.get_root(tx)?;
@@ -55,7 +56,7 @@ impl Inspector for CexDexInspector<'_> {
                     eoa,
                     meta_data.clone(),
                     gas_details,
-                    nested_swaps,
+                    swaps,
                 )
             })
             .collect::<Vec<_>>()
@@ -71,21 +72,16 @@ impl CexDexInspector<'_> {
         eoa: Address,
         metadata: Arc<Metadata>,
         gas_details: &GasDetails,
-        swaps: Vec<Vec<Actions>>,
+        swaps: Vec<Actions>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let swap_sequences: Vec<Vec<(&Actions, _)>> = swaps
+        let swap_sequences: Vec<(&Actions, _)> = swaps
             .iter()
-            .map(|swap_sequence| {
-                swap_sequence
-                    .into_iter()
-                    .filter_map(|action| {
-                        if let Actions::Swap(ref normalized_swap) = action {
-                            Some((action, self.get_cex_dex(normalized_swap, metadata.as_ref())))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
+            .filter_map(|action| {
+                if let Actions::Swap(ref normalized_swap) = action {
+                    Some((action, self.get_cex_dex(normalized_swap, metadata.as_ref())))
+                } else {
+                    None
+                }
             })
             .collect();
 
@@ -93,7 +89,7 @@ impl CexDexInspector<'_> {
 
         let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
 
-        let deltas = self.inner.calculate_token_deltas(&swaps);
+        let deltas = self.inner.calculate_token_deltas(&vec![swaps.clone()]);
 
         let addr_usd_deltas =
             self.inner
@@ -114,61 +110,29 @@ impl CexDexInspector<'_> {
 
         let prices = swaps
             .par_iter()
-            .flatten()
             .filter_map(|swap| self.rational_prices(swap, &metadata))
             .map(|(dex_price, cex1)| (dex_price.to_float(), cex1.to_float()))
             .collect::<Vec<_>>();
 
-        let flat_swaps = swaps.into_iter().flatten().collect::<Vec<_>>();
+        let flat_swaps = swaps
+            .into_iter()
+            .filter(|act| act.is_swap())
+            .map(|swap| swap.force_swap())
+            .collect::<Vec<_>>();
 
         let cex_dex = CexDex {
-            tx_hash:          hash,
-            gas_details:      gas_details.clone(),
-            swaps_index:      flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().trace_index)
-                .collect::<Vec<_>>(),
-            swaps_from:       flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().from)
-                .collect::<Vec<_>>(),
-            swaps_pool:       flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().pool)
-                .collect::<Vec<_>>(),
-            swaps_token_in:   flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().token_in)
-                .collect::<Vec<_>>(),
-            swaps_token_out:  flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().token_out)
-                .collect::<Vec<_>>(),
-            swaps_amount_in:  flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().amount_in.to())
-                .collect::<Vec<_>>(),
-            swaps_amount_out: flat_swaps
-                .iter()
-                .filter(|s| s.is_swap())
-                .map(|s| s.clone().force_swap().amount_out.to())
-                .collect::<Vec<_>>(),
-            prices_kind:      prices
+            tx_hash:        hash,
+            gas_details:    gas_details.clone(),
+            swaps:          flat_swaps.clone(),
+            prices_kind:    prices
                 .iter()
                 .flat_map(|_| vec![PriceKind::Dex, PriceKind::Cex])
                 .collect(),
-            prices_address:   flat_swaps
+            prices_address: flat_swaps
                 .iter()
-                .filter(|s| s.is_swap())
-                .flat_map(|s| vec![s.clone().force_swap().token_in].repeat(2))
+                .flat_map(|s| vec![s.token_in].repeat(2))
                 .collect(),
-            prices_price:     prices
+            prices_price:   prices
                 .iter()
                 .flat_map(|(dex, cex)| vec![*dex, *cex])
                 .collect(),
@@ -179,14 +143,13 @@ impl CexDexInspector<'_> {
 
     fn arb_gas_accounting(
         &self,
-        swap_sequences: Vec<Vec<(&Actions, Option<Rational>)>>,
+        swap_sequences: Vec<(&Actions, Option<Rational>)>,
         gas_details: &GasDetails,
         eth_price: &Rational,
     ) -> Option<Rational> {
         let zero = Rational::ZERO;
         let total_arb = swap_sequences
             .iter()
-            .flat_map(|sequence| sequence)
             .fold(Rational::ZERO, |acc, (_, v)| acc + v.as_ref().unwrap_or(&zero));
 
         let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u128.pow(18)) * eth_price;

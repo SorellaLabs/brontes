@@ -2,7 +2,7 @@ use alloy_primitives::Address;
 use brontes_types::libmdbx::serde::address_string;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use super::LibmdbxData;
 use crate::tables::TokenDecimals;

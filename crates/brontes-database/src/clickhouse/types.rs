@@ -1,7 +1,7 @@
 use std::{collections::HashSet, str::FromStr};
 
 use alloy_json_abi::JsonAbi;
-use brontes_types::vec_u256;
+use brontes_types::serde_utils::utils::vec_u256;
 use reth_primitives::{Address, B256, U256};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

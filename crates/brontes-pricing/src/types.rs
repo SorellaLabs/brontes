@@ -106,8 +106,8 @@ impl PoolState {
 
 #[derive(Debug, Clone)]
 pub enum PoolVariants {
-    UniswapV2(UniswapV2Pool),
-    UniswapV3(UniswapV3Pool),
+    UniswapV2(UniswapV2Pool), // 104
+    UniswapV3(UniswapV3Pool), // 192,
 }
 
 impl PoolVariants {
@@ -124,7 +124,21 @@ impl PoolVariants {
 #[derive(Debug, Clone)]
 pub enum DexPriceMsg {
     Update(PoolUpdate),
+    DiscoveredPool(DiscoveredPool, u64),
     Closed,
+}
+
+#[derive(Debug, Clone)]
+pub struct DiscoveredPool {
+    pub protocol:     StaticBindingsDb,
+    pub pool_address: Address,
+    pub tokens:       Vec<Address>,
+}
+
+impl DiscoveredPool {
+    pub fn new(tokens: Vec<Address>, pool_address: Address, protocol: StaticBindingsDb) -> Self {
+        Self { protocol, pool_address, tokens }
+    }
 }
 
 #[derive(Debug, Clone)]
