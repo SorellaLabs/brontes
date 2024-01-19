@@ -74,6 +74,15 @@ impl Inspector for SandwichInspector<'_> {
                     .map(|victim| tree.collect(*victim, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
 
+                if ps
+                    .victims
+                    .iter()
+                    .map(|v| tree.get_root(*v).unwrap().head.data.get_to_address())
+                    .any(|addr| ps.mev_executor_contract == addr)
+                {
+                    return None
+                }
+
                 let tx_idx = tree.get_root(ps.tx1).unwrap().position;
 
                 let searcher_actions = vec![ps.tx0, ps.tx1]
