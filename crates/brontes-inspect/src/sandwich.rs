@@ -82,6 +82,10 @@ impl Inspector for SandwichInspector<'_> {
                     .filter(|f| !f.is_empty())
                     .collect::<Vec<Vec<Actions>>>();
 
+                if searcher_actions.len() != 2 {
+                    return None
+                }
+
                 self.calculate_sandwich(
                     tx_idx,
                     ps.eoa,
