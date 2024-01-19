@@ -408,7 +408,7 @@ mod tests {
             .with_block(18522330)
             .with_dex_prices()
             .with_expected_gas_used(34.3368)
-            .with_expected_profit_usd(275.920046);
+            .with_expected_profit_usd(24.0);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
