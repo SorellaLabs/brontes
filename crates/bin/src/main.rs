@@ -19,7 +19,7 @@ use brontes_database_libmdbx::{
 };
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
-    sandwich::LongTailInspector, Inspector,
+    sandwich::SandwichInspector, Inspector,
 };
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
@@ -50,7 +50,7 @@ struct InspectorHolder {
 impl InspectorHolder {
     fn new(quote_token: Address, db: &'static Libmdbx) -> Self {
         Self {
-            sandwich: Box::new(LongTailInspector::new(quote_token, db)),
+            sandwich: Box::new(SandwichInspector::new(quote_token, db)),
             cex_dex:  Box::new(CexDexInspector::new(quote_token, db)),
             jit:      Box::new(JitInspector::new(quote_token, db)),
             backrun:  Box::new(AtomicBackrunInspector::new(quote_token, db)),
