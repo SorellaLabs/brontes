@@ -189,6 +189,7 @@ impl ClassifierTestUtils {
                         decimals.tokens_decimal_fill,
                     )
                     .await;
+
                     tree
                 }),
         )
