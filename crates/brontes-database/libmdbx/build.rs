@@ -23,7 +23,12 @@ fn write_sql() {
             let sql_string = read_sql(path.to_str().unwrap());
 
             let const_name = path.file_stem().unwrap().to_str().unwrap();
-            writeln!(f, "pub const {}: &str = r#\"{}\"#;\n", const_name, sql_string).unwrap();
+            writeln!(
+                f,
+                "#[allow(dead_code)]\npub const {}: &str = r#\"{}\"#;\n",
+                const_name, sql_string
+            )
+            .unwrap();
         }
     }
 }

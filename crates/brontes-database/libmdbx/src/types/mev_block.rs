@@ -3,7 +3,7 @@ use brontes_types::{
     impl_compress_decompress_for_serde,
 };
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use super::LibmdbxData;
 use crate::tables::MevBlocks;

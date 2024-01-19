@@ -9,7 +9,7 @@ use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     exchanges::StaticBindingsDb,
 };
-use eyre::{anyhow, Context};
+use eyre::Context;
 use initialize::LibmdbxInitializer;
 use reth_db::{
     cursor::{DbCursorRO, DbCursorRW},
@@ -25,10 +25,13 @@ use reth_libmdbx::RO;
 pub use tables::*;
 use tracing::info;
 use types::{
+    address_to_protocol::AddressToProtocolData,
+    address_to_tokens::{AddressToTokensData, PoolTokens},
     cex_price::CexPriceMap,
     dex_price::{make_filter_key_range, DexPriceData},
     metadata::MetadataInner,
     mev_block::{MevBlockWithClassified, MevBlocksData},
+    pool_creation_block::PoolCreationBlocksData,
     token_decimals::TokenDecimalsData,
 };
 
@@ -88,6 +91,49 @@ impl Libmdbx {
         }
 
         tx.commit()?;
+
+        Ok(())
+    }
+
+    pub fn contains_pool(&self, address: Address) -> bool {
+        let tx = self.ro_tx().unwrap();
+        tx.get::<AddressToProtocol>(address).unwrap().is_some()
+    }
+
+    pub fn insert_pool(
+        &self,
+        block: u64,
+        address: Address,
+        tokens: [Address; 2],
+        classifier_name: StaticBindingsDb,
+    ) -> eyre::Result<()> {
+        self.write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
+            AddressToProtocolData { address, classifier_name },
+        ])?;
+
+        let tx = self.ro_tx()?;
+        let mut addrs = tx
+            .get::<PoolCreationBlocks>(block)?
+            .map(|i| i.0)
+            .unwrap_or(vec![]);
+
+        addrs.push(address);
+        self.write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
+            PoolCreationBlocksData {
+                block_number: block,
+                pools:        types::pool_creation_block::PoolsLibmdbx(addrs),
+            },
+        ])?;
+
+        self.write_table::<AddressToTokens, AddressToTokensData>(&vec![AddressToTokensData {
+            address,
+            tokens: PoolTokens {
+                token0: tokens[0],
+                token1: tokens[1],
+                init_block: block,
+                ..Default::default()
+            },
+        }])?;
 
         Ok(())
     }

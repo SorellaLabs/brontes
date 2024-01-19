@@ -89,13 +89,28 @@ impl AllPairGraph {
         Self { graph, token_to_index }
     }
 
-    pub fn remove_empty_address(&mut self, pool_pair: Pair, pool_addr: Address) {
-        let n0 = (*self.token_to_index.get(&pool_pair.0).unwrap()).into();
-        let n1 = (*self.token_to_index.get(&pool_pair.1).unwrap()).into();
+    pub fn remove_empty_address(
+        &mut self,
+        pool_pair: Pair,
+        pool_addr: Address,
+    ) -> Option<(Address, StaticBindingsDb, Pair)> {
+        let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return None };
+        let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return None };
 
-        let edge = self.graph.find_edge(n0, n1).unwrap();
-        let weights = self.graph.edge_weight_mut(edge).unwrap();
+        let Some(edge) = self.graph.find_edge((*n0).into(), (*n1).into()) else { return None };
+        let Some(weights) = self.graph.edge_weight_mut(edge) else {
+            return None;
+        };
+
+        let Some(bad_pool) = weights.iter().find(|e| e.pool_addr == pool_addr).cloned() else {
+            return None;
+        };
         weights.retain(|e| e.pool_addr != pool_addr);
+        if weights.len() == 0 {
+            self.graph.remove_edge(edge);
+        }
+
+        Some((bad_pool.pool_addr, bad_pool.dex_type, pool_pair))
     }
 
     pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
@@ -122,7 +137,7 @@ impl AllPairGraph {
         }
     }
 
-    pub fn get_paths(&mut self, pair: Pair) -> Vec<Vec<Vec<SubGraphEdge>>> {
+    pub fn get_paths(&self, pair: Pair) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
             return vec![]

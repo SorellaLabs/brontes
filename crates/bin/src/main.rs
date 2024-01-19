@@ -38,7 +38,7 @@ use banner::print_banner;
 use cli::TraceArg;
 use cli::{AddToDb, Args, Commands, DatabaseQuery, DexPricingArgs, Init, RunArgs};
 
-type Inspectors<'a> = [&'a Box<dyn Inspector>; 4];
+type Inspectors<'a> = &'a [&'a Box<dyn Inspector>];
 
 struct InspectorHolder {
     sandwich: Box<dyn Inspector>,
@@ -58,11 +58,9 @@ impl InspectorHolder {
     }
 
     fn get_inspectors(&'static self) -> Inspectors<'static> {
-        [&self.sandwich, &self.cex_dex, &self.jit, &self.backrun]
+        &*Box::leak(Box::new([&self.sandwich, &self.cex_dex, &self.jit, &self.backrun]))
     }
 }
-
-//TODO: Wire in price fetcher + Metadata fetcher
 
 fn main() {
     print_banner();
@@ -132,8 +130,13 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
                 $(
                     Tables::$tables => {
                         db.write_table(
-                            &vec![brontes_database_libmdbx::tables::$tables::into_table_data($arg0, $arg1)]
-                            ).unwrap();
+                            &vec![
+                            brontes_database_libmdbx::tables::$tables::into_table_data(
+                                    $arg0,
+                                    $arg1
+                                )
+                            ]
+                        ).unwrap();
                     }
                 )+
             }
@@ -149,6 +152,7 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
         TokenDecimals,
         AddressToTokens,
         AddressToProtocol,
+        AddressToFactory,
         SubGraphs,
         PoolCreationBlocks = &req.key,
         &req.value
@@ -241,6 +245,7 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             AddressToTokens,
             AddressToProtocol,
             PoolCreationBlocks,
+            AddressToFactory,
             SubGraphs
         );
     } else {
@@ -255,6 +260,7 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
+            AddressToFactory,
             SubGraphs,
             PoolCreationBlocks = &command.key
         );
@@ -295,12 +301,12 @@ async fn run_brontes(run_config: RunArgs) -> Result<(), Box<dyn Error>> {
     let parser = DParser::new(
         metrics_tx,
         &libmdbx,
-        tracer,
+        tracer.clone(),
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
 
     let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
-    let classifier = Classifier::new(&libmdbx, tx.clone());
+    let classifier = Classifier::new(&libmdbx, tx.clone(), tracer.into());
 
     #[cfg(not(feature = "local"))]
     let chain_tip = parser.get_latest_block_number().unwrap();
@@ -373,8 +379,7 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
     let db_path = get_env_vars()?;
 
-    let max_tasks = determine_max_tasks(config.max_tasks);
-
+    let tracing_max_tasks = determine_max_tasks(config.max_tasks);
     let (metrics_tx, metrics_rx) = unbounded_channel();
 
     let metrics_listener = PoirotMetricsListener::new(metrics_rx);
@@ -388,8 +393,12 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
         Box::leak(Box::new(InspectorHolder::new(config.quote_asset.parse().unwrap(), &libmdbx)));
     let inspectors: Inspectors = inspector_holder.get_inspectors();
 
-    let (manager, tracer) =
-        TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), max_tasks);
+    let (manager, tracer) = TracingClient::new(
+        Path::new(&db_path),
+        tokio::runtime::Handle::current(),
+        tracing_max_tasks,
+    );
+
     tokio::spawn(manager);
 
     let parser = DParser::new(
@@ -399,17 +408,27 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
         Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
     );
 
-    let cpus = determine_max_tasks(config.max_tasks);
-
-    let range = config.end_block - config.start_block;
-
-    let cpus_min = range / config.min_batch_size;
-
     let mut scope: TokioScope<'_, ()> = unsafe { Scope::create() };
 
-    // the amount of cpu's we want to use
+    // calculate the chunk size using min batch size and max_tasks.
+    // max tasks defaults to 50% of physical threads of the system if not set
+    let cpus = determine_max_tasks(config.max_tasks);
+    let range = config.end_block - config.start_block;
+    let cpus_min = range / config.min_batch_size;
+
     let cpus = std::cmp::min(cpus_min, cpus);
     let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
+
+    let remaining_cpus = if config.max_tasks.is_some() {
+        determine_max_tasks(None) * 2 - config.max_tasks.unwrap()
+    } else {
+        determine_max_tasks(None)
+    };
+
+    let chunks_amount = (range / chunk_size) + 1;
+    // because these are lightweight tasks, we can stack them pretty easily without
+    // much overhead concern
+    let max_pool_loading_tasks = (remaining_cpus / chunks_amount + 1) * 3;
 
     for (i, mut chunk) in (config.start_block..=config.end_block)
         .chunks(chunk_size.try_into().unwrap())
@@ -423,6 +442,7 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
         scope.spawn(spawn_batches(
             config.quote_asset.parse().unwrap(),
+            max_pool_loading_tasks as usize,
             i as u64,
             start_block,
             end_block,
@@ -445,6 +465,7 @@ async fn run_batch_with_pricing(config: DexPricingArgs) -> Result<(), Box<dyn Er
 
 async fn spawn_batches(
     quote_asset: Address,
+    max_pool_loading_tasks: usize,
     batch_id: u64,
     start_block: u64,
     end_block: u64,
@@ -452,8 +473,17 @@ async fn spawn_batches(
     libmdbx: &'static Libmdbx,
     inspectors: &Inspectors<'_>,
 ) {
-    DataBatching::new(quote_asset, batch_id, start_block, end_block, &parser, &libmdbx, &inspectors)
-        .await
+    DataBatching::new(
+        quote_asset,
+        max_pool_loading_tasks,
+        batch_id,
+        start_block,
+        end_block,
+        &parser,
+        &libmdbx,
+        &inspectors,
+    )
+    .await
 }
 
 fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {

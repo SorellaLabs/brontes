@@ -20,7 +20,7 @@ use crate::{
     SpecificMev,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 struct PossibleJit {
     pub eoa:                   Address,
     pub frontrun_tx:           B256,
@@ -76,20 +76,7 @@ impl Inspector for JitInspector<'_> {
                         tree.get_gas_details(backrun_tx).cloned().unwrap(),
                     ];
 
-                    // grab all the pools that had liquidity events on them
-                    let liquidity_addresses = searcher_actions
-                        .iter()
-                        .flatten()
-                        .filter_map(|action| match action {
-                            Actions::Mint(m) => Some(m.to),
-                            Actions::Burn(b) => Some(b.to),
-                            Actions::Collect(c) => Some(c.to),
-                            _ => None,
-                        })
-                        .collect::<HashSet<_>>();
-
                     // grab all victim swaps dropping swaps that don't touch addresses with
-                    // liquidity deltas
                     let (victims, victim_actions): (Vec<B256>, Vec<Vec<Actions>>) = victims
                         .iter()
                         .map(|victim| {
@@ -103,11 +90,6 @@ impl Inspector for JitInspector<'_> {
                                 }),
                             )
                         })
-                        .filter(|(_, actions)| {
-                            actions
-                                .iter()
-                                .any(|s| liquidity_addresses.contains(&s.force_swap_ref().pool))
-                        })
                         .unzip();
 
                     let victim_gas = victims
@@ -115,10 +97,7 @@ impl Inspector for JitInspector<'_> {
                         .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                         .collect::<Vec<_>>();
 
-                    let idxs = [
-                        tree.get_root(frontrun_tx).unwrap().get_block_position(),
-                        tree.get_root(backrun_tx).unwrap().get_block_position(),
-                    ];
+                    let idxs = tree.get_root(backrun_tx).unwrap().get_block_position();
 
                     self.calculate_jit(
                         eoa,
@@ -144,7 +123,7 @@ impl JitInspector<'_> {
         eoa: Address,
         mev_addr: Address,
         metadata: Arc<Metadata>,
-        idxs: [usize; 2],
+        back_jit_idx: usize,
         txes: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,
@@ -177,10 +156,10 @@ impl JitInspector<'_> {
             return None
         }
 
-        let jit_fee = self.get_collect_amount(idxs[1], fee_collect, metadata.clone());
+        let jit_fee = self.get_collect_amount(back_jit_idx, fee_collect, metadata.clone());
 
         let mint = self.get_total_pricing(
-            idxs[0],
+            back_jit_idx,
             mints.iter().map(|mint| (&mint.token, &mint.amount)),
             metadata.clone(),
         );
@@ -200,61 +179,28 @@ impl JitInspector<'_> {
             finalized_bribe_usd: bribe.to_float(),
         };
 
-        let swaps = victim_actions
-            .into_iter()
-            .flatten()
-            .filter(|s| s.is_swap())
-            .map(|s| s.force_swap())
-            .collect::<Vec<_>>();
+        let victim_swaps = victim_actions
+            .iter()
+            .map(|tx_actions| {
+                tx_actions
+                    .iter()
+                    .filter(|action| action.is_swap())
+                    .map(|f| f.clone().force_swap())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
 
         let jit_details = JitLiquidity {
-            mint_tx_hash: txes[0],
-            mint_gas_details: searcher_gas_details[0],
-            jit_mints_index: mints.iter().map(|m| m.trace_index as u16).collect(),
-            jit_mints_from: mints.iter().map(|m| m.from).collect(),
-            jit_mints_to: mints.iter().map(|m| m.to).collect(),
-            jit_mints_recipient: mints.iter().map(|m| m.recipient).collect(),
-            jit_mints_tokens: mints.iter().map(|m| m.token.clone()).collect(),
-            jit_mints_amounts: mints
-                .iter()
-                .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
-                .collect(),
-            victim_swap_tx_hashes: victim_txs.clone(),
-            victim_swaps_tx_hash: victim_txs,
-            victim_gas_details_gas_used: victim_gas.iter().map(|s| s.gas_used).collect_vec(),
-            victim_gas_details_priority_fee: victim_gas
-                .iter()
-                .map(|s| s.priority_fee)
-                .collect_vec(),
-            victim_gas_details_coinbase_transfer: victim_gas
-                .iter()
-                .map(|s| s.coinbase_transfer)
-                .collect_vec(),
-            victim_gas_details_effective_gas_price: victim_gas
-                .iter()
-                .map(|s| s.effective_gas_price)
-                .collect_vec(),
-            victim_swaps_index: swaps
-                .iter()
-                .map(|s| s.trace_index as u16)
-                .collect::<Vec<_>>(),
-            victim_swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            victim_swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            victim_swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
-            victim_swaps_token_out: swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
-            victim_swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
-            victim_swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
-            burn_tx_hash: txes[1],
-            burn_gas_details: searcher_gas_details[1],
-            jit_burns_index: burns.iter().map(|m| m.trace_index as u16).collect(),
-            jit_burns_from: burns.iter().map(|m| m.from).collect(),
-            jit_burns_to: burns.iter().map(|m| m.to).collect(),
-            jit_burns_recipient: burns.iter().map(|m| m.recipient).collect(),
-            jit_burns_tokens: burns.iter().map(|m| m.token.clone()).collect(),
-            jit_burns_amounts: burns
-                .iter()
-                .map(|m| m.amount.clone().into_iter().map(|l| l.to()).collect_vec())
-                .collect(),
+            frontrun_mint_tx_hash: txes[0],
+            frontrun_mint_gas_details: searcher_gas_details[0],
+            frontrun_mints: mints,
+            victim_swaps_tx_hashes: victim_txs.clone(),
+            victim_swaps,
+            victim_swaps_gas_details_tx_hashes: victim_txs.clone(),
+            victim_swaps_gas_details: victim_gas,
+            backrun_burn_tx_hash: txes[1],
+            backrun_burn_gas_details: searcher_gas_details[1],
+            backrun_burns: burns,
         };
 
         Some((classified, Box::new(jit_details)))
@@ -267,11 +213,43 @@ impl JitInspector<'_> {
             return vec![]
         }
 
-        let mut set: Vec<PossibleJit> = Vec::new();
+        let mut set: HashSet<PossibleJit> = HashSet::new();
+        let mut duplicate_mev_contracts: HashMap<Address, Vec<B256>> = HashMap::new();
         let mut duplicate_senders: HashMap<Address, Vec<B256>> = HashMap::new();
+
         let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
 
         for root in iter {
+            match duplicate_mev_contracts.entry(root.head.data.get_to_address()) {
+                // If we have not seen this sender before, we insert the tx hash into the map
+                Entry::Vacant(v) => {
+                    v.insert(vec![root.tx_hash]);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+                Entry::Occupied(mut o) => {
+                    let prev_tx_hashes = o.get();
+
+                    for prev_tx_hash in prev_tx_hashes {
+                        // Find the victims between the previous and the current transaction
+                        if let Some(victims) = possible_victims.get(prev_tx_hash) {
+                            if victims.len() >= 1 {
+                                // Create
+                                set.insert(PossibleJit {
+                                    eoa:                   root.head.address,
+                                    frontrun_tx:           *prev_tx_hash,
+                                    backrun_tx:            root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_to_address(),
+                                    victims:               victims.clone(),
+                                });
+                            }
+                        }
+                    }
+                    // Add current transaction hash to the list of transactions for this sender
+                    o.get_mut().push(root.tx_hash);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+            }
+
             match duplicate_senders.entry(root.head.address) {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
@@ -284,9 +262,9 @@ impl JitInspector<'_> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 2 {
+                            if victims.len() >= 1 {
                                 // Create
-                                set.push(PossibleJit {
+                                set.insert(PossibleJit {
                                     eoa:                   root.head.address,
                                     frontrun_tx:           *prev_tx_hash,
                                     backrun_tx:            root.tx_hash,
@@ -312,7 +290,7 @@ impl JitInspector<'_> {
             }
         }
 
-        set
+        set.into_iter().collect()
     }
 
     fn get_bribes(&self, price: Arc<Metadata>, gas: [GasDetails; 2]) -> Rational {
@@ -368,7 +346,7 @@ impl JitInspector<'_> {
             .sum::<Rational>()
     }
 }
-/*
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -377,121 +355,24 @@ mod tests {
         time::SystemTime,
     };
 
-    use brontes_classifier::Classifier;
-    use brontes_core::test_utils::{init_trace_parser, init_tracing};
-    use brontes_database::database::Database;
-    use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
     use reth_primitives::U256;
     use serial_test::serial;
-    use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-
-    fn get_metadata() -> Metadata {
-        // 2126.43
-        Metadata {
-            block_num:              18539312,
-            block_hash:             U256::from_str_radix(
-                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729",
-                16,
-            )
-            .unwrap(),
-            relay_timestamp:        1696271963129, // Oct 02 2023 18:39:23 UTC
-            p2p_timestamp:          1696271964134, // Oct 02 2023 18:39:24 UTC
-            proposer_fee_recipient: Address::from_str("0x388c818ca8b9251b393131c08a736a67ccb19297")
-                .unwrap(),
-            proposer_mev_reward:    11769128921907366414,
-            cex_quotes:             {
-                let mut prices = HashMap::new();
-
-                prices.insert(
-                    Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
-                    (
-                        Rational::try_from_float_simplest(2126.43).unwrap(),
-                        Rational::try_from_float_simplest(2126.43).unwrap(),
-                    ),
-                );
-
-                // SMT
-                prices.insert(
-                    Address::from_str("0xb17548c7b510427baac4e267bea62e800b247173").unwrap(),
-                    (
-                        Rational::try_from_float_simplest(0.09081931).unwrap(),
-                        Rational::try_from_float_simplest(0.09081931).unwrap(),
-                    ),
-                );
-
-                // APX
-                prices.insert(
-                    Address::from_str("0xed4e879087ebd0e8a77d66870012b5e0dffd0fa4").unwrap(),
-                    (
-                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
-                        Rational::try_from_float_simplest(0.00004047064).unwrap(),
-                    ),
-                );
-                // FTT
-                prices.insert(
-                    Address::from_str("0x50d1c9771902476076ecfc8b2a83ad6b9355a4c9").unwrap(),
-                    (
-                        Rational::try_from_float_simplest(1.9358).unwrap(),
-                        Rational::try_from_float_simplest(1.9358).unwrap(),
-                    ),
-                );
-
-                prices
-            },
-            eth_prices:             (Rational::try_from_float_simplest(2126.43).unwrap(),),
-            mempool_flow:           {
-                let mut private = HashSet::new();
-                private.insert(
-                    B256::from_str(
-                        "0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295",
-                    )
-                    .unwrap(),
-                );
-                private
-            },
-        }
-    }
+    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
 
     #[tokio::test]
     #[serial]
     async fn test_jit() {
-        init_tracing();
-        dotenv::dotenv().ok();
-        // testing https://eigenphi.io/mev/ethereum/tx/0x96a1decbb3787fbe26de84e86d6c2392f7ab7b31fb33f685334d49db2624a424
-        // This is a jit sandwich, however we are just trying to detect the jit portion
-        let block_num = 18539312;
+        // eth price in usdc
+        // 2146.65037178
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
+        let config = InspectorTxRunConfig::new(MevType::Jit)
+            .with_dex_prices()
+            .with_block(18539312)
+            .with_expected_gas_used(90.875025)
+            .with_expected_profit_usd(-68.34);
 
-        let (tx, _rx) = unbounded_channel();
-
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
-        let classifier = Classifier::new();
-
-        let block = tracer.execute_block(block_num).await.unwrap();
-        let metadata = get_metadata();
-
-        let tx = block.0.clone().into_iter().take(20).collect::<Vec<_>>();
-        let (missing_token_decimals, tree) = classifier.build_block_tree(tx, block.1);
-
-        let tree = Arc::new(tree);
-
-        let USDC = Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap();
-        let inspector = Box::new(JitInspector::new(USDC)) as Box<dyn Inspector>;
-
-        let t0 = SystemTime::now();
-        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
-
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        println!("{:#?}", mev);
-
-        println!("jit inspector took: {} us", delta);
-
-        // assert!(
-        //     mev[0].0.tx_hash
-        //         == B256::from_str(
+        test_utils.run_inspector::<JitLiquidity>(config, None).await.unwrap();
     }
 }
-*/
