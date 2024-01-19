@@ -1,34 +1,35 @@
 use std::{fmt::Debug, str::FromStr};
 
 use brontes_database_libmdbx::types::LibmdbxData;
-
-use crate::benchmarks::metadata::zero_copy::MetadataRkyvInner;
-use crate::benchmarks::metadata::{rlp::MetadataRLPInner, MetadataBench, bincode::MetadataBincodeInner};
-use crate::benchmarks::metadata::rlp::MetadataRLPData;
 use reth_db::{table::Table, TableType};
-use crate::libmdbx_impl::LibmdbxBench;
-use crate::benchmarks::metadata::bincode::MetadataBincodeData;
-use crate::benchmarks::metadata::zero_copy::MetadataRkyvData;
 
+use crate::{
+    benchmarks::metadata::{
+        bincode::{MetadataBincodeData, MetadataBincodeInner},
+        rlp::{MetadataRLPData, MetadataRLPInner},
+        zero_copy::{MetadataRkyvData, MetadataRkyvInner},
+        MetadataBench,
+    },
+    libmdbx_impl::LibmdbxBench,
+};
 
-pub const BENCH_NUM_TABLES: usize  = 3;
+pub const BENCH_NUM_TABLES: usize = 3;
 
 pub enum BenchTables {
     MetadataRLP,
     MetadataBincode,
-    MetadataRkyv
+    MetadataRkyv,
 }
 
 impl BenchTables {
-
-    pub const ALL: [BenchTables; BENCH_NUM_TABLES] = [BenchTables::MetadataRLP, BenchTables::MetadataBincode, BenchTables::MetadataRkyv];
-
+    pub const ALL: [BenchTables; BENCH_NUM_TABLES] =
+        [BenchTables::MetadataRLP, BenchTables::MetadataBincode, BenchTables::MetadataRkyv];
 
     pub fn table_type(&self) -> TableType {
         match self {
             BenchTables::MetadataRLP => TableType::Table,
             BenchTables::MetadataBincode => TableType::Table,
-            BenchTables::MetadataRkyv => TableType::Table
+            BenchTables::MetadataRkyv => TableType::Table,
         }
     }
 
@@ -36,11 +37,10 @@ impl BenchTables {
         match self {
             BenchTables::MetadataRLP => MetadataRLP::NAME,
             BenchTables::MetadataBincode => MetadataBincode::NAME,
-            BenchTables::MetadataRkyv => MetadataRkyv::NAME
+            BenchTables::MetadataRkyv => MetadataRkyv::NAME,
         }
     }
 }
-
 
 impl FromStr for BenchTables {
     type Err = String;
@@ -54,9 +54,6 @@ impl FromStr for BenchTables {
         }
     }
 }
-
-
-
 
 pub trait IntoTableKey<T, K> {
     fn into_key(value: T) -> K;
@@ -96,24 +93,23 @@ macro_rules! bench_table {
     };
 }
 
-pub(crate) trait InitializeTable<'db, D, F>: reth_db::table::Table + Sized + Default + 'db
+pub(crate) trait InitializeTable<'db, D, F>:
+    reth_db::table::Table + Sized + Default + 'db
 where
-    D: From<F>+ LibmdbxData<Self>,
-    F: From<arrow::array::RecordBatch> + Clone
+    D: From<F> + LibmdbxData<Self>,
+    F: From<arrow::array::RecordBatch> + Clone,
 {
     fn initialize_table(libmdbx: &LibmdbxBench, data: &Vec<F>) {
-
         //println!("WRITING DATA TO LIBMDBX");
 
         let libmdbx_data = data
-        .iter()
-        .map(|d| Into::<D>::into(d.clone()))
-        .collect::<Vec<_>>();
+            .iter()
+            .map(|d| Into::<D>::into(d.clone()))
+            .collect::<Vec<_>>();
 
         libmdbx.initialize_table(&libmdbx_data).unwrap();
     }
 }
-
 
 bench_table!(
     /// rlp metadata
@@ -125,9 +121,7 @@ bench_table!(
     ( MetadataBincode ) u64 | MetadataBincodeInner | MetadataBench
 );
 
-
 bench_table!(
     /// rkyv metadata
     ( MetadataRkyv ) u64 | MetadataRkyvInner | MetadataBench
 );
-

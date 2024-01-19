@@ -1,11 +1,12 @@
 #![allow(non_upper_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
-use futures::StreamExt;
-use reth_rpc::eth::error::EthApiError;
+
 use brontes_types::traits::TracingProvider;
+use futures::StreamExt;
 use reth_interfaces::blockchain_tree::BlockchainTreeViewer;
-use reth_primitives::{BlockNumberOrTag, BlockId};
+use reth_primitives::{BlockId, BlockNumberOrTag};
+use reth_rpc::eth::error::EthApiError;
 use sorella_db_databases::Database;
 
 use crate::Pair;
@@ -15,11 +16,12 @@ use alloy_primitives::{Address, TxHash};
 use brontes_database::clickhouse::Clickhouse;
 use const_sql::*;
 use futures::{future::join_all, Future};
+use paste::paste;
 use reth_db::{table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::clickhouse::DbRow;
 use tracing::info;
-use paste::paste;
+
 //use crate::types::traces::TxTracesDBData;
 use crate::{
     types::{
@@ -74,7 +76,7 @@ impl Tables {
         Tables::Metadata,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
-       // Tables::TxTraces
+        // Tables::TxTraces
     ];
 
     /// type of table
@@ -111,7 +113,7 @@ impl Tables {
     pub(crate) fn initialize_table<'a>(
         &'a self,
         libmdbx: Arc<Libmdbx>,
-       // tracer: Arc<TracingClient>,
+        // tracer: Arc<TracingClient>,
         clickhouse: Arc<Clickhouse>,
         _block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
@@ -328,8 +330,6 @@ pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
 where
     D: LibmdbxData<Self> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
-
-   
     fn initialize_query() -> &'static str;
 
     fn initialize_table(
@@ -452,8 +452,7 @@ where
     }
 }
 
-
-/* 
+/*
 
 impl TxTracesDB {
     pub async fn initialize_table_node(libmdbx: Arc<Libmdbx>, tracer: Arc<TracingClient>) -> eyre::Result<()> {
@@ -465,9 +464,9 @@ impl TxTracesDB {
         let range = (start_block..current_block).collect::<Vec<_>>();
     let chunks = range.chunks(1000).collect::<Vec<_>>();
     let tracer = tracer.as_ref();
-        let mut tx_traces_stream = futures::stream::iter(chunks).map(|chunk| { 
+        let mut tx_traces_stream = futures::stream::iter(chunks).map(|chunk| {
             join_all( chunk.into_iter().map(|block_num|
-            
+
                 async move {
                     Ok(TxTracesDBData::new(*block_num, TxTracesInner::new(tracer.replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(*block_num))).await?)))
                 }
@@ -481,8 +480,8 @@ impl TxTracesDB {
         println!("FINISHED CHUNK: {:?} - {:?}", tx_traces.first().map(|val| val.block_number), tx_traces.last().map(|val| val.block_number));
        }
 
-       
-    
+
+
     Ok(())
 
     }
