@@ -77,6 +77,7 @@ impl Inspector for SandwichInspector<'_> {
                     .collect::<Vec<Vec<Actions>>>();
 
                 if victim_actions.iter().any(|inner| inner.is_empty()) {
+                    tracing::info!("empty victim actions");
                     return None
                 }
 
@@ -86,6 +87,7 @@ impl Inspector for SandwichInspector<'_> {
                     .map(|v| tree.get_root(*v).unwrap().head.data.get_to_address())
                     .any(|addr| ps.mev_executor_contract == addr)
                 {
+                    tracing::info!("victim with mev exector contract");
                     return None
                 }
 
@@ -98,6 +100,7 @@ impl Inspector for SandwichInspector<'_> {
                     .collect::<Vec<Vec<Actions>>>();
 
                 if searcher_actions.len() != 2 {
+                    tracing::info!("searcher action len != 2");
                     return None
                 }
 
