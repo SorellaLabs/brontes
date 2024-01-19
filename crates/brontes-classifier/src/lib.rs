@@ -15,10 +15,8 @@ pub use tree_builder::*;
 pub mod bindings;
 use bindings::*;
 
-/*
 #[cfg(feature = "tests")]
 pub mod test_utils;
-*/
 
 mod classifiers;
 use alloy_sol_types::{sol, SolInterface};
