@@ -10,7 +10,7 @@ use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, InsertRow, Row},
 };
-use strum::EnumIter;
+use strum::{Display, EnumIter};
 
 use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
@@ -57,7 +57,17 @@ pub struct ClassifiedMev {
 }
 
 #[derive(
-    Debug, Serialize_repr, Deserialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy, Default,
+    Debug,
+    Serialize_repr,
+    Deserialize_repr,
+    PartialEq,
+    Eq,
+    Hash,
+    EnumIter,
+    Clone,
+    Copy,
+    Default,
+    Display,
 )]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
