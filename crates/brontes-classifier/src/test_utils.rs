@@ -10,7 +10,7 @@ use brontes_pricing::{
     BrontesBatchPricer, GraphManager,
 };
 use brontes_types::tree::BlockTree;
-use futures::{future::join_all, StreamExt};
+use futures::{future::join_all};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
@@ -33,7 +33,7 @@ impl ClassifierTestUtils {
         Self { classifier, trace_loader, dex_pricing_receiver: rx }
     }
 
-    async fn ready_dex_pricing(
+    async fn crate_dex_pricer(
         &self,
         block: u64,
         end_block: Option<u64>,
