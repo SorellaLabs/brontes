@@ -169,7 +169,7 @@ impl TraceLoader {
             }
         });
 
-        Ok(flattened
+        let mut res = flattened
             .into_values()
             .map(|mut traces| {
                 traces
@@ -177,7 +177,10 @@ impl TraceLoader {
                     .sort_by(|t0, t1| t0.tx_index.cmp(&t1.tx_index));
                 traces
             })
-            .collect())
+            .collect::<Vec<_>>();
+        res.sort_by(|a, b| a.block.cmp(&b.block));
+
+        Ok(res)
     }
 
     pub async fn get_tx_trace_with_header_and_metadata(
