@@ -24,13 +24,13 @@ use futures::{Future, FutureExt};
 use tracing::{debug, error, info, trace};
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, BlockTree<Actions>)> + Send + 'a>>;
 
-pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
+pub struct BlockInspector<'inspector, T: TracingProvider> {
     block_number: u64,
 
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier<'inspector, T>,
     database:          &'inspector Libmdbx,
-    inspectors:        &'inspector [&'inspector Box<dyn Inspector>; N],
+    inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
     composer_future:   Option<Pin<Box<dyn Future<Output = ComposerResults> + Send + 'inspector>>>,
     // pending future data
     classifier_future: Option<CollectionFut<'inspector>>,
@@ -38,12 +38,12 @@ pub struct BlockInspector<'inspector, const N: usize, T: TracingProvider> {
     // insertion_future:  Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
-impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, N, T> {
+impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
     pub fn new(
         parser: &'inspector Parser<'inspector, T>,
         database: &'inspector Libmdbx,
         classifier: &'inspector Classifier<'_, T>,
-        inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
+        inspectors: &'inspector [&'inspector Box<dyn Inspector>],
         block_number: u64,
     ) -> Self {
         Self {
@@ -65,11 +65,13 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             debug!("Got {} traces + header", traces.len());
+            let block_number = header.number;
             let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
 
             MissingDecimals::new(
                 self.parser.get_tracer(),
                 self.database,
+                block_number,
                 extra_data.tokens_decimal_fill,
             )
             .await;
@@ -157,7 +159,7 @@ impl<'inspector, const N: usize, T: TracingProvider> BlockInspector<'inspector, 
     }
 }
 
-impl<const N: usize, T: TracingProvider> Future for BlockInspector<'_, N, T> {
+impl<T: TracingProvider> Future for BlockInspector<'_, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
