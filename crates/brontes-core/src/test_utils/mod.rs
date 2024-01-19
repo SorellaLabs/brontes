@@ -43,6 +43,10 @@ impl TraceLoader {
         Self { libmdbx, tracing_provider, _metrics: b }
     }
 
+    pub fn get_provider(&self) -> Arc<Box<dyn TracingProvider>> {
+        self.tracing_provider.get_tracer()
+    }
+
     async fn trace_block(&self, block: u64) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
         self.tracing_provider
             .execute_block(block)
