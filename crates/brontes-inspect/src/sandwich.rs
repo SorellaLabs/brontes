@@ -393,9 +393,8 @@ impl SandwichInspector<'_> {
 mod tests {
     use std::{collections::HashSet, str::FromStr, time::SystemTime};
 
+    use alloy_primitives::hex;
     use brontes_classifier::Classifier;
-    use brontes_core::{init_tracing, test_utils::init_trace_parser};
-    use brontes_database::database::Database;
     use reth_primitives::U256;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
