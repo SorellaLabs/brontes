@@ -146,14 +146,11 @@ impl InspectorTestUtils {
         Ok(res)
     }
 
-    pub async fn run_inspector<F>(
+    pub async fn run_inspector(
         &self,
         config: InspectorTxRunConfig,
-        specific_state_tests: Option<F>,
-    ) -> Result<(), InspectorTestUtilsError>
-    where
-        F: Fn(Box<dyn SpecificMev>),
-    {
+        specific_state_tests: Option<impl Fn(Box<dyn SpecificMev>)>,
+    ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::InspectorConfig(copied.clone());
 
@@ -218,14 +215,11 @@ impl InspectorTestUtils {
         Ok(())
     }
 
-    pub async fn run_composer<F>(
+    pub async fn run_composer(
         &self,
         config: ComposerRunConfig,
-        specific_state_tests: Option<F>,
-    ) -> Result<(), InspectorTestUtilsError>
-    where
-        F: Fn(Box<dyn SpecificMev>),
-    {
+        specific_state_tests: Option<impl Fn(Box<dyn SpecificMev>)>,
+    ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::ComposerConfig(copied.clone());
 
