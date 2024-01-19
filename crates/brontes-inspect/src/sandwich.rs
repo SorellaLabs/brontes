@@ -338,11 +338,11 @@ impl SandwichInspector<'_> {
         }
 
         let mut set: Vec<PossibleSandwich> = Vec::new();
-        let mut duplicate_senders: HashMap<Address, Vec<B256>> = HashMap::new();
+        let mut duplicate_mev_contracts: HashMap<Address, Vec<B256>> = HashMap::new();
         let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
 
         for root in iter {
-            match duplicate_senders.entry(root.head.address) {
+            match duplicate_mev_contracts.entry(root.head.data.get_to_address()) {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
                     v.insert(vec![root.tx_hash]);
