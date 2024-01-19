@@ -418,7 +418,7 @@ mod tests {
             .with_expected_gas_used(16.0)
             .with_expected_profit_usd(23.0);
 
-        inspector_util.run_inspector(config, None).await?;
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 
     #[tokio::test]
@@ -434,6 +434,6 @@ mod tests {
             .with_expected_gas_used(90.875025)
             .with_expected_profit_usd(-24.031640);
 
-        inspector_util.run_inspector(config, None).await?;
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
