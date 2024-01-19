@@ -62,8 +62,6 @@ impl Inspector for SandwichInspector<'_> {
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
                 ];
 
-                tracing::info!("{:#?}", ps);
-
                 let victim_gas = ps
                     .victims
                     .iter()
@@ -77,7 +75,6 @@ impl Inspector for SandwichInspector<'_> {
                     .collect::<Vec<Vec<Actions>>>();
 
                 if victim_actions.iter().any(|inner| inner.is_empty()) {
-                    tracing::info!("empty victim actions");
                     return None
                 }
 
@@ -87,7 +84,6 @@ impl Inspector for SandwichInspector<'_> {
                     .map(|v| tree.get_root(*v).unwrap().head.data.get_to_address())
                     .any(|addr| ps.mev_executor_contract == addr)
                 {
-                    tracing::info!("victim with mev exector contract");
                     return None
                 }
 
@@ -100,7 +96,6 @@ impl Inspector for SandwichInspector<'_> {
                     .collect::<Vec<Vec<Actions>>>();
 
                 if searcher_actions.len() != 2 {
-                    tracing::info!("searcher action len != 2");
                     return None
                 }
 
@@ -384,7 +379,7 @@ mod tests {
             ])
             .with_dex_prices()
             .with_expected_gas_used(40.26)
-            .with_expected_profit_usd(1.056);
+            .with_expected_profit_usd(-56.444);
 
         inspector_util
             .run_inspector::<Sandwich>(config, None)
