@@ -62,8 +62,6 @@ impl InspectorHolder {
     }
 }
 
-//TODO: Wire in price fetcher + Metadata fetcher
-
 fn main() {
     print_banner();
     dotenv::dotenv().ok();
