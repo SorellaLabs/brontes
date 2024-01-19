@@ -105,7 +105,7 @@ impl<'a> Composer<'a> {
         &mut self,
         orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> Poll<ComposerResults> {
-        info!("starting to compose classified mev");
+        info!("starting to compose classified mev: {:#?}", orchestra_data);
         let mut header =
             build_mev_header(self.metadata.clone(), &self.pre_processing, &orchestra_data);
 
@@ -267,8 +267,8 @@ impl Future for Composer<'_> {
 
 #[cfg(test)]
 pub mod tests {
-    use serial_test::serial;
     use alloy_primitives::hex;
+    use serial_test::serial;
 
     use super::*;
     use crate::test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS};
