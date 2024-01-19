@@ -93,6 +93,9 @@ pub mod long_tail;
 pub mod sandwich;
 pub mod shared_utils;
 
+#[cfg(feature = "tests")]
+pub mod test_utils;
+
 use std::sync::Arc;
 
 use brontes_database::Metadata;
