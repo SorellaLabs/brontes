@@ -2,7 +2,7 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     env,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use brontes_database::Metadata;
@@ -33,15 +33,7 @@ pub struct TraceLoader {
 
 impl TraceLoader {
     pub fn new() -> Self {
-        let _ = dotenv::dotenv();
-        init_tracing();
-
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = Box::leak(Box::new(
-            Libmdbx::init_db(&brontes_db_endpoint, None)
-                .expect(&format!("failed to open db path {}", brontes_db_endpoint)),
-        ));
-
+        let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
         let tracing_provider = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10);
         Self { libmdbx, tracing_provider, _metrics: b }
@@ -247,6 +239,18 @@ pub struct BlockTracesWithHeaderAnd<T> {
     pub traces: Vec<TxTrace>,
     pub header: Header,
     pub other:  T,
+}
+
+static DB_HANDLE: OnceLock<Libmdbx> = OnceLock::new();
+
+fn get_db_handle() -> &'static Libmdbx {
+    DB_HANDLE.get_or_init(|| {
+        let _ = dotenv::dotenv();
+        init_tracing();
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        Libmdbx::init_db(&brontes_db_endpoint, None)
+            .expect(&format!("failed to open db path {}", brontes_db_endpoint))
+    })
 }
 
 // if we want more tracing/logging/metrics layers, build and push to this vec
