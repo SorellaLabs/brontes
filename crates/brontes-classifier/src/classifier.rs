@@ -36,6 +36,13 @@ pub struct Classifier<'db, T: TracingProvider> {
     sender:   UnboundedSender<DexPriceMsg>,
 }
 
+pub struct TxTreeResult {
+    pub missing_data_requests: Vec<Address>,
+    pub pool_updates: Vec<DexPriceMsg>,
+    pub further_classification_requests: Option<(usize, Vec<u64>)>,
+    pub root: Root<Actions>,
+}
+
 impl<'db, T: TracingProvider> Classifier<'db, T> {
     pub fn new(
         libmdbx: &'db Libmdbx,
@@ -54,13 +61,50 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
-        // TODO: this needs to be cleaned up this is so ugly
-        let (missing_data_requests, pool_updates, further_classification_requests, tx_roots): (
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-        ) = join_all(
+        let tx_roots = self.build_all_tx_trees(traces, &header).await;
+        // send out all updates
+        let mut tree = BlockTree::new(header, tx_roots.len(), Default::default());
+
+        let (further_classification_requests, missing_data_requests): (Vec<_>, Vec<_>) = tx_roots
+            .into_iter()
+            .map(|root_data| {
+                tree.insert_root(root_data.root);
+                root_data.pool_updates.into_iter().for_each(|update| {
+                    // if a channel closes when its not supposed to, we want to error
+                    self.sender.send(update).unwrap();
+                });
+                (root_data.further_classification_requests, root_data.missing_data_requests)
+            })
+            .unzip();
+
+        self.prune_tree(&mut tree);
+        self.finish_classification(&mut tree, further_classification_requests);
+
+        tree.finalize_tree();
+
+        let mut dec = missing_data_requests
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
+        // need to sort before we can dedup
+        dec.sort();
+        dec.dedup();
+
+        let processing = ExtraProcessing { tokens_decimal_fill: dec };
+
+        (processing, tree)
+    }
+
+    fn prune_tree(&self, tree: &mut BlockTree<Actions>) {
+        self.deal_with_tax_tokens(tree);
+        self.remove_swap_transfers(tree);
+        self.remove_mint_transfers(tree);
+        self.remove_collect_transfers(tree);
+    }
+
+    async fn build_all_tx_trees(&self, traces: Vec<TxTrace>, header: &Header) -> Vec<TxTreeResult> {
+        join_all(
             traces
                 .into_iter()
                 .enumerate()
@@ -152,45 +196,18 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                     } else {
                         None
                     };
-
-                    Some((missing_decimals, pool_updates, tx_classification_requests, tx_root))
+                    Some(TxTreeResult {
+                        root: tx_root,
+                        further_classification_requests: tx_classification_requests,
+                        pool_updates,
+                        missing_data_requests: missing_decimals,
+                    })
                 }),
         )
         .await
         .into_iter()
         .filter_map(|f| f)
-        .multiunzip();
-
-        // send out all updates
-        pool_updates
-            .into_iter()
-            .flatten()
-            .for_each(|update| self.sender.send(update).unwrap());
-
-        let mut tree =
-            BlockTree { tx_roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
-
-        self.deal_with_tax_tokens(&mut tree);
-        self.remove_swap_transfers(&mut tree);
-        self.remove_mint_transfers(&mut tree);
-        self.remove_collect_transfers(&mut tree);
-        self.finish_classification(&mut tree, further_classification_requests);
-
-        tree.finalize_tree();
-
-        let mut dec = missing_data_requests
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
-
-        // need to sort before we can dedup
-        dec.sort();
-
-        dec.dedup();
-
-        let processing = ExtraProcessing { tokens_decimal_fill: dec };
-
-        (processing, tree)
+        .collect_vec()
     }
 
     async fn process_classification(
