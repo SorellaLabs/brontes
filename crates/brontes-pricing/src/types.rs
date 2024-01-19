@@ -39,7 +39,10 @@ impl DexQuotes {
 
             tx -= 1;
         }
-
+        // for when idx == 0
+        if let Some(price) = self.get_price(pair, tx) {
+            return Some(price.clone())
+        }
         error!(?pair, "no price for pair");
         None
     }
