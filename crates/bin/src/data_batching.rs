@@ -115,8 +115,9 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         libmdbx: &'db Libmdbx,
     ) -> CollectionFut<'db> {
         Box::pin(async move {
+            let number = header.number;
             let (extra, tree) = classifier.build_block_tree(traces, header).await;
-            MissingDecimals::new(tracer, libmdbx, header.number, extra.tokens_decimal_fill).await;
+            MissingDecimals::new(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
 
             (tree, meta)
         })
