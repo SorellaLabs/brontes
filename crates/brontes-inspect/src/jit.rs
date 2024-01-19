@@ -374,13 +374,8 @@ mod tests {
         time::SystemTime,
     };
 
-    use brontes_classifier::{test_utils, Classifier};
-    use brontes_core::test_utils::{init_trace_parser, init_tracing};
-    use brontes_database::database::Database;
-    use malachite::num::{basic::traits::One, conversion::traits::FromSciString};
     use reth_primitives::U256;
     use serial_test::serial;
-    use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
     use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
