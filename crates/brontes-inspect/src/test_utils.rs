@@ -269,7 +269,8 @@ impl InspectorTestUtils {
             .map(|i| &*Box::leak(Box::new(i)))
             .collect::<Vec<&'static Box<dyn Inspector>>>();
 
-        let (_, results) = Composer::new(inspector.as_slice(), tree.into(), metadata.into()).await;
+        let (_, mut results) =
+            Composer::new(inspector.as_slice(), tree.into(), metadata.into()).await;
 
         // let mut results = results
         //     .into_iter()
