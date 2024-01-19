@@ -43,6 +43,7 @@ impl SubGraphRegistry {
             .into_iter()
             .map(|(pair, edges)| {
                 // add to lookup
+                println!("subgraph");
                 edges
                     .iter()
                     .flat_map(|e| vec![e.token_0, e.token_1])
@@ -71,6 +72,12 @@ impl SubGraphRegistry {
         let is_disjoint_graph = graph.remove_bad_node(pool_pair, pool_address);
         if !is_disjoint_graph {
             self.sub_graphs.insert(subgraph, graph);
+        } else {
+            // remove pair from token lookup
+            self.token_to_sub_graph.retain(|k, v| {
+                v.remove(&subgraph);
+                !v.is_empty()
+            });
         }
 
         is_disjoint_graph
@@ -123,6 +130,14 @@ impl SubGraphRegistry {
                 }
                 None
             })
+            .collect_vec()
+    }
+
+    pub fn all_unloaded_state(&self, edges: &Vec<SubGraphEdge>) -> Vec<PoolPairInfoDirection> {
+        edges
+            .into_iter()
+            .filter(|e| !self.edge_state.contains_key(&e.pool_addr))
+            .map(|f| f.info)
             .collect_vec()
     }
 
@@ -181,13 +196,6 @@ impl SubGraphRegistry {
             .get(&pair)
             .and_then(|graph| graph.fetch_price(&self.edge_state))
             .map(|res| if swapped { res.reciprocal() } else { res })
-        // .map(|price| {
-        //     let mut opts = ToSciOptions::default();
-        //     opts.set_precision(10);
-        //     let str_price = price.to_sci_with_options(opts).to_string();
-        //     info!(?unordered_pair, price=%str_price, "price:");
-        //     price
-        // })
     }
 
     pub fn has_state(&self, addr: &Address) -> bool {

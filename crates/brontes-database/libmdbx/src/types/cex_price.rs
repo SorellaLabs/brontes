@@ -15,7 +15,7 @@ use reth_db::{
     DatabaseError,
 };
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::{tables::CexPrice, LibmdbxData};
 

@@ -3,7 +3,6 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::hex;
 use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -16,7 +15,6 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
-use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
 
@@ -163,17 +161,7 @@ impl AtomicBackrunInspector<'_> {
             .map(|s| s.force_swap())
             .collect::<Vec<_>>();
 
-        let backrun = Box::new(AtomicBackrun {
-            tx_hash,
-            gas_details,
-            swaps_index: swaps.iter().map(|s| s.trace_index).collect::<Vec<_>>(),
-            swaps_from: swaps.iter().map(|s| s.from).collect::<Vec<_>>(),
-            swaps_pool: swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
-            swaps_token_in: swaps.iter().map(|s| s.token_in).collect::<Vec<_>>(),
-            swaps_token_out: swaps.iter().map(|s| s.token_out).collect::<Vec<_>>(),
-            swaps_amount_in: swaps.iter().map(|s| s.amount_in.to()).collect::<Vec<_>>(),
-            swaps_amount_out: swaps.iter().map(|s| s.amount_out.to()).collect::<Vec<_>>(),
-        });
+        let backrun = Box::new(AtomicBackrun { tx_hash, gas_details, swaps });
 
         Some((classified, backrun))
     }
@@ -183,51 +171,28 @@ impl AtomicBackrunInspector<'_> {
 mod tests {
     use std::{env, str::FromStr, time::SystemTime};
 
+    use alloy_primitives::hex;
     use brontes_classifier::Classifier;
-    use brontes_core::{init_tracing, test_utils::init_trace_parser};
     use brontes_database::clickhouse::Clickhouse;
     use brontes_database_libmdbx::Libmdbx;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
+    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
 
     #[tokio::test]
     #[serial]
     async fn test_backrun() {
-        dotenv::dotenv().ok();
-        init_tracing();
-        let block_num = 18522278;
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
-        let (tx, _rx) = unbounded_channel();
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
-        let db = Clickhouse::default();
+        let tx = hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into();
+        let config = InspectorTxRunConfig::new(MevType::Backrun)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(0.188588)
+            .with_expected_gas_used(71.632668);
 
-        let classifier = Classifier::new(&libmdbx);
-
-        let block = tracer.execute_block(block_num).await.unwrap();
-        let metadata = db.get_metadata(block_num).await;
-
-        let tx = block.0.clone().into_iter().take(60).collect::<Vec<_>>();
-        let (missing_token_decimals, tree) = classifier.build_block_tree(tx, block.1);
-        let tree = Arc::new(tree);
-
-        let USDC = Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap();
-
-        let inspector = Box::new(AtomicBackrunInspector::new(USDC)) as Box<dyn Inspector>;
-
-        let t0 = SystemTime::now();
-        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        println!("backrun inspector took: {} us", delta);
-
-        // assert!(
-        //     mev[0].0.tx_hash
-        //         == B256::from_str(
-
-        println!("{:#?}", mev);
+        inspector_util.run_inspector::<AtomicBackrun>(config, None).await.unwrap();
     }
 }

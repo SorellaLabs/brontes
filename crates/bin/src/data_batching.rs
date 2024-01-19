@@ -24,9 +24,9 @@ use tracing::{debug, error, info};
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
 
-pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
+pub struct DataBatching<'db, T: TracingProvider + Clone> {
     parser:     &'db Parser<'db, T>,
-    classifier: Classifier<'db>,
+    classifier: Classifier<'db, T>,
 
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
@@ -38,27 +38,36 @@ pub struct DataBatching<'db, T: TracingProvider, const N: usize> {
     batch_id:      u64,
 
     libmdbx:    &'static Libmdbx,
-    inspectors: &'db [&'db Box<dyn Inspector>; N],
+    inspectors: &'db [&'db Box<dyn Inspector>],
 }
 
-impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
+impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
+        max_pool_loading_tasks: usize,
         batch_id: u64,
         start_block: u64,
         end_block: u64,
         parser: &'db Parser<'db, T>,
         libmdbx: &'static Libmdbx,
-        inspectors: &'db [&'db Box<dyn Inspector>; N],
+        inspectors: &'db [&'db Box<dyn Inspector>],
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let classifier = Classifier::new(libmdbx, tx);
+        let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
 
         let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
         let rest_pairs = libmdbx
             .protocols_created_range(start_block + 1, end_block)
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .flat_map(|(_, pools)| {
+                pools
+                    .into_iter()
+                    .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<HashMap<_, _>>();
 
         let pair_graph = GraphManager::init_from_db_state(
             pairs,
@@ -72,6 +81,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         );
 
         let pricer = BrontesBatchPricer::new(
+            max_pool_loading_tasks,
             quote_asset,
             pair_graph,
             rx,
@@ -100,13 +110,14 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
         meta: MetadataDB,
         traces: Vec<TxTrace>,
         header: Header,
-        classifier: Classifier<'db>,
+        classifier: Classifier<'db, T>,
         tracer: Arc<T>,
         libmdbx: &'db Libmdbx,
     ) -> CollectionFut<'db> {
-        let (extra, tree) = classifier.build_block_tree(traces, header);
         Box::pin(async move {
-            MissingDecimals::new(tracer, libmdbx, extra.tokens_decimal_fill).await;
+            let number = header.number;
+            let (extra, tree) = classifier.build_block_tree(traces, header).await;
+            MissingDecimals::new(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
 
             (tree, meta)
         })
@@ -147,7 +158,7 @@ impl<'db, T: TracingProvider, const N: usize> DataBatching<'db, T, N> {
     }
 }
 
-impl<T: TracingProvider, const N: usize> Future for DataBatching<'_, T, N> {
+impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -215,7 +226,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             (pricer, res)
         });
 
-        let handle = tokio::spawn(future);
+        let rt_handle = tokio::runtime::Handle::current();
+        let move_handle = rt_handle.clone();
+
+        let handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
 
         Self { handle, pending_trees: HashMap::default() }
     }
@@ -230,8 +244,10 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             (pricer, res)
         });
 
-        let handle = tokio::spawn(future);
-        self.handle = handle;
+        let rt_handle = tokio::runtime::Handle::current();
+        let move_handle = rt_handle.clone();
+
+        self.handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
     }
 
     pub fn add_pending_inspection(
@@ -275,15 +291,15 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
 }
 
 // takes the composer + db and will process data and insert it into libmdx
-pub struct ResultProcessing<'db, const N: usize> {
+pub struct ResultProcessing<'db> {
     database: &'db Libmdbx,
-    composer: Composer<'db, N>,
+    composer: Composer<'db>,
 }
 
-impl<'db, const N: usize> ResultProcessing<'db, N> {
+impl<'db> ResultProcessing<'db> {
     pub fn new(
         db: &'db Libmdbx,
-        inspectors: &'db [&'db Box<dyn Inspector>; N],
+        inspectors: &'db [&'db Box<dyn Inspector>],
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
@@ -295,7 +311,7 @@ impl<'db, const N: usize> ResultProcessing<'db, N> {
     }
 }
 
-impl<const N: usize> Future for ResultProcessing<'_, N> {
+impl Future for ResultProcessing<'_> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
