@@ -57,7 +57,7 @@ impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
                 error!(?e);
             }
         } else {
-            debug!(?addr, "Token request failed for token");
+            info!(?addr, "Token request failed for token");
         }
     }
 }
