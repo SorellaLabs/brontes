@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 
 use alloy_primitives::TxHash;
-use alloy_rlp::{Decodable, Encodable};
-use brontes_types::{extra_processing::Pair, impl_compress_decompress_for_encoded_decoded};
-use bytes::BufMut;
-use malachite::{Natural, Rational};
+use brontes_types::extra_processing::Pair;
+use malachite::Rational;
 use reth_db::table::Table;
-use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
 
+use super::redefined_types::dex_price::Redefined_DexQuoteWithIndex;
 use crate::{tables::DexPrice, LibmdbxData};
 
 pub fn make_key(block_number: u64, tx_idx: u16) -> TxHash {
@@ -39,7 +37,7 @@ pub fn make_filter_key_range(block_number: u64) -> (TxHash, TxHash) {
     (f_key, s_key)
 }
 
-#[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DexPriceData {
     pub block_number: u64,
     pub tx_idx:       u16,
@@ -50,25 +48,12 @@ impl LibmdbxData<DexPrice> for DexPriceData {
     fn into_key_val(&self) -> (<DexPrice as Table>::Key, <DexPrice as Table>::Value) {
         (
             make_key(self.block_number, self.tx_idx),
-            DexQuoteWithIndex { tx_idx: self.tx_idx, quote: self.quote.clone().into() },
+            Redefined_DexQuoteWithIndex { tx_idx: self.tx_idx, quote: self.quote.clone().into() },
         )
     }
 }
 
-/*
-impl LibmdbxDupData<DexPrice> for DexPriceData {
-    fn into_key_subkey_val(
-        &self,
-    ) -> (<DexPrice as Table>::Key, <DexPrice as DupSort>::SubKey, <DexPrice as Table>::Value) {
-        (
-            self.block_number,
-            self.tx_idx,
-            DexQuoteWithIndex { tx_idx: self.tx_idx, quote: self.quote.clone().into() },
-        )
-    }
-}
-*/
-#[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DexQuote(pub HashMap<Pair, Rational>);
 
 impl From<DexQuoteWithIndex> for DexQuote {
@@ -77,74 +62,11 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-impl From<DexQuote> for Vec<(Pair, Rational)> {
-    fn from(val: DexQuote) -> Self {
-        val.0.into_iter().collect()
-    }
-}
-
-#[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
     pub quote:  Vec<(Pair, Rational)>,
 }
-
-impl Encodable for DexQuoteWithIndex {
-    fn encode(&self, out: &mut dyn BufMut) {
-        Encodable::encode(&self.tx_idx, out);
-        let (keys, vals): (Vec<_>, Vec<_>) = self.quote.clone().into_iter().unzip();
-
-        let (nums, denoms): (Vec<_>, Vec<_>) = vals
-            .into_iter()
-            .map(|val| {
-                let (n, d) = val.to_numerator_and_denominator();
-                (n.to_limbs_asc(), d.to_limbs_asc())
-            })
-            .unzip();
-
-        keys.encode(out);
-        nums.encode(out);
-        denoms.encode(out);
-    }
-}
-
-impl Decodable for DexQuoteWithIndex {
-    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let tx_idx = u16::decode(buf)?;
-
-        let keys = Vec::decode(buf)?;
-        let nums: Vec<Vec<u64>> = Vec::decode(buf)?;
-        let denoms: Vec<Vec<u64>> = Vec::decode(buf)?;
-
-        let prices = nums.into_iter().zip(denoms).map(|(num, denom)| {
-            Rational::from_naturals(Natural::from_limbs_asc(&num), Natural::from_limbs_asc(&denom))
-        });
-
-        let map = keys.into_iter().zip(prices).collect::<Vec<_>>();
-
-        Ok(Self { tx_idx, quote: map })
-    }
-}
-
-/*
-impl Compact for DexQuoteWithIndex {
-    fn to_compact<B>(self, buf: &mut B) -> usize
-    where
-        B: bytes::BufMut + AsMut<[u8]>,
-    {
-        buf.put_u16(self.tx_idx);
-        Encodable::encode(&self.quote, buf);
-        //to_compact() + 2
-    }
-
-    fn from_compact(buf: &[u8], len: usize) -> (Self, &[u8]) {
-        let tx_idx = u16::from_be_bytes(&buf[..2]);
-        let (quote, out) = Vec::from_compact(&buf[2..], len - 2);
-        (Self { tx_idx, quote }, out)
-    }
-}
-*/
-impl_compress_decompress_for_encoded_decoded!(DexQuoteWithIndex);
 
 /*
 #[cfg(test)]

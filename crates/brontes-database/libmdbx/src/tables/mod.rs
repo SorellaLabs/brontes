@@ -1,4 +1,4 @@
-#![allow(non_upper_case_globals)]
+#![allow(non_uppeRedefined_case_globals)]
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 
@@ -38,6 +38,8 @@ use crate::{
     },
     Libmdbx,
 };
+
+use self::{ redefined_types::{cex_price::Redefined_CexPriceMap, dex_price::Redefined_DexQuoteWithIndex, subgraph::Redefined_SubGraphsEntry, address_to_tokens::Redefined_PoolTokens, metadata::Redefined_MetadataInner}};
 
 pub const NUM_TABLES: usize = 10;
 
@@ -283,7 +285,7 @@ table!(
 
 table!(
     /// Address -> tokens in pool
-    ( AddressToTokens ) Address | PoolTokens = False
+    ( AddressToTokens ) Address | Redefined_PoolTokens = False
 );
 
 table!(
@@ -293,17 +295,17 @@ table!(
 
 table!(
     /// block num -> cex prices
-    ( CexPrice ) u64 | CexPriceMap = False
+    ( CexPrice ) u64 | Redefined_CexPriceMap = False
 );
 
 table!(
     /// block num -> metadata
-    ( Metadata ) u64 | MetadataInner = False
+    ( Metadata ) u64 | Redefined_MetadataInner = False
 );
 
 table!(
     /// block number concat tx idx -> cex quotes
-    ( DexPrice ) TxHash | DexQuoteWithIndex = False
+    ( DexPrice ) TxHash | Redefined_DexQuoteWithIndex = False
 );
 
 table!(
@@ -318,7 +320,7 @@ table!(
 
 table!(
     /// pair -> Vec<(block_number, entry)>
-    ( SubGraphs ) Pair | SubGraphsEntry = False
+    ( SubGraphs ) Pair | Redefined_SubGraphsEntry = False
 );
 
 table!(
@@ -438,7 +440,7 @@ where
                 }
 
 
-            /* .buffer_unordered(50);
+            /* .buffeRedefined_unordered(50);
 
             while let Some(d) = data.next().await {
                 let data_des = d?;
@@ -459,7 +461,7 @@ impl TxTracesDB {
         let start_block: u64 = 15400000;
         let current_block = tracer.api.provider().canonical_tip().number;
 
-        libmdbx.clear_table::<TxTracesDB>()?;
+        libmdbx.cleaRedefined_table::<TxTracesDB>()?;
 
         let range = (start_block..current_block).collect::<Vec<_>>();
     let chunks = range.chunks(1000).collect::<Vec<_>>();
@@ -470,7 +472,7 @@ impl TxTracesDB {
                 async move {
                     Ok(TxTracesDBData::new(*block_num, TxTracesInner::new(tracer.replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(*block_num))).await?)))
                 }
-         ) )}).buffer_unordered(1);
+         ) )}).buffeRedefined_unordered(1);
 
        // .await
 

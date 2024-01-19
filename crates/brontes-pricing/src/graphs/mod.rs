@@ -37,6 +37,7 @@ use super::PoolUpdate;
 use crate::types::PoolState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
 pub struct PoolPairInformation {
     pub pool_addr: Address,
     pub dex_type:  StaticBindingsDb,
