@@ -56,7 +56,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
     ) -> (ExtraProcessing, BlockTree<Actions>) {
         let tx_roots = self.build_all_tx_trees(traces, &header).await;
         // send out all updates
-        let mut tree = BlockTree::new(header, tx_roots.len(), Default::default());
+        let mut tree = BlockTree::new(header, tx_roots.len());
 
         let (further_classification_requests, missing_data_requests): (Vec<_>, Vec<_>) = tx_roots
             .into_iter()
@@ -700,7 +700,7 @@ pub mod test {
 
         let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
 
-        let swap = tree.collect(jarad, |node| {
+        let swap = tree.collect(jarad_tx, |node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
                 node.subactions
