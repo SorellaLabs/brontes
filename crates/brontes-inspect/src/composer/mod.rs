@@ -267,6 +267,8 @@ impl Future for Composer<'_> {
 
 #[cfg(test)]
 pub mod tests {
+    use serial_test::serial;
+
     use super::*;
     use crate::test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS};
 
