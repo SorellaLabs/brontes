@@ -44,6 +44,8 @@ pub(crate) fn pre_process(
     BlockPreprocessing { meta_data, cumulative_gas_used, cumulative_gas_paid, builder_address }
 }
 
+//TODO: Look into calculating the delta of priority fee + coinbase reward vs
+// proposer fee paid. This would act as a great proxy for how much mev we missed
 pub(crate) fn build_mev_header(
     metadata: Arc<Metadata>,
     pre_processing: &BlockPreprocessing,

@@ -29,11 +29,12 @@
 //! }
 //! ```
 //!
-//! The `BlockTree` represents a block of classified & normalized Ethereum
-//! transactions & their traces, and the `Metadata` contains additional
-//! information about the block. The `process_tree` method analyzes the block
-//! and identifies instances of the MEV strategy that the inspector is designed
-//! to detect.
+//! The [`BlockTree`](../brontes-classifier/index.html) represents a block of
+//! classified & normalized Ethereum transactions & their traces, and the
+//! [`Metadata`](../brontes-database) contains price information & relevant off
+//! chain data such as mempool data & centralized exchange price data relevant
+//! to that block. The `process_tree` method analyzes the block and identifies
+//! instances of the MEV strategy that the inspector is designed to detect.
 //!
 //! ## Individual Inspectors
 //!
@@ -45,6 +46,8 @@
 //! - [`cex_dex`](cex_dex/index.html)
 //! - [`jit`](jit/index.html)
 //! - [`sandwich`](sandwich/index.html)
+//! - [`liquidations`](liquidations/index.html)
+//! - [`long_tail`](long_tail/index.html)
 //!
 //! Each inspector implements the `Inspector` trait and provides its own
 //! implementation of the `process_tree` method.
@@ -63,7 +66,7 @@
 //! }
 //! ```
 //!
-//! The `Composer` uses a macro `mev_composability` to define a filter that
+//! The `Composer` uses  to define a filter that
 //! orders results from individual inspectors. This ensures that lower-level
 //! actions are composed before higher-level actions, which could affect the
 //! composition.
@@ -77,13 +80,15 @@
 //! analyzing MEV strategies in Ethereum transactions. Individual inspectors
 //! identify specific MEV strategies, while the `Composer` combines these
 //! results to identify more complex strategies.
+//TODO: Update composer section once finished
 
 pub mod atomic_backrun;
 pub mod cex_dex;
 pub mod composer;
 pub mod jit;
-#[allow(dead_code, unused_imports)]
+#[allow(dead_code, unused_imports, unused_variables)]
 pub mod liquidations;
+#[allow(dead_code, unused_imports, unused_variables)]
 pub mod long_tail;
 pub mod sandwich;
 pub mod shared_utils;
