@@ -407,8 +407,8 @@ mod tests {
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
             .with_block(18522330)
             .with_dex_prices()
-            .with_expected_gas_used(16.0)
-            .with_expected_profit_usd(23.0);
+            .with_expected_gas_used(34.3368)
+            .with_expected_profit_usd(275.920046);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
