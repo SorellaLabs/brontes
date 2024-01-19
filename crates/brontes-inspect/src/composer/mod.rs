@@ -47,7 +47,6 @@ use brontes_types::{
 };
 use composer_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
 use futures::FutureExt;
-use tracing::info;
 use utils::{
     build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
     BlockPreprocessing,
@@ -205,7 +204,6 @@ impl<'a> Composer<'a> {
         let first_mev_type = child_mev_type[0];
         let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
 
-        info!("starting to compose classified mev: {:#?}", orchestra_data);
 
         if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
             for (classified, mev_data) in &first_mev_list {
