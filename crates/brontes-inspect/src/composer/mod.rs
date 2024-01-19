@@ -60,15 +60,15 @@ type InspectorFut<'a> =
 
 pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
 
-pub struct Composer<'a, const N: usize> {
+pub struct Composer<'a> {
     inspectors_execution: InspectorFut<'a>,
     pre_processing:       BlockPreprocessing,
     metadata:             Arc<Metadata>,
 }
 
-impl<'a, const N: usize> Composer<'a, N> {
+impl<'a> Composer<'a> {
     pub fn new(
-        orchestra: &'a [&'a Box<dyn Inspector>; N],
+        orchestra: &'a [&'a Box<dyn Inspector>],
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
@@ -227,7 +227,7 @@ impl<'a, const N: usize> Composer<'a, N> {
                             None => break,
                         }
                     } else {
-                        break;
+                        break
                     }
                 }
 
@@ -254,7 +254,7 @@ impl<'a, const N: usize> Composer<'a, N> {
     }
 }
 
-impl<const N: usize> Future for Composer<'_, N> {
+impl Future for Composer<'_> {
     type Output = ComposerResults;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
