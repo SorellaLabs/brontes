@@ -281,6 +281,6 @@ pub mod tests {
                 .with_expected_profit_usd(13.568977)
                 .with_block(18539312);
 
-        inspector_util.run_composer(config, None);
+        inspector_util.run_composer(config, None).await.unwrap();
     }
 }

@@ -392,6 +392,6 @@ mod tests {
             .with_expected_gas_used(90.875025)
             .with_expected_profit_usd(-53.274407516);
 
-        test_utils.run_inspector(config, None).await;
+        test_utils.run_inspector(config, None).await.unwrap();
     }
 }
