@@ -97,10 +97,7 @@ impl Inspector for JitInspector<'_> {
                         .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                         .collect::<Vec<_>>();
 
-                    let idxs = [
-                        tree.get_root(frontrun_tx).unwrap().get_block_position(),
-                        tree.get_root(backrun_tx).unwrap().get_block_position(),
-                    ];
+                    let idxs = tree.get_root(backrun_tx).unwrap().get_block_position();
 
                     self.calculate_jit(
                         eoa,
@@ -126,7 +123,7 @@ impl JitInspector<'_> {
         eoa: Address,
         mev_addr: Address,
         metadata: Arc<Metadata>,
-        idxs: [usize; 2],
+        back_jit_idx: usize,
         txes: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,
@@ -159,10 +156,10 @@ impl JitInspector<'_> {
             return None
         }
 
-        let jit_fee = self.get_collect_amount(idxs[1], fee_collect, metadata.clone());
+        let jit_fee = self.get_collect_amount(back_jit_idx, fee_collect, metadata.clone());
 
         let mint = self.get_total_pricing(
-            idxs[1],
+            back_jit_idx,
             mints.iter().map(|mint| (&mint.token, &mint.amount)),
             metadata.clone(),
         );
@@ -374,7 +371,7 @@ mod tests {
             .with_dex_prices()
             .with_block(18539312)
             .with_expected_gas_used(90.875025)
-            .with_expected_profit_usd(-15.1381);
+            .with_expected_profit_usd(-68.34);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }

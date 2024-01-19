@@ -49,10 +49,14 @@ impl SharedInspectorUtils<'_> {
             if let Actions::Swap(swap) = action {
                 let Some(decimals_in) = self.db.try_get_decimals(swap.token_in) else {
                     error!("token decimals not found");
+                    panic!();
+
                     continue;
                 };
                 let Some(decimals_out) = self.db.try_get_decimals(swap.token_out) else {
                     error!("token decimals not found");
+                    panic!();
+
                     continue;
                 };
 
