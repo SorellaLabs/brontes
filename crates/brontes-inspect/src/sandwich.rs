@@ -405,12 +405,28 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
-            .with_block(18522330)
+            .with_mev_tx_hashes(vec![
+                hex!("849c3cb1f299fa181e12b0506166e4aa221fce4384a710ac0d2e064c9b4e1c42").into(),
+                hex!("055f8dd4eb02c15c1c1faa9b65da5521eaaff54f332e0fa311bc6ce6a4149d18").into(),
+                hex!("ab765f128ae604fdf245c78c8d0539a85f0cf5dc7f83a2756890dea670138506").into(),
+                hex!("06424e50ee53df1e06fa80a741d1549224e276aed08c3674b65eac9e97a39c45").into(),
+                hex!("c0422b6abac94d29bc2a752aa26f406234d45e4f52256587be46255f7b861893").into(),
+            ])
             .with_dex_prices()
             .with_expected_gas_used(34.3368)
             .with_expected_profit_usd(24.0);
 
         inspector_util.run_inspector(config, None).await.unwrap();
+
+        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+            .with_mev_tx_hashes(vec![
+                hex!("ff79c471b191c0021cfb62408cb1d7418d09334665a02106191f6ed16a47e36c").into(),
+                hex!("19122ffe65a714f0551edbb16a24551031056df16ccaab39db87a73ac657b722").into(),
+                hex!("67771f2e3b0ea51c11c5af156d679ccef6933db9a4d4d6cd7605b4eee27f9ac8").into(),
+            ])
+            .with_dex_prices()
+            .with_expected_gas_used(16.64)
+            .with_expected_profit_usd(23.0);
     }
 
     #[tokio::test]
