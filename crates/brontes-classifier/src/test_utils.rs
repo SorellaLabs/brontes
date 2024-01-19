@@ -1,17 +1,16 @@
 use std::{collections::HashMap, ops::Deref};
 
-use futures::StreamExt;
 use alloy_primitives::{Address, TxHash};
 use brontes_core::{
-    decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
-    TxTracesWithHeaderAnd,
+    decoding::TracingProvider, missing_decimals::MissingDecimals, BlockTracesWithHeaderAnd,
+    TraceLoader, TraceLoaderError, TxTracesWithHeaderAnd,
 };
 use brontes_pricing::{
     types::{DexPriceMsg, DexQuotes},
     BrontesBatchPricer, GraphManager,
 };
 use brontes_types::tree::BlockTree;
-use futures::future::join_all;
+use futures::{future::join_all, StreamExt};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
@@ -154,7 +153,8 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
 
         let mut pricer = self.crate_dex_pricer(block, None, quote_asset, rx).await?;
-        let (_, tree) = classifier.build_block_tree(vec![trace], header).await;
+        let (decimals, tree) = classifier.build_block_tree(vec![trace], header).await;
+        MissingDecimals::new(self.get_provider(), self.libmdbx, decimals.tokens_decimal_fill).await;
 
         classifier.close();
         // triggers close
@@ -178,10 +178,17 @@ impl ClassifierTestUtils {
                 .await?
                 .into_iter()
                 .map(|block_info| async move {
-                    let (_, tree) = self
+                    let (decimals, tree) = self
                         .classifier
                         .build_block_tree(block_info.traces, block_info.header)
                         .await;
+
+                    MissingDecimals::new(
+                        self.get_provider(),
+                        self.libmdbx,
+                        decimals.tokens_decimal_fill,
+                    )
+                    .await;
                     tree
                 }),
         )
@@ -211,8 +218,10 @@ impl ClassifierTestUtils {
             }
             end_block = block_info.block;
 
-            let (_, tree) = classifier
+            let (decimals, tree) = classifier
                 .build_block_tree(block_info.traces, block_info.header)
+                .await;
+            MissingDecimals::new(self.get_provider(), self.libmdbx, decimals.tokens_decimal_fill)
                 .await;
             trees.push(tree);
         }
@@ -260,7 +269,8 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
 
         let mut pricer = self.crate_dex_pricer(block, None, quote_asset, rx).await?;
-        let (_, tree) = classifier.build_block_tree(traces, header).await;
+        let (decimals, tree) = classifier.build_block_tree(traces, header).await;
+        MissingDecimals::new(self.get_provider(), self.libmdbx, decimals.tokens_decimal_fill).await;
 
         classifier.close();
         // triggers close
