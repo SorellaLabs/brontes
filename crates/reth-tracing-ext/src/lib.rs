@@ -8,26 +8,25 @@ use reth_blockchain_tree::{
 };
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
-use reth_primitives::{Address, BlockId, Bytes, PruneModes, MAINNET, U64};
-use reth_provider::{providers::BlockchainProvider, ProviderFactory, StateProvider};
+use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
+use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{
-    database::StateProviderDatabase,
-    db::CacheDB,
     inspectors::GasInspector,
     tracing::{
         types::{CallKind, CallTraceNode},
         TracingInspectorConfig, *,
     },
-    DatabaseRef, EvmProcessorFactory,
+    EvmProcessorFactory,
 };
 use reth_rpc::{
     eth::{
         cache::{EthStateCache, EthStateCacheConfig},
         error::EthResult,
         gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
-        EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig, RPC_DEFAULT_GAS_CAP,
+        EthFilterConfig, EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig,
+        RPC_DEFAULT_GAS_CAP,
     },
-    BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
+    BlockingTaskGuard, BlockingTaskPool, EthApi, EthFilter, TraceApi,
 };
 use reth_rpc_types::{
     trace::parity::{TransactionTrace, *},
@@ -39,7 +38,7 @@ use reth_transaction_pool::{
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use revm::interpreter::InstructionResult;
-use revm_primitives::{Account, ExecutionResult, HashMap, SpecId, KECCAK_EMPTY};
+use revm_primitives::{ExecutionResult, SpecId};
 use tokio::runtime::Handle;
 
 mod provider;
@@ -57,9 +56,11 @@ pub type RethTxPool = Pool<
     NoopBlobStore,
 >;
 
+#[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:   EthApi<Provider, RethTxPool, NoopNetwork>,
-    pub trace: TraceApi<Provider, RethApi>,
+    pub api:    EthApi<Provider, RethTxPool, NoopNetwork>,
+    pub filter: EthFilter<Provider, RethTxPool>,
+    pub trace:  TraceApi<Provider, RethApi>,
 }
 
 impl TracingClient {
@@ -110,7 +111,7 @@ impl TracingClient {
         // fee history cache
         let api = EthApi::new(
             provider.clone(),
-            tx_pool,
+            tx_pool.clone(),
             NoopNetwork::default(),
             state_cache.clone(),
             GasPriceOracle::new(
@@ -122,12 +123,20 @@ impl TracingClient {
             blocking,
             fee_history,
         );
+        let filter_config = EthFilterConfig::default();
+        let filter = EthFilter::new(
+            provider.clone(),
+            tx_pool,
+            state_cache.clone(),
+            filter_config,
+            Box::new(task_executor),
+        );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        (task_manager, Self { api, trace })
+        (task_manager, Self { api, trace, filter })
     }
 
     /// Replays all transactions in a block
@@ -389,25 +398,4 @@ pub struct StackStep {
 /// Opens up an existing database at the specified path.
 pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
     reth_db::open_db(path.as_ref(), None)
-}
-
-#[inline]
-pub(crate) fn load_account_code<DB: DatabaseRef>(
-    db: DB,
-    db_acc: &revm::primitives::AccountInfo,
-) -> Option<Bytes> {
-    db_acc
-        .code
-        .as_ref()
-        .map(|code| code.original_bytes())
-        .or_else(|| {
-            if db_acc.code_hash == KECCAK_EMPTY {
-                None
-            } else {
-                db.code_by_hash_ref(db_acc.code_hash)
-                    .ok()
-                    .map(|code| code.original_bytes())
-            }
-        })
-        .map(Into::into)
 }

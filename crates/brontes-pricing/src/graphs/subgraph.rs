@@ -128,8 +128,11 @@ impl PairSubGraph {
     }
 
     pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {
-        let n0 = (*self.token_to_index.get(&pool_pair.0).unwrap()).into();
-        let n1 = (*self.token_to_index.get(&pool_pair.1).unwrap()).into();
+        let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return false };
+        let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return false };
+
+        let n0 = (*n0).into();
+        let n1 = (*n1).into();
 
         if let Some(edge) = self.graph.find_edge(n0, n1) {
             let weights = self.graph.edge_weight_mut(edge).unwrap();
@@ -208,6 +211,14 @@ fn add_edge(
     direction: bool,
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
+    if weights
+        .iter()
+        .find(|w| w.pool_addr == edge_info.pool_addr)
+        .is_some()
+    {
+        return false
+    }
+
     let first = weights.first().unwrap();
 
     let to_start = first.distance_to_start_node;

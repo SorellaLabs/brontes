@@ -14,7 +14,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_codecs::derive_arbitrary;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
-use tracing::warn;
+use tracing::{error, warn};
 
 use crate::{
     errors::ArithmeticError, graphs::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool,
@@ -26,7 +26,12 @@ impl DexQuotes {
         if pair.0 == pair.1 {
             return Some(Rational::from(1))
         }
-        self.get_price(pair, tx).cloned()
+        let price = self.get_price(pair, tx).cloned();
+        if price.is_none() {
+            error!(?pair, "no price for pair");
+        }
+
+        price
     }
 }
 
@@ -124,7 +129,21 @@ impl PoolVariants {
 #[derive(Debug, Clone)]
 pub enum DexPriceMsg {
     Update(PoolUpdate),
+    DiscoveredPool(DiscoveredPool, u64),
     Closed,
+}
+
+#[derive(Debug, Clone)]
+pub struct DiscoveredPool {
+    pub protocol:     StaticBindingsDb,
+    pub pool_address: Address,
+    pub tokens:       Vec<Address>,
+}
+
+impl DiscoveredPool {
+    pub fn new(tokens: Vec<Address>, pool_address: Address, protocol: StaticBindingsDb) -> Self {
+        Self { protocol, pool_address, tokens }
+    }
 }
 
 #[derive(Debug, Clone)]
