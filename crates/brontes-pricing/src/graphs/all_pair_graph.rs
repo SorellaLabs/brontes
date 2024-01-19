@@ -103,7 +103,7 @@ impl AllPairGraph {
         };
 
         let Some(bad_pool) = weights.iter().find(|e| e.pool_addr == pool_addr).cloned() else {
-             return None;
+            return None;
         };
         weights.retain(|e| e.pool_addr != pool_addr);
         if weights.len() == 0 {
