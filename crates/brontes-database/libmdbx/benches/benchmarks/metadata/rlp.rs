@@ -1,6 +1,7 @@
+use std::str::FromStr;
+
 use alloy_rlp::{Decodable, Encodable};
 use brontes_database_libmdbx::types::{utils::*, LibmdbxData};
-
 use bytes::BufMut;
 use reth_db::{
     table::{Compress, Decompress},
@@ -10,12 +11,12 @@ use reth_primitives::{Address, TxHash, U256};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use sorella_db_databases::{clickhouse, Row};
-use std::str::FromStr;
+
 use super::MetadataBench;
 use crate::setup::tables::MetadataRLP;
 
 #[serde_as]
-#[derive(Debug, Clone, Row,  Serialize, Deserialize)]
+#[derive(Debug, Clone, Row, Serialize, Deserialize)]
 pub struct MetadataRLPData {
     pub block_number: u64,
     //#[serde(flatten)]
@@ -96,14 +97,11 @@ impl Compress for MetadataRLPInner {
     type Compressed = Vec<u8>;
 
     fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-
-        
-
         let mut encoded = Vec::new();
 
         self.encode(&mut encoded);
 
-        /* 
+        /*
         let block_hash =
         U256::from_str("0x10a27d25828e24f7b12257bbedda621a6d94f01a2f06fee4828d931027992283")
             .unwrap();
@@ -123,21 +121,19 @@ impl Decompress for MetadataRLPInner {
     }
 }
 
-
 impl From<MetadataBench> for MetadataRLPData {
     fn from(value: MetadataBench) -> Self {
         MetadataRLPData {
             block_number: value.block_number,
-            inner: MetadataRLPInner {
-                block_hash: value.block_hash,
-                block_timestamp: value.block_timestamp,
-                relay_timestamp: value.relay_timestamp,
-                p2p_timestamp: value.p2p_timestamp,
+            inner:        MetadataRLPInner {
+                block_hash:             value.block_hash,
+                block_timestamp:        value.block_timestamp,
+                relay_timestamp:        value.relay_timestamp,
+                p2p_timestamp:          value.p2p_timestamp,
                 proposer_fee_recipient: value.proposer_fee_recipient,
-                proposer_mev_reward: value.proposer_mev_reward,
-                mempool_flow: value.mempool_flow,
-            }
+                proposer_mev_reward:    value.proposer_mev_reward,
+                mempool_flow:           value.mempool_flow,
+            },
         }
     }
 }
-
