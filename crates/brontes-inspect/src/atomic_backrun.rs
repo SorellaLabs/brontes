@@ -193,6 +193,6 @@ mod tests {
             .with_expected_profit_usd(0.188588)
             .with_expected_gas_used(71.632668);
 
-        inspector_util.run_inspector(config, None).await.unwrap();
+        inspector_util.run_inspector::<AtomicBackrun>(config, None).await.unwrap();
     }
 }
