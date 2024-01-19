@@ -171,6 +171,7 @@ impl AtomicBackrunInspector<'_> {
 mod tests {
     use std::{env, str::FromStr, time::SystemTime};
 
+    use alloy_primitives::hex;
     use brontes_classifier::Classifier;
     use brontes_database::clickhouse::Clickhouse;
     use brontes_database_libmdbx::Libmdbx;
