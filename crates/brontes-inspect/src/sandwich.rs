@@ -338,7 +338,10 @@ mod tests {
             .with_expected_gas_used(34.3368)
             .with_expected_profit_usd(24.0);
 
-        inspector_util.run_inspector(config, None).await.unwrap();
+        inspector_util
+            .run_inspector::<Sandwich>(config, None)
+            .await
+            .unwrap();
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
             .with_mev_tx_hashes(vec![
@@ -350,7 +353,10 @@ mod tests {
             .with_expected_gas_used(16.64)
             .with_expected_profit_usd(15.648);
 
-        inspector_util.run_inspector(config, None).await.unwrap();
+        inspector_util
+            .run_inspector::<Sandwich>(config, None)
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -371,6 +377,9 @@ mod tests {
             .with_expected_gas_used(90.875025)
             .with_expected_profit_usd(-9.003);
 
-        inspector_util.run_inspector(config, None).await.unwrap();
+        inspector_util
+            .run_inspector::<Sandwich>(config, None)
+            .await
+            .unwrap();
     }
 }
