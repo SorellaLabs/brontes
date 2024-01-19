@@ -373,6 +373,6 @@ mod tests {
             .with_expected_gas_used(90.875025)
             .with_expected_profit_usd(-68.34);
 
-        test_utils.run_inspector(config, None).await.unwrap();
+        test_utils.run_inspector::<JitLiquidity>(config, None).await.unwrap();
     }
 }

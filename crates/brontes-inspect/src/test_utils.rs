@@ -215,7 +215,7 @@ impl InspectorTestUtils {
         Ok(())
     }
 
-    pub async fn run_composer<E: 'static + Default>(
+    pub async fn run_composer<E:  'static>(
         &self,
         config: ComposerRunConfig,
         specific_state_tests: Option<Box<dyn Fn(Box<E>)>>,
