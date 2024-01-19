@@ -266,10 +266,51 @@ impl JitInspector<'_> {
 
         let mut set: Vec<PossibleJit> = Vec::new();
         let mut duplicate_mev_contracts: HashMap<Address, Vec<B256>> = HashMap::new();
+        let mut duplicate_senders: HashMap<Address, Vec<B256>> = HashMap::new();
+
         let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
 
         for root in iter {
             match duplicate_mev_contracts.entry(root.head.data.get_to_address()) {
+                // If we have not seen this sender before, we insert the tx hash into the map
+                Entry::Vacant(v) => {
+                    v.insert(vec![root.tx_hash]);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+                Entry::Occupied(mut o) => {
+                    let prev_tx_hashes = o.get();
+
+                    for prev_tx_hash in prev_tx_hashes {
+                        // Find the victims between the previous and the current transaction
+                        if let Some(victims) = possible_victims.get(prev_tx_hash) {
+                            if victims.len() >= 2 {
+                                // Create
+                                set.push(PossibleJit {
+                                    eoa:                   root.head.address,
+                                    frontrun_tx:           *prev_tx_hash,
+                                    backrun_tx:            root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_to_address(),
+                                    victims:               victims.clone(),
+                                });
+                            }
+                        }
+                    }
+                    // Add current transaction hash to the list of transactions for this sender
+                    o.get_mut().push(root.tx_hash);
+                    possible_victims.insert(root.tx_hash, vec![]);
+                }
+            }
+
+            // Now, for each existing entry in possible_victims, we add the current
+            // transaction hash as a potential victim, if it is not the same as
+            // the key (which represents another transaction hash)
+            for (k, v) in possible_victims.iter_mut() {
+                if k != &root.tx_hash {
+                    v.push(root.tx_hash);
+                }
+            }
+
+            match duplicate_senders.entry(root.head.address) {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
                     v.insert(vec![root.tx_hash]);
