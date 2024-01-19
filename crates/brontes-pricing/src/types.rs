@@ -25,19 +25,6 @@ use crate::{
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Rational>>>);
 
 impl DexQuotes {
-    /// checks for price at the tx index returning none if it doesn't exist
-    pub fn price_at(&self, pair: Pair, tx: usize) -> Option<Rational> {
-        if pair.0 == pair.1 {
-            return Some(Rational::from(1))
-        }
-        let price = self.get_price(pair, tx).cloned();
-        if price.is_none() {
-            error!(?pair, "no price for pair");
-        }
-
-        price
-    }
-
     /// checks for price at the given tx index. if it isn't found, will look for
     /// the price at all previous indexes in the block
     pub fn price_at_or_before(&self, pair: Pair, mut tx: usize) -> Option<Rational> {
