@@ -241,6 +241,7 @@ pub struct BlockTracesWithHeaderAnd<T> {
     pub other:  T,
 }
 
+// done because we can only have 1 instance of libmdbx or we error
 static DB_HANDLE: OnceLock<Libmdbx> = OnceLock::new();
 
 fn get_db_handle() -> &'static Libmdbx {

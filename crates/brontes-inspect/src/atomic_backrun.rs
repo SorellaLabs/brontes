@@ -182,7 +182,6 @@ mod tests {
     use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
 
     #[tokio::test]
-    #[serial]
     async fn test_backrun() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
 
