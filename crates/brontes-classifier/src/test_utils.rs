@@ -67,7 +67,7 @@ impl ClassifierTestUtils {
                 .map(|data| async move {
                     let tx_roots = self
                         .classifier
-                        .build_all_tx_trees(vec![data.trace], &data.header)
+                        .build_all_tx_trees(data.traces, &data.header)
                         .await;
 
                     let mut tree = BlockTree::new(data.header, tx_roots.len());
@@ -91,6 +91,26 @@ impl ClassifierTestUtils {
         let (_, tree) = self.classifier.build_block_tree(vec![trace], header).await;
 
         Ok(tree)
+    }
+
+    pub async fn build_tree_txes(
+        &self,
+        tx_hashes: Vec<TxHash>,
+    ) -> Result<Vec<BlockTree<Actions>>, ClassifierTestUtilsError> {
+        Ok(join_all(
+            self.trace_loader
+                .get_tx_traces_with_header(tx_hashes)
+                .await?
+                .into_iter()
+                .map(|block_info| async move {
+                    let (_, tree) = self
+                        .classifier
+                        .build_block_tree(block_info.traces, block_info.header)
+                        .await;
+                    tree
+                }),
+        )
+        .await)
     }
 
     pub async fn build_tree_block(
