@@ -271,16 +271,16 @@ impl InspectorTestUtils {
 
         let (_, results) = Composer::new(inspector.as_slice(), tree.into(), metadata.into()).await;
 
-        let mut results = results
-            .into_iter()
-            .filter(|mev| {
-                config
-                    .prune_opportunities
-                    .as_ref()
-                    .map(|opp| !opp.contains(&mev.0.tx_hash))
-                    .unwrap_or(true)
-            })
-            .collect::<Vec<_>>();
+        // let mut results = results
+        //     .into_iter()
+        //     .filter(|mev| {
+        //         config
+        //             .prune_opportunities
+        //             .as_ref()
+        //             .map(|opp| !opp.contains(&mev.0.tx_hash))
+        //             .unwrap_or(true)
+        //     })
+        //     .collect::<Vec<_>>();
 
         assert_eq!(results.len(), 1, "got a non zero amount of detected mev");
 
