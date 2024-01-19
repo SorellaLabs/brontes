@@ -187,7 +187,7 @@ impl SpecificMev for Sandwich {
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-         vec![self.frontrun_tx_hash, self.backrun_tx_hash]
+        vec![self.frontrun_tx_hash, self.backrun_tx_hash]
     }
 }
 
