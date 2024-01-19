@@ -54,17 +54,19 @@ itertools.workspace = true
 # tests feature (unique)
 reth-tracing-ext = { workspace = true, optional = true }
 brontes-core = { workspace = true, optional = true }
+thiserror = { workspace = true, optional = true }
 
 
 [features]
 default = []
-tests = ["reth-tracing-ext", "brontes-core"]
+tests = ["reth-tracing-ext", "brontes-core", "thiserror"]
 local = ["brontes-core/local"]
 
 [dev-dependencies]
 dotenv.workspace = true
 tokio.workspace = true
 serial_test.workspace = true
+thiserror.workspace = true
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }

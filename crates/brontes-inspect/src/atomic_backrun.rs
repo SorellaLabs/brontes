@@ -179,34 +179,14 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
+    use crate::test_utils::{InspectorTestUtils, USDC_ADDRESS};
 
     #[tokio::test]
     #[serial]
     async fn test_backrun() {
-        dotenv::dotenv().ok();
-        init_tracing();
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
         let block_num = 18522278;
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
-        let (tx, _rx) = unbounded_channel();
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
-        let db = Clickhouse::default();
-
-        let classifier = Classifier::new(&libmdbx);
-
-        let block = tracer.execute_block(block_num).await.unwrap();
-        let metadata = db.get_metadata(block_num).await;
-
-        let tx = block.0.clone().into_iter().take(60).collect::<Vec<_>>();
-        let (missing_token_decimals, tree) = classifier.build_block_tree(tx, block.1);
-        let tree = Arc::new(tree);
-
-        let USDC = Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap();
-
-        let inspector = Box::new(AtomicBackrunInspector::new(USDC)) as Box<dyn Inspector>;
-
-        let t0 = SystemTime::now();
         let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();

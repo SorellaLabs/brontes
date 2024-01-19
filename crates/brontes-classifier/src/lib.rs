@@ -9,16 +9,14 @@ use futures::Future;
 use lazy_static::lazy_static;
 use reth_db::mdbx::RO;
 
-pub mod classifier;
-pub use classifier::*;
+pub mod tree_builder;
+pub use tree_builder::*;
 
 pub mod bindings;
 use bindings::*;
 
-/*
 #[cfg(feature = "tests")]
 pub mod test_utils;
-*/
 
 mod classifiers;
 use alloy_sol_types::{sol, SolInterface};
