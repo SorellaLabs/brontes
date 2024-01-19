@@ -2,6 +2,7 @@ use alloy_primitives::{hex, Address, FixedBytes, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
 use brontes_core::TraceLoaderError;
 use brontes_database::Metadata;
+use brontes_pricing::types::DexQuotes;
 use brontes_types::{
     classified_mev::{MevType, SpecificMev},
     normalized_actions::Actions,
@@ -21,24 +22,31 @@ pub const USDC_ADDRESS: Address =
 /// it supports multiple hashes for sandwiches
 #[derive(Debug, Clone)]
 pub struct InspectorTxRunConfig {
-    pub metadata_override:   Option<Metadata>,
-    pub mev_tx_hashes:       Option<Vec<TxHash>>,
-    pub mev_block:           Option<u64>,
-    pub expected_profit_usd: Option<f64>,
-    pub expected_gas_usd:    Option<f64>,
-    pub expected_mev_type:   MevType,
+    pub metadata_override:    Option<Metadata>,
+    pub mev_tx_hashes:        Option<Vec<TxHash>>,
+    pub mev_block:            Option<u64>,
+    pub expected_profit_usd:  Option<f64>,
+    pub expected_gas_usd:     Option<f64>,
+    pub expected_mev_type:    MevType,
+    pub calculate_dex_prices: bool,
 }
 
 impl InspectorTxRunConfig {
     pub fn new(mev: MevType) -> Self {
         Self {
-            mev_block:           None,
-            mev_tx_hashes:       None,
-            expected_profit_usd: None,
-            expected_gas_usd:    None,
-            expected_mev_type:   mev,
-            metadata_override:   None,
+            expected_mev_type:    mev,
+            mev_block:            None,
+            mev_tx_hashes:        None,
+            expected_profit_usd:  None,
+            expected_gas_usd:     None,
+            metadata_override:    None,
+            calculate_dex_prices: false,
         }
+    }
+
+    pub fn with_dex_prices(mut self) -> Self {
+        self.calculate_dex_prices = true;
+        self
     }
 
     pub fn with_block(mut self, block: u64) -> Self {
@@ -104,12 +112,39 @@ impl InspectorTestUtils {
         Ok(trees.remove(0))
     }
 
+    async fn get_tree_txes_with_pricing(
+        &self,
+        tx_hashes: Vec<TxHash>,
+    ) -> Result<(BlockTree<Actions>, DexQuotes), InspectorTestUtilsError> {
+        let mut trees = self
+            .classifier_inspector
+            .build_tree_txes_with_pricing(tx_hashes, self.quote_address)
+            .await?;
+
+        if trees.len() != 1 {
+            return Err(InspectorTestUtilsError::MultipleBlockError(
+                trees.into_iter().map(|(t, _)| t.header.number).collect(),
+            ))
+        }
+        Ok(trees.remove(0))
+    }
+
     async fn get_tree_block(
         &self,
         block: u64,
     ) -> Result<BlockTree<Actions>, InspectorTestUtilsError> {
         self.classifier_inspector
             .build_tree_block(block)
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn get_tree_block_with_pricing(
+        &self,
+        block: u64,
+    ) -> Result<(BlockTree<Actions>, DexQuotes), InspectorTestUtilsError> {
+        self.classifier_inspector
+            .build_tree_block_with_pricing(block, self.quote_address)
             .await
             .map_err(Into::into)
     }
@@ -154,21 +189,38 @@ impl InspectorTestUtils {
         let profit_usd = config.expected_profit_usd.ok_or_else(err)?;
         let gas_used_usd = config.expected_gas_usd.ok_or_else(err)?;
 
+        let mut quotes = None;
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
-            self.get_tree_txes(tx_hashes).await?
+            if config.calculate_dex_prices {
+                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes).await?;
+                quotes = Some(prices);
+                tree
+            } else {
+                self.get_tree_txes(tx_hashes).await?
+            }
         } else if let Some(block) = config.mev_block {
-            self.get_tree_block(block).await?
+            if config.calculate_dex_prices {
+                let (tree, prices) = self.get_tree_block_with_pricing(block).await?;
+                quotes = Some(prices);
+                tree
+            } else {
+                self.get_tree_block(block).await?
+            }
         } else {
             return Err(err())
         };
 
         let block = tree.header.number;
 
-        let metadata = if let Some(meta) = config.metadata_override {
+        let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
             self.classifier_inspector.get_metadata(block).await?
         };
+
+        if let Some(quotes) = quotes {
+            metadata.dex_quotes = quotes;
+        }
 
         let inspector = self.get_inspector(config.expected_mev_type)?;
 
