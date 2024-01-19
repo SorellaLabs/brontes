@@ -193,7 +193,7 @@ impl InspectorTestUtils {
         let inspector = self.get_inspector(config.expected_mev_type)?;
 
         let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
-        assert_eq!(results.len(), 1, "more than 1 result for a single mev opp test");
+        assert_eq!(results.len(), 1, "got a non zero amount of detected mev");
 
         let (classified_mev, specific) = results.remove(0);
 
@@ -204,12 +204,16 @@ impl InspectorTestUtils {
         // check gas
         assert!(
             (classified_mev.finalized_bribe_usd - gas_used_usd).abs() < self.max_result_difference,
-            "Finalized Bribe != Expected Bribe"
+            "Finalized Bribe != Expected Bribe, {} != {}",
+            classified_mev.finalized_bribe_usd,
+            gas_used_usd
         );
         // check profit
         assert!(
             (classified_mev.finalized_profit_usd - profit_usd).abs() < self.max_result_difference,
-            "Finalized Profit != Expected Profit"
+            "Finalized Profit != Expected Profit, {} != {}",
+            classified_mev.finalized_profit_usd,
+            profit_usd
         );
 
         Ok(())
@@ -278,7 +282,7 @@ impl InspectorTestUtils {
             })
             .collect::<Vec<_>>();
 
-        assert_eq!(results.len(), 1, "more than 1 result for a single mev opp test");
+        assert_eq!(results.len(), 1, "got a non zero amount of detected mev");
 
         let (classified_mev, specific) = results.remove(0);
         assert!(classified_mev.mev_type == config.expected_mev_type, "got wrong composed type");
@@ -290,12 +294,16 @@ impl InspectorTestUtils {
         // check gas
         assert!(
             (classified_mev.finalized_bribe_usd - gas_used_usd).abs() < self.max_result_difference,
-            "Finalized Bribe != Expected Bribe"
+            "Finalized Bribe != Expected Bribe, {} != {}",
+            classified_mev.finalized_bribe_usd,
+            gas_used_usd
         );
         // check profit
         assert!(
             (classified_mev.finalized_profit_usd - profit_usd).abs() < self.max_result_difference,
-            "Finalized Profit != Expected Profit"
+            "Finalized Profit != Expected Profit, {} != {}",
+            classified_mev.finalized_profit_usd,
+            profit_usd
         );
 
         Ok(())
