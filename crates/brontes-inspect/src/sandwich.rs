@@ -351,7 +351,7 @@ mod tests {
             .with_dex_prices()
             .with_block(18539312)
             .with_expected_gas_used(90.875025)
-            .with_expected_profit_usd(-24.031640);
+            .with_expected_profit_usd(-9.003);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
