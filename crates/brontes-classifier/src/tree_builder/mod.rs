@@ -18,6 +18,7 @@ use futures::future::join_all;
 use itertools::Itertools;
 use reth_db::transaction::DbTx;
 use reth_primitives::{Address, Header, B256};
+use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::error;
 use tree_pruning::{
@@ -44,50 +45,55 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         Self { libmdbx, pricing_update_sender, provider }
     }
 
-    pub fn close(&self) {
-        self.pricing_update_sender
-            .send(DexPriceMsg::Closed)
-            .unwrap();
-    }
-
     pub async fn build_block_tree(
         &self,
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
         let tx_roots = self.build_all_tx_trees(traces, &header).await;
-        // send out all updates
         let mut tree = BlockTree::new(header, tx_roots.len());
 
-        let (further_classification_requests, missing_data_requests): (Vec<_>, Vec<_>) = tx_roots
-            .into_iter()
-            .map(|root_data| {
-                tree.insert_root(root_data.root);
-                root_data.pool_updates.into_iter().for_each(|update| {
-                    // if a channel closes when its not supposed to, we want to error
-                    self.pricing_update_sender.send(update).unwrap();
-                });
-                (root_data.further_classification_requests, root_data.missing_data_requests)
-            })
-            .unzip();
+        // send out all updates
+        let (further_classification_requests, missing_data_requests) =
+            self.process_tx_roots(tx_roots, &mut tree);
 
         Self::prune_tree(&mut tree);
         finish_classification(&mut tree, further_classification_requests);
 
         tree.finalize_tree();
 
-        let mut dec = missing_data_requests
+        let mut addresses_missing_decimals = missing_data_requests
             .into_iter()
             .flatten()
             .collect::<Vec<_>>();
 
         // need to sort before we can dedup
-        dec.sort();
-        dec.dedup();
+        addresses_missing_decimals.sort();
+        addresses_missing_decimals.dedup();
 
-        let processing = ExtraProcessing { tokens_decimal_fill: dec };
+        let processing = ExtraProcessing { tokens_decimal_fill: addresses_missing_decimals };
 
         (processing, tree)
+    }
+
+    fn process_tx_roots(
+        &self,
+        tx_roots: Vec<TxTreeResult>,
+        tree: &mut BlockTree<Actions>,
+    ) -> (Vec<Option<(usize, Vec<u64>)>>, Vec<Vec<Address>>) {
+        let (further_classification_requests, missing_data_requests): (Vec<_>, Vec<_>) = tx_roots
+            .into_iter()
+            .map(|root_data| {
+                tree.insert_root(root_data.root);
+                root_data.pool_updates.into_iter().for_each(|update| {
+                    self.pricing_update_sender.send(update).unwrap();
+                    error!("pricing update channel closed unexpectedly");
+                });
+                (root_data.further_classification_requests, root_data.missing_data_requests)
+            })
+            .unzip();
+
+        (further_classification_requests, missing_data_requests)
     }
 
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
@@ -107,6 +113,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 .into_iter()
                 .enumerate()
                 .map(|(tx_idx, mut trace)| async move {
+                    // here only traces where the root tx failed are filtered out
                     if trace.trace.is_empty() || !trace.is_success {
                         return None
                     }
@@ -122,6 +129,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                     let classification = self
                         .process_classification(
                             header.number,
+                            None,
                             tx_idx as u64,
                             0,
                             tx_hash,
@@ -161,6 +169,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         let classification = self
                             .process_classification(
                                 header.number,
+                                Some(&tx_root.head),
                                 tx_idx as u64,
                                 (index + 1) as u64,
                                 tx_hash,
@@ -211,6 +220,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
     async fn process_classification(
         &self,
         block_number: u64,
+        root_head: Option<&Node<Actions>>,
         tx_index: u64,
         trace_index: u64,
         tx_hash: B256,
@@ -220,7 +230,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
         let (update, classification) = self
-            .classify_node(block_number, tx_index as u64, trace, trace_index, tx_hash)
+            .classify_node(block_number, root_head, tx_index as u64, trace, trace_index, tx_hash)
             .await;
 
         // Here we are marking more complex actions that require data
@@ -271,23 +281,44 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
     async fn classify_node(
         &self,
         block: u64,
+        root_head: Option<&Node<Actions>>,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
         tx_hash: B256,
     ) -> (Vec<DexPriceMsg>, Actions) {
-        // we don't classify static calls
-        if trace.is_static_call() {
-            return (vec![], Actions::Unclassified(trace))
-        }
         if trace.trace.error.is_some() {
             return (vec![], Actions::Revert)
         }
+        match trace.action_type() {
+            Action::Call(_) => {
+                return self.classify_call(block, tx_idx, trace, trace_index, tx_hash)
+            }
+            Action::Create(_) => {
+                return self
+                    .classify_create(block, root_head, tx_idx, trace, trace_index, tx_hash)
+                    .await
+            }
+            Action::Selfdestruct(_) => todo!(),
+            Action::Reward(_) => return (vec![], Actions::Unclassified(trace)),
+        };
+    }
 
+    fn classify_call(
+        &self,
+        block: u64,
+        tx_idx: u64,
+        trace: TransactionTraceWithLogs,
+        trace_index: u64,
+        tx_hash: B256,
+    ) -> (Vec<DexPriceMsg>, Actions) {
+        if trace.is_static_call() {
+            return (vec![], Actions::Unclassified(trace))
+        }
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        //TODO: get rid of these unwraps
+        //TODO: (Joe) get rid of these unwraps
         let db_tx = self.libmdbx.ro_tx().unwrap();
 
         if let Some(protocol) = db_tx.get::<AddressToProtocol>(target_address).unwrap() {
@@ -305,7 +336,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             let calldata = trace.get_calldata();
             let return_bytes = trace.get_return_calldata();
             let sig = &calldata[0..4];
-            let res = Into::<StaticBindings>::into(protocol)
+            let decoded_result = Into::<StaticBindings>::into(protocol)
                 .try_decode(&calldata)
                 .map(|data| {
                     classifier.dispatch(
@@ -324,12 +355,54 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 .ok()
                 .flatten();
 
-            if let Some(res) = res {
-                return (vec![DexPriceMsg::Update(res.0)], res.1)
+            if let Some(decoded_result) = decoded_result {
+                return (vec![DexPriceMsg::Update(decoded_result.0)], decoded_result.1)
+            }
+        } else if trace.logs.len() > 0 {
+            // A transfer should always be in its own call trace and have 1 log.
+            // if forever reason there is a case with multiple logs, we take the first
+            // transfer
+            for log in &trace.logs {
+                if let Some((addr, from, to, value)) = decode_transfer(log) {
+                    return (
+                        vec![],
+                        Actions::Transfer(NormalizedTransfer {
+                            trace_index,
+                            to,
+                            from,
+                            token: addr,
+                            amount: value,
+                        }),
+                    )
+                }
             }
         }
+        (vec![], Actions::Unclassified(trace))
+    }
 
-        if let Some(protocol) = db_tx.get::<AddressToFactory>(target_address).unwrap() {
+    async fn classify_create(
+        &self,
+        block: u64,
+        root_head: Option<&Node<Actions>>,
+        tx_idx: u64,
+        trace: TransactionTraceWithLogs,
+        trace_index: u64,
+        tx_hash: B256,
+    ) -> (Vec<DexPriceMsg>, Actions) {
+        let from_address = trace.get_from_addr();
+        let target_address = trace.get_to_address();
+
+        // get the immediate parent node of this create action so that we can decode the
+        // deployment function params
+        let node_data = match root_head {
+            Some(head) => &head.get_deepest_node().data,
+            None => return (vec![], Actions::Unclassified(trace)),
+        };
+
+        //TODO: (Joe) get rid of these unwraps
+        let db_tx = self.libmdbx.ro_tx().unwrap();
+
+        if let Some(protocol) = db_tx.get::<AddressToFactory>(from_address).unwrap() {
             let discovered_pools = match protocol {
                 StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
                     UniswapDecoder::dispatch(
@@ -363,29 +436,15 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
 
             // TODO: do we want to make a normalized pool deploy?
             return (discovered_pools, Actions::Unclassified(trace))
+        } else {
+            return (vec![], Actions::Unclassified(trace))
         }
+    }
 
-        if trace.logs.len() > 0 {
-            // A transfer should always be in its own call trace and have 1 log.
-            // if forever reason there is a case with multiple logs, we take the first
-            // transfer
-            for log in &trace.logs {
-                if let Some((addr, from, to, value)) = decode_transfer(log) {
-                    return (
-                        vec![],
-                        Actions::Transfer(NormalizedTransfer {
-                            trace_index,
-                            to,
-                            from,
-                            token: addr,
-                            amount: value,
-                        }),
-                    )
-                }
-            }
-        }
-
-        (vec![], Actions::Unclassified(trace))
+    pub fn close(&self) {
+        self.pricing_update_sender
+            .send(DexPriceMsg::Closed)
+            .unwrap();
     }
 }
 

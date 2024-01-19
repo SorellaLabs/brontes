@@ -1,6 +1,10 @@
 use alloy_primitives::Log;
 use reth_primitives::{Address, Bytes, B256};
-use reth_rpc_types::trace::parity::{Action, CallType, TransactionTrace};
+use reth_rpc_types::trace::parity::{
+    Action, CallType,
+    TraceOutput::{self, Create},
+    TransactionTrace,
+};
 use serde::{Deserialize, Serialize};
 
 pub trait TraceActions {
@@ -9,6 +13,9 @@ pub trait TraceActions {
     fn get_calldata(&self) -> Bytes;
     fn get_return_calldata(&self) -> Bytes;
     fn is_static_call(&self) -> bool;
+    fn is_create(&self) -> bool;
+    fn action_type(&self) -> &Action;
+    fn get_create_output(&self) -> Option<Address>;
 }
 
 impl TraceActions for TransactionTraceWithLogs {
@@ -17,6 +24,24 @@ impl TraceActions for TransactionTraceWithLogs {
             Action::Call(call) => call.call_type == CallType::StaticCall,
             _ => false,
         }
+    }
+
+    fn is_create(&self) -> bool {
+        match &self.trace.action {
+            Action::Create(_) => true,
+            _ => false,
+        }
+    }
+
+    fn get_create_output(&self) -> Option<Address> {
+        match &self.trace.result {
+            Some(TraceOutput::Create(o)) => Some(o.address),
+            _ => None,
+        }
+    }
+
+    fn action_type(&self) -> &Action {
+        &self.trace.action
     }
 
     fn get_from_addr(&self) -> Address {
