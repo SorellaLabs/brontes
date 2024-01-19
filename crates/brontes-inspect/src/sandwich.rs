@@ -74,6 +74,10 @@ impl Inspector for SandwichInspector<'_> {
                     .map(|victim| tree.collect(*victim, search_fn.clone()))
                     .collect::<Vec<Vec<Actions>>>();
 
+                if victim_actions.iter().any(|inner| inner.is_empty()) {
+                    return None
+                }
+
                 if ps
                     .victims
                     .iter()
