@@ -154,7 +154,13 @@ impl ClassifierTestUtils {
 
         let mut pricer = self.crate_dex_pricer(block, None, quote_asset, rx).await?;
         let (decimals, tree) = classifier.build_block_tree(vec![trace], header).await;
-        MissingDecimals::new(self.get_provider(), self.libmdbx, decimals.tokens_decimal_fill).await;
+        MissingDecimals::new(
+            self.get_provider(),
+            self.libmdbx,
+            block,
+            decimals.tokens_decimal_fill,
+        )
+        .await;
 
         classifier.close();
         // triggers close
@@ -186,6 +192,7 @@ impl ClassifierTestUtils {
                     MissingDecimals::new(
                         self.get_provider(),
                         self.libmdbx,
+                        block_info.block,
                         decimals.tokens_decimal_fill,
                     )
                     .await;
@@ -222,8 +229,13 @@ impl ClassifierTestUtils {
             let (decimals, tree) = classifier
                 .build_block_tree(block_info.traces, block_info.header)
                 .await;
-            MissingDecimals::new(self.get_provider(), self.libmdbx, decimals.tokens_decimal_fill)
-                .await;
+            MissingDecimals::new(
+                self.get_provider(),
+                self.libmdbx,
+                block_info.block,
+                decimals.tokens_decimal_fill,
+            )
+            .await;
             trees.push(tree);
         }
 
@@ -271,7 +283,13 @@ impl ClassifierTestUtils {
 
         let mut pricer = self.crate_dex_pricer(block, None, quote_asset, rx).await?;
         let (decimals, tree) = classifier.build_block_tree(traces, header).await;
-        MissingDecimals::new(self.get_provider(), self.libmdbx, decimals.tokens_decimal_fill).await;
+        MissingDecimals::new(
+            self.get_provider(),
+            self.libmdbx,
+            block,
+            decimals.tokens_decimal_fill,
+        )
+        .await;
 
         classifier.close();
         // triggers close
