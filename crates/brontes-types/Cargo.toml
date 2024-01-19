@@ -48,6 +48,8 @@ parking_lot.workspace = true
 derive_more.workspace = true
 dyn-clone = "1.0.16"
 itertools.workspace = true
+rkyv.workspace = true
+redefined.workspace = true
 
 [build-dependencies]
 strum = { workspace = true, features = ["derive"] }

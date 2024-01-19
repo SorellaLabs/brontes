@@ -7,6 +7,7 @@ use sorella_db_databases::clickhouse::{self, Row};
 use super::LibmdbxData;
 use crate::AddressToFactory;
 
+/// rlp encoding for libmdbx here is fine since it is just an enum
 #[derive(Debug, Serialize, Deserialize, Clone, Row, RlpDecodable, RlpEncodable)]
 pub struct AddressToFactoryData {
     pub address:      Address,

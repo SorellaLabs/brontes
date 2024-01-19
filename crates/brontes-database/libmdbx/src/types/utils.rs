@@ -59,6 +59,7 @@ pub mod u256 {
     use std::str::FromStr;
 
     use alloy_primitives::U256;
+    use redefined::RedefinedConvert;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -75,7 +76,7 @@ pub mod u256 {
     {
         let data: String = Deserialize::deserialize(deserializer)?;
 
-        U256::from_str(&data).map_err(serde::de::Error::custom)
+        Ok(U256::from_str(&data).map_err(serde::de::Error::custom)?)
     }
 }
 
@@ -132,11 +133,47 @@ pub mod vec_txhash {
     }
 }
 
+pub mod option_r_address {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use brontes_types::libmdbx::redefined_types::primitives::Redefined_Address;
+    use redefined::RedefinedConvert;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    pub fn serialize<S: Serializer>(
+        u: &Option<Redefined_Address>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let st: String = format!("{:?}", u.clone());
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Redefined_Address>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let des: Option<String> = Deserialize::deserialize(deserializer)?;
+        let data = des.map(|d| Address::from_str(&d));
+
+        if let Some(d) = data {
+            Ok(Some(Redefined_Address::from_source(d.map_err(serde::de::Error::custom)?)))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
 pub mod option_address {
 
     use std::str::FromStr;
 
     use alloy_primitives::Address;
+    use brontes_types::libmdbx::redefined_types::primitives::Redefined_Address;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -162,11 +199,38 @@ pub mod option_address {
     }
 }
 
+pub mod r_address {
+
+    use std::str::FromStr;
+
+    use brontes_types::libmdbx::redefined_types::primitives::Redefined_Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    pub fn serialize<S: Serializer>(
+        u: &Redefined_Address,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let st: String = format!("{:?}", u.clone());
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Redefined_Address, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let des: String = Deserialize::deserialize(deserializer)?;
+        Redefined_Address::from_str(&des).map_err(serde::de::Error::custom)
+    }
+}
+
 pub mod pools_libmdbx {
 
     use std::str::FromStr;
 
-    use alloy_primitives::Address;
+    use brontes_types::libmdbx::redefined_types::primitives::Redefined_Address;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -191,8 +255,8 @@ pub mod pools_libmdbx {
 
         Ok(PoolsLibmdbx(
             data.into_iter()
-                .map(|d| Address::from_str(&d))
-                .collect::<Result<Vec<_>, <Address as FromStr>::Err>>()
+                .map(|d| Redefined_Address::from_str(&d))
+                .collect::<Result<Vec<_>, <Redefined_Address as FromStr>::Err>>()
                 .map_err(serde::de::Error::custom)?,
         ))
     }

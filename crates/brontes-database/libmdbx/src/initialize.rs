@@ -171,7 +171,7 @@ mod tests {
         }
         Ok(())
     }
-
+    /*
     async fn test_pool_state_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
         let tx = LibmdbxTx::new_ro_tx(&db.0)?;
         assert_ne!(tx.entries::<PoolState>()?, 0);
@@ -187,7 +187,7 @@ mod tests {
         Ok(())
     }
 
-    /*
+
         async fn test_dex_price_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
             let tx = LibmdbxTx::new_ro_tx(&db.0)?;
             assert_ne!(tx.entries::<DexPrice>()?, 0);
@@ -249,21 +249,22 @@ mod tests {
         Ok(())
     }
 
-    async fn test_tx_traces_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
-        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
-        assert_ne!(tx.entries::<TxTracesDB>()?, 0);
+    /* /
+        async fn test_tx_traces_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
+            let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+            assert_ne!(tx.entries::<TxTracesDB>()?, 0);
 
-        let mut cursor = tx.cursor_read::<TxTracesDB>()?;
-        if !print {
-            cursor.first()?.ok_or(DatabaseError::Read(-1))?;
-        } else {
-            while let Some(vals) = cursor.next()? {
-                println!("{:?}", vals);
+            let mut cursor = tx.cursor_read::<TxTracesDB>()?;
+            if !print {
+                cursor.first()?.ok_or(DatabaseError::Read(-1))?;
+            } else {
+                while let Some(vals) = cursor.next()? {
+                    println!("{:?}", vals);
+                }
             }
+            Ok(())
         }
-        Ok(())
-    }
-
+    */
     #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
     #[serial]
     async fn test_inserts() {

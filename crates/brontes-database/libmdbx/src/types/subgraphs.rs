@@ -1,13 +1,14 @@
+use std::collections::HashMap;
+
 use brontes_database::Pair;
 use brontes_pricing::SubGraphEdge;
-use brontes_types::impl_compress_decompress_for_serde;
-use reth_primitives::revm_primitives::HashMap;
-use serde::{Deserialize, Serialize};
+use redefined::RedefinedConvert;
 use sorella_db_databases::clickhouse::{self, Row};
 
+use super::redefined_types::subgraph::Redefined_SubGraphsEntry;
 use crate::{LibmdbxData, SubGraphs};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Row)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Row)]
 pub struct SubGraphsData {
     pub pair: Pair,
     pub data: SubGraphsEntry,
@@ -18,11 +19,9 @@ impl LibmdbxData<SubGraphs> for SubGraphsData {
         &self,
     ) -> (<SubGraphs as reth_db::table::Table>::Key, <SubGraphs as reth_db::table::Table>::Value)
     {
-        (self.pair, self.data.clone())
+        (self.pair, Redefined_SubGraphsEntry::from_source(self.data.clone()))
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SubGraphsEntry(pub HashMap<u64, Vec<SubGraphEdge>>);
-
-impl_compress_decompress_for_serde!(SubGraphsEntry);

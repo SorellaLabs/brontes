@@ -80,14 +80,15 @@ parking_lot.workspace = true
 dotenv.workspace = true
 owned_chunks = "0.1.1"
 bincode = "2.0.0-rc.3"
-redefined = { git = "https://github.com/0xlagrange/redefined" }
+redefined.workspace = true
+derive_more = "0.99.17"
 
 # benches
 criterion = "0.5"
 parquet = "50"
 arrow = "50"
 human_bytes = "0.4.3"
-rkyv= {version = "0.7", features = ["validation"] }
+rkyv.workspace = true
 
 [dev-dependencies]
 serial_test.workspace = true

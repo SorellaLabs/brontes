@@ -1547,6 +1547,7 @@ dependencies = [
  "bytes",
  "codecs-derive",
  "criterion",
+ "derive_more",
  "dotenv",
  "eyre",
  "futures",
@@ -1702,6 +1703,7 @@ dependencies = [
  "reth-primitives",
  "reth-rpc-types",
  "reth-tracing-ext",
+ "rkyv",
  "rustc-hash",
  "serde",
  "serde_json",
@@ -1748,6 +1750,7 @@ dependencies = [
  "phf",
  "phf_codegen",
  "rayon",
+ "redefined",
  "reth-codecs",
  "reth-db",
  "reth-interfaces",
@@ -1755,6 +1758,7 @@ dependencies = [
  "reth-rpc",
  "reth-rpc-types",
  "reth-tracing-ext",
+ "rkyv",
  "serde",
  "serde_json",
  "serde_repr",
@@ -6357,7 +6361,7 @@ dependencies = [
 [[package]]
 name = "redefined"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#2778983d89bd4f055991036516edbcd15e2ba81d"
+source = "git+https://github.com/0xlagrange/redefined#f4617b89adcbc04f189c1bd0efcee8be94966704"
 dependencies = [
  "redefined-derive",
  "redefined-outside-crate-tests",
@@ -6366,7 +6370,7 @@ dependencies = [
 [[package]]
 name = "redefined-derive"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#2778983d89bd4f055991036516edbcd15e2ba81d"
+source = "git+https://github.com/0xlagrange/redefined#f4617b89adcbc04f189c1bd0efcee8be94966704"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6376,7 +6380,7 @@ dependencies = [
 [[package]]
 name = "redefined-outside-crate-tests"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#2778983d89bd4f055991036516edbcd15e2ba81d"
+source = "git+https://github.com/0xlagrange/redefined#f4617b89adcbc04f189c1bd0efcee8be94966704"
 
 [[package]]
 name = "redox_syscall"

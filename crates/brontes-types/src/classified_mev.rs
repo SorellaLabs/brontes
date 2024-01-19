@@ -2,6 +2,7 @@ use std::{any::Any, fmt::Debug};
 
 use alloy_primitives::Address;
 use dyn_clone::DynClone;
+use redefined::{self_convert, RedefinedConvert};
 use reth_primitives::B256;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -84,6 +85,8 @@ pub enum MevType {
     #[default]
     Unknown     = 6,
 }
+
+self_convert!(MevType);
 
 pub trait SpecificMev:
     InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
