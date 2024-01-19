@@ -156,8 +156,6 @@ impl ClassifierTestUtils {
         let (_, tree) = classifier.build_block_tree(vec![trace], header).await;
 
         classifier.close();
-        // triggers close
-        drop(classifier);
 
         if let Some((p_block, pricing)) = pricer.next().await {
             assert!(p_block == block, "got pricing for the wrong block");
@@ -221,8 +219,6 @@ impl ClassifierTestUtils {
             .await?;
 
         classifier.close();
-        drop(classifier);
-
         let mut prices = Vec::new();
 
         while let Some((_, quotes)) = pricer.next().await {
@@ -262,8 +258,6 @@ impl ClassifierTestUtils {
         let (_, tree) = classifier.build_block_tree(traces, header).await;
 
         classifier.close();
-        // triggers close
-        drop(classifier);
 
         if let Some((p_block, pricing)) = pricer.next().await {
             assert!(p_block == block, "got pricing for the wrong block");
