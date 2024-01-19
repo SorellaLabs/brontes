@@ -25,14 +25,14 @@ use tracing::{debug, error, info};
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (MetadataDB, BlockTree<Actions>)> + Send + 'a>>;
 
-pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
+pub struct TipInspector<'inspector, T: TracingProvider> {
     current_block: u64,
 
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier<'inspector, T>,
     clickhouse:        &'inspector Clickhouse,
     database:          &'inspector Libmdbx,
-    inspectors:        &'inspector [&'inspector Box<dyn Inspector>; N],
+    inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
     // pending future data
     classifier_future: FuturesOrdered<CollectionFut<'inspector>>,
 
@@ -42,13 +42,13 @@ pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
     insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
-impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N, T> {
+impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
     pub fn new(
         parser: &'inspector Parser<'inspector, T>,
         clickhouse: &'inspector Clickhouse,
         database: &'inspector Libmdbx,
         classifier: &'inspector Classifier<'_, T>,
-        inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
+        inspectors: &'inspector [&'inspector Box<dyn Inspector>],
         current_block: u64,
     ) -> Self {
         Self {
@@ -139,7 +139,7 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
     }
 }
 
-impl<const N: usize, T: TracingProvider> Future for TipInspector<'_, N, T> {
+impl<T: TracingProvider> Future for TipInspector<'_, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
