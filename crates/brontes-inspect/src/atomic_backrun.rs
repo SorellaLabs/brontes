@@ -171,31 +171,28 @@ impl AtomicBackrunInspector<'_> {
 mod tests {
     use std::{env, str::FromStr, time::SystemTime};
 
+    use alloy_primitives::hex;
     use brontes_classifier::Classifier;
-    use brontes_core::{init_tracing, test_utils::init_trace_parser};
     use brontes_database::clickhouse::Clickhouse;
     use brontes_database_libmdbx::Libmdbx;
     use serial_test::serial;
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::test_utils::{InspectorTestUtils, USDC_ADDRESS};
+    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
 
     #[tokio::test]
     #[serial]
     async fn test_backrun() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
-        let block_num = 18522278;
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
 
-        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        println!("backrun inspector took: {} us", delta);
+        let tx = hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into();
+        let config = InspectorTxRunConfig::new(MevType::Backrun)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(0.188588)
+            .with_expected_gas_used(71.632668);
 
-        // assert!(
-        //     mev[0].0.tx_hash
-        //         == B256::from_str(
-
-        println!("{:#?}", mev);
+        inspector_util.run_inspector::<AtomicBackrun>(config, None).await.unwrap();
     }
 }
