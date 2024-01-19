@@ -27,7 +27,7 @@ impl<'db> SandwichInspector<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct PossibleSandwich {
     eoa:                   Address,
     tx0:                   B256,
@@ -215,7 +215,7 @@ impl SandwichInspector<'_> {
             return vec![]
         }
 
-        let mut set: Vec<PossibleSandwich> = Vec::new();
+        let mut set: HashSet<PossibleSandwich> = HashSet::new();
         let mut duplicate_mev_contracts: HashMap<Address, Vec<B256>> = HashMap::new();
         let mut duplicate_senders: HashMap<Address, Vec<B256>> = HashMap::new();
         let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
@@ -235,7 +235,7 @@ impl SandwichInspector<'_> {
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
                             if victims.len() >= 2 {
                                 // Create
-                                set.push(PossibleSandwich {
+                                set.insert(PossibleSandwich {
                                     eoa:                   root.head.address,
                                     tx0:                   *prev_tx_hash,
                                     tx1:                   root.tx_hash,
@@ -248,15 +248,6 @@ impl SandwichInspector<'_> {
                     // Add current transaction hash to the list of transactions for this sender
                     o.get_mut().push(root.tx_hash);
                     possible_victims.insert(root.tx_hash, vec![]);
-                }
-            }
-
-            // Now, for each existing entry in possible_victims, we add the current
-            // transaction hash as a potential victim, if it is not the same as
-            // the key (which represents another transaction hash)
-            for (k, v) in possible_victims.iter_mut() {
-                if k != &root.tx_hash {
-                    v.push(root.tx_hash);
                 }
             }
 
@@ -274,7 +265,7 @@ impl SandwichInspector<'_> {
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
                             if victims.len() >= 2 {
                                 // Create
-                                set.push(PossibleSandwich {
+                                set.insert(PossibleSandwich {
                                     eoa:                   root.head.address,
                                     tx0:                   *prev_tx_hash,
                                     tx1:                   root.tx_hash,
@@ -300,7 +291,7 @@ impl SandwichInspector<'_> {
             }
         }
 
-        set
+        set.into_iter().collect()
     }
 }
 
