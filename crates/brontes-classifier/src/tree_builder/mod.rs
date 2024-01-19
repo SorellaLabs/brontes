@@ -1,6 +1,6 @@
 use std::sync::Arc;
-
-use alloy_primitives::Log;
+mod tree_pruning;
+mod utils;
 use alloy_sol_types::SolEvent;
 use brontes_database_libmdbx::{
     tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, AddressToFactory,
@@ -9,44 +9,45 @@ use brontes_database_libmdbx::{
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     extra_processing::ExtraProcessing,
-    normalized_actions::{Actions, NormalizedAction, NormalizedSwapWithFee, NormalizedTransfer},
+    normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     traits::TracingProvider,
     tree::{BlockTree, GasDetails, Node, Root},
 };
 use futures::future::join_all;
-use hex_literal::hex;
 use itertools::Itertools;
 use reth_db::transaction::DbTx;
-use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
-use reth_rpc_types::trace::parity::Action;
+use reth_primitives::{Address, Header, B256};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::error;
+use tree_pruning::{
+    account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
+};
+use utils::{decode_transfer, get_coinbase_transfer};
 
 use crate::{classifiers::*, ActionCollection, FactoryDecoderDispatch, StaticBindings};
 
-const TRANSFER_TOPIC: B256 =
-    FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
-
-/// goes through and classifies all exchanges as-well as missing data
+//TODO: Document this module
 #[derive(Debug, Clone)]
 pub struct Classifier<'db, T: TracingProvider> {
-    libmdbx:  &'db Libmdbx,
-    provider: Arc<T>,
-    sender:   UnboundedSender<DexPriceMsg>,
+    libmdbx:               &'db Libmdbx,
+    provider:              Arc<T>,
+    pricing_update_sender: UnboundedSender<DexPriceMsg>,
 }
 
 impl<'db, T: TracingProvider> Classifier<'db, T> {
     pub fn new(
         libmdbx: &'db Libmdbx,
-        sender: UnboundedSender<DexPriceMsg>,
+        pricing_update_sender: UnboundedSender<DexPriceMsg>,
         provider: Arc<T>,
     ) -> Self {
-        Self { libmdbx, sender, provider }
+        Self { libmdbx, pricing_update_sender, provider }
     }
 
     pub fn close(&self) {
-        self.sender.send(DexPriceMsg::Closed).unwrap();
+        self.pricing_update_sender
+            .send(DexPriceMsg::Closed)
+            .unwrap();
     }
 
     pub async fn build_block_tree(
@@ -64,14 +65,14 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 tree.insert_root(root_data.root);
                 root_data.pool_updates.into_iter().for_each(|update| {
                     // if a channel closes when its not supposed to, we want to error
-                    self.sender.send(update).unwrap();
+                    self.pricing_update_sender.send(update).unwrap();
                 });
                 (root_data.further_classification_requests, root_data.missing_data_requests)
             })
             .unzip();
 
-        self.prune_tree(&mut tree);
-        self.finish_classification(&mut tree, further_classification_requests);
+        Self::prune_tree(&mut tree);
+        finish_classification(&mut tree, further_classification_requests);
 
         tree.finalize_tree();
 
@@ -89,11 +90,11 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         (processing, tree)
     }
 
-    pub(crate) fn prune_tree(&self, tree: &mut BlockTree<Actions>) {
-        self.deal_with_tax_tokens(tree);
-        self.remove_swap_transfers(tree);
-        self.remove_mint_transfers(tree);
-        self.remove_collect_transfers(tree);
+    pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
+        account_for_tax_tokens(tree);
+        remove_swap_transfers(tree);
+        remove_mint_transfers(tree);
+        remove_collect_transfers(tree);
     }
 
     pub(crate) async fn build_all_tx_trees(
@@ -149,12 +150,12 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
 
                     for (index, trace) in trace.trace.into_iter().enumerate() {
                         if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
-                            *coinbase += self
-                                .get_coinbase_transfer(header.beneficiary, &trace.trace.action)
-                                .unwrap_or_default()
+                            *coinbase +=
+                                get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                                    .unwrap_or_default()
                         } else {
                             tx_root.gas_details.coinbase_transfer =
-                                self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                                get_coinbase_transfer(header.beneficiary, &trace.trace.action);
                         }
 
                         let classification = self
@@ -240,7 +241,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             match update {
                 DexPriceMsg::DiscoveredPool(pool, block) => {
                     if !self.libmdbx.contains_pool(pool.pool_address) {
-                        self.sender
+                        self.pricing_update_sender
                             .send(DexPriceMsg::DiscoveredPool(pool.clone(), block))
                             .unwrap();
 
@@ -265,245 +266,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         });
 
         classification
-    }
-
-    /// When a tax token takes a fee, They will swap from there token to a more
-    /// stable token like eth before taking the fee. However this causes us
-    /// problems as we will register this fee swap as part of the mev
-    /// messing up our calculations
-    pub(crate) fn deal_with_tax_tokens(&self, tree: &mut BlockTree<Actions>) {
-        // remove swaps that originate from a transfer. This event only occurs
-        // when a tax token is transfered and the taxed amount is swapped into
-        // a more stable currency
-        tree.modify_node_if_contains_childs(
-            |node| {
-                let mut has_transfer = false;
-                let mut has_swap = false;
-
-                for action in &node.get_all_sub_actions() {
-                    if action.is_transfer() {
-                        has_transfer = true;
-                    } else if action.is_swap() {
-                        has_swap = true;
-                    }
-                }
-                (node.data.is_transfer(), has_swap && has_transfer)
-            },
-            |node| {
-                let mut swap_idx = Vec::new();
-                node.collect(
-                    &mut swap_idx,
-                    &|node| {
-                        (
-                            node.data.is_swap(),
-                            node.get_all_sub_actions()
-                                .iter()
-                                .any(|action| action.is_swap()),
-                        )
-                    },
-                    &|node| node.index,
-                );
-
-                swap_idx.into_iter().for_each(|idx| {
-                    node.remove_node_and_children(idx);
-                })
-            },
-        );
-
-        // adjusts the amount in of the swap and notes the fee on the normalized type.
-        // This is needed when swapping into the tax token as the amount out of the swap
-        // will be wrong
-        tree.modify_node_if_contains_childs(
-            |node| {
-                let mut has_transfer = false;
-                let mut has_swap = false;
-                for action in &node.get_all_sub_actions() {
-                    if action.is_transfer() {
-                        has_transfer = true;
-                    } else if action.is_swap() {
-                        has_swap = true;
-                    }
-                }
-                (node.data.is_swap(), has_swap && has_transfer)
-            },
-            |node| {
-                // collect all sub transfers
-                let mut transfers = Vec::new();
-                node.collect(
-                    &mut transfers,
-                    &|node| {
-                        (
-                            node.data.is_transfer(),
-                            node.get_all_sub_actions()
-                                .iter()
-                                .any(|node| node.is_transfer()),
-                        )
-                    },
-                    &|node| node.data.clone(),
-                );
-
-                transfers
-                    .into_iter()
-                    .filter_map(
-                        |transfer| {
-                            if let Actions::Transfer(t) = transfer {
-                                Some(t)
-                            } else {
-                                None
-                            }
-                        },
-                    )
-                    .find_map(|transfer| {
-                        let mut swap = node.data.clone().force_swap();
-                        // if the swap matches the transfer but the transfer is a less amount of
-                        // tokens than the swap says
-                        if swap.token_out == transfer.token
-                            && swap.pool == transfer.from
-                            && swap.recipient == transfer.token
-                            && swap.amount_out > transfer.amount
-                        {
-                            let fee_amount = swap.amount_out - transfer.amount;
-                            swap.amount_out = transfer.amount;
-
-                            let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
-                                swap,
-                                fee_amount,
-                                fee_token: transfer.token,
-                            });
-                            node.data = swap;
-
-                            return Some(())
-                        }
-
-                        None
-                    });
-            },
-        )
-    }
-
-    pub(crate) fn remove_swap_transfers(&self, tree: &mut BlockTree<Actions>) {
-        tree.remove_duplicate_data(
-            |node| {
-                (
-                    node.data.is_swap(),
-                    node.get_all_sub_actions()
-                        .into_iter()
-                        .any(|data| data.is_swap()),
-                )
-            },
-            |node| {
-                (
-                    node.data.is_transfer(),
-                    node.get_all_sub_actions()
-                        .into_iter()
-                        .any(|data| data.is_transfer()),
-                )
-            },
-            |node| (node.index, node.data.clone()),
-            |other_nodes, node| {
-                let Actions::Swap(swap_data) = &node.data else { unreachable!() };
-                other_nodes
-                    .into_iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data else { return None };
-                        if (transfer.amount == swap_data.amount_in
-                            || transfer.amount == swap_data.amount_out)
-                            && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
-                        {
-                            return Some(*index)
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>()
-            },
-        );
-    }
-
-    // need this for dyn classifying
-    pub(crate) fn remove_mint_transfers(&self, tree: &mut BlockTree<Actions>) {
-        tree.remove_duplicate_data(
-            |node| {
-                (
-                    node.data.is_mint(),
-                    node.get_all_sub_actions()
-                        .into_iter()
-                        .any(|data| data.is_mint()),
-                )
-            },
-            |node| {
-                (
-                    node.data.is_transfer(),
-                    node.get_all_sub_actions()
-                        .into_iter()
-                        .any(|data| data.is_transfer()),
-                )
-            },
-            |node| (node.index, node.data.clone()),
-            |other_nodes, node| {
-                let Actions::Mint(mint_data) = &node.data else { unreachable!() };
-                other_nodes
-                    .into_iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data else { return None };
-                        for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
-                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                                return Some(*index)
-                            }
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>()
-            },
-        );
-    }
-
-    pub(crate) fn remove_collect_transfers(&self, tree: &mut BlockTree<Actions>) {
-        tree.remove_duplicate_data(
-            |node| {
-                (
-                    node.data.is_collect(),
-                    node.get_all_sub_actions()
-                        .into_iter()
-                        .any(|data| data.is_collect()),
-                )
-            },
-            |node| {
-                (
-                    node.data.is_transfer(),
-                    node.get_all_sub_actions()
-                        .into_iter()
-                        .any(|data| data.is_transfer()),
-                )
-            },
-            |node| (node.index, node.data.clone()),
-            |other_nodes, node| {
-                let Actions::Collect(collect_data) = &node.data else { unreachable!() };
-                other_nodes
-                    .into_iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data else { return None };
-                        for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {
-                            if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                                return Some(*index)
-                            }
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>()
-            },
-        );
-    }
-
-    fn get_coinbase_transfer(&self, builder: Address, action: &Action) -> Option<u128> {
-        match action {
-            Action::Call(action) => {
-                if action.to == builder && !action.value.is_zero() {
-                    return Some(action.value.to())
-                }
-                None
-            }
-            _ => None,
-        }
     }
 
     async fn classify_node(
@@ -608,7 +370,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             // if forever reason there is a case with multiple logs, we take the first
             // transfer
             for log in &trace.logs {
-                if let Some((addr, from, to, value)) = self.decode_transfer(log) {
+                if let Some((addr, from, to, value)) = decode_transfer(log) {
                     return (
                         vec![],
                         Actions::Transfer(NormalizedTransfer {
@@ -625,32 +387,16 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
 
         (vec![], Actions::Unclassified(trace))
     }
+}
 
-    /// This function is used to finalize the classification of complex actions
-    /// that contain nested sub-actions that are required to finalize the higher
-    /// level classification (e.g: flashloan actions)
-    fn finish_classification(
-        &self,
-        tree: &mut BlockTree<Actions>,
-        further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
-    ) {
-        tree.collect_and_classify(&further_classification_requests)
-    }
-
-    fn decode_transfer(&self, log: &Log) -> Option<(Address, Address, Address, U256)> {
-        if log.topics().len() != 3 {
-            return None
-        }
-
-        if log.topics().get(0) == Some(&TRANSFER_TOPIC) {
-            let from = Address::from_slice(&log.topics()[1][12..]);
-            let to = Address::from_slice(&log.topics()[2][12..]);
-            let data = U256::try_from_be_slice(&log.data.data[..]).unwrap();
-            return Some((log.address, from, to, data))
-        }
-
-        None
-    }
+/// This function is used to finalize the classification of complex actions
+/// that contain nested sub-actions that are required to finalize the higher
+/// level classification (e.g: flashloan actions)
+fn finish_classification(
+    tree: &mut BlockTree<Actions>,
+    further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
+) {
+    tree.collect_and_classify(&further_classification_requests)
 }
 
 pub struct TxTreeResult {
