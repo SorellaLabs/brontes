@@ -201,7 +201,7 @@ impl<'a> Composer<'a> {
         compose: &ComposeFunction,
         sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
     ) {
-        info!("{:#?}", sorted_mev);
+        tracing::info!("{:#?}", sorted_mev);
         let first_mev_type = child_mev_type[0];
         let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
 
