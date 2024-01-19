@@ -403,6 +403,7 @@ mod tests {
     use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
 
     #[tokio::test]
+    #[serial]
     async fn test_sandwich() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
@@ -420,6 +421,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_complex_sandwich() {
         // this is a jit sandwich
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.1);

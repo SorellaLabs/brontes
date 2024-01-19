@@ -273,6 +273,7 @@ pub mod tests {
     use crate::test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS};
 
     #[tokio::test]
+    #[serial]
     pub async fn test_jit_sandwich() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2);
 
