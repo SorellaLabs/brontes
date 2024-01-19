@@ -2,7 +2,8 @@ use std::ops::Deref;
 
 use alloy_primitives::TxHash;
 use brontes_core::{
-    decoding::TracingProvider, TraceLoader, TraceLoaderError, TxTracesWithHeaderAnd,
+    decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
+    TxTracesWithHeaderAnd,
 };
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::tree::BlockTree;
@@ -45,7 +46,7 @@ impl ClassifierTestUtils {
             .build_all_tx_trees(vec![trace], &header)
             .await;
 
-        let mut tree = BlockTree::new(header, tx_roots.len(), Default::default());
+        let mut tree = BlockTree::new(header, tx_roots.len());
 
         tx_roots.into_iter().for_each(|root_data| {
             tree.insert_root(root_data.root);
@@ -69,7 +70,7 @@ impl ClassifierTestUtils {
                         .build_all_tx_trees(vec![data.trace], &data.header)
                         .await;
 
-                    let mut tree = BlockTree::new(data.header, tx_roots.len(), Default::default());
+                    let mut tree = BlockTree::new(data.header, tx_roots.len());
 
                     tx_roots.into_iter().for_each(|root_data| {
                         tree.insert_root(root_data.root);
@@ -79,6 +80,30 @@ impl ClassifierTestUtils {
                 }),
         )
         .await)
+    }
+
+    pub async fn build_tree_tx(
+        &self,
+        tx_hash: TxHash,
+    ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
+        let TxTracesWithHeaderAnd { trace, header, .. } =
+            self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
+        let (_, tree) = self.classifier.build_block_tree(vec![trace], header).await;
+
+        Ok(tree)
+    }
+
+    pub async fn build_tree_block(
+        &self,
+        block: u64,
+    ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
+        let BlockTracesWithHeaderAnd { traces, header, .. } = self
+            .trace_loader
+            .get_block_traces_with_header(block)
+            .await?;
+        let (_, tree) = self.classifier.build_block_tree(traces, header).await;
+
+        Ok(tree)
     }
 }
 
