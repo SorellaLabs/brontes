@@ -105,7 +105,6 @@ impl<'a> Composer<'a> {
         &mut self,
         orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> Poll<ComposerResults> {
-        info!("starting to compose classified mev: {:#?}", orchestra_data);
         let mut header =
             build_mev_header(self.metadata.clone(), &self.pre_processing, &orchestra_data);
 
@@ -206,6 +205,8 @@ impl<'a> Composer<'a> {
         let first_mev_type = child_mev_type[0];
         let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
 
+        info!("starting to compose classified mev: {:#?}", orchestra_data);
+
         if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
             for (classified, mev_data) in &first_mev_list {
                 let tx_hashes = mev_data.mev_transaction_hashes();
@@ -242,8 +243,6 @@ impl<'a> Composer<'a> {
                     }
                 }
             }
-
-            sorted_mev.insert(first_mev_type, first_mev_list);
         }
 
         // Remove the mev data that was composed from the sorted mev list
