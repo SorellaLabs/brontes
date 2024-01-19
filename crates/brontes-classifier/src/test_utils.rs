@@ -10,7 +10,7 @@ use brontes_pricing::{
     BrontesBatchPricer, GraphManager,
 };
 use brontes_types::tree::BlockTree;
-use futures::{future::join_all};
+use futures::future::join_all;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
@@ -152,7 +152,7 @@ impl ClassifierTestUtils {
 
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
 
-        let mut pricer = self.ready_dex_pricing(block, None, quote_asset, rx).await?;
+        let mut pricer = self.crate_dex_pricer(block, None, quote_asset, rx).await?;
         let (_, tree) = classifier.build_block_tree(vec![trace], header).await;
 
         classifier.close();
@@ -217,7 +217,7 @@ impl ClassifierTestUtils {
         }
 
         let mut pricer = self
-            .ready_dex_pricing(start_block, Some(end_block), quote_asset, rx)
+            .crate_dex_pricer(start_block, Some(end_block), quote_asset, rx)
             .await?;
 
         classifier.close();
@@ -258,7 +258,7 @@ impl ClassifierTestUtils {
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
 
-        let mut pricer = self.ready_dex_pricing(block, None, quote_asset, rx).await?;
+        let mut pricer = self.crate_dex_pricer(block, None, quote_asset, rx).await?;
         let (_, tree) = classifier.build_block_tree(traces, header).await;
 
         classifier.close();
