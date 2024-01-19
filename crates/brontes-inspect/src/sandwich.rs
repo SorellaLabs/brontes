@@ -62,6 +62,8 @@ impl Inspector for SandwichInspector<'_> {
                     tree.get_gas_details(ps.tx1).cloned().unwrap(),
                 ];
 
+                tracing::info!("{:#?}", ps);
+
                 let victim_gas = ps
                     .victims
                     .iter()
@@ -365,7 +367,6 @@ mod tests {
             .unwrap();
     }
 
-    // https://eigenphi.io/mev/ethereum/tx/0xb8087e675fd49eb2cc41e4b9354955d60ae7da354661bae52d70257848906145
     #[tokio::test]
     #[serial]
     async fn test_sandwich_part_of_jit_sandwich_simple() {
