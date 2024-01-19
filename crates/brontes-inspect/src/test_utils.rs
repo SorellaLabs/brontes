@@ -4,7 +4,7 @@ use brontes_core::TraceLoaderError;
 use brontes_database::Metadata;
 use brontes_pricing::types::DexQuotes;
 use brontes_types::{
-    classified_mev::{MevType, SpecificMev},
+    classified_mev::{MevType},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -146,10 +146,10 @@ impl InspectorTestUtils {
         Ok(res)
     }
 
-    pub async fn run_inspector(
+    pub async fn run_inspector<E: 'static>(
         &self,
         config: InspectorTxRunConfig,
-        specific_state_tests: Option<Box<dyn Fn(Box<dyn SpecificMev>)>>,
+        specific_state_tests: Option<Box<dyn Fn(Box<E>)>>,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::InspectorConfig(copied.clone());
@@ -198,7 +198,7 @@ impl InspectorTestUtils {
         let (classified_mev, specific) = results.remove(0);
 
         if let Some(specific_state_tests) = specific_state_tests {
-            specific_state_tests(specific);
+            specific_state_tests(specific.into_any().downcast().unwrap());
         }
 
         // check gas
@@ -219,10 +219,10 @@ impl InspectorTestUtils {
         Ok(())
     }
 
-    pub async fn run_composer(
+    pub async fn run_composer<E: 'static>(
         &self,
         config: ComposerRunConfig,
-        specific_state_tests: Option<Box<dyn Fn(Box<dyn SpecificMev>)>>,
+        specific_state_tests: Option<Box<dyn Fn(Box<E>)>>,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::ComposerConfig(copied.clone());
@@ -288,7 +288,7 @@ impl InspectorTestUtils {
         assert!(classified_mev.mev_type == config.expected_mev_type, "got wrong composed type");
 
         if let Some(specific_state_tests) = specific_state_tests {
-            specific_state_tests(specific);
+            specific_state_tests(specific.clone().into_any().downcast().unwrap());
         }
 
         // check gas
