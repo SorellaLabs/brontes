@@ -427,6 +427,8 @@ mod tests {
             .with_dex_prices()
             .with_expected_gas_used(16.64)
             .with_expected_profit_usd(23.0);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 
     #[tokio::test]
