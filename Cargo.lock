@@ -8094,31 +8094,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tests"
-version = "0.1.0"
-dependencies = [
- "alloy-sol-macro",
- "alloy-sol-types",
- "brontes-classifier",
- "brontes-core",
- "brontes-database",
- "brontes-inspect",
- "brontes-metrics",
- "brontes-types",
- "dotenv",
- "futures",
- "reth-primitives",
- "reth-rpc",
- "reth-rpc-types",
- "reth-tracing-ext",
- "serde",
- "serde_json",
- "serial_test",
- "sorella-db-databases",
- "tokio",
-]
-
-[[package]]
 name = "thin-vec"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
