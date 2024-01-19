@@ -38,7 +38,7 @@ use banner::print_banner;
 use cli::TraceArg;
 use cli::{AddToDb, Args, Commands, DatabaseQuery, DexPricingArgs, Init, RunArgs};
 
-type Inspectors<'a> = [&'a Box<dyn Inspector>; 4];
+type Inspectors<'a> = &'a [&'a Box<dyn Inspector>];
 
 struct InspectorHolder {
     sandwich: Box<dyn Inspector>,
@@ -58,7 +58,7 @@ impl InspectorHolder {
     }
 
     fn get_inspectors(&'static self) -> Inspectors<'static> {
-        [&self.sandwich, &self.cex_dex, &self.jit, &self.backrun]
+        &*Box::leak(Box::new([&self.sandwich, &self.cex_dex, &self.jit, &self.backrun]))
     }
 }
 

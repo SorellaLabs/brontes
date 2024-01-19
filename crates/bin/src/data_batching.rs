@@ -24,7 +24,7 @@ use tracing::{debug, error, info};
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
 
-pub struct DataBatching<'db, T: TracingProvider + Clone, const N: usize> {
+pub struct DataBatching<'db, T: TracingProvider + Clone> {
     parser:     &'db Parser<'db, T>,
     classifier: Classifier<'db, T>,
 
@@ -38,10 +38,10 @@ pub struct DataBatching<'db, T: TracingProvider + Clone, const N: usize> {
     batch_id:      u64,
 
     libmdbx:    &'static Libmdbx,
-    inspectors: &'db [&'db Box<dyn Inspector>; N],
+    inspectors: &'db [&'db Box<dyn Inspector>],
 }
 
-impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
+impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
         max_pool_loading_tasks: usize,
@@ -50,7 +50,7 @@ impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
         end_block: u64,
         parser: &'db Parser<'db, T>,
         libmdbx: &'static Libmdbx,
-        inspectors: &'db [&'db Box<dyn Inspector>; N],
+        inspectors: &'db [&'db Box<dyn Inspector>],
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
@@ -115,8 +115,9 @@ impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
         libmdbx: &'db Libmdbx,
     ) -> CollectionFut<'db> {
         Box::pin(async move {
+            let number = header.number;
             let (extra, tree) = classifier.build_block_tree(traces, header).await;
-            MissingDecimals::new(tracer, libmdbx, extra.tokens_decimal_fill).await;
+            MissingDecimals::new(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
 
             (tree, meta)
         })
@@ -157,7 +158,7 @@ impl<'db, T: TracingProvider + Clone, const N: usize> DataBatching<'db, T, N> {
     }
 }
 
-impl<T: TracingProvider + Clone, const N: usize> Future for DataBatching<'_, T, N> {
+impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -290,15 +291,15 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
 }
 
 // takes the composer + db and will process data and insert it into libmdx
-pub struct ResultProcessing<'db, const N: usize> {
+pub struct ResultProcessing<'db> {
     database: &'db Libmdbx,
-    composer: Composer<'db, N>,
+    composer: Composer<'db>,
 }
 
-impl<'db, const N: usize> ResultProcessing<'db, N> {
+impl<'db> ResultProcessing<'db> {
     pub fn new(
         db: &'db Libmdbx,
-        inspectors: &'db [&'db Box<dyn Inspector>; N],
+        inspectors: &'db [&'db Box<dyn Inspector>],
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
@@ -310,7 +311,7 @@ impl<'db, const N: usize> ResultProcessing<'db, N> {
     }
 }
 
-impl<const N: usize> Future for ResultProcessing<'_, N> {
+impl Future for ResultProcessing<'_> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
