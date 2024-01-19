@@ -193,7 +193,7 @@ impl InspectorTestUtils {
         let inspector = self.get_inspector(config.expected_mev_type)?;
 
         let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
-        assert_eq!(results.len(), 1, "got a non zero amount of detected mev");
+        assert_eq!(results.len(), 1, "got a non zero amount of detected mev {:#?}", results);
 
         let (classified_mev, specific) = results.remove(0);
 
