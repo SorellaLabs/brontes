@@ -205,7 +205,7 @@ impl<'a> Composer<'a> {
         let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
 
         if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
-            for (classified, mev_data) in &first_mev_list {
+            for (first_i, (classified, mev_data)) in first_mev_list.iter().enumerate() {
                 let tx_hashes = mev_data.mev_transaction_hashes();
                 let mut to_compose = vec![(classified.clone(), mev_data.clone().into_any())];
                 let mut temp_removal_indices = Vec::new();
@@ -238,8 +238,15 @@ impl<'a> Composer<'a> {
                     for (mev_type, index) in temp_removal_indices {
                         removal_indices.entry(mev_type).or_default().push(index);
                     }
+
+                    removal_indices
+                        .entry(first_mev_type)
+                        .or_default()
+                        .push(first_i)
                 }
             }
+
+            sorted_mev.insert(first_mev_type, first_mev_list);
         }
 
         // Remove the mev data that was composed from the sorted mev list
