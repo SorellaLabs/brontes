@@ -184,7 +184,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_backrun() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
 
         let tx = hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into();
         let config = InspectorTxRunConfig::new(MevType::Backrun)
