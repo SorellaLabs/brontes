@@ -1,168 +1,180 @@
-use alloy_primitives::{Bytes, Log};
+use std::sync::Arc;
+
+use alloy_primitives::Log;
+use alloy_sol_types::SolEvent;
 use brontes_database_libmdbx::{
-    tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, Libmdbx,
+    tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, AddressToFactory,
+    Libmdbx,
 };
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     extra_processing::ExtraProcessing,
-    normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
+    normalized_actions::{Actions, NormalizedAction, NormalizedSwapWithFee, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
+    traits::TracingProvider,
     tree::{BlockTree, GasDetails, Node, Root},
 };
+use futures::future::join_all;
 use hex_literal::hex;
-use itertools::MultiUnzip;
-use malachite::strings::ToLowerHexString;
+use itertools::Itertools;
 use reth_db::transaction::DbTx;
 use reth_primitives::{alloy_primitives::FixedBytes, Address, Header, B256, U256};
-use reth_rpc_types::trace::parity::{Action, Action::Call};
+use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
+use tracing::error;
 
-use crate::{impls::*, ActionCollection, StaticBindings};
+use crate::{classifiers::*, ActionCollection, FactoryDecoderDispatch, StaticBindings};
 
 const TRANSFER_TOPIC: B256 =
     FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 /// goes through and classifies all exchanges as-well as missing data
 #[derive(Debug, Clone)]
-pub struct Classifier<'db> {
-    libmdbx: &'db Libmdbx,
-    sender:  UnboundedSender<DexPriceMsg>,
+pub struct Classifier<'db, T: TracingProvider> {
+    libmdbx:  &'db Libmdbx,
+    provider: Arc<T>,
+    sender:   UnboundedSender<DexPriceMsg>,
 }
 
-impl<'db> Classifier<'db> {
-    pub fn new(libmdbx: &'db Libmdbx, sender: UnboundedSender<DexPriceMsg>) -> Self {
-        Self { libmdbx, sender }
+impl<'db, T: TracingProvider> Classifier<'db, T> {
+    pub fn new(
+        libmdbx: &'db Libmdbx,
+        sender: UnboundedSender<DexPriceMsg>,
+        provider: Arc<T>,
+    ) -> Self {
+        Self { libmdbx, sender, provider }
     }
 
     pub fn close(&self) {
         self.sender.send(DexPriceMsg::Closed).unwrap();
     }
 
-    pub fn build_block_tree(
+    pub async fn build_block_tree(
         &self,
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
-        let (missing_data_requests, further_classification_requests, tx_roots): (
+        // TODO: this needs to be cleaned up this is so ugly
+        let (missing_data_requests, pool_updates, further_classification_requests, tx_roots): (
             Vec<_>,
             Vec<_>,
             Vec<_>,
-        ) = traces
-            .into_iter()
-            .enumerate()
-            .filter_map(|(tx_idx, mut trace)| {
-                if trace.trace.is_empty() || !trace.is_success {
-                    return None
-                }
-
-                let mut missing_decimals = Vec::new();
-                let mut further_classification_requests = Vec::new();
-
-                let root_trace = trace.trace[0].clone();
-                let address = root_trace.get_from_addr();
-
-                let classification =
-                    self.classify_node(header.number, tx_idx as u64, trace.trace.remove(0), 0);
-
-                // Here we are marking more complex actions that require data
-                // that can only be retrieved by classifying it's action and
-                // all subsequent child actions.
-                if classification.continue_classification() {
-                    further_classification_requests.push(classification.get_trace_index());
-                }
-
-                if let Actions::Transfer(transfer) = &classification {
-                    if self.libmdbx.try_get_decimals(transfer.token).is_none() {
-                        missing_decimals.push(transfer.token);
+            Vec<_>,
+        ) = join_all(
+            traces
+                .into_iter()
+                .enumerate()
+                .map(|(tx_idx, mut trace)| async move {
+                    if trace.trace.is_empty() || !trace.is_success {
+                        return None
                     }
-                }
+                    let tx_hash = trace.tx_hash;
 
-                let node = Node {
-                    inner: vec![],
-                    index: 0,
-                    finalized: false,
-                    subactions: vec![],
-                    address,
-                    data: classification.clone(),
-                    trace_address: vec![],
-                };
+                    // post classification processing collectors
+                    let mut missing_decimals = Vec::new();
+                    let mut further_classification_requests = Vec::new();
+                    let mut pool_updates: Vec<DexPriceMsg> = Vec::new();
 
-                let mut tx_root = Root {
-                    position:    tx_idx,
-                    head:        node,
-                    tx_hash:     trace.tx_hash,
-                    private:     false,
-                    gas_details: GasDetails {
-                        coinbase_transfer:   None,
-                        gas_used:            trace.gas_used,
-                        effective_gas_price: trace.effective_price,
-                        priority_fee:        trace.effective_price
-                            - (header.base_fee_per_gas.unwrap() as u128),
-                    },
-                };
+                    let root_trace = trace.trace.remove(0);
+                    let address = root_trace.get_from_addr();
+                    let classification = self
+                        .process_classification(
+                            header.number,
+                            tx_idx as u64,
+                            0,
+                            tx_hash,
+                            root_trace,
+                            &mut missing_decimals,
+                            &mut further_classification_requests,
+                            &mut pool_updates,
+                        )
+                        .await;
 
-                for (index, trace) in trace.trace.into_iter().enumerate() {
-                    if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
-                        *coinbase += self
-                            .get_coinbase_transfer(header.beneficiary, &trace.trace.action)
-                            .unwrap_or_default()
-                    } else {
-                        tx_root.gas_details.coinbase_transfer =
-                            self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
-                    }
+                    let node = Node::new(0, address, classification, vec![]);
 
-                    let from_addr = trace.get_from_addr();
-                    let classification = self.classify_node(
-                        header.number,
-                        tx_idx as u64,
-                        trace.clone(),
-                        (index + 1) as u64,
-                    );
-
-                    if classification.continue_classification() {
-                        further_classification_requests.push(classification.get_trace_index());
-                    }
-
-                    if let Actions::Transfer(transfer) = &classification {
-                        if self.libmdbx.try_get_decimals(transfer.token).is_none() {
-                            missing_decimals.push(transfer.token);
-                        }
-                    }
-
-                    let node = Node {
-                        index:         (index + 1) as u64,
-                        inner:         vec![],
-                        finalized:     false,
-                        subactions:    vec![],
-                        address:       from_addr,
-                        data:          classification,
-                        trace_address: trace.trace.trace_address,
+                    let mut tx_root = Root {
+                        position:    tx_idx,
+                        head:        node,
+                        tx_hash:     trace.tx_hash,
+                        private:     false,
+                        gas_details: GasDetails {
+                            coinbase_transfer:   None,
+                            gas_used:            trace.gas_used,
+                            effective_gas_price: trace.effective_price,
+                            priority_fee:        trace.effective_price
+                                - (header.base_fee_per_gas.unwrap() as u128),
+                        },
                     };
 
-                    tx_root.insert(node);
-                }
-                // Here we reverse the requests to ensure that we always classify the most
-                // nested action & its children first. This is to prevent the
-                // case where we classify a parent action where its children also require
-                // further classification
-                let tx_classification_requests = if !further_classification_requests.is_empty() {
-                    further_classification_requests.reverse();
-                    Some((tx_idx, further_classification_requests))
-                } else {
-                    None
-                };
+                    for (index, trace) in trace.trace.into_iter().enumerate() {
+                        if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
+                            *coinbase += self
+                                .get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                                .unwrap_or_default()
+                        } else {
+                            tx_root.gas_details.coinbase_transfer =
+                                self.get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                        }
 
-                Some((missing_decimals, tx_classification_requests, tx_root))
-            })
-            .multiunzip();
+                        let classification = self
+                            .process_classification(
+                                header.number,
+                                tx_idx as u64,
+                                (index + 1) as u64,
+                                tx_hash,
+                                trace.clone(),
+                                &mut missing_decimals,
+                                &mut further_classification_requests,
+                                &mut pool_updates,
+                            )
+                            .await;
+
+                        let from_addr = trace.get_from_addr();
+
+                        let node = Node::new(
+                            (index + 1) as u64,
+                            from_addr,
+                            classification,
+                            trace.trace.trace_address,
+                        );
+
+                        tx_root.insert(node);
+                    }
+
+                    // Here we reverse the requests to ensure that we always classify the most
+                    // nested action & its children first. This is to prevent the
+                    // case where we classify a parent action where its children also require
+                    // further classification
+                    let tx_classification_requests = if !further_classification_requests.is_empty()
+                    {
+                        further_classification_requests.reverse();
+                        Some((tx_idx, further_classification_requests))
+                    } else {
+                        None
+                    };
+
+                    Some((missing_decimals, pool_updates, tx_classification_requests, tx_root))
+                }),
+        )
+        .await
+        .into_iter()
+        .filter_map(|f| f)
+        .multiunzip();
+
+        // send out all updates
+        pool_updates
+            .into_iter()
+            .flatten()
+            .for_each(|update| self.sender.send(update).unwrap());
 
         let mut tree =
             BlockTree { tx_roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
 
+        self.deal_with_tax_tokens(&mut tree);
         self.remove_swap_transfers(&mut tree);
         self.remove_mint_transfers(&mut tree);
         self.remove_collect_transfers(&mut tree);
+        self.finish_classification(&mut tree, further_classification_requests);
 
         tree.finalize_tree();
 
@@ -179,6 +191,180 @@ impl<'db> Classifier<'db> {
         let processing = ExtraProcessing { tokens_decimal_fill: dec };
 
         (processing, tree)
+    }
+
+    async fn process_classification(
+        &self,
+        block_number: u64,
+        tx_index: u64,
+        trace_index: u64,
+        tx_hash: B256,
+        trace: TransactionTraceWithLogs,
+        missing_decimals: &mut Vec<Address>,
+        further_classification_requests: &mut Vec<u64>,
+        pool_updates: &mut Vec<DexPriceMsg>,
+    ) -> Actions {
+        let (update, classification) = self
+            .classify_node(block_number, tx_index as u64, trace, trace_index, tx_hash)
+            .await;
+
+        // Here we are marking more complex actions that require data
+        // that can only be retrieved by classifying it's action and
+        // all subsequent child actions.
+        if classification.continue_classification() {
+            further_classification_requests.push(classification.get_trace_index());
+        }
+
+        if let Actions::Transfer(transfer) = &classification {
+            if self.libmdbx.try_get_decimals(transfer.token).is_none() {
+                missing_decimals.push(transfer.token);
+            }
+        }
+
+        // if we have a discovered pool, check if its new
+        update.into_iter().for_each(|update| {
+            match update {
+                DexPriceMsg::DiscoveredPool(pool, block) => {
+                    if !self.libmdbx.contains_pool(pool.pool_address) {
+                        self.sender
+                            .send(DexPriceMsg::DiscoveredPool(pool.clone(), block))
+                            .unwrap();
+
+                        if self
+                            .libmdbx
+                            .insert_pool(
+                                block_number,
+                                pool.pool_address,
+                                [pool.tokens[0], pool.tokens[1]],
+                                pool.protocol,
+                            )
+                            .is_err()
+                        {
+                            error!("failed to insert discovered pool into libmdbx");
+                        }
+                    }
+                }
+                rest => {
+                    pool_updates.push(rest);
+                }
+            };
+        });
+
+        classification
+    }
+
+    /// When a tax token takes a fee, They will swap from there token to a more
+    /// stable token like eth before taking the fee. However this causes us
+    /// problems as we will register this fee swap as part of the mev
+    /// messing up our calculations
+    fn deal_with_tax_tokens(&self, tree: &mut BlockTree<Actions>) {
+        // remove swaps that originate from a transfer. This event only occurs
+        // when a tax token is transfered and the taxed amount is swapped into
+        // a more stable currency
+        tree.modify_node_if_contains_childs(
+            |node| {
+                let mut has_transfer = false;
+                let mut has_swap = false;
+
+                for action in &node.get_all_sub_actions() {
+                    if action.is_transfer() {
+                        has_transfer = true;
+                    } else if action.is_swap() {
+                        has_swap = true;
+                    }
+                }
+                (node.data.is_transfer(), has_swap && has_transfer)
+            },
+            |node| {
+                let mut swap_idx = Vec::new();
+                node.collect(
+                    &mut swap_idx,
+                    &|node| {
+                        (
+                            node.data.is_swap(),
+                            node.get_all_sub_actions()
+                                .iter()
+                                .any(|action| action.is_swap()),
+                        )
+                    },
+                    &|node| node.index,
+                );
+
+                swap_idx.into_iter().for_each(|idx| {
+                    node.remove_node_and_children(idx);
+                })
+            },
+        );
+
+        // adjusts the amount in of the swap and notes the fee on the normalized type.
+        // This is needed when swapping into the tax token as the amount out of the swap
+        // will be wrong
+        tree.modify_node_if_contains_childs(
+            |node| {
+                let mut has_transfer = false;
+                let mut has_swap = false;
+                for action in &node.get_all_sub_actions() {
+                    if action.is_transfer() {
+                        has_transfer = true;
+                    } else if action.is_swap() {
+                        has_swap = true;
+                    }
+                }
+                (node.data.is_swap(), has_swap && has_transfer)
+            },
+            |node| {
+                // collect all sub transfers
+                let mut transfers = Vec::new();
+                node.collect(
+                    &mut transfers,
+                    &|node| {
+                        (
+                            node.data.is_transfer(),
+                            node.get_all_sub_actions()
+                                .iter()
+                                .any(|node| node.is_transfer()),
+                        )
+                    },
+                    &|node| node.data.clone(),
+                );
+
+                transfers
+                    .into_iter()
+                    .filter_map(
+                        |transfer| {
+                            if let Actions::Transfer(t) = transfer {
+                                Some(t)
+                            } else {
+                                None
+                            }
+                        },
+                    )
+                    .find_map(|transfer| {
+                        let mut swap = node.data.clone().force_swap();
+                        // if the swap matches the transfer but the transfer is a less amount of
+                        // tokens than the swap says
+                        if swap.token_out == transfer.token
+                            && swap.pool == transfer.from
+                            && swap.recipient == transfer.token
+                            && swap.amount_out > transfer.amount
+                        {
+                            let fee_amount = swap.amount_out - transfer.amount;
+                            swap.amount_out = transfer.amount;
+
+                            let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
+                                swap,
+                                fee_amount,
+                                fee_token: transfer.token,
+                            });
+                            node.data = swap;
+
+                            return Some(())
+                        }
+
+                        None
+                    });
+            },
+        )
     }
 
     fn remove_swap_transfers(&self, tree: &mut BlockTree<Actions>) {
@@ -306,19 +492,20 @@ impl<'db> Classifier<'db> {
         }
     }
 
-    fn classify_node(
+    async fn classify_node(
         &self,
         block: u64,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
-    ) -> Actions {
+        tx_hash: B256,
+    ) -> (Vec<DexPriceMsg>, Actions) {
         // we don't classify static calls
         if trace.is_static_call() {
-            return Actions::Unclassified(trace)
+            return (vec![], Actions::Unclassified(trace))
         }
         if trace.trace.error.is_some() {
-            return Actions::Revert
+            return (vec![], Actions::Revert)
         }
 
         let from_address = trace.get_from_addr();
@@ -354,7 +541,6 @@ impl<'db> Classifier<'db> {
                         target_address,
                         &trace.logs,
                         &db_tx,
-                        self.sender.clone(),
                         block,
                         tx_idx,
                     )
@@ -363,42 +549,72 @@ impl<'db> Classifier<'db> {
                 .flatten();
 
             if let Some(res) = res {
-                return res
-            } else {
-                let selector = match &trace.trace.action {
-                    Call(action) => &action.input[0..4],
-                    _ => unreachable!(),
-                };
-
-                let hex_selector: Bytes = Bytes::copy_from_slice(selector);
-
-                tracing::warn!(
-                    "Classification failed on contract address: {:?}, with function selector: {:?}",
-                    target_address.0,
-                    hex_selector.to_lower_hex_string()
-                );
+                return (vec![DexPriceMsg::Update(res.0)], res.1)
             }
         }
 
-        // if there is more than one transfer then it is strictly not a transfer and we
-        // don't want to classify it
-        if trace.logs.len() == 1 {
-            if let Some((addr, from, to, value)) = self.decode_transfer(&trace.logs[0]) {
-                return Actions::Transfer(NormalizedTransfer {
-                    trace_index,
-                    to,
-                    from,
-                    token: addr,
-                    amount: value,
-                })
+        if let Some(protocol) = db_tx.get::<AddressToFactory>(target_address).unwrap() {
+            let discovered_pools = match protocol {
+                StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
+                    UniswapDecoder::dispatch(
+                        crate::UniswapV2Factory::PairCreated::SIGNATURE_HASH.0,
+                        self.provider.clone(),
+                        protocol,
+                        &trace.logs,
+                        block,
+                        tx_hash,
+                    )
+                    .await
+                }
+                StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
+                    UniswapDecoder::dispatch(
+                        crate::UniswapV3Factory::PoolCreated::SIGNATURE_HASH.0,
+                        self.provider.clone(),
+                        protocol,
+                        &trace.logs,
+                        block,
+                        tx_hash,
+                    )
+                    .await
+                }
+                _ => {
+                    vec![]
+                }
+            }
+            .into_iter()
+            .map(|data| DexPriceMsg::DiscoveredPool(data, block))
+            .collect_vec();
+
+            // TODO: do we want to make a normalized pool deploy?
+            return (discovered_pools, Actions::Unclassified(trace))
+        }
+
+        if trace.logs.len() > 0 {
+            // A transfer should always be in its own call trace and have 1 log.
+            // if forever reason there is a case with multiple logs, we take the first
+            // transfer
+            for log in &trace.logs {
+                if let Some((addr, from, to, value)) = self.decode_transfer(log) {
+                    return (
+                        vec![],
+                        Actions::Transfer(NormalizedTransfer {
+                            trace_index,
+                            to,
+                            from,
+                            token: addr,
+                            amount: value,
+                        }),
+                    )
+                }
             }
         }
 
-        Actions::Unclassified(trace)
+        (vec![], Actions::Unclassified(trace))
     }
 
     /// This function is used to finalize the classification of complex actions
-    /// that contain nested sub-actions.
+    /// that contain nested sub-actions that are required to finalize the higher
+    /// level classification (e.g: flashloan actions)
     fn finish_classification(
         &self,
         tree: &mut BlockTree<Actions>,

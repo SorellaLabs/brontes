@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{hex, B256};
 use brontes_database::{Metadata, Pair};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -12,14 +11,11 @@ use brontes_types::{
     ToScaledRational,
 };
 use malachite::{
-    num::{
-        basic::traits::{One, Zero},
-        conversion::{string::options::ToSciOptions, traits::ToSci},
-    },
+    num::basic::traits::{One, Zero},
     Rational,
 };
 use reth_primitives::Address;
-use tracing::{info, log::debug};
+use tracing::error;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {
@@ -52,11 +48,11 @@ impl SharedInspectorUtils<'_> {
             // properly.
             if let Actions::Swap(swap) = action {
                 let Some(decimals_in) = self.db.try_get_decimals(swap.token_in) else {
-                    debug!("token decimals not found");
+                    error!("token decimals not found");
                     continue;
                 };
                 let Some(decimals_out) = self.db.try_get_decimals(swap.token_out) else {
-                    debug!("token decimals not found");
+                    error!("token decimals not found");
                     continue;
                 };
 
@@ -153,7 +149,7 @@ impl SharedInspectorUtils<'_> {
         for transfer in transfers.into_iter() {
             // normalize token decimals
             let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
-                debug!("token decimals not found");
+                error!("token decimals not found");
                 continue;
             };
             let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
@@ -167,7 +163,6 @@ impl SharedInspectorUtils<'_> {
                 // add to transfer recipient
                 let mut inner = deltas.entry(transfer.to).or_default();
                 apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-                continue
             }
 
             // fill backwards

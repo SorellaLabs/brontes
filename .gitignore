@@ -57,3 +57,4 @@ crates/brontes-inspect/abis/**.json
 data/db/*
 abi-builds/dex_price_map.rs
 abi-builds/protocol_addr_set.rs
+.vscode/settings.json

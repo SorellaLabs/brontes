@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     pin::Pin,
     sync::Arc,
     task::Poll,
@@ -12,6 +12,7 @@ use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     Future, Stream, StreamExt,
 };
+use tokio::task::JoinHandle;
 use tracing::{error, info};
 
 use crate::{
@@ -19,7 +20,7 @@ use crate::{
     uniswap_v3::UniswapV3Pool, PoolUpdate,
 };
 
-type PoolFetchError = (Address, StaticBindingsDb, u64, AmmError);
+type PoolFetchError = (Address, StaticBindingsDb, u64, Pair, AmmError);
 type PoolFetchSuccess = (u64, Address, PoolState, LoadResult);
 
 pub enum LoadResult {
@@ -29,7 +30,11 @@ pub enum LoadResult {
     /// to the pricing engine so that we don't apply any state transitions
     /// for this block as it will cause incorrect data
     PoolInitOnBlock,
-    Err,
+    Err {
+        pool_address: Address,
+        pool_pair:    Pair,
+        block:        u64,
+    },
 }
 impl LoadResult {
     pub fn is_ok(&self) -> bool {
@@ -43,24 +48,37 @@ pub struct LazyResult {
     pub load_result: LoadResult,
 }
 
+type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
+    max_tasks:         usize,
     provider:          Arc<T>,
-    pool_load_futures: FuturesOrdered<BoxFuture<'static, Result<PoolFetchSuccess, PoolFetchError>>>,
+    pool_load_futures: FuturesOrdered<JoinHandle<Result<PoolFetchSuccess, PoolFetchError>>>,
+
+    buf: VecDeque<Pin<Box<dyn Future<Output = Result<PoolFetchSuccess, PoolFetchError>> + Send>>>,
     /// addresses currently being processed.
-    pool_buf:          HashSet<Address>,
+    pool_buf: HashSet<Address>,
     /// requests we are processing for a given block.
-    req_per_block:     HashMap<u64, u64>,
+    req_per_block: HashMap<u64, u64>,
+    /// All current request addresses to subgraph pair that requested the
+    /// loading. in the case that a pool fails to load, we need all subgraph
+    /// pairs that are dependent on the node in order to remove it from the
+    /// subgraph and possibly reconstruct it.
+    protocol_address_to_parent_pairs: HashMap<Address, Vec<Pair>>,
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
-    pub fn new(provider: Arc<T>) -> Self {
+    pub fn new(provider: Arc<T>, max_tasks: usize) -> Self {
         Self {
+            max_tasks,
             pool_buf: HashSet::default(),
             pool_load_futures: FuturesOrdered::default(),
+            buf: VecDeque::new(),
             provider,
             req_per_block: HashMap::default(),
+            protocol_address_to_parent_pairs: HashMap::default(),
         }
     }
 
@@ -68,8 +86,23 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.req_per_block.get(block).copied().unwrap_or(0)
     }
 
+    pub fn add_protocol_parent(&mut self, address: Address, parent_pair: Pair) {
+        self.protocol_address_to_parent_pairs
+            .entry(address)
+            .or_insert(vec![])
+            .push(parent_pair);
+    }
+
+    pub fn remove_protocol_parents(&mut self, address: &Address) -> Vec<Pair> {
+        self.protocol_address_to_parent_pairs
+            .remove(address)
+            .unwrap_or(vec![])
+    }
+
     pub fn lazy_load_exchange(
         &mut self,
+        parent_pair: Pair,
+        pool_pair: Pair,
         address: Address,
         block_number: u64,
         ex_type: StaticBindingsDb,
@@ -77,10 +110,11 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         let provider = self.provider.clone();
         *self.req_per_block.entry(block_number).or_default() += 1;
         self.pool_buf.insert(address);
+        self.add_protocol_parent(address, parent_pair);
 
         match ex_type {
             StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
-                self.pool_load_futures.push_back(Box::pin(async move {
+                let fut = Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let (pool, res) = if let Ok(pool) = UniswapV2Pool::new_load_on_block(
@@ -96,7 +130,13 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                             UniswapV2Pool::new_load_on_block(address, provider, block_number)
                                 .await
                                 .map_err(|e| {
-                                    (address, StaticBindingsDb::UniswapV2, block_number, e)
+                                    (
+                                        address,
+                                        StaticBindingsDb::UniswapV2,
+                                        block_number,
+                                        pool_pair,
+                                        e,
+                                    )
                                 })?,
                             LoadResult::PoolInitOnBlock,
                         )
@@ -108,10 +148,16 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                         PoolState::new(crate::types::PoolVariants::UniswapV2(pool)),
                         res,
                     ))
-                }))
+                });
+
+                if self.pool_load_futures.len() >= self.max_tasks {
+                    self.buf.push_back(fut);
+                } else {
+                    self.pool_load_futures.push_back(tokio::spawn(fut));
+                }
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
-                self.pool_load_futures.push_back(Box::pin(async move {
+                let fut = Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
                     let (pool, res) = if let Ok(pool) =
@@ -124,7 +170,13 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                             UniswapV3Pool::new_from_address(address, block_number, provider)
                                 .await
                                 .map_err(|e| {
-                                    (address, StaticBindingsDb::UniswapV3, block_number, e)
+                                    (
+                                        address,
+                                        StaticBindingsDb::UniswapV3,
+                                        block_number,
+                                        pool_pair,
+                                        e,
+                                    )
                                 })?,
                             LoadResult::PoolInitOnBlock,
                         )
@@ -136,7 +188,13 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                         PoolState::new(crate::types::PoolVariants::UniswapV3(pool)),
                         res,
                     ))
-                }));
+                });
+
+                if self.pool_load_futures.len() >= self.max_tasks {
+                    self.buf.push_back(fut);
+                } else {
+                    self.pool_load_futures.push_back(tokio::spawn(fut));
+                }
             }
             rest => {
                 error!(exchange=?ex_type, "no state updater is build for");
@@ -161,26 +219,36 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Poll::Ready(Some((result))) = self.pool_load_futures.poll_next_unpin(cx) {
+            if let Some(next) = self.buf.pop_front() {
+                self.pool_load_futures.push_back(tokio::spawn(next));
+            }
+
             match result {
-                Ok((block, addr, state, load)) => {
+                Ok(Ok((block, addr, state, load))) => {
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
+                    self.remove_protocol_parents(&addr);
 
                     self.pool_buf.remove(&addr);
                     let res = LazyResult { block, state: Some(state), load_result: load };
                     Poll::Ready(Some(res))
                 }
-                Err((address, dex, block, e)) => {
-                    error!(?address, %e,"failed to load pool, most likely pool never had state");
+                Ok(Err((pool_address, dex, block, pool_pair, e))) => {
+                    error!(?pool_address, %e,"failed to load pool, most likely pool never had state");
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
 
-                    self.pool_buf.remove(&address);
-                    let res = LazyResult { state: None, block, load_result: LoadResult::Err };
+                    self.pool_buf.remove(&pool_address);
+                    let res = LazyResult {
+                        state: None,
+                        block,
+                        load_result: LoadResult::Err { pool_pair, block, pool_address },
+                    };
                     Poll::Ready(Some(res))
                 }
+                _ => Poll::Pending,
             }
         } else {
             Poll::Pending

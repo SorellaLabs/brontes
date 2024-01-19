@@ -1,9 +1,16 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+};
 
 use alloy_primitives::Log;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::clickhouse::{self, InsertRow, Row};
+use sorella_db_databases::{
+    clickhouse,
+    clickhouse::{DbRow, InsertRow, Row},
+};
 
 use crate::structured_trace::TransactionTraceWithLogs;
 
@@ -11,6 +18,7 @@ use crate::structured_trace::TransactionTraceWithLogs;
 #[derive(Debug, Clone, Deserialize)]
 pub enum Actions {
     Swap(NormalizedSwap),
+    SwapWithFee(NormalizedSwapWithFee),
     FlashLoan(NormalizedFlashLoan),
     Batch(NormalizedBatch),
     Transfer(NormalizedTransfer),
@@ -26,6 +34,7 @@ impl InsertRow for Actions {
     fn get_column_names(&self) -> &'static [&'static str] {
         match self {
             Actions::Swap(_) => NormalizedSwap::COLUMN_NAMES,
+            Actions::SwapWithFee(_) => NormalizedSwapWithFee::COLUMN_NAMES,
             Actions::FlashLoan(_) => NormalizedFlashLoan::COLUMN_NAMES,
             Actions::Batch(_) => NormalizedBatch::COLUMN_NAMES,
             Actions::Transfer(_) => NormalizedTransfer::COLUMN_NAMES,
@@ -62,6 +71,7 @@ impl Actions {
     pub fn force_swap(self) -> NormalizedSwap {
         match self {
             Actions::Swap(s) => s,
+            Actions::SwapWithFee(s) => s.swap,
             _ => unreachable!(),
         }
     }
@@ -69,6 +79,15 @@ impl Actions {
     pub fn force_swap_ref(&self) -> &NormalizedSwap {
         match self {
             Actions::Swap(s) => s,
+            Actions::SwapWithFee(s) => s,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn force_swap_mut(&mut self) -> &mut NormalizedSwap {
+        match self {
+            Actions::Swap(s) => s,
+            Actions::SwapWithFee(s) => s,
             _ => unreachable!(),
         }
     }
@@ -83,6 +102,7 @@ impl Actions {
     pub fn get_to_address(&self) -> Address {
         match self {
             Actions::Swap(s) => s.pool,
+            Actions::SwapWithFee(s) => s.pool,
             Actions::FlashLoan(f) => f.pool,
             Actions::Batch(b) => b.settlement_contract,
             Actions::Mint(m) => m.to,
@@ -96,13 +116,12 @@ impl Actions {
                 reth_rpc_types::trace::parity::Action::Reward(_) => Address::ZERO,
                 reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address,
             },
-
             _ => unreachable!(),
         }
     }
 
     pub fn is_swap(&self) -> bool {
-        matches!(self, Actions::Swap(_))
+        matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
     }
 
     pub fn is_flash_loan(&self) -> bool {
@@ -138,18 +157,107 @@ impl Actions {
     }
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Serialize, Clone, Row, Deserialize)]
 pub struct NormalizedFlashLoan {
-    pub trace_index: u64,
-    pub from:        Address,
-    pub pool:        Address,
-    pub assets:      Vec<Address>,
-    pub amounts:     Vec<U256>,
+    pub trace_index:       u64,
+    pub from:              Address,
+    pub pool:              Address,
+    pub receiver_contract: Address,
+    pub assets:            Vec<Address>,
+    pub amounts:           Vec<U256>,
+    // Special case for Aave flashloan modes, see:
+    // https://docs.aave.com/developers/guides/flash-loans#completing-the-flash-loan
+    pub aave_mode:         Option<(Vec<U256>, Address)>,
+
+    // Child actions contained within this flashloan in order of execution
+    // They can be:
+    //  - Swaps
+    //  - Liquidations
+    //  - Mints
+    //  - Burns
+    //  - Transfers
+    pub child_actions: Vec<Actions>,
+    pub repayments:    Vec<NormalizedTransfer>,
+    pub fees_paid:     Vec<U256>,
 }
 
 impl NormalizedFlashLoan {
-    pub fn finalize_classification(&mut self, actions: Vec<(u64, Actions)>) {
-        todo!()
+    pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
+        let mut nodes_to_prune = Vec::new();
+        let mut a_token_addresses = Vec::new();
+        let mut repay_tranfers = Vec::new();
+
+        for (index, action) in actions.into_iter() {
+            match &action {
+                // Use a reference to `action` here
+                Actions::Swap(_)
+                | Actions::FlashLoan(_)
+                | Actions::Liquidation(_)
+                | Actions::Batch(_)
+                | Actions::Burn(_)
+                | Actions::Mint(_) => {
+                    self.child_actions.push(action);
+                    nodes_to_prune.push(index);
+                }
+                Actions::Transfer(t) => {
+                    // get the a_token reserve address that will be the receiver of the flashloan
+                    // repayment for this token
+                    if let Some(i) = self.assets.iter().position(|&x| x == t.token) {
+                        if t.to == self.receiver_contract && t.amount == self.amounts[i] {
+                            a_token_addresses.push(t.token);
+                        }
+                    }
+                    // if the receiver contract is sending the token to the AToken address then this
+                    // is the flashloan repayement
+                    else if t.from == self.receiver_contract && a_token_addresses.contains(&t.to)
+                    {
+                        repay_tranfers.push(t.clone());
+                        nodes_to_prune.push(index);
+                    } else {
+                        self.child_actions.push(action);
+                        nodes_to_prune.push(index);
+                    }
+                }
+                _ => continue,
+            }
+        }
+        let mut fees = Vec::new();
+
+        //TODO: deal with diff aave modes, where part of the flashloan is taken on as
+        // debt by the OnBehalfOf address
+        for (i, amount) in self.amounts.iter().enumerate() {
+            let repay_amount = repay_tranfers
+                .iter()
+                .find(|t| t.token == self.assets[i])
+                .map_or(U256::ZERO, |t| t.amount);
+            let fee = repay_amount - amount;
+            fees.push(fee);
+        }
+
+        self.fees_paid = fees;
+        self.repayments = repay_tranfers;
+
+        nodes_to_prune
+    }
+}
+
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+pub struct NormalizedSwapWithFee {
+    pub swap:       NormalizedSwap,
+    pub fee_token:  Address,
+    pub fee_amount: U256,
+}
+
+impl Deref for NormalizedSwapWithFee {
+    type Target = NormalizedSwap;
+
+    fn deref(&self) -> &Self::Target {
+        &self.swap
+    }
+}
+impl DerefMut for NormalizedSwapWithFee {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.swap
     }
 }
 
@@ -184,7 +292,7 @@ pub struct NormalizedTransfer {
     pub amount:      U256,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedMint {
     pub trace_index: u64,
     pub from:        Address,
@@ -194,7 +302,7 @@ pub struct NormalizedMint {
     pub amount:      Vec<U256>,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBurn {
     pub trace_index: u64,
     pub from:        Address,
@@ -204,7 +312,7 @@ pub struct NormalizedBurn {
     pub amount:      Vec<U256>,
 }
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedCollect {
     pub trace_index: u64,
     pub to:          Address,
@@ -249,7 +357,7 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn continue_classification(&self) -> bool;
     fn get_trace_index(&self) -> u64;
     fn continued_classification_types(&self) -> Box<dyn Fn(&Self) -> bool + Send + Sync>;
-    fn finalize_classification(&mut self, actions: Vec<(u64, Self)>);
+    fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) -> Vec<u64>;
 }
 
 impl NormalizedAction for Actions {
@@ -260,6 +368,7 @@ impl NormalizedAction for Actions {
     fn continue_classification(&self) -> bool {
         match self {
             Self::Swap(_) => false,
+            Self::SwapWithFee(_) => false,
             Self::FlashLoan(_) => true,
             Self::Batch(_) => true,
             Self::Mint(_) => false,
@@ -269,13 +378,13 @@ impl NormalizedAction for Actions {
             Self::Collect(_) => false,
             Self::Unclassified(_) => false,
             Self::Revert => false,
-            _ => unreachable!(),
         }
     }
 
     fn continued_classification_types(&self) -> Box<dyn Fn(&Self) -> bool + Send + Sync> {
         match self {
             Actions::Swap(_) => unreachable!(),
+            Actions::SwapWithFee(_) => unreachable!(),
             Actions::FlashLoan(_) => Box::new(|action: &Actions| {
                 action.is_liquidation()
                     | action.is_batch()
@@ -295,13 +404,14 @@ impl NormalizedAction for Actions {
             }
             Actions::Collect(_) => unreachable!(),
             Actions::Unclassified(_) => unreachable!(),
-            _ => unreachable!(),
+            Actions::Revert => unreachable!(),
         }
     }
 
     fn get_trace_index(&self) -> u64 {
         match self {
             Self::Swap(s) => s.trace_index,
+            Self::SwapWithFee(s) => s.trace_index,
             Self::FlashLoan(f) => f.trace_index,
             Self::Batch(b) => b.trace_index,
             Self::Mint(m) => m.trace_index,
@@ -310,24 +420,27 @@ impl NormalizedAction for Actions {
             Self::Liquidation(t) => t.trace_index,
             Self::Collect(c) => c.trace_index,
             Self::Unclassified(u) => u.trace_idx,
-            _ => unreachable!(),
+            Self::Revert => unreachable!(),
         }
     }
 
-    fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) {
+    fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) -> Vec<u64> {
         match self {
-            Self::Swap(s) => unreachable!("Swap type never requires complex classification"),
-            Self::FlashLoan(f) => f.finalize_classification(actions),
-            Self::Batch(b) => todo!(),
-            Self::Mint(m) => unreachable!(),
-            Self::Burn(b) => unreachable!(),
-            Self::Transfer(t) => unreachable!(),
-            Self::Liquidation(t) => todo!(),
-            Self::Collect(c) => unreachable!("Collect type never requires complex classification"),
-            Self::Unclassified(u) => {
+            Self::Swap(_) => unreachable!("Swap type never requires complex classification"),
+            Self::SwapWithFee(_) => {
+                unreachable!("Swap With fee never requires complex classification")
+            }
+            Self::FlashLoan(f) => f.finish_classification(actions),
+            Self::Batch(_) => todo!(),
+            Self::Mint(_) => unreachable!(),
+            Self::Burn(_) => unreachable!(),
+            Self::Transfer(_) => unreachable!(),
+            Self::Liquidation(_) => todo!(),
+            Self::Collect(_) => unreachable!("Collect type never requires complex classification"),
+            Self::Unclassified(_) => {
                 unreachable!("Unclassified type never requires complex classification")
             }
-            _ => unreachable!(),
+            Self::Revert => unreachable!("a revert should never require complex classification"),
         }
     }
 }

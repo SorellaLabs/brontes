@@ -1,3 +1,32 @@
+//TODO: (Ludwig) Finish this once all other crates have been documented.
+
+//! # Brontes
+//!
+//! This is the main binary crate for the Brontes project. It uses several other
+//! crates in the workspace, which are documented separately:
+//!
+//! - [brontes-core](../brontes_core/index.html): Tracing for the Brontes
+//!   project.
+//! - [brontes-inspect](../brontes_inspect/index.html): Mev Inspectors for MEV
+//!   detection.
+//! - [brontes-types](../brontes_types/index.html): Defines the main types used
+//!   across Brontes.
+//! - [brontes-classifier](../brontes_classifier/index.html): Contains the
+//!   classifier logic pertaining to transaction trace classification &
+//!   normalization.
+//! - [brontes-metrics](../brontes_metrics/index.html): Handles metrics
+//!   collection and reporting.
+//! - [brontes-pricing](../brontes_pricing/index.html): Handles DEX pricing
+//! - [brontes-database](../brontes_database/index.html): Handles database
+//!   related functionalities.
+//! - [brontes-database-libmdbx](../brontes_database_libmdbx/index.html):
+//!   Provides libmdbx database functionalities for our local libmdbx database.
+//! - [reth-tracing-ext](../reth_tracing_ext/index.html): Provides extended
+//!   tracing capabilities to match transaction traces to their corresponding
+//!   logs.
+//!
+//! Please refer to the individual crate documentation for more details.
+
 use std::{
     pin::Pin,
     task::{Context, Poll},
@@ -13,6 +42,7 @@ use tracing::info;
 
 mod banner;
 mod block_inspector;
+#[allow(unused_imports)]
 mod tip_inspector;
 
 mod data_batching;
@@ -35,7 +65,7 @@ pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     mode:             Mode,
     max_tasks:        u64,
     parser:           &'inspector Parser<'inspector, T>,
-    classifier:       &'inspector Classifier<'inspector>,
+    classifier:       &'inspector Classifier<'inspector, T>,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
     clickhouse:       &'inspector Clickhouse,
     database:         &'inspector Libmdbx,
@@ -52,7 +82,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         parser: &'inspector Parser<'inspector, T>,
         clickhouse: &'inspector Clickhouse,
         database: &'inspector Libmdbx,
-        classifier: &'inspector Classifier,
+        classifier: &'inspector Classifier<'_, T>,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
     ) -> Self {
         let mut brontes = Self {
@@ -154,6 +184,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
 impl<const N: usize, T: TracingProvider> Future for Brontes<'_, N, T> {
     type Output = ();
 
+    //TODO: Fix this comment
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // This loop drives the entire state of network and does a lot of work.
         // Under heavy load (many messages/events), data may arrive faster than it can

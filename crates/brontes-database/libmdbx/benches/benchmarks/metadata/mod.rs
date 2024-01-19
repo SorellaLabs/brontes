@@ -15,7 +15,7 @@ use brontes_database_libmdbx::types::utils::{option_address, u256};
 use parquet::data_type::AsBytes;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
-use sorella_db_databases::{clickhouse, Row};
+use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::{
     libmdbx_impl::LibmdbxBench,
