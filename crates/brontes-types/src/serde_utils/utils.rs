@@ -21,6 +21,7 @@ pub mod vec_u256 {
         Ok(u.into_iter().map(U256::from_le_bytes).collect())
     }
 }
+#[allow(dead_code)]
 pub(crate) mod vec_vec_u256 {
 
     use alloy_primitives::U256;
@@ -78,6 +79,7 @@ pub(crate) mod vec_fixed_string {
             .map_err(serde::de::Error::custom)
     }
 }
+#[allow(dead_code)]
 pub(crate) mod vec_vec_fixed_string {
 
     use std::str::FromStr;
@@ -122,7 +124,7 @@ pub(crate) mod vec_vec_fixed_string {
             .map_err(serde::de::Error::custom)
     }
 }
-
+#[allow(dead_code)]
 pub(crate) mod vec_b256 {
     use std::str::FromStr;
 
