@@ -47,7 +47,6 @@ use brontes_types::{
 };
 use composer_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
 use futures::FutureExt;
-use tracing::info;
 use utils::{
     build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
     BlockPreprocessing,
@@ -60,15 +59,15 @@ type InspectorFut<'a> =
 
 pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
 
-pub struct Composer<'a, const N: usize> {
+pub struct Composer<'a> {
     inspectors_execution: InspectorFut<'a>,
     pre_processing:       BlockPreprocessing,
     metadata:             Arc<Metadata>,
 }
 
-impl<'a, const N: usize> Composer<'a, N> {
+impl<'a> Composer<'a> {
     pub fn new(
-        orchestra: &'a [&'a Box<dyn Inspector>; N],
+        orchestra: &'a [&'a Box<dyn Inspector>],
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
@@ -105,7 +104,6 @@ impl<'a, const N: usize> Composer<'a, N> {
         &mut self,
         orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
     ) -> Poll<ComposerResults> {
-        info!("starting to compose classified mev");
         let mut header =
             build_mev_header(self.metadata.clone(), &self.pre_processing, &orchestra_data);
 
@@ -207,9 +205,9 @@ impl<'a, const N: usize> Composer<'a, N> {
         let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
 
         if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
-            for (classified, mev_data) in first_mev_list {
+            for (first_i, (classified, mev_data)) in first_mev_list.iter().enumerate() {
                 let tx_hashes = mev_data.mev_transaction_hashes();
-                let mut to_compose = vec![(classified, mev_data.into_any())];
+                let mut to_compose = vec![(classified.clone(), mev_data.clone().into_any())];
                 let mut temp_removal_indices = Vec::new();
 
                 for &other_mev_type in child_mev_type.iter().skip(1) {
@@ -218,6 +216,7 @@ impl<'a, const N: usize> Composer<'a, N> {
                             Some(index) => {
                                 let (other_classified, other_mev_data) =
                                     &other_mev_data_list[index];
+
                                 to_compose.push((
                                     other_classified.clone(),
                                     other_mev_data.clone().into_any(),
@@ -227,7 +226,7 @@ impl<'a, const N: usize> Composer<'a, N> {
                             None => break,
                         }
                     } else {
-                        break;
+                        break
                     }
                 }
 
@@ -239,8 +238,15 @@ impl<'a, const N: usize> Composer<'a, N> {
                     for (mev_type, index) in temp_removal_indices {
                         removal_indices.entry(mev_type).or_default().push(index);
                     }
+
+                    removal_indices
+                        .entry(first_mev_type)
+                        .or_default()
+                        .push(first_i)
                 }
             }
+
+            sorted_mev.insert(first_mev_type, first_mev_list);
         }
 
         // Remove the mev data that was composed from the sorted mev list
@@ -254,7 +260,7 @@ impl<'a, const N: usize> Composer<'a, N> {
     }
 }
 
-impl<const N: usize> Future for Composer<'_, N> {
+impl Future for Composer<'_> {
     type Output = ComposerResults;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -262,5 +268,39 @@ impl<const N: usize> Future for Composer<'_, N> {
             return self.on_orchestra_resolution(calculation)
         }
         Poll::Pending
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use alloy_primitives::hex;
+    use brontes_types::classified_mev::JitLiquiditySandwich;
+    use serial_test::serial;
+
+    use super::*;
+    use crate::test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS};
+
+    #[tokio::test]
+    #[serial]
+    pub async fn test_jit_sandwich() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2);
+
+        let config =
+            ComposerRunConfig::new(vec![MevType::Sandwich, MevType::Jit], MevType::JitSandwich)
+                .with_dex_prices()
+                .with_expected_gas_used(90.875025)
+                .with_expected_profit_usd(13.568977)
+                .with_mev_tx_hashes(vec![
+                    hex!("22ea36d516f59cc90ccc01042e20f8fba196f32b067a7e5f1510099140ae5e0a").into(),
+                    hex!("72eb3269ac013cf663dde9aa11cc3295e0dfb50c7edfcf074c5c57b43611439c").into(),
+                    hex!("3b4138bac9dc9fa4e39d8d14c6ecd7ec0144fe26b120ea799317aa15fa35ddcd").into(),
+                    hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
+                    hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
+                ]);
+
+        inspector_util
+            .run_composer::<JitLiquiditySandwich>(config, None)
+            .await
+            .unwrap();
     }
 }

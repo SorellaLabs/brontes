@@ -14,7 +14,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_codecs::derive_arbitrary;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
-use tracing::warn;
+use tracing::{error, warn};
 
 use crate::{
     errors::ArithmeticError, graphs::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool,
@@ -26,7 +26,12 @@ impl DexQuotes {
         if pair.0 == pair.1 {
             return Some(Rational::from(1))
         }
-        self.get_price(pair, tx).cloned()
+        let price = self.get_price(pair, tx).cloned();
+        if price.is_none() {
+            error!(?pair, "no price for pair");
+        }
+
+        price
     }
 }
 

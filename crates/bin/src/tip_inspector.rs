@@ -6,7 +6,10 @@ use std::{
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
+use brontes_core::{
+    decoding::{Parser, TracingProvider},
+    missing_decimals::MissingDecimals,
+};
 use brontes_database::{clickhouse::Clickhouse, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{
@@ -25,14 +28,14 @@ use tracing::{debug, error, info};
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (MetadataDB, BlockTree<Actions>)> + Send + 'a>>;
 
-pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
+pub struct TipInspector<'inspector, T: TracingProvider> {
     current_block: u64,
 
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier<'inspector, T>,
     clickhouse:        &'inspector Clickhouse,
     database:          &'inspector Libmdbx,
-    inspectors:        &'inspector [&'inspector Box<dyn Inspector>; N],
+    inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
     // pending future data
     classifier_future: FuturesOrdered<CollectionFut<'inspector>>,
 
@@ -42,13 +45,13 @@ pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
     insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
-impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N, T> {
+impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
     pub fn new(
         parser: &'inspector Parser<'inspector, T>,
         clickhouse: &'inspector Clickhouse,
         database: &'inspector Libmdbx,
         classifier: &'inspector Classifier<'_, T>,
-        inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
+        inspectors: &'inspector [&'inspector Box<dyn Inspector>],
         current_block: u64,
     ) -> Self {
         Self {
@@ -72,7 +75,16 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (_extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
+            let block = header.number;
+            let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
+
+            MissingDecimals::new(
+                self.parser.get_tracer(),
+                self.database,
+                block,
+                extra_data.tokens_decimal_fill,
+            )
+            .await;
 
             let meta = labeller_fut.await;
 
@@ -139,7 +151,7 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
     }
 }
 
-impl<const N: usize, T: TracingProvider> Future for TipInspector<'_, N, T> {
+impl<T: TracingProvider> Future for TipInspector<'_, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
