@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
-use reth_codecs::derive_arbitrary;
 use reth_db::table::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
