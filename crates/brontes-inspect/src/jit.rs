@@ -162,7 +162,7 @@ impl JitInspector<'_> {
         let jit_fee = self.get_collect_amount(idxs[1], fee_collect, metadata.clone());
 
         let mint = self.get_total_pricing(
-            idxs[0],
+            idxs[1],
             mints.iter().map(|mint| (&mint.token, &mint.amount)),
             metadata.clone(),
         );
@@ -374,7 +374,7 @@ mod tests {
             .with_dex_prices()
             .with_block(18539312)
             .with_expected_gas_used(90.875025)
-            .with_expected_profit_usd(-53.274407516);
+            .with_expected_profit_usd(-15.1381);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
