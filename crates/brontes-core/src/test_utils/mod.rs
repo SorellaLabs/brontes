@@ -1,3 +1,5 @@
+mod test_loader;
+
 use std::{
     env,
     path::{Path, PathBuf},
@@ -17,6 +19,7 @@ use reth_rpc_types::{
 use reth_tracing_ext::TracingClient;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+pub use test_loader::*;
 use tokio::{
     runtime::Handle,
     sync::mpsc::{unbounded_channel, UnboundedSender},
