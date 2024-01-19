@@ -9,12 +9,20 @@ pub trait TraceActions {
     fn get_calldata(&self) -> Bytes;
     fn get_return_calldata(&self) -> Bytes;
     fn is_static_call(&self) -> bool;
+    fn is_delegate_call(&self) -> bool;
 }
 
 impl TraceActions for TransactionTraceWithLogs {
     fn is_static_call(&self) -> bool {
         match &self.trace.action {
             Action::Call(call) => call.call_type == CallType::StaticCall,
+            _ => false,
+        }
+    }
+
+    fn is_delegate_call(&self) -> bool {
+        match &self.trace.action {
+            Action::Call(c) => c.call_type == CallType::DelegateCall,
             _ => false,
         }
     }
