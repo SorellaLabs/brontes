@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     sync::Arc,
 };
 
@@ -20,7 +20,7 @@ use crate::{
     SpecificMev,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 struct PossibleJit {
     pub eoa:                   Address,
     pub frontrun_tx:           B256,
@@ -216,7 +216,7 @@ impl JitInspector<'_> {
             return vec![]
         }
 
-        let mut set: Vec<PossibleJit> = Vec::new();
+        let mut set: HashSet<PossibleJit> = HashSet::new();
         let mut duplicate_mev_contracts: HashMap<Address, Vec<B256>> = HashMap::new();
         let mut duplicate_senders: HashMap<Address, Vec<B256>> = HashMap::new();
 
@@ -237,7 +237,7 @@ impl JitInspector<'_> {
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
                             if victims.len() >= 2 {
                                 // Create
-                                set.push(PossibleJit {
+                                set.insert(PossibleJit {
                                     eoa:                   root.head.address,
                                     frontrun_tx:           *prev_tx_hash,
                                     backrun_tx:            root.tx_hash,
@@ -250,15 +250,6 @@ impl JitInspector<'_> {
                     // Add current transaction hash to the list of transactions for this sender
                     o.get_mut().push(root.tx_hash);
                     possible_victims.insert(root.tx_hash, vec![]);
-                }
-            }
-
-            // Now, for each existing entry in possible_victims, we add the current
-            // transaction hash as a potential victim, if it is not the same as
-            // the key (which represents another transaction hash)
-            for (k, v) in possible_victims.iter_mut() {
-                if k != &root.tx_hash {
-                    v.push(root.tx_hash);
                 }
             }
 
@@ -276,7 +267,7 @@ impl JitInspector<'_> {
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
                             if victims.len() >= 2 {
                                 // Create
-                                set.push(PossibleJit {
+                                set.insert(PossibleJit {
                                     eoa:                   root.head.address,
                                     frontrun_tx:           *prev_tx_hash,
                                     backrun_tx:            root.tx_hash,
@@ -302,7 +293,7 @@ impl JitInspector<'_> {
             }
         }
 
-        set
+        set.into_iter().collect()
     }
 
     fn get_bribes(&self, price: Arc<Metadata>, gas: [GasDetails; 2]) -> Rational {
