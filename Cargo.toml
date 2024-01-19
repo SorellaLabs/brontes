@@ -148,8 +148,9 @@ auto_impl = "1.1.0"
 strum = "0.25.0"
 serial_test = "2.0.0"
 derive_more = "0.99.17"
-
+rkyv = {version = "0.7", features = ["validation"] }
 num_cpus = "1.16.0"
+redefined = { git = "https://github.com/0xlagrange/redefined" }
 
 
 [profile.dev]

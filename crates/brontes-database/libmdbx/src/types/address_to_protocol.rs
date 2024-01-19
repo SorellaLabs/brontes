@@ -7,6 +7,7 @@ use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::{tables::AddressToProtocol, types::utils::static_bindings, LibmdbxData};
 
+/// rlp encoding for libmdbx here is fine since it is just an enum
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Row)]
 pub struct AddressToProtocolData {

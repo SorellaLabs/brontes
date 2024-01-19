@@ -23,7 +23,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterato
 mod graphs;
 
 use futures::{Future, Stream, StreamExt};
-use graphs::{PoolPairInfoDirection, PoolPairInformation};
+pub use graphs::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
 use types::{DexPriceMsg, DexQuotes, DiscoveredPool, PoolUpdate};

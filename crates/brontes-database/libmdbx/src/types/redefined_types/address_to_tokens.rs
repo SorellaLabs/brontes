@@ -1,48 +1,35 @@
 use alloy_rlp::{Decodable, Encodable};
 use brontes_types::libmdbx::redefined_types::primitives::Redefined_Address;
 use bytes::BufMut;
+use redefined::{Redefined, RedefinedConvert};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
 use rkyv::Deserialize;
-use serde_with::serde_as;
-use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{utils::pools_libmdbx, LibmdbxData};
-use crate::tables::PoolCreationBlocks;
-
-#[serde_as]
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Row)]
-pub struct PoolCreationBlocksData {
-    pub block_number: u64,
-    #[serde(with = "pools_libmdbx")]
-    pub pools:        PoolsLibmdbx,
-}
-
-impl LibmdbxData<PoolCreationBlocks> for PoolCreationBlocksData {
-    fn into_key_val(
-        &self,
-    ) -> (
-        <PoolCreationBlocks as reth_db::table::Table>::Key,
-        <PoolCreationBlocks as reth_db::table::Table>::Value,
-    ) {
-        (self.block_number, self.pools.clone())
-    }
-}
+use crate::types::address_to_tokens::PoolTokens;
 
 #[derive(
     Debug,
+    PartialEq,
     Clone,
     serde::Serialize,
-    serde::Deserialize,
     rkyv::Serialize,
     rkyv::Deserialize,
     rkyv::Archive,
+    Redefined,
 )]
-pub struct PoolsLibmdbx(pub Vec<Redefined_Address>);
-
-impl Encodable for PoolsLibmdbx {
+#[redefined(PoolTokens)]
+pub struct Redefined_PoolTokens {
+    pub token0:     Redefined_Address,
+    pub token1:     Redefined_Address,
+    pub token2:     Option<Redefined_Address>,
+    pub token3:     Option<Redefined_Address>,
+    pub token4:     Option<Redefined_Address>,
+    pub init_block: u64,
+}
+impl Encodable for Redefined_PoolTokens {
     fn encode(&self, out: &mut dyn BufMut) {
         let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
 
@@ -50,9 +37,9 @@ impl Encodable for PoolsLibmdbx {
     }
 }
 
-impl Decodable for PoolsLibmdbx {
+impl Decodable for Redefined_PoolTokens {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let archived: &ArchivedPoolsLibmdbx = unsafe { rkyv::archived_root::<Self>(buf) };
+        let archived: &ArchivedRedefined_PoolTokens = unsafe { rkyv::archived_root::<Self>(buf) };
 
         let this = archived.deserialize(&mut rkyv::Infallible).unwrap();
 
@@ -60,7 +47,7 @@ impl Decodable for PoolsLibmdbx {
     }
 }
 
-impl Compress for PoolsLibmdbx {
+impl Compress for Redefined_PoolTokens {
     type Compressed = Vec<u8>;
 
     fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
@@ -72,13 +59,13 @@ impl Compress for PoolsLibmdbx {
     }
 }
 
-impl Decompress for PoolsLibmdbx {
+impl Decompress for Redefined_PoolTokens {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
 
         let encoded_decompressed = zstd::decode_all(&*binding).unwrap();
         let buf = &mut encoded_decompressed.as_slice();
 
-        PoolsLibmdbx::decode(buf).map_err(|_| DatabaseError::Decode)
+        Redefined_PoolTokens::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }

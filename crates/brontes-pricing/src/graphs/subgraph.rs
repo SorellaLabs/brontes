@@ -42,10 +42,9 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubGraphEdge {
-    pub info: PoolPairInfoDirection,
-
-    distance_to_start_node: u8,
-    distance_to_end_node:   u8,
+    pub info:                   PoolPairInfoDirection,
+    pub distance_to_start_node: u8,
+    pub distance_to_end_node:   u8,
 }
 impl Deref for SubGraphEdge {
     type Target = PoolPairInfoDirection;

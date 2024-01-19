@@ -9,9 +9,11 @@ use brontes_database::{clickhouse::Clickhouse, MetadataDB, Pair};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     exchanges::StaticBindingsDb,
+    libmdbx::redefined_types::primitives::Redefined_Address,
 };
 use eyre::Context;
 use initialize::LibmdbxInitializer;
+use redefined::RedefinedConvert;
 use reth_db::{
     cursor::{DbCursorRO, DbCursorRW},
     is_database_empty,
@@ -34,6 +36,7 @@ use types::{
     metadata::MetadataInner,
     mev_block::{MevBlockWithClassified, MevBlocksData},
     pool_creation_block::PoolCreationBlocksData,
+    redefined_types::subgraph::Redefined_SubGraphEdge,
     token_decimals::TokenDecimalsData,
 };
 
@@ -119,7 +122,7 @@ impl Libmdbx {
             .map(|i| i.0)
             .unwrap_or(vec![]);
 
-        addrs.push(address);
+        addrs.push(Redefined_Address::from_source(address));
         self.write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
             PoolCreationBlocksData {
                 block_number: block,
@@ -216,7 +219,7 @@ impl Libmdbx {
             if cur_block > block {
                 return last.ok_or_else(|| eyre::eyre!("no subgraph found"))
             }
-            last = Some((pair, update))
+            last = Some((pair, update.to_source()))
         }
 
         unreachable!()
@@ -230,9 +233,15 @@ impl Libmdbx {
     ) -> eyre::Result<()> {
         let tx = LibmdbxTx::new_rw_tx(&self.0)?;
         if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
-            entry.0.insert(block, edges);
+            entry.0.insert(
+                block,
+                edges
+                    .into_iter()
+                    .map(|e| Redefined_SubGraphEdge::from_source(e))
+                    .collect::<Vec<_>>(),
+            );
 
-            let (key, value) = SubGraphsData { pair, data: entry }.into_key_val();
+            let (key, value) = SubGraphsData { pair, data: entry.to_source() }.into_key_val();
             tx.put::<SubGraphs>(key, value)?;
         }
         tx.commit()?;
@@ -315,13 +324,16 @@ impl Libmdbx {
         for result in cursor.walk_range(0..=block_num)? {
             let (_, res) = result?;
             for addr in res.0.into_iter() {
-                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr.to_source())? else {
                     continue;
                 };
-                let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
+                let Some(info) = info_tx.get::<AddressToTokens>(addr.to_source())? else {
                     continue;
                 };
-                map.insert((addr, protocol), Pair(info.token0, info.token1));
+                map.insert(
+                    (addr.to_source(), protocol),
+                    Pair(info.token0.to_source(), info.token1.to_source()),
+                );
             }
         }
 
@@ -345,16 +357,16 @@ impl Libmdbx {
         for result in cursor.walk_range(start_block..end_block)? {
             let (block, res) = result?;
             for addr in res.0.into_iter() {
-                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr.to_source())? else {
                     continue;
                 };
-                let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
+                let Some(info) = info_tx.get::<AddressToTokens>(addr.to_source())? else {
                     continue;
                 };
                 map.entry(block).or_insert(vec![]).push((
-                    addr,
+                    addr.to_source(),
                     protocol,
-                    Pair(info.token0, info.token1),
+                    Pair(info.token0.to_source(), info.token1.to_source()),
                 ));
             }
         }
@@ -382,13 +394,17 @@ impl Libmdbx {
             .map(|i| i.0)
             .unwrap_or(vec![])
         {
-            let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
+            let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr.to_source())? else {
                 continue;
             };
-            let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
+            let Some(info) = info_tx.get::<AddressToTokens>(addr.to_source())? else {
                 continue;
             };
-            res.push((addr, protocol, Pair(info.token0, info.token1)));
+            res.push((
+                addr.to_source(),
+                protocol,
+                Pair(info.token0.to_source(), info.token1.to_source()),
+            ));
         }
 
         Ok(res)
@@ -401,10 +417,12 @@ impl Libmdbx {
         let tx = LibmdbxTx::new_ro_tx(&self.0)?;
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+            .to_source();
         let db_cex_quotes: CexPriceMap = tx
             .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+            .to_source();
         let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
             Address::from_str(WETH_ADDRESS).unwrap(),
             Address::from_str(USDT_ADDRESS).unwrap(),
@@ -455,10 +473,12 @@ impl Libmdbx {
         let tx = LibmdbxTx::new_ro_tx(&self.0)?;
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+            .to_source();
         let db_cex_quotes: CexPriceMap = tx
             .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+            .to_source();
         let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
             Address::from_str(WETH_ADDRESS).unwrap(),
             Address::from_str(USDT_ADDRESS).unwrap(),
