@@ -1,5 +1,6 @@
 use std::{collections::HashMap, ops::Deref};
 
+use futures::StreamExt;
 use alloy_primitives::{Address, TxHash};
 use brontes_core::{
     decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
@@ -10,7 +11,7 @@ use brontes_pricing::{
     BrontesBatchPricer, GraphManager,
 };
 use brontes_types::tree::BlockTree;
-use futures::{future::join_all, StreamExt};
+use futures::future::join_all;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
@@ -156,6 +157,8 @@ impl ClassifierTestUtils {
         let (_, tree) = classifier.build_block_tree(vec![trace], header).await;
 
         classifier.close();
+        // triggers close
+        drop(classifier);
 
         if let Some((p_block, pricing)) = pricer.next().await {
             assert!(p_block == block, "got pricing for the wrong block");
@@ -219,6 +222,8 @@ impl ClassifierTestUtils {
             .await?;
 
         classifier.close();
+        drop(classifier);
+
         let mut prices = Vec::new();
 
         while let Some((_, quotes)) = pricer.next().await {
@@ -258,6 +263,8 @@ impl ClassifierTestUtils {
         let (_, tree) = classifier.build_block_tree(traces, header).await;
 
         classifier.close();
+        // triggers close
+        drop(classifier);
 
         if let Some((p_block, pricing)) = pricer.next().await {
             assert!(p_block == block, "got pricing for the wrong block");
