@@ -72,10 +72,9 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (_extra_data, mut tree) = self.classifier.build_block_tree(traces, header).await;
+            let (_extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
 
             let meta = labeller_fut.await;
-            tree.eth_price = meta.eth_prices.clone();
 
             (meta, tree)
         });
