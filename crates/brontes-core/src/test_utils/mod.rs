@@ -37,7 +37,10 @@ impl TraceLoader {
         init_tracing();
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None).unwrap()));
+        let libmdbx = Box::leak(Box::new(
+            Libmdbx::init_db(&brontes_db_endpoint, None)
+                .expect(&format!("failed to open db path {}", brontes_db_endpoint)),
+        ));
 
         let (a, b) = unbounded_channel();
         let tracing_provider = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10);
