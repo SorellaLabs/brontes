@@ -6,7 +6,7 @@ use reth_db::{mdbx::RO, transaction::DbTx};
 use reth_primitives::{Address, U256};
 
 use crate::CurveCryptoSwap::{
-    exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call, TokenExchange,
+    exchange_0Call, exchange_1Call, exchange_2Call, exchange_underlying_0Call,
 };
 
 pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
