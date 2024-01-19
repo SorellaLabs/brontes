@@ -444,7 +444,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         loop {
             match self.update_rx.poll_recv(cx).map(|inner| {
                 inner.and_then(|action| match action {
-                    DexPriceMsg::Update(update) => Some(update),
+                    DexPriceMsg::Update(update) => Some(PollResult::State(update)),
                     DexPriceMsg::DiscoveredPool(
                         DiscoveredPool { protocol, tokens, pool_address },
                         block,
@@ -453,21 +453,23 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                             self.new_graph_pairs
                                 .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
                         };
-                        None
+                        Some(PollResult::DiscoveredPool)
                     }
                     DexPriceMsg::Closed => None,
                 })
             }) {
                 Poll::Ready(Some(u)) => {
-                    if let Some(update) = self.overlap_update.take() {
-                        block_updates.push(update);
-                    }
+                    if let PollResult::State(update) = u {
+                        if let Some(update) = self.overlap_update.take() {
+                            block_updates.push(update);
+                        }
 
-                    if u.block == self.current_block {
-                        block_updates.push(u);
-                    } else {
-                        self.overlap_update = Some(u);
-                        break
+                        if update.block == self.current_block {
+                            block_updates.push(update);
+                        } else {
+                            self.overlap_update = Some(update);
+                            break
+                        }
                     }
                 }
                 Poll::Ready(None) => {
@@ -490,6 +492,11 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         cx.waker().wake_by_ref();
         return Poll::Pending
     }
+}
+
+enum PollResult {
+    State(PoolUpdate),
+    DiscoveredPool,
 }
 
 /// a ordered buffer for holding state transitions for a block while the lazy
