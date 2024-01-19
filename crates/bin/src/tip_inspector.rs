@@ -6,7 +6,10 @@ use std::{
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
+use brontes_core::{
+    decoding::{Parser, TracingProvider},
+    missing_decimals::MissingDecimals,
+};
 use brontes_database::{clickhouse::Clickhouse, MetadataDB};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_inspect::{
@@ -72,7 +75,16 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (_extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
+            let block = header.number;
+            let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
+
+            MissingDecimals::new(
+                self.parser.get_tracer(),
+                self.database,
+                block,
+                extra_data.tokens_decimal_fill,
+            )
+            .await;
 
             let meta = labeller_fut.await;
 
