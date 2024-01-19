@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use malachite::Rational;
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
@@ -14,12 +13,11 @@ pub struct BlockTree<V: NormalizedAction> {
     pub tx_roots:         Vec<Root<V>>,
     pub header:           Header,
     pub avg_priority_fee: u128,
-    pub eth_price:        Rational,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
-    pub fn new(header: Header, tx_num: usize, eth_price: Rational) -> Self {
-        Self { tx_roots: Vec::with_capacity(tx_num), header, eth_price, avg_priority_fee: 0 }
+    pub fn new(header: Header, tx_num: usize) -> Self {
+        Self { tx_roots: Vec::with_capacity(tx_num), header, avg_priority_fee: 0 }
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {

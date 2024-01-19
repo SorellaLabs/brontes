@@ -55,13 +55,54 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
-        // TODO: this needs to be cleaned up this is so ugly
-        let (missing_data_requests, pool_updates, further_classification_requests, tx_roots): (
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-        ) = join_all(
+        let tx_roots = self.build_all_tx_trees(traces, &header).await;
+        // send out all updates
+        let mut tree = BlockTree::new(header, tx_roots.len());
+
+        let (further_classification_requests, missing_data_requests): (Vec<_>, Vec<_>) = tx_roots
+            .into_iter()
+            .map(|root_data| {
+                tree.insert_root(root_data.root);
+                root_data.pool_updates.into_iter().for_each(|update| {
+                    // if a channel closes when its not supposed to, we want to error
+                    self.pricing_update_sender.send(update).unwrap();
+                });
+                (root_data.further_classification_requests, root_data.missing_data_requests)
+            })
+            .unzip();
+
+        Self::prune_tree(&mut tree);
+        finish_classification(&mut tree, further_classification_requests);
+
+        tree.finalize_tree();
+
+        let mut dec = missing_data_requests
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
+        // need to sort before we can dedup
+        dec.sort();
+        dec.dedup();
+
+        let processing = ExtraProcessing { tokens_decimal_fill: dec };
+
+        (processing, tree)
+    }
+
+    pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
+        account_for_tax_tokens(tree);
+        remove_swap_transfers(tree);
+        remove_mint_transfers(tree);
+        remove_collect_transfers(tree);
+    }
+
+    pub(crate) async fn build_all_tx_trees(
+        &self,
+        traces: Vec<TxTrace>,
+        header: &Header,
+    ) -> Vec<TxTreeResult> {
+        join_all(
             traces
                 .into_iter()
                 .enumerate()
@@ -153,45 +194,18 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                     } else {
                         None
                     };
-
-                    Some((missing_decimals, pool_updates, tx_classification_requests, tx_root))
+                    Some(TxTreeResult {
+                        root: tx_root,
+                        further_classification_requests: tx_classification_requests,
+                        pool_updates,
+                        missing_data_requests: missing_decimals,
+                    })
                 }),
         )
         .await
         .into_iter()
         .filter_map(|f| f)
-        .multiunzip();
-
-        // send out all updates
-        pool_updates
-            .into_iter()
-            .flatten()
-            .for_each(|update| self.pricing_update_sender.send(update).unwrap());
-
-        let mut tree =
-            BlockTree { tx_roots, header, eth_price: Default::default(), avg_priority_fee: 0 };
-
-        account_for_tax_tokens(&mut tree);
-        remove_swap_transfers(&mut tree);
-        remove_mint_transfers(&mut tree);
-        remove_collect_transfers(&mut tree);
-        finish_classification(&mut tree, further_classification_requests);
-
-        tree.finalize_tree();
-
-        let mut dec = missing_data_requests
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
-
-        // need to sort before we can dedup
-        dec.sort();
-
-        dec.dedup();
-
-        let processing = ExtraProcessing { tokens_decimal_fill: dec };
-
-        (processing, tree)
+        .collect_vec()
     }
 
     async fn process_classification(
@@ -385,6 +399,13 @@ fn finish_classification(
     tree.collect_and_classify(&further_classification_requests)
 }
 
+pub struct TxTreeResult {
+    pub missing_data_requests: Vec<Address>,
+    pub pool_updates: Vec<DexPriceMsg>,
+    pub further_classification_requests: Option<(usize, Vec<u64>)>,
+    pub root: Root<Actions>,
+}
+
 #[cfg(test)]
 pub mod test {
     use std::{
@@ -392,6 +413,7 @@ pub mod test {
         env,
     };
 
+    use alloy_primitives::hex::FromHex;
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::{
         decoding::{parser::TraceParser, TracingProvider},
@@ -412,24 +434,19 @@ pub mod test {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::Classifier;
+    use crate::{test_utils::ClassifierTestUtils, Classifier};
 
     #[tokio::test]
     #[serial]
     async fn test_remove_swap_transfer() {
         let block_num = 18530326;
-        dotenv::dotenv().ok();
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
-        let (tx, _rx) = unbounded_channel();
+        let classifier_utils = ClassifierTestUtils::new();
+        let jared_tx =
+            B256::from(hex!("d40905a150eb45f04d11c05b5dd820af1b381b6807ca196028966f5a3ba94b8d"));
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx, 6);
-        let db = Clickhouse::default();
+        let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
 
-        let tree = build_raw_test_tree(&tracer, &db, &libmdbx, block_num).await;
-        let jarad = tree.roots[1].tx_hash;
-
-        let swap = tree.collect(jarad, |node| {
+        let swap = tree.collect(jarad_tx, |node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
                 node.subactions
@@ -437,7 +454,6 @@ pub mod test {
                     .any(|action| action.is_swap() || action.is_transfer()),
             )
         });
-        println!("{:#?}", swap);
         let mut swaps: HashMap<Address, HashSet<U256>> = HashMap::default();
 
         for i in &swap {

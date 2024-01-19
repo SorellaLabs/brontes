@@ -389,7 +389,6 @@ impl SandwichInspector<'_> {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use std::{collections::HashSet, str::FromStr, time::SystemTime};
@@ -402,178 +401,36 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
+    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
 
     #[tokio::test]
     #[serial]
     async fn test_sandwich() {
-        dotenv::dotenv().ok();
-        init_tracing();
-        let block_num = 18522330;
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1);
 
-        let (tx, _rx) = unbounded_channel();
+        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+            .with_mev_tx_hashes(vec![
+                hex!("ff79c471b191c0021cfb62408cb1d7418d09334665a02106191f6ed16a47e36c").into(),
+                hex!("19122ffe65a714f0551edbb16a24551031056df16ccaab39db87a73ac657b722").into(),
+                hex!("67771f2e3b0ea51c11c5af156d679ccef6933db9a4d4d6cd7605b4eee27f9ac8").into(),
+            ])
+            .with_expected_gas_used(16.0)
+            .with_expected_profit_usd(23.0);
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
-        let classifier = Classifier::new();
-
-        let block = tracer.execute_block(block_num).await.unwrap();
-        let metadata = db.get_metadata(block_num).await;
-
-        let tx = block.0.clone().into_iter().take(10).collect::<Vec<_>>();
-
-        let (missing_token_decimals, tree) = classifier.build_block_tree(tx, block.1);
-        let tree = Arc::new(tree);
-        let inspector = SandwichInspector::new(
-            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
-        );
-
-        let t0 = SystemTime::now();
-        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        println!("sandwich inspector took: {} us", delta);
-
-        // assert!(
-        //     mev[0].0.tx_hash
-        //         == B256::from_str(
-
-        println!("{:#?}", mev);
+        inspector_util.run_inspector(config, None).await?;
     }
 
     #[tokio::test]
     #[serial]
     async fn test_complex_sandwich() {
-        dotenv::dotenv().ok();
-        init_tracing();
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1);
         let block_num = 18539312;
 
-        let (tx, _rx) = unbounded_channel();
+        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+            .with_block(18539312)
+            .with_expected_gas_used(86.0)
+            .with_expected_profit_usd(14.0);
 
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let db = Database::default();
-        let classifier = Classifier::new();
-
-        let block = tracer.execute_block(block_num).await.unwrap();
-
-        let metadata = db.get_metadata(block_num).await;
-
-        let (tokens_missing_decimals, tree) = classifier.build_block_tree(block.0, block.1);
-        let tree = Arc::new(tree);
-
-        let inspector = SandwichInspector::new(
-            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
-        );
-
-        let t0 = SystemTime::now();
-        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        println!("sandwich inspector took: {} us", delta);
-
-        println!("{:#?}", mev);
+        inspector_util.run_inspector(config, None).await?;
     }
-*/
-// fn test_process_sandwich() {
-//     let expected_sandwich = Sandwich {
-//         frontrun_tx_hash: B256::from_str(
-//
-// "0xd8d45bdcb25ba4cb2ecb357a5505d03fa2e67fe6e6cc032ca6c05de75d14f5b5",
-//         )
-//         .unwrap(),
-//         frontrun_gas_details: GasDetails {
-//             coinbase_transfer:   0, //todo
-//             priority_fee:        0,
-//             gas_used:            87336,
-//             effective_gas_price: 18.990569622,
-//         },
-//         frontrun_swaps_index: 0,
-//         frontrun_swaps_from: vec![Address::from_str(
-//             "
-//     0xcc2687c14915fd68226ccf388842515739a739bd",
-//         )
-//         .unwrap()],
-//         frontrun_swaps_pool: vec![Address::from_str(
-//             "
-//     0xde55ec8002d6a3480be27e0b9755ef987ad6e151",
-//         )
-//         .unwrap()],
-//         frontrun_swaps_token_in: vec![Address::from_str(
-//             "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-//         )
-//         .unwrap()],
-//         frontrun_swaps_token_out: vec![Address::from_str(
-//             "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
-//         )
-//         .unwrap()],
-//         frontrun_swaps_amount_in: vec![454788265862552718],
-//         frontrun_swaps_amount_out: vec![111888798809177],
-//         victim_tx_hashes: vec![B256::from_str(
-//
-// "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
-//         )
-//         .unwrap()],
-//         victim_swaps_tx_hash: vec![B256::from_str(
-//
-// "0xfce96902655ca75f2da557c40e005ec74382fdaf9160c5492c48c49c283250ab",
-//         )
-//         .unwrap()],
-//         victim_swaps_index: vec![1],
-//         victim_swaps_from: vec![Address::from_str(
-//             "
-//     0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
-//         )
-//         .unwrap()],
-//         victim_swaps_pool: vec![Address::from_str(
-//             "
-//     0xde55ec8002d6a3480be27e0b9755ef987ad6e151",
-//         )
-//         .unwrap()],
-//         victim_swaps_token_in: vec![Address::from_str(
-//             "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-//         )
-//         .unwrap()],
-//         victim_swaps_token_out: vec![Address::from_str(
-//             "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
-//         )
-//         .unwrap()],
-//         victim_swaps_amount_in: vec![1000000000000000000],
-//         victim_swaps_amount_out: vec![206486606721996],
-//         victim_gas_details_coinbase_transfer: vec![0], //todo
-//         victim_gas_details_priority_fee: vec![100000000],
-//         victim_gas_details_gas_used: vec![100073],
-//         victim_gas_details_effective_gas_price: vec![18990569622],
-//         backrun_tx_hash: B256::from_str(
-//
-// "0x4479723b447600b2d577bf02bd409efab249985840463c8f7088e6b5a724c667",
-//         )
-//         .unwrap(),
-//         backrun_gas_details: GasDetails {
-//             coinbase_transfer:   0, //todo
-//             priority_fee:        0,
-//             gas_used:            84461,
-//             effective_gas_price: 18990569622,
-//         },
-//         backrun_swaps_index: 2,
-//         backrun_swaps_from: vec![Address::from_str(
-//             "
-//     0xcc2687c14915fd68226ccf388842515739a739bd",
-//         )
-//         .unwrap()],
-//         backrun_swaps_pool: vec![Address::from_str(
-//             "
-//     0xde55ec8002d6a3480be27e0b9755ef987ad6e151",
-//         )
-//         .unwrap()],
-//         backrun_swaps_token_in: vec![Address::from_str(
-//             "0xdE55ec8002d6a3480bE27e0B9755EF987Ad6E151",
-//         )
-//         .unwrap()],
-//         backrun_swaps_token_out: vec![Address::from_str(
-//             "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-//         )
-//         .unwrap()],
-//         backrun_swaps_amount_in: vec![111888798809177],
-//         backrun_swaps_amount_out: vec![567602104693849332],
-//     };
-// }
-//}
+}
