@@ -264,3 +264,23 @@ impl Future for Composer<'_> {
         Poll::Pending
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use crate::test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS};
+
+    #[tokio::test]
+    pub async fn test_jit_sandwich() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2);
+
+        let config =
+            ComposerRunConfig::new(vec![MevType::Sandwich, MevType::Jit], MevType::JitSandwich)
+                .with_dex_prices()
+                .with_expected_gas_used(90.875025)
+                .with_expected_profit_usd(13.568977)
+                .with_block(18539312);
+
+        inspector_util.run_composer(config, None);
+    }
+}
