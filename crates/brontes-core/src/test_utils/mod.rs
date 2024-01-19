@@ -269,24 +269,20 @@ fn init_trace_parser<'a>(
     TraceParser::new(libmdbx, call, Arc::new(tracer), Arc::new(metrics_tx))
 }
 
-#[allow(unused)]
-async fn store_traces_for_block(block_number: u64) {
-    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
+pub async fn store_traces_for_block(block_number: u64) {
+    let tracer = TraceLoader::new();
 
-    let (a, b) = unbounded_channel();
-    let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, &libmdbx, 10);
-
-    let (block_trace, header) = tracer.execute_block(block_number).await.unwrap();
+    let BlockTracesWithHeaderAnd { traces, header, .. } = tracer
+        .get_block_traces_with_header(block_number)
+        .await
+        .unwrap();
 
     let file = PathBuf::from(format!(
         "./crates/brontes-core/src/test_utils/liquidation_traces/{}.json",
         block_number
     ));
-
-    let stringified = serde_json::to_string(&(block_trace, header)).unwrap();
+    let stringified = serde_json::to_string(&(traces, header)).unwrap();
     std::fs::write(&file, stringified).unwrap();
-    drop(b)
 }
 
 #[allow(unused)]
