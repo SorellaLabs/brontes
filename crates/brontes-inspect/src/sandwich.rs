@@ -414,6 +414,7 @@ mod tests {
                 hex!("19122ffe65a714f0551edbb16a24551031056df16ccaab39db87a73ac657b722").into(),
                 hex!("67771f2e3b0ea51c11c5af156d679ccef6933db9a4d4d6cd7605b4eee27f9ac8").into(),
             ])
+            .with_dex_prices()
             .with_expected_gas_used(16.0)
             .with_expected_profit_usd(23.0);
 
@@ -427,6 +428,7 @@ mod tests {
         let block_num = 18539312;
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
+            .with_dex_prices()
             .with_block(18539312)
             .with_expected_gas_used(86.0)
             .with_expected_profit_usd(14.0);
