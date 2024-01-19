@@ -21,8 +21,12 @@ use crate::{
     uniswap_v3::UniswapV3Pool, AutomatedMarketMaker,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Rational>>>);
+
 impl DexQuotes {
-    pub fn price_after(&self, pair: Pair, tx: usize) -> Option<Rational> {
+    /// checks for price at the tx index returning none if it doesn't exist
+    pub fn price_at(&self, pair: Pair, tx: usize) -> Option<Rational> {
         if pair.0 == pair.1 {
             return Some(Rational::from(1))
         }
@@ -33,12 +37,26 @@ impl DexQuotes {
 
         price
     }
-}
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Rational>>>);
+    /// checks for price at the given tx index. if it isn't found, will look for
+    /// the price at all previous indexes in the block
+    pub fn price_at_or_before(&self, pair: Pair, mut tx: usize) -> Option<Rational> {
+        if pair.0 == pair.1 {
+            return Some(Rational::from(1))
+        }
 
-impl DexQuotes {
+        while tx != 0 {
+            if let Some(price) = self.get_price(pair, tx) {
+                return Some(price.clone())
+            }
+
+            tx -= 1;
+        }
+
+        error!(?pair, "no price for pair");
+        None
+    }
+
     pub fn get_price(&self, pair: Pair, tx: usize) -> Option<&Rational> {
         self.0.get(tx)?.as_ref()?.get(&pair)
     }
