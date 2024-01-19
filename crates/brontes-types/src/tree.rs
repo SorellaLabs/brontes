@@ -317,7 +317,8 @@ pub struct Node<V: NormalizedAction> {
     pub index:     u64,
 
     /// This only has values when the node is frozen
-    pub subactions:    Vec<V>,
+    //TODO: Will: explain this shortcut
+    pub subactions: Vec<V>,
     pub trace_address: Vec<usize>,
     pub address:       Address,
     pub data:          V,
@@ -340,6 +341,7 @@ impl<V: NormalizedAction> Node<V> {
         self.finalized
     }
 
+    //TODO: Rename & edit docs
     /// Iterates through the tree until the head node is hit. When the head node
     /// is hit, collects all child node actions that are specified by the
     /// head nodes classification types closure.
@@ -505,6 +507,15 @@ impl<V: NormalizedAction> Node<V> {
             );
 
             res
+        }
+    }
+
+    //TODO: Ludwig: Write docs
+    pub fn get_deepest_node(&self) -> &Node<V> {
+        if self.inner.is_empty() {
+            return self
+        } else {
+            self.inner.last().unwrap().get_deepest_node()
         }
     }
 
