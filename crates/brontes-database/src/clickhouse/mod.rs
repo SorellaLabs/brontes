@@ -9,13 +9,15 @@ use brontes_types::classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMe
 use futures::future::join_all;
 use reth_primitives::{hex, revm_primitives::FixedBytes, Address};
 use sorella_db_databases::{
-    clickhouse::{ClickhouseClient, Credentials},
-    config::ClickhouseConfig,
+    clickhouse::{
+        config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
+        DbRow,
+    },
     tables::DatabaseTables,
-    utils::format_query_array,
-    Database, Row,
+    Database,
 };
 use tracing::{error, info};
+pub mod mev_types;
 
 use self::types::{Abis, DBTokenPricesDB, TimesFlow};
 use super::MetadataDB;
@@ -78,7 +80,7 @@ impl Clickhouse {
         Default::default()
     }
 
-    async fn insert_singe_classified_data<T: SpecificMev + ::serde::Serialize + Row + Clone>(
+    async fn insert_singe_classified_data<T: SpecificMev + ::serde::Serialize + DbRow + Clone>(
         db_client: &ClickhouseClient,
         mev_detail: Box<dyn SpecificMev>,
         table: DatabaseTables,
@@ -211,7 +213,7 @@ impl Clickhouse {
 fn mev_table_type(mev: &Box<dyn SpecificMev>) -> DatabaseTables {
     match mev.mev_type() {
         brontes_types::classified_mev::MevType::Sandwich => DatabaseTables::Sandwich,
-        brontes_types::classified_mev::MevType::Backrun => DatabaseTables::Backrun,
+        brontes_types::classified_mev::MevType::Backrun => DatabaseTables::AtomicBackrun,
         brontes_types::classified_mev::MevType::JitSandwich => DatabaseTables::JitSandwich,
         brontes_types::classified_mev::MevType::Jit => DatabaseTables::Jit,
         brontes_types::classified_mev::MevType::CexDex => DatabaseTables::CexDex,

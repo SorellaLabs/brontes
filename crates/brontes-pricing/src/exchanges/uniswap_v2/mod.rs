@@ -25,7 +25,11 @@ use crate::{
 sol!(
     #[derive(Debug)]
     interface IUniswapV2Pair {
-        function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+        function getReserves() external view returns (
+            uint112 reserve0,
+            uint112 reserve1,
+            uint32 blockTimestampLast
+        );
         function token0() external view returns (address);
         function token1() external view returns (address);
         function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data);
@@ -84,6 +88,7 @@ impl AutomatedMarketMaker for UniswapV2Pool {
 
         if event_signature == SYNC_EVENT_SIGNATURE {
             let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false).unwrap();
+
             self.reserve_0 = sync_event.reserve0;
             self.reserve_1 = sync_event.reserve1;
 
