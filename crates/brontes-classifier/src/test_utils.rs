@@ -10,7 +10,7 @@ use brontes_pricing::{
     BrontesBatchPricer, GraphManager,
 };
 use brontes_types::tree::BlockTree;
-use futures::future::join_all;
+use futures::{future::join_all, StreamExt};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
