@@ -232,7 +232,7 @@ impl JitInspector<'_> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 2 {
+                            if victims.len() >= 1 {
                                 // Create
                                 set.insert(PossibleJit {
                                     eoa:                   root.head.address,
@@ -262,7 +262,7 @@ impl JitInspector<'_> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 2 {
+                            if victims.len() >= 1 {
                                 // Create
                                 set.insert(PossibleJit {
                                     eoa:                   root.head.address,

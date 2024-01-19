@@ -233,7 +233,7 @@ impl SandwichInspector<'_> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 2 {
+                            if victims.len() >= 1 {
                                 // Create
                                 set.insert(PossibleSandwich {
                                     eoa:                   root.head.address,
@@ -263,7 +263,7 @@ impl SandwichInspector<'_> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 2 {
+                            if victims.len() >= 1 {
                                 // Create
                                 set.insert(PossibleSandwich {
                                     eoa:                   root.head.address,
