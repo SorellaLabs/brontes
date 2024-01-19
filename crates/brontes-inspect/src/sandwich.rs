@@ -424,14 +424,15 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_complex_sandwich() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1);
+        // this is a jit sandwich
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
         let block_num = 18539312;
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
             .with_dex_prices()
             .with_block(18539312)
-            .with_expected_gas_used(86.0)
-            .with_expected_profit_usd(14.0);
+            .with_expected_gas_used(90.875025)
+            .with_expected_profit_usd(-24.031640);
 
         inspector_util.run_inspector(config, None).await?;
     }

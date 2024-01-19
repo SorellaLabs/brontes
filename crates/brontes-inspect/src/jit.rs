@@ -388,12 +388,14 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_jit() {
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        // eth price in usdc
+        // 2146.65037178
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
         let config = InspectorTxRunConfig::new(MevType::Jit)
             .with_dex_prices()
             .with_block(18539312)
-            .with_expected_gas_used(86.0)
-            .with_expected_profit_usd(14.0);
+            .with_expected_gas_used(90.875025)
+            .with_expected_profit_usd(-53.274407516);
 
         test_utils.run_inspector(config, None).await;
     }

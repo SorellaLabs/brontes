@@ -271,8 +271,18 @@ impl InspectorTestUtils {
             .map(|i| &*Box::leak(Box::new(i)))
             .collect::<Vec<&'static Box<dyn Inspector>>>();
 
-        let (_, mut results) =
-            Composer::new(inspector.as_slice(), tree.into(), metadata.into()).await;
+        let (_, results) = Composer::new(inspector.as_slice(), tree.into(), metadata.into()).await;
+
+        let mut results = results
+            .into_iter()
+            .filter(|mev| {
+                config
+                    .prune_opportunities
+                    .as_ref()
+                    .map(|opp| !opp.contains(&mev.0.tx_hash))
+                    .unwrap_or(true)
+            })
+            .collect::<Vec<_>>();
 
         assert_eq!(results.len(), 1, "more than 1 result for a single mev opp test");
 
@@ -361,7 +371,6 @@ pub struct ComposerRunConfig {
     pub expected_mev_type:    MevType,
     pub metadata_override:    Option<Metadata>,
     pub mev_tx_hashes:        Option<Vec<TxHash>>,
-    pub result_hash:          Option<TxHash>,
     pub mev_block:            Option<u64>,
     pub expected_profit_usd:  Option<f64>,
     pub expected_gas_usd:     Option<f64>,
@@ -375,7 +384,6 @@ impl ComposerRunConfig {
             inspectors,
             metadata_override: None,
             mev_tx_hashes: None,
-            result_hash: None,
             expected_mev_type,
             mev_block: None,
             expected_profit_usd: None,
@@ -392,11 +400,6 @@ impl ComposerRunConfig {
 
     pub fn with_mev_tx_hashes(mut self, txes: Vec<TxHash>) -> Self {
         self.mev_tx_hashes = Some(txes);
-        self
-    }
-
-    pub fn with_result_hash(mut self, result_hash: TxHash) -> Self {
-        self.result_hash = Some(result_hash);
         self
     }
 
