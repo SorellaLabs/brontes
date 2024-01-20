@@ -644,6 +644,17 @@ fn queue_loading_returns(
 }
 
 #[cfg(test)]
+impl<T: TracingProvider> BrontesBatchPricer<T> {
+    pub fn get_lazy_loader(&mut self) -> &mut LazyExchangeLoader<T> {
+        &mut self.lazy_loader
+    }
+
+    pub fn get_buffer(&mut self) -> &mut StateBuffer {
+        &mut self.buffer
+    }
+}
+
+#[cfg(test)]
 pub mod test {
 
     use std::{
@@ -682,9 +693,9 @@ pub mod test {
         }
 
         let missing_pricing_addr = Address(hex!("56c03b8c4fa80ba37f5a7b60caaaef749bb5b220").into());
-        let missing_pair: Pair(missing_pricing_addr, USDC_ADDRESS);
+        let missing_pair = Pair(missing_pricing_addr, USDC_ADDRESS);
 
-        let updates = dex_pricer.buffer.updates.get(&block).unwrap();
+        let updates = dex_pricer.get_buffer().updates.get(&block).unwrap();
 
         assert!(updates.iter().any(|(_, update)| {
             let pair = update.get_pair(USDC_ADDRESS).unwrap();
