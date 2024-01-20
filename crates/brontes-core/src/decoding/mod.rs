@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc};
 
-use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, Libmdbx};
+use brontes_database_libmdbx::{tx::CompressedLibmdbxTx, Libmdbx};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
@@ -42,7 +42,7 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         libmdbx: &'a Libmdbx,
         tracing: T,
-        should_fetch: Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
+        should_fetch: Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
     ) -> Self {
         let executor = Executor::new();
 

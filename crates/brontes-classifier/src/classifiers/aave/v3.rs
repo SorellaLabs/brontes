@@ -1,5 +1,5 @@
 use alloy_primitives::{Address, U256};
-use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
+use brontes_database_libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation};
 use reth_db::{mdbx::RO, transaction::DbTx};
@@ -18,7 +18,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: liquidationCallCall,
-    db_tx: &LibmdbxTx<RO> | {
+    db_tx: &CompressedLibmdbxTx<RO> | {
         return Some(NormalizedLiquidation {
             trace_index,
             pool: target_address,
@@ -45,7 +45,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: flashLoanCall,
-    db_tx: &LibmdbxTx<RO> | {
+    db_tx: &CompressedLibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -81,7 +81,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: flashLoanSimpleCall,
-    db_tx: &LibmdbxTx<RO> | {
+    db_tx: &CompressedLibmdbxTx<RO> | {
 
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];

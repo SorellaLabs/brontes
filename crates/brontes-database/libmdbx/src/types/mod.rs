@@ -8,7 +8,7 @@ pub mod cex_price; //
 pub mod dex_price;
 pub mod metadata; //
 pub mod pool_creation_block; //
-pub mod redefined_types; //
+pub(crate) mod redefined_types; //
 pub mod subgraphs; //
 pub mod token_decimals; //
                         //pub mod traces;

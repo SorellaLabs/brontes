@@ -36,6 +36,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use brontes_types::classified_mev::Mev;
 mod composer_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
@@ -240,7 +241,7 @@ impl<'a> Composer<'a> {
         if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
             for (first_i, (classified, mev_data)) in first_mev_list.iter().enumerate() {
                 let tx_hashes = mev_data.mev_transaction_hashes();
-                let mut to_compose = vec![(classified.clone(), mev_data.clone().into_any())];
+                let mut to_compose = vec![(classified.clone(), mev_data.clone())];
                 let mut temp_removal_indices = Vec::new();
 
                 for &other_mev_type in child_mev_type.iter().skip(1) {
@@ -250,10 +251,7 @@ impl<'a> Composer<'a> {
                                 let (other_classified, other_mev_data) =
                                     &other_mev_data_list[index];
 
-                                to_compose.push((
-                                    other_classified.clone(),
-                                    other_mev_data.clone().into_any(),
-                                ));
+                                to_compose.push((other_classified.clone(), other_mev_data.clone()));
                                 temp_removal_indices.push((other_mev_type, index));
                             }
                             None => break,

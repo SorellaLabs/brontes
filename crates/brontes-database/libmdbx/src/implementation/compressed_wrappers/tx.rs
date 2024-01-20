@@ -6,16 +6,13 @@ use reth_db::{
 use reth_libmdbx::{ffi::DBI, TransactionKind, RO, RW};
 
 use super::cursor::CompressedCursor;
-use crate::{
-    implementation::native::{cursor::LibmdbxCursor, tx::LibmdbxTx},
-    CompressedTable,
-};
+use crate::{implementation::native::tx::LibmdbxTx, CompressedTable};
 
-pub(crate) struct CompressedLibmdbxTx<K: TransactionKind>(pub(crate) LibmdbxTx<K>);
+pub struct CompressedLibmdbxTx<K: TransactionKind>(pub(crate) LibmdbxTx<K>);
 
 impl<K: TransactionKind> CompressedLibmdbxTx<K> {
     /// Gets a table database handle if it exists, otherwise creates it.
-    pub(crate) fn get_dbi<T>(&self) -> Result<DBI, DatabaseError>
+    pub fn get_dbi<T>(&self) -> Result<DBI, DatabaseError>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -24,14 +21,12 @@ impl<K: TransactionKind> CompressedLibmdbxTx<K> {
     }
 
     /// Create db Cursor
-    pub fn new_cursor<T>(&self) -> Result<LibmdbxCursor<T, K>, DatabaseError>
+    pub fn new_cursor<T>(&self) -> Result<CompressedCursor<T, K>, DatabaseError>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     {
-        let c = self.0.new_cursor()?;
-
-        Ok(c)
+        Ok(CompressedCursor::new(self.0.new_cursor()?))
     }
 
     pub fn get<T>(&self, key: T::Key) -> Result<Option<T::DecompressedValue>, DatabaseError>
@@ -42,11 +37,11 @@ impl<K: TransactionKind> CompressedLibmdbxTx<K> {
         self.0.get::<T>(key).map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn commit(self) -> Result<bool, DatabaseError> {
+    pub fn commit(self) -> Result<bool, DatabaseError> {
         self.0.commit()
     }
 
-    pub(crate) fn abort(self) {
+    pub fn abort(self) {
         self.0.abort()
     }
 
@@ -76,13 +71,13 @@ impl<K: TransactionKind> CompressedLibmdbxTx<K> {
 }
 
 impl CompressedLibmdbxTx<RO> {
-    pub(crate) fn new_ro_tx(env: &DatabaseEnv) -> eyre::Result<Self, DatabaseError> {
+    pub fn new_ro_tx(env: &DatabaseEnv) -> eyre::Result<Self, DatabaseError> {
         Ok(Self(LibmdbxTx::new_ro_tx(env)?))
     }
 }
 
 impl CompressedLibmdbxTx<RW> {
-    pub(crate) fn new_rw_tx(env: &DatabaseEnv) -> Result<Self, DatabaseError> {
+    pub fn new_rw_tx(env: &DatabaseEnv) -> Result<Self, DatabaseError> {
         Ok(Self(LibmdbxTx::new_rw_tx(env)?))
     }
 
@@ -106,7 +101,7 @@ impl CompressedLibmdbxTx<RW> {
         self.0.delete::<T>(key, value.map(Into::into))
     }
 
-    pub(crate) fn clear<T>(&self) -> Result<(), DatabaseError>
+    pub fn clear<T>(&self) -> Result<(), DatabaseError>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,

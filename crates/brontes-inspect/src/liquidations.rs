@@ -30,7 +30,7 @@ impl Inspector for LiquidationInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Vec<(ClassifiedMev, SpecificMev)> {
         let liq_txs = tree.collect_all(|node| {
             (
                 node.data.is_liquidation() || node.data.is_swap(),
@@ -76,7 +76,7 @@ impl LiquidationInspector<'_> {
         metadata: Arc<Metadata>,
         actions: Vec<Actions>,
         gas_details: &GasDetails,
-    ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Option<(ClassifiedMev, SpecificMev)> {
         let swaps = actions
             .iter()
             .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
@@ -155,7 +155,7 @@ impl LiquidationInspector<'_> {
             gas_details:         gas_details.clone(),
         };
 
-        Some((mev, Box::new(new_liquidation)))
+        Some((mev, SpecificMev::Liquidation(new_liquidation)))
     }
 }
 

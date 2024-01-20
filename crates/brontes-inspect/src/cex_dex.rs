@@ -140,7 +140,7 @@ impl CexDexInspector<'_> {
                 .collect(),
         };
 
-        Some((classified, Box::new(cex_dex)))
+        Some((classified, SpecificMev::CexDex(cex_dex)))
     }
 
     fn arb_gas_accounting(
