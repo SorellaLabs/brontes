@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
     fn get_to_address(&self) -> Address;
+    fn get_msg_sender(&self) -> Address;
     fn get_calldata(&self) -> Bytes;
     fn get_return_calldata(&self) -> Bytes;
     fn is_static_call(&self) -> bool;
@@ -39,6 +40,10 @@ impl TraceActions for TransactionTraceWithLogs {
         }
     }
 
+    fn get_msg_sender(&self) -> Address {
+        self.msg_sender
+    }
+
     fn get_to_address(&self) -> Address {
         match &self.trace.action {
             Action::Call(call) => call.to,
@@ -65,24 +70,27 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DecodedCallData {
     pub function_name: String,
     pub call_data:     Vec<DecodedParams>,
     pub return_data:   Vec<DecodedParams>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DecodedParams {
     pub field_name: String,
     pub field_type: String,
     pub value:      String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub logs:         Vec<Log>,
+    /// the msg.sender of the trace. This allows us to properly deal with
+    /// delegate calls and the headache they cause when it comes to proxies
+    pub msg_sender:   Address,
     pub trace_idx:    u64,
     pub decoded_data: Option<DecodedCallData>,
 }
