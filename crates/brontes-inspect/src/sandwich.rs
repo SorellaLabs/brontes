@@ -322,7 +322,6 @@ mod tests {
     use brontes_classifier::Classifier;
     use reth_primitives::U256;
     use serial_test::serial;
-    use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
     use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
