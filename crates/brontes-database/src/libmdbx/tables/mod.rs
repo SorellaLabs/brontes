@@ -140,11 +140,9 @@ impl Tables {
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
-                        (15400000, 19000000),
+                        (15400000, 16000000),
                     )
                     .await?;
-                println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 15400000, 19000000);
-                /* 
                    println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 15400000, 16000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
@@ -167,7 +165,6 @@ impl Tables {
                     )
                     .await?;
                    println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 18000000, 19000000);
-                   */
                     println!("{} OK", CexPrice::NAME);
                     Ok(())
                 })
