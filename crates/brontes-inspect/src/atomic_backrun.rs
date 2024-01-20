@@ -3,8 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use brontes_database::Metadata;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::Actions,
@@ -16,7 +15,9 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
+use crate::{
+    shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined, SpecificMev,
+};
 
 pub struct AtomicBackrunInspector<'db> {
     inner: SharedInspectorUtils<'db>,
@@ -33,7 +34,7 @@ impl Inspector for AtomicBackrunInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<Metadata>,
+        meta_data: Arc<MetadataCombined>,
     ) -> Vec<(ClassifiedMev, SpecificMev)> {
         let intersting_state = tree.collect_all(|node| {
             (
@@ -98,7 +99,7 @@ impl AtomicBackrunInspector<'_> {
         idx: usize,
         eoa: Address,
         mev_contract: Address,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         gas_details: GasDetails,
         searcher_actions: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, SpecificMev)> {

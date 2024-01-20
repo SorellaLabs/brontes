@@ -17,21 +17,22 @@ use brontes_types::{
     exchanges::StaticBindingsDb,
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedAction, NormalizedSwap},
+    price_graph::{PoolPairInfoDirection, SubGraphEdge},
     traits::TracingProvider,
 };
 use ethers::core::k256::elliptic_curve::bigint::Zero;
 use exchanges::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use exchanges::*;
-pub use graphs::{AllPairGraph, GraphManager, SubGraphEdge};
+pub use graphs::{AllPairGraph, GraphManager};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 mod graphs;
 
+use brontes_types::db::dex::DexQuotes;
 use futures::{Future, Stream, StreamExt};
-pub use graphs::{PoolPairInfoDirection, PoolPairInformation};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info, warn};
-use types::{DexPriceMsg, DexQuotes, DiscoveredPool, PoolUpdate};
+use types::{DexPriceMsg, DiscoveredPool, PoolUpdate};
 
 use crate::types::PoolState;
 

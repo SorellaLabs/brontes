@@ -1,9 +1,12 @@
 use alloy_primitives::{hex, Address, FixedBytes, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
 use brontes_core::TraceLoaderError;
-use brontes_database::Metadata;
-use brontes_pricing::types::DexQuotes;
-use brontes_types::{classified_mev::MevType, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{
+    classified_mev::MevType,
+    db::{dex::DexQuotes, metadata::MetadataCombined},
+    normalized_actions::Actions,
+    tree::BlockTree,
+};
 use thiserror::Error;
 
 use crate::{

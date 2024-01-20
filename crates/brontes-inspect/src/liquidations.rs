@@ -1,9 +1,9 @@
 use std::{collections::HashSet, sync::Arc};
 
-use brontes_database::{Metadata, Pair};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{ClassifiedMev, Liquidation, MevType, SpecificMev},
+    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node, Root},
     ToFloatNearest,
@@ -12,7 +12,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth_primitives::{b256, Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
 
 pub struct LiquidationInspector<'db> {
     inner: SharedInspectorUtils<'db>,
@@ -29,7 +29,7 @@ impl Inspector for LiquidationInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
     ) -> Vec<(ClassifiedMev, SpecificMev)> {
         let liq_txs = tree.collect_all(|node| {
             (
@@ -73,7 +73,7 @@ impl LiquidationInspector<'_> {
         idx: usize,
         mev_contract: Address,
         eoa: Address,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         actions: Vec<Actions>,
         gas_details: &GasDetails,
     ) -> Option<(ClassifiedMev, SpecificMev)> {

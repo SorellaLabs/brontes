@@ -13,29 +13,32 @@ use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
 };
-use brontes_database::{Metadata, MetadataDB, Pair};
-use brontes_database_libmdbx::{
+use brontes_database::libmdbx::{
     tables::{
-        AddressToFactory, AddressToProtocol, AddressToTokens, CexPrice, DexPrice,
-        Metadata as MetadataTable, MevBlocks, PoolCreationBlocks, SubGraphs, TokenDecimals,
+        AddressToFactory, AddressToProtocol, AddressToTokens, CexPrice, DexPrice, Metadata,
+        MevBlocks, PoolCreationBlocks, SubGraphs, TokenDecimals,
     },
     types::{
-        cex_price::CexPriceMap,
-        dex_price,
-        dex_price::{DexPriceData, DexQuote},
-        metadata::{MetadataData, MetadataInner},
-        mev_block::{MevBlockWithClassified, MevBlocksData},
-        subgraphs::SubGraphsData,
-        LibmdbxData,
+        dex_price::DexPriceData, mev_block::MevBlocksData, subgraphs::SubGraphsData, LibmdbxData,
     },
-    Libmdbx, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS,
+    Libmdbx,
 };
 use brontes_inspect::{composer::Composer, Inspector};
-use brontes_pricing::{types::DexQuotes, BrontesBatchPricer, GraphManager, SubGraphEdge};
+use brontes_pricing::{BrontesBatchPricer, GraphManager};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+    db::{
+        cex,
+        cex::{CexPriceMap, CexQuote},
+        dex::{DexQuote, DexQuotes},
+        metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
+        mev_block::MevBlockWithClassified,
+    },
     exchanges::StaticBindingsDb,
+    extra_processing::Pair,
     normalized_actions::Actions,
+    price_graph::SubGraphEdge,
     structured_trace::TxTrace,
     tree::BlockTree,
 };
@@ -46,7 +49,7 @@ use tokio::task::JoinHandle;
 use tracing::{debug, error, info};
 
 type CollectionFut<'a> =
-    Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataDB)> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
 
 pub struct DataBatching<'db, T: TracingProvider + Clone> {
     parser:     &'db Parser<'db, T>,
@@ -130,7 +133,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
     }
 
     fn on_parser_resolve(
-        meta: MetadataDB,
+        meta: MetadataNoDex,
         traces: Vec<TxTrace>,
         header: Header,
         classifier: Classifier<'db, T>,
@@ -167,7 +170,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         self.collection_future = Some(fut);
     }
 
-    fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
+    fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: MetadataCombined) {
         info!(target:"brontes","dex pricing finished");
         self.processing_futures.push(Box::pin(ResultProcessing::new(
             self.libmdbx,
@@ -286,14 +289,11 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         Ok(map)
     }
 
-    pub fn get_metadata_no_dex(
-        &self,
-        block_num: u64,
-    ) -> eyre::Result<brontes_database::MetadataDB> {
+    pub fn get_metadata_no_dex(&self, block_num: u64) -> eyre::Result<MetadataNoDex> {
         let tx = self.libmdbx.ro_tx()?;
 
         let block_meta: MetadataInner = tx
-            .get::<MetadataTable>(block_num)?
+            .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
         let db_cex_quotes: CexPriceMap = tx
@@ -313,13 +313,13 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
                 .unwrap_or_default()
         };
 
-        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
+        let mut cex_quotes = CexPriceMap::new();
         db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
             cex_quotes.0.insert(
                 pair,
                 quote
                     .into_iter()
-                    .map(|q| brontes_database::cex::CexQuote {
+                    .map(|q| CexQuote {
                         exchange:  q.exchange,
                         timestamp: q.timestamp,
                         price:     q.price,
@@ -329,7 +329,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             );
         });
 
-        Ok(MetadataDB {
+        Ok(MetadataNoDex {
             block_num,
             block_hash: block_meta.block_hash,
             relay_timestamp: block_meta.relay_timestamp,
@@ -403,7 +403,7 @@ impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
     handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
-    pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataDB)>,
+    pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataNoDex)>,
 }
 
 impl<T: TracingProvider> WaitingForPricerFuture<T> {
@@ -441,7 +441,7 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         &mut self,
         block: u64,
         tree: BlockTree<Actions>,
-        meta: MetadataDB,
+        meta: MetadataNoDex,
     ) {
         assert!(
             self.pending_trees.insert(block, (tree, meta)).is_none(),
@@ -451,7 +451,7 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
 }
 
 impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
-    type Item = (BlockTree<Actions>, Metadata);
+    type Item = (BlockTree<Actions>, MetadataCombined);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Poll::Ready(handle) = self.handle.poll_unpin(cx) {
@@ -488,7 +488,7 @@ impl<'db> ResultProcessing<'db> {
         db: &'db Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>],
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<Metadata>,
+        meta_data: Arc<MetadataCombined>,
     ) -> Self {
         let composer = Composer::new(inspectors, tree, meta_data.clone());
         let this = Self { database: db, composer };

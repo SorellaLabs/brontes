@@ -1,9 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::FixedBytes;
-use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{ClassifiedMev, Mev, MevBlock, MevType, SpecificMev},
+    db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
     ToScaledRational,
@@ -12,7 +12,7 @@ use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingM
 use reth_primitives::Address;
 
 pub struct BlockPreprocessing {
-    meta_data:           Arc<Metadata>,
+    meta_data:           Arc<MetadataCombined>,
     cumulative_gas_used: u128,
     cumulative_gas_paid: u128,
     builder_address:     Address,
@@ -26,7 +26,7 @@ pub struct BlockPreprocessing {
 /// `BlockPreprocessing` struct.
 pub(crate) fn pre_process(
     tree: Arc<BlockTree<Actions>>,
-    meta_data: Arc<Metadata>,
+    meta_data: Arc<MetadataCombined>,
 ) -> BlockPreprocessing {
     let builder_address = tree.header.beneficiary;
     let cumulative_gas_used = tree
@@ -47,7 +47,7 @@ pub(crate) fn pre_process(
 //TODO: Look into calculating the delta of priority fee + coinbase reward vs
 // proposer fee paid. This would act as a great proxy for how much mev we missed
 pub(crate) fn build_mev_header(
-    metadata: Arc<Metadata>,
+    metadata: Arc<MetadataCombined>,
     pre_processing: &BlockPreprocessing,
     orchestra_data: &Vec<(ClassifiedMev, SpecificMev)>,
 ) -> MevBlock {
