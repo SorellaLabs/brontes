@@ -81,8 +81,6 @@ impl Decompress for LibmdbxPoolsToAddresses {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
 
-        println!("value: {:?}", binding);
-
         let encoded_decompressed = zstd::decode_all(&*binding).unwrap();
         let buf = &mut encoded_decompressed.as_slice();
 
