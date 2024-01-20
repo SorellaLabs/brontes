@@ -164,11 +164,7 @@ impl CexDexInspector<'_> {
 
     pub fn get_cex_dex(&self, swap: &NormalizedSwap, metadata: &Metadata) -> Option<Rational> {
         self.rational_prices(&Actions::Swap(swap.clone()), metadata)
-            .map(|(dex_price, best_ask)| {
-                self.profit_classifier(swap, &dex_price, &best_ask)
-                    .filter(|p| Rational::ZERO.lt(p))
-            })
-            .unwrap_or_default()
+            .and_then(|(dex_price, best_ask)| self.profit_classifier(swap, &dex_price, &best_ask))
     }
 
     fn profit_classifier(
