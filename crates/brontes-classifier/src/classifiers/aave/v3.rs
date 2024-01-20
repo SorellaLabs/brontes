@@ -18,11 +18,6 @@ action_impl!(
     target_address: Address,
     call_data: liquidationCallCall,
     db_tx: &LibmdbxTx<RO> | {
-
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
-
-
         return Some(NormalizedLiquidation {
             trace_index,
             pool: target_address,
