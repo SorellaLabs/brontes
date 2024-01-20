@@ -674,7 +674,7 @@ pub mod test {
 
     #[tokio::test]
     pub async fn test_buffer_result() {
-        let block = 18500648;
+        let block = 18500647;
         let pricing_utils = PricingTestUtils::new(USDC_ADDRESS);
 
         let (mut dex_pricer, mut tree) = pricing_utils
