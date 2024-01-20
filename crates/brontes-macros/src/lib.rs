@@ -20,7 +20,7 @@ use proc_macro::TokenStream;
 ///     [Swap],
 ///     UniswapV2,
 ///     logs: true,
-///     |index, from_address: Address, target_address: Address, log_data: (Swap)| { <body> });
+///     |index, from_address: Address, target_address: Address, msg_sender: Address, log_data: (Swap)| { <body> });
 ///
 /// action_impl!(
 ///     V2MintImpl,
@@ -33,6 +33,7 @@ use proc_macro::TokenStream;
 ///     |index,
 ///      from_address: Address,
 ///      target_address: Address,
+///      msg_sender: Address,
 ///      call_data: mintCall,
 ///      log_data: (Mint)|  { <body> });
 ///
