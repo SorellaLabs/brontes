@@ -76,6 +76,15 @@ impl Inspector for JitInspector<'_> {
                         tree.get_gas_details(backrun_tx).cloned().unwrap(),
                     ];
 
+                    if victims
+                        .iter()
+                        .map(|v| tree.get_root(*v).unwrap().head.data.clone())
+                        .filter(|d| !d.is_revert())
+                        .any(|d| mev_executor_contract == d.get_to_address())
+                    {
+                        return None
+                    }
+
                     // grab all victim swaps dropping swaps that don't touch addresses with
                     let (victims, victim_actions): (Vec<B256>, Vec<Vec<Actions>>) = victims
                         .iter()
@@ -91,6 +100,10 @@ impl Inspector for JitInspector<'_> {
                             )
                         })
                         .unzip();
+
+                    if victim_actions.iter().any(|inner| inner.is_empty()) {
+                        return None
+                    }
 
                     let victim_gas = victims
                         .iter()
@@ -169,6 +182,7 @@ impl JitInspector<'_> {
         let profit = jit_fee - mint - &bribe;
 
         let classified = ClassifiedMev {
+            mev_tx_index: back_jit_idx as u64,
             block_number: metadata.block_num,
             tx_hash: txes[0],
             eoa,
@@ -220,6 +234,10 @@ impl JitInspector<'_> {
         let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
 
         for root in iter {
+            if root.head.data.is_revert() {
+                continue
+            }
+
             match duplicate_mev_contracts.entry(root.head.data.get_to_address()) {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
@@ -373,6 +391,9 @@ mod tests {
             .with_expected_gas_used(90.875025)
             .with_expected_profit_usd(-68.34);
 
-        test_utils.run_inspector::<JitLiquidity>(config, None).await.unwrap();
+        test_utils
+            .run_inspector::<JitLiquidity>(config, None)
+            .await
+            .unwrap();
     }
 }

@@ -21,6 +21,7 @@ tracing.workspace = true
 # async
 rayon.workspace = true
 tokio = { workspace = true, features = ["full"] }
+paste = "1.0.14"
 
 # numbers
 malachite = { workspace = true, features = ["enable_serde"] }

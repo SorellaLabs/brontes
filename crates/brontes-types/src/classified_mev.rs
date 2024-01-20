@@ -30,7 +30,7 @@ pub struct MevBlock {
     pub total_bribe: u128,
     pub cumulative_mev_priority_fee_paid: u128,
     pub builder_address: Address,
-    pub builder_eth_profit: i128,
+    pub builder_eth_profit: f64,
     pub builder_finalized_profit_usd: f64,
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward: Option<u128>,
@@ -43,6 +43,7 @@ pub struct MevBlock {
 pub struct ClassifiedMev {
     // can be multiple for sandwich
     pub block_number:         u64,
+    pub mev_tx_index:         u64,
     #[serde_as(as = "FixedString")]
     pub tx_hash:              B256,
     #[serde_as(as = "FixedString")]
@@ -90,6 +91,7 @@ pub trait SpecificMev:
 {
     fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync>;
     fn mev_type(&self) -> MevType;
+    // the amount of gas they paid in wei
     fn priority_fee_paid(&self) -> u128;
     fn bribe(&self) -> u128;
     fn mev_transaction_hashes(&self) -> Vec<B256>;
@@ -135,9 +137,8 @@ pub fn compose_sandwich_jit(
     }
 
     let jit_sand = Box::new(JitLiquiditySandwich {
-        frontrun_tx_hash:     sandwich.frontrun_tx_hash,
-        frontrun_gas_details: sandwich.frontrun_gas_details,
-
+        frontrun_tx_hash:         sandwich.frontrun_tx_hash,
+        frontrun_gas_details:     sandwich.frontrun_gas_details,
         backrun_tx_hash:          sandwich.backrun_tx_hash,
         backrun_gas_details:      sandwich.backrun_gas_details,
         frontrun_swaps:           sandwich.frontrun_swaps,
@@ -155,6 +156,7 @@ pub fn compose_sandwich_jit(
     let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.finalized_bribe_usd;
 
     let new_classifed = ClassifiedMev {
+        mev_tx_index:         classified_sandwich.mev_tx_index,
         tx_hash:              sandwich.frontrun_tx_hash,
         mev_type:             MevType::JitSandwich,
         block_number:         classified_sandwich.block_number,
@@ -178,7 +180,7 @@ impl SpecificMev for Sandwich {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_gas_details.priority_fee + self.backrun_gas_details.priority_fee
+        self.frontrun_gas_details.gas_paid() + self.backrun_gas_details.gas_paid()
     }
 
     fn bribe(&self) -> u128 {
@@ -187,10 +189,7 @@ impl SpecificMev for Sandwich {
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        let mut mev = vec![self.frontrun_tx_hash, self.backrun_tx_hash];
-        // we add victim hashes in-case they register as a backrun
-        mev.extend(self.victim_swaps_tx_hashes.clone());
-        mev
+        vec![self.frontrun_tx_hash, self.backrun_tx_hash]
     }
 }
 
@@ -220,7 +219,7 @@ impl SpecificMev for JitLiquiditySandwich {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_gas_details.priority_fee + self.backrun_gas_details.priority_fee
+        self.frontrun_gas_details.gas_paid() + self.backrun_gas_details.gas_paid()
     }
 
     fn bribe(&self) -> u128 {
@@ -263,7 +262,7 @@ impl SpecificMev for CexDex {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.gas_details.priority_fee
+        self.gas_details.gas_paid()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
@@ -299,7 +298,7 @@ impl SpecificMev for Liquidation {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.gas_details.priority_fee
+        self.gas_details.gas_paid()
     }
 
     fn bribe(&self) -> u128 {
@@ -343,7 +342,7 @@ impl SpecificMev for JitLiquidity {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_mint_gas_details.priority_fee + self.backrun_burn_gas_details.priority_fee
+        self.frontrun_mint_gas_details.gas_paid() + self.backrun_burn_gas_details.gas_paid()
     }
 }
 
@@ -361,7 +360,7 @@ impl SpecificMev for AtomicBackrun {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.gas_details.priority_fee
+        self.gas_details.gas_paid()
     }
 
     fn bribe(&self) -> u128 {
