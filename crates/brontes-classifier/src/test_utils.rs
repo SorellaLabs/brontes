@@ -302,6 +302,32 @@ impl ClassifierTestUtils {
             Err(ClassifierTestUtilsError::DexPricingError)
         }
     }
+
+    pub async fn contains_action(
+        &self,
+        tx_hash: TxHash,
+        action_number_in_tx: usize,
+        eq_action: Actions,
+        tree_collect_fn: impl Fn(&Node<Actions>) -> (bool, bool),
+    ) -> Result<(), ClassifierTestUtilsError> {
+        let tree = self.build_tree_tx(tx_hash).await?;
+        let root = tree.tx_roots.remove(0);
+        let actions = root.collect(&tree_collect_fn);
+        let action = actions.remove(action_number_in_tx);
+        assert_eq!(eq_action, action, "got: {:#?} != given: {:#?}", action, eq_action);
+
+        Ok(())
+    }
+
+    pub async fn is_missing_action(
+        &self,
+        tx_hash: TxHash,
+        action_number_in_block: usize,
+        eq_action: Actions,
+        tree_collect_fn: impl Fn(&Node<Actions>) -> (bool, bool),
+    ) -> Result<(), ClassifierTestUtilsError> {
+        Ok(())
+    }
 }
 
 impl Deref for ClassifierTestUtils {
