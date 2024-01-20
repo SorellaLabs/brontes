@@ -142,8 +142,7 @@ impl PairSubGraph {
             weights.retain(|e| e.pool_addr != pool_address);
             weights.len() == 0
         } else {
-            error!("tried to remove bad node from subgraph that didn't exist");
-            true
+            false
         }
     }
 
