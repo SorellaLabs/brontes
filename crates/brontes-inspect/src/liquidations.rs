@@ -187,7 +187,6 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Liquidation)
-            .with_block(block)
             .with_mev_tx_hashes(vec![hex!(
                 "725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db"
             )
