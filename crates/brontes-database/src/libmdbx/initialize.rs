@@ -25,7 +25,6 @@ impl LibmdbxInitializer {
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        /*
         join_all(tables.iter().map(|table| {
             table.initialize_table(
                 self.libmdbx.clone(),
@@ -36,8 +35,9 @@ impl LibmdbxInitializer {
         }))
         .await
         .into_iter()
-        .collect::<eyre::Result<_>>() */
+        .collect::<eyre::Result<_>>()
 
+        /*
         for table in tables {
             table
                 .initialize_table(
@@ -50,6 +50,7 @@ impl LibmdbxInitializer {
         }
 
         Ok(())
+        */
     }
 }
 
