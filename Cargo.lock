@@ -1414,6 +1414,7 @@ dependencies = [
  "brontes-classifier",
  "brontes-core",
  "brontes-inspect",
+ "brontes-pricing",
  "brontes-types",
  "bytes",
  "codecs-derive",
