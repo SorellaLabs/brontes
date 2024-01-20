@@ -29,7 +29,7 @@
 //! ```
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     future::Future,
     pin::Pin,
     sync::Arc,
@@ -47,6 +47,7 @@ use brontes_types::{
 };
 use composer_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
 use futures::FutureExt;
+use tracing::warn;
 use utils::{
     build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
     BlockPreprocessing,
@@ -74,18 +75,40 @@ impl<'a> Composer<'a> {
         let processing = pre_process(tree.clone(), meta_data.clone());
         let meta_data_clone = meta_data.clone();
         let future = Box::pin(async move {
-            let mut scope: TokioScope<'a, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
+            let mut scope: TokioScope<'_, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
                 unsafe { Scope::create() };
             orchestra.iter().for_each(|inspector| {
                 scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
             });
 
-            scope
+            let mut interesting = tree
+                .tx_roots
+                .iter()
+                .filter(|r| r.gas_details.coinbase_transfer.is_some())
+                .map(|r| r.tx_hash)
+                .collect::<HashSet<_>>();
+
+            let results = scope
                 .collect()
                 .await
                 .into_iter()
                 .flat_map(|r| r.unwrap())
-                .collect::<Vec<_>>()
+                .map(|mev| {
+                    mev.1
+                        .mev_transaction_hashes()
+                        .into_iter()
+                        .for_each(|mev_tx| {
+                            interesting.remove(&mev_tx);
+                        });
+                    mev
+                })
+                .collect::<Vec<_>>();
+
+            for not_classified in interesting {
+                warn!(tx_hash=?not_classified,"found a tx with a coinbase transfer but wasn't picked up by a classifier");
+            }
+
+            results
         })
             as Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + 'a>>;
 
@@ -123,17 +146,24 @@ impl<'a> Composer<'a> {
 
         //TODO: (Will) Filter only specific unprofitable types of mev so we can capture
         // bots that are subsidizing their bundles to dry out the competition
-        let flattened_mev = sorted_mev
+        let mut flattened_mev = sorted_mev
             .into_values()
             .flatten()
-            .filter(|(classified, _)| classified.finalized_profit_usd > 0.0)
+            .filter(|(classified, _)| {
+                if matches!(classified.mev_type, MevType::Sandwich | MevType::Jit | MevType::Backrun) {
+                    classified.finalized_profit_usd > 0.0
+                } else {
+                    true
+                }
+            })
             .collect::<Vec<_>>();
 
-        // set the mev count now that all merges & reductions have been made
         let mev_count = flattened_mev.len();
         header.mev_count = mev_count as u64;
 
-        // TODO: (Will) Ensure that insertion order is preserved
+        // keep order
+        flattened_mev.sort_by(|a, b| a.0.mev_tx_index.cmp(&b.0.mev_tx_index));
+
         Poll::Ready((header, flattened_mev))
     }
 
