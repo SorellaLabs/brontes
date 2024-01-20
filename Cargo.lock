@@ -1602,6 +1602,7 @@ dependencies = [
  "brontes-database",
  "brontes-database-libmdbx",
  "brontes-inspect",
+ "brontes-pricing",
  "brontes-types",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
  "criterion",
@@ -1671,9 +1672,8 @@ dependencies = [
  "auto_impl",
  "brontes-classifier",
  "brontes-core",
- "brontes-database",
- "brontes-database-libmdbx",
  "brontes-inspect",
+ "brontes-pricing",
  "brontes-types",
  "bytes",
  "codecs-derive",
@@ -8674,31 +8674,6 @@ dependencies = [
  "serde",
  "sha-1 0.10.1",
  "test-fuzz-internal",
-]
-
-[[package]]
-name = "tests"
-version = "0.1.0"
-dependencies = [
- "alloy-sol-macro",
- "alloy-sol-types",
- "brontes-classifier",
- "brontes-core",
- "brontes-database",
- "brontes-inspect",
- "brontes-metrics",
- "brontes-types",
- "dotenv",
- "futures",
- "reth-primitives",
- "reth-rpc",
- "reth-rpc-types",
- "reth-tracing-ext",
- "serde",
- "serde_json",
- "serial_test",
- "sorella-db-databases",
- "tokio",
 ]
 
 [[package]]

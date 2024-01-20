@@ -14,26 +14,38 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_codecs::derive_arbitrary;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
-use tracing::warn;
+use tracing::{error, warn};
 
 use crate::{
     errors::ArithmeticError, graphs::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool,
     uniswap_v3::UniswapV3Pool, AutomatedMarketMaker,
 };
 
-impl DexQuotes {
-    pub fn price_after(&self, pair: Pair, tx: usize) -> Option<Rational> {
-        if pair.0 == pair.1 {
-            return Some(Rational::from(1))
-        }
-        self.get_price(pair, tx).cloned()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Rational>>>);
 
 impl DexQuotes {
+    /// checks for price at the given tx index. if it isn't found, will look for
+    /// the price at all previous indexes in the block
+    pub fn price_at_or_before(&self, pair: Pair, mut tx: usize) -> Option<Rational> {
+        if pair.0 == pair.1 {
+            return Some(Rational::from(1))
+        }
+
+        loop {
+            if let Some(price) = self.get_price(pair, tx) {
+                return Some(price.clone())
+            }
+            if tx == 0 {
+                break
+            }
+
+            tx -= 1;
+        }
+        error!(?pair, "no price for pair");
+        None
+    }
+
     pub fn get_price(&self, pair: Pair, tx: usize) -> Option<&Rational> {
         self.0.get(tx)?.as_ref()?.get(&pair)
     }

@@ -152,6 +152,11 @@ pub fn compose_sandwich_jit(
         backrun_burns:            jit.backrun_burns,
     });
 
+    let sandwich_rev =
+        classified_sandwich.finalized_bribe_usd + classified_sandwich.finalized_profit_usd;
+    let jit_rev = classified_sandwich.finalized_bribe_usd + jit_classified.finalized_profit_usd;
+    let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.finalized_bribe_usd;
+
     let new_classifed = ClassifiedMev {
         tx_hash:              sandwich.frontrun_tx_hash,
         mev_type:             MevType::JitSandwich,
@@ -160,8 +165,7 @@ pub fn compose_sandwich_jit(
         mev_contract:         classified_sandwich.mev_contract,
         mev_profit_collector: classified_sandwich.mev_profit_collector,
         finalized_bribe_usd:  classified_sandwich.finalized_bribe_usd,
-        finalized_profit_usd: classified_sandwich.finalized_profit_usd
-            + jit_classified.finalized_profit_usd,
+        finalized_profit_usd: jit_liq_profit,
     };
 
     (new_classifed, jit_sand)
@@ -186,10 +190,7 @@ impl SpecificMev for Sandwich {
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        let mut mev = vec![self.frontrun_tx_hash, self.backrun_tx_hash];
-        // we add victim hashes in-case they register as a backrun
-        mev.extend(self.victim_swaps_tx_hashes.clone());
-        mev
+        vec![self.frontrun_tx_hash, self.backrun_tx_hash]
     }
 }
 

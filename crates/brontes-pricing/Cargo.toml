@@ -71,14 +71,14 @@ bytes = "1.5"
 eyre.workspace = true
 rkyv.workspace = true
 
+
 [dev-dependencies]
 serial_test.workspace = true
+brontes-pricing = { workspace = true, features = ["testing"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-inspect.workspace = true
 brontes-types.workspace = true
-brontes-database.workspace = true
-brontes-database-libmdbx.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true
@@ -86,5 +86,6 @@ criterion = { version = "0.5" }
 rand = "0.8.5"
 
 [features]
+testing = []
 uni-v3-ticks = []
 benchmarking = []
