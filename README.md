@@ -64,8 +64,8 @@ pub trait Inspector: Send + Sync {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)>;
+        metadata: Arc<MetadataCombined>,
+    ) -> Vec<(ClassifiedMev, SpecificMev)>;
 }
 ```
 

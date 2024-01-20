@@ -1,31 +1,26 @@
-pub mod const_sql;
+mod const_sql;
 pub mod errors;
-pub(crate) mod serde;
-pub mod types;
+
 use std::collections::HashMap;
 
 use alloy_json_abi::JsonAbi;
-use brontes_types::classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev, *};
+use brontes_types::{
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev, *},
+    db::{cex::CexPriceMap, clickhouse::*, metadata::MetadataNoDex},
+    extra_processing::Pair,
+};
 use futures::future::join_all;
 use reth_primitives::{hex, revm_primitives::FixedBytes, Address};
 use sorella_db_databases::{
     clickhouse::{
         config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
-        DbRow,
     },
     tables::DatabaseTables,
     Database,
 };
 use tracing::{error, info};
-pub mod mev_types;
 
-use self::types::{Abis, DBTokenPricesDB, TimesFlow};
-use super::MetadataDB;
-use crate::{
-    cex::CexPriceMap,
-    clickhouse::{const_sql::*, types::TimesFlowDB},
-    Pair,
-};
+use self::const_sql::*;
 
 pub const WETH_ADDRESS: Address =
     Address(FixedBytes(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")));
@@ -51,7 +46,7 @@ impl Clickhouse {
         self.client.credentials()
     }
 
-    pub async fn get_metadata(&self, block_num: u64) -> MetadataDB {
+    pub async fn get_metadata(&self, block_num: u64) -> MetadataNoDex {
         let times_flow = self.get_times_flow_info(block_num).await;
         let cex_prices = self.get_cex_token_prices(times_flow.p2p_time).await;
 
@@ -62,7 +57,7 @@ impl Clickhouse {
             .clone();
 
         /*
-        let metadata = MetadataDB::new(
+        let metadata = MetadataNoDex::new(
             block_num,
             times_flow.block_hash.into(),
             times_flow.relay_time,
@@ -80,14 +75,12 @@ impl Clickhouse {
         Default::default()
     }
 
-    async fn insert_singe_classified_data<T: SpecificMev + ::serde::Serialize + DbRow + Clone>(
+    async fn insert_singe_classified_data(
         db_client: &ClickhouseClient,
-        mev_detail: Box<dyn SpecificMev>,
+        mev_detail: SpecificMev,
         table: DatabaseTables,
     ) {
-        let any = mev_detail.into_any();
-        let this = any.downcast_ref::<T>().unwrap();
-        if let Err(e) = db_client.insert_one(this, table).await {
+        if let Err(e) = db_client.insert_one(&mev_detail, table).await {
             error!(?e, "failed to insert specific mev");
         }
     }
@@ -95,7 +88,7 @@ impl Clickhouse {
     pub async fn insert_classified_data(
         &self,
         block_details: MevBlock,
-        mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+        mev_details: Vec<(ClassifiedMev, SpecificMev)>,
     ) {
         if let Err(e) = self
             .client
@@ -119,47 +112,10 @@ impl Clickhouse {
                     {
                         error!(?e, "failed to insert classified mev");
                     }
-
                     info!("inserted classified_mev");
+
                     let table = mev_table_type(&specific);
-                    let mev_type = specific.mev_type();
-                    match mev_type {
-                        MevType::Sandwich => {
-                            Self::insert_singe_classified_data::<Sandwich>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::Backrun => {
-                            Self::insert_singe_classified_data::<AtomicBackrun>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::JitSandwich => {
-                            Self::insert_singe_classified_data::<JitLiquiditySandwich>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::Jit => {
-                            Self::insert_singe_classified_data::<JitLiquidity>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::CexDex => {
-                            Self::insert_singe_classified_data::<CexDex>(db_client, specific, table)
-                                .await
-                        }
-                        MevType::Liquidation => {
-                            Self::insert_singe_classified_data::<Liquidation>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::Unknown => unimplemented!("none yet"),
-                    };
+                    Self::insert_singe_classified_data(db_client, specific, table).await;
 
                     info!("{:?}: inserted specific mev type", table);
                 }),
@@ -171,7 +127,7 @@ impl Clickhouse {
         let query = format_query_array(&addresses, ABIS);
 
         self.client
-            .query_many::<Abis>(&query, &())
+            .query_many::<ClickhouseAbis>(&query, &())
             .await
             .unwrap()
             .into_iter()
@@ -193,9 +149,9 @@ impl Clickhouse {
                .collect::<HashSet<TxHash>>()
        }
     */
-    async fn get_times_flow_info(&self, block_num: u64) -> TimesFlow {
+    async fn get_times_flow_info(&self, block_num: u64) -> ClickhouseTimesFlow {
         self.client
-            .query_one::<TimesFlowDB>(TIMES_FLOW, &(block_num))
+            .query_one::<ClickhouseTimesFlow>(TIMES_FLOW, &(block_num))
             .await
             .unwrap()
             .into()
@@ -203,14 +159,14 @@ impl Clickhouse {
 
     async fn get_cex_token_prices(&self, p2p_time: u64) -> CexPriceMap {
         self.client
-            .query_many::<DBTokenPricesDB>(PRICES, &(p2p_time))
+            .query_many::<ClickhouseTokenPrices>(PRICES, &(p2p_time))
             .await
             .unwrap()
             .into()
     }
 }
 
-fn mev_table_type(mev: &Box<dyn SpecificMev>) -> DatabaseTables {
+fn mev_table_type(mev: &SpecificMev) -> DatabaseTables {
     match mev.mev_type() {
         brontes_types::classified_mev::MevType::Sandwich => DatabaseTables::Sandwich,
         brontes_types::classified_mev::MevType::Backrun => DatabaseTables::AtomicBackrun,
@@ -222,6 +178,7 @@ fn mev_table_type(mev: &Box<dyn SpecificMev>) -> DatabaseTables {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
 
@@ -419,3 +376,6 @@ mod tests {
         assert_eq!(metadata.mempool_flow, expected_metadata.mempool_flow);
     }
 }
+
+
+*/

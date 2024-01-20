@@ -3,7 +3,7 @@ use std::{collections::HashMap, env, fs::metadata, path::Path, time::Duration};
 use alloy_primitives::Address;
 use brontes_core::{decoding::Parser, init_tracing};
 use brontes_database::{clickhouse::USDT_ADDRESS, Pair};
-use brontes_database_libmdbx::{
+use brontes_database::libmdbx::{
     tables::PoolCreationBlocks, types::metadata, AddressToProtocol, AddressToTokens, Libmdbx,
 };
 use brontes_inspect::cex_dex::CexDexInspector;
@@ -63,7 +63,7 @@ fn bench_cex_dex<V>(
 
     g.bench_function(name, move |b| {
         b.iter(|| {
-            for ((block_num, tree, metadata) &bench_data) {
+            for ((block_num, tree, metadata), &bench_data) {
                 black_box(cex_dex_inspector(
                     block_num,
                     &metadata,

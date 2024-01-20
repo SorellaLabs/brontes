@@ -42,7 +42,11 @@ impl Serialize for Liquidation {
         ser_struct
             .serialize_field("liquidations.collateral_asset", &liquidations.collateral_asset)?;
         ser_struct.serialize_field("liquidations.debt_asset", &liquidations.debt_asset)?;
-        ser_struct.serialize_field("liquidations.amount", &liquidations.amount)?;
+        ser_struct.serialize_field("liquidations.covered_debt", &liquidations.covered_debt)?;
+        ser_struct.serialize_field(
+            "liquidations.liquidated_collateral",
+            &liquidations.liquidated_collateral,
+        )?;
 
         let gas_details = (
             self.gas_details.coinbase_transfer,
@@ -74,7 +78,8 @@ impl DbRow for Liquidation {
         "liquidations.debtor",
         "liquidations.collateral_asset",
         "liquidations.debt_asset",
-        "liquidations.amount",
+        "liquidations.covered_debt",
+        "liquidations.liquidated_collateral",
         "gas_details",
     ];
 }

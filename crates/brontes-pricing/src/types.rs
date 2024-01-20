@@ -3,41 +3,20 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use alloy_primitives::{Address, Log, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::{
-    exchanges::StaticBindingsDb,
-    extra_processing::Pair,
-    impl_compress_decompress_for_encoded_decoded,
-    libmdbx::{dex_price_mapping::DexQuoteLibmdbx, serde::address_string},
-    normalized_actions::Actions,
+    exchanges::StaticBindingsDb, extra_processing::Pair, normalized_actions::Actions,
+    serde_utils::primitives::address_string,
 };
 use bytes::BufMut;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_codecs::derive_arbitrary;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
-use tracing::warn;
+use tracing::{error, warn};
 
 use crate::{
-    errors::ArithmeticError, graphs::PoolPairInfoDirection, uniswap_v2::UniswapV2Pool,
-    uniswap_v3::UniswapV3Pool, AutomatedMarketMaker,
+    errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
+    AutomatedMarketMaker,
 };
-
-impl DexQuotes {
-    pub fn price_after(&self, pair: Pair, tx: usize) -> Option<Rational> {
-        if pair.0 == pair.1 {
-            return Some(Rational::from(1))
-        }
-        self.get_price(pair, tx).cloned()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Rational>>>);
-
-impl DexQuotes {
-    pub fn get_price(&self, pair: Pair, tx: usize) -> Option<&Rational> {
-        self.0.get(tx)?.as_ref()?.get(&pair)
-    }
-}
 
 pub(crate) trait ProtocolState {
     fn price(&self, base: Address) -> Result<Rational, ArithmeticError>;
@@ -163,13 +142,8 @@ impl PoolUpdate {
             Actions::Burn(b) => Some(Pair(b.token[0], b.token[1])),
             Actions::Collect(b) => Some(Pair(b.token[0], b.token[1])),
             Actions::Transfer(t) => Some(Pair(t.token, quote)),
-            _ => None,
+            Actions::Liquidation(l) => Some(Pair(l.collateral_asset, l.debt_asset)),
+            _ => unreachable!(),
         }
-    }
-}
-
-impl From<Vec<DexQuoteLibmdbx>> for DexQuotes {
-    fn from(value: Vec<DexQuoteLibmdbx>) -> Self {
-        todo!()
     }
 }

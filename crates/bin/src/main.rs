@@ -11,11 +11,13 @@ use async_scoped::{Scope, TokioScope};
 use brontes::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::clickhouse::Clickhouse;
-use brontes_database_libmdbx::{
-    implementation::cursor::LibmdbxCursor,
-    tables::{AddressToProtocol, IntoTableKey, Tables},
-    Libmdbx,
+use brontes_database::{
+    clickhouse::Clickhouse,
+    libmdbx::{
+        cursor::CompressedCursor,
+        tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
+        Libmdbx,
+    },
 };
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
@@ -25,7 +27,7 @@ use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
 use itertools::Itertools;
 use metrics_process::Collector;
-use reth_db::{cursor::DbCursorRO, mdbx::RO, table::Table, transaction::DbTx};
+use reth_db::mdbx::RO;
 use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{error, info, Level};
@@ -38,7 +40,7 @@ use banner::print_banner;
 use cli::TraceArg;
 use cli::{AddToDb, Args, Commands, DatabaseQuery, DexPricingArgs, Init, RunArgs};
 
-type Inspectors<'a> = [&'a Box<dyn Inspector>; 4];
+type Inspectors<'a> = &'a [&'a Box<dyn Inspector>];
 
 struct InspectorHolder {
     sandwich: Box<dyn Inspector>,
@@ -58,7 +60,7 @@ impl InspectorHolder {
     }
 
     fn get_inspectors(&'static self) -> Inspectors<'static> {
-        [&self.sandwich, &self.cex_dex, &self.jit, &self.backrun]
+        &*Box::leak(Box::new([&self.sandwich, &self.cex_dex, &self.jit, &self.backrun]))
     }
 }
 
@@ -131,7 +133,7 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
                     Tables::$tables => {
                         db.write_table(
                             &vec![
-                            brontes_database_libmdbx::tables::$tables::into_table_data(
+                            brontes_database::libmdbx::tables::$tables::into_table_data(
                                     $arg0,
                                     $arg1
                                 )
@@ -162,12 +164,13 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
 }
 
 fn process_range_query<T, E>(
-    mut cursor: LibmdbxCursor<T, RO>,
+    mut cursor: CompressedCursor<T, RO>,
     command: DatabaseQuery,
-) -> Result<Vec<T::Value>, Box<dyn Error>>
+) -> Result<Vec<T::DecompressedValue>, Box<dyn Error>>
 where
-    T: Table,
+    T: CompressedTable,
     T: for<'a> IntoTableKey<&'a str, T::Key, E>,
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
     let range = command.key.split("..").collect_vec();
     let start = range[0];
@@ -205,8 +208,8 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
                         println!(
                             "{:#?}",
                             $fn(
-                                tx.$query::<brontes_database_libmdbx::tables::$tables>(
-                                    brontes_database_libmdbx::tables::$tables::into_key($args)
+                                tx.$query::<brontes_database::libmdbx::tables::$tables>(
+                                    brontes_database::libmdbx::tables::$tables::into_key($args)
                                     ).unwrap(),
                                 command
                             ).unwrap()
@@ -222,7 +225,7 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
                         println!(
                             "{:#?}",
                             $fn(
-                                tx.$query::<brontes_database_libmdbx::tables::$tables>()?,
+                                tx.$query::<brontes_database::libmdbx::tables::$tables>()?,
                                 command
                             )?
                         )
@@ -348,7 +351,7 @@ async fn init_brontes(init_config: Init) -> Result<(), Box<dyn Error>> {
                 None
             };
         libmdbx
-            .clear_and_initialize_tables(
+            .init_tables(
                 clickhouse.clone(),
                 init_config
                     .tables_to_init

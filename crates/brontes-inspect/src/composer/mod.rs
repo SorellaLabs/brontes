@@ -29,25 +29,26 @@
 //! ```
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     future::Future,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
 };
 
+use brontes_types::classified_mev::Mev;
 mod composer_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
-use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev},
+    db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
 };
 use composer_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
 use futures::FutureExt;
-use tracing::info;
+use tracing::warn;
 use utils::{
     build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
     BlockPreprocessing,
@@ -56,39 +57,61 @@ use utils::{
 use crate::Inspector;
 
 type InspectorFut<'a> =
-    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, SpecificMev)>> + Send + 'a>>;
 
-pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
+pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, SpecificMev)>);
 
-pub struct Composer<'a, const N: usize> {
+pub struct Composer<'a> {
     inspectors_execution: InspectorFut<'a>,
     pre_processing:       BlockPreprocessing,
-    metadata:             Arc<Metadata>,
+    metadata:             Arc<MetadataCombined>,
 }
 
-impl<'a, const N: usize> Composer<'a, N> {
+impl<'a> Composer<'a> {
     pub fn new(
-        orchestra: &'a [&'a Box<dyn Inspector>; N],
+        orchestra: &'a [&'a Box<dyn Inspector>],
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<Metadata>,
+        meta_data: Arc<MetadataCombined>,
     ) -> Self {
         let processing = pre_process(tree.clone(), meta_data.clone());
         let meta_data_clone = meta_data.clone();
         let future = Box::pin(async move {
-            let mut scope: TokioScope<'a, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
+            let mut scope: TokioScope<'a, Vec<(ClassifiedMev, SpecificMev)>> =
                 unsafe { Scope::create() };
             orchestra.iter().for_each(|inspector| {
                 scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
             });
 
-            scope
+            let mut interesting = tree
+                .tx_roots
+                .iter()
+                .filter(|r| r.gas_details.coinbase_transfer.is_some())
+                .map(|r| r.tx_hash)
+                .collect::<HashSet<_>>();
+
+            let results = scope
                 .collect()
                 .await
                 .into_iter()
                 .flat_map(|r| r.unwrap())
-                .collect::<Vec<_>>()
+                .map(|mev| {
+                    mev.1
+                        .mev_transaction_hashes()
+                        .into_iter()
+                        .for_each(|mev_tx| {
+                            interesting.remove(&mev_tx);
+                        });
+                    mev
+                })
+                .collect::<Vec<_>>();
+
+            for not_classified in interesting {
+                warn!(tx_hash=?not_classified,"found a tx with a coinbase transfer but wasn't picked up by a classifier");
+            }
+
+            results
         })
-            as Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + 'a>>;
+            as Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, SpecificMev)>> + 'a>>;
 
         Self {
             // The rust compiler struggles to prove that the tokio-scope lifetime is the same as
@@ -103,9 +126,8 @@ impl<'a, const N: usize> Composer<'a, N> {
 
     fn on_orchestra_resolution(
         &mut self,
-        orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+        orchestra_data: Vec<(ClassifiedMev, SpecificMev)>,
     ) -> Poll<ComposerResults> {
-        info!("starting to compose classified mev");
         let mut header =
             build_mev_header(self.metadata.clone(), &self.pre_processing, &orchestra_data);
 
@@ -125,17 +147,27 @@ impl<'a, const N: usize> Composer<'a, N> {
 
         //TODO: (Will) Filter only specific unprofitable types of mev so we can capture
         // bots that are subsidizing their bundles to dry out the competition
-        let flattened_mev = sorted_mev
+        let mut flattened_mev = sorted_mev
             .into_values()
             .flatten()
-            .filter(|(classified, _)| classified.finalized_profit_usd > 0.0)
+            .filter(|(classified, _)| {
+                if matches!(
+                    classified.mev_type,
+                    MevType::Sandwich | MevType::Jit | MevType::Backrun
+                ) {
+                    classified.finalized_profit_usd > 0.0
+                } else {
+                    true
+                }
+            })
             .collect::<Vec<_>>();
 
-        // set the mev count now that all merges & reductions have been made
         let mev_count = flattened_mev.len();
         header.mev_count = mev_count as u64;
 
-        // TODO: (Will) Ensure that insertion order is preserved
+        // keep order
+        flattened_mev.sort_by(|a, b| a.0.mev_tx_index.cmp(&b.0.mev_tx_index));
+
         Poll::Ready((header, flattened_mev))
     }
 
@@ -143,7 +175,7 @@ impl<'a, const N: usize> Composer<'a, N> {
         &mut self,
         dominant_mev_type: &MevType,
         subordinate_mev_types: &[MevType],
-        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
+        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
     ) {
         let dominant_mev_list = match sorted_mev.get(dominant_mev_type) {
             Some(list) => list,
@@ -201,15 +233,15 @@ impl<'a, const N: usize> Composer<'a, N> {
         parent_mev_type: &MevType,
         child_mev_type: &[MevType],
         compose: &ComposeFunction,
-        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
+        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
     ) {
         let first_mev_type = child_mev_type[0];
         let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
 
         if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
-            for (classified, mev_data) in first_mev_list {
+            for (first_i, (classified, mev_data)) in first_mev_list.iter().enumerate() {
                 let tx_hashes = mev_data.mev_transaction_hashes();
-                let mut to_compose = vec![(classified, mev_data.into_any())];
+                let mut to_compose = vec![(classified.clone(), mev_data.clone())];
                 let mut temp_removal_indices = Vec::new();
 
                 for &other_mev_type in child_mev_type.iter().skip(1) {
@@ -218,16 +250,14 @@ impl<'a, const N: usize> Composer<'a, N> {
                             Some(index) => {
                                 let (other_classified, other_mev_data) =
                                     &other_mev_data_list[index];
-                                to_compose.push((
-                                    other_classified.clone(),
-                                    other_mev_data.clone().into_any(),
-                                ));
+
+                                to_compose.push((other_classified.clone(), other_mev_data.clone()));
                                 temp_removal_indices.push((other_mev_type, index));
                             }
                             None => break,
                         }
                     } else {
-                        break;
+                        break
                     }
                 }
 
@@ -239,8 +269,15 @@ impl<'a, const N: usize> Composer<'a, N> {
                     for (mev_type, index) in temp_removal_indices {
                         removal_indices.entry(mev_type).or_default().push(index);
                     }
+
+                    removal_indices
+                        .entry(first_mev_type)
+                        .or_default()
+                        .push(first_i)
                 }
             }
+
+            sorted_mev.insert(first_mev_type, first_mev_list);
         }
 
         // Remove the mev data that was composed from the sorted mev list
@@ -254,7 +291,7 @@ impl<'a, const N: usize> Composer<'a, N> {
     }
 }
 
-impl<const N: usize> Future for Composer<'_, N> {
+impl Future for Composer<'_> {
     type Output = ComposerResults;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -262,5 +299,36 @@ impl<const N: usize> Future for Composer<'_, N> {
             return self.on_orchestra_resolution(calculation)
         }
         Poll::Pending
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use alloy_primitives::hex;
+    use brontes_types::classified_mev::JitLiquiditySandwich;
+    use serial_test::serial;
+
+    use super::*;
+    use crate::test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS};
+
+    #[tokio::test]
+    #[serial]
+    pub async fn test_jit_sandwich() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2);
+
+        let config =
+            ComposerRunConfig::new(vec![MevType::Sandwich, MevType::Jit], MevType::JitSandwich)
+                .with_dex_prices()
+                .with_expected_gas_used(90.875025)
+                .with_expected_profit_usd(13.568977)
+                .with_mev_tx_hashes(vec![
+                    hex!("22ea36d516f59cc90ccc01042e20f8fba196f32b067a7e5f1510099140ae5e0a").into(),
+                    hex!("72eb3269ac013cf663dde9aa11cc3295e0dfb50c7edfcf074c5c57b43611439c").into(),
+                    hex!("3b4138bac9dc9fa4e39d8d14c6ecd7ec0144fe26b120ea799317aa15fa35ddcd").into(),
+                    hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
+                    hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
+                ]);
+
+        inspector_util.run_composer(config, None).await.unwrap();
     }
 }

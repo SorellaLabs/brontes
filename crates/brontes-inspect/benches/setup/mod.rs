@@ -2,9 +2,12 @@ use std::{collections::HashMap, env, fs::metadata, path::Path, time::Duration};
 
 use alloy_primitives::Address;
 use brontes_core::{decoding::Parser, init_tracing};
-use brontes_database::{clickhouse::USDT_ADDRESS, Pair};
-use brontes_database_libmdbx::{
-    tables::PoolCreationBlocks, types::metadata, AddressToProtocol, AddressToTokens, Libmdbx,
+use brontes_database::{
+    clickhouse::USDT_ADDRESS,
+    libmdbx::{
+        tables::PoolCreationBlocks, types::metadata, AddressToProtocol, AddressToTokens, Libmdbx,
+    },
+    Pair,
 };
 use brontes_inspect::cex_dex::CexDexInspector;
 use brontes_types::{

@@ -3,11 +3,13 @@ use std::{pin::Pin, sync::Arc, task::Poll};
 use alloy_primitives::{Address, Bytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::{
+    tables::TokenDecimals, types::token_decimals::TokenDecimalsData, Libmdbx,
+};
 use futures::{future::join, stream::FuturesUnordered, Future, StreamExt};
 use reth_provider::ProviderError;
 use reth_rpc_types::{CallInput, CallRequest};
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 use crate::decoding::TracingProvider;
 
@@ -24,18 +26,17 @@ pub struct MissingDecimals<'db, T: TracingProvider + 'db> {
 }
 
 impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
-    pub fn new(provider: Arc<T>, db: &'db Libmdbx, missing: Vec<Address>) -> Self {
+    pub fn new(provider: Arc<T>, db: &'db Libmdbx, block: u64, missing: Vec<Address>) -> Self {
         let mut this =
             Self { provider, pending_decimals: FuturesUnordered::default(), database: db };
-        this.missing_decimals(missing);
+        this.missing_decimals(block, missing);
 
         this
     }
 
-    fn missing_decimals(&mut self, addrs: Vec<Address>) {
+    fn missing_decimals(&mut self, block: u64, addrs: Vec<Address>) {
         addrs.into_iter().for_each(|addr| {
             let call = decimalsCall::new(()).abi_encode();
-            // let tx_req = TransactionRequest::default().to(addr).input(call.into());
             let mut tx_req = CallRequest::default();
             tx_req.to = Some(addr);
             tx_req.input = CallInput::new(call.into());
@@ -43,7 +44,7 @@ impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
             let p = self.provider.clone();
             self.pending_decimals
                 .push(Box::pin(join(async move { addr }, async move {
-                    p.eth_call(tx_req, None, None, None).await
+                    p.eth_call(tx_req, Some(block.into()), None, None).await
                 })));
         });
     }
@@ -53,12 +54,20 @@ impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
             let Some(dec) = decimalsCall::abi_decode_returns(&res, false).ok() else { return };
             let dec = dec._0;
             info!(?dec, ?addr, "got new decimal");
-            if let Err(e) = self.database.insert_decimals(addr, dec) {
+            if let Err(e) = self.insert_decimals(addr, dec) {
                 error!(?e);
             }
         } else {
-            debug!(?addr, "Token request failed for token");
+            info!(?addr, "Token request failed for token");
         }
+    }
+
+    fn insert_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
+        self.database
+            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
+                address,
+                decimals,
+            }])
     }
 }
 

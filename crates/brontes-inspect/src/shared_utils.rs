@@ -4,9 +4,10 @@ use std::{
     sync::Arc,
 };
 
-use brontes_database::{Metadata, Pair};
-use brontes_database_libmdbx::Libmdbx;
+use alloy_primitives::U256;
+use brontes_database::libmdbx::{tables::TokenDecimals, Libmdbx};
 use brontes_types::{
+    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedTransfer},
     ToScaledRational,
 };
@@ -16,6 +17,8 @@ use malachite::{
 };
 use reth_primitives::Address;
 use tracing::error;
+
+use crate::MetadataCombined;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {
@@ -29,7 +32,8 @@ impl<'db> SharedInspectorUtils<'db> {
     }
 
     pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
-        self.db.try_get_decimals(address)
+        let tx = self.db.ro_tx().unwrap();
+        tx.get::<TokenDecimals>(address).unwrap()
     }
 }
 
@@ -47,12 +51,12 @@ impl SharedInspectorUtils<'_> {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-                let Some(decimals_in) = self.db.try_get_decimals(swap.token_in) else {
-                    error!("token decimals not found");
+                let Some(decimals_in) = self.try_get_decimals(swap.token_in) else {
+                    error!(?swap.token_in, "token decimals not found");
                     continue;
                 };
-                let Some(decimals_out) = self.db.try_get_decimals(swap.token_out) else {
-                    error!("token decimals not found");
+                let Some(decimals_out) = self.try_get_decimals(swap.token_out) else {
+                    error!(?swap.token_out, "token decimals not found");
                     continue;
                 };
 
@@ -97,7 +101,7 @@ impl SharedInspectorUtils<'_> {
         &self,
         tx_position: usize,
         deltas: SwapTokenDeltas,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         cex: bool,
     ) -> Option<HashMap<Address, Rational>> {
         let mut usd_deltas = HashMap::new();
@@ -109,7 +113,7 @@ impl SharedInspectorUtils<'_> {
                     // Fetch CEX price
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
                 } else {
-                    metadata.dex_quotes.price_after(pair, tx_position)?
+                    metadata.dex_quotes.price_at_or_before(pair, tx_position)?
                 };
 
                 let usd_amount = amount * price;
@@ -121,18 +125,42 @@ impl SharedInspectorUtils<'_> {
         Some(usd_deltas)
     }
 
+    pub fn calculate_dex_usd_amount(
+        &self,
+        block_position: usize,
+        token_address: Address,
+        amount: U256,
+        metadata: &Arc<MetadataCombined>,
+    ) -> Option<Rational> {
+        let Some(decimals) = self.try_get_decimals(token_address) else {
+            error!("token decimals not found for calcuate dex usd amount");
+            return None
+        };
+        if token_address == self.quote {
+            return Some(Rational::ONE * amount.to_scaled_rational(decimals))
+        }
+
+        let pair = Pair(token_address, self.quote);
+        Some(
+            metadata
+                .dex_quotes
+                .price_at_or_before(pair, block_position)?
+                * amount.to_scaled_rational(decimals),
+        )
+    }
+
     pub fn get_dex_usd_price(
         &self,
         block_position: usize,
         token_address: Address,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
     ) -> Option<Rational> {
         if token_address == self.quote {
             return Some(Rational::ONE)
         }
 
         let pair = Pair(token_address, self.quote);
-        metadata.dex_quotes.price_after(pair, block_position)
+        metadata.dex_quotes.price_at_or_before(pair, block_position)
     }
 
     pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
@@ -148,7 +176,7 @@ impl SharedInspectorUtils<'_> {
     fn transfer_deltas(&self, transfers: Vec<&NormalizedTransfer>, deltas: &mut SwapTokenDeltas) {
         for transfer in transfers.into_iter() {
             // normalize token decimals
-            let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
+            let Some(decimals) = self.try_get_decimals(transfer.token) else {
                 error!("token decimals not found");
                 continue;
             };
