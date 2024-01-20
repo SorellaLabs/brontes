@@ -501,8 +501,8 @@ pub mod test {
             B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
 
         let eq_action = Actions::Liquidation(NormalizedLiquidation {
-            liquidated_collateral: U256::from(165516722),
-            covered_debt:          U256::from(63857746423),
+            liquidated_collateral: U256::from(165516722u64),
+            covered_debt:          U256::from(63857746423u64),
             debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
             debt_asset:            Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
             collateral_asset:      Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")),
