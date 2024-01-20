@@ -501,7 +501,7 @@ pub mod test {
         let aave_v3_liquidation =
             B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
 
-        let eq_action = NormalizedLiquidation {
+        let eq_action = Actions::Liquidation(NormalizedLiquidation {
             liquidated_collateral: U256::from(165516722),
             covered_debt:          U256::from(63857746423),
             debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
@@ -510,10 +510,10 @@ pub mod test {
             liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
             pool:                  Address::from(hex!("c6217a364c35de7ebd552b3d30fd169f44ef20b6")),
             trace_index:           69,
-        };
+        });
 
         classifier_utils
-            .contains_action(aave_v3_liquidation, 0, eq_action, Action::liquidation_collect_fn())
+            .contains_action(aave_v3_liquidation, 0, eq_action, Actions::liquidation_collect_fn())
             .await
             .unwrap();
     }
