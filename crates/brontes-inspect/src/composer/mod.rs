@@ -149,7 +149,13 @@ impl<'a> Composer<'a> {
         let mut flattened_mev = sorted_mev
             .into_values()
             .flatten()
-            .filter(|(classified, _)| classified.finalized_profit_usd > 0.0)
+            .filter(|(classified, _)| {
+                if matches!(classified.mev_type, MevType::Sandwich | MevType::Jit) {
+                    classified.finalized_profit_usd > 0.0
+                } else {
+                    true
+                }
+            })
             .collect::<Vec<_>>();
 
         let mev_count = flattened_mev.len();
