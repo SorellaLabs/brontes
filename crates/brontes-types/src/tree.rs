@@ -118,13 +118,14 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// child nodes of the action index if and only if they are specified in
     /// the classification function of the action index node.
     pub fn collect_and_classify(&mut self, search_params: &Vec<Option<(usize, Vec<u64>)>>) {
-        let mut a = self
+        let mut roots_with_search_params = self
             .tx_roots
             .iter_mut()
             .zip(search_params.iter())
             .collect::<Vec<_>>();
 
-        a.par_iter_mut()
+        roots_with_search_params
+            .par_iter_mut()
             .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
             .for_each(|(root, (_, subtraces))| {
                 root.collect_child_traces_and_classify(subtraces);
@@ -368,8 +369,6 @@ impl<V: NormalizedAction> Node<V> {
     pub fn get_all_children_for_complex_classification(&mut self, head: u64) {
         if head == self.index {
             let mut results = Vec::new();
-            results.push((self.index, self.data.clone()));
-
             let classification = self.data.continued_classification_types();
 
             let fixed = |node: &Node<V>| {
