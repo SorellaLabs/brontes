@@ -2,9 +2,10 @@ use std::{collections::HashMap, env, time::Duration};
 
 use alloy_primitives::Address;
 use brontes_core::init_tracing;
-use brontes_database::{clickhouse::USDT_ADDRESS, Pair};
-use brontes_database_libmdbx::{
-    tables::PoolCreationBlocks, AddressToProtocol, AddressToTokens, Libmdbx,
+use brontes_database::{
+    clickhouse::USDT_ADDRESS,
+    libmdbx::{tables::PoolCreationBlocks, AddressToProtocol, AddressToTokens, Libmdbx},
+    Pair,
 };
 use brontes_pricing::AllPairGraph as PairGraph;
 use brontes_types::exchanges::StaticBindingsDb;

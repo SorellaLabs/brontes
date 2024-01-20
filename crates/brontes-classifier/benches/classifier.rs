@@ -5,8 +5,7 @@ use brontes_classifier::{
     Classifier,
 };
 use brontes_core::{decoding::parser::TraceParser, init_tracing, test_utils::init_trace_parser};
-use brontes_database::{clickhouse::Clickhouse, Metadata};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::{clickhouse::Clickhouse, libmdbx::Libmdbx, Metadata};
 use brontes_types::{
     normalized_actions::Actions, structured_trace::TxTrace, test_utils::force_call_action,
     tree::Node,

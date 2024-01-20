@@ -11,29 +11,32 @@ use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
 };
-use brontes_database::{cex::CexPriceMap, Metadata, MetadataDB, Pair};
-use brontes_database_libmdbx::{
+use brontes_database::libmdbx::{
     tables::{CexPrice, DexPrice, Metadata as MetadataTable, MevBlocks},
-    types::{
-        dex_price::make_filter_key_range,
-        metadata::{MetadataData, MetadataInner},
-        mev_block::{MevBlockWithClassified, MevBlocksData},
-    },
-    Libmdbx, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS,
+    types::{dex_price::make_filter_key_range, mev_block::MevBlocksData},
+    Libmdbx,
 };
 use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
 };
-use brontes_pricing::types::DexQuotes;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+    db::{
+        cex::{CexPriceMap, CexQuote},
+        dex::DexQuotes,
+        metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
+        mev_block::MevBlockWithClassified,
+    },
+    extra_processing::Pair,
     normalized_actions::Actions,
     tree::BlockTree,
 };
 use futures::{Future, FutureExt};
 use tracing::{debug, error, info, trace};
-type CollectionFut<'a> = Pin<Box<dyn Future<Output = (Metadata, BlockTree<Actions>)> + Send + 'a>>;
+type CollectionFut<'a> =
+    Pin<Box<dyn Future<Output = (MetadataCombined, BlockTree<Actions>)> + Send + 'a>>;
 
 pub struct BlockInspector<'inspector, T: TracingProvider> {
     block_number: u64,
@@ -170,21 +173,20 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
         }
     }
 
-    pub fn get_metadata(&self, block_num: u64) -> eyre::Result<brontes_database::Metadata> {
+    pub fn get_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined> {
         let tx = self.database.ro_tx()?;
         let block_meta: MetadataInner = tx
             .get::<MetadataTable>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
         /*
-        let db_cex_quotes = brontes_database::cex::CexPriceMap(
+        let db_cex_quotes = CexPriceMap(
             tx.get::<CexPrice>(block_num)?
                 .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
                 .0,
         );*/
 
-        let db_cex_quotes: brontes_database::cex::CexPriceMap =
-            brontes_database::cex::CexPriceMap::default();
+        let db_cex_quotes: CexPriceMap = CexPriceMap::default();
 
         let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
             Address::from_str(WETH_ADDRESS).unwrap(),
@@ -200,13 +202,13 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
                 .unwrap_or_default()
         };
 
-        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
+        let mut cex_quotes = CexPriceMap::new();
         db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
             cex_quotes.0.insert(
                 pair,
                 quote
                     .into_iter()
-                    .map(|q| brontes_database::cex::CexQuote {
+                    .map(|q| CexQuote {
                         exchange:  q.exchange,
                         timestamp: q.timestamp,
                         price:     q.price,
@@ -233,8 +235,8 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
         //.get::<DexPrice>(block_num)?
         //.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
-        Ok(brontes_database::Metadata {
-            db:         MetadataDB {
+        Ok(MetadataCombined {
+            db:         MetadataNoDex {
                 block_num,
                 block_hash: block_meta.block_hash,
                 relay_timestamp: block_meta.relay_timestamp,

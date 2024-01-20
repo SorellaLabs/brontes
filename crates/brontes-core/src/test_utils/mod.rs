@@ -5,8 +5,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use brontes_database::Metadata;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::{libmdbx::Libmdbx, Metadata};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;

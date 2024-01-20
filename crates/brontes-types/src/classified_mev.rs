@@ -15,7 +15,7 @@ use strum::{Display, EnumIter};
 
 use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_utils::utils::vec_fixed_string,
+    serde_utils::primitives::vec_fixed_string,
     tree::GasDetails,
 };
 

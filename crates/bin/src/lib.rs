@@ -34,8 +34,7 @@ use std::{
 
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::clickhouse::Clickhouse;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::{clickhouse::Clickhouse, libmdbx::Libmdbx};
 use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use tracing::info;

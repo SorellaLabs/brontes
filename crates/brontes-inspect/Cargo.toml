@@ -9,7 +9,6 @@ edition = "2021"
 # brontes
 brontes-types.workspace = true
 brontes-database.workspace = true
-brontes-database-libmdbx.workspace = true
 
 # database
 clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
@@ -73,7 +72,6 @@ tracing-subscriber.workspace = true
 reth-db.workspace = true
 brontes-types.workspace = true
 brontes-database.workspace = true
-brontes-database-libmdbx.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true
 criterion = { version = "0.5" }

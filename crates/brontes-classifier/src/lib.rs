@@ -18,7 +18,7 @@ pub mod test_utils;
 
 mod classifiers;
 use alloy_sol_types::{sol, SolInterface};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_types::normalized_actions::Actions;
 pub use classifiers::*;
 
@@ -59,7 +59,7 @@ pub trait ActionCollection: Sync + Send {
         target_address: Address,
         msg_sender: Address,
         logs: &Vec<Log>,
-        db_tx: &brontes_database_libmdbx::tx::CompressedLibmdbxTx<RO>,
+        db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
         block: u64,
         tx_idx: u64,
     ) -> Option<(PoolUpdate, Actions)>;
@@ -91,7 +91,7 @@ pub trait IntoAction: Debug + Send + Sync {
         target_address: Address,
         msg_sender: Address,
         logs: &Vec<Log>,
-        db_tx: &brontes_database_libmdbx::tx::CompressedLibmdbxTx<RO>,
+        db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
     ) -> Option<Actions>;
 }
 

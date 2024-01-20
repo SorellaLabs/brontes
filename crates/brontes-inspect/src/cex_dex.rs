@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use brontes_database::{Metadata, Pair};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
+    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
     ToFloatNearest, ToScaledRational,
@@ -16,7 +16,7 @@ use rayon::{
 use reth_primitives::{Address, B256};
 use tracing::{debug, error};
 
-use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
+use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined};
 
 pub struct CexDexInspector<'db> {
     inner: SharedInspectorUtils<'db>,
@@ -33,7 +33,7 @@ impl Inspector for CexDexInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<Metadata>,
+        meta_data: Arc<MetadataCombined>,
     ) -> Vec<(ClassifiedMev, SpecificMev)> {
         // Get all normalized swaps
         let intersting_state = tree.collect_all(|node| {
@@ -71,7 +71,7 @@ impl CexDexInspector<'_> {
         idx: usize,
         mev_contract: Address,
         eoa: Address,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         gas_details: &GasDetails,
         swaps: Vec<Actions>,
     ) -> Option<(ClassifiedMev, SpecificMev)> {
@@ -163,7 +163,11 @@ impl CexDexInspector<'_> {
         }
     }
 
-    pub fn get_cex_dex(&self, swap: &NormalizedSwap, metadata: &Metadata) -> Option<Rational> {
+    pub fn get_cex_dex(
+        &self,
+        swap: &NormalizedSwap,
+        metadata: &MetadataCombined,
+    ) -> Option<Rational> {
         self.rational_prices(&Actions::Swap(swap.clone()), metadata)
             .and_then(|(dex_price, best_ask)| self.profit_classifier(swap, &dex_price, &best_ask))
     }
@@ -189,7 +193,7 @@ impl CexDexInspector<'_> {
     pub fn rational_prices(
         &self,
         swap: &Actions,
-        metadata: &Metadata,
+        metadata: &MetadataCombined,
     ) -> Option<(Rational, Rational)> {
         let Actions::Swap(swap) = swap else { return None };
 
@@ -232,7 +236,7 @@ mod tests {
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
     use brontes_database::{clickhouse::Clickhouse, graph::PriceGraph, Quote, QuotesMap};
-    use brontes_database_libmdbx::Libmdbx;
+    use brontes_database::libmdbx::Libmdbx;
     use malachite::num::conversion::traits::FromSciString;
     use reth_primitives::U256;
     use serde_json;

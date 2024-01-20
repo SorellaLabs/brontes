@@ -24,7 +24,7 @@
 //!     async fn process_tree(
 //!         &self,
 //!         tree: Arc<BlockTree<Actions>>,
-//!         metadata: Arc<Metadata>,
+//!         metadata: Arc<MetadataCombined>,
 //!     ) -> Vec<(ClassifiedMev, SpecificMev)>;
 //! }
 //! ```
@@ -98,9 +98,9 @@ pub mod test_utils;
 
 use std::sync::Arc;
 
-use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{ClassifiedMev, SpecificMev},
+    db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -110,6 +110,6 @@ pub trait Inspector: Send + Sync {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
     ) -> Vec<(ClassifiedMev, SpecificMev)>;
 }
