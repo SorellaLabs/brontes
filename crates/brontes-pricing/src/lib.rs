@@ -696,12 +696,14 @@ pub mod test {
         let missing_pair = Pair(missing_pricing_addr, USDC_ADDRESS);
 
         let updates = dex_pricer.get_buffer().updates.get(&block).unwrap();
+        println!("{:#?}");
         assert!(updates.len() != 0);
 
         let has_pair = updates.iter().any(|(_, update)| {
             let pair = update.get_pair(USDC_ADDRESS).unwrap().ordered();
             pair == missing_pair.ordered()
         });
+
         assert!(has_pair);
     }
 }
