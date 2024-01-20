@@ -479,7 +479,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         if let Some(overlap) = self.overlap_update.take() {
                             block_updates.push(overlap);
                         }
-
                         if update.block == self.current_block {
                             block_updates.push(update);
                         } else {
@@ -503,6 +502,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 self.on_pool_resolve(state)
             }
         }
+
         self.on_pool_updates(block_updates);
 
         cx.waker().wake_by_ref();
@@ -698,9 +698,10 @@ pub mod test {
         let updates = dex_pricer.get_buffer().updates.get(&block).unwrap();
         assert!(updates.len() != 0);
 
-        assert!(updates.iter().any(|(_, update)| {
+        let has_pair = updates.iter().any(|(_, update)| {
             let pair = update.get_pair(USDC_ADDRESS).unwrap().ordered();
             pair == missing_pair.ordered()
-        }));
+        });
+        assert!(has_pair);
     }
 }
