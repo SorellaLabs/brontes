@@ -663,7 +663,7 @@ pub mod test {
 
     #[tokio::test]
     #[serial]
-    async fn test_result_building() {
+    pub async fn test_result_building() {
         let block = 18500648;
         // errors on 0x56c03b8c4fa80ba37f5a7b60caaaef749bb5b220
         let pricing_utils = PricingTestUtils::new(USDC_ADDRESS);
@@ -691,6 +691,5 @@ pub mod test {
             let pair = update.get_pair(USDC_ADDRESS).unwrap();
             pair == missing_pair
         }));
-
     }
 }
