@@ -371,6 +371,15 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             // transfer
             for log in &trace.logs {
                 if let Some((addr, from, to, value)) = decode_transfer(log) {
+                    let addr = if trace.is_delegate_call() {
+                        // if we got delegate, the actual token address
+                        // is the from addr (proxy) for pool swaps. without
+                        // this our math gets fucked
+                        trace.get_from_addr()
+                    } else {
+                        addr
+                    };
+
                     return (
                         vec![],
                         Actions::Transfer(NormalizedTransfer {
@@ -413,14 +422,8 @@ pub mod test {
         env,
     };
 
-    use alloy_primitives::hex::FromHex;
+    use alloy_primitives::{hex, hex::FromHex};
     use brontes_classifier::test_utils::build_raw_test_tree;
-    use brontes_core::{
-        decoding::{parser::TraceParser, TracingProvider},
-        test_utils::init_trace_parser,
-    };
-    use brontes_database::{clickhouse::Clickhouse, Metadata};
-    use brontes_database_libmdbx::{types::address_to_protocol::StaticBindingsDb, Libmdbx};
     use brontes_types::{
         normalized_actions::Actions,
         structured_trace::TxTrace,
@@ -431,7 +434,6 @@ pub mod test {
     use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
     use reth_tracing_ext::TracingClient;
     use serial_test::serial;
-    use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
     use crate::{test_utils::ClassifierTestUtils, Classifier};

@@ -60,6 +60,7 @@ itertools.workspace = true
 
 brontes-core = { workspace = true, optional = true }
 brontes-classifier = { workspace = true, optional = true }
+brontes-pricing = { workspace = true, optional = true }
 
 [dev-dependencies]
 dotenv.workspace = true
@@ -79,5 +80,5 @@ rand = "0.8.5"
 
 
 [features]
-tests = ["brontes-classifier/tests", "brontes-core/tests"]
+tests = ["brontes-classifier/tests", "brontes-core/tests", "brontes-pricing"]
 local = ["brontes-core/local", "tests"]

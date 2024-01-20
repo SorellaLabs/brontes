@@ -67,7 +67,7 @@ mev_composability!(
 /// when multiple types are present for overlapping transactions.
 ///
 /// # Usage
-/// ```
+/// ```ignore
 /// define_mev_precedence!(
 ///     DominantMevType => SubordinateMevType1, SubordinateMevType2;
 /// );

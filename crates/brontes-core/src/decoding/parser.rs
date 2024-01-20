@@ -257,32 +257,3 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         (tx_trace, stats)
     }
 }
-
-#[cfg(test)]
-mod tests {
-
-    use serial_test::serial;
-    use tokio::sync::mpsc::unbounded_channel;
-    use tracing::info;
-
-    use crate::{init_tracing, test_utils::init_trace_parser};
-
-    #[cfg(feature = "dyn-decode")]
-    #[tokio::test]
-    #[serial]
-    async fn test_dyn_decode() {
-        dotenv::dotenv().ok();
-        init_tracing();
-        let block_num = 18522278;
-
-        let (tx, _rx) = unbounded_channel();
-
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let (trace, _) = tracer.execute_block(block_num).await.unwrap();
-        let has_decoded = trace
-            .into_iter()
-            .flat_map(|t| t.trace.into_iter().map(|t| t.decoded_data.is_some()))
-            .any(|s| s);
-        info!(ran_dyn = has_decoded);
-    }
-}

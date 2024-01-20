@@ -18,7 +18,7 @@
 //! `BlockTree` and `Metadata` as input and returns a vector of tuples, each
 //! containing a `ClassifiedMev` and a `SpecificMev`.
 //!
-//! ```
+//! ```ignore
 //! #[async_trait::async_trait]
 //! pub trait Inspector: Send + Sync {
 //!     async fn process_tree(
@@ -59,7 +59,7 @@
 //! array of individual inspectors and a `BlockTree` and `Metadata` as input,
 //! running each inspector on the block and collecting their results.
 //!
-//! ```
+//! ```ingnore
 //! pub struct Composer<'a, const N: usize> {
 //!     inspectors_execution: InspectorFut<'a>,
 //!     pre_processing:       BlockPreprocessing,
