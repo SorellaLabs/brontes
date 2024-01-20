@@ -663,10 +663,13 @@ pub mod test {
 
     #[tokio::test]
     #[serial]
-    async fn test_batch_receiving() {
+    async fn test_result_building() {
+        let block = 18500648;
+        // errors on 0x56c03b8c4fa80ba37f5a7b60caaaef749bb5b220
         let pricing_utils = PricingTestUtils::new(USDC_ADDRESS);
+
         let (mut dex_pricer, mut tree) = pricing_utils
-            .setup_dex_pricer_for_block(18500663)
+            .setup_dex_pricer_for_block(block)
             .await
             .unwrap();
 
@@ -679,17 +682,15 @@ pub mod test {
             let res = pinned.poll_next(&mut cx);
             assert!(res.is_pending());
         }
+        let missing_pricing_addr = Address(hex!("56c03b8c4fa80ba37f5a7b60caaaef749bb5b220").into());
+        let missing_pair: Pair(missing_pricing_addr, USDC_ADDRESS);
 
-        // let all_swaps = tree.collect_all(|node| {
-        //     (node.data.is_swap(), node.get_all_sub_actions().iter().any(|n|
-        // n.is_swap())) });
+        let updates = dex_pricer.buffer.updates.get(&block).unwrap();
 
-        // load all state
-        while !dex_pricer.lazy_loader.is_empty() {
-            let pinned = Pin::new(&mut dex_pricer);
-            // query all of the state we need to load into the lazy loader
-            let res = pinned.poll_state_processing(&mut cx);
-            assert!(res.is_none());
-        }
+        assert!(updates.iter().any(|(_, update)| {
+            let pair = update.get_pair(USDC_ADDRESS).unwrap();
+            pair == missing_pair
+        }));
+
     }
 }
