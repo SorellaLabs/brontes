@@ -9,7 +9,7 @@ use brontes_pricing::{
     types::{DexPriceMsg, DexQuotes},
     BrontesBatchPricer, GraphManager,
 };
-use brontes_types::tree::BlockTree;
+use brontes_types::tree::{BlockTree, Node};
 use futures::{future::join_all, StreamExt};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
@@ -310,9 +310,9 @@ impl ClassifierTestUtils {
         eq_action: Actions,
         tree_collect_fn: impl Fn(&Node<Actions>) -> (bool, bool),
     ) -> Result<(), ClassifierTestUtilsError> {
-        let tree = self.build_tree_tx(tx_hash).await?;
-        let root = tree.tx_roots.remove(0);
-        let actions = root.collect(&tree_collect_fn);
+        let mut tree = self.build_tree_tx(tx_hash).await?;
+        let  root = tree.tx_roots.remove(0);
+        let mut actions = root.collect(&tree_collect_fn);
         let action = actions.remove(action_number_in_tx);
         assert_eq!(eq_action, action, "got: {:#?} != given: {:#?}", action, eq_action);
 
@@ -326,7 +326,7 @@ impl ClassifierTestUtils {
         eq_action: Actions,
         tree_collect_fn: impl Fn(&Node<Actions>) -> (bool, bool),
     ) -> Result<(), ClassifierTestUtilsError> {
-        Ok(())
+        todo!()
     }
 }
 
