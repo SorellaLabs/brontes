@@ -103,7 +103,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             }
         };
 
-        let db_tx = self.libmdbx.ro_tx()?;
+        let db_tx = self.libmdbx.ro_tx().unwrap();
         let json = if let Some(trace) = &trace {
             let addresses = trace
                 .iter()
@@ -118,7 +118,8 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                 .filter(|addr| (self.should_fetch)(addr, &db_tx))
                 .collect::<Vec<Address>>();
             info!("addresses for dyn decoding: {:#?}", addresses);
-            self.database.get_abis(addresses).await
+            //self.libmdbx.get_abis(addresses).await.unwrap()
+            HashMap::default()
         } else {
             HashMap::default()
         };
