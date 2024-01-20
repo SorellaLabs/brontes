@@ -28,12 +28,11 @@ pub mod pool_tokens {
 
 pub mod static_bindings {
 
+    use brontes_types::exchanges::StaticBindingsDb;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-
-    use crate::types::address_to_protocol::StaticBindingsDb;
 
     pub fn serialize<S: Serializer>(
         u: &StaticBindingsDb,

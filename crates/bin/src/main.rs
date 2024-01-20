@@ -13,8 +13,8 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::Clickhouse;
 use brontes_database_libmdbx::{
-    implementation::cursor::LibmdbxCursor,
-    tables::{AddressToProtocol, IntoTableKey, Tables},
+    cursor::CompressedCursor,
+    tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
     Libmdbx,
 };
 use brontes_inspect::{
@@ -162,12 +162,13 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
 }
 
 fn process_range_query<T, E>(
-    mut cursor: LibmdbxCursor<T, RO>,
+    mut cursor: CompressedCursor<T, RO>,
     command: DatabaseQuery,
-) -> Result<Vec<T::Value>, Box<dyn Error>>
+) -> Result<Vec<T::DecompressedValue>, Box<dyn Error>>
 where
-    T: Table,
+    T: CompressedTable,
     T: for<'a> IntoTableKey<&'a str, T::Key, E>,
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
     let range = command.key.split("..").collect_vec();
     let start = range[0];

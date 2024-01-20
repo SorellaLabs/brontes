@@ -1,5 +1,4 @@
-pub use brontes_types::exchanges::StaticBindingsDb;
-use brontes_types::libmdbx::serde::address_string;
+use brontes_types::{exchanges::StaticBindingsDb, libmdbx::serde::address_string};
 use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use alloy_primitives::FixedBytes;
 use brontes_database::Metadata;
 use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev},
+    classified_mev::{ClassifiedMev, Mev, MevBlock, MevType, SpecificMev},
     normalized_actions::Actions,
     tree::BlockTree,
     ToScaledRational,

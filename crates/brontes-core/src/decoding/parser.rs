@@ -29,7 +29,7 @@ pub struct TraceParser<'db, T: TracingProvider> {
     #[allow(unused)]
     libmdbx:               &'db Libmdbx,
     #[allow(unused)]
-    should_fetch:          Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
+    should_fetch:          Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
@@ -37,7 +37,7 @@ pub struct TraceParser<'db, T: TracingProvider> {
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
         libmdbx: &'db Libmdbx,
-        should_fetch: Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
+        should_fetch: Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {

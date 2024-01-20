@@ -19,7 +19,7 @@ use super::utils::{
 use crate::{implementation::native::cursor::LibmdbxCursor, CompressedTable};
 
 #[derive(Debug)]
-pub(crate) struct CompressedCursor<T, K>(LibmdbxCursor<T, K>)
+pub struct CompressedCursor<T, K>(LibmdbxCursor<T, K>)
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -31,7 +31,7 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     K: TransactionKind,
 {
-    pub(crate) fn new(inner: LibmdbxCursor<T, K>) -> Self {
+    pub fn new(inner: LibmdbxCursor<T, K>) -> Self {
         Self(inner)
     }
 }
@@ -42,35 +42,35 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     K: TransactionKind,
 {
-    pub(crate) fn first(&mut self) -> CompressedPairResult<T> {
+    pub fn first(&mut self) -> CompressedPairResult<T> {
         self.0.first().map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn seek_exact(&mut self, key: <T as Table>::Key) -> CompressedPairResult<T> {
+    pub fn seek_exact(&mut self, key: <T as Table>::Key) -> CompressedPairResult<T> {
         self.0.seek_exact(key).map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn seek(&mut self, key: <T as Table>::Key) -> CompressedPairResult<T> {
+    pub fn seek(&mut self, key: <T as Table>::Key) -> CompressedPairResult<T> {
         self.0.seek(key).map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn next(&mut self) -> CompressedPairResult<T> {
+    pub fn next(&mut self) -> CompressedPairResult<T> {
         self.0.next().map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn prev(&mut self) -> CompressedPairResult<T> {
+    pub fn prev(&mut self) -> CompressedPairResult<T> {
         self.0.prev().map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn last(&mut self) -> CompressedPairResult<T> {
+    pub fn last(&mut self) -> CompressedPairResult<T> {
         self.0.last().map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn current(&mut self) -> CompressedPairResult<T> {
+    pub fn current(&mut self) -> CompressedPairResult<T> {
         self.0.current().map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn walk(
+    pub fn walk(
         &mut self,
         start_key: Option<T::Key>,
     ) -> Result<CompressedWalker<'_, T, LibmdbxCursor<T, K>>, DatabaseError> {
@@ -79,7 +79,7 @@ where
             .map(|walker| CompressedWalker(walker))
     }
 
-    pub(crate) fn walk_range(
+    pub fn walk_range(
         &mut self,
         range: impl RangeBounds<T::Key>,
     ) -> Result<CompressedRangeWalker<'_, T, LibmdbxCursor<T, K>>, DatabaseError> {
@@ -88,7 +88,7 @@ where
             .map(|walker| CompressedRangeWalker(walker))
     }
 
-    pub(crate) fn walk_back(
+    pub fn walk_back(
         &mut self,
         start_key: Option<T::Key>,
     ) -> Result<CompressedReverseWalker<'_, T, LibmdbxCursor<T, K>>, DatabaseError> {
@@ -104,19 +104,19 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     K: TransactionKind,
 {
-    pub(crate) fn next_dup(&mut self) -> CompressedPairResult<T> {
+    pub fn next_dup(&mut self) -> CompressedPairResult<T> {
         self.0.next_dup().map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn next_no_dup(&mut self) -> CompressedPairResult<T> {
+    pub fn next_no_dup(&mut self) -> CompressedPairResult<T> {
         self.0.next_no_dup().map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn next_dup_val(&mut self) -> DecompressedValueOnlyResult<T> {
+    pub fn next_dup_val(&mut self) -> DecompressedValueOnlyResult<T> {
         self.0.next_dup_val().map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn seek_by_key_subkey(
+    pub fn seek_by_key_subkey(
         &mut self,
         key: <T as Table>::Key,
         subkey: <T as DupSort>::SubKey,
@@ -126,7 +126,7 @@ where
             .map(|opt| opt.map(Into::into))
     }
 
-    pub(crate) fn walk_dup(
+    pub fn walk_dup(
         &mut self,
         key: Option<T::Key>,
         subkey: Option<T::SubKey>,
@@ -142,7 +142,7 @@ where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
-    pub(crate) fn upsert(
+    pub fn upsert(
         &mut self,
         key: T::Key,
         value: T::DecompressedValue,
@@ -150,7 +150,7 @@ where
         self.0.upsert(key, value.into())
     }
 
-    pub(crate) fn insert(
+    pub fn insert(
         &mut self,
         key: T::Key,
         value: T::DecompressedValue,
@@ -158,7 +158,7 @@ where
         self.0.insert(key, value.into())
     }
 
-    pub(crate) fn append(
+    pub fn append(
         &mut self,
         key: T::Key,
         value: T::DecompressedValue,
@@ -166,7 +166,7 @@ where
         self.0.append(key, value.into())
     }
 
-    pub(crate) fn delete_current(&mut self) -> Result<(), DatabaseError> {
+    pub fn delete_current(&mut self) -> Result<(), DatabaseError> {
         self.0.delete_current()
     }
 }
@@ -176,11 +176,11 @@ where
     T: DupSort + CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
-    pub(crate) fn delete_current_duplicates(&mut self) -> Result<(), DatabaseError> {
+    pub fn delete_current_duplicates(&mut self) -> Result<(), DatabaseError> {
         self.0.delete_current_duplicates()
     }
 
-    pub(crate) fn append_dup(
+    pub fn append_dup(
         &mut self,
         key: T::Key,
         value: T::DecompressedValue,
@@ -189,7 +189,7 @@ where
     }
 }
 
-pub(crate) struct CompressedWalker<'cursor, T, CURSOR>(Walker<'cursor, T, CURSOR>)
+pub struct CompressedWalker<'cursor, T, CURSOR>(Walker<'cursor, T, CURSOR>)
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -225,11 +225,11 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     CURSOR: DbCursorRO<T>,
 {
-    pub(crate) fn new(cursor: &'cursor mut CURSOR, start: IterCompressedPairResult<T>) -> Self {
+    pub fn new(cursor: &'cursor mut CURSOR, start: IterCompressedPairResult<T>) -> Self {
         Self(Walker::new(cursor, start.map(|opt| opt.map(Into::into))))
     }
 
-    pub(crate) fn rev(self) -> CompressedReverseWalker<'cursor, T, CURSOR> {
+    pub fn rev(self) -> CompressedReverseWalker<'cursor, T, CURSOR> {
         CompressedReverseWalker(self.0.rev())
     }
 }
@@ -240,12 +240,12 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     CURSOR: DbCursorRW<T> + DbCursorRO<T>,
 {
-    pub(crate) fn delete_current(&mut self) -> Result<(), DatabaseError> {
+    pub fn delete_current(&mut self) -> Result<(), DatabaseError> {
         self.0.delete_current()
     }
 }
 
-pub(crate) struct CompressedReverseWalker<'cursor, T, CURSOR>(ReverseWalker<'cursor, T, CURSOR>)
+pub struct CompressedReverseWalker<'cursor, T, CURSOR>(ReverseWalker<'cursor, T, CURSOR>)
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -268,11 +268,11 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     CURSOR: DbCursorRO<T>,
 {
-    pub(crate) fn new(cursor: &'cursor mut CURSOR, start: IterCompressedPairResult<T>) -> Self {
+    pub fn new(cursor: &'cursor mut CURSOR, start: IterCompressedPairResult<T>) -> Self {
         Self(ReverseWalker::new(cursor, start.map(|opt| opt.map(Into::into))))
     }
 
-    pub(crate) fn forward(self) -> CompressedWalker<'cursor, T, CURSOR> {
+    pub fn forward(self) -> CompressedWalker<'cursor, T, CURSOR> {
         CompressedWalker(self.0.forward())
     }
 }
@@ -283,7 +283,7 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     CURSOR: DbCursorRW<T> + DbCursorRO<T>,
 {
-    pub(crate) fn delete_current(&mut self) -> Result<(), DatabaseError> {
+    pub fn delete_current(&mut self) -> Result<(), DatabaseError> {
         self.0.delete_current()
     }
 }
@@ -301,7 +301,7 @@ where
     }
 }
 
-pub(crate) struct CompressedRangeWalker<'cursor, T, CURSOR>(RangeWalker<'cursor, T, CURSOR>)
+pub struct CompressedRangeWalker<'cursor, T, CURSOR>(RangeWalker<'cursor, T, CURSOR>)
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -337,7 +337,7 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     CURSOR: DbCursorRO<T>,
 {
-    pub(crate) fn new(
+    pub fn new(
         cursor: &'cursor mut CURSOR,
         start: IterCompressedPairResult<T>,
         end_key: Bound<T::Key>,
@@ -356,12 +356,12 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     CURSOR: DbCursorRW<T> + DbCursorRO<T>,
 {
-    pub(crate) fn delete_current(&mut self) -> Result<(), DatabaseError> {
+    pub fn delete_current(&mut self) -> Result<(), DatabaseError> {
         self.0.delete_current()
     }
 }
 
-pub(crate) struct CompressedDupWalker<'cursor, T, CURSOR>(DupWalker<'cursor, T, CURSOR>)
+pub struct CompressedDupWalker<'cursor, T, CURSOR>(DupWalker<'cursor, T, CURSOR>)
 where
     T: DupSort + CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -384,7 +384,7 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     CURSOR: DbCursorRW<T> + DbDupCursorRO<T>,
 {
-    pub(crate) fn delete_current(&mut self) -> Result<(), DatabaseError> {
+    pub fn delete_current(&mut self) -> Result<(), DatabaseError> {
         self.0.delete_current()
     }
 }

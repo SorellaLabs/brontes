@@ -1,6 +1,8 @@
 use std::any::Any;
 
-use brontes_types::classified_mev::{compose_sandwich_jit, ClassifiedMev, MevType, SpecificMev};
+use brontes_types::classified_mev::{
+    compose_sandwich_jit, ClassifiedMev, Mev, MevType, SpecificMev,
+};
 use lazy_static::lazy_static;
 
 /// Defines rules for composing multiple MEV types
@@ -39,11 +41,8 @@ macro_rules! mev_composability {
     };
 }
 
-pub type ComposeFunction = Box<
-    dyn Fn(Vec<(ClassifiedMev, Box<dyn Any + Send + Sync>)>) -> (ClassifiedMev, SpecificMev)
-        + Send
-        + Sync,
->;
+pub type ComposeFunction =
+    Box<dyn Fn(Vec<(ClassifiedMev, SpecificMev)>) -> (ClassifiedMev, SpecificMev) + Send + Sync>;
 
 pub fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     match mev_type {

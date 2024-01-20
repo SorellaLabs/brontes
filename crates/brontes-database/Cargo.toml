@@ -11,6 +11,7 @@ edition = "2021"
 brontes-types.workspace = true
 brontes-pricing.workspace = true
 
+
 derive_more = "0.99.17"
 
 petgraph = "0.6.4"

@@ -162,9 +162,9 @@ impl AtomicBackrunInspector<'_> {
             .map(|s| s.force_swap())
             .collect::<Vec<_>>();
 
-        let backrun = Box::new(AtomicBackrun { tx_hash, gas_details, swaps });
+        let backrun = AtomicBackrun { tx_hash, gas_details, swaps };
 
-        Some((classified, backrun))
+        Some((classified, SpecificMev::AtomicBackrun(backrun)))
     }
 }
 
