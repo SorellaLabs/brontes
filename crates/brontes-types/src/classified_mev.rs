@@ -43,6 +43,7 @@ pub struct MevBlock {
 pub struct ClassifiedMev {
     // can be multiple for sandwich
     pub block_number:         u64,
+    pub mev_tx_index:         u64,
     #[serde_as(as = "FixedString")]
     pub tx_hash:              B256,
     #[serde_as(as = "FixedString")]
@@ -155,6 +156,7 @@ pub fn compose_sandwich_jit(
     let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.finalized_bribe_usd;
 
     let new_classifed = ClassifiedMev {
+        mev_tx_index:         classified_sandwich.mev_tx_index,
         tx_hash:              sandwich.frontrun_tx_hash,
         mev_type:             MevType::JitSandwich,
         block_number:         classified_sandwich.block_number,
