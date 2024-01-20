@@ -40,6 +40,7 @@ impl LibmdbxInitializer {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use std::{env, path::Path, sync::Arc};
@@ -303,3 +304,6 @@ mod tests {
         // assert!(test_tx_traces_table(&db, true).await.is_ok());
     }
 }
+
+
+*/

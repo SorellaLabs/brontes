@@ -11,7 +11,7 @@ use redefined::RedefinedConvert;
 use sorella_db_databases::clickhouse::{self, Row};
 
 use super::redefined_types::cex_price::Redefined_CexPriceMap;
-use crate::{tables::CexPrice, LibmdbxData};
+use crate::{tables::CexPrice, CompressedTable, LibmdbxData};
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CexPriceData {
@@ -22,9 +22,9 @@ pub struct CexPriceData {
 impl LibmdbxData<CexPrice> for CexPriceData {
     fn into_key_val(
         &self,
-    ) -> (<CexPrice as reth_db::table::Table>::Key, <CexPrice as reth_db::table::Table>::Value)
+    ) -> (<CexPrice as reth_db::table::Table>::Key, <CexPrice as CompressedTable>::DecompressedValue)
     {
-        (self.block_num, Redefined_CexPriceMap::from_source(self.cex_price_map.clone()))
+        (self.block_num, self.cex_price_map.clone())
     }
 }
 

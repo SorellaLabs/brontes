@@ -3,7 +3,7 @@ use std::{pin::Pin, sync::Arc, task::Poll};
 use alloy_primitives::{Address, Bytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database_libmdbx::{tables::TokenDecimals, Libmdbx};
 use futures::{future::join, stream::FuturesUnordered, Future, StreamExt};
 use reth_provider::ProviderError;
 use reth_rpc_types::{CallInput, CallRequest};
@@ -52,12 +52,17 @@ impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
             let Some(dec) = decimalsCall::abi_decode_returns(&res, false).ok() else { return };
             let dec = dec._0;
             info!(?dec, ?addr, "got new decimal");
-            if let Err(e) = self.database.insert_decimals(addr, dec) {
+            if let Err(e) = self.insert_decimals(addr, dec) {
                 error!(?e);
             }
         } else {
             info!(?addr, "Token request failed for token");
         }
+    }
+
+    fn insert_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
+        self.database
+            .write_table::<TokenDecimals>(&vec![TokenDecimalsData { address, decimals }])
     }
 }
 

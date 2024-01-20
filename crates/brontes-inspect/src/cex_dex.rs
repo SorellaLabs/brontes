@@ -34,7 +34,7 @@ impl Inspector for CexDexInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Vec<(ClassifiedMev, SpecificMev)> {
         // Get all normalized swaps
         let intersting_state = tree.collect_all(|node| {
             (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
@@ -73,7 +73,7 @@ impl CexDexInspector<'_> {
         metadata: Arc<Metadata>,
         gas_details: &GasDetails,
         swaps: Vec<Actions>,
-    ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Option<(ClassifiedMev, SpecificMev)> {
         let swap_sequences: Vec<(&Actions, _)> = swaps
             .iter()
             .filter_map(|action| {

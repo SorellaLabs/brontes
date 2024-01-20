@@ -173,7 +173,7 @@ dependencies = [
 [[package]]
 name = "alloy-eips"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#61142b3fee367a9aee087d6cfac8e57abaaa2eb2"
+source = "git+https://github.com/alloy-rs/alloy.git#454ccd61e4ebf530a16f9e783eca7e55e9742b67"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -196,7 +196,7 @@ dependencies = [
 [[package]]
 name = "alloy-json-rpc"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#61142b3fee367a9aee087d6cfac8e57abaaa2eb2"
+source = "git+https://github.com/alloy-rs/alloy.git#454ccd61e4ebf530a16f9e783eca7e55e9742b67"
 dependencies = [
  "alloy-primitives",
  "serde",
@@ -207,7 +207,7 @@ dependencies = [
 [[package]]
 name = "alloy-network"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#61142b3fee367a9aee087d6cfac8e57abaaa2eb2"
+source = "git+https://github.com/alloy-rs/alloy.git#454ccd61e4ebf530a16f9e783eca7e55e9742b67"
 dependencies = [
  "alloy-eips",
  "alloy-json-rpc",
@@ -246,7 +246,7 @@ dependencies = [
 [[package]]
 name = "alloy-providers"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#61142b3fee367a9aee087d6cfac8e57abaaa2eb2"
+source = "git+https://github.com/alloy-rs/alloy.git#454ccd61e4ebf530a16f9e783eca7e55e9742b67"
 dependencies = [
  "alloy-network",
  "alloy-primitives",
@@ -287,7 +287,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-client"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#61142b3fee367a9aee087d6cfac8e57abaaa2eb2"
+source = "git+https://github.com/alloy-rs/alloy.git#454ccd61e4ebf530a16f9e783eca7e55e9742b67"
 dependencies = [
  "alloy-json-rpc",
  "alloy-transport",
@@ -304,7 +304,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-trace-types"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#61142b3fee367a9aee087d6cfac8e57abaaa2eb2"
+source = "git+https://github.com/alloy-rs/alloy.git#454ccd61e4ebf530a16f9e783eca7e55e9742b67"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
@@ -315,7 +315,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-types"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#61142b3fee367a9aee087d6cfac8e57abaaa2eb2"
+source = "git+https://github.com/alloy-rs/alloy.git#454ccd61e4ebf530a16f9e783eca7e55e9742b67"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -374,7 +374,7 @@ dependencies = [
 [[package]]
 name = "alloy-transport"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#61142b3fee367a9aee087d6cfac8e57abaaa2eb2"
+source = "git+https://github.com/alloy-rs/alloy.git#454ccd61e4ebf530a16f9e783eca7e55e9742b67"
 dependencies = [
  "alloy-json-rpc",
  "base64 0.21.7",
@@ -390,7 +390,7 @@ dependencies = [
 [[package]]
 name = "alloy-transport-http"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#61142b3fee367a9aee087d6cfac8e57abaaa2eb2"
+source = "git+https://github.com/alloy-rs/alloy.git#454ccd61e4ebf530a16f9e783eca7e55e9742b67"
 dependencies = [
  "alloy-json-rpc",
  "alloy-transport",
@@ -442,9 +442,9 @@ checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
 name = "anstream"
-version = "0.6.11"
+version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e2e1ebcb11de5c03c67de28a7df593d32191b44939c482e97702baaaa6ab6a5"
+checksum = "628a8f9bd1e24b4e0db2b4bc2d000b001e7dd032d54afa60a68836aeec5aa54a"
 dependencies = [
  "anstyle",
  "anstyle-parse",
@@ -1126,9 +1126,9 @@ dependencies = [
 
 [[package]]
 name = "bitm"
-version = "0.3.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0f4eb78984254fac9e05aaab2ebde9b46cf40d75a24c166c9e6c8c5a0aa10cd"
+checksum = "1c963a97cda30f51eb4f343d0f7924d491bdf30273d806ca1775239e37ab6bad"
 dependencies = [
  "dyn_size_of",
 ]
@@ -1401,6 +1401,7 @@ dependencies = [
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
  "criterion",
  "dotenv",
+ "eyre",
  "futures",
  "hex-literal",
  "hyper",
@@ -1607,6 +1608,7 @@ dependencies = [
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
  "criterion",
  "dotenv",
+ "eyre",
  "futures",
  "hyper",
  "hyper-tls",
@@ -6361,7 +6363,7 @@ dependencies = [
 [[package]]
 name = "redefined"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#f4617b89adcbc04f189c1bd0efcee8be94966704"
+source = "git+https://github.com/0xlagrange/redefined#33d3384c87ef526718b2d27d2b5436fe037464fa"
 dependencies = [
  "redefined-derive",
  "redefined-outside-crate-tests",
@@ -6370,7 +6372,7 @@ dependencies = [
 [[package]]
 name = "redefined-derive"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#f4617b89adcbc04f189c1bd0efcee8be94966704"
+source = "git+https://github.com/0xlagrange/redefined#33d3384c87ef526718b2d27d2b5436fe037464fa"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6380,7 +6382,7 @@ dependencies = [
 [[package]]
 name = "redefined-outside-crate-tests"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#f4617b89adcbc04f189c1bd0efcee8be94966704"
+source = "git+https://github.com/0xlagrange/redefined#33d3384c87ef526718b2d27d2b5436fe037464fa"
 
 [[package]]
 name = "redox_syscall"
@@ -8244,9 +8246,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.13.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b187f0231d56fe41bfb12034819dd2bf336422a5866de41bc3fec4b2e3883e8"
+checksum = "2593d31f82ead8df961d8bd23a64c2ccf2eb5dd34b0a34bfb4dd54011c72009e"
 dependencies = [
  "arbitrary",
  "serde",

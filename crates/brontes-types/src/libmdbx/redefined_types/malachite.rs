@@ -30,23 +30,6 @@ pub struct Redefined_Rational {
     pub denominator: Redefined_Natural,
 }
 
-impl From<Rational> for Redefined_Rational {
-    fn from(value: Rational) -> Self {
-        let sign = is_rational_positive(&value);
-        Self {
-            sign,
-            numerator: Redefined_Natural::from_source(value.to_numerator()),
-            denominator: Redefined_Natural::from_source(value.to_denominator()),
-        }
-    }
-}
-
-impl Into<Rational> for Redefined_Rational {
-    fn into(self) -> Rational {
-        Rational::from_naturals(self.numerator.to_source(), self.denominator.to_source())
-    }
-}
-
 fn is_rational_positive(val: &Rational) -> bool {
     val >= &Rational::ZERO
 }
@@ -84,18 +67,6 @@ impl Redefined_Natural {
             Redefined_Natural(Redefined_InnerNatural::Small(small)) => vec![small],
             Redefined_Natural(Redefined_InnerNatural::Large(ref limbs)) => limbs.clone(),
         }
-    }
-}
-
-impl From<Natural> for Redefined_Natural {
-    fn from(value: Natural) -> Self {
-        Self(Redefined_InnerNatural::from_limbs_asc(&value.to_limbs_asc()))
-    }
-}
-
-impl Into<Natural> for Redefined_Natural {
-    fn into(self) -> Natural {
-        Natural::from_limbs_asc(&self.to_limbs_asc())
     }
 }
 

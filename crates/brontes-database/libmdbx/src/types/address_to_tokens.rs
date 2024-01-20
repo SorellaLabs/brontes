@@ -10,7 +10,7 @@ use super::{
     redefined_types::address_to_tokens::Redefined_PoolTokens,
     utils::{address, option_address},
 };
-use crate::{tables::AddressToTokens, types::utils::pool_tokens, LibmdbxData};
+use crate::{tables::AddressToTokens, types::utils::pool_tokens, CompressedTable, LibmdbxData};
 
 #[serde_as]
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -26,9 +26,9 @@ impl LibmdbxData<AddressToTokens> for AddressToTokensData {
         &self,
     ) -> (
         <AddressToTokens as reth_db::table::Table>::Key,
-        <AddressToTokens as reth_db::table::Table>::Value,
+        <AddressToTokens as CompressedTable>::DecompressedValue,
     ) {
-        (self.address, Redefined_PoolTokens::from_source(self.tokens.clone()))
+        (self.address, self.tokens.clone())
     }
 }
 

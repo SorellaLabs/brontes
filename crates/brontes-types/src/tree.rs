@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
@@ -286,13 +287,26 @@ impl<V: NormalizedAction> Root<V> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    Row,
+    Default,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+)]
 pub struct GasDetails {
     pub coinbase_transfer:   Option<u128>,
     pub priority_fee:        u128,
     pub gas_used:            u128,
     pub effective_gas_price: u128,
 }
+
+self_convert_redefined!(GasDetails);
 
 impl GasDetails {
     pub fn gas_paid(&self) -> u128 {
