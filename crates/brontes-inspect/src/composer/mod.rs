@@ -150,7 +150,10 @@ impl<'a> Composer<'a> {
             .into_values()
             .flatten()
             .filter(|(classified, _)| {
-                if matches!(classified.mev_type, MevType::Sandwich | MevType::Jit | MevType::Backrun) {
+                if matches!(
+                    classified.mev_type,
+                    MevType::Sandwich | MevType::Jit | MevType::Backrun
+                ) {
                     classified.finalized_profit_usd > 0.0
                 } else {
                     true

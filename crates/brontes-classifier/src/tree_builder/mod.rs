@@ -444,14 +444,15 @@ pub mod test {
 
     use alloy_primitives::{hex, hex::FromHex};
     use brontes_classifier::test_utils::build_raw_test_tree;
+    use brontes_pricing::uniswap_v2::U256_64;
     use brontes_types::{
-        normalized_actions::Actions,
+        normalized_actions::{Actions, NormalizedLiquidation},
         structured_trace::TxTrace,
         test_utils::force_call_action,
         tree::{BlockTree, Node},
     };
     use reth_primitives::{Address, Header};
-    use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
+    use reth_rpc_types::trace::parity::{Action, TraceType, TransactionTrace};
     use reth_tracing_ext::TracingClient;
     use serial_test::serial;
 
@@ -492,5 +493,28 @@ pub mod test {
                 }
             }
         }
+    }
+    #[tokio::test]
+    #[serial]
+    async fn test_aave_v3_liquidation() {
+        let classifier_utils = ClassifierTestUtils::new();
+        let aave_v3_liquidation =
+            B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
+
+        let eq_action = NormalizedLiquidation {
+            liquidated_collateral: U256::from(165516722),
+            covered_debt:          U256::from(63857746423),
+            debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
+            debt_asset:            Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
+            collateral_asset:      Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")),
+            liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
+            pool:                  Address::from(hex!("c6217a364c35de7ebd552b3d30fd169f44ef20b6")),
+            trace_index:           69,
+        };
+
+        classifier_utils
+            .contains_action(aave_v3_liquidation, 0, eq_action, Action::liquidation_collect_fn())
+            .await
+            .unwrap();
     }
 }
