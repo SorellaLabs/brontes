@@ -1,14 +1,10 @@
-use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
-    impl_compress_decompress_for_serde,
-};
-use serde::{Deserialize, Serialize};
+use brontes_types::classified_mev::{ClassifiedMev, MevBlock, SpecificMev};
 use sorella_db_databases::clickhouse::{self, Row};
 
 use super::LibmdbxData;
-use crate::tables::MevBlocks;
+use crate::{tables::MevBlocks, CompressedTable};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Row)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Row)]
 pub struct MevBlocksData {
     pub block_number: u64,
     pub mev_blocks:   MevBlockWithClassified,
@@ -17,16 +13,16 @@ pub struct MevBlocksData {
 impl LibmdbxData<MevBlocks> for MevBlocksData {
     fn into_key_val(
         &self,
-    ) -> (<MevBlocks as reth_db::table::Table>::Key, <MevBlocks as reth_db::table::Table>::Value)
-    {
+    ) -> (
+        <MevBlocks as reth_db::table::Table>::Key,
+        <MevBlocks as CompressedTable>::DecompressedValue,
+    ) {
         (self.block_number, self.mev_blocks.clone())
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct MevBlockWithClassified {
     pub block: MevBlock,
-    pub mev:   Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+    pub mev:   Vec<(ClassifiedMev, SpecificMev)>,
 }
-
-impl_compress_decompress_for_serde!(MevBlockWithClassified);

@@ -55,9 +55,9 @@ use utils::{
 use crate::Inspector;
 
 type InspectorFut<'a> =
-    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, SpecificMev)>> + Send + 'a>>;
 
-pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>);
+pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, SpecificMev)>);
 
 pub struct Composer<'a> {
     inspectors_execution: InspectorFut<'a>,
@@ -74,7 +74,7 @@ impl<'a> Composer<'a> {
         let processing = pre_process(tree.clone(), meta_data.clone());
         let meta_data_clone = meta_data.clone();
         let future = Box::pin(async move {
-            let mut scope: TokioScope<'a, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> =
+            let mut scope: TokioScope<'a, Vec<(ClassifiedMev, SpecificMev)>> =
                 unsafe { Scope::create() };
             orchestra.iter().for_each(|inspector| {
                 scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
@@ -87,7 +87,7 @@ impl<'a> Composer<'a> {
                 .flat_map(|r| r.unwrap())
                 .collect::<Vec<_>>()
         })
-            as Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> + 'a>>;
+            as Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, SpecificMev)>> + 'a>>;
 
         Self {
             // The rust compiler struggles to prove that the tokio-scope lifetime is the same as
@@ -102,7 +102,7 @@ impl<'a> Composer<'a> {
 
     fn on_orchestra_resolution(
         &mut self,
-        orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+        orchestra_data: Vec<(ClassifiedMev, SpecificMev)>,
     ) -> Poll<ComposerResults> {
         let mut header =
             build_mev_header(self.metadata.clone(), &self.pre_processing, &orchestra_data);
@@ -141,7 +141,7 @@ impl<'a> Composer<'a> {
         &mut self,
         dominant_mev_type: &MevType,
         subordinate_mev_types: &[MevType],
-        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
+        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
     ) {
         let dominant_mev_list = match sorted_mev.get(dominant_mev_type) {
             Some(list) => list,
@@ -199,7 +199,7 @@ impl<'a> Composer<'a> {
         parent_mev_type: &MevType,
         child_mev_type: &[MevType],
         compose: &ComposeFunction,
-        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
+        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
     ) {
         let first_mev_type = child_mev_type[0];
         let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();

@@ -1,4 +1,5 @@
-#[allow(non_camel_case_types)]
+#![allow(non_camel_case_types)]
+#![allow(private_bounds)]
 use std::{cmp::max, collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
 use brontes_pricing::{types::DexQuotes, SubGraphEdge};
@@ -12,20 +13,17 @@ use brontes_types::{
     libmdbx::redefined_types::primitives::Redefined_Address,
 };
 use eyre::Context;
+use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
 use redefined::RedefinedConvert;
 use reth_db::{
-    cursor::{DbCursorRO, DbCursorRW},
     is_database_empty,
-    mdbx::DatabaseFlags,
     table::Table,
-    transaction::{DbTx, DbTxMut},
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
-    DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
+    DatabaseEnv, DatabaseEnvKind, DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
-use reth_libmdbx::RO;
-use reth_tracing_ext::TracingClient;
+use reth_libmdbx::{RO, RW};
 use tables::*;
 use tracing::info;
 use types::{
@@ -40,9 +38,10 @@ use types::{
     token_decimals::TokenDecimalsData,
 };
 
-use self::{implementation::tx::LibmdbxTx, types::LibmdbxData};
+use self::types::LibmdbxData;
 use crate::types::subgraphs::SubGraphsData;
-pub mod implementation;
+mod implementation;
+pub use implementation::compressed_wrappers::*;
 pub mod tables;
 pub mod types;
 
@@ -52,7 +51,7 @@ const USDC_ADDRESS: &str = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 //const USDT_ADDRESS: &str = ;
 
 #[derive(Debug)]
-pub struct Libmdbx(pub DatabaseEnv);
+pub struct Libmdbx(DatabaseEnv);
 
 impl Libmdbx {
     /// Opens up an existing database or creates a new one at the specified
@@ -82,17 +81,10 @@ impl Libmdbx {
 
     /// Creates all the defined tables, opens if already created
     fn create_tables(&self) -> Result<(), DatabaseError> {
-        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
+        let tx = CompressedLibmdbxTx::new_rw_tx(&self.0)?;
 
         for table in Tables::ALL {
-            let flags = match table.table_type() {
-                TableType::Table => DatabaseFlags::default(),
-                TableType::DupSort => DatabaseFlags::DUP_SORT,
-            };
-
-            tx.inner
-                .create_db(Some(table.name()), flags)
-                .map_err(|e| DatabaseError::CreateTable(e.into()))?;
+            tx.0.create_table(&table)?;
         }
 
         tx.commit()?;
@@ -100,85 +92,8 @@ impl Libmdbx {
         Ok(())
     }
 
-    pub fn contains_pool(&self, address: Address) -> bool {
-        let tx = self.ro_tx().unwrap();
-        tx.get::<AddressToProtocol>(address).unwrap().is_some()
-    }
-
-    pub fn insert_pool(
-        &self,
-        block: u64,
-        address: Address,
-        tokens: [Address; 2],
-        classifier_name: StaticBindingsDb,
-    ) -> eyre::Result<()> {
-        self.write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
-            AddressToProtocolData { address, classifier_name },
-        ])?;
-
-        let tx = self.ro_tx()?;
-        let mut addrs = tx
-            .get::<PoolCreationBlocks>(block)?
-            .map(|i| i.0)
-            .unwrap_or(vec![]);
-
-        addrs.push(Redefined_Address::from_source(address));
-        self.write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
-            PoolCreationBlocksData {
-                block_number: block,
-                pools:        types::pool_creation_block::PoolsLibmdbx(addrs),
-            },
-        ])?;
-
-        self.write_table::<AddressToTokens, AddressToTokensData>(&vec![AddressToTokensData {
-            address,
-            tokens: PoolTokens {
-                token0: tokens[0],
-                token1: tokens[1],
-                init_block: block,
-                ..Default::default()
-            },
-        }])?;
-
-        Ok(())
-    }
-
-    pub fn insert_quotes(&self, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
-        let mut data = quotes
-            .0
-            .into_iter()
-            .enumerate()
-            .filter(|(_, v)| v.is_some())
-            .map(|(idx, value)| DexPriceData {
-                block_number: block_num,
-                tx_idx:       idx as u16,
-                quote:        types::dex_price::DexQuote(value.unwrap()),
-            })
-            .collect::<Vec<_>>();
-
-        data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
-        data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
-
-        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
-        let mut cursor = tx.cursor_write::<DexPrice>()?;
-
-        data.into_iter()
-            .map(|entry| {
-                let (key, val) = entry.into_key_val();
-                //let key = make_key(key., val.tx_idx);
-
-                cursor.upsert(key, val)?;
-                Ok(())
-            })
-            .collect::<Result<Vec<_>, DatabaseError>>()?;
-
-        tx.commit()?;
-
-        //self.write_table::<DexPrice, DexPriceData>(&data)?;
-        Ok(())
-    }
-
-    pub async fn clear_and_initialize_tables(
+    /// initializes all the tables with data via the CLI
+    pub async fn init_tables(
         self: Arc<Self>,
         clickhouse: Arc<Clickhouse>,
         //tracer: Arc<TracingClient>,
@@ -191,76 +106,30 @@ impl Libmdbx {
         Ok(())
     }
 
-    pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
-        let db_tx = self.ro_tx().unwrap();
-        db_tx.get::<TokenDecimals>(address).ok()?
-    }
-
-    pub fn try_load_pair_before(
-        &self,
-        block: u64,
-        pair: Pair,
-    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
-        let tx = self.ro_tx()?;
-        let subgraphs = tx
-            .get::<SubGraphs>(pair)?
-            .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
-        // load the latest version of the sub graph relative to the block. if the
-        // sub graph is the last entry in the vector, we return an error as we cannot
-        // grantee that we have a run from last update to request block
-        let last_block = *subgraphs.0.keys().max().unwrap();
-        if block > last_block {
-            eyre::bail!("possible missing state");
-        }
-
-        let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
-
-        for (cur_block, update) in subgraphs.0 {
-            if cur_block > block {
-                return last.ok_or_else(|| eyre::eyre!("no subgraph found"))
-            }
-            last = Some((pair, update.to_source()))
-        }
-
-        unreachable!()
-    }
-
-    pub fn save_pair_at(
-        &self,
-        block: u64,
-        pair: Pair,
-        edges: Vec<SubGraphEdge>,
-    ) -> eyre::Result<()> {
-        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
-            entry.0.insert(
-                block,
-                edges
-                    .into_iter()
-                    .map(|e| Redefined_SubGraphEdge::from_source(e))
-                    .collect::<Vec<_>>(),
-            );
-
-            let (key, value) = SubGraphsData { pair, data: entry.to_source() }.into_key_val();
-            tx.put::<SubGraphs>(key, value)?;
-        }
-        tx.commit()?;
+    /// Clears a table in the database
+    /// Only called on initialization
+    pub(crate) fn initialize_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T>,
+    {
+        self.clear_table::<T>()?;
+        self.write_table(entries)?;
 
         Ok(())
     }
 
     /// Clears a table in the database
     /// Only called on initialization
-    pub fn initialize_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
+    fn clear_table<T>(&self) -> eyre::Result<()>
     where
-        T: Table,
-        D: LibmdbxData<T>,
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     {
-        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
+        let tx = self.rw_tx()?;
         tx.clear::<T>()?;
         tx.commit()?;
-
-        self.write_table(entries)?;
 
         Ok(())
     }
@@ -268,114 +137,101 @@ impl Libmdbx {
     /// writes to a table
     pub fn write_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
     where
-        T: Table,
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T>,
     {
-        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
-
-        entries
-            .iter()
-            .map(|entry| {
-                let (key, val) = entry.into_key_val();
-                tx.put::<T>(key, val)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        tx.commit()?;
+        self.update_db(|tx| {
+            entries
+                .iter()
+                .map(|entry| {
+                    let (key, val) = entry.into_key_val();
+                    tx.put::<T>(key, val)
+                })
+                .collect::<Result<Vec<_>, DatabaseError>>()?;
+            Ok::<(), DatabaseError>(())
+        })??;
 
         Ok(())
     }
 
-    /// Clears a table in the database
-    /// Only called on initialization
-    pub(crate) fn clear_table<T>(&self) -> eyre::Result<()>
+    /// Takes a function and passes a RW transaction
+    /// makes sure it's committed at the end of exec
+    /// cause u heads r degens and have not used 'tx.commit()?;'
+    /// once in this entire repo
+    pub fn view_db<F, R>(&self, f: F) -> eyre::Result<R>
     where
-        T: Table,
+        F: FnOnce(&CompressedLibmdbxTx<RO>) -> R,
     {
-        let tx = LibmdbxTx::new_rw_tx(&self.0)?;
-        tx.clear::<T>()?;
+        let tx = self.ro_tx()?;
+
+        let res = f(&tx);
         tx.commit()?;
 
-        Ok(())
+        Ok(res)
+    }
+
+    /// Takes a function and passes a RW transaction
+    /// makes sure it's committed at the end of exec
+    /// cause u heads r degens and have not used 'tx.commit()?;'
+    /// once in this entire repo, so i'm making all RW functionality private
+    pub fn update_db<F, R>(&self, f: F) -> eyre::Result<R>
+    where
+        F: FnOnce(&CompressedLibmdbxTx<RW>) -> R,
+    {
+        let tx = self.rw_tx()?;
+
+        let res = f(&tx);
+        tx.commit()?;
+
+        Ok(res)
     }
 
     /// returns a RO transaction
-    pub fn ro_tx(&self) -> eyre::Result<LibmdbxTx<RO>> {
-        let tx = LibmdbxTx::new_ro_tx(&self.0)?;
+    fn ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
+        let tx = CompressedLibmdbxTx::new_ro_tx(&self.0)?;
 
         Ok(tx)
     }
 
-    pub fn insert_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
-        self.write_table(&vec![TokenDecimalsData { address, decimals }])
+    /// returns a RO transaction
+    pub fn temp_ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
+        let tx = CompressedLibmdbxTx::new_ro_tx(&self.0)?;
+
+        Ok(tx)
     }
 
-    pub fn protocols_created_before(
-        &self,
-        block_num: u64,
-    ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
-        let tx = self.ro_tx()?;
-        let binding_tx = self.ro_tx()?;
-        let info_tx = self.ro_tx()?;
+    /// returns a RW transaction
+    fn rw_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RW>> {
+        let tx = CompressedLibmdbxTx::new_rw_tx(&self.0)?;
 
-        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
+        Ok(tx)
+    }
+}
 
-        for result in cursor.walk_range(0..=block_num)? {
-            let (_, res) = result?;
-            for addr in res.0.into_iter() {
-                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr.to_source())? else {
-                    continue;
-                };
-                let Some(info) = info_tx.get::<AddressToTokens>(addr.to_source())? else {
-                    continue;
-                };
-                map.insert(
-                    (addr.to_source(), protocol),
-                    Pair(info.token0.to_source(), info.token1.to_source()),
-                );
-            }
-        }
+#[cfg(test)]
+mod tests {
+    use std::env;
 
-        info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
+    use serial_test::serial;
 
-        Ok(map)
+    use crate::Libmdbx;
+
+    fn init_db() -> eyre::Result<Libmdbx> {
+        dotenv::dotenv().ok();
+        let brontes_db_path = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        Libmdbx::init_db(brontes_db_path, None)
     }
 
-    pub fn protocols_created_range(
-        &self,
-        start_block: u64,
-        end_block: u64,
-    ) -> eyre::Result<HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>> {
-        let tx = self.ro_tx()?;
-        let binding_tx = self.ro_tx()?;
-        let info_tx = self.ro_tx()?;
-
-        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
-
-        for result in cursor.walk_range(start_block..end_block)? {
-            let (block, res) = result?;
-            for addr in res.0.into_iter() {
-                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr.to_source())? else {
-                    continue;
-                };
-                let Some(info) = info_tx.get::<AddressToTokens>(addr.to_source())? else {
-                    continue;
-                };
-                map.entry(block).or_insert(vec![]).push((
-                    addr.to_source(),
-                    protocol,
-                    Pair(info.token0.to_source(), info.token1.to_source()),
-                ));
-            }
-        }
-
-        info!(target:"brontes-libmdbx", "loaded {} pairs range: {}..{}", map.len(), start_block, end_block);
-
-        Ok(map)
+    #[tokio::test]
+    #[serial]
+    async fn test_init_db() {
+        init_db().unwrap();
+        assert!(init_db().is_ok());
     }
+}
 
+/*
     /// gets all addresses that were initialized in a given block
     //TODO: Joe - implement a range function so that we don't have to loop through
     // the entire block range and can simply batch query
@@ -409,170 +265,4 @@ impl Libmdbx {
 
         Ok(res)
     }
-
-    pub fn get_metadata_no_dex(
-        &self,
-        block_num: u64,
-    ) -> eyre::Result<brontes_database::MetadataDB> {
-        let tx = LibmdbxTx::new_ro_tx(&self.0)?;
-        let block_meta: MetadataInner = tx
-            .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-            .to_source();
-        let db_cex_quotes: CexPriceMap = tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-            .to_source();
-        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
-            Address::from_str(WETH_ADDRESS).unwrap(),
-            Address::from_str(USDT_ADDRESS).unwrap(),
-        )) {
-            eth_usdt
-        } else {
-            db_cex_quotes
-                .get_quote(&Pair(
-                    Address::from_str(WETH_ADDRESS).unwrap(),
-                    Address::from_str(USDC_ADDRESS).unwrap(),
-                ))
-                .unwrap_or_default()
-        };
-
-        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
-        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
-            cex_quotes.0.insert(
-                pair,
-                quote
-                    .into_iter()
-                    .map(|q| brontes_database::cex::CexQuote {
-                        exchange:  q.exchange,
-                        timestamp: q.timestamp,
-                        price:     q.price,
-                        token0:    q.token0,
-                    })
-                    .collect::<Vec<_>>(),
-            );
-        });
-
-        Ok(MetadataDB {
-            block_num,
-            block_hash: block_meta.block_hash,
-            relay_timestamp: block_meta.relay_timestamp,
-            p2p_timestamp: block_meta.p2p_timestamp,
-            proposer_fee_recipient: block_meta.proposer_fee_recipient,
-            proposer_mev_reward: block_meta.proposer_mev_reward,
-            cex_quotes,
-            eth_prices: max(eth_prices.price.0, eth_prices.price.1),
-
-            mempool_flow: block_meta.mempool_flow.into_iter().collect(),
-            block_timestamp: block_meta.block_timestamp,
-        })
-    }
-
-    //TODO: Joe - implement
-    pub fn get_metadata(&self, block_num: u64) -> eyre::Result<brontes_database::Metadata> {
-        let tx = LibmdbxTx::new_ro_tx(&self.0)?;
-        let block_meta: MetadataInner = tx
-            .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-            .to_source();
-        let db_cex_quotes: CexPriceMap = tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-            .to_source();
-        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
-            Address::from_str(WETH_ADDRESS).unwrap(),
-            Address::from_str(USDT_ADDRESS).unwrap(),
-        )) {
-            eth_usdt
-        } else {
-            db_cex_quotes
-                .get_quote(&Pair(
-                    Address::from_str(WETH_ADDRESS).unwrap(),
-                    Address::from_str(USDC_ADDRESS).unwrap(),
-                ))
-                .unwrap_or_default()
-        };
-
-        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
-        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
-            cex_quotes.0.insert(
-                pair,
-                quote
-                    .into_iter()
-                    .map(|q| brontes_database::cex::CexQuote {
-                        exchange:  q.exchange,
-                        timestamp: q.timestamp,
-                        price:     q.price,
-                        token0:    q.token0,
-                    })
-                    .collect::<Vec<_>>(),
-            );
-        });
-
-        let dex_quotes = Vec::new();
-        let key_range = make_filter_key_range(block_num);
-        let _db_dex_quotes = tx
-            .cursor_read::<DexPrice>()?
-            .walk_range(key_range.0..key_range.1)?
-            .flat_map(|inner| {
-                if let Ok((key, _quote)) = inner {
-                    //dex_quotes.push(Default::default());
-                    Some(key)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        //.get::<DexPrice>(block_num)?
-        //.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        Ok(brontes_database::Metadata {
-            db:         MetadataDB {
-                block_num,
-                block_hash: block_meta.block_hash,
-                relay_timestamp: block_meta.relay_timestamp,
-                p2p_timestamp: block_meta.p2p_timestamp,
-                proposer_fee_recipient: block_meta.proposer_fee_recipient,
-                proposer_mev_reward: block_meta.proposer_mev_reward,
-                cex_quotes,
-                eth_prices: max(eth_prices.price.0, eth_prices.price.1),
-                block_timestamp: block_meta.block_timestamp,
-                mempool_flow: block_meta.mempool_flow.into_iter().collect(),
-            },
-            dex_quotes: DexQuotes(dex_quotes),
-        })
-    }
-
-    pub fn insert_classified_data(
-        &self,
-        block: MevBlock,
-        mev: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
-    ) -> eyre::Result<()> {
-        self.write_table(&vec![MevBlocksData {
-            block_number: block.block_number,
-            mev_blocks:   MevBlockWithClassified { block, mev },
-        }])
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::env;
-
-    use serial_test::serial;
-
-    use crate::Libmdbx;
-
-    fn init_db() -> eyre::Result<Libmdbx> {
-        dotenv::dotenv().ok();
-        let brontes_db_path = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        Libmdbx::init_db(brontes_db_path, None)
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_init_db() {
-        init_db().unwrap();
-        assert!(init_db().is_ok());
-    }
-}
+*/

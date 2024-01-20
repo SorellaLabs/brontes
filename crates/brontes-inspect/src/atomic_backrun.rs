@@ -34,7 +34,7 @@ impl Inspector for AtomicBackrunInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Vec<(ClassifiedMev, SpecificMev)> {
         let intersting_state = tree.collect_all(|node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
@@ -101,7 +101,7 @@ impl AtomicBackrunInspector<'_> {
         metadata: Arc<Metadata>,
         gas_details: GasDetails,
         searcher_actions: Vec<Vec<Actions>>,
-    ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Option<(ClassifiedMev, SpecificMev)> {
         let unique_tokens = searcher_actions
             .iter()
             .flatten()

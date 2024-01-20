@@ -27,7 +27,7 @@ impl Inspector for LiquidationInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Vec<(ClassifiedMev, SpecificMev)> {
         todo!()
     }
 }

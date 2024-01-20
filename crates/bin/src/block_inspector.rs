@@ -10,7 +10,7 @@ use brontes_core::{
     missing_decimals::MissingDecimals,
 };
 use brontes_database::Metadata;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database_libmdbx::{types::mev_block::MevBlockWithClassified, Libmdbx};
 use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
@@ -84,10 +84,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
         self.classifier_future = Some(classifier_fut);
     }
 
-    fn on_inspectors_finish(
-        &mut self,
-        results: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>),
-    ) {
+    fn on_inspectors_finish(&mut self, results: (MevBlock, Vec<(ClassifiedMev, SpecificMev)>)) {
         trace!(
             block_number = self.block_number,
             "inserting the collected results \n {:#?}",
@@ -96,7 +93,10 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
 
         if self
             .database
-            .insert_classified_data(results.0, results.1)
+            .write_table::<MevBlocks>(&vec![MevBlocksData {
+                block_number: results.0.block_number,
+                mev_blocks:   MevBlockWithClassified { block: results.0, mev: results.1 },
+            }])
             .is_err()
         {
             error!("failed to insert classified mev to Libmdbx");
@@ -156,6 +156,80 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
                 self.composer_future = Some(inner);
             }
         }
+    }
+
+    pub fn get_metadata(&self, block_num: u64) -> eyre::Result<brontes_database::Metadata> {
+        let tx = self.database.ro_tx()?;
+        let block_meta: MetadataInner = tx
+            .get::<Metadata>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+            .to_source();
+        let db_cex_quotes: CexPriceMap = tx
+            .get::<CexPrice>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+            .to_source();
+        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
+            Address::from_str(WETH_ADDRESS).unwrap(),
+            Address::from_str(USDT_ADDRESS).unwrap(),
+        )) {
+            eth_usdt
+        } else {
+            db_cex_quotes
+                .get_quote(&Pair(
+                    Address::from_str(WETH_ADDRESS).unwrap(),
+                    Address::from_str(USDC_ADDRESS).unwrap(),
+                ))
+                .unwrap_or_default()
+        };
+
+        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
+        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
+            cex_quotes.0.insert(
+                pair,
+                quote
+                    .into_iter()
+                    .map(|q| brontes_database::cex::CexQuote {
+                        exchange:  q.exchange,
+                        timestamp: q.timestamp,
+                        price:     q.price,
+                        token0:    q.token0,
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        });
+
+        let dex_quotes = Vec::new();
+        let key_range = make_filter_key_range(block_num);
+        let _db_dex_quotes = tx
+            .cursor_read::<DexPrice>()?
+            .walk_range(key_range.0..key_range.1)?
+            .flat_map(|inner| {
+                if let Ok((key, _quote)) = inner {
+                    //dex_quotes.push(Default::default());
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        //.get::<DexPrice>(block_num)?
+        //.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+
+        Ok(brontes_database::Metadata {
+            db:         MetadataDB {
+                block_num,
+                block_hash: block_meta.block_hash,
+                relay_timestamp: block_meta.relay_timestamp,
+                p2p_timestamp: block_meta.p2p_timestamp,
+                proposer_fee_recipient: block_meta.proposer_fee_recipient,
+                proposer_mev_reward: block_meta.proposer_mev_reward,
+                cex_quotes,
+                eth_prices: max(eth_prices.price.0, eth_prices.price.1),
+                block_timestamp: block_meta.block_timestamp,
+                mempool_flow: block_meta.mempool_flow.into_iter().collect(),
+            },
+            dex_quotes: DexQuotes(dex_quotes),
+        })
     }
 }
 

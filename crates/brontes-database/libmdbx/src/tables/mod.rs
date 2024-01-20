@@ -22,6 +22,14 @@ use serde::Deserialize;
 use sorella_db_databases::clickhouse::DbRow;
 use tracing::info;
 
+use self::{
+    pool_creation_block::PoolsToAddresses,
+    redefined_types::{
+        address_to_tokens::Redefined_PoolTokens, cex_price::Redefined_CexPriceMap,
+        dex_price::Redefined_DexQuoteWithIndex, metadata::Redefined_MetadataInner,
+        pool_creation_block::Redefined_PoolsToAddresses, subgraph::Redefined_SubGraphsEntry, mev_block::Redefined_MevBlockWithClassified,
+    },
+};
 //use crate::types::traces::TxTracesDBData;
 use crate::{
     types::{
@@ -32,14 +40,12 @@ use crate::{
         dex_price::{DexPriceData, DexQuoteWithIndex},
         metadata::{MetadataData, MetadataInner},
         mev_block::{MevBlockWithClassified, MevBlocksData},
-        pool_creation_block::{PoolCreationBlocksData, PoolsLibmdbx},
+        pool_creation_block::PoolCreationBlocksData,
         subgraphs::{SubGraphsData, SubGraphsEntry},
         *,
     },
     Libmdbx,
 };
-
-use self::{ redefined_types::{cex_price::Redefined_CexPriceMap, dex_price::Redefined_DexQuoteWithIndex, subgraph::Redefined_SubGraphsEntry, address_to_tokens::Redefined_PoolTokens, metadata::Redefined_MetadataInner}};
 
 pub const NUM_TABLES: usize = 10;
 
@@ -226,8 +232,41 @@ pub trait IntoTableKey<T, K, D> {
     fn into_table_data(key: T, value: T) -> D;
 }
 
+pub trait CompressedTable: reth_db::table::Table 
+where 
+    <Self as Table>::Value: From<<Self as CompressedTable>::DecompressedValue> +  Into<<Self as CompressedTable>::DecompressedValue>,
+{
+    type DecompressedValue;
+}
+
+//  $compressed_value:ty |
 /// Macro to declare key value table + extra impl
+
 #[macro_export]
+macro_rules! compressed_table {
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $value:ty = $($table:tt)*) => {
+        impl CompressedTable for $table_name {
+            type DecompressedValue = $value;
+        }
+
+        table!(
+            /// token address -> decimals
+            ( $table_name ) $key | $compressed_value = $($table)*
+        );
+    };
+
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)*) => {
+        impl CompressedTable for $table_name {
+            type DecompressedValue = $value;
+        }
+
+        table!(
+            /// token address -> decimals
+            ( $table_name ) $key | $value = $($table)*
+        );
+    };
+}
+
 macro_rules! table {
     ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)*) => {
         $(#[$docs])+
@@ -278,59 +317,60 @@ macro_rules! table {
     }
 }
 
-table!(
+compressed_table!(
     /// token address -> decimals
     ( TokenDecimals ) Address | u8 = False
 );
 
-table!(
+compressed_table!(
     /// Address -> tokens in pool
-    ( AddressToTokens ) Address | Redefined_PoolTokens = False
+    ( AddressToTokens ) Address | Redefined_PoolTokens | PoolTokens = False
 );
 
-table!(
+compressed_table!(
     /// Address -> Static protocol enum
     ( AddressToProtocol ) Address | StaticBindingsDb = True
 );
 
-table!(
+compressed_table!(
     /// block num -> cex prices
-    ( CexPrice ) u64 | Redefined_CexPriceMap = False
+    ( CexPrice ) u64 | Redefined_CexPriceMap | CexPriceMap = False
 );
 
-table!(
+compressed_table!(
     /// block num -> metadata
-    ( Metadata ) u64 | Redefined_MetadataInner = False
+    ( Metadata ) u64 | Redefined_MetadataInner | MetadataInner = False
 );
 
-table!(
+compressed_table!(
     /// block number concat tx idx -> cex quotes
-    ( DexPrice ) TxHash | Redefined_DexQuoteWithIndex = False
+    ( DexPrice ) TxHash | Redefined_DexQuoteWithIndex | DexQuoteWithIndex = False
 );
 
-table!(
+compressed_table!(
     /// block number -> pools created in block
-    ( PoolCreationBlocks ) u64 | PoolsLibmdbx = False
+    ( PoolCreationBlocks ) u64 | Redefined_PoolsToAddresses | PoolsToAddresses = False
 );
 
-table!(
+compressed_table!(
     /// block number -> mev block with classified mev
-    ( MevBlocks ) u64 | MevBlockWithClassified = False
+    ( MevBlocks ) u64 | Redefined_MevBlockWithClassified | MevBlockWithClassified = False
 );
 
-table!(
+compressed_table!(
     /// pair -> Vec<(block_number, entry)>
-    ( SubGraphs ) Pair | Redefined_SubGraphsEntry = False
+    ( SubGraphs ) Pair | Redefined_SubGraphsEntry | SubGraphsEntry = False
 );
 
-table!(
+compressed_table!(
     /// address -> factory
     ( AddressToFactory ) Address | StaticBindingsDb = True
 );
 
-pub(crate) trait InitializeTable<'db, D>: reth_db::table::Table + Sized + 'db
+pub(crate) trait InitializeTable<'db, D>: CompressedTable + Sized + 'db
 where
     D: LibmdbxData<Self> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    <Self as Table>::Value: From<<Self as CompressedTable>::DecompressedValue> + Into<<Self as CompressedTable>::DecompressedValue>,
 {
     fn initialize_query() -> &'static str;
 

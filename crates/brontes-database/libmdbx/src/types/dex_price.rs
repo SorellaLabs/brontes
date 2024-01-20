@@ -7,7 +7,7 @@ use reth_db::table::Table;
 use sorella_db_databases::clickhouse::{self, Row};
 
 use super::redefined_types::dex_price::Redefined_DexQuoteWithIndex;
-use crate::{tables::DexPrice, LibmdbxData};
+use crate::{tables::DexPrice, CompressedTable, LibmdbxData};
 
 pub fn make_key(block_number: u64, tx_idx: u16) -> TxHash {
     let mut bytes = [0u8; 8].to_vec();
@@ -45,10 +45,13 @@ pub struct DexPriceData {
 }
 
 impl LibmdbxData<DexPrice> for DexPriceData {
-    fn into_key_val(&self) -> (<DexPrice as Table>::Key, <DexPrice as Table>::Value) {
+    fn into_key_val(
+        &self,
+    ) -> (<DexPrice as reth_db::table::Table>::Key, <DexPrice as CompressedTable>::DecompressedValue)
+    {
         (
             make_key(self.block_number, self.tx_idx),
-            Redefined_DexQuoteWithIndex { tx_idx: self.tx_idx, quote: self.quote.clone().into() },
+            DexQuoteWithIndex { tx_idx: self.tx_idx, quote: self.quote.clone().into() },
         )
     }
 }
@@ -66,6 +69,15 @@ impl From<DexQuoteWithIndex> for DexQuote {
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
     pub quote:  Vec<(Pair, Rational)>,
+}
+
+impl From<DexQuote> for Vec<(Pair, Rational)> {
+    fn from(val: DexQuote) -> Self {
+        val.0
+            .into_iter()
+            //.map(|(x, y)| (Redefined_Pair::from_source(x), Redefined_Rational::from_source(y)))
+            .collect()
+    }
 }
 
 /*

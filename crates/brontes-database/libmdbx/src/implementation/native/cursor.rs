@@ -20,7 +20,7 @@ use super::utils::{decode_one, decode_value, decoder, uncompressable_ref_util};
 
 /// Cursor wrapper to access KV items.
 #[derive(Debug)]
-pub struct LibmdbxCursor<T: Table, K: TransactionKind> {
+pub(crate) struct LibmdbxCursor<T: Table, K: TransactionKind> {
     /// Inner `libmdbx` cursor.
     pub(crate) inner: reth_libmdbx::Cursor<K>,
     /// Phantom data to enforce encoding/decoding.

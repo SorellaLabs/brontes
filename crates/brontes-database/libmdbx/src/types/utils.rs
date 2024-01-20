@@ -230,15 +230,18 @@ pub mod pools_libmdbx {
 
     use std::str::FromStr;
 
-    use brontes_types::libmdbx::redefined_types::primitives::Redefined_Address;
+    use alloy_primitives::Address;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
 
-    use crate::types::pool_creation_block::PoolsLibmdbx;
+    use crate::types::pool_creation_block::PoolsToAddresses;
 
-    pub fn serialize<S: Serializer>(u: &PoolsLibmdbx, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(
+        u: &PoolsToAddresses,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         let st: Vec<String> =
             u.0.clone()
                 .into_iter()
@@ -247,16 +250,16 @@ pub mod pools_libmdbx {
         st.serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<PoolsLibmdbx, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<PoolsToAddresses, D::Error>
     where
         D: Deserializer<'de>,
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(PoolsLibmdbx(
+        Ok(PoolsToAddresses(
             data.into_iter()
-                .map(|d| Redefined_Address::from_str(&d))
-                .collect::<Result<Vec<_>, <Redefined_Address as FromStr>::Err>>()
+                .map(|d| Address::from_str(&d))
+                .collect::<Result<Vec<_>, <Address as FromStr>::Err>>()
                 .map_err(serde::de::Error::custom)?,
         ))
     }

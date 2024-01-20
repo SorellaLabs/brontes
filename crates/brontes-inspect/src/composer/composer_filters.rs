@@ -40,9 +40,7 @@ macro_rules! mev_composability {
 }
 
 pub type ComposeFunction = Box<
-    dyn Fn(
-            Vec<(ClassifiedMev, Box<dyn Any + Send + Sync>)>,
-        ) -> (ClassifiedMev, Box<dyn SpecificMev>)
+    dyn Fn(Vec<(ClassifiedMev, Box<dyn Any + Send + Sync>)>) -> (ClassifiedMev, SpecificMev)
         + Send
         + Sync,
 >;
