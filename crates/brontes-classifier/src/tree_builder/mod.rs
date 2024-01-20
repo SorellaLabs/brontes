@@ -17,7 +17,7 @@ use brontes_types::{
     db::{address_to_tokens::PoolTokens, pool_creation_block::PoolsToAddresses},
     exchanges::StaticBindingsDb,
     extra_processing::ExtraProcessing,
-    normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
+    normalized_actions::{Actions, NormalizedAction, NormalizedTransfer, SelfdestructWithIndex},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     traits::TracingProvider,
     tree::{BlockTree, GasDetails, Node, Root},
@@ -343,15 +343,15 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             return (vec![], Actions::Revert)
         }
         match trace.action_type() {
-            Action::Call(_) => {
-                return self.classify_call(block, tx_idx, trace, trace_index, tx_hash)
-            }
+            Action::Call(_) => return self.classify_call(block, tx_idx, trace, trace_index),
             Action::Create(_) => {
                 return self
                     .classify_create(block, root_head, tx_idx, trace, trace_index, tx_hash)
                     .await
             }
-            Action::Selfdestruct(_) => todo!(),
+            Action::Selfdestruct(sd) => {
+                return (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
+            }
             Action::Reward(_) => return (vec![], Actions::Unclassified(trace)),
         };
     }
@@ -362,7 +362,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
-        tx_hash: B256,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.is_static_call() {
             return (vec![], Actions::Unclassified(trace))

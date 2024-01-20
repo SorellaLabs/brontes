@@ -2,7 +2,7 @@ use alloy_primitives::Log;
 use reth_primitives::{Address, Bytes, B256};
 use reth_rpc_types::trace::parity::{
     Action, CallType,
-    TraceOutput::{self, Create},
+    TraceOutput::{self},
     TransactionTrace,
 };
 use serde::{Deserialize, Serialize};
