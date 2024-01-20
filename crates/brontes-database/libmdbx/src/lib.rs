@@ -11,6 +11,7 @@ use brontes_types::{
 };
 use eyre::Context;
 use initialize::LibmdbxInitializer;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::{
     cursor::{DbCursorRO, DbCursorRW},
     is_database_empty,
@@ -402,6 +403,7 @@ impl Libmdbx {
         let db_cex_quotes: CexPriceMap = tx
             .get::<CexPrice>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+
         let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
             Address::from_str(WETH_ADDRESS).unwrap(),
             Address::from_str(USDT_ADDRESS).unwrap(),
@@ -447,15 +449,24 @@ impl Libmdbx {
         })
     }
 
+    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<brontes_database::Metadata> {
+        Ok(brontes_database::Metadata {
+            db:         MetadataDB { block_num, ..Default::default() },
+            dex_quotes: DexQuotes(vec![]),
+        })
+    }
+
     //TODO: Joe - implement
     pub fn get_metadata(&self, block_num: u64) -> eyre::Result<brontes_database::Metadata> {
         let tx = LibmdbxTx::new_ro_tx(&self.0)?;
         let block_meta: MetadataInner = tx
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+
         let db_cex_quotes: CexPriceMap = tx
             .get::<CexPrice>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+
         let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
             Address::from_str(WETH_ADDRESS).unwrap(),
             Address::from_str(USDT_ADDRESS).unwrap(),
