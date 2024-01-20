@@ -187,10 +187,7 @@ impl SpecificMev for Sandwich {
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        let mut mev = vec![self.frontrun_tx_hash, self.backrun_tx_hash];
-        // we add victim hashes in-case they register as a backrun
-        mev.extend(self.victim_swaps_tx_hashes.clone());
-        mev
+        vec![self.frontrun_tx_hash, self.backrun_tx_hash]
     }
 }
 

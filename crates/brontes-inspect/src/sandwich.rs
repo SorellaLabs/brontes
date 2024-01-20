@@ -125,43 +125,24 @@ impl SandwichInspector<'_> {
         metadata: Arc<Metadata>,
         txes: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
-        mut searcher_actions: Vec<Vec<Actions>>,
+        searcher_actions: Vec<Vec<Actions>>,
         // victim
         victim_txes: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
-
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
-
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
-
-        let rev_usd = addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        let gas_used = searcher_gas_details
-            .iter()
-            .map(|g| g.gas_paid())
-            .sum::<u128>();
-
-        let gas_used = metadata.get_gas_price_usd(gas_used);
-
         let frontrun_swaps = searcher_actions
-            .remove(0)
+            .get(0)?
             .into_iter()
             .filter(|s| s.is_swap())
-            .map(|s| s.force_swap())
+            .map(|s| s.clone().force_swap())
             .collect_vec();
 
         let backrun_swaps = searcher_actions
-            .remove(searcher_actions.len() - 1)
+            .get(searcher_actions.len() - 1)?
             .into_iter()
             .filter(|s| s.is_swap())
-            .map(|s| s.force_swap())
+            .map(|s| s.clone().force_swap())
             .collect_vec();
 
         let mut pools = HashSet::new();
@@ -195,6 +176,25 @@ impl SandwichInspector<'_> {
         {
             return None
         }
+
+        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+
+        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let rev_usd = addr_usd_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
+
+        let gas_used = searcher_gas_details
+            .iter()
+            .map(|g| g.gas_paid())
+            .sum::<u128>();
+
+        let gas_used = metadata.get_gas_price_usd(gas_used);
 
         let sandwich = Sandwich {
             frontrun_tx_hash: txes[0],
@@ -323,7 +323,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_sandwich() {
+    async fn test_sandwich_different_contract_address() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
@@ -342,6 +342,12 @@ mod tests {
             .run_inspector::<Sandwich>(config, None)
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_sandwich_different_eoa() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
             .with_mev_tx_hashes(vec![
@@ -361,7 +367,29 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_complex_sandwich() {
+    async fn test_sandwich_part_of_jit_sandwich_simple() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+
+        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+            .with_mev_tx_hashes(vec![
+                hex!("a203940b1d15c1c395b4b05cef9f0a05bf3c4a29fdb1bed47baddeac866e3729").into(),
+                hex!("af2143d2448a2e639637f9184bc2539428230226c281a174ba4ef4ef00e00220").into(),
+                hex!("3e9c6cbee7c8c85a3c1bbc0cc8b9e23674f86bc7aedc51f05eb9d0eda0f6247e").into(),
+                hex!("9ee36a8a24c3eb5406e7a651525bcfbd0476445bd291622f89ebf8d13d54b7ee").into(),
+            ])
+            .with_dex_prices()
+            .with_expected_gas_used(40.26)
+            .with_expected_profit_usd(-56.444);
+
+        inspector_util
+            .run_inspector::<Sandwich>(config, None)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_sandwich_part_of_jit_sandwich() {
         // this is a jit sandwich
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
 
