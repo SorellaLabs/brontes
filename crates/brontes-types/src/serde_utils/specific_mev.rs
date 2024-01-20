@@ -1,10 +1,7 @@
-use serde::{ser::SerializeTuple, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Serialize, Serializer};
 use sorella_db_databases::clickhouse::InsertRow;
 
-use crate::classified_mev::{
-    AtomicBackrun, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation, MevType, Sandwich,
-    SpecificMev,
-};
+use crate::classified_mev::SpecificMev;
 
 /*
 macro_rules! decode_specific {

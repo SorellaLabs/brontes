@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use alloy_rlp::{Decodable, Encodable};
 use brontes_types::{
     db::{address_to_tokens::PoolTokens, redefined_types::primitives::Redefined_Address},
@@ -16,10 +14,7 @@ use rkyv::Deserialize;
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{
-    utils::{address, option_address},
-    CompressedTable, LibmdbxData,
-};
+use super::{CompressedTable, LibmdbxData};
 use crate::libmdbx::{types::utils::pool_tokens, AddressToTokens};
 
 #[serde_as]

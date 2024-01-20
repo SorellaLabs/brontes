@@ -29,7 +29,12 @@ fn write_clickhouse_sql() {
             let sql_string = read_sql(path.to_str().unwrap());
 
             let const_name = path.file_stem().unwrap().to_str().unwrap().to_uppercase();
-            writeln!(f, "pub const {}: &str = r#\"{}\"#;\n", const_name, sql_string).unwrap();
+            writeln!(
+                f,
+                "#[allow(dead_code)]\npub const {}: &str = r#\"{}\"#;\n",
+                const_name, sql_string
+            )
+            .unwrap();
         }
     }
 }
@@ -48,7 +53,8 @@ fn write_libmdbx_sql() {
             let const_name = path.file_stem().unwrap().to_str().unwrap();
             writeln!(
                 f,
-                "#[allow(dead_code)]\npub const {}: &str = r#\"{}\"#;\n",
+                "#[allow(dead_code)]\n#[allow(non_upper_case_globals)]\npub const {}: &str = \
+                 r#\"{}\"#;\n",
                 const_name, sql_string
             )
             .unwrap();

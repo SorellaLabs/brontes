@@ -1,9 +1,13 @@
 #![allow(non_camel_case_types)]
 #![allow(private_bounds)]
-use std::{path::Path, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 pub mod initialize;
 
+use alloy_primitives::Address;
+use brontes_types::{
+    exchanges::StaticBindingsDb, extra_processing::Pair, price_graph::SubGraphEdge,
+};
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
@@ -15,8 +19,9 @@ use reth_db::{
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::{RO, RW};
 use tables::*;
+use tracing::info;
 
-use self::types::LibmdbxData;
+use self::types::{subgraphs::SubGraphsData, LibmdbxData};
 use crate::clickhouse::Clickhouse;
 
 pub mod implementation;
@@ -132,25 +137,7 @@ impl Libmdbx {
     }
 
     /// Takes a function and passes a RW transaction
-    /// makes sure it's committed at the end of exec
-    /// cause u heads r degens and have not used 'tx.commit()?;'
-    /// once in this entire repo
-    fn view_db<F, R>(&self, f: F) -> eyre::Result<R>
-    where
-        F: FnOnce(&CompressedLibmdbxTx<RO>) -> R,
-    {
-        let tx = self.ro_tx()?;
-
-        let res = f(&tx);
-        tx.commit()?;
-
-        Ok(res)
-    }
-
-    /// Takes a function and passes a RW transaction
-    /// makes sure it's committed at the end of exec
-    /// cause u heads r degens and have not used 'tx.commit()?;'
-    /// once in this entire repo, so i'm making all RW functionality private
+    /// makes sure it's committed at the end of execution
     pub fn update_db<F, R>(&self, f: F) -> eyre::Result<R>
     where
         F: FnOnce(&CompressedLibmdbxTx<RW>) -> R,
@@ -175,6 +162,116 @@ impl Libmdbx {
         let tx = CompressedLibmdbxTx::new_rw_tx(&self.0)?;
 
         Ok(tx)
+    }
+
+    /// idk
+    pub fn protocols_created_before(
+        &self,
+        block_num: u64,
+    ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
+        let tx = self.ro_tx()?;
+
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
+        let mut map = HashMap::default();
+
+        for result in cursor.walk_range(0..=block_num)? {
+            let res = result?.1;
+            for addr in res.0.into_iter() {
+                let Some(protocol) = tx.get::<AddressToProtocol>(addr)? else {
+                    continue;
+                };
+                let Some(info) = tx.get::<AddressToTokens>(addr)? else {
+                    continue;
+                };
+                map.insert((addr, protocol), Pair(info.token0, info.token1));
+            }
+        }
+
+        info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
+
+        Ok(map)
+    }
+
+    /// idk
+    pub fn protocols_created_range(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>> {
+        let tx = self.ro_tx()?;
+
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
+        let mut map = HashMap::default();
+
+        for result in cursor.walk_range(start_block..end_block)? {
+            let result = result?;
+            let (block, res) = (result.0, result.1);
+            for addr in res.0.into_iter() {
+                let Some(protocol) = tx.get::<AddressToProtocol>(addr)? else {
+                    continue;
+                };
+                let Some(info) = tx.get::<AddressToTokens>(addr)? else {
+                    continue;
+                };
+                map.entry(block).or_insert(vec![]).push((
+                    addr,
+                    protocol,
+                    Pair(info.token0, info.token1),
+                ));
+            }
+        }
+        info!(target:"brontes-libmdbx", "loaded {} pairs range: {}..{}", map.len(), start_block, end_block);
+
+        Ok(map)
+    }
+
+    /// idl
+    pub fn save_pair_at(
+        &self,
+        block: u64,
+        pair: Pair,
+        edges: Vec<SubGraphEdge>,
+    ) -> eyre::Result<()> {
+        let tx = self.ro_tx()?;
+        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
+            entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
+
+            let data = SubGraphsData { pair, data: entry };
+            self.write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
+        }
+
+        Ok(())
+    }
+
+    /// idl
+    pub fn try_load_pair_before(
+        &self,
+        block: u64,
+        pair: Pair,
+    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
+        let tx = self.ro_tx()?;
+        let subgraphs = tx
+            .get::<SubGraphs>(pair)?
+            .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
+
+        // load the latest version of the sub graph relative to the block. if the
+        // sub graph is the last entry in the vector, we return an error as we cannot
+        // grantee that we have a run from last update to request block
+        let last_block = *subgraphs.0.keys().max().unwrap();
+        if block > last_block {
+            eyre::bail!("possible missing state");
+        }
+
+        let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
+
+        for (cur_block, update) in subgraphs.0 {
+            if cur_block > block {
+                return last.ok_or_else(|| eyre::eyre!("no subgraph found"))
+            }
+            last = Some((pair, update))
+        }
+
+        unreachable!()
     }
 }
 
