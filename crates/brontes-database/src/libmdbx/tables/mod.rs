@@ -120,17 +120,20 @@ impl Tables {
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
         match self {
             Tables::TokenDecimals => {
+                info!(target: "brontes::init", "Starting {}", self.name());
                 TokenDecimals::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::AddressToTokens => {
+                info!(target: "brontes::init", "Starting {}", self.name());
                 AddressToTokens::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::AddressToProtocol => {
+                info!(target: "brontes::init", "Starting {}", self.name());
                 AddressToProtocol::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::CexPrice => {
                 //let block_range = (15400000, 19000000);
-
+                info!(target: "brontes::init", "Starting {}", self.name());
                 Box::pin(async move {
                     libmdbx.clear_table::<CexPrice>()?;
                     println!("Cleared Table: {}", CexPrice::NAME);
@@ -166,7 +169,10 @@ impl Tables {
                     Ok(())
                 })
             }
-            Tables::Metadata => Box::pin(async move {
+            Tables::Metadata => {
+                info!(target: "brontes::init", "Starting {}", self.name());
+                Box::pin(async move {
+                
                 libmdbx.clear_table::<Metadata>()?;
                 println!("Cleared Table: {}", Metadata::NAME);
 
@@ -178,25 +184,32 @@ impl Tables {
                 .await?;
                 println!("{} OK", Metadata::NAME);
                 Ok(())
-            }),
-            Tables::DexPrice => DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone()),
+            })},
+            Tables::DexPrice => {
+                info!(target: "brontes::init", "Starting {}", self.name());
+                DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone())},
             Tables::PoolCreationBlocks => {
+                info!(target: "brontes::init", "Starting {}", self.name());
                 PoolCreationBlocks::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::MevBlocks => {
+                info!(target: "brontes::init", "Starting {}", self.name());
                 Box::pin(
                     async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
                 )
             }
-            Tables::AddressToFactory => Box::pin(async move {
+            Tables::AddressToFactory => {                info!(target: "brontes::init", "Starting {}", self.name());
+            Box::pin(async move {
                 libmdbx.initialize_table::<AddressToFactory, AddressToFactoryData>(&vec![])
-            }),
+            })},
             Tables::SubGraphs => {
+                info!(target: "brontes::init", "Starting {}", self.name());
                 Box::pin(
                     async move { libmdbx.initialize_table::<SubGraphs, SubGraphsData>(&vec![]) },
                 )
             }
         }
+
     }
 }
 
@@ -230,7 +243,7 @@ where
     <Self as Table>::Value: From<<Self as CompressedTable>::DecompressedValue>
         + Into<<Self as CompressedTable>::DecompressedValue>,
 {
-    type DecompressedValue;
+    type DecompressedValue: Debug;
 }
 
 //  $compressed_value:ty |

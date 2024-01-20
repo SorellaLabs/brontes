@@ -25,6 +25,7 @@ impl LibmdbxInitializer {
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
+        /*
         join_all(tables.iter().map(|table| {
             table.initialize_table(
                 self.libmdbx.clone(),
@@ -35,31 +36,35 @@ impl LibmdbxInitializer {
         }))
         .await
         .into_iter()
-        .collect::<eyre::Result<_>>()
+        .collect::<eyre::Result<_>>() */
+
+        for table in tables {
+            table
+                .initialize_table(
+                    self.libmdbx.clone(),
+                    //self.tracer.clone(),
+                    self.clickhouse.clone(),
+                    block_range,
+                )
+                .await?;
+        }
+
+        Ok(())
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use std::{env, path::Path, sync::Arc};
 
-    use brontes_database::clickhouse::Clickhouse;
     use brontes_pricing::types::PoolState;
-    use brontes_types::classified_mev::{ClassifiedMev, Sandwich};
+    use brontes_types::classified_mev::{ClassifiedMev, MevBlock, Sandwich};
     use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
     use reth_tracing_ext::TracingClient;
     use serial_test::serial;
 
-    use crate::{
-        implementation::tx::LibmdbxTx,
-        initialize::LibmdbxInitializer,
-        tables::{
-            AddressToProtocol, AddressToTokens, CexPrice, Metadata, MevBlocks, PoolCreationBlocks,
-            Tables, TokenDecimals,
-        },
-        Libmdbx, MevBlock,
-    };
+    use super::LibmdbxInitializer;
+    use crate::{clickhouse::Clickhouse, libmdbx::*};
 
     fn init_db() -> eyre::Result<Libmdbx> {
         dotenv::dotenv().ok();
@@ -97,7 +102,7 @@ mod tests {
        }
     */
     async fn test_tokens_decimals_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
-        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+        let tx = db.ro_tx()?;
         assert_ne!(tx.entries::<TokenDecimals>()?, 0);
 
         let mut cursor = tx.cursor_read::<TokenDecimals>()?;
@@ -113,7 +118,7 @@ mod tests {
     }
 
     async fn test_address_to_tokens_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
-        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+        let tx = db.ro_tx()?;
         assert_ne!(tx.entries::<AddressToTokens>()?, 0);
 
         let mut cursor = tx.cursor_read::<AddressToTokens>()?;
@@ -128,7 +133,7 @@ mod tests {
     }
 
     async fn test_address_to_protocols_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
-        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+        let tx = db.ro_tx()?;
         assert_ne!(tx.entries::<AddressToProtocol>()?, 0);
 
         let mut cursor = tx.cursor_read::<AddressToProtocol>()?;
@@ -143,7 +148,7 @@ mod tests {
     }
 
     async fn test_cex_mapping_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
-        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+        let tx = db.ro_tx()?;
         assert_ne!(tx.entries::<CexPrice>()?, 0);
 
         let mut cursor = tx.cursor_read::<CexPrice>()?;
@@ -158,7 +163,7 @@ mod tests {
     }
 
     async fn test_metadata_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
-        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+        let tx = db.ro_tx()?;
         assert_ne!(tx.entries::<Metadata>()?, 0);
 
         let mut cursor = tx.cursor_read::<Metadata>()?;
@@ -225,7 +230,7 @@ mod tests {
         }
     */
     async fn test_pool_creation_blocks_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
-        let tx = LibmdbxTx::new_ro_tx(&db.0)?;
+        let tx = db.ro_tx()?;
         assert_ne!(tx.entries::<PoolCreationBlocks>()?, 0);
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
@@ -244,7 +249,8 @@ mod tests {
         let classified_mev = ClassifiedMev::default();
         let specific_mev = Sandwich::default();
 
-        let _ = db.insert_classified_data(block, vec![(classified_mev, Box::new(specific_mev))]);
+        //let _ = db.insert_classified_data(block, vec![(classified_mev,
+        // Box::new(specific_mev))]);
 
         Ok(())
     }
@@ -282,10 +288,10 @@ mod tests {
             //Tables::AddressToTokens,
             //Tables::AddressToProtocol,
             //Tables::CexPrice,
-            Tables::Metadata,
+            //Tables::Metadata,
             //Tables::PoolState,
             //Tables::DexPrice,
-            //Tables::PoolCreationBlocks,
+            Tables::PoolCreationBlocks,
             // Tables::TxTraces,
         ])
         .await;
@@ -296,13 +302,10 @@ mod tests {
         //assert!(test_address_to_tokens_table(&db, false).await.is_ok());
         //assert!(test_address_to_protocols_table(&db, false).await.is_ok());
         //assert!(test_cex_mapping_table(&db, false).await.is_ok());
-        assert!(test_metadata_table(&db, false).await.is_ok());
+        //assert!(test_metadata_table(&db, false).await.is_ok());
         //assert!(test_pool_state_table(&db, false).await.is_ok());
         //assert!(test_dex_price_table(&db, false).await.is_ok());
-        //assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
+        assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
         // assert!(test_tx_traces_table(&db, true).await.is_ok());
     }
 }
-
-
-*/
