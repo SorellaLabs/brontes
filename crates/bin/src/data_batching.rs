@@ -346,7 +346,6 @@ impl Future for ResultProcessing<'_> {
                 block_details.cumulative_mev_finalized_profit_usd
             );
 
-            println!("{mev_details:#?}");
             if self
                 .database
                 .insert_classified_data(block_details, mev_details)
