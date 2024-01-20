@@ -12,7 +12,7 @@ use brontes_core::{
     missing_decimals::MissingDecimals,
 };
 use brontes_database::libmdbx::{
-    tables::{CexPrice, DexPrice, Metadata as MetadataTable, MevBlocks},
+    tables::{DexPrice, Metadata as MetadataTable, MevBlocks},
     types::{dex_price::make_filter_key_range, mev_block::MevBlocksData},
     Libmdbx,
 };
@@ -224,7 +224,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
             .cursor_read::<DexPrice>()?
             .walk_range(key_range.0..key_range.1)?
             .flat_map(|inner| {
-                if let Ok((key, val)) = inner.map(|row| (row.0, row.1)) {
+                if let Ok((key, _val)) = inner.map(|row| (row.0, row.1)) {
                     //dex_quotes.push(Default::default());
                     Some(key)
                 } else {
