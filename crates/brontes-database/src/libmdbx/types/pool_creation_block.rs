@@ -48,7 +48,7 @@ impl LibmdbxData<PoolCreationBlocks> for PoolCreationBlocksData {
 pub struct LibmdbxPoolsToAddresses(pub Vec<Redefined_Address>);
 impl Encodable for LibmdbxPoolsToAddresses {
     fn encode(&self, out: &mut dyn BufMut) {
-        let encoded = rkyv::to_bytes::<_, 256>(&self.0).unwrap();
+        let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
 
         out.put_slice(&encoded)
     }
@@ -56,11 +56,12 @@ impl Encodable for LibmdbxPoolsToAddresses {
 
 impl Decodable for LibmdbxPoolsToAddresses {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let archived = unsafe { rkyv::archived_root::<Vec<Redefined_Address>>(buf) };
+        let archived: &ArchivedLibmdbxPoolsToAddresses =
+            unsafe { rkyv::archived_root::<Self>(buf) };
 
-        let this: Vec<Redefined_Address> = archived.deserialize(&mut rkyv::Infallible).unwrap();
+        let this = archived.deserialize(&mut rkyv::Infallible).unwrap();
 
-        Ok(Self(this))
+        Ok(this)
     }
 }
 
@@ -79,6 +80,8 @@ impl Compress for LibmdbxPoolsToAddresses {
 impl Decompress for LibmdbxPoolsToAddresses {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
+
+        println!("value: {:?}", binding);
 
         let encoded_decompressed = zstd::decode_all(&*binding).unwrap();
         let buf = &mut encoded_decompressed.as_slice();
