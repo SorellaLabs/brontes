@@ -4,6 +4,7 @@ use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
 use brontes_core::{missing_decimals::MissingDecimals, test_utils::*};
 use crate::BrontesBatchPricer;
+use crate::GraphManager;
 use crate::types::DexPriceMsg;
 use brontes_types::{traits::TracingProvider, tree::BlockTree, normalized_actions::Actions};
 use thiserror::Error;
