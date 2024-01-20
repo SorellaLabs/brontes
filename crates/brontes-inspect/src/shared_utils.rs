@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::U256;
 use brontes_database::{Metadata, Pair};
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
@@ -119,6 +120,30 @@ impl SharedInspectorUtils<'_> {
         }
 
         Some(usd_deltas)
+    }
+
+    pub fn calculate_dex_usd_amount(
+        &self,
+        block_position: usize,
+        token_address: Address,
+        amount: U256,
+        metadata: &Arc<Metadata>,
+    ) -> Option<Rational> {
+        let Some(decimals) = self.db.try_get_decimals(token_address) else {
+            error!("token decimals not found for calcuate dex usd amount");
+            return None
+        };
+        if token_address == self.quote {
+            return Some(Rational::ONE * amount.to_scaled_rational(decimals))
+        }
+
+        let pair = Pair(token_address, self.quote);
+        Some(
+            metadata
+                .dex_quotes
+                .price_at_or_before(pair, block_position)?
+                * amount.to_scaled_rational(decimals),
+        )
     }
 
     pub fn get_dex_usd_price(
