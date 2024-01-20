@@ -144,6 +144,7 @@ impl AtomicBackrunInspector<'_> {
         }
 
         let classified = ClassifiedMev {
+            mev_tx_index: idx as u64,
             mev_type: MevType::Backrun,
             tx_hash,
             mev_contract,

@@ -209,6 +209,7 @@ impl SandwichInspector<'_> {
         };
 
         let classified_mev = ClassifiedMev {
+            mev_tx_index: idx as u64,
             eoa,
             mev_profit_collector,
             tx_hash: txes[0],

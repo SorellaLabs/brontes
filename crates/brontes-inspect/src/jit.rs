@@ -169,6 +169,7 @@ impl JitInspector<'_> {
         let profit = jit_fee - mint - &bribe;
 
         let classified = ClassifiedMev {
+            mev_tx_index: back_jit_idx as u64,
             block_number: metadata.block_num,
             tx_hash: txes[0],
             eoa,

@@ -3,10 +3,8 @@ use std::collections::HashMap;
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
 use brontes_core::{missing_decimals::MissingDecimals, test_utils::*};
-use brontes_pricing::BrontesBatchPricer;
-use brontes_pricing::GraphManager;
-use brontes_pricing::types::DexPriceMsg;
-use brontes_types::{traits::TracingProvider, tree::BlockTree, normalized_actions::Actions};
+use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
+use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::BlockTree};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
@@ -72,7 +70,8 @@ impl PricingTestUtils {
     pub async fn setup_dex_pricer_for_block(
         &self,
         block: u64,
-    ) -> Result<(BrontesBatchPricer<Box<dyn TracingProvider>>, BlockTree<Actions>), PricingTestError> {
+    ) -> Result<(BrontesBatchPricer<Box<dyn TracingProvider>>, BlockTree<Actions>), PricingTestError>
+    {
         let BlockTracesWithHeaderAnd { traces, header, .. } =
             self.tracer.get_block_traces_with_header(block).await?;
 
