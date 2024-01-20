@@ -257,4 +257,3 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         (tx_trace, stats)
     }
 }
-
