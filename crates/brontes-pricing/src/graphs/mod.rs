@@ -143,7 +143,6 @@ impl GraphManager {
         (self.sub_graph_registry.all_unloaded_state(&paths), paths)
     }
 
-    /// only used for multithread
     pub fn add_subgraph(&mut self, pair: Pair, edges: Vec<SubGraphEdge>) {
         if !self.sub_graph_registry.has_subpool(&pair.ordered()) {
             self.sub_graph_registry

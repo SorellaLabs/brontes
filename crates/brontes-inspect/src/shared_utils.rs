@@ -109,7 +109,7 @@ impl SharedInspectorUtils<'_> {
                     // Fetch CEX price
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
                 } else {
-                    metadata.dex_quotes.price_after(pair, tx_position)?
+                    metadata.dex_quotes.price_at_or_before(pair, tx_position)?
                 };
 
                 let usd_amount = amount * price;
@@ -132,7 +132,7 @@ impl SharedInspectorUtils<'_> {
         }
 
         let pair = Pair(token_address, self.quote);
-        metadata.dex_quotes.price_after(pair, block_position)
+        metadata.dex_quotes.price_at_or_before(pair, block_position)
     }
 
     pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
