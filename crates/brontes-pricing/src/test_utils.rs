@@ -1,16 +1,124 @@
-use brontes_core::test_utils::TraceLoader;
+use std::collections::HashMap;
+
+use alloy_primitives::{Address, TxHash};
+use brontes_classifier::Classifier;
+use brontes_core::{missing_decimals::MissingDecimals, test_utils::*};
+use crate::BrontesBatchPricer;
+use crate::types::DexPriceMsg;
+use brontes_types::{traits::TracingProvider, tree::BlockTree, normalized_actions::Actions};
 use thiserror::Error;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 pub struct PricingTestUtils {
-    tracer: TraceLoader,
+    tracer:        TraceLoader,
+    quote_address: Address,
 }
 
 impl PricingTestUtils {
-    pub fn new() -> Self {
+    pub fn new(quote_address: Address) -> Self {
         let tracer = TraceLoader::new();
-        Self { tracer }
+        Self { tracer, quote_address }
+    }
+
+    async fn crate_dex_pricer(
+        &self,
+        block: u64,
+        end_block: Option<u64>,
+        rx: UnboundedReceiver<DexPriceMsg>,
+    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>>, PricingTestError> {
+        let pairs = self
+            .tracer
+            .libmdbx
+            .protocols_created_before(block)
+            .map_err(|_| PricingTestError::LibmdbxError)?;
+
+        let pair_graph = GraphManager::init_from_db_state(
+            pairs,
+            HashMap::default(),
+            Box::new(|_, _| None),
+            Box::new(|_, _, _| {}),
+        );
+
+        let created_pools = if let Some(end_block) = end_block {
+            self.tracer
+                .libmdbx
+                .protocols_created_range(block + 1, end_block)
+                .unwrap()
+                .into_iter()
+                .flat_map(|(_, pools)| {
+                    pools
+                        .into_iter()
+                        .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<HashMap<_, _>>()
+        } else {
+            HashMap::new()
+        };
+        Ok(BrontesBatchPricer::new(
+            5,
+            self.quote_address,
+            pair_graph,
+            rx,
+            self.tracer.get_provider(),
+            block,
+            created_pools,
+        ))
+    }
+
+    /// traces the block and classifies it sending all messages to the batch
+    /// pricer.
+    pub async fn setup_dex_pricer_for_block(
+        &self,
+        block: u64,
+    ) -> Result<(BrontesBatchPricer<Box<dyn TracingProvider>>, BlockTree<Actions>), PricingTestError> {
+        let BlockTracesWithHeaderAnd { traces, header, .. } =
+            self.tracer.get_block_traces_with_header(block).await?;
+
+        let (tx, rx) = unbounded_channel();
+        let pricer = self.crate_dex_pricer(block, None, rx).await?;
+
+        let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
+        let (decimals, tree) = classifier.build_block_tree(traces, header).await;
+        MissingDecimals::new(
+            self.tracer.get_provider(),
+            self.tracer.libmdbx,
+            block,
+            decimals.tokens_decimal_fill,
+        )
+        .await;
+
+        Ok((pricer, tree))
+    }
+
+    pub async fn setup_dex_pricer_for_tx(
+        &self,
+        tx_hash: TxHash,
+    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>>, PricingTestError> {
+        let TxTracesWithHeaderAnd { trace, header, block, .. } =
+            self.tracer.get_tx_trace_with_header(tx_hash).await?;
+        let (tx, rx) = unbounded_channel();
+
+        let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
+        let mut pricer = self.crate_dex_pricer(block, None, rx).await?;
+
+        let (decimals, tree) = classifier.build_block_tree(vec![trace], header).await;
+        MissingDecimals::new(
+            self.tracer.get_provider(),
+            self.tracer.libmdbx,
+            block,
+            decimals.tokens_decimal_fill,
+        )
+        .await;
+
+        Ok(pricer)
     }
 }
 
 #[derive(Debug, Error)]
-pub enum PricingTestError {}
+pub enum PricingTestError {
+    #[error(transparent)]
+    TraceError(#[from] TraceLoaderError),
+    #[error("libmdbx error")]
+    LibmdbxError,
+}
