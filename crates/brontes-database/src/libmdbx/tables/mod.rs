@@ -398,6 +398,7 @@ where
                 println!("{} OK", Self::NAME);
             }
 
+            println!("finished querying with {} entries", data.map(|d| d.len()));
             libmdbx.initialize_table(&data?)
         })
     }
