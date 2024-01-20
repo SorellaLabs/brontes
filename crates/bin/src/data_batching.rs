@@ -179,6 +179,11 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
+            let db_cex_quotes: CexPriceMap = match tx
+            .get::<CexPrice>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+
+        /* 
         let db_cex_quotes: CexPriceMap = match tx
             .get::<CexPrice>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))
@@ -189,7 +194,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
                 CexPriceMap::default()
             }
         };
-
+*/
         let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
             Address::from_str(WETH_ADDRESS).unwrap(),
             Address::from_str(USDT_ADDRESS).unwrap(),
