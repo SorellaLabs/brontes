@@ -155,7 +155,7 @@ impl CexDexInspector<'_> {
 
         let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u128.pow(18)) * eth_price;
 
-        if total_arb > gas_cost {
+        if total_arb > gas_cost || gas_details.coinbase_transfer.is_some() {
             Some(total_arb - gas_cost)
         } else {
             None
