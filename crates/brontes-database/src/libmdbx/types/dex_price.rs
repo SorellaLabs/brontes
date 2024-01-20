@@ -1,16 +1,13 @@
-use std::collections::HashMap;
+
 
 use alloy_primitives::TxHash;
 use alloy_rlp::{Decodable, Encodable};
-use brontes_types::{
-    db::{
+use brontes_types::db::{
         dex::{DexQuote, DexQuoteWithIndex},
         redefined_types::{malachite::Redefined_Rational, primitives::Redefined_Pair},
-    },
-    extra_processing::Pair,
-};
+    };
 use bytes::BufMut;
-use malachite::Rational;
+
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::{
     table::{Compress, Decompress},

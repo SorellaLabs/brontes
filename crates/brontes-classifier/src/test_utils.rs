@@ -5,11 +5,11 @@ use brontes_core::{
     decoding::TracingProvider, missing_decimals::MissingDecimals, BlockTracesWithHeaderAnd,
     TraceLoader, TraceLoaderError, TxTracesWithHeaderAnd,
 };
-use brontes_pricing::{
-    types::{DexPriceMsg, DexQuotes},
-    BrontesBatchPricer, GraphManager,
+use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
+use brontes_types::{
+    db::dex::DexQuotes,
+    tree::{BlockTree, Node},
 };
-use brontes_types::tree::{BlockTree, Node};
 use futures::{future::join_all, StreamExt};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
