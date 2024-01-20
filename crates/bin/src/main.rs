@@ -27,7 +27,7 @@ use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
 use itertools::Itertools;
 use metrics_process::Collector;
-use reth_db::{cursor::DbCursorRO, mdbx::RO, table::Table, transaction::DbTx};
+use reth_db::mdbx::RO;
 use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{error, info, Level};
