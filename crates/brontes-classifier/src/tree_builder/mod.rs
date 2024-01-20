@@ -446,17 +446,17 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         &self,
         block: u64,
         root_head: Option<&Node<Actions>>,
-        tx_idx: u64,
+        _tx_idx: u64,
         trace: TransactionTraceWithLogs,
-        trace_index: u64,
+        _trace_index: u64,
         tx_hash: B256,
     ) -> (Vec<DexPriceMsg>, Actions) {
         let from_address = trace.get_from_addr();
-        let target_address = trace.get_to_address();
+        let _target_address = trace.get_to_address();
 
         // get the immediate parent node of this create action so that we can decode the
         // deployment function params
-        let node_data = match root_head {
+        let _node_data = match root_head {
             Some(head) => &head.get_deepest_node().data,
             None => return (vec![], Actions::Unclassified(trace)),
         };
