@@ -40,7 +40,6 @@ use reth_transaction_pool::{
 use revm::interpreter::InstructionResult;
 use revm_primitives::{ExecutionResult, SpecId};
 use tokio::runtime::Handle;
-use tracing::log::error;
 
 mod provider;
 
