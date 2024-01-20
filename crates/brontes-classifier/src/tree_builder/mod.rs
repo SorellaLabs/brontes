@@ -335,6 +335,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         return_bytes.clone(),
                         from_address,
                         target_address,
+                        trace.msg_sender,
                         &trace.logs,
                         &db_tx,
                         block,
@@ -395,7 +396,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         // if we got delegate, the actual token address
                         // is the from addr (proxy) for pool swaps. without
                         // this our math gets fucked
-                        trace.get_from_addr()
+                        trace.msg_sender
                     } else {
                         addr
                     };
@@ -442,16 +443,16 @@ pub mod test {
         env,
     };
 
-    use alloy_primitives::{hex, hex::FromHex};
-    use brontes_classifier::test_utils::build_raw_test_tree;
+    use alloy_primitives::{hex, hex::FromHex, U256};
+    use brontes_pricing::uniswap_v2::U256_64;
     use brontes_types::{
-        normalized_actions::Actions,
+        normalized_actions::{Actions, NormalizedLiquidation},
         structured_trace::TxTrace,
         test_utils::force_call_action,
         tree::{BlockTree, Node},
     };
     use reth_primitives::{Address, Header};
-    use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
+    use reth_rpc_types::trace::parity::{Action, TraceType, TransactionTrace};
     use reth_tracing_ext::TracingClient;
     use serial_test::serial;
 
@@ -468,7 +469,7 @@ pub mod test {
 
         let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
 
-        let swap = tree.collect(jarad_tx, |node| {
+        let swap = tree.collect(jared_tx, |node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
                 node.subactions
@@ -492,5 +493,28 @@ pub mod test {
                 }
             }
         }
+    }
+    #[tokio::test]
+    #[serial]
+    async fn test_aave_v3_liquidation() {
+        let classifier_utils = ClassifierTestUtils::new();
+        let aave_v3_liquidation =
+            B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
+
+        let eq_action = Actions::Liquidation(NormalizedLiquidation {
+            liquidated_collateral: U256::from(165516722u64),
+            covered_debt:          U256::from(63857746423u64),
+            debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
+            debt_asset:            Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
+            collateral_asset:      Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")),
+            liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
+            pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
+            trace_index:           6,
+        });
+
+        classifier_utils
+            .contains_action(aave_v3_liquidation, 0, eq_action, Actions::liquidation_collect_fn())
+            .await
+            .unwrap();
     }
 }
