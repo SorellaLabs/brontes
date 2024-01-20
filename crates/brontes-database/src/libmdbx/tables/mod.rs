@@ -20,7 +20,7 @@ use paste::paste;
 use reth_db::{table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::clickhouse::DbRow;
-use tracing::info;
+//use tracing::info;
 
 use self::{
     address_to_tokens::LibmdbxPoolTokens, cex_price::LibmdbxCexPriceMap,
