@@ -442,7 +442,7 @@ pub mod test {
         env,
     };
 
-    use alloy_primitives::{hex, hex::FromHex};
+    use alloy_primitives::{hex, hex::FromHex, U256};
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_pricing::uniswap_v2::U256_64;
     use brontes_types::{
