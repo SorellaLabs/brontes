@@ -69,14 +69,14 @@ impl Tables {
         Tables::AddressToFactory,
         Tables::SubGraphs,
     ];
-    pub const ALL_NO_DEX: [Tables; NUM_TABLES - 3] = [
+    pub const ALL_NO_DEX: [Tables; NUM_TABLES - 4] = [
         Tables::TokenDecimals,
         Tables::AddressToTokens,
         Tables::AddressToProtocol,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
         Tables::Metadata,
-        Tables::CexPrice,
+        //Tables::CexPrice,
         // Tables::TxTraces
     ];
 
