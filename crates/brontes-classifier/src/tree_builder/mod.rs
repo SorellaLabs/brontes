@@ -231,7 +231,12 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         }
 
         if let Actions::Transfer(transfer) = &classification {
-            if self.libmdbx.try_get_decimals(transfer.token).is_none() {
+            if self
+                .libmdbx
+                .view_db(|tx| tx.get::<TokenDecimals>(transfer.token))
+                .unwrap()
+                .is_none()
+            {
                 missing_decimals.push(transfer.token);
             }
         }
@@ -240,13 +245,12 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         update.into_iter().for_each(|update| {
             match update {
                 DexPriceMsg::DiscoveredPool(pool, block) => {
-                    if !self.libmdbx.contains_pool(pool.pool_address) {
+                    if !self.contains_pool(pool.pool_address).unwrap() {
                         self.pricing_update_sender
                             .send(DexPriceMsg::DiscoveredPool(pool.clone(), block))
                             .unwrap();
 
                         if self
-                            .libmdbx
                             .insert_pool(
                                 block_number,
                                 pool.pool_address,
@@ -266,6 +270,55 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         });
 
         classification
+    }
+
+    fn insert_pool(
+        &self,
+        block: u64,
+        address: Address,
+        tokens: [Address; 2],
+        classifier_name: StaticBindingsDb,
+    ) -> eyre::Result<()> {
+        self.libmdbx
+            .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
+                AddressToProtocolData { address, classifier_name },
+            ])?;
+
+        let mut addrs = self
+            .libmdbx
+            .view_db(|tx| {
+                tx.get::<PoolCreationBlocks>(block)?
+                    .map(|i| i.0)
+                    .unwrap_or(vec![])
+            })
+            .unwrap_or_default();
+
+        addrs.push(Redefined_Address::from_source(address));
+        self.libmdbx
+            .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
+                PoolCreationBlocksData {
+                    block_number: block,
+                    pools:        types::pool_creation_block::PoolsToAddresses(addrs),
+                },
+            ])?;
+
+        self.libmdbx
+            .write_table::<AddressToTokens, AddressToTokensData>(&vec![AddressToTokensData {
+                address,
+                tokens: PoolTokens {
+                    token0: tokens[0],
+                    token1: tokens[1],
+                    init_block: block,
+                    ..Default::default()
+                },
+            }])?;
+
+        Ok(())
+    }
+
+    fn contains_pool(&self, address: Address) -> eyre::Result<bool> {
+        self.libmdbx
+            .view_db(|tx| Ok(tx.get::<AddressToProtocol>(address)?.is_some()))?
     }
 
     async fn classify_node(
@@ -288,7 +341,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         let target_address = trace.get_to_address();
 
         //TODO: get rid of these unwraps
-        let db_tx = self.libmdbx.ro_tx().unwrap();
+        let db_tx = self.libmdbx.temp_ro_tx().unwrap();
 
         if let Some(protocol) = db_tx.get::<AddressToProtocol>(target_address).unwrap() {
             let classifier: Box<dyn ActionCollection> = match protocol {

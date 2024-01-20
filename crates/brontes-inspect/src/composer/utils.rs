@@ -49,7 +49,7 @@ pub(crate) fn pre_process(
 pub(crate) fn build_mev_header(
     metadata: Arc<Metadata>,
     pre_processing: &BlockPreprocessing,
-    orchestra_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+    orchestra_data: &Vec<(ClassifiedMev, SpecificMev)>,
 ) -> MevBlock {
     let total_bribe = orchestra_data
         .iter()
@@ -112,15 +112,14 @@ pub(crate) fn build_mev_header(
 /// `MevType` and the values are vectors of tuples (same as input). Each vector
 /// contains all the MEVs of the corresponding type.
 pub(crate) fn sort_mev_by_type(
-    orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
-) -> HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> {
+    orchestra_data: Vec<(ClassifiedMev, SpecificMev)>,
+) -> HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>> {
     orchestra_data
         .into_iter()
         .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
         .fold(
             HashMap::default(),
-            |mut acc: HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
-             (mev_type, v)| {
+            |mut acc: HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>, (mev_type, v)| {
                 acc.entry(mev_type).or_default().push(v);
                 acc
             },
@@ -130,7 +129,7 @@ pub(crate) fn sort_mev_by_type(
 /// Finds the index of the first classified mev in the list whose transaction
 /// hashes match any of the provided hashes.
 pub(crate) fn find_mev_with_matching_tx_hashes(
-    mev_data_list: &[(ClassifiedMev, Box<dyn SpecificMev>)],
+    mev_data_list: &[(ClassifiedMev, SpecificMev)],
     tx_hashes: &[FixedBytes<32>],
 ) -> Option<usize> {
     mev_data_list

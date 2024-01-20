@@ -9,7 +9,7 @@ use super::{
     utils::{option_address, u256},
     LibmdbxData,
 };
-use crate::tables::Metadata;
+use crate::{tables::Metadata, CompressedTable};
 
 #[serde_as]
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -21,9 +21,9 @@ pub struct MetadataData {
 impl LibmdbxData<Metadata> for MetadataData {
     fn into_key_val(
         &self,
-    ) -> (<Metadata as reth_db::table::Table>::Key, <Metadata as reth_db::table::Table>::Value)
+    ) -> (<Metadata as reth_db::table::Table>::Key, <Metadata as CompressedTable>::DecompressedValue)
     {
-        (self.block_number, Redefined_MetadataInner::from_source(self.inner.clone()))
+        (self.block_number, self.inner.clone())
     }
 }
 

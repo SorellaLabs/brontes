@@ -57,6 +57,7 @@ strum = { workspace = true, features = ["derive"] }
 lazy_static.workspace = true
 auto_impl.workspace = true
 itertools.workspace = true
+eyre.workspace = true
 
 brontes-core = { workspace = true, optional = true }
 brontes-classifier = { workspace = true, optional = true }

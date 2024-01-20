@@ -1,5 +1,5 @@
 use alloy_rlp::{Decodable, Encodable};
-use brontes_types::libmdbx::redefined_types::malachite::Redefined_Rational;
+use brontes_types::libmdbx::redefined_types::primitives::Redefined_Address;
 use bytes::BufMut;
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::{
@@ -8,28 +8,21 @@ use reth_db::{
 };
 use rkyv::Deserialize;
 
-use super::price_maps::Redefined_Pair;
-use crate::types::dex_price::{DexQuote, DexQuoteWithIndex};
+use crate::types::pool_creation_block::PoolsToAddresses;
 
 #[derive(
     Debug,
-    Clone,
     PartialEq,
-    Eq,
+    Clone,
     serde::Serialize,
-    serde::Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
     rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
     Redefined,
 )]
-#[redefined(DexQuoteWithIndex)]
-pub struct Redefined_DexQuoteWithIndex {
-    pub tx_idx: u16,
-    pub quote:  Vec<(Redefined_Pair, Redefined_Rational)>,
-}
-
-impl Encodable for Redefined_DexQuoteWithIndex {
+#[redefined(PoolsToAddresses)]
+pub struct Redefined_PoolsToAddresses(pub Vec<Redefined_Address>);
+impl Encodable for Redefined_PoolsToAddresses {
     fn encode(&self, out: &mut dyn BufMut) {
         let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
 
@@ -37,9 +30,9 @@ impl Encodable for Redefined_DexQuoteWithIndex {
     }
 }
 
-impl Decodable for Redefined_DexQuoteWithIndex {
+impl Decodable for Redefined_PoolsToAddresses {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let archived: &ArchivedRedefined_DexQuoteWithIndex =
+        let archived: &ArchivedRedefined_PoolsToAddresses =
             unsafe { rkyv::archived_root::<Self>(buf) };
 
         let this = archived.deserialize(&mut rkyv::Infallible).unwrap();
@@ -48,7 +41,7 @@ impl Decodable for Redefined_DexQuoteWithIndex {
     }
 }
 
-impl Compress for Redefined_DexQuoteWithIndex {
+impl Compress for Redefined_PoolsToAddresses {
     type Compressed = Vec<u8>;
 
     fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
@@ -60,13 +53,13 @@ impl Compress for Redefined_DexQuoteWithIndex {
     }
 }
 
-impl Decompress for Redefined_DexQuoteWithIndex {
+impl Decompress for Redefined_PoolsToAddresses {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
 
         let encoded_decompressed = zstd::decode_all(&*binding).unwrap();
         let buf = &mut encoded_decompressed.as_slice();
 
-        Redefined_DexQuoteWithIndex::decode(buf).map_err(|_| DatabaseError::Decode)
+        Redefined_PoolsToAddresses::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }

@@ -4,19 +4,19 @@ use parking_lot::RwLock;
 use reth_db::{
     table::{Compress, DupSort, Encode, Table},
     transaction::{DbTx, DbTxMut},
-    DatabaseEnv, DatabaseError, DatabaseWriteOperation,
+    DatabaseEnv, DatabaseError, DatabaseWriteOperation, TableType,
 };
 use reth_interfaces::db::DatabaseWriteError;
-use reth_libmdbx::{ffi::DBI, Transaction, TransactionKind, WriteFlags, RO, RW};
+use reth_libmdbx::{ffi::DBI, DatabaseFlags, Transaction, TransactionKind, WriteFlags, RO, RW};
 
 use super::{cursor::LibmdbxCursor, utils::decode_one};
 use crate::tables::{Tables, NUM_TABLES};
 
-pub struct LibmdbxTx<K: TransactionKind> {
+pub(crate) struct LibmdbxTx<K: TransactionKind> {
     /// Libmdbx-sys transaction.
-    pub inner:             Transaction<K>,
+    inner:      Transaction<K>,
     /// Database table handle cache.
-    pub(crate) db_handles: Arc<RwLock<[Option<DBI>; NUM_TABLES]>>,
+    db_handles: Arc<RwLock<[Option<DBI>; NUM_TABLES]>>,
 }
 
 impl LibmdbxTx<RO> {
@@ -31,6 +31,19 @@ impl LibmdbxTx<RO> {
 }
 
 impl LibmdbxTx<RW> {
+    pub(crate) fn create_table(&self, table: &Tables) -> Result<(), DatabaseError> {
+        let flags = match table.table_type() {
+            TableType::Table => DatabaseFlags::default(),
+            TableType::DupSort => DatabaseFlags::DUP_SORT,
+        };
+
+        self.inner
+            .create_db(Some(table.name()), flags)
+            .map_err(|e| DatabaseError::CreateTable(e.into()))?;
+
+        Ok(())
+    }
+
     pub(crate) fn new_rw_tx(env: &DatabaseEnv) -> Result<LibmdbxTx<RW>, DatabaseError> {
         Ok(Self {
             inner:      env
@@ -43,7 +56,7 @@ impl LibmdbxTx<RW> {
 
 impl<K: TransactionKind> LibmdbxTx<K> {
     /// Gets a table database handle if it exists, otherwise creates it.
-    pub fn get_dbi<T: Table>(&self) -> Result<DBI, DatabaseError> {
+    pub(crate) fn get_dbi<T: Table>(&self) -> Result<DBI, DatabaseError> {
         let mut handles = self.db_handles.write();
 
         let table = Tables::from_str(T::NAME).expect("Requested table should be part of `Tables`.");
@@ -62,7 +75,7 @@ impl<K: TransactionKind> LibmdbxTx<K> {
     }
 
     /// Create db Cursor
-    pub fn new_cursor<T: Table>(&self) -> Result<LibmdbxCursor<T, K>, DatabaseError> {
+    pub(crate) fn new_cursor<T: Table>(&self) -> Result<LibmdbxCursor<T, K>, DatabaseError> {
         let inner = self
             .inner
             .cursor_with_dbi(self.get_dbi::<T>()?)

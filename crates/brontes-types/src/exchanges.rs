@@ -1,7 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use alloy_rlp::{Decodable, Encodable};
-use redefined::{self_convert, RedefinedConvert};
+use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
@@ -138,4 +138,4 @@ impl Decompress for StaticBindingsDb {
     }
 }
 
-self_convert!(StaticBindingsDb);
+self_convert_redefined!(StaticBindingsDb);

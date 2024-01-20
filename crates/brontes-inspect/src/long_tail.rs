@@ -23,7 +23,7 @@ impl Inspector for LongTailInspector<'_> {
         &self,
         _tree: Arc<BlockTree<Actions>>,
         _meta_data: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Vec<(ClassifiedMev, SpecificMev)> {
         todo!()
     }
 }

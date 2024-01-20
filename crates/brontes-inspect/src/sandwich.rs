@@ -42,7 +42,7 @@ impl Inspector for SandwichInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Vec<(ClassifiedMev, SpecificMev)> {
         // grab the set of all possible sandwich txes
 
         let search_fn = |node: &Node<Actions>| {
@@ -130,7 +130,7 @@ impl SandwichInspector<'_> {
         victim_txes: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
-    ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Option<(ClassifiedMev, SpecificMev)> {
         let frontrun_swaps = searcher_actions
             .get(0)?
             .into_iter()

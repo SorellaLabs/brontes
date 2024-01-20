@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use reth_db::table::{DupSort, Table}; //
+use reth_db::table::DupSort; //
 pub mod address_to_factory; //
 pub mod address_to_protocol; //
 pub mod address_to_tokens; //
@@ -13,13 +13,21 @@ pub mod subgraphs; //
 pub mod token_decimals; //
                         //pub mod traces;
 pub mod utils; //
-pub(crate) use token_decimals::*; //
+pub(crate) use token_decimals::*;
+
+use crate::CompressedTable; //
 pub mod mev_block; // TO DO
 
-pub trait LibmdbxData<T: Table>: Sized {
-    fn into_key_val(&self) -> (T::Key, T::Value);
+pub trait LibmdbxData<T: CompressedTable>: Sized
+where
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+{
+    fn into_key_val(&self) -> (T::Key, T::DecompressedValue);
 }
 
-pub trait LibmdbxDupData<T: DupSort>: Sized {
-    fn into_key_subkey_val(&self) -> (T::Key, T::SubKey, T::Value);
+pub trait LibmdbxDupData<T: DupSort + CompressedTable>: Sized
+where
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+{
+    fn into_key_subkey_val(&self) -> (T::Key, T::SubKey, T::DecompressedValue);
 }

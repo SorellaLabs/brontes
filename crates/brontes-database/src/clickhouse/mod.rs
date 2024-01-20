@@ -80,14 +80,12 @@ impl Clickhouse {
         Default::default()
     }
 
-    async fn insert_singe_classified_data<T: SpecificMev + ::serde::Serialize + DbRow + Clone>(
+    async fn insert_singe_classified_data(
         db_client: &ClickhouseClient,
-        mev_detail: Box<dyn SpecificMev>,
+        mev_detail: SpecificMev,
         table: DatabaseTables,
     ) {
-        let any = mev_detail.into_any();
-        let this = any.downcast_ref::<T>().unwrap();
-        if let Err(e) = db_client.insert_one(this, table).await {
+        if let Err(e) = db_client.insert_one(&mev_detail, table).await {
             error!(?e, "failed to insert specific mev");
         }
     }
@@ -95,7 +93,7 @@ impl Clickhouse {
     pub async fn insert_classified_data(
         &self,
         block_details: MevBlock,
-        mev_details: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+        mev_details: Vec<(ClassifiedMev, SpecificMev)>,
     ) {
         if let Err(e) = self
             .client
@@ -119,47 +117,10 @@ impl Clickhouse {
                     {
                         error!(?e, "failed to insert classified mev");
                     }
-
                     info!("inserted classified_mev");
+
                     let table = mev_table_type(&specific);
-                    let mev_type = specific.mev_type();
-                    match mev_type {
-                        MevType::Sandwich => {
-                            Self::insert_singe_classified_data::<Sandwich>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::Backrun => {
-                            Self::insert_singe_classified_data::<AtomicBackrun>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::JitSandwich => {
-                            Self::insert_singe_classified_data::<JitLiquiditySandwich>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::Jit => {
-                            Self::insert_singe_classified_data::<JitLiquidity>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::CexDex => {
-                            Self::insert_singe_classified_data::<CexDex>(db_client, specific, table)
-                                .await
-                        }
-                        MevType::Liquidation => {
-                            Self::insert_singe_classified_data::<Liquidation>(
-                                db_client, specific, table,
-                            )
-                            .await
-                        }
-                        MevType::Unknown => unimplemented!("none yet"),
-                    };
+                    Self::insert_singe_classified_data(db_client, specific, table).await;
 
                     info!("{:?}: inserted specific mev type", table);
                 }),
@@ -210,7 +171,7 @@ impl Clickhouse {
     }
 }
 
-fn mev_table_type(mev: &Box<dyn SpecificMev>) -> DatabaseTables {
+fn mev_table_type(mev: &SpecificMev) -> DatabaseTables {
     match mev.mev_type() {
         brontes_types::classified_mev::MevType::Sandwich => DatabaseTables::Sandwich,
         brontes_types::classified_mev::MevType::Backrun => DatabaseTables::AtomicBackrun,
