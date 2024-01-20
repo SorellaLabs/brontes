@@ -122,6 +122,8 @@ impl AtomicBackrunInspector<'_> {
             return None
         }
 
+        println!("{:#?}", searcher_actions);
+
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
         let addr_usd_deltas =
