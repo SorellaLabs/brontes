@@ -474,10 +474,10 @@ where
                 }).buffer_unordered(5);
 
 
-                let mut data = Vec::new();
+                
                 println!("chunks remaining: {num_chunks}");
                 while let Some(val) = data_stream.next().await {
-                    data.extend(val?);
+                    let data = val?;
                     num_chunks -= 1;
                     println!("chunks remaining: {num_chunks}");
 
