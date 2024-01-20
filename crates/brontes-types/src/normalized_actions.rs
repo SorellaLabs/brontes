@@ -379,6 +379,7 @@ pub struct NormalizedLiquidation {
 
 impl NormalizedLiquidation {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
+        tracing::info!("finish classification: {:#?}", actions);
         actions
             .into_iter()
             .find_map(|(index, action)| {
