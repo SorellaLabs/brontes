@@ -698,8 +698,8 @@ pub mod test {
         let updates = dex_pricer.get_buffer().updates.get(&block).unwrap();
 
         assert!(updates.iter().any(|(_, update)| {
-            let pair = update.get_pair(USDC_ADDRESS).unwrap();
-            pair == missing_pair
+            let pair = update.get_pair(USDC_ADDRESS).unwrap().ordered();
+            pair == missing_pair.ordered()
         }));
     }
 }
