@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
     fn get_to_address(&self) -> Address;
+    fn get_msg_sender(&self) -> Address;
     fn get_calldata(&self) -> Bytes;
     fn get_return_calldata(&self) -> Bytes;
     fn is_static_call(&self) -> bool;
@@ -34,6 +35,10 @@ impl TraceActions for TransactionTraceWithLogs {
             Action::Reward(call) => call.author,
             Action::Selfdestruct(call) => call.address,
         }
+    }
+
+    fn get_msg_sender(&self) -> Address {
+        self.msg_sender
     }
 
     fn get_to_address(&self) -> Address {
@@ -81,6 +86,9 @@ pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub decoded_data: Option<DecodedCallData>,
     pub logs:         Vec<Log>,
+    /// the msg.sender of the trace. This allows us to properly deal with
+    /// delegate calls and the headache they cause when it comes to proxies
+    pub msg_sender:   Address,
     pub trace_idx:    u64,
 }
 
