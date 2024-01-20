@@ -217,7 +217,7 @@ impl JitInspector<'_> {
             backrun_burns: burns,
         };
 
-        Some((classified, Box::new(jit_details)))
+        Some((classified, SpecificMev::Jit(jit_details)))
     }
 
     fn possible_jit_set(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleJit> {

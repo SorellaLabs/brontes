@@ -2,7 +2,7 @@
 
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 
-use brontes_types::traits::TracingProvider;
+use brontes_types::{traits::TracingProvider, exchanges::StaticBindingsDb};
 use futures::StreamExt;
 use reth_interfaces::blockchain_tree::BlockchainTreeViewer;
 use reth_primitives::{BlockId, BlockNumberOrTag};
@@ -34,7 +34,7 @@ use self::{
 use crate::{
     types::{
         address_to_factory::AddressToFactoryData,
-        address_to_protocol::{AddressToProtocolData, StaticBindingsDb},
+        address_to_protocol::{AddressToProtocolData},
         address_to_tokens::{AddressToTokensData, PoolTokens},
         cex_price::{CexPriceData, CexPriceMap},
         dex_price::{DexPriceData, DexQuoteWithIndex},

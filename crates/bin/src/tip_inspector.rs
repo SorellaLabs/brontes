@@ -11,7 +11,11 @@ use brontes_core::{
     missing_decimals::MissingDecimals,
 };
 use brontes_database::{clickhouse::Clickhouse, MetadataDB};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database_libmdbx::{
+    tables::MevBlocks,
+    types::mev_block::{MevBlockWithClassified, MevBlocksData},
+    Libmdbx,
+};
 use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
@@ -99,9 +103,14 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
             block_number = self.current_block,
             "inserting the collected results \n {:#?}", results
         );
+
+        let data_res = MevBlocksData {
+            block_number: results.0.block_number,
+            mev_blocks:   MevBlockWithClassified { block: results.0, mev: results.1 },
+        };
         if self
             .database
-            .insert_classified_data(results.0, results.1)
+            .write_table::<MevBlocks, MevBlocksData>(&vec![data_res])
             .is_err()
         {
             error!("failed to insert classified data into libmdx");

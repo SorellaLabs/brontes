@@ -1,3 +1,3 @@
 pub mod cursor;
 pub mod tx;
-pub mod utils;
+pub(crate) mod utils;

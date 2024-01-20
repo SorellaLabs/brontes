@@ -6,7 +6,7 @@ use std::{
 use brontes_database::Metadata;
 use brontes_database_libmdbx::Libmdbx;
 use brontes_types::{
-    classified_mev::{MevType, Sandwich, SpecificMev},
+    classified_mev::{Mev, MevType, Sandwich, SpecificMev},
     normalized_actions::Actions,
     tree::{BlockTree, GasDetails, Node},
     ToFloatNearest,
@@ -221,7 +221,7 @@ impl SandwichInspector<'_> {
             finalized_bribe_usd: gas_used.to_float(),
         };
 
-        Some((classified_mev, Box::new(sandwich)))
+        Some((classified_mev, SpecificMev::Sandwich(sandwich)))
     }
 
     fn get_possible_sandwich(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {

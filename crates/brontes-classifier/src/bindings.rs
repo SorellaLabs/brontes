@@ -1,4 +1,4 @@
-use brontes_database_libmdbx::types::address_to_protocol::StaticBindingsDb;
+use brontes_types::exchanges::StaticBindingsDb;
 
 use crate::*;
 

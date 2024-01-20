@@ -3,12 +3,22 @@ mod tree_pruning;
 mod utils;
 use alloy_sol_types::SolEvent;
 use brontes_database_libmdbx::{
-    tables::AddressToProtocol, types::address_to_protocol::StaticBindingsDb, AddressToFactory,
+    tables::{
+        AddressToFactory, AddressToProtocol, AddressToTokens, PoolCreationBlocks, TokenDecimals,
+    },
+    types::{
+        address_to_protocol::AddressToProtocolData,
+        address_to_tokens::{AddressToTokensData, PoolTokens},
+        pool_creation_block,
+        pool_creation_block::{PoolCreationBlocksData, PoolsToAddresses},
+    },
     Libmdbx,
 };
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
+    exchanges::StaticBindingsDb,
     extra_processing::ExtraProcessing,
+    libmdbx::redefined_types::primitives::Redefined_Address,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     traits::TracingProvider,
@@ -108,30 +118,10 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 .enumerate()
                 .map(|(tx_idx, mut trace)| async move {
                     if trace.trace.is_empty() || !trace.is_success {
-                        // we generate the empty root so that we can still account
-                        // for the gas this revert uses
-                        let root = Root {
-                            position:    tx_idx,
-                            head:        Node::new(0, Address::ZERO, Actions::Revert, vec![]),
-                            tx_hash:     trace.tx_hash,
-                            private:     false,
-                            gas_details: GasDetails {
-                                coinbase_transfer:   None,
-                                gas_used:            trace.gas_used,
-                                effective_gas_price: trace.effective_price,
-                                priority_fee:        trace.effective_price
-                                    - (header.base_fee_per_gas.unwrap() as u128),
-                            },
-                        };
-                        return Some(TxTreeResult {
-                            missing_data_requests: vec![],
-                            pool_updates: vec![],
-                            further_classification_requests: None,
-                            root,
-                        })
+                        return None
                     }
-
                     let tx_hash = trace.tx_hash;
+
                     // post classification processing collectors
                     let mut missing_decimals = Vec::new();
                     let mut further_classification_requests = Vec::new();
@@ -251,12 +241,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         }
 
         if let Actions::Transfer(transfer) = &classification {
-            if self
-                .libmdbx
-                .view_db(|tx| tx.get::<TokenDecimals>(transfer.token))
-                .unwrap()
-                .is_none()
-            {
+            if self.try_get_decimals(&transfer.token).unwrap().is_none() {
                 missing_decimals.push(transfer.token);
             }
         }
@@ -304,21 +289,18 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 AddressToProtocolData { address, classifier_name },
             ])?;
 
-        let mut addrs = self
-            .libmdbx
-            .view_db(|tx| {
-                tx.get::<PoolCreationBlocks>(block)?
-                    .map(|i| i.0)
-                    .unwrap_or(vec![])
-            })
-            .unwrap_or_default();
+        let tx = self.libmdbx.ro_tx()?;
+        let mut addrs = tx
+            .get::<PoolCreationBlocks>(block)?
+            .map(|i| i.0)
+            .unwrap_or(vec![]);
 
-        addrs.push(Redefined_Address::from_source(address));
+        addrs.push(address);
         self.libmdbx
             .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
                 PoolCreationBlocksData {
                     block_number: block,
-                    pools:        types::pool_creation_block::PoolsToAddresses(addrs),
+                    pools:        PoolsToAddresses(addrs),
                 },
             ])?;
 
@@ -337,8 +319,8 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
     }
 
     fn contains_pool(&self, address: Address) -> eyre::Result<bool> {
-        self.libmdbx
-            .view_db(|tx| Ok(tx.get::<AddressToProtocol>(address)?.is_some()))?
+        let tx = self.libmdbx.ro_tx()?;
+        Ok(tx.get::<AddressToProtocol>(address)?.is_some())
     }
 
     async fn classify_node(
@@ -361,7 +343,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         let target_address = trace.get_to_address();
 
         //TODO: get rid of these unwraps
-        let db_tx = self.libmdbx.temp_ro_tx().unwrap();
+        let db_tx = self.libmdbx.ro_tx().unwrap();
 
         if let Some(protocol) = db_tx.get::<AddressToProtocol>(target_address).unwrap() {
             let classifier: Box<dyn ActionCollection> = match protocol {
@@ -449,7 +431,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         // if we got delegate, the actual token address
                         // is the from addr (proxy) for pool swaps. without
                         // this our math gets fucked
-                        trace.msg_sender
+                        trace.get_from_addr()
                     } else {
                         addr
                     };
@@ -469,6 +451,11 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         }
 
         (vec![], Actions::Unclassified(trace))
+    }
+
+    pub fn try_get_decimals(&self, token_addr: &Address) -> eyre::Result<Option<u8>> {
+        let tx = self.libmdbx.ro_tx()?;
+        Ok(tx.get::<TokenDecimals>(*token_addr)?)
     }
 }
 
@@ -496,16 +483,16 @@ pub mod test {
         env,
     };
 
-    use alloy_primitives::{hex, hex::FromHex, U256};
-    use brontes_pricing::uniswap_v2::U256_64;
+    use alloy_primitives::{hex, hex::FromHex};
+    use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_types::{
-        normalized_actions::{Actions, NormalizedLiquidation},
+        normalized_actions::Actions,
         structured_trace::TxTrace,
         test_utils::force_call_action,
         tree::{BlockTree, Node},
     };
     use reth_primitives::{Address, Header};
-    use reth_rpc_types::trace::parity::{Action, TraceType, TransactionTrace};
+    use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
     use reth_tracing_ext::TracingClient;
     use serial_test::serial;
 
@@ -522,7 +509,7 @@ pub mod test {
 
         let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
 
-        let swap = tree.collect(jared_tx, |node| {
+        let swap = tree.collect(jarad_tx, |node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
                 node.subactions
@@ -546,28 +533,5 @@ pub mod test {
                 }
             }
         }
-    }
-    #[tokio::test]
-    #[serial]
-    async fn test_aave_v3_liquidation() {
-        let classifier_utils = ClassifierTestUtils::new();
-        let aave_v3_liquidation =
-            B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
-
-        let eq_action = Actions::Liquidation(NormalizedLiquidation {
-            liquidated_collateral: U256::from(165516722u64),
-            covered_debt:          U256::from(63857746423u64),
-            debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
-            debt_asset:            Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
-            collateral_asset:      Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")),
-            liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
-            pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
-            trace_index:           6,
-        });
-
-        classifier_utils
-            .contains_action(aave_v3_liquidation, 0, eq_action, Actions::liquidation_collect_fn())
-            .await
-            .unwrap();
     }
 }

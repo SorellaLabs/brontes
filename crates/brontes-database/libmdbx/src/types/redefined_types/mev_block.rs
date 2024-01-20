@@ -99,7 +99,7 @@ pub struct Redefined_MevBlock {
     pub total_bribe: u128,
     pub cumulative_mev_priority_fee_paid: u128,
     pub builder_address: Redefined_Address,
-    pub builder_eth_profit: i128,
+    pub builder_eth_profit: f64,
     pub builder_finalized_profit_usd: f64,
     pub proposer_fee_recipient: Option<Redefined_Address>,
     pub proposer_mev_reward: Option<u128>,
@@ -120,6 +120,7 @@ pub struct Redefined_MevBlock {
 #[redefined(ClassifiedMev)]
 pub struct Redefined_ClassifiedMev {
     pub block_number:         u64,
+    pub mev_tx_index:         u64,
     pub tx_hash:              Redefined_FixedBytes<32>,
     pub eoa:                  Redefined_Address,
     pub mev_contract:         Redefined_Address,
@@ -312,13 +313,14 @@ pub struct Redefined_NormalizedSwap {
 )]
 #[redefined(NormalizedLiquidation)]
 pub struct Redefined_NormalizedLiquidation {
-    pub trace_index:      u64,
-    pub pool:             Redefined_Address,
-    pub liquidator:       Redefined_Address,
-    pub debtor:           Redefined_Address,
-    pub collateral_asset: Redefined_Address,
-    pub debt_asset:       Redefined_Address,
-    pub amount:           Redefined_Uint<256, 4>,
+    pub trace_index:           u64,
+    pub pool:                  Redefined_Address,
+    pub liquidator:            Redefined_Address,
+    pub debtor:                Redefined_Address,
+    pub collateral_asset:      Redefined_Address,
+    pub debt_asset:            Redefined_Address,
+    pub covered_debt:          Redefined_Uint<256, 4>,
+    pub liquidated_collateral: Redefined_Uint<256, 4>,
 }
 
 #[derive(
