@@ -65,7 +65,7 @@ pub(crate) fn build_mev_header(
     let builder_eth_profit = Rational::from_signeds(
         (total_bribe as i128 + pre_processing.cumulative_gas_paid as i128)
             - (metadata.proposer_mev_reward.unwrap_or_default() as i128),
-        10i128.pow(17),
+        10i128.pow(18),
     );
 
     MevBlock {
@@ -93,14 +93,14 @@ pub(crate) fn build_mev_header(
         proposer_finalized_profit_usd: pre_processing.meta_data.proposer_mev_reward.map(
             |mev_reward| {
                 f64::rounding_from(
-                    mev_reward.to_scaled_rational(17) * &pre_processing.meta_data.eth_prices,
+                    mev_reward.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
                     RoundingMode::Nearest,
                 )
                 .0
             },
         ),
         cumulative_mev_finalized_profit_usd: f64::rounding_from(
-            (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(17)
+            (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(18)
                 * &pre_processing.meta_data.eth_prices,
             RoundingMode::Nearest,
         )
