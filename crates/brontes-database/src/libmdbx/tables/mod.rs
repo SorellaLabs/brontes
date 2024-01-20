@@ -136,16 +136,17 @@ impl Tables {
                println!("Starting {}", self.name());
                 Box::pin(async move {
                     
-                    libmdbx.clear_table::<CexPrice>()?;
-                    println!("Cleared Table: {}", CexPrice::NAME);
+                    //libmdbx.clear_table::<CexPrice>()?;
+                    
+                    //println!("Cleared Table: {}", CexPrice::NAME);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
-                        (15400000, 16000000),
+                        (17800000, 19000000),
                     )
                     .await?;
-                
-                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 15400000, 16000000);
+                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 17800000, 19000000);
+                   /*
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
@@ -167,6 +168,7 @@ impl Tables {
                     )
                     .await?;
                    println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 18000000, 19000000);
+                    */
                     println!("{} OK", CexPrice::NAME);
                     Ok(())
                 })
@@ -479,7 +481,8 @@ where
                 //let mut data = Vec::new();
                 println!("chunks remaining: {num_chunks}");
                 while let Some(val) = data_stream.next().await {
-                    let data = val? ;//data.extend(val?);
+                    //data.extend(val?);
+                    let data = val?;
                     num_chunks -= 1;
                     println!("chunks remaining: {num_chunks}");
 
