@@ -379,6 +379,8 @@ impl<V: NormalizedAction> Node<V> {
                 ((classification)(&node.data), node.subactions.iter().any(|i| (classification)(i)))
             };
 
+            tracing::info!("{:#?}", self);
+
             for child in &self.inner {
                 child.collect(&mut results, &fixed, &|a| (a.index, a.data.clone()))
             }
