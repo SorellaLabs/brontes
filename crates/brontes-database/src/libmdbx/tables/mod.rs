@@ -120,20 +120,20 @@ impl Tables {
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
         match self {
             Tables::TokenDecimals => {
-                info!(target: "brontes::init", "Starting {}", self.name());
+               println!("Starting {}", self.name());
                 TokenDecimals::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::AddressToTokens => {
-                info!(target: "brontes::init", "Starting {}", self.name());
+               println!("Starting {}", self.name());
                 AddressToTokens::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::AddressToProtocol => {
-                info!(target: "brontes::init", "Starting {}", self.name());
+               println!("Starting {}", self.name());
                 AddressToProtocol::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::CexPrice => {
                 //let block_range = (15400000, 19000000);
-                info!(target: "brontes::init", "Starting {}", self.name());
+               println!("Starting {}", self.name());
                 Box::pin(async move {
                     libmdbx.clear_table::<CexPrice>()?;
                     println!("Cleared Table: {}", CexPrice::NAME);
@@ -143,34 +143,34 @@ impl Tables {
                         (15400000, 16000000),
                     )
                     .await?;
-                    info!(target: "brontes::init", "Finished {} Block Range: {}-{}", CexPrice::NAME, 15400000, 16000000);
+                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 15400000, 16000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
                         (16000000, 17000000),
                     )
                     .await?;
-                    info!(target: "brontes::init", "Finished {} Block Range: {}-{}", CexPrice::NAME, 16000000, 17000000);
+                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 16000000, 17000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
                         (17000000, 18000000),
                     )
                     .await?;
-                    info!(target: "brontes::init", "Finished {} Block Range: {}-{}", CexPrice::NAME, 17000000, 18000000);
+                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 17000000, 18000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
                         (18000000, 19000000),
                     )
                     .await?;
-                    info!(target: "brontes::init", "Finished {} Block Range: {}-{}", CexPrice::NAME, 18000000, 19000000);
+                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 18000000, 19000000);
                     println!("{} OK", CexPrice::NAME);
                     Ok(())
                 })
             }
             Tables::Metadata => {
-                info!(target: "brontes::init", "Starting {}", self.name());
+               println!("Starting {}", self.name());
                 Box::pin(async move {
                 
                 libmdbx.clear_table::<Metadata>()?;
@@ -186,24 +186,24 @@ impl Tables {
                 Ok(())
             })},
             Tables::DexPrice => {
-                info!(target: "brontes::init", "Starting {}", self.name());
+               println!("Starting {}", self.name());
                 DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone())},
             Tables::PoolCreationBlocks => {
-                info!(target: "brontes::init", "Starting {}", self.name());
+               println!("Starting {}", self.name());
                 PoolCreationBlocks::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::MevBlocks => {
-                info!(target: "brontes::init", "Starting {}", self.name());
+               println!("Starting {}", self.name());
                 Box::pin(
                     async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
                 )
             }
-            Tables::AddressToFactory => {                info!(target: "brontes::init", "Starting {}", self.name());
+            Tables::AddressToFactory => {               println!("Starting {}", self.name());
             Box::pin(async move {
                 libmdbx.initialize_table::<AddressToFactory, AddressToFactoryData>(&vec![])
             })},
             Tables::SubGraphs => {
-                info!(target: "brontes::init", "Starting {}", self.name());
+               println!("Starting {}", self.name());
                 Box::pin(
                     async move { libmdbx.initialize_table::<SubGraphs, SubGraphsData>(&vec![]) },
                 )
