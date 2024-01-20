@@ -2,7 +2,7 @@
 pub mod exchanges;
 pub mod types;
 
-#[cfg(tests)]
+#[cfg(test)]
 pub mod test_utils;
 
 use std::{

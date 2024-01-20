@@ -1,5 +1,5 @@
-use brontes::core_test_utils::TraceLoader;
-
+use brontes_core::test_utils::TraceLoader;
+use thiserror::Error;
 
 pub struct PricingTestUtils {
     tracer: TraceLoader,
@@ -11,3 +11,6 @@ impl PricingTestUtils {
         Self { tracer }
     }
 }
+
+#[derive(Debug, Error)]
+pub enum PricingTestError {}
