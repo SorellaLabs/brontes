@@ -366,7 +366,7 @@ impl<V: NormalizedAction> Node<V> {
     ///   6 < inf go to 4
     ///   4 has child 6, it is found!
     pub fn get_all_children_for_complex_classification(&mut self, head: u64) {
-        tracing::info!("head: {head}");
+        tracing::info!("head: {head} cur: {}", self.index);
         if head == self.index {
             let mut results = Vec::new();
             results.push((self.index, self.data.clone()));
