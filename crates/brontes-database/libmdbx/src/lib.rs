@@ -11,7 +11,6 @@ use brontes_types::{
 };
 use eyre::Context;
 use initialize::LibmdbxInitializer;
-use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::{
     cursor::{DbCursorRO, DbCursorRW},
     is_database_empty,
