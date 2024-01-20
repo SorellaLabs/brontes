@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
-    pin::Pin,
+    future::IntoFuture,
+    pin::{pin, Pin},
     sync::Arc,
     task::{Context, Poll},
 };
@@ -137,8 +138,27 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
         }
     }
 
+    #[cfg(not(feature = "local"))]
     fn start_block_inspector(&mut self) -> bool {
         match self.parser.get_latest_block_number() {
+            Ok(chain_tip) => {
+                if chain_tip > self.current_block {
+                    self.current_block = chain_tip;
+                    true
+                } else {
+                    false
+                }
+            }
+            Err(e) => {
+                debug!("Error: {:?}", e);
+                false
+            }
+        }
+    }
+
+    #[cfg(feature = "local")]
+    async fn start_block_inspector(&mut self) -> bool {
+        match self.parser.get_latest_block_number().await {
             Ok(chain_tip) => {
                 if chain_tip > self.current_block {
                     self.current_block = chain_tip;
@@ -163,10 +183,13 @@ impl<T: TracingProvider> Future for TipInspector<'_, T> {
         // phase
 
         loop {
-            if self.start_block_inspector() {
-                self.start_collection();
+            #[cfg(not(feature = "local"))]
+            {
+                if self.start_block_inspector() {
+                    self.start_collection();
+                }
+                self.progress_futures(cx);
             }
-            self.progress_futures(cx);
         }
 
         #[allow(unreachable_code)]
