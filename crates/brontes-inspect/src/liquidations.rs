@@ -8,7 +8,8 @@ use brontes_types::{
     tree::{BlockTree, GasDetails, Node, Root},
     ToFloatNearest,
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use malachite::{num::basic::traits::Zero, Rational};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth_primitives::{b256, Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector};
@@ -93,38 +94,52 @@ impl LiquidationInspector<'_> {
             .cloned()
             .collect::<Vec<_>>();
 
-        let liq_tokens = liqs
-            .iter()
-            .flat_map(|liq| vec![liq.debt_asset, liq.collateral_asset])
-            .collect::<HashSet<_>>();
+        let deltas = self.inner.calculate_token_deltas(&vec![actions]);
+        let swap_profit = self
+            .inner
+            .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+        let mev_profit_collector = self.inner.profit_collectors(&swap_profit);
 
-        let swaps = swaps
-            .into_iter()
-            .filter(|swap| {
-                liq_tokens.contains(&swap.token_out) || liq_tokens.contains(&swap.token_in)
+        let liq_profit = liqs
+            .par_iter()
+            .filter_map(|liq| {
+                let repaid_debt_usd = self.inner.calculate_dex_usd_amount(
+                    idx,
+                    liq.debt_asset,
+                    liq.covered_debt,
+                    &metadata,
+                )?;
+                let collected_collateral = self.inner.calculate_dex_usd_amount(
+                    idx,
+                    liq.collateral_asset,
+                    liq.liquidated_collateral,
+                    &metadata,
+                )?;
+                Some(collected_collateral - repaid_debt_usd)
             })
-            .collect::<Vec<_>>();
+            .sum::<Rational>();
 
-        // TODO: check this
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(idx, todo!(), metadata.clone(), true)?;
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+        let rev_usd = swap_profit
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta)
+            + liq_profit;
 
         let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
 
+        let profit_usd = rev_usd - &gas_finalized;
+
         let mev = ClassifiedMev {
+            mev_tx_index: idx as u64,
             block_number: metadata.block_num,
             eoa,
             tx_hash,
             mev_contract,
             mev_profit_collector,
-            finalized_profit_usd: todo!(),
+            finalized_profit_usd: profit_usd.to_float(),
             finalized_bribe_usd: gas_finalized.to_float(),
             mev_type: MevType::Liquidation,
         };
 
-        // TODO: filter swaps not related to liqs?
         let new_liquidation = Liquidation {
             liquidation_tx_hash: tx_hash,
             trigger:             b256!(),
@@ -134,5 +149,58 @@ impl LiquidationInspector<'_> {
         };
 
         Some((mev, Box::new(new_liquidation)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashSet, str::FromStr, time::SystemTime};
+
+    use alloy_primitives::hex;
+    use brontes_classifier::Classifier;
+    use reth_primitives::U256;
+    use serial_test::serial;
+
+    use super::*;
+    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
+
+    #[tokio::test]
+    #[serial]
+    async fn test_aave_v3_liquidation() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+
+        let config = InspectorTxRunConfig::new(MevType::Liquidation)
+            .with_mev_tx_hashes(vec![hex!(
+                "dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"
+            )
+            .into()])
+            .with_dex_prices()
+            .with_expected_gas_used(2799.78)
+            .with_expected_profit_usd(76.75);
+
+        inspector_util
+            .run_inspector::<Liquidation>(config, None)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_aave_v2_liquidation() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+
+        let config = InspectorTxRunConfig::new(MevType::Liquidation)
+            .with_mev_tx_hashes(vec![hex!(
+                "725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db"
+            )
+            .into()])
+            .with_dex_prices()
+            .with_expected_gas_used(636.54)
+            .with_expected_profit_usd(129.23);
+
+        inspector_util
+            .run_inspector::<Liquidation>(config, None)
+            .await
+            .unwrap();
     }
 }
