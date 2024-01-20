@@ -42,6 +42,7 @@ impl Inspector for CexDexInspector<'_> {
 
         intersting_state
             .into_par_iter()
+            .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?;
 
