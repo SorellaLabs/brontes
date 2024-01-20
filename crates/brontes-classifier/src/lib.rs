@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 use reth_db::mdbx::RO;
 
 pub mod tree_builder;
-pub use tree_builder::*;
+pub use tree_builder::Classifier;
 
 pub mod bindings;
 use bindings::*;

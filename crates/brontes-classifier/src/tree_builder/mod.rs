@@ -371,6 +371,15 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             // transfer
             for log in &trace.logs {
                 if let Some((addr, from, to, value)) = decode_transfer(log) {
+                    let addr = if trace.is_delegate_call() {
+                        // if we got delegate, the actual token address
+                        // is the from addr (proxy) for pool swaps. without
+                        // this our math gets fucked
+                        trace.get_from_addr()
+                    } else {
+                        addr
+                    };
+
                     return (
                         vec![],
                         Actions::Transfer(NormalizedTransfer {
