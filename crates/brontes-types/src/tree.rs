@@ -375,15 +375,15 @@ impl<V: NormalizedAction> Node<V> {
             let mut results = Vec::new();
             let classification = self.data.continued_classification_types();
 
-            let fixed = |node: &Node<V>| {
-                ((classification)(&node.data), node.subactions.iter().any(|i| (classification)(i)))
+            let collect_fn = |node: &Node<V>| {
+                (
+                    (classification)(&node.data),
+                    node.get_all_sub_actions()
+                        .iter()
+                        .any(|i| (classification)(i)),
+                )
             };
-
-            tracing::info!("{:#?}", self);
-
-            for child in &self.inner {
-                child.collect(&mut results, &fixed, &|a| (a.index, a.data.clone()))
-            }
+            self.collect(&mut results, &collect_fn, &|a| (a.index, a.data.clone()));
             // Now that we have the child actions of interest we can finalize the parent
             // node's classification which mutates the parents data in place & returns the
             // indexes of child nodes that should be removed
