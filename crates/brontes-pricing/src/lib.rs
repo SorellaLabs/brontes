@@ -652,20 +652,19 @@ pub mod test {
     };
 
     use alloy_primitives::{hex, Address, FixedBytes};
+    use crate::test_utils::PricingTestUtils;
     use futures::future::poll_fn;
     use serial_test::serial;
 
     use super::*;
-    use brontes_pricing::test_utils::PricingTestUtils;
 
     pub const USDC_ADDRESS: Address =
         Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
 
     #[tokio::test]
     #[serial]
-    pub async fn test_result_building() {
+    pub async fn test_buffer_result() {
         let block = 18500648;
-        // errors on 0x56c03b8c4fa80ba37f5a7b60caaaef749bb5b220
         let pricing_utils = PricingTestUtils::new(USDC_ADDRESS);
 
         let (mut dex_pricer, mut tree) = pricing_utils
