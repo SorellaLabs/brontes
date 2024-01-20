@@ -62,21 +62,21 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DecodedCallData {
     pub function_name: String,
     pub call_data:     Vec<DecodedParams>,
     pub return_data:   Vec<DecodedParams>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DecodedParams {
     pub field_name: String,
     pub field_type: String,
     pub value:      String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub decoded_data: Option<DecodedCallData>,
