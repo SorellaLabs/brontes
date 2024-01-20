@@ -2,7 +2,7 @@ use alloy_primitives::{hex, Address, FixedBytes, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
 use brontes_core::TraceLoaderError;
 use brontes_types::{
-    classified_mev::MevType,
+    classified_mev::{MevType, SpecificMev},
     db::{dex::DexQuotes, metadata::MetadataCombined},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -145,10 +145,10 @@ impl InspectorTestUtils {
         Ok(res)
     }
 
-    pub async fn run_inspector<E: 'static>(
+    pub async fn run_inspector(
         &self,
         config: InspectorTxRunConfig,
-        specific_state_tests: Option<Box<dyn Fn(Box<E>)>>,
+        specific_state_tests: Option<Box<dyn Fn(SpecificMev)>>,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::InspectorConfig(copied.clone());
@@ -201,7 +201,7 @@ impl InspectorTestUtils {
         let (classified_mev, specific) = results.remove(0);
 
         if let Some(specific_state_tests) = specific_state_tests {
-            specific_state_tests(specific.into_any().downcast().unwrap());
+            specific_state_tests(specific);
         }
 
         // check gas
@@ -222,10 +222,10 @@ impl InspectorTestUtils {
         Ok(())
     }
 
-    pub async fn run_composer<E: 'static>(
+    pub async fn run_composer(
         &self,
         config: ComposerRunConfig,
-        specific_state_tests: Option<Box<dyn Fn(Box<E>)>>,
+        specific_state_tests: Option<Box<dyn Fn(SpecificMev)>>,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::ComposerConfig(copied.clone());
@@ -295,7 +295,7 @@ impl InspectorTestUtils {
         assert!(classified_mev.mev_type == config.expected_mev_type, "got wrong composed type");
 
         if let Some(specific_state_tests) = specific_state_tests {
-            specific_state_tests(specific.clone().into_any().downcast().unwrap());
+            specific_state_tests(specific);
         }
 
         // check gas
@@ -321,7 +321,7 @@ impl InspectorTestUtils {
 /// it supports multiple hashes for sandwiches
 #[derive(Debug, Clone)]
 pub struct InspectorTxRunConfig {
-    pub metadata_override:    Option<Metadata>,
+    pub metadata_override:    Option<MetadataCombined>,
     pub mev_tx_hashes:        Option<Vec<TxHash>>,
     pub mev_block:            Option<u64>,
     pub expected_profit_usd:  Option<f64>,
@@ -353,7 +353,7 @@ impl InspectorTxRunConfig {
         self
     }
 
-    pub fn with_metadata_override(mut self, metadata: Metadata) -> Self {
+    pub fn with_metadata_override(mut self, metadata: MetadataCombined) -> Self {
         self.metadata_override = Some(metadata);
         self
     }
@@ -378,7 +378,7 @@ impl InspectorTxRunConfig {
 pub struct ComposerRunConfig {
     pub inspectors:           Vec<MevType>,
     pub expected_mev_type:    MevType,
-    pub metadata_override:    Option<Metadata>,
+    pub metadata_override:    Option<MetadataCombined>,
     pub mev_tx_hashes:        Option<Vec<TxHash>>,
     pub mev_block:            Option<u64>,
     pub expected_profit_usd:  Option<f64>,
@@ -402,7 +402,7 @@ impl ComposerRunConfig {
         }
     }
 
-    pub fn with_metadata_override(mut self, metadata: Metadata) -> Self {
+    pub fn with_metadata_override(mut self, metadata: MetadataCombined) -> Self {
         self.metadata_override = Some(metadata);
         self
     }

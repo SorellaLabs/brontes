@@ -182,10 +182,7 @@ mod tests {
             .with_expected_gas_used(2792.487)
             .with_expected_profit_usd(71.593);
 
-        inspector_util
-            .run_inspector::<Liquidation>(config, None)
-            .await
-            .unwrap();
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 
     #[tokio::test]
@@ -199,9 +196,6 @@ mod tests {
             .with_expected_gas_used(636.54)
             .with_expected_profit_usd(129.23);
 
-        inspector_util
-            .run_inspector::<Liquidation>(config, None)
-            .await
-            .unwrap();
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }

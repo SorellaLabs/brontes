@@ -1,4 +1,3 @@
-use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable};
 use brontes_types::db::{
     pool_creation_block::PoolsToAddresses, redefined_types::primitives::Redefined_Address,
