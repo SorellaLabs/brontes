@@ -1,4 +1,4 @@
-use alloy_primitives::Address;
+use alloy_primitives::{Address, U256};
 use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation};
@@ -22,7 +22,6 @@ action_impl!(
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
-
         return Some(NormalizedLiquidation {
             trace_index,
             pool: target_address,
@@ -30,7 +29,9 @@ action_impl!(
             debtor: call_data.user,
             collateral_asset: call_data.collateralAsset,
             debt_asset: call_data.debtAsset,
-            amount: call_data.debtToCover,
+            covered_debt: call_data.debtToCover,
+            // filled in later
+            liquidated_collateral: U256::ZERO,
         })
     }
 );
