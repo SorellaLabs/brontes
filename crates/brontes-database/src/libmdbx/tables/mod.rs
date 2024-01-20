@@ -480,16 +480,19 @@ where
                     data.extend(val?);
                     num_chunks -= 1;
                     println!("chunks remaining: {num_chunks}");
+
+                    println!("finished querying chunk {num_chunks} with {} entries", data.len());
+                    if !data.is_empty() {
+                        libmdbx.write_table(&data)?;
+                    }
+                    println!("wrote chunk {num_chunks} to table");
                 }
                 
                 //.await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
 
-                println!("finished querying with {} entries", data.len());
-                if !data.is_empty() {
-                    libmdbx.write_table(&data)?;
-                }
 
-                println!("wrote to table");
+
+
 
 
             /* .buffeLibmdbxunordered(50);
