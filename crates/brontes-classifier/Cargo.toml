@@ -59,7 +59,7 @@ thiserror = { workspace = true, optional = true }
 
 [features]
 default = []
-tests = ["reth-tracing-ext", "brontes-core", "thiserror"]
+tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror"]
 local = ["brontes-core/local"]
 
 [dev-dependencies]
