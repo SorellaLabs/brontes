@@ -131,25 +131,6 @@ impl SandwichInspector<'_> {
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
-
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
-
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
-
-        let rev_usd = addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        let gas_used = searcher_gas_details
-            .iter()
-            .map(|g| g.gas_paid())
-            .sum::<u128>();
-
-        let gas_used = metadata.get_gas_price_usd(gas_used);
-
         let frontrun_swaps = searcher_actions
             .remove(0)
             .into_iter()
@@ -195,6 +176,25 @@ impl SandwichInspector<'_> {
         {
             return None
         }
+
+        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+
+        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let rev_usd = addr_usd_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
+
+        let gas_used = searcher_gas_details
+            .iter()
+            .map(|g| g.gas_paid())
+            .sum::<u128>();
+
+        let gas_used = metadata.get_gas_price_usd(gas_used);
 
         let sandwich = Sandwich {
             frontrun_tx_hash: txes[0],
