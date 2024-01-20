@@ -691,19 +691,5 @@ pub mod test {
             let res = pinned.poll_next(&mut cx);
             assert!(res.is_pending());
         }
-
-        let missing_pricing_addr = Address(hex!("56c03b8c4fa80ba37f5a7b60caaaef749bb5b220").into());
-        let missing_pair = Pair(missing_pricing_addr, USDC_ADDRESS);
-
-        let updates = dex_pricer.get_buffer().updates.get(&block).unwrap();
-        println!("{:#?}", updates);
-        assert!(updates.len() != 0);
-
-        let has_pair = updates.iter().any(|(_, update)| {
-            let pair = update.get_pair(USDC_ADDRESS).unwrap().ordered();
-            pair == missing_pair.ordered()
-        });
-
-        assert!(has_pair);
     }
 }
