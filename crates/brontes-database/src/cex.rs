@@ -17,6 +17,36 @@ use crate::DBTokenPricesDB;
 #[derive(Debug, Clone, Default)]
 pub struct CexPriceMap(pub HashMap<Pair, Vec<CexQuote>>);
 
+impl<'de> serde::Deserialize<'de> for CexPriceMap {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let map: Vec<((String, String), Vec<(Option<String>, u64, (f64, f64), String)>)> =
+            serde::Deserialize::deserialize(deserializer)?;
+
+        let mut cex_price_map = HashMap::new();
+        map.into_iter().for_each(|(pair, meta)| {
+            cex_price_map.insert(
+                Pair(Address::from_str(&pair.0).unwrap(), Address::from_str(&pair.1).unwrap()),
+                meta.into_iter()
+                    .map(|(exchange, timestamp, (price0, price1), token0)| CexQuote {
+                        exchange,
+                        timestamp,
+                        price: (
+                            Rational::try_from_float_simplest(price0).unwrap(),
+                            Rational::try_from_float_simplest(price1).unwrap(),
+                        ),
+                        token0: Address::from_str(&token0).unwrap(),
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        });
+
+        Ok(CexPriceMap(cex_price_map))
+    }
+}
+
 impl CexPriceMap {
     pub fn new() -> Self {
         Self(HashMap::new())
@@ -85,6 +115,40 @@ impl CexPriceMap {
     }
 }
 
+impl From<Vec<DBTokenPricesDB>> for CexPriceMap {
+    fn from(value: Vec<DBTokenPricesDB>) -> Self {
+        let mut map: HashMap<Pair, Vec<CexQuote>> = HashMap::new();
+
+        for token_info in value {
+            let pair = Pair::map_key(
+                Address::from_str(&token_info.key.0).unwrap(),
+                Address::from_str(&token_info.key.1).unwrap(),
+            );
+
+            let quotes: Vec<CexQuote> = token_info
+                .val
+                .into_iter()
+                .map(|exchange_price| {
+                    CexQuote {
+                        exchange:  Some(exchange_price.exchange),
+                        timestamp: exchange_price.val.0,
+                        price:     (
+                            Rational::try_from(exchange_price.val.1).unwrap(), /* Conversion to
+                                                                                * Rational */
+                            Rational::try_from(exchange_price.val.2).unwrap(),
+                        ),
+                        token0:    Address::from_str(&token_info.key.0).unwrap(),
+                    }
+                })
+                .collect();
+
+            map.insert(pair, quotes);
+        }
+
+        CexPriceMap(map)
+    }
+}
+
 #[derive(Debug, Clone, Hash, Eq, Default)]
 pub struct CexQuote {
     pub exchange:  Option<String>,
@@ -129,39 +193,5 @@ impl MulAssign for CexQuote {
     fn mul_assign(&mut self, rhs: Self) {
         self.price.0 *= rhs.price.0;
         self.price.1 *= rhs.price.1;
-    }
-}
-
-impl From<Vec<DBTokenPricesDB>> for CexPriceMap {
-    fn from(value: Vec<DBTokenPricesDB>) -> Self {
-        let mut map: HashMap<Pair, Vec<CexQuote>> = HashMap::new();
-
-        for token_info in value {
-            let pair = Pair::map_key(
-                Address::from_str(&token_info.key.0).unwrap(),
-                Address::from_str(&token_info.key.1).unwrap(),
-            );
-
-            let quotes: Vec<CexQuote> = token_info
-                .val
-                .into_iter()
-                .map(|exchange_price| {
-                    CexQuote {
-                        exchange:  Some(exchange_price.exchange),
-                        timestamp: exchange_price.val.0,
-                        price:     (
-                            Rational::try_from(exchange_price.val.1).unwrap(), /* Conversion to
-                                                                                * Rational */
-                            Rational::try_from(exchange_price.val.2).unwrap(),
-                        ),
-                        token0:    Address::from_str(&token_info.key.0).unwrap(),
-                    }
-                })
-                .collect();
-
-            map.insert(pair, quotes);
-        }
-
-        CexPriceMap(map)
     }
 }

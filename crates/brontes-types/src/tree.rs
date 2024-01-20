@@ -4,6 +4,7 @@ use rayon::{
     iter::IntoParallelIterator,
     prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
 };
+use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};

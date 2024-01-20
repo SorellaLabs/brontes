@@ -1,5 +1,5 @@
 use alloy_primitives::{hex, FixedBytes};
-use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
+use brontes_database_libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::NormalizedSwap;
 use reth_db::{mdbx::RO, transaction::DbTx};
@@ -24,7 +24,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     log: CurveCryptoExchange0Swap,
-    db_tx: &LibmdbxTx<RO>| {
+    db_tx: &CompressedLibmdbxTx<RO>| {
         let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
@@ -69,7 +69,7 @@ action_impl!(
     msg_sender: Address,
     call_data: exchange_1Call,
     log: CurveCryptoExchange1Swap,
-    db_tx: &LibmdbxTx<RO>| {
+    db_tx: &CompressedLibmdbxTx<RO>| {
 
         let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -126,7 +126,7 @@ action_impl!(
     msg_sender: Address,
     call_data: exchange_2Call,
     log: CurveCryptoExchange2Swap,
-    db_tx: &LibmdbxTx<RO>| {
+    db_tx: &CompressedLibmdbxTx<RO>| {
 
         let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -183,7 +183,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     log: CurveCryptoExchangeUnderlyingSwap,
-    db_tx: &LibmdbxTx<RO>| {
+    db_tx: &CompressedLibmdbxTx<RO>| {
         let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];

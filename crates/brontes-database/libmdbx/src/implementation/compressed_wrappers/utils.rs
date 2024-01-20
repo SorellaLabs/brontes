@@ -5,7 +5,10 @@ use reth_db::{
 
 use crate::CompressedTable;
 
-pub struct CompressedTableRow<T>(<T as Table>::Key, <T as CompressedTable>::DecompressedValue)
+pub struct CompressedTableRow<T>(
+    pub <T as Table>::Key,
+    pub <T as CompressedTable>::DecompressedValue,
+)
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>;

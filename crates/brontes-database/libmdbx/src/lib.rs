@@ -1,53 +1,32 @@
 #![allow(non_camel_case_types)]
 #![allow(private_bounds)]
-use std::{cmp::max, collections::HashMap, path::Path, str::FromStr, sync::Arc};
+use std::{path::Path, sync::Arc};
 
-use brontes_pricing::{types::DexQuotes, SubGraphEdge};
 pub mod initialize;
 
-use alloy_primitives::Address;
-use brontes_database::{clickhouse::Clickhouse, MetadataDB, Pair};
-use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
-    exchanges::StaticBindingsDb,
-    libmdbx::redefined_types::primitives::Redefined_Address,
-};
+use brontes_database::{clickhouse::Clickhouse, Pair};
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
-use redefined::RedefinedConvert;
 use reth_db::{
     is_database_empty,
-    table::Table,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseEnv, DatabaseEnvKind, DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::{RO, RW};
 use tables::*;
-use tracing::info;
-use types::{
-    address_to_protocol::AddressToProtocolData,
-    address_to_tokens::{AddressToTokensData, PoolTokens},
-    cex_price::CexPriceMap,
-    dex_price::{make_filter_key_range, DexPriceData},
-    metadata::MetadataInner,
-    mev_block::{MevBlockWithClassified, MevBlocksData},
-    pool_creation_block::PoolCreationBlocksData,
-    redefined_types::subgraph::Redefined_SubGraphEdge,
-    token_decimals::TokenDecimalsData,
-};
 
 use self::types::LibmdbxData;
-use crate::types::subgraphs::SubGraphsData;
-mod implementation;
+
+pub mod implementation;
 pub use implementation::compressed_wrappers::*;
 pub mod tables;
 pub mod types;
 
-const WETH_ADDRESS: &str = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-const USDT_ADDRESS: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
-const USDC_ADDRESS: &str = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+pub const WETH_ADDRESS: &str = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+pub const USDT_ADDRESS: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+pub const USDC_ADDRESS: &str = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 //const USDT_ADDRESS: &str = ;
 
 #[derive(Debug)]
@@ -159,7 +138,7 @@ impl Libmdbx {
     /// makes sure it's committed at the end of exec
     /// cause u heads r degens and have not used 'tx.commit()?;'
     /// once in this entire repo
-    pub fn view_db<F, R>(&self, f: F) -> eyre::Result<R>
+    fn view_db<F, R>(&self, f: F) -> eyre::Result<R>
     where
         F: FnOnce(&CompressedLibmdbxTx<RO>) -> R,
     {
@@ -171,7 +150,6 @@ impl Libmdbx {
         Ok(res)
     }
 
-<<<<<<< HEAD
     /// Takes a function and passes a RW transaction
     /// makes sure it's committed at the end of exec
     /// cause u heads r degens and have not used 'tx.commit()?;'
@@ -181,33 +159,6 @@ impl Libmdbx {
         F: FnOnce(&CompressedLibmdbxTx<RW>) -> R,
     {
         let tx = self.rw_tx()?;
-=======
-    pub fn get_metadata_no_dex(
-        &self,
-        block_num: u64,
-    ) -> eyre::Result<brontes_database::MetadataDB> {
-        let tx = LibmdbxTx::new_ro_tx(&self.0)?;
-        let block_meta: MetadataInner = tx
-            .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        let db_cex_quotes: CexPriceMap = tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
-            Address::from_str(WETH_ADDRESS).unwrap(),
-            Address::from_str(USDT_ADDRESS).unwrap(),
-        )) {
-            eth_usdt
-        } else {
-            db_cex_quotes
-                .get_quote(&Pair(
-                    Address::from_str(WETH_ADDRESS).unwrap(),
-                    Address::from_str(USDC_ADDRESS).unwrap(),
-                ))
-                .unwrap_or_default()
-        };
->>>>>>> main
 
         let res = f(&tx);
         tx.commit()?;
@@ -215,49 +166,8 @@ impl Libmdbx {
         Ok(res)
     }
 
-<<<<<<< HEAD
     /// returns a RO transaction
-    fn ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
-        let tx = CompressedLibmdbxTx::new_ro_tx(&self.0)?;
-=======
-    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<brontes_database::Metadata> {
-        Ok(brontes_database::Metadata {
-            db:         MetadataDB { block_num, ..Default::default() },
-            dex_quotes: DexQuotes(vec![]),
-        })
-    }
-
-    //TODO: Joe - implement
-    pub fn get_metadata(&self, block_num: u64) -> eyre::Result<brontes_database::Metadata> {
-        let tx = LibmdbxTx::new_ro_tx(&self.0)?;
-        let block_meta: MetadataInner = tx
-            .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        let db_cex_quotes: CexPriceMap = tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
-            Address::from_str(WETH_ADDRESS).unwrap(),
-            Address::from_str(USDT_ADDRESS).unwrap(),
-        )) {
-            eth_usdt
-        } else {
-            db_cex_quotes
-                .get_quote(&Pair(
-                    Address::from_str(WETH_ADDRESS).unwrap(),
-                    Address::from_str(USDC_ADDRESS).unwrap(),
-                ))
-                .unwrap_or_default()
-        };
->>>>>>> main
-
-        Ok(tx)
-    }
-
-    /// returns a RO transaction
-    pub fn temp_ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
+    pub fn ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
         let tx = CompressedLibmdbxTx::new_ro_tx(&self.0)?;
 
         Ok(tx)

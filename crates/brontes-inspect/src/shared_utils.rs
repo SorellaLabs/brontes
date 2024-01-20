@@ -6,7 +6,7 @@ use std::{
 
 use alloy_primitives::U256;
 use brontes_database::{Metadata, Pair};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database_libmdbx::{tables::TokenDecimals, Libmdbx};
 use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
     ToScaledRational,
@@ -30,9 +30,8 @@ impl<'db> SharedInspectorUtils<'db> {
     }
 
     pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
-        self.db
-            .view_db(|tx| tx.get::<TokenDecimals>(address))
-            .unwrap();
+        let tx = self.db.ro_tx().unwrap();
+        tx.get::<TokenDecimals>(address).unwrap()
     }
 }
 
@@ -131,7 +130,7 @@ impl SharedInspectorUtils<'_> {
         amount: U256,
         metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
-        let Some(decimals) = self.db.try_get_decimals(token_address) else {
+        let Some(decimals) = self.try_get_decimals(token_address) else {
             error!("token decimals not found for calcuate dex usd amount");
             return None
         };
@@ -175,7 +174,7 @@ impl SharedInspectorUtils<'_> {
     fn transfer_deltas(&self, transfers: Vec<&NormalizedTransfer>, deltas: &mut SwapTokenDeltas) {
         for transfer in transfers.into_iter() {
             // normalize token decimals
-            let Some(decimals) = self.db.try_get_decimals(transfer.token) else {
+            let Some(decimals) = self.try_get_decimals(transfer.token) else {
                 error!("token decimals not found");
                 continue;
             };

@@ -1,6 +1,8 @@
 use std::{
+    cmp::max,
     collections::HashMap,
     pin::Pin,
+    str::FromStr,
     sync::Arc,
     task::{Context, Poll},
 };
@@ -11,12 +13,34 @@ use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
 };
-use brontes_database::{Metadata, MetadataDB};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::{Metadata, MetadataDB, Pair};
+use brontes_database_libmdbx::{
+    tables::{
+        AddressToFactory, AddressToProtocol, AddressToTokens, CexPrice, DexPrice,
+        Metadata as MetadataTable, MevBlocks, PoolCreationBlocks, SubGraphs, TokenDecimals,
+    },
+    types::{
+        cex_price::CexPriceMap,
+        dex_price,
+        dex_price::{DexPriceData, DexQuote},
+        metadata::{MetadataData, MetadataInner},
+        mev_block::{MevBlockWithClassified, MevBlocksData},
+        subgraphs::SubGraphsData,
+        LibmdbxData,
+    },
+    Libmdbx, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS,
+};
 use brontes_inspect::{composer::Composer, Inspector};
-use brontes_pricing::{types::DexQuotes, BrontesBatchPricer, GraphManager};
-use brontes_types::{normalized_actions::Actions, structured_trace::TxTrace, tree::BlockTree};
+use brontes_pricing::{types::DexQuotes, BrontesBatchPricer, GraphManager, SubGraphEdge};
+use brontes_types::{
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    exchanges::StaticBindingsDb,
+    normalized_actions::Actions,
+    structured_trace::TxTrace,
+    tree::BlockTree,
+};
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
+use reth_db::DatabaseError;
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info};
@@ -55,10 +79,9 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
 
-        let pairs = libmdbx.protocols_created_before(start_block).unwrap();
+        let pairs = Self::protocols_created_before(libmdbx, start_block).unwrap();
 
-        let rest_pairs = libmdbx
-            .protocols_created_range(start_block + 1, end_block)
+        let rest_pairs = Self::protocols_created_range(libmdbx, start_block + 1, end_block)
             .unwrap()
             .into_iter()
             .flat_map(|(_, pools)| {
@@ -72,9 +95,9 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         let pair_graph = GraphManager::init_from_db_state(
             pairs,
             HashMap::default(),
-            Box::new(|block, pair| libmdbx.try_load_pair_before(block, pair).ok()),
+            Box::new(|block, pair| Self::try_load_pair_before(libmdbx, block, pair).ok()),
             Box::new(|block, pair, edges| {
-                if libmdbx.save_pair_at(block, pair, edges).is_err() {
+                if Self::save_pair_at(libmdbx, block, pair, edges).is_err() {
                     error!("failed to save subgraph to db");
                 }
             }),
@@ -155,7 +178,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
     }
 
     pub fn try_load_pair_before(
-        libmdbx: &'static Libmdbx,
+        libmdbx: &Libmdbx,
         block: u64,
         pair: Pair,
     ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
@@ -163,6 +186,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         let subgraphs = tx
             .get::<SubGraphs>(pair)?
             .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
+
         // load the latest version of the sub graph relative to the block. if the
         // sub graph is the last entry in the vector, we return an error as we cannot
         // grantee that we have a run from last update to request block
@@ -177,36 +201,31 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             if cur_block > block {
                 return last.ok_or_else(|| eyre::eyre!("no subgraph found"))
             }
-            last = Some((pair, update.to_source()))
+            last = Some((pair, update))
         }
 
         unreachable!()
     }
 
     pub fn protocols_created_before(
-        libmdbx: &'static Libmdbx,
+        libmdbx: &Libmdbx,
         block_num: u64,
     ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
         let tx = libmdbx.ro_tx()?;
-        let binding_tx = libmdbx.ro_tx()?;
-        let info_tx = libmdbx.ro_tx()?;
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
         let mut map = HashMap::default();
 
         for result in cursor.walk_range(0..=block_num)? {
-            let (_, res) = result?;
+            let res = result?.1;
             for addr in res.0.into_iter() {
-                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr.to_source())? else {
+                let Some(protocol) = tx.get::<AddressToProtocol>(addr)? else {
                     continue;
                 };
-                let Some(info) = info_tx.get::<AddressToTokens>(addr.to_source())? else {
+                let Some(info) = tx.get::<AddressToTokens>(addr)? else {
                     continue;
                 };
-                map.insert(
-                    (addr.to_source(), protocol),
-                    Pair(info.token0.to_source(), info.token1.to_source()),
-                );
+                map.insert((addr, protocol), Pair(info.token0, info.token1));
             }
         }
 
@@ -216,31 +235,24 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
     }
 
     pub fn save_pair_at(
-        libmdbx: &'static Libmdbx,
+        libmdbx: &Libmdbx,
         block: u64,
         pair: Pair,
         edges: Vec<SubGraphEdge>,
     ) -> eyre::Result<()> {
         let tx = libmdbx.ro_tx()?;
         if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
-            entry.0.insert(
-                block,
-                edges
-                    .into_iter()
-                    .map(|e| Redefined_SubGraphEdge::from_source(e))
-                    .collect::<Vec<_>>(),
-            );
+            entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
 
-            let (key, value) = SubGraphsData { pair, data: entry.to_source() }.into_key_val();
-            tx.put::<SubGraphs>(key, value)?;
+            let data = SubGraphsData { pair, data: entry };
+            libmdbx.write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
         }
-        tx.commit()?;
 
         Ok(())
     }
 
     pub fn protocols_created_range(
-        libmdbx: &'static Libmdbx,
+        libmdbx: &Libmdbx,
         start_block: u64,
         end_block: u64,
     ) -> eyre::Result<HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>> {
@@ -252,18 +264,19 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         let mut map = HashMap::default();
 
         for result in cursor.walk_range(start_block..end_block)? {
-            let (block, res) = result?;
+            let result = result?;
+            let (block, res) = (result.0, result.1);
             for addr in res.0.into_iter() {
-                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr.to_source())? else {
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
                     continue;
                 };
-                let Some(info) = info_tx.get::<AddressToTokens>(addr.to_source())? else {
+                let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
                     continue;
                 };
                 map.entry(block).or_insert(vec![]).push((
-                    addr.to_source(),
+                    addr,
                     protocol,
-                    Pair(info.token0.to_source(), info.token1.to_source()),
+                    Pair(info.token0, info.token1),
                 ));
             }
         }
@@ -278,14 +291,14 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         block_num: u64,
     ) -> eyre::Result<brontes_database::MetadataDB> {
         let tx = self.libmdbx.ro_tx()?;
+
         let block_meta: MetadataInner = tx
-            .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-            .to_source();
+            .get::<MetadataTable>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+
         let db_cex_quotes: CexPriceMap = tx
             .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-            .to_source();
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
         let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
             Address::from_str(WETH_ADDRESS).unwrap(),
             Address::from_str(USDT_ADDRESS).unwrap(),
@@ -477,10 +490,12 @@ impl<'db> ResultProcessing<'db> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
-        let composer = Composer::new(inspectors, tree, meta_data);
+        let composer = Composer::new(inspectors, tree, meta_data.clone());
         let this = Self { database: db, composer };
 
-        if let Err(e) = this.insert_quotes(meta_data.block_num, meta_data.dex_quotes.clone()) {
+        if let Err(e) =
+            this.insert_quotes(meta_data.block_num.clone(), meta_data.dex_quotes.clone())
+        {
             tracing::error!(err=?e, block_num=meta_data.block_num, "failed to insert dex pricing and state into db");
         }
 
@@ -496,25 +511,24 @@ impl<'db> ResultProcessing<'db> {
             .map(|(idx, value)| DexPriceData {
                 block_number: block_num,
                 tx_idx:       idx as u16,
-                quote:        types::dex_price::DexQuote(value.unwrap()),
+                quote:        DexQuote(value.unwrap()),
             })
             .collect::<Vec<_>>();
 
         data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
         data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
 
-        let tx = self.database.rw_tx()?;
-        let mut cursor = tx.cursor_write::<DexPrice>()?;
+        self.database.update_db(|tx| {
+            let mut cursor = tx.cursor_write::<DexPrice>()?;
 
-        data.into_iter()
-            .map(|entry| {
-                let (key, val) = entry.into_key_val();
-                cursor.upsert(key, val)?;
-                Ok(())
-            })
-            .collect::<Result<Vec<_>, DatabaseError>>()?;
-
-        tx.commit()?;
+            data.into_iter()
+                .map(|entry| {
+                    let (key, val) = entry.into_key_val();
+                    cursor.upsert(key, val)?;
+                    Ok(())
+                })
+                .collect::<Result<Vec<_>, DatabaseError>>()
+        })??;
 
         Ok(())
     }
@@ -555,9 +569,13 @@ impl Future for ResultProcessing<'_> {
                 block_details.cumulative_mev_finalized_profit_usd
             );
 
+            let data = MevBlocksData {
+                block_number: block_details.block_number,
+                mev_blocks:   MevBlockWithClassified { block: block_details, mev: mev_details },
+            };
             if self
                 .database
-                .insert_classified_data(block_details, mev_details)
+                .write_table::<MevBlocks, MevBlocksData>(&vec![data])
                 .is_err()
             {
                 error!("failed to insert classified data into libmdx");

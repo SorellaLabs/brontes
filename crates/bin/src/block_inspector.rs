@@ -1,5 +1,7 @@
 use std::{
+    cmp::max,
     pin::Pin,
+    str::FromStr,
     task::{Context, Poll},
 };
 
@@ -9,12 +11,21 @@ use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
 };
-use brontes_database::Metadata;
-use brontes_database_libmdbx::{types::mev_block::MevBlockWithClassified, Libmdbx};
+use brontes_database::{cex::CexPriceMap, Metadata, MetadataDB, Pair};
+use brontes_database_libmdbx::{
+    tables::{CexPrice, DexPrice, Metadata as MetadataTable, MevBlocks},
+    types::{
+        dex_price::make_filter_key_range,
+        metadata::{MetadataData, MetadataInner},
+        mev_block::{MevBlockWithClassified, MevBlocksData},
+    },
+    Libmdbx, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS,
+};
 use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
 };
+use brontes_pricing::types::DexQuotes;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     normalized_actions::Actions,
@@ -60,7 +71,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
     fn start_collection(&mut self) {
         trace!(target:"brontes", block_number = self.block_number, "starting collection of data");
         let parser_fut = self.parser.execute(self.block_number);
-        let labeller_fut = self.database.get_metadata(self.block_number);
+        let labeller_fut = self.get_metadata(self.block_number);
 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
@@ -91,12 +102,13 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
             results
         );
 
+        let data = MevBlocksData {
+            block_number: results.0.block_number,
+            mev_blocks:   MevBlockWithClassified { block: results.0, mev: results.1 },
+        };
         if self
             .database
-            .write_table::<MevBlocks>(&vec![MevBlocksData {
-                block_number: results.0.block_number,
-                mev_blocks:   MevBlockWithClassified { block: results.0, mev: results.1 },
-            }])
+            .write_table::<MevBlocks, MevBlocksData>(&vec![data])
             .is_err()
         {
             error!("failed to insert classified mev to Libmdbx");
@@ -161,13 +173,19 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
     pub fn get_metadata(&self, block_num: u64) -> eyre::Result<brontes_database::Metadata> {
         let tx = self.database.ro_tx()?;
         let block_meta: MetadataInner = tx
-            .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-            .to_source();
-        let db_cex_quotes: CexPriceMap = tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-            .to_source();
+            .get::<MetadataTable>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+
+        /*
+        let db_cex_quotes = brontes_database::cex::CexPriceMap(
+            tx.get::<CexPrice>(block_num)?
+                .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+                .0,
+        );*/
+
+        let db_cex_quotes: brontes_database::cex::CexPriceMap =
+            brontes_database::cex::CexPriceMap::default();
+
         let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
             Address::from_str(WETH_ADDRESS).unwrap(),
             Address::from_str(USDT_ADDRESS).unwrap(),
@@ -204,7 +222,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
             .cursor_read::<DexPrice>()?
             .walk_range(key_range.0..key_range.1)?
             .flat_map(|inner| {
-                if let Ok((key, _quote)) = inner {
+                if let Ok((key, val)) = inner.map(|row| (row.0, row.1)) {
                     //dex_quotes.push(Default::default());
                     Some(key)
                 } else {
