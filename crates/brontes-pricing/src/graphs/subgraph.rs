@@ -11,7 +11,10 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::exchanges::StaticBindingsDb;
+use brontes_types::{
+    exchanges::StaticBindingsDb,
+    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
+};
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -34,40 +37,10 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
-use super::{PoolPairInfoDirection, PoolPairInformation};
 use crate::{
     types::{PoolState, ProtocolState},
     Pair,
 };
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SubGraphEdge {
-    pub info:                   PoolPairInfoDirection,
-    pub distance_to_start_node: u8,
-    pub distance_to_end_node:   u8,
-}
-impl Deref for SubGraphEdge {
-    type Target = PoolPairInfoDirection;
-
-    fn deref(&self) -> &Self::Target {
-        &self.info
-    }
-}
-impl DerefMut for SubGraphEdge {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.info
-    }
-}
-
-impl SubGraphEdge {
-    pub fn new(
-        info: PoolPairInfoDirection,
-        distance_to_start_node: u8,
-        distance_to_end_node: u8,
-    ) -> Self {
-        Self { info, distance_to_end_node, distance_to_start_node }
-    }
-}
 
 /// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
 /// given Pair. This allows for running more complex search algorithms on the

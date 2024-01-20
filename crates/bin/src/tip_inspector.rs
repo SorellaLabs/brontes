@@ -10,19 +10,17 @@ use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::MissingDecimals,
 };
-use brontes_database::{clickhouse::Clickhouse, MetadataDB};
-use brontes_database_libmdbx::{
-    tables::MevBlocks,
-    types::mev_block::{MevBlockWithClassified, MevBlocksData},
-    Libmdbx,
+use brontes_database::{
+    clickhouse::Clickhouse,
+    libmdbx::{tables::MevBlocks, types::mev_block::MevBlocksData, Libmdbx},
 };
 use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
 };
-use brontes_pricing::types::DexQuotes;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    db::{dex::DexQuotes, metadata::MetadataNoDex, mev_block::MevBlockWithClassified},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -30,7 +28,7 @@ use futures::{stream::FuturesOrdered, Future, FutureExt, StreamExt};
 use tracing::{debug, error, info};
 
 type CollectionFut<'a> =
-    Pin<Box<dyn Future<Output = (MetadataDB, BlockTree<Actions>)> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = (MetadataNoDex, BlockTree<Actions>)> + Send + 'a>>;
 
 pub struct TipInspector<'inspector, T: TracingProvider> {
     current_block: u64,

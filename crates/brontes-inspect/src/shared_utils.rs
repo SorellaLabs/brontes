@@ -5,9 +5,9 @@ use std::{
 };
 
 use alloy_primitives::U256;
-use brontes_database::{Metadata, Pair};
-use brontes_database_libmdbx::{tables::TokenDecimals, Libmdbx};
+use brontes_database::libmdbx::{tables::TokenDecimals, Libmdbx};
 use brontes_types::{
+    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedTransfer},
     ToScaledRational,
 };
@@ -17,6 +17,8 @@ use malachite::{
 };
 use reth_primitives::Address;
 use tracing::error;
+
+use crate::MetadataCombined;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db> {
@@ -99,7 +101,7 @@ impl SharedInspectorUtils<'_> {
         &self,
         tx_position: usize,
         deltas: SwapTokenDeltas,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         cex: bool,
     ) -> Option<HashMap<Address, Rational>> {
         let mut usd_deltas = HashMap::new();
@@ -128,7 +130,7 @@ impl SharedInspectorUtils<'_> {
         block_position: usize,
         token_address: Address,
         amount: U256,
-        metadata: &Arc<Metadata>,
+        metadata: &Arc<MetadataCombined>,
     ) -> Option<Rational> {
         let Some(decimals) = self.try_get_decimals(token_address) else {
             error!("token decimals not found for calcuate dex usd amount");
@@ -151,7 +153,7 @@ impl SharedInspectorUtils<'_> {
         &self,
         block_position: usize,
         token_address: Address,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
     ) -> Option<Rational> {
         if token_address == self.quote {
             return Some(Rational::ONE)

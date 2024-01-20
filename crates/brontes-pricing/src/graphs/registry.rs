@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
-use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair};
+use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, price_graph::*};
 use indexmap::set::Intersection;
 use itertools::Itertools;
 use malachite::{
@@ -13,10 +13,7 @@ use malachite::{
 };
 use tracing::info;
 
-use super::{
-    subgraph::{PairSubGraph, SubGraphEdge},
-    PoolPairInfoDirection, PoolState,
-};
+use super::{subgraph::PairSubGraph, PoolState};
 use crate::types::PoolUpdate;
 
 /// stores all sub-graphs and supports the update mechanisms
@@ -111,7 +108,7 @@ impl SubGraphRegistry {
             .map(|subgraph_pair| {
                 (
                     subgraph_pair,
-                    super::PoolPairInformation {
+                    PoolPairInformation {
                         pool_addr: pool_address,
                         dex_type:  dex,
                         token_0:   pair.0,

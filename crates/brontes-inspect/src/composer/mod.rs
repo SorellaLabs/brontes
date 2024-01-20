@@ -40,9 +40,9 @@ use brontes_types::classified_mev::Mev;
 mod composer_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
-use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev},
+    db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -64,14 +64,14 @@ pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, SpecificMev)>);
 pub struct Composer<'a> {
     inspectors_execution: InspectorFut<'a>,
     pre_processing:       BlockPreprocessing,
-    metadata:             Arc<Metadata>,
+    metadata:             Arc<MetadataCombined>,
 }
 
 impl<'a> Composer<'a> {
     pub fn new(
         orchestra: &'a [&'a Box<dyn Inspector>],
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<Metadata>,
+        meta_data: Arc<MetadataCombined>,
     ) -> Self {
         let processing = pre_process(tree.clone(), meta_data.clone());
         let meta_data_clone = meta_data.clone();
