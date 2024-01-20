@@ -187,13 +187,14 @@ impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
 }
 
 pub struct ClickhouseVecNormalizedLiquidation {
-    pub trace_index:      Vec<u64>,
-    pub pool:             Vec<FixedString>,
-    pub liquidator:       Vec<FixedString>,
-    pub debtor:           Vec<FixedString>,
-    pub collateral_asset: Vec<FixedString>,
-    pub debt_asset:       Vec<FixedString>,
-    pub amount:           Vec<[u8; 32]>,
+    pub trace_index:           Vec<u64>,
+    pub pool:                  Vec<FixedString>,
+    pub liquidator:            Vec<FixedString>,
+    pub debtor:                Vec<FixedString>,
+    pub collateral_asset:      Vec<FixedString>,
+    pub debt_asset:            Vec<FixedString>,
+    pub covered_debt:          Vec<[u8; 32]>,
+    pub liquidated_collateral: Vec<[u8; 32]>,
 }
 
 impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
@@ -213,15 +214,22 @@ impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
                 .map(|val| format!("{:?}", val.debtor).into())
                 .collect(),
 
-            collateral_asset: value
+            collateral_asset:      value
                 .iter()
                 .map(|val| format!("{:?}", val.collateral_asset).into())
                 .collect(),
-            debt_asset:       value
+            debt_asset:            value
                 .iter()
                 .map(|val| format!("{:?}", val.debt_asset).into())
                 .collect(),
-            amount:           value.iter().map(|val| val.amount.to_le_bytes()).collect(),
+            covered_debt:          value
+                .iter()
+                .map(|val| val.covered_debt.to_le_bytes())
+                .collect(),
+            liquidated_collateral: value
+                .iter()
+                .map(|val| val.liquidated_collateral.to_le_bytes())
+                .collect(),
         }
     }
 }

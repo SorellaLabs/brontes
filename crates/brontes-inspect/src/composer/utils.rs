@@ -1,18 +1,18 @@
 use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::FixedBytes;
-use brontes_database::Metadata;
 use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev},
+    classified_mev::{ClassifiedMev, Mev, MevBlock, MevType, SpecificMev},
+    db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
     ToScaledRational,
 };
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::Address;
 
 pub struct BlockPreprocessing {
-    meta_data:           Arc<Metadata>,
+    meta_data:           Arc<MetadataCombined>,
     cumulative_gas_used: u128,
     cumulative_gas_paid: u128,
     builder_address:     Address,
@@ -26,7 +26,7 @@ pub struct BlockPreprocessing {
 /// `BlockPreprocessing` struct.
 pub(crate) fn pre_process(
     tree: Arc<BlockTree<Actions>>,
-    meta_data: Arc<Metadata>,
+    meta_data: Arc<MetadataCombined>,
 ) -> BlockPreprocessing {
     let builder_address = tree.header.beneficiary;
     let cumulative_gas_used = tree
@@ -47,9 +47,9 @@ pub(crate) fn pre_process(
 //TODO: Look into calculating the delta of priority fee + coinbase reward vs
 // proposer fee paid. This would act as a great proxy for how much mev we missed
 pub(crate) fn build_mev_header(
-    metadata: Arc<Metadata>,
+    metadata: Arc<MetadataCombined>,
     pre_processing: &BlockPreprocessing,
-    orchestra_data: &Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
+    orchestra_data: &Vec<(ClassifiedMev, SpecificMev)>,
 ) -> MevBlock {
     let total_bribe = orchestra_data
         .iter()
@@ -62,8 +62,11 @@ pub(crate) fn build_mev_header(
         .sum::<u128>();
 
     //TODO: need to check if decimals are correct
-    let builder_eth_profit = (total_bribe + pre_processing.cumulative_gas_paid
-        - metadata.proposer_mev_reward.unwrap_or_default()) as i128;
+    let builder_eth_profit = Rational::from_signeds(
+        (total_bribe as i128 + pre_processing.cumulative_gas_paid as i128)
+            - (metadata.proposer_mev_reward.unwrap_or_default() as i128),
+        10i128.pow(18),
+    );
 
     MevBlock {
         block_hash: pre_processing.meta_data.block_hash.into(),
@@ -79,9 +82,9 @@ pub(crate) fn build_mev_header(
         total_bribe,
         cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
         builder_address: pre_processing.builder_address,
-        builder_eth_profit,
+        builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
         builder_finalized_profit_usd: f64::rounding_from(
-            builder_eth_profit.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
+            builder_eth_profit * &pre_processing.meta_data.eth_prices,
             RoundingMode::Nearest,
         )
         .0,
@@ -97,7 +100,7 @@ pub(crate) fn build_mev_header(
             },
         ),
         cumulative_mev_finalized_profit_usd: f64::rounding_from(
-            (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(12)
+            (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(18)
                 * &pre_processing.meta_data.eth_prices,
             RoundingMode::Nearest,
         )
@@ -112,15 +115,14 @@ pub(crate) fn build_mev_header(
 /// `MevType` and the values are vectors of tuples (same as input). Each vector
 /// contains all the MEVs of the corresponding type.
 pub(crate) fn sort_mev_by_type(
-    orchestra_data: Vec<(ClassifiedMev, Box<dyn SpecificMev>)>,
-) -> HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>> {
+    orchestra_data: Vec<(ClassifiedMev, SpecificMev)>,
+) -> HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>> {
     orchestra_data
         .into_iter()
         .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
         .fold(
             HashMap::default(),
-            |mut acc: HashMap<MevType, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>>,
-             (mev_type, v)| {
+            |mut acc: HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>, (mev_type, v)| {
                 acc.entry(mev_type).or_default().push(v);
                 acc
             },
@@ -130,7 +132,7 @@ pub(crate) fn sort_mev_by_type(
 /// Finds the index of the first classified mev in the list whose transaction
 /// hashes match any of the provided hashes.
 pub(crate) fn find_mev_with_matching_tx_hashes(
-    mev_data_list: &[(ClassifiedMev, Box<dyn SpecificMev>)],
+    mev_data_list: &[(ClassifiedMev, SpecificMev)],
     tx_hashes: &[FixedBytes<32>],
 ) -> Option<usize> {
     mev_data_list

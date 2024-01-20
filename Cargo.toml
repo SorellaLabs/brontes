@@ -9,9 +9,7 @@ members = [
   "crates/brontes-metrics",
   "crates/tracing",
   "crates/brontes-database",
-  "crates/brontes-database/libmdbx",
   "crates/brontes-macros",
-  "tests",
   "crates/brontes-pricing",
 ]
 
@@ -29,7 +27,6 @@ brontes-types = { path = "./crates/brontes-types/" }
 brontes-classifier = { path = "./crates/brontes-classifier/" }
 brontes-metrics = { path = "./crates/brontes-metrics/" }
 brontes-database = { path = "./crates/brontes-database/" }
-brontes-database-libmdbx = { path = "./crates/brontes-database/libmdbx" }
 brontes-macros = { path = "./crates/brontes-macros/" }
 brontes-pricing = { path = "./crates/brontes-pricing/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
@@ -148,8 +145,10 @@ auto_impl = "1.1.0"
 strum = "0.25.0"
 serial_test = "2.0.0"
 derive_more = "0.99.17"
-
+rkyv = {version = "0.7", features = ["validation"] }
 num_cpus = "1.16.0"
+redefined = { git = "https://github.com/0xlagrange/redefined" }
+bytes = "1.5"
 
 
 [profile.dev]

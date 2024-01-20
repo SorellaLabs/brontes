@@ -1,7 +1,8 @@
-use std::{any::Any, fmt::Debug};
+use std::fmt::Debug;
 
 use alloy_primitives::Address;
 use dyn_clone::DynClone;
+use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::B256;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -14,7 +15,7 @@ use strum::{Display, EnumIter};
 
 use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_utils::utils::vec_fixed_string,
+    serde_utils::primitives::vec_fixed_string,
     tree::GasDetails,
 };
 
@@ -30,7 +31,7 @@ pub struct MevBlock {
     pub total_bribe: u128,
     pub cumulative_mev_priority_fee_paid: u128,
     pub builder_address: Address,
-    pub builder_eth_profit: i128,
+    pub builder_eth_profit: f64,
     pub builder_finalized_profit_usd: f64,
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward: Option<u128>,
@@ -43,6 +44,7 @@ pub struct MevBlock {
 pub struct ClassifiedMev {
     // can be multiple for sandwich
     pub block_number:         u64,
+    pub mev_tx_index:         u64,
     #[serde_as(as = "FixedString")]
     pub tx_hash:              B256,
     #[serde_as(as = "FixedString")]
@@ -64,6 +66,9 @@ pub struct ClassifiedMev {
     Eq,
     Hash,
     EnumIter,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
     Clone,
     Copy,
     Default,
@@ -85,17 +90,119 @@ pub enum MevType {
     Unknown     = 6,
 }
 
-pub trait SpecificMev:
+self_convert_redefined!(MevType);
+
+#[derive(Debug, Deserialize, EnumIter, Clone, Default, Display)]
+pub enum SpecificMev {
+    Sandwich(Sandwich),
+    AtomicBackrun(AtomicBackrun),
+    JitSandwich(JitLiquiditySandwich),
+    Jit(JitLiquidity),
+    CexDex(CexDex),
+    Liquidation(Liquidation),
+    #[default]
+    Unknown,
+}
+
+impl Mev for SpecificMev {
+    fn mev_type(&self) -> MevType {
+        match self {
+            SpecificMev::Sandwich(m) => m.mev_type(),
+            SpecificMev::AtomicBackrun(m) => m.mev_type(),
+            SpecificMev::JitSandwich(m) => m.mev_type(),
+            SpecificMev::Jit(m) => m.mev_type(),
+            SpecificMev::CexDex(m) => m.mev_type(),
+            SpecificMev::Liquidation(m) => m.mev_type(),
+            SpecificMev::Unknown => MevType::Unknown,
+        }
+    }
+
+    fn priority_fee_paid(&self) -> u128 {
+        match self {
+            SpecificMev::Sandwich(m) => m.priority_fee_paid(),
+            SpecificMev::AtomicBackrun(m) => m.priority_fee_paid(),
+            SpecificMev::JitSandwich(m) => m.priority_fee_paid(),
+            SpecificMev::Jit(m) => m.priority_fee_paid(),
+            SpecificMev::CexDex(m) => m.priority_fee_paid(),
+            SpecificMev::Liquidation(m) => m.priority_fee_paid(),
+            SpecificMev::Unknown => unimplemented!("calling priority_fee_paid() on unknown mev"),
+        }
+    }
+
+    fn bribe(&self) -> u128 {
+        match self {
+            SpecificMev::Sandwich(m) => m.bribe(),
+            SpecificMev::AtomicBackrun(m) => m.bribe(),
+            SpecificMev::JitSandwich(m) => m.bribe(),
+            SpecificMev::Jit(m) => m.bribe(),
+            SpecificMev::CexDex(m) => m.bribe(),
+            SpecificMev::Liquidation(m) => m.bribe(),
+            SpecificMev::Unknown => unimplemented!("calling bribe() on unknown mev"),
+        }
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
+        match self {
+            SpecificMev::Sandwich(m) => m.mev_transaction_hashes(),
+            SpecificMev::AtomicBackrun(m) => m.mev_transaction_hashes(),
+            SpecificMev::JitSandwich(m) => m.mev_transaction_hashes(),
+            SpecificMev::Jit(m) => m.mev_transaction_hashes(),
+            SpecificMev::CexDex(m) => m.mev_transaction_hashes(),
+            SpecificMev::Liquidation(m) => m.mev_transaction_hashes(),
+            SpecificMev::Unknown => {
+                unimplemented!("calling mev_transaction_hashes() on unknown mev")
+            }
+        }
+    }
+}
+
+impl From<Sandwich> for SpecificMev {
+    fn from(value: Sandwich) -> Self {
+        Self::Sandwich(value)
+    }
+}
+
+impl From<AtomicBackrun> for SpecificMev {
+    fn from(value: AtomicBackrun) -> Self {
+        Self::AtomicBackrun(value)
+    }
+}
+
+impl From<JitLiquiditySandwich> for SpecificMev {
+    fn from(value: JitLiquiditySandwich) -> Self {
+        Self::JitSandwich(value)
+    }
+}
+
+impl From<JitLiquidity> for SpecificMev {
+    fn from(value: JitLiquidity) -> Self {
+        Self::Jit(value)
+    }
+}
+
+impl From<CexDex> for SpecificMev {
+    fn from(value: CexDex) -> Self {
+        Self::CexDex(value)
+    }
+}
+
+impl From<Liquidation> for SpecificMev {
+    fn from(value: Liquidation) -> Self {
+        Self::Liquidation(value)
+    }
+}
+
+pub trait Mev:
     InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
 {
-    fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync>;
     fn mev_type(&self) -> MevType;
+    // the amount of gas they paid in wei
     fn priority_fee_paid(&self) -> u128;
     fn bribe(&self) -> u128;
     fn mev_transaction_hashes(&self) -> Vec<B256>;
 }
 
-dyn_clone::clone_trait_object!(SpecificMev);
+dyn_clone::clone_trait_object!(Mev);
 
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -113,28 +220,28 @@ pub struct Sandwich {
 
 //TODO: Potentially requires clean up later
 pub fn compose_sandwich_jit(
-    mev: Vec<(ClassifiedMev, Box<dyn Any + Send + Sync>)>,
-) -> (ClassifiedMev, Box<dyn SpecificMev>) {
+    mev: Vec<(ClassifiedMev, SpecificMev)>,
+) -> (ClassifiedMev, SpecificMev) {
     let mut sandwich: Sandwich = Sandwich::default();
     let mut jit: JitLiquidity = JitLiquidity::default();
     let mut classified_sandwich: ClassifiedMev = ClassifiedMev::default();
     let mut jit_classified: ClassifiedMev = ClassifiedMev::default();
 
     for (classified, mev_data) in mev {
-        match classified.mev_type {
-            MevType::Sandwich => {
-                sandwich = *mev_data.downcast().unwrap();
+        match mev_data {
+            SpecificMev::Sandwich(s) => {
+                sandwich = s;
                 classified_sandwich = classified;
             }
-            MevType::Jit => {
-                jit = *mev_data.downcast().unwrap();
+            SpecificMev::Jit(j) => {
+                jit = j;
                 jit_classified = classified;
             }
             _ => unreachable!(),
         }
     }
 
-    let jit_sand = Box::new(JitLiquiditySandwich {
+    let jit_sand = JitLiquiditySandwich {
         frontrun_tx_hash:     sandwich.frontrun_tx_hash,
         frontrun_gas_details: sandwich.frontrun_gas_details,
 
@@ -147,9 +254,15 @@ pub fn compose_sandwich_jit(
         victim_swaps_gas_details: sandwich.victim_swaps_gas_details,
         backrun_swaps:            sandwich.backrun_swaps,
         backrun_burns:            jit.backrun_burns,
-    });
+    };
+
+    let sandwich_rev =
+        classified_sandwich.finalized_bribe_usd + classified_sandwich.finalized_profit_usd;
+    let jit_rev = classified_sandwich.finalized_bribe_usd + jit_classified.finalized_profit_usd;
+    let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.finalized_bribe_usd;
 
     let new_classifed = ClassifiedMev {
+        mev_tx_index:         classified_sandwich.mev_tx_index,
         tx_hash:              sandwich.frontrun_tx_hash,
         mev_type:             MevType::JitSandwich,
         block_number:         classified_sandwich.block_number,
@@ -157,24 +270,19 @@ pub fn compose_sandwich_jit(
         mev_contract:         classified_sandwich.mev_contract,
         mev_profit_collector: classified_sandwich.mev_profit_collector,
         finalized_bribe_usd:  classified_sandwich.finalized_bribe_usd,
-        finalized_profit_usd: classified_sandwich.finalized_profit_usd
-            + jit_classified.finalized_profit_usd,
+        finalized_profit_usd: jit_liq_profit,
     };
 
-    (new_classifed, jit_sand)
+    (new_classifed, jit_sand.into())
 }
 
-impl SpecificMev for Sandwich {
-    fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
-        self
-    }
-
+impl Mev for Sandwich {
     fn mev_type(&self) -> MevType {
         MevType::Sandwich
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_gas_details.priority_fee + self.backrun_gas_details.priority_fee
+        self.frontrun_gas_details.gas_paid() + self.backrun_gas_details.gas_paid()
     }
 
     fn bribe(&self) -> u128 {
@@ -183,10 +291,7 @@ impl SpecificMev for Sandwich {
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        let mut mev = vec![self.frontrun_tx_hash, self.backrun_tx_hash];
-        // we add victim hashes in-case they register as a backrun
-        mev.extend(self.victim_swaps_tx_hashes.clone());
-        mev
+        vec![self.frontrun_tx_hash, self.backrun_tx_hash]
     }
 }
 
@@ -206,17 +311,13 @@ pub struct JitLiquiditySandwich {
     pub backrun_gas_details:      GasDetails,
 }
 
-impl SpecificMev for JitLiquiditySandwich {
-    fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
-        self
-    }
-
+impl Mev for JitLiquiditySandwich {
     fn mev_type(&self) -> MevType {
         MevType::JitSandwich
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_gas_details.priority_fee + self.backrun_gas_details.priority_fee
+        self.frontrun_gas_details.gas_paid() + self.backrun_gas_details.gas_paid()
     }
 
     fn bribe(&self) -> u128 {
@@ -229,7 +330,20 @@ impl SpecificMev for JitLiquiditySandwich {
     }
 }
 
-#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
+#[derive(
+    Debug,
+    Serialize_repr,
+    Deserialize_repr,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    PartialEq,
+    Eq,
+    Hash,
+    EnumIter,
+    Clone,
+    Copy,
+)]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
 #[serde(rename_all = "lowercase")]
@@ -237,6 +351,8 @@ pub enum PriceKind {
     Cex = 0,
     Dex = 1,
 }
+
+self_convert_redefined!(PriceKind);
 
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -248,18 +364,13 @@ pub struct CexDex {
     pub prices_address: Vec<Address>,
     pub prices_price:   Vec<f64>,
 }
-
-impl SpecificMev for CexDex {
-    fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
-        self
-    }
-
+impl Mev for CexDex {
     fn mev_type(&self) -> MevType {
         MevType::CexDex
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.gas_details.priority_fee
+        self.gas_details.gas_paid()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
@@ -281,11 +392,7 @@ pub struct Liquidation {
     pub gas_details:         GasDetails,
 }
 
-impl SpecificMev for Liquidation {
-    fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
-        self
-    }
-
+impl Mev for Liquidation {
     fn mev_type(&self) -> MevType {
         MevType::Liquidation
     }
@@ -295,7 +402,7 @@ impl SpecificMev for Liquidation {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.gas_details.priority_fee
+        self.gas_details.gas_paid()
     }
 
     fn bribe(&self) -> u128 {
@@ -318,7 +425,7 @@ pub struct JitLiquidity {
     pub backrun_burn_gas_details: GasDetails,
 }
 
-impl SpecificMev for JitLiquidity {
+impl Mev for JitLiquidity {
     fn mev_type(&self) -> MevType {
         MevType::Jit
     }
@@ -334,12 +441,8 @@ impl SpecificMev for JitLiquidity {
             + self.backrun_burn_gas_details.coinbase_transfer.unwrap_or(0)
     }
 
-    fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
-        self
-    }
-
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_mint_gas_details.priority_fee + self.backrun_burn_gas_details.priority_fee
+        self.frontrun_mint_gas_details.gas_paid() + self.backrun_burn_gas_details.gas_paid()
     }
 }
 
@@ -351,13 +454,9 @@ pub struct AtomicBackrun {
     pub gas_details: GasDetails,
 }
 
-impl SpecificMev for AtomicBackrun {
-    fn into_any(self: Box<Self>) -> Box<dyn Any + Send + Sync> {
-        self
-    }
-
+impl Mev for AtomicBackrun {
     fn priority_fee_paid(&self) -> u128 {
-        self.gas_details.priority_fee
+        self.gas_details.gas_paid()
     }
 
     fn bribe(&self) -> u128 {

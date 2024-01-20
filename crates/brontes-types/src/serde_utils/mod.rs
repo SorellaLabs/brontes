@@ -6,6 +6,6 @@ pub(crate) mod jit_sandwich;
 pub(crate) mod liquidation;
 pub(crate) mod mev_block;
 mod normalized_actions;
+pub mod primitives;
 pub(crate) mod sandwich;
 pub(crate) mod specific_mev;
-pub mod utils;

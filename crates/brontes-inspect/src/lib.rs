@@ -18,14 +18,14 @@
 //! `BlockTree` and `Metadata` as input and returns a vector of tuples, each
 //! containing a `ClassifiedMev` and a `SpecificMev`.
 //!
-//! ```
+//! ```ignore
 //! #[async_trait::async_trait]
 //! pub trait Inspector: Send + Sync {
 //!     async fn process_tree(
 //!         &self,
 //!         tree: Arc<BlockTree<Actions>>,
-//!         metadata: Arc<Metadata>,
-//!     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)>;
+//!         metadata: Arc<MetadataCombined>,
+//!     ) -> Vec<(ClassifiedMev, SpecificMev)>;
 //! }
 //! ```
 //!
@@ -59,7 +59,7 @@
 //! array of individual inspectors and a `BlockTree` and `Metadata` as input,
 //! running each inspector on the block and collecting their results.
 //!
-//! ```
+//! ```ingnore
 //! pub struct Composer<'a, const N: usize> {
 //!     inspectors_execution: InspectorFut<'a>,
 //!     pre_processing:       BlockPreprocessing,
@@ -98,9 +98,9 @@ pub mod test_utils;
 
 use std::sync::Arc;
 
-use brontes_database::Metadata;
 use brontes_types::{
     classified_mev::{ClassifiedMev, SpecificMev},
+    db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -110,6 +110,6 @@ pub trait Inspector: Send + Sync {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)>;
+        metadata: Arc<MetadataCombined>,
+    ) -> Vec<(ClassifiedMev, SpecificMev)>;
 }

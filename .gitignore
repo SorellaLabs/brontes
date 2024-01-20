@@ -28,10 +28,7 @@ crates/tracing/src/main.rs
 **/const_sql.rs
 
 
-/crates/brontes-database/**/**.parquet
-/crates/brontes-database/**/**.dat
-/crates/brontes-database/**/**.lck
-/crates/brontes-database/**/**.version
+
 
 
 # But not bindings.rs
@@ -46,6 +43,11 @@ crates/brontes-inspect/abis/**.json
 /crates/brontes-core/abi_cache/sources/*
 /crates/brontes-inspect/abi_cache/sources/*
 /crates/brontes-classifier/abi_cache/sources/*
+
+/crates/brontes-database/benches/**/**.parquet
+/crates/brontes-database/benches/**/**.dat
+/crates/brontes-database/benches/**/**.lck
+/crates/brontes-database/benches/**/**.version
 
 .cargo/
 

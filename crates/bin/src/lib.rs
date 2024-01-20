@@ -34,8 +34,7 @@ use std::{
 
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::clickhouse::Clickhouse;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::{clickhouse::Clickhouse, libmdbx::Libmdbx};
 use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use tracing::info;
@@ -58,7 +57,7 @@ enum Mode {
     Tip,
 }
 
-pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
+pub struct Brontes<'inspector, T: TracingProvider> {
     current_block:    u64,
     end_block:        Option<u64>,
     chain_tip:        u64,
@@ -66,14 +65,14 @@ pub struct Brontes<'inspector, const N: usize, T: TracingProvider> {
     max_tasks:        u64,
     parser:           &'inspector Parser<'inspector, T>,
     classifier:       &'inspector Classifier<'inspector, T>,
-    inspectors:       &'inspector [&'inspector Box<dyn Inspector>; N],
+    inspectors:       &'inspector [&'inspector Box<dyn Inspector>],
     clickhouse:       &'inspector Clickhouse,
     database:         &'inspector Libmdbx,
-    block_inspectors: FuturesUnordered<BlockInspector<'inspector, N, T>>,
-    tip_inspector:    Option<TipInspector<'inspector, N, T>>,
+    block_inspectors: FuturesUnordered<BlockInspector<'inspector, T>>,
+    tip_inspector:    Option<TipInspector<'inspector, T>>,
 }
 
-impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
+impl<'inspector, T: TracingProvider> Brontes<'inspector, T> {
     pub fn new(
         init_block: u64,
         end_block: Option<u64>,
@@ -83,7 +82,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
         clickhouse: &'inspector Clickhouse,
         database: &'inspector Libmdbx,
         classifier: &'inspector Classifier<'_, T>,
-        inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
+        inspectors: &'inspector [&'inspector Box<dyn Inspector>],
     ) -> Self {
         let mut brontes = Self {
             current_block: init_block,
@@ -181,7 +180,7 @@ impl<'inspector, const N: usize, T: TracingProvider> Brontes<'inspector, N, T> {
     }
 }
 
-impl<const N: usize, T: TracingProvider> Future for Brontes<'_, N, T> {
+impl<T: TracingProvider> Future for Brontes<'_, T> {
     type Output = ();
 
     //TODO: Fix this comment

@@ -220,7 +220,8 @@ impl TracingInspectorLocal {
             return None
         }
 
-        let mut traces = Vec::with_capacity(self.traces.nodes().len());
+        let mut traces: Vec<TransactionTraceWithLogs> =
+            Vec::with_capacity(self.traces.nodes().len());
 
         for node in self.iter_traceable_nodes() {
             let trace_address = self.trace_address(self.traces.nodes(), node.idx);
@@ -232,9 +233,38 @@ impl TracingInspectorLocal {
                 .map(|log| Log { address: node.trace.address, data: log.clone() })
                 .collect::<Vec<_>>();
 
+            let msg_sender = if let Action::Call(c) = &trace.action {
+                if c.call_type == CallType::DelegateCall {
+                    let prev_trace = traces
+                        .iter()
+                        .rev()
+                        .find(|n| {
+                            let Action::Call(c) = &n.trace.action else { return false };
+                            c.call_type != CallType::DelegateCall
+                        })
+                        .unwrap();
+                    prev_trace.msg_sender
+                } else {
+                    match &trace.action {
+                        Action::Call(call) => call.from,
+                        Action::Create(call) => call.from,
+                        Action::Reward(call) => call.author,
+                        Action::Selfdestruct(call) => call.address,
+                    }
+                }
+            } else {
+                match &trace.action {
+                    Action::Call(call) => call.from,
+                    Action::Create(call) => call.from,
+                    Action::Reward(call) => call.author,
+                    Action::Selfdestruct(call) => call.address,
+                }
+            };
+
             traces.push(TransactionTraceWithLogs {
                 trace,
                 logs,
+                msg_sender,
                 decoded_data: None,
                 trace_idx: node.idx as u64,
             });
@@ -255,6 +285,7 @@ impl TracingInspectorLocal {
 
                 if let Some(trace) = self.parity_selfdestruct_trace(node, addr) {
                     traces.push(TransactionTraceWithLogs {
+                        msg_sender,
                         trace,
                         logs: vec![],
                         decoded_data: None,
