@@ -76,6 +76,14 @@ impl Inspector for JitInspector<'_> {
                         tree.get_gas_details(backrun_tx).cloned().unwrap(),
                     ];
 
+                    if victims
+                        .iter()
+                        .map(|v| tree.get_root(*v).unwrap().head.data.get_to_address())
+                        .any(|addr| mev_executor_contract == addr)
+                    {
+                        return None
+                    }
+
                     // grab all victim swaps dropping swaps that don't touch addresses with
                     let (victims, victim_actions): (Vec<B256>, Vec<Vec<Actions>>) = victims
                         .iter()
@@ -91,6 +99,10 @@ impl Inspector for JitInspector<'_> {
                             )
                         })
                         .unzip();
+
+                    if victim_actions.iter().any(|inner| inner.is_empty()) {
+                        return None
+                    }
 
                     let victim_gas = victims
                         .iter()
