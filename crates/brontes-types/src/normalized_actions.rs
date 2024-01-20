@@ -15,7 +15,7 @@ use sorella_db_databases::{
 use crate::structured_trace::TransactionTraceWithLogs;
 
 /// A normalized action that has been classified
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub enum Actions {
     Swap(NormalizedSwap),
     SwapWithFee(NormalizedSwapWithFee),
@@ -66,6 +66,35 @@ impl Serialize for Actions {
         }
     }
 }
+
+macro_rules! collect_action_fn {
+    ($($action:ident),*) => {
+        impl Actions {
+            $(
+                ::paste::paste!(
+                    pub fn [<$action _collect_fn>]()
+                    -> impl Fn(&crate::tree::Node<Self>) -> (bool, bool) {
+                        |node | (node.data.[<is_ $action>](), node.get_all_sub_actions()
+                                .iter().any(|i| i.[<is_ $action>]()))
+                    }
+                );
+            )*
+        }
+    };
+}
+
+collect_action_fn!(
+    swap,
+    flash_loan,
+    liquidation,
+    batch,
+    burn,
+    revert,
+    mint,
+    transfer,
+    collect,
+    unclassified
+);
 
 impl Actions {
     pub fn force_swap(self) -> NormalizedSwap {
@@ -161,7 +190,7 @@ impl Actions {
     }
 }
 
-#[derive(Debug, Serialize, Clone, Row, Deserialize)]
+#[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
 pub struct NormalizedFlashLoan {
     pub trace_index:       u64,
     pub from:              Address,
@@ -327,16 +356,6 @@ pub struct NormalizedCollect {
 }
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
-pub struct NormalizedLiquidation {
-    pub trace_index:      u64,
-    pub pool:             Address,
-    pub liquidator:       Address,
-    pub debtor:           Address,
-    pub collateral_asset: Address,
-    pub debt_asset:       Address,
-    pub amount:           U256,
-}
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLoan {
     pub trace_index:  u64,
     pub lender:       Address,
@@ -344,6 +363,40 @@ pub struct NormalizedLoan {
     pub loaned_token: Address,
     pub loan_amount:  U256,
     pub collateral:   HashMap<Address, U256>,
+}
+
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+pub struct NormalizedLiquidation {
+    pub trace_index:           u64,
+    pub pool:                  Address,
+    pub liquidator:            Address,
+    pub debtor:                Address,
+    pub collateral_asset:      Address,
+    pub debt_asset:            Address,
+    pub covered_debt:          U256,
+    pub liquidated_collateral: U256,
+}
+
+impl NormalizedLiquidation {
+    pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
+        actions
+            .into_iter()
+            .find_map(|(index, action)| {
+                if let Actions::Transfer(transfer) = action {
+                    // because aave has the option to return the Atoken or regular,
+                    // we can't filter by collateral filter. This might be an issue...
+                    // tbd tho
+                    if transfer.to == self.liquidator {
+                        self.liquidated_collateral = transfer.amount;
+                        return Some(index)
+                    }
+                }
+
+                None
+            })
+            .map(|e| vec![e])
+            .unwrap_or_default()
+    }
 }
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
@@ -402,10 +455,7 @@ impl NormalizedAction for Actions {
             Actions::Mint(_) => unreachable!(),
             Actions::Burn(_) => unreachable!(),
             Actions::Transfer(_) => unreachable!(),
-            //TODO: Check later if it is possible to have nested liquidations
-            Actions::Liquidation(_) => {
-                Box::new(|action: &Actions| action.is_swap() | action.is_transfer())
-            }
+            Actions::Liquidation(_) => Box::new(|action: &Actions| action.is_transfer()),
             Actions::Collect(_) => unreachable!(),
             Actions::Unclassified(_) => unreachable!(),
             Actions::Revert => unreachable!(),
@@ -439,7 +489,7 @@ impl NormalizedAction for Actions {
             Self::Mint(_) => unreachable!(),
             Self::Burn(_) => unreachable!(),
             Self::Transfer(_) => unreachable!(),
-            Self::Liquidation(_) => todo!(),
+            Self::Liquidation(l) => l.finish_classification(actions),
             Self::Collect(_) => unreachable!("Collect type never requires complex classification"),
             Self::Unclassified(_) => {
                 unreachable!("Unclassified type never requires complex classification")

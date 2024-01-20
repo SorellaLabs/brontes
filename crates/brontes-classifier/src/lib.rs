@@ -58,6 +58,7 @@ pub trait ActionCollection: Sync + Send {
         return_data: Bytes,
         from_address: Address,
         target_address: Address,
+        msg_sender: Address,
         logs: &Vec<Log>,
         db_tx: &LibmdbxTx<RO>,
         block: u64,
@@ -89,6 +90,7 @@ pub trait IntoAction: Debug + Send + Sync {
         return_data: Bytes,
         from_address: Address,
         target_address: Address,
+        msg_sender: Address,
         logs: &Vec<Log>,
         db_tx: &LibmdbxTx<RO>,
     ) -> Option<Actions>;
