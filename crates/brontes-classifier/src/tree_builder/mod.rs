@@ -335,6 +335,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         return_bytes.clone(),
                         from_address,
                         target_address,
+                        trace.msg_sender,
                         &trace.logs,
                         &db_tx,
                         block,
@@ -395,7 +396,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         // if we got delegate, the actual token address
                         // is the from addr (proxy) for pool swaps. without
                         // this our math gets fucked
-                        trace.get_from_addr()
+                        trace.msg_sender
                     } else {
                         addr
                     };
@@ -507,8 +508,8 @@ pub mod test {
             debt_asset:            Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
             collateral_asset:      Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")),
             liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
-            pool:                  Address::from(hex!("c6217a364c35de7ebd552b3d30fd169f44ef20b6")),
-            trace_index:           69,
+            pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
+            trace_index:           6,
         });
 
         classifier_utils

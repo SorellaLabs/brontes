@@ -311,9 +311,10 @@ impl ClassifierTestUtils {
         tree_collect_fn: impl Fn(&Node<Actions>) -> (bool, bool),
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
-        let  root = tree.tx_roots.remove(0);
+        let root = tree.tx_roots.remove(0);
         let mut actions = root.collect(&tree_collect_fn);
         let action = actions.remove(action_number_in_tx);
+
         assert_eq!(eq_action, action, "got: {:#?} != given: {:#?}", action, eq_action);
 
         Ok(())
@@ -321,10 +322,10 @@ impl ClassifierTestUtils {
 
     pub async fn is_missing_action(
         &self,
-        tx_hash: TxHash,
-        action_number_in_block: usize,
-        eq_action: Actions,
-        tree_collect_fn: impl Fn(&Node<Actions>) -> (bool, bool),
+        _tx_hash: TxHash,
+        _action_number_in_block: usize,
+        _eq_action: Actions,
+        _tree_collect_fn: impl Fn(&Node<Actions>) -> (bool, bool),
     ) -> Result<(), ClassifierTestUtilsError> {
         todo!()
     }
