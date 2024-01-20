@@ -44,6 +44,9 @@ impl Inspector for LiquidationInspector<'_> {
             .into_par_iter()
             .filter_map(|(tx_hash, liq)| {
                 let root = tree.get_root(tx_hash)?;
+                if root.head.data.is_revert() {
+                    return None
+                }
                 let eoa = root.head.address;
                 let mev_contract = root.head.data.get_to_address();
                 let idx = root.get_block_position();
