@@ -696,6 +696,7 @@ pub mod test {
         let missing_pair = Pair(missing_pricing_addr, USDC_ADDRESS);
 
         let updates = dex_pricer.get_buffer().updates.get(&block).unwrap();
+        assert!(updates.len() != 0);
 
         assert!(updates.iter().any(|(_, update)| {
             let pair = update.get_pair(USDC_ADDRESS).unwrap().ordered();
