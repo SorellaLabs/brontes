@@ -221,8 +221,8 @@ impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
         //         .iter()
         //         .map(|val| format!("{:?}", val.debt_asset).into())
         //         .collect(),
-        //     amount:           value.iter().map(|val| val.amount.to_le_bytes()).collect(),
-        // }
+        //     amount:           value.iter().map(|val|
+        // val.amount.to_le_bytes()).collect(), }
         todo!()
     }
 }

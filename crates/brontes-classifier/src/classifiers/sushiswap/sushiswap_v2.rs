@@ -17,6 +17,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+    msg_sender: Address,
     call_data: swapCall,
     logs: V2SwapImplSwap,
     db_tx: &LibmdbxTx<RO>| {
@@ -65,6 +66,7 @@ action_impl!(
     |trace_index,
      from_address: Address,
      target_address: Address,
+     msg_sender: Address,
      call_data: mintCall,
      log_data: V2MintImplMint,
      db_tx: &LibmdbxTx<RO>| {
@@ -93,6 +95,7 @@ action_impl!(
     |trace_index,
      from_address: Address,
      target_address: Address,
+     msg_sender: Address,
      call_data: burnCall,
      log_data: V2BurnImplBurn,
      db_tx: &LibmdbxTx<RO>| {

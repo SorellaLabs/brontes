@@ -16,12 +16,13 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+    msg_sender: Address,
     call_data: liquidationCallCall,
     db_tx: &LibmdbxTx<RO>| {
         return Some(NormalizedLiquidation {
             trace_index,
             pool: target_address,
-            liquidator: from_address,
+            liquidator: msg_sender,
             debtor: call_data.user,
             collateral_asset: call_data.collateralAsset,
             debt_asset: call_data.debtAsset,
@@ -42,6 +43,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+    msg_sender: Address,
     call_data: flashLoanCall,
     db_tx: &LibmdbxTx<RO> | {
 
@@ -50,7 +52,7 @@ action_impl!(
 
         return Some(NormalizedFlashLoan {
             trace_index,
-            from: from_address,
+            from: msg_sender,
             pool: target_address,
             receiver_contract: call_data.receiverAddress,
             assets: call_data.assets,
