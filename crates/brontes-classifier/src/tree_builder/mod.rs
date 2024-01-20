@@ -8,16 +8,13 @@ use brontes_database::libmdbx::{
     },
     types::{
         address_to_protocol::AddressToProtocolData, address_to_tokens::AddressToTokensData,
-        pool_creation_block, pool_creation_block::PoolCreationBlocksData,
+        pool_creation_block::PoolCreationBlocksData,
     },
     Libmdbx,
 };
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
-    db::{
-        address_to_tokens::PoolTokens, pool_creation_block::PoolsToAddresses,
-        redefined_types::primitives::Redefined_Address,
-    },
+    db::{address_to_tokens::PoolTokens, pool_creation_block::PoolsToAddresses},
     exchanges::StaticBindingsDb,
     extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
@@ -27,7 +24,6 @@ use brontes_types::{
 };
 use futures::future::join_all;
 use itertools::Itertools;
-use reth_db::transaction::DbTx;
 use reth_primitives::{Address, Header, B256};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::error;
@@ -484,16 +480,16 @@ pub mod test {
         env,
     };
 
-    use alloy_primitives::{hex, hex::FromHex};
-    use brontes_classifier::test_utils::build_raw_test_tree;
+    use alloy_primitives::{hex, hex::FromHex, U256};
+    use brontes_pricing::uniswap_v2::U256_64;
     use brontes_types::{
-        normalized_actions::Actions,
+        normalized_actions::{Actions, NormalizedLiquidation},
         structured_trace::TxTrace,
         test_utils::force_call_action,
         tree::{BlockTree, Node},
     };
     use reth_primitives::{Address, Header};
-    use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
+    use reth_rpc_types::trace::parity::{Action, TraceType, TransactionTrace};
     use reth_tracing_ext::TracingClient;
     use serial_test::serial;
 
@@ -510,7 +506,7 @@ pub mod test {
 
         let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
 
-        let swap = tree.collect(jarad_tx, |node| {
+        let swap = tree.collect(jared_tx, |node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
                 node.subactions
@@ -535,7 +531,6 @@ pub mod test {
             }
         }
     }
-
     #[tokio::test]
     #[serial]
     async fn test_aave_v3_liquidation() {

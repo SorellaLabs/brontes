@@ -1,8 +1,4 @@
 use alloy_primitives::Log;
-use alloy_rlp::{
-    BufMut, Decodable, Encodable, RlpDecodable, RlpDecodableWrapper, RlpEncodable,
-    RlpEncodableWrapper,
-};
 use reth_primitives::{Address, Bytes, B256};
 use reth_rpc_types::trace::parity::{Action, CallType, TransactionTrace};
 use serde::{Deserialize, Serialize};

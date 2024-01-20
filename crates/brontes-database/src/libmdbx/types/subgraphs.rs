@@ -16,7 +16,7 @@ use reth_db::{
 use rkyv::Deserialize;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{utils::pools_libmdbx, CompressedTable, LibmdbxData};
+use super::{CompressedTable, LibmdbxData};
 use crate::libmdbx::SubGraphs;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Row)]

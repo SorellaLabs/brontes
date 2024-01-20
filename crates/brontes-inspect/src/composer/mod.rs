@@ -329,9 +329,6 @@ pub mod tests {
                     hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
                 ]);
 
-        inspector_util
-            .run_composer::<JitLiquiditySandwich>(config, None)
-            .await
-            .unwrap();
+        inspector_util.run_composer(config, None).await.unwrap();
     }
 }
