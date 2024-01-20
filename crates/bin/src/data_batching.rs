@@ -37,7 +37,7 @@ use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_db::DatabaseError;
 use reth_primitives::Header;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
