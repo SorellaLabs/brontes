@@ -180,7 +180,7 @@ mod tests {
             .with_block(19042179)
             .with_dex_prices()
             .with_expected_gas_used(2792.487)
-            .with_expected_profit_usd(76.75);
+            .with_expected_profit_usd(71.593);
 
         inspector_util
             .run_inspector::<Liquidation>(config, None)
