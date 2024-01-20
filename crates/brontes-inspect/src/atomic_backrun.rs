@@ -102,21 +102,6 @@ impl AtomicBackrunInspector<'_> {
         gas_details: GasDetails,
         searcher_actions: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
-
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
-
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
-
-        let rev_usd = addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        let gas_used = gas_details.gas_paid();
-        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
-
         let unique_tokens = searcher_actions
             .iter()
             .flatten()
@@ -136,6 +121,21 @@ impl AtomicBackrunInspector<'_> {
         if unique_tokens.len() == 2 && gas_details.coinbase_transfer.is_none() {
             return None
         }
+
+        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+
+        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let rev_usd = addr_usd_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
+
+        let gas_used = gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
         // Can change this later to check if people are subsidising arbs to kill ops for
         // competitors
@@ -169,14 +169,8 @@ impl AtomicBackrunInspector<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, str::FromStr, time::SystemTime};
-
     use alloy_primitives::hex;
-    use brontes_classifier::Classifier;
-    use brontes_database::clickhouse::Clickhouse;
-    use brontes_database_libmdbx::Libmdbx;
     use serial_test::serial;
-    use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
     use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};

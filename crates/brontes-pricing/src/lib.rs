@@ -1,10 +1,14 @@
 #![allow(unused)]
 pub mod exchanges;
 pub mod types;
+
+#[cfg(tests)]
+pub mod test_utils;
+
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     sync::Arc,
-    task::Poll,
+    task::{Context, Poll},
 };
 
 use alloy_primitives::{Address, U256};
@@ -630,7 +634,14 @@ fn queue_loading_returns(
 #[cfg(test)]
 pub mod test {
 
-    use brontes_classifier::*;
+    use brontes_core::test_utils::TraceLoader;
+    use serial_test::serial;
 
     use super::*;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_batch_receiving() {
+        let tracer = TraceLoader::new();
+    }
 }
