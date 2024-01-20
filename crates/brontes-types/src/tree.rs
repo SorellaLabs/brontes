@@ -393,7 +393,6 @@ impl<V: NormalizedAction> Node<V> {
             if let Some(inner) = self.inner.first_mut() {
                 return inner.get_all_children_for_complex_classification(head)
             }
-
             error!("was not able to find node in tree");
             return
         }
@@ -429,13 +428,13 @@ impl<V: NormalizedAction> Node<V> {
             return next_inner_node.get_all_children_for_complex_classification(head)
         } else if next_inner_node.index > head {
             return cur_inner_node.get_all_children_for_complex_classification(head)
-        }
+        }   
         // handle inf case that is shown in the function docs
         else if let Some(last) = self.inner.last_mut() {
             return last.get_all_children_for_complex_classification(head)
         }
 
-        error!("was not able to find node in tree");
+        error!("was not able to find node in tree, should be unreachable");
     }
 
     pub fn modify_node_if_contains_childs<T, F>(&mut self, find: &T, modify: &F) -> bool
