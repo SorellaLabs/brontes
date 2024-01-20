@@ -186,6 +186,10 @@ impl InspectorTestUtils {
             metadata.dex_quotes = quotes;
         }
 
+        if metadata.dex_quotes.0.is_empty() {
+            assert!(false, "no dex quotes found in metadata. test suite will fail");
+        }
+
         let inspector = self.get_inspector(config.expected_mev_type)?;
 
         let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
@@ -257,6 +261,10 @@ impl InspectorTestUtils {
 
         if let Some(quotes) = quotes {
             metadata.dex_quotes = quotes;
+        }
+
+        if metadata.dex_quotes.0.is_empty() {
+            assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
         let inspector = self
