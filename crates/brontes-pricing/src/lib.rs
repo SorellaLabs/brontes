@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![feature(noop_waker)]
 pub mod exchanges;
 pub mod types;
 
@@ -365,6 +366,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     let (re_query, bad_state) =
                         self.graph_manager
                             .bad_pool_state(parent_pair, pool_pair, pool_address);
+
                     if re_query {
                         self.re_queue_bad_pair(parent_pair, block);
                     }
@@ -416,6 +418,31 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         Some((block, res))
     }
+
+    fn poll_state_processing(
+        &mut self,
+        cx: &mut Context<'_>,
+    ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
+        // because results tend to stack up, we always want to progress them first
+        let mut work = 256;
+        loop {
+            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                self.on_pool_resolve(state)
+            }
+
+            // check if we can progress to the next block.
+            let block_prices = self.try_resolve_block();
+            if block_prices.is_some() {
+                return Some(Poll::Ready(block_prices))
+            }
+
+            work -= 1;
+            if work == 0 {
+                break
+            }
+        }
+        None
+    }
 }
 
 impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
@@ -425,23 +452,8 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        // because results tend to stack up, we always want to progress them first
-        let mut work = 512;
-        loop {
-            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                self.on_pool_resolve(state)
-            }
-
-            // check if we can progress to the next block.
-            let block_prices = self.try_resolve_block();
-            if block_prices.is_some() {
-                return Poll::Ready(block_prices)
-            }
-
-            work -= 1;
-            if work == 0 {
-                break
-            }
+        if let Some(new_prices) = self.poll_state_processing(cx) {
+            return new_prices
         }
 
         let mut block_updates = Vec::new();
@@ -634,14 +646,50 @@ fn queue_loading_returns(
 #[cfg(test)]
 pub mod test {
 
-    use brontes_core::test_utils::TraceLoader;
+    use std::{
+        pin::Pin,
+        task::{RawWaker, RawWakerVTable, Waker},
+    };
+
+    use alloy_primitives::{hex, Address, FixedBytes};
+    use futures::future::poll_fn;
     use serial_test::serial;
 
     use super::*;
+    use crate::test_utils::PricingTestUtils;
+
+    pub const USDC_ADDRESS: Address =
+        Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
 
     #[tokio::test]
     #[serial]
     async fn test_batch_receiving() {
-        let tracer = TraceLoader::new();
+        let pricing_utils = PricingTestUtils::new(USDC_ADDRESS);
+        let (mut dex_pricer, mut tree) = pricing_utils
+            .setup_dex_pricer_for_block(18500663)
+            .await
+            .unwrap();
+
+        let noop_waker = Waker::noop();
+        let mut cx = Context::from_waker(&noop_waker);
+
+        // query all of the state we need to load into the lazy loader
+        {
+            let pinned = Pin::new(&mut dex_pricer);
+            let res = pinned.poll_next(&mut cx);
+            assert!(res.is_pending());
+        }
+
+        // let all_swaps = tree.collect_all(|node| {
+        //     (node.data.is_swap(), node.get_all_sub_actions().iter().any(|n|
+        // n.is_swap())) });
+
+        // load all state
+        while !dex_pricer.lazy_loader.is_empty() {
+            let pinned = Pin::new(&mut dex_pricer);
+            // query all of the state we need to load into the lazy loader
+            let res = pinned.poll_state_processing(&mut cx);
+            assert!(res.is_none());
+        }
     }
 }
