@@ -45,7 +45,7 @@ impl Inspector for JitInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Vec<(ClassifiedMev, SpecificMev)> {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
@@ -131,7 +131,7 @@ impl JitInspector<'_> {
         victim_txs: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
-    ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Option<(ClassifiedMev, SpecificMev)> {
         let (mints, burns, collect): (
             Vec<Option<NormalizedMint>>,
             Vec<Option<NormalizedBurn>>,

@@ -29,7 +29,9 @@ impl<'db> SharedInspectorUtils<'db> {
     }
 
     pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
-        self.db.try_get_decimals(address)
+        self.db
+            .view_db(|tx| tx.get::<TokenDecimals>(address))
+            .unwrap();
     }
 }
 
@@ -47,11 +49,11 @@ impl SharedInspectorUtils<'_> {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-                let Some(decimals_in) = self.db.try_get_decimals(swap.token_in) else {
+                let Some(decimals_in) = self.try_get_decimals(swap.token_in) else {
                     error!(?swap.token_in, "token decimals not found");
                     continue;
                 };
-                let Some(decimals_out) = self.db.try_get_decimals(swap.token_out) else {
+                let Some(decimals_out) = self.try_get_decimals(swap.token_out) else {
                     error!(?swap.token_out, "token decimals not found");
                     continue;
                 };

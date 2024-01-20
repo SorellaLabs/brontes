@@ -6,61 +6,42 @@ use crate::classified_mev::{
     SpecificMev,
 };
 
+/*
 macro_rules! decode_specific {
     ($mev_type:ident, $value:ident, $($mev:ident = $name:ident),+) => {
         match $mev_type {
         $(
             MevType::$mev => Box::new(
                 serde_json::from_value::<$name>($value).unwrap()
-            ) as Box<dyn SpecificMev>,
+            ) as SpecificMev,
         )+
         _ => todo!("missing variant")
     }
     };
 }
+*/
 
-impl Serialize for Box<dyn SpecificMev> {
+impl Serialize for SpecificMev {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut tup = serializer.serialize_tuple(2)?;
-        let mev_type = self.mev_type();
-        tup.serialize_element(&mev_type)?;
-        let any = self.clone().into_any();
-
-        match mev_type {
-            MevType::Sandwich => {
-                let this = any.downcast_ref::<Sandwich>().unwrap();
-                tup.serialize_element(&this)?;
+        match self {
+            SpecificMev::Sandwich(sandwich) => sandwich.serialize(serializer),
+            SpecificMev::AtomicBackrun(backrun) => backrun.serialize(serializer),
+            SpecificMev::JitSandwich(jit_sandwich) => jit_sandwich.serialize(serializer),
+            SpecificMev::Jit(jit) => jit.serialize(serializer),
+            SpecificMev::CexDex(cex_dex) => cex_dex.serialize(serializer),
+            SpecificMev::Liquidation(liquidation) => liquidation.serialize(serializer),
+            SpecificMev::Unknown => {
+                unimplemented!("attempted to serialize unknown mev: UNIMPLEMENTED")
             }
-            MevType::Backrun => {
-                let this = any.downcast_ref::<AtomicBackrun>().unwrap();
-                tup.serialize_element(&this)?;
-            }
-            MevType::JitSandwich => {
-                let this = any.downcast_ref::<JitLiquiditySandwich>().unwrap();
-                tup.serialize_element(&this)?;
-            }
-            MevType::Jit => {
-                let this = any.downcast_ref::<JitLiquidity>().unwrap();
-                tup.serialize_element(&this)?;
-            }
-            MevType::CexDex => {
-                let this = any.downcast_ref::<CexDex>().unwrap();
-                tup.serialize_element(&this)?;
-            }
-            MevType::Liquidation => {
-                let this = any.downcast_ref::<Liquidation>().unwrap();
-                tup.serialize_element(&this)?;
-            }
-            MevType::Unknown => unimplemented!("none yet"),
         }
-        tup.end()
     }
 }
 
-impl<'de> Deserialize<'de> for Box<dyn SpecificMev> {
+/*
+impl<'de> Deserialize<'de> for SpecificMev {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -79,9 +60,20 @@ impl<'de> Deserialize<'de> for Box<dyn SpecificMev> {
         ))
     }
 }
+*/
 
-impl InsertRow for Box<dyn SpecificMev> {
+impl InsertRow for SpecificMev {
     fn get_column_names(&self) -> &'static [&'static str] {
-        (**self).get_column_names()
+        match self {
+            SpecificMev::Sandwich(sandwich) => sandwich.get_column_names(),
+            SpecificMev::AtomicBackrun(backrun) => backrun.get_column_names(),
+            SpecificMev::JitSandwich(jit_sandwich) => jit_sandwich.get_column_names(),
+            SpecificMev::Jit(jit) => jit.get_column_names(),
+            SpecificMev::CexDex(cex_dex) => cex_dex.get_column_names(),
+            SpecificMev::Liquidation(liquidation) => liquidation.get_column_names(),
+            SpecificMev::Unknown => {
+                unimplemented!("attempted to inserted unknown mev into clickhouse: UNIMPLEMENTED")
+            }
+        }
     }
 }

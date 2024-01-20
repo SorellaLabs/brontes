@@ -125,10 +125,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
 
     fn start_next_block(&mut self) {
         let parser = self.parser.execute(self.current_block);
-        let meta = self
-            .libmdbx
-            .get_metadata_no_dex(self.current_block)
-            .unwrap();
+        let meta = self.get_metadata_no_dex(self.current_block).unwrap();
 
         let classifier = self.classifier.clone();
 
@@ -155,6 +152,183 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             tree.into(),
             meta.into(),
         )));
+    }
+
+    pub fn try_load_pair_before(
+        libmdbx: &'static Libmdbx,
+        block: u64,
+        pair: Pair,
+    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
+        let tx = libmdbx.ro_tx()?;
+        let subgraphs = tx
+            .get::<SubGraphs>(pair)?
+            .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
+        // load the latest version of the sub graph relative to the block. if the
+        // sub graph is the last entry in the vector, we return an error as we cannot
+        // grantee that we have a run from last update to request block
+        let last_block = *subgraphs.0.keys().max().unwrap();
+        if block > last_block {
+            eyre::bail!("possible missing state");
+        }
+
+        let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
+
+        for (cur_block, update) in subgraphs.0 {
+            if cur_block > block {
+                return last.ok_or_else(|| eyre::eyre!("no subgraph found"))
+            }
+            last = Some((pair, update.to_source()))
+        }
+
+        unreachable!()
+    }
+
+    pub fn protocols_created_before(
+        libmdbx: &'static Libmdbx,
+        block_num: u64,
+    ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
+        let tx = libmdbx.ro_tx()?;
+        let binding_tx = libmdbx.ro_tx()?;
+        let info_tx = libmdbx.ro_tx()?;
+
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
+        let mut map = HashMap::default();
+
+        for result in cursor.walk_range(0..=block_num)? {
+            let (_, res) = result?;
+            for addr in res.0.into_iter() {
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr.to_source())? else {
+                    continue;
+                };
+                let Some(info) = info_tx.get::<AddressToTokens>(addr.to_source())? else {
+                    continue;
+                };
+                map.insert(
+                    (addr.to_source(), protocol),
+                    Pair(info.token0.to_source(), info.token1.to_source()),
+                );
+            }
+        }
+
+        info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
+
+        Ok(map)
+    }
+
+    pub fn save_pair_at(
+        libmdbx: &'static Libmdbx,
+        block: u64,
+        pair: Pair,
+        edges: Vec<SubGraphEdge>,
+    ) -> eyre::Result<()> {
+        let tx = libmdbx.ro_tx()?;
+        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
+            entry.0.insert(
+                block,
+                edges
+                    .into_iter()
+                    .map(|e| Redefined_SubGraphEdge::from_source(e))
+                    .collect::<Vec<_>>(),
+            );
+
+            let (key, value) = SubGraphsData { pair, data: entry.to_source() }.into_key_val();
+            tx.put::<SubGraphs>(key, value)?;
+        }
+        tx.commit()?;
+
+        Ok(())
+    }
+
+    pub fn protocols_created_range(
+        libmdbx: &'static Libmdbx,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>> {
+        let tx = libmdbx.ro_tx()?;
+        let binding_tx = libmdbx.ro_tx()?;
+        let info_tx = libmdbx.ro_tx()?;
+
+        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
+        let mut map = HashMap::default();
+
+        for result in cursor.walk_range(start_block..end_block)? {
+            let (block, res) = result?;
+            for addr in res.0.into_iter() {
+                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr.to_source())? else {
+                    continue;
+                };
+                let Some(info) = info_tx.get::<AddressToTokens>(addr.to_source())? else {
+                    continue;
+                };
+                map.entry(block).or_insert(vec![]).push((
+                    addr.to_source(),
+                    protocol,
+                    Pair(info.token0.to_source(), info.token1.to_source()),
+                ));
+            }
+        }
+
+        info!(target:"brontes-libmdbx", "loaded {} pairs range: {}..{}", map.len(), start_block, end_block);
+
+        Ok(map)
+    }
+
+    pub fn get_metadata_no_dex(
+        &self,
+        block_num: u64,
+    ) -> eyre::Result<brontes_database::MetadataDB> {
+        let tx = self.libmdbx.ro_tx()?;
+        let block_meta: MetadataInner = tx
+            .get::<Metadata>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+            .to_source();
+        let db_cex_quotes: CexPriceMap = tx
+            .get::<CexPrice>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+            .to_source();
+        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
+            Address::from_str(WETH_ADDRESS).unwrap(),
+            Address::from_str(USDT_ADDRESS).unwrap(),
+        )) {
+            eth_usdt
+        } else {
+            db_cex_quotes
+                .get_quote(&Pair(
+                    Address::from_str(WETH_ADDRESS).unwrap(),
+                    Address::from_str(USDC_ADDRESS).unwrap(),
+                ))
+                .unwrap_or_default()
+        };
+
+        let mut cex_quotes = brontes_database::cex::CexPriceMap::new();
+        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
+            cex_quotes.0.insert(
+                pair,
+                quote
+                    .into_iter()
+                    .map(|q| brontes_database::cex::CexQuote {
+                        exchange:  q.exchange,
+                        timestamp: q.timestamp,
+                        price:     q.price,
+                        token0:    q.token0,
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        });
+
+        Ok(MetadataDB {
+            block_num,
+            block_hash: block_meta.block_hash,
+            relay_timestamp: block_meta.relay_timestamp,
+            p2p_timestamp: block_meta.p2p_timestamp,
+            proposer_fee_recipient: block_meta.proposer_fee_recipient,
+            proposer_mev_reward: block_meta.proposer_mev_reward,
+            cex_quotes,
+            eth_prices: max(eth_prices.price.0, eth_prices.price.1),
+
+            mempool_flow: block_meta.mempool_flow.into_iter().collect(),
+            block_timestamp: block_meta.block_timestamp,
+        })
     }
 }
 
@@ -303,11 +477,46 @@ impl<'db> ResultProcessing<'db> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self {
-        if let Err(e) = db.insert_quotes(meta_data.block_num, meta_data.dex_quotes.clone()) {
+        let composer = Composer::new(inspectors, tree, meta_data);
+        let this = Self { database: db, composer };
+
+        if let Err(e) = this.insert_quotes(meta_data.block_num, meta_data.dex_quotes.clone()) {
             tracing::error!(err=?e, block_num=meta_data.block_num, "failed to insert dex pricing and state into db");
         }
-        let composer = Composer::new(inspectors, tree, meta_data);
-        Self { database: db, composer }
+
+        this
+    }
+
+    pub fn insert_quotes(&self, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
+        let mut data = quotes
+            .0
+            .into_iter()
+            .enumerate()
+            .filter(|(_, v)| v.is_some())
+            .map(|(idx, value)| DexPriceData {
+                block_number: block_num,
+                tx_idx:       idx as u16,
+                quote:        types::dex_price::DexQuote(value.unwrap()),
+            })
+            .collect::<Vec<_>>();
+
+        data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
+        data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
+
+        let tx = self.database.rw_tx()?;
+        let mut cursor = tx.cursor_write::<DexPrice>()?;
+
+        data.into_iter()
+            .map(|entry| {
+                let (key, val) = entry.into_key_val();
+                cursor.upsert(key, val)?;
+                Ok(())
+            })
+            .collect::<Result<Vec<_>, DatabaseError>>()?;
+
+        tx.commit()?;
+
+        Ok(())
     }
 }
 

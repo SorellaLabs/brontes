@@ -94,10 +94,7 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
         self.classifier_future.push_back(classifier_fut);
     }
 
-    fn on_inspectors_finish(
-        &mut self,
-        results: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>),
-    ) {
+    fn on_inspectors_finish(&mut self, results: (MevBlock, Vec<(ClassifiedMev, SpecificMev)>)) {
         info!(
             block_number = self.current_block,
             "inserting the collected results \n {:#?}", results

@@ -25,7 +25,7 @@
 //!         &self,
 //!         tree: Arc<BlockTree<Actions>>,
 //!         metadata: Arc<Metadata>,
-//!     ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)>;
+//!     ) -> Vec<(ClassifiedMev, SpecificMev)>;
 //! }
 //! ```
 //!
@@ -111,5 +111,5 @@ pub trait Inspector: Send + Sync {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)>;
+    ) -> Vec<(ClassifiedMev, SpecificMev)>;
 }
