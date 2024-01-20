@@ -1,4 +1,4 @@
-use malachite::{platform_64::Limb, Natural, Rational};
+use malachite::{num::basic::traits::Zero, platform_64::Limb, Natural, Rational};
 use redefined::{Redefined, RedefinedConvert};
 /*
 --------------
@@ -23,11 +23,33 @@ Rational
     serde::Deserialize,
 )]
 #[redefined(Rational)]
-#[redefined_attr(to_source = "self.into()", from_source = "src.into()")]
+#[redefined_attr(
+    to_source = "redefined_to_rational(self)",
+    from_source = "rational_to_redefined(src)"
+)]
 pub struct Redefined_Rational {
     pub sign:        bool,
     pub numerator:   Redefined_Natural,
     pub denominator: Redefined_Natural,
+}
+
+fn rational_to_redefined(rational: Rational) -> Redefined_Rational {
+    Redefined_Rational {
+        sign:        rational >= Rational::ZERO,
+        numerator:   Redefined_Natural(Redefined_InnerNatural::from_limbs_asc(
+            &rational.to_numerator().to_limbs_asc(),
+        )),
+        denominator: Redefined_Natural(Redefined_InnerNatural::from_limbs_asc(
+            &rational.to_denominator().to_limbs_asc(),
+        )),
+    }
+}
+
+fn redefined_to_rational(rational: Redefined_Rational) -> Rational {
+    Rational::from_naturals(
+        Natural::from_limbs_asc(&rational.numerator.to_limbs_asc()),
+        Natural::from_limbs_asc(&rational.denominator.to_limbs_asc()),
+    )
 }
 
 /*
