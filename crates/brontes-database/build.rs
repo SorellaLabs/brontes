@@ -12,6 +12,7 @@ const LIBMDBX_SQL_FILE_DIRECTORY: &str = "./src/libmdbx/tables/queries/";
 
 fn main() {
     write_clickhouse_sql();
+    write_libmdbx_sql();
 }
 
 /// writes the sql file as a string to ./src/const_sql.rs
