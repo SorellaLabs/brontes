@@ -73,7 +73,7 @@ impl Tables {
         Tables::TokenDecimals,
         Tables::AddressToTokens,
         Tables::AddressToProtocol,
-        //Tables::CexPrice,
+        Tables::CexPrice,
         Tables::Metadata,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
@@ -482,10 +482,12 @@ where
                 
                 //.await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
 
-                println!("finished querying");
+                println!("finished querying with {} entries", data.len());
                 if !data.is_empty() {
                     libmdbx.write_table(&data)?;
                 }
+
+                println!("wrote to table");
 
 
             /* .buffeLibmdbxunordered(50);
