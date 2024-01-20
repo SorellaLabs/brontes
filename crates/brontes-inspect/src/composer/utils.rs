@@ -8,7 +8,7 @@ use brontes_types::{
     tree::BlockTree,
     ToScaledRational,
 };
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::Address;
 
 pub struct BlockPreprocessing {
@@ -62,8 +62,11 @@ pub(crate) fn build_mev_header(
         .sum::<u128>();
 
     //TODO: need to check if decimals are correct
-    let builder_eth_profit = (total_bribe as i128 + pre_processing.cumulative_gas_paid as i128)
-        - (metadata.proposer_mev_reward.unwrap_or_default() as i128);
+    let builder_eth_profit = Rational::from_signeds(
+        (total_bribe as i128 + pre_processing.cumulative_gas_paid as i128)
+            - (metadata.proposer_mev_reward.unwrap_or_default() as i128),
+        10i128.pow(17),
+    );
 
     MevBlock {
         block_hash: pre_processing.meta_data.block_hash.into(),
@@ -79,9 +82,9 @@ pub(crate) fn build_mev_header(
         total_bribe,
         cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
         builder_address: pre_processing.builder_address,
-        builder_eth_profit,
+        builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
         builder_finalized_profit_usd: f64::rounding_from(
-            builder_eth_profit.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
+            builder_eth_profit * &pre_processing.meta_data.eth_prices,
             RoundingMode::Nearest,
         )
         .0,
@@ -90,14 +93,14 @@ pub(crate) fn build_mev_header(
         proposer_finalized_profit_usd: pre_processing.meta_data.proposer_mev_reward.map(
             |mev_reward| {
                 f64::rounding_from(
-                    mev_reward.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
+                    mev_reward.to_scaled_rational(17) * &pre_processing.meta_data.eth_prices,
                     RoundingMode::Nearest,
                 )
                 .0
             },
         ),
         cumulative_mev_finalized_profit_usd: f64::rounding_from(
-            (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(12)
+            (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(17)
                 * &pre_processing.meta_data.eth_prices,
             RoundingMode::Nearest,
         )
