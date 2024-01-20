@@ -198,30 +198,31 @@ pub struct ClickhouseVecNormalizedLiquidation {
 
 impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
     fn from(value: Vec<NormalizedLiquidation>) -> Self {
-        ClickhouseVecNormalizedLiquidation {
-            trace_index: value.iter().map(|val| val.trace_index).collect(),
-            pool:        value
-                .iter()
-                .map(|val| format!("{:?}", val.pool).into())
-                .collect(),
-            liquidator:  value
-                .iter()
-                .map(|val| format!("{:?}", val.liquidator).into())
-                .collect(),
-            debtor:      value
-                .iter()
-                .map(|val| format!("{:?}", val.debtor).into())
-                .collect(),
-
-            collateral_asset: value
-                .iter()
-                .map(|val| format!("{:?}", val.collateral_asset).into())
-                .collect(),
-            debt_asset:       value
-                .iter()
-                .map(|val| format!("{:?}", val.debt_asset).into())
-                .collect(),
-            amount:           value.iter().map(|val| val.amount.to_le_bytes()).collect(),
-        }
+        // ClickhouseVecNormalizedLiquidation {
+        //     trace_index: value.iter().map(|val| val.trace_index).collect(),
+        //     pool:        value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.pool).into())
+        //         .collect(),
+        //     liquidator:  value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.liquidator).into())
+        //         .collect(),
+        //     debtor:      value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.debtor).into())
+        //         .collect(),
+        //
+        //     collateral_asset: value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.collateral_asset).into())
+        //         .collect(),
+        //     debt_asset:       value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.debt_asset).into())
+        //         .collect(),
+        //     amount:           value.iter().map(|val|
+        // val.amount.to_le_bytes()).collect(), }
+        todo!()
     }
 }
