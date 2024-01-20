@@ -303,6 +303,7 @@ fn init_trace_parser<'a>(
 ) -> TraceParser<'a, Box<dyn TracingProvider>> {
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
+    /*
     #[cfg(feature = "local")]
     let tracer = {
         let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
@@ -313,6 +314,9 @@ fn init_trace_parser<'a>(
     };
 
     #[cfg(not(feature = "local"))]
+
+    */
+
     let tracer = {
         let (t_handle, client) =
             TracingClient::new(Path::new(&db_path), handle.clone(), max_tasks as u64);
