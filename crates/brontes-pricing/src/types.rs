@@ -175,7 +175,8 @@ impl PoolUpdate {
             Actions::Burn(b) => Some(Pair(b.token[0], b.token[1])),
             Actions::Collect(b) => Some(Pair(b.token[0], b.token[1])),
             Actions::Transfer(t) => Some(Pair(t.token, quote)),
-            _ => None,
+            Actions::Liquidation(l) => Some(Pair(l.collateral_asset, l.debt_asset)),
+            _ => unreachable!(),
         }
     }
 }
