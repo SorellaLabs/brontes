@@ -170,10 +170,7 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Liquidation)
-            .with_mev_tx_hashes(vec![hex!(
-                "dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"
-            )
-            .into()])
+            .with_block(19042179)
             .with_dex_prices()
             .with_expected_gas_used(2799.78)
             .with_expected_profit_usd(76.75);
@@ -190,6 +187,7 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Liquidation)
+            .with_block(block)
             .with_mev_tx_hashes(vec![hex!(
                 "725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db"
             )
