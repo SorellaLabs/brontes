@@ -82,9 +82,10 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
 
-        let pairs = Self::protocols_created_before(libmdbx, start_block).unwrap();
+        let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
-        let rest_pairs = Self::protocols_created_range(libmdbx, start_block + 1, end_block)
+        let rest_pairs = libmdbx
+            .protocols_created_range(start_block + 1, end_block)
             .unwrap()
             .into_iter()
             .flat_map(|(_, pools)| {
@@ -98,9 +99,9 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         let pair_graph = GraphManager::init_from_db_state(
             pairs,
             HashMap::default(),
-            Box::new(|block, pair| Self::try_load_pair_before(libmdbx, block, pair).ok()),
+            Box::new(|block, pair| libmdbx.try_load_pair_before(block, pair).ok()),
             Box::new(|block, pair, edges| {
-                if Self::save_pair_at(libmdbx, block, pair, edges).is_err() {
+                if libmdbx.save_pair_at(block, pair, edges).is_err() {
                     error!("failed to save subgraph to db");
                 }
             }),
@@ -178,115 +179,6 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             tree.into(),
             meta.into(),
         )));
-    }
-
-    pub fn try_load_pair_before(
-        libmdbx: &Libmdbx,
-        block: u64,
-        pair: Pair,
-    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
-        let tx = libmdbx.ro_tx()?;
-        let subgraphs = tx
-            .get::<SubGraphs>(pair)?
-            .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
-
-        // load the latest version of the sub graph relative to the block. if the
-        // sub graph is the last entry in the vector, we return an error as we cannot
-        // grantee that we have a run from last update to request block
-        let last_block = *subgraphs.0.keys().max().unwrap();
-        if block > last_block {
-            eyre::bail!("possible missing state");
-        }
-
-        let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
-
-        for (cur_block, update) in subgraphs.0 {
-            if cur_block > block {
-                return last.ok_or_else(|| eyre::eyre!("no subgraph found"))
-            }
-            last = Some((pair, update))
-        }
-
-        unreachable!()
-    }
-
-    pub fn protocols_created_before(
-        libmdbx: &Libmdbx,
-        block_num: u64,
-    ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
-        let tx = libmdbx.ro_tx()?;
-
-        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
-
-        for result in cursor.walk_range(0..=block_num)? {
-            let res = result?.1;
-            for addr in res.0.into_iter() {
-                let Some(protocol) = tx.get::<AddressToProtocol>(addr)? else {
-                    continue;
-                };
-                let Some(info) = tx.get::<AddressToTokens>(addr)? else {
-                    continue;
-                };
-                map.insert((addr, protocol), Pair(info.token0, info.token1));
-            }
-        }
-
-        info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
-
-        Ok(map)
-    }
-
-    pub fn save_pair_at(
-        libmdbx: &Libmdbx,
-        block: u64,
-        pair: Pair,
-        edges: Vec<SubGraphEdge>,
-    ) -> eyre::Result<()> {
-        let tx = libmdbx.ro_tx()?;
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
-            entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
-
-            let data = SubGraphsData { pair, data: entry };
-            libmdbx.write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
-        }
-
-        Ok(())
-    }
-
-    pub fn protocols_created_range(
-        libmdbx: &Libmdbx,
-        start_block: u64,
-        end_block: u64,
-    ) -> eyre::Result<HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>> {
-        let tx = libmdbx.ro_tx()?;
-        let binding_tx = libmdbx.ro_tx()?;
-        let info_tx = libmdbx.ro_tx()?;
-
-        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
-
-        for result in cursor.walk_range(start_block..end_block)? {
-            let result = result?;
-            let (block, res) = (result.0, result.1);
-            for addr in res.0.into_iter() {
-                let Some(protocol) = binding_tx.get::<AddressToProtocol>(addr)? else {
-                    continue;
-                };
-                let Some(info) = info_tx.get::<AddressToTokens>(addr)? else {
-                    continue;
-                };
-                map.entry(block).or_insert(vec![]).push((
-                    addr,
-                    protocol,
-                    Pair(info.token0, info.token1),
-                ));
-            }
-        }
-
-        info!(target:"brontes-libmdbx", "loaded {} pairs range: {}..{}", map.len(), start_block, end_block);
-
-        Ok(map)
     }
 
     pub fn get_metadata_no_dex(&self, block_num: u64) -> eyre::Result<MetadataNoDex> {
