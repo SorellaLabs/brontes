@@ -2,13 +2,19 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     env,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
-use brontes_database::Metadata;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_metrics::PoirotMetricEvents;
-use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
+use brontes_types::{
+    db::{
+        dex::DexQuotes,
+        metadata::{MetadataCombined, MetadataNoDex},
+    },
+    structured_trace::TxTrace,
+    traits::TracingProvider,
+};
 use futures::future::join_all;
 use log::Level;
 use reth_primitives::{Header, B256};
@@ -33,12 +39,7 @@ pub struct TraceLoader {
 
 impl TraceLoader {
     pub fn new() -> Self {
-        let _ = dotenv::dotenv();
-        init_tracing();
-
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None).unwrap()));
-
+        let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
         let tracing_provider = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10);
         Self { libmdbx, tracing_provider, _metrics: b }
@@ -55,10 +56,16 @@ impl TraceLoader {
             .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
     }
 
-    pub async fn get_metadata(&self, block: u64) -> Result<Metadata, TraceLoaderError> {
-        self.libmdbx
-            .get_metadata(block)
+    pub async fn get_metadata(&self, block: u64) -> Result<MetadataCombined, TraceLoaderError> {
+        self.test_metadata(block)
             .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+    }
+
+    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined> {
+        Ok(MetadataCombined {
+            db:         MetadataNoDex { block_num, ..Default::default() },
+            dex_quotes: DexQuotes(vec![]),
+        })
     }
 
     pub async fn get_block_traces_with_header(
@@ -90,7 +97,7 @@ impl TraceLoader {
     pub async fn get_block_traces_with_header_and_metadata(
         &self,
         block: u64,
-    ) -> Result<BlockTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
+    ) -> Result<BlockTracesWithHeaderAnd<MetadataCombined>, TraceLoaderError> {
         let (traces, header) = self.trace_block(block).await?;
         let metadata = self.get_metadata(block).await?;
 
@@ -101,7 +108,7 @@ impl TraceLoader {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> Result<Vec<BlockTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
+    ) -> Result<Vec<BlockTracesWithHeaderAnd<MetadataCombined>>, TraceLoaderError> {
         join_all(
             (start_block..=end_block)
                 .into_iter()
@@ -169,7 +176,7 @@ impl TraceLoader {
             }
         });
 
-        Ok(flattened
+        let mut res = flattened
             .into_values()
             .map(|mut traces| {
                 traces
@@ -177,13 +184,16 @@ impl TraceLoader {
                     .sort_by(|t0, t1| t0.tx_index.cmp(&t1.tx_index));
                 traces
             })
-            .collect())
+            .collect::<Vec<_>>();
+        res.sort_by(|a, b| a.block.cmp(&b.block));
+
+        Ok(res)
     }
 
     pub async fn get_tx_trace_with_header_and_metadata(
         &self,
         tx_hash: B256,
-    ) -> Result<TxTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
+    ) -> Result<TxTracesWithHeaderAnd<MetadataCombined>, TraceLoaderError> {
         let (block, tx_idx) = self
             .tracing_provider
             .get_tracer()
@@ -199,7 +209,7 @@ impl TraceLoader {
     pub async fn get_tx_traces_with_header_and_metadata(
         &self,
         tx_hashes: Vec<B256>,
-    ) -> Result<Vec<TxTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
+    ) -> Result<Vec<TxTracesWithHeaderAnd<MetadataCombined>>, TraceLoaderError> {
         join_all(tx_hashes.into_iter().map(|tx_hash| async move {
             let (block, tx_idx) = self
                 .tracing_provider
@@ -243,6 +253,19 @@ pub struct BlockTracesWithHeaderAnd<T> {
     pub other:  T,
 }
 
+// done because we can only have 1 instance of libmdbx or we error
+static DB_HANDLE: OnceLock<Libmdbx> = OnceLock::new();
+
+fn get_db_handle() -> &'static Libmdbx {
+    DB_HANDLE.get_or_init(|| {
+        let _ = dotenv::dotenv();
+        init_tracing();
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        Libmdbx::init_db(&brontes_db_endpoint, None)
+            .expect(&format!("failed to open db path {}", brontes_db_endpoint))
+    })
+}
+
 // if we want more tracing/logging/metrics layers, build and push to this vec
 // the stdout one (logging) is the only 1 we need
 // peep the Database repo -> bin/sorella-db/src/cli.rs line 34 for example
@@ -280,6 +303,7 @@ fn init_trace_parser<'a>(
 ) -> TraceParser<'a, Box<dyn TracingProvider>> {
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
+    /*
     #[cfg(feature = "local")]
     let tracer = {
         let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
@@ -290,6 +314,9 @@ fn init_trace_parser<'a>(
     };
 
     #[cfg(not(feature = "local"))]
+
+    */
+
     let tracer = {
         let (t_handle, client) =
             TracingClient::new(Path::new(&db_path), handle.clone(), max_tasks as u64);

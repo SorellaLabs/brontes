@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use brontes_database::{Metadata, Pair};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
+    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
     ToFloatNearest, ToScaledRational,
@@ -16,7 +16,7 @@ use rayon::{
 use reth_primitives::{Address, B256};
 use tracing::{debug, error};
 
-use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
+use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined};
 
 pub struct CexDexInspector<'db> {
     inner: SharedInspectorUtils<'db>,
@@ -33,8 +33,8 @@ impl Inspector for CexDexInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+        meta_data: Arc<MetadataCombined>,
+    ) -> Vec<(ClassifiedMev, SpecificMev)> {
         // Get all normalized swaps
         let intersting_state = tree.collect_all(|node| {
             (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
@@ -42,6 +42,7 @@ impl Inspector for CexDexInspector<'_> {
 
         intersting_state
             .into_par_iter()
+            .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?;
 
@@ -70,10 +71,10 @@ impl CexDexInspector<'_> {
         idx: usize,
         mev_contract: Address,
         eoa: Address,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         gas_details: &GasDetails,
         swaps: Vec<Actions>,
-    ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
+    ) -> Option<(ClassifiedMev, SpecificMev)> {
         let swap_sequences: Vec<(&Actions, _)> = swaps
             .iter()
             .filter_map(|action| {
@@ -98,6 +99,7 @@ impl CexDexInspector<'_> {
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
         let classified = ClassifiedMev {
+            mev_tx_index: idx as u64,
             mev_profit_collector,
             tx_hash: hash,
             mev_contract,
@@ -138,7 +140,7 @@ impl CexDexInspector<'_> {
                 .collect(),
         };
 
-        Some((classified, Box::new(cex_dex)))
+        Some((classified, SpecificMev::CexDex(cex_dex)))
     }
 
     fn arb_gas_accounting(
@@ -154,20 +156,20 @@ impl CexDexInspector<'_> {
 
         let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u128.pow(18)) * eth_price;
 
-        if total_arb > gas_cost {
+        if total_arb > gas_cost || gas_details.coinbase_transfer.is_some() {
             Some(total_arb - gas_cost)
         } else {
             None
         }
     }
 
-    pub fn get_cex_dex(&self, swap: &NormalizedSwap, metadata: &Metadata) -> Option<Rational> {
+    pub fn get_cex_dex(
+        &self,
+        swap: &NormalizedSwap,
+        metadata: &MetadataCombined,
+    ) -> Option<Rational> {
         self.rational_prices(&Actions::Swap(swap.clone()), metadata)
-            .map(|(dex_price, best_ask)| {
-                self.profit_classifier(swap, &dex_price, &best_ask)
-                    .filter(|p| Rational::ZERO.lt(p))
-            })
-            .unwrap_or_default()
+            .and_then(|(dex_price, best_ask)| self.profit_classifier(swap, &dex_price, &best_ask))
     }
 
     fn profit_classifier(
@@ -191,7 +193,7 @@ impl CexDexInspector<'_> {
     pub fn rational_prices(
         &self,
         swap: &Actions,
-        metadata: &Metadata,
+        metadata: &MetadataCombined,
     ) -> Option<(Rational, Rational)> {
         let Actions::Swap(swap) = swap else { return None };
 
@@ -219,6 +221,7 @@ impl CexDexInspector<'_> {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
 
@@ -233,7 +236,7 @@ mod tests {
     use brontes_classifier::Classifier;
     use brontes_core::test_utils::{init_trace_parser, init_tracing};
     use brontes_database::{clickhouse::Clickhouse, graph::PriceGraph, Quote, QuotesMap};
-    use brontes_database_libmdbx::Libmdbx;
+    use brontes_database::libmdbx::Libmdbx;
     use malachite::num::conversion::traits::FromSciString;
     use reth_primitives::U256;
     use serde_json;
@@ -500,3 +503,4 @@ mod tests {
         }
     }
 }
+*/

@@ -9,7 +9,12 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, tree::Node};
+use brontes_types::{
+    exchanges::StaticBindingsDb,
+    extra_processing::Pair,
+    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
+    tree::Node,
+};
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use petgraph::{
@@ -23,7 +28,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
-use super::{subgraph::SubGraphEdge, yens::yen, PoolPairInfoDirection, PoolPairInformation};
+use super::yens::yen;
 
 const CAPACITY: usize = 650_000;
 

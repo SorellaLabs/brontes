@@ -1,21 +1,27 @@
 use std::{
     collections::HashMap,
-    pin::Pin,
+    future::IntoFuture,
+    pin::{pin, Pin},
     sync::Arc,
     task::{Context, Poll},
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{clickhouse::Clickhouse, MetadataDB};
-use brontes_database_libmdbx::Libmdbx;
+use brontes_core::{
+    decoding::{Parser, TracingProvider},
+    missing_decimals::MissingDecimals,
+};
+use brontes_database::{
+    clickhouse::Clickhouse,
+    libmdbx::{tables::MevBlocks, types::mev_block::MevBlocksData, Libmdbx},
+};
 use brontes_inspect::{
     composer::{Composer, ComposerResults},
     Inspector,
 };
-use brontes_pricing::types::DexQuotes;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    db::{dex::DexQuotes, metadata::MetadataNoDex, mev_block::MevBlockWithClassified},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -23,16 +29,16 @@ use futures::{stream::FuturesOrdered, Future, FutureExt, StreamExt};
 use tracing::{debug, error, info};
 
 type CollectionFut<'a> =
-    Pin<Box<dyn Future<Output = (MetadataDB, BlockTree<Actions>)> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = (MetadataNoDex, BlockTree<Actions>)> + Send + 'a>>;
 
-pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
+pub struct TipInspector<'inspector, T: TracingProvider> {
     current_block: u64,
 
     parser:            &'inspector Parser<'inspector, T>,
     classifier:        &'inspector Classifier<'inspector, T>,
     clickhouse:        &'inspector Clickhouse,
     database:          &'inspector Libmdbx,
-    inspectors:        &'inspector [&'inspector Box<dyn Inspector>; N],
+    inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
     // pending future data
     classifier_future: FuturesOrdered<CollectionFut<'inspector>>,
 
@@ -42,13 +48,13 @@ pub struct TipInspector<'inspector, const N: usize, T: TracingProvider> {
     insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
-impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N, T> {
+impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
     pub fn new(
         parser: &'inspector Parser<'inspector, T>,
         clickhouse: &'inspector Clickhouse,
         database: &'inspector Libmdbx,
         classifier: &'inspector Classifier<'_, T>,
-        inspectors: &'inspector [&'inspector Box<dyn Inspector>; N],
+        inspectors: &'inspector [&'inspector Box<dyn Inspector>],
         current_block: u64,
     ) -> Self {
         Self {
@@ -72,7 +78,16 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let (_extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
+            let block = header.number;
+            let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
+
+            MissingDecimals::new(
+                self.parser.get_tracer(),
+                self.database,
+                block,
+                extra_data.tokens_decimal_fill,
+            )
+            .await;
 
             let meta = labeller_fut.await;
 
@@ -82,17 +97,19 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
         self.classifier_future.push_back(classifier_fut);
     }
 
-    fn on_inspectors_finish(
-        &mut self,
-        results: (MevBlock, Vec<(ClassifiedMev, Box<dyn SpecificMev>)>),
-    ) {
+    fn on_inspectors_finish(&mut self, results: (MevBlock, Vec<(ClassifiedMev, SpecificMev)>)) {
         info!(
             block_number = self.current_block,
             "inserting the collected results \n {:#?}", results
         );
+
+        let data_res = MevBlocksData {
+            block_number: results.0.block_number,
+            mev_blocks:   MevBlockWithClassified { block: results.0, mev: results.1 },
+        };
         if self
             .database
-            .insert_classified_data(results.0, results.1)
+            .write_table::<MevBlocks, MevBlocksData>(&vec![data_res])
             .is_err()
         {
             error!("failed to insert classified data into libmdx");
@@ -121,6 +138,7 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
         }
     }
 
+    #[cfg(not(feature = "local"))]
     fn start_block_inspector(&mut self) -> bool {
         match self.parser.get_latest_block_number() {
             Ok(chain_tip) => {
@@ -137,9 +155,27 @@ impl<'inspector, const N: usize, T: TracingProvider> TipInspector<'inspector, N,
             }
         }
     }
+
+    #[cfg(feature = "local")]
+    async fn start_block_inspector(&mut self) -> bool {
+        match self.parser.get_latest_block_number().await {
+            Ok(chain_tip) => {
+                if chain_tip > self.current_block {
+                    self.current_block = chain_tip;
+                    true
+                } else {
+                    false
+                }
+            }
+            Err(e) => {
+                debug!("Error: {:?}", e);
+                false
+            }
+        }
+    }
 }
 
-impl<const N: usize, T: TracingProvider> Future for TipInspector<'_, N, T> {
+impl<T: TracingProvider> Future for TipInspector<'_, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -147,10 +183,13 @@ impl<const N: usize, T: TracingProvider> Future for TipInspector<'_, N, T> {
         // phase
 
         loop {
-            if self.start_block_inspector() {
-                self.start_collection();
+            #[cfg(not(feature = "local"))]
+            {
+                if self.start_block_inspector() {
+                    self.start_collection();
+                }
+                self.progress_futures(cx);
             }
-            self.progress_futures(cx);
         }
 
         #[allow(unreachable_code)]

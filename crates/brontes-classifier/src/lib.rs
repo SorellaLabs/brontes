@@ -2,7 +2,6 @@ use std::{collections::HashMap, fmt::Debug, str::FromStr, sync::Arc};
 
 use alloy_primitives::{Address, Bytes, Log, TxHash, B256};
 use alloy_sol_types::SolEvent;
-use brontes_database_libmdbx::implementation::tx::LibmdbxTx;
 use brontes_pricing::types::{DiscoveredPool, PoolUpdate};
 use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
 use futures::Future;
@@ -10,8 +9,7 @@ use lazy_static::lazy_static;
 use reth_db::mdbx::RO;
 
 pub mod tree_builder;
-pub use tree_builder::*;
-
+pub use tree_builder::Classifier;
 pub mod bindings;
 use bindings::*;
 
@@ -20,6 +18,7 @@ pub mod test_utils;
 
 mod classifiers;
 use alloy_sol_types::{sol, SolInterface};
+
 use brontes_types::normalized_actions::Actions;
 pub use classifiers::*;
 
@@ -58,8 +57,9 @@ pub trait ActionCollection: Sync + Send {
         return_data: Bytes,
         from_address: Address,
         target_address: Address,
+        msg_sender: Address,
         logs: &Vec<Log>,
-        db_tx: &LibmdbxTx<RO>,
+        db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
         block: u64,
         tx_idx: u64,
     ) -> Option<(PoolUpdate, Actions)>;
@@ -89,8 +89,9 @@ pub trait IntoAction: Debug + Send + Sync {
         return_data: Bytes,
         from_address: Address,
         target_address: Address,
+        msg_sender: Address,
         logs: &Vec<Log>,
-        db_tx: &LibmdbxTx<RO>,
+        db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
     ) -> Option<Actions>;
 }
 

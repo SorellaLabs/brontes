@@ -12,11 +12,12 @@ harness = false
 brontes-types.workspace = true
 brontes-macros.workspace = true
 brontes-database.workspace = true
-brontes-database-libmdbx.workspace = true
 brontes-pricing.workspace = true
 alloy-primitives.workspace = true
 
+# async
 tokio.workspace = true
+futures.workspace = true
 
 # alloy
 alloy-sol-types.workspace = true
@@ -39,7 +40,8 @@ tracing.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
-futures.workspace = true
+
+
 # misc
 hex-literal.workspace = true
 rayon.workspace = true
@@ -50,6 +52,7 @@ parking_lot.workspace = true
 paste = "1.0.14"
 phf.workspace = true
 itertools.workspace = true
+eyre.workspace = true
 
 # tests feature (unique)
 reth-tracing-ext = { workspace = true, optional = true }
@@ -59,7 +62,7 @@ thiserror = { workspace = true, optional = true }
 
 [features]
 default = []
-tests = ["reth-tracing-ext", "brontes-core", "thiserror"]
+tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror"]
 local = ["brontes-core/local"]
 
 [dev-dependencies]

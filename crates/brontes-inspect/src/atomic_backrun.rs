@@ -3,8 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use brontes_database::Metadata;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::Actions,
@@ -16,7 +15,9 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, SpecificMev};
+use crate::{
+    shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined, SpecificMev,
+};
 
 pub struct AtomicBackrunInspector<'db> {
     inner: SharedInspectorUtils<'db>,
@@ -33,8 +34,8 @@ impl Inspector for AtomicBackrunInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<Metadata>,
-    ) -> Vec<(ClassifiedMev, Box<dyn SpecificMev>)> {
+        meta_data: Arc<MetadataCombined>,
+    ) -> Vec<(ClassifiedMev, SpecificMev)> {
         let intersting_state = tree.collect_all(|node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
@@ -98,25 +99,10 @@ impl AtomicBackrunInspector<'_> {
         idx: usize,
         eoa: Address,
         mev_contract: Address,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         gas_details: GasDetails,
         searcher_actions: Vec<Vec<Actions>>,
-    ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
-        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
-
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
-
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
-
-        let rev_usd = addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        let gas_used = gas_details.gas_paid();
-        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
-
+    ) -> Option<(ClassifiedMev, SpecificMev)> {
         let unique_tokens = searcher_actions
             .iter()
             .flatten()
@@ -137,6 +123,21 @@ impl AtomicBackrunInspector<'_> {
             return None
         }
 
+        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+
+        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let rev_usd = addr_usd_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
+
+        let gas_used = gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+
         // Can change this later to check if people are subsidising arbs to kill ops for
         // competitors
         if &rev_usd - &gas_used_usd <= Rational::ZERO {
@@ -144,6 +145,7 @@ impl AtomicBackrunInspector<'_> {
         }
 
         let classified = ClassifiedMev {
+            mev_tx_index: idx as u64,
             mev_type: MevType::Backrun,
             tx_hash,
             mev_contract,
@@ -161,41 +163,32 @@ impl AtomicBackrunInspector<'_> {
             .map(|s| s.force_swap())
             .collect::<Vec<_>>();
 
-        let backrun = Box::new(AtomicBackrun { tx_hash, gas_details, swaps });
+        let backrun = AtomicBackrun { tx_hash, gas_details, swaps };
 
-        Some((classified, backrun))
+        Some((classified, SpecificMev::AtomicBackrun(backrun)))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{env, str::FromStr, time::SystemTime};
-
-    use brontes_classifier::Classifier;
-    use brontes_core::{init_tracing, test_utils::init_trace_parser};
-    use brontes_database::clickhouse::Clickhouse;
-    use brontes_database_libmdbx::Libmdbx;
+    use alloy_primitives::hex;
     use serial_test::serial;
-    use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::test_utils::{InspectorTestUtils, USDC_ADDRESS};
+    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
 
     #[tokio::test]
     #[serial]
     async fn test_backrun() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
-        let block_num = 18522278;
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
 
-        let mev = inspector.process_tree(tree.clone(), metadata.into()).await;
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        println!("backrun inspector took: {} us", delta);
+        let tx = hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into();
+        let config = InspectorTxRunConfig::new(MevType::Backrun)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(0.188588)
+            .with_expected_gas_used(71.632668);
 
-        // assert!(
-        //     mev[0].0.tx_hash
-        //         == B256::from_str(
-
-        println!("{:#?}", mev);
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }

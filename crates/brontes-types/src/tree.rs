@@ -1,6 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::{
+    iter::IntoParallelIterator,
+    prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
+};
+use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
@@ -118,13 +122,14 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// child nodes of the action index if and only if they are specified in
     /// the classification function of the action index node.
     pub fn collect_and_classify(&mut self, search_params: &Vec<Option<(usize, Vec<u64>)>>) {
-        let mut a = self
+        let mut roots_with_search_params = self
             .tx_roots
             .iter_mut()
             .zip(search_params.iter())
             .collect::<Vec<_>>();
 
-        a.par_iter_mut()
+        roots_with_search_params
+            .par_iter_mut()
             .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
             .for_each(|(root, (_, subtraces))| {
                 root.collect_child_traces_and_classify(subtraces);
@@ -248,21 +253,22 @@ impl<V: NormalizedAction> Root<V> {
         info: &T,
         removal: &Re,
     ) where
-        T: Fn(&Node<V>) -> R,
-        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
+        T: Fn(&Node<V>) -> R + Sync,
+        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
         F: Fn(&Node<V>) -> (bool, bool),
         Re: Fn(&Node<V>) -> (bool, bool) + Sync,
     {
         let mut find_res = Vec::new();
         self.head.collect(&mut find_res, find, &|data| data.clone());
 
-        let mut bad_res = Vec::new();
-        self.head.collect(&mut bad_res, removal, info);
-
-        let mut indexes: HashSet<u64> = HashSet::default();
-        for node in find_res {
-            indexes.extend(classify(&bad_res, &node).into_iter());
-        }
+        let indexes = find_res
+            .into_par_iter()
+            .flat_map(|node| {
+                let mut bad_res = Vec::new();
+                node.collect(&mut bad_res, removal, info);
+                classify(&bad_res, &node)
+            })
+            .collect::<HashSet<_>>();
 
         indexes
             .into_iter()
@@ -286,13 +292,26 @@ impl<V: NormalizedAction> Root<V> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Row, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    Row,
+    Default,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+)]
 pub struct GasDetails {
     pub coinbase_transfer:   Option<u128>,
     pub priority_fee:        u128,
     pub gas_used:            u128,
     pub effective_gas_price: u128,
 }
+
+self_convert_redefined!(GasDetails);
 
 impl GasDetails {
     pub fn gas_paid(&self) -> u128 {
@@ -370,17 +389,17 @@ impl<V: NormalizedAction> Node<V> {
     pub fn get_all_children_for_complex_classification(&mut self, head: u64) {
         if head == self.index {
             let mut results = Vec::new();
-            results.push((self.index, self.data.clone()));
-
             let classification = self.data.continued_classification_types();
 
-            let fixed = |node: &Node<V>| {
-                ((classification)(&node.data), node.subactions.iter().any(|i| (classification)(i)))
+            let collect_fn = |node: &Node<V>| {
+                (
+                    (classification)(&node.data),
+                    node.get_all_sub_actions()
+                        .iter()
+                        .any(|i| (classification)(i)),
+                )
             };
-
-            for child in &self.inner {
-                child.collect(&mut results, &fixed, &|a| (a.index, a.data.clone()))
-            }
+            self.collect(&mut results, &collect_fn, &|a| (a.index, a.data.clone()));
             // Now that we have the child actions of interest we can finalize the parent
             // node's classification which mutates the parents data in place & returns the
             // indexes of child nodes that should be removed
@@ -389,13 +408,14 @@ impl<V: NormalizedAction> Node<V> {
             prune_collapsed_nodes.into_iter().for_each(|index| {
                 self.remove_node_and_children(index);
             });
+
+            return
         }
 
         if self.inner.len() <= 1 {
             if let Some(inner) = self.inner.first_mut() {
                 return inner.get_all_children_for_complex_classification(head)
             }
-
             error!("was not able to find node in tree");
             return
         }
@@ -437,7 +457,7 @@ impl<V: NormalizedAction> Node<V> {
             return last.get_all_children_for_complex_classification(head)
         }
 
-        error!("was not able to find node in tree");
+        error!("was not able to find node in tree, should be unreachable");
     }
 
     pub fn modify_node_if_contains_childs<T, F>(&mut self, find: &T, modify: &F) -> bool
@@ -685,7 +705,7 @@ mod tests {
     use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_core::{decoding::parser::TraceParser, test_utils::init_trace_parser};
     use brontes_database::clickhouse::Clickhouse;
-    use brontes_database_libmdbx::Libmdbx;
+    use brontes_database::libmdbx::Libmdbx;
     use reth_primitives::{revm_primitives::db::Database, Address};
     use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
     use serial_test::serial;
