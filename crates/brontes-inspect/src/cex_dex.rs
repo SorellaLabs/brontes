@@ -98,6 +98,7 @@ impl CexDexInspector<'_> {
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
         let classified = ClassifiedMev {
+            mev_tx_index: idx as u64,
             mev_profit_collector,
             tx_hash: hash,
             mev_contract,
