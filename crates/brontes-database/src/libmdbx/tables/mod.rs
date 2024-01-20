@@ -75,8 +75,8 @@ impl Tables {
         Tables::AddressToProtocol,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
-        Tables::CexPrice,
         Tables::Metadata,
+        Tables::CexPrice,
         // Tables::TxTraces
     ];
 
