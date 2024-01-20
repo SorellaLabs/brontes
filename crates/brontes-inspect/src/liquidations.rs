@@ -97,6 +97,10 @@ impl LiquidationInspector<'_> {
             .cloned()
             .collect::<Vec<_>>();
 
+        if liqs.is_empty() {
+            return None;
+        }
+
         let deltas = self.inner.calculate_token_deltas(&vec![actions]);
         let swap_profit = self
             .inner
