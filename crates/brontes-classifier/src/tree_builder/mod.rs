@@ -108,10 +108,30 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 .enumerate()
                 .map(|(tx_idx, mut trace)| async move {
                     if trace.trace.is_empty() || !trace.is_success {
-                        return None
+                        // we generate the empty root so that we can still account
+                        // for the gas this revert uses
+                        let root = Root {
+                            position:    tx_idx,
+                            head:        Node::new(0, Address::ZERO, Actions::Revert, vec![]),
+                            tx_hash:     trace.tx_hash,
+                            private:     false,
+                            gas_details: GasDetails {
+                                coinbase_transfer:   None,
+                                gas_used:            trace.gas_used,
+                                effective_gas_price: trace.effective_price,
+                                priority_fee:        trace.effective_price
+                                    - (header.base_fee_per_gas.unwrap() as u128),
+                            },
+                        };
+                        return Some(TxTreeResult {
+                            missing_data_requests: vec![],
+                            pool_updates: vec![],
+                            further_classification_requests: None,
+                            root,
+                        })
                     }
-                    let tx_hash = trace.tx_hash;
 
+                    let tx_hash = trace.tx_hash;
                     // post classification processing collectors
                     let mut missing_decimals = Vec::new();
                     let mut further_classification_requests = Vec::new();
