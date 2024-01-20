@@ -17,10 +17,6 @@ sol!(
     IGetUniswapV3TickDataBatchRequest,
     "./src/exchanges/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequestABI.json"
 );
-sol!(
-    ISyncUniswapV3PoolBatchRequest,
-    "./src/exchanges/uniswap_v3/batch_request/SyncUniswapV3PoolBatchRequestABI.json"
-);
 
 sol!(
     struct PoolData {
