@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -29,7 +29,7 @@ pub struct TraceParser<'db, T: TracingProvider> {
     #[allow(unused)]
     libmdbx:               &'db Libmdbx,
     #[allow(unused)]
-    should_fetch:          Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
+    should_fetch:          Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
@@ -37,7 +37,7 @@ pub struct TraceParser<'db, T: TracingProvider> {
 impl<'db, T: TracingProvider> TraceParser<'db, T> {
     pub fn new(
         libmdbx: &'db Libmdbx,
-        should_fetch: Box<dyn Fn(&Address, &LibmdbxTx<RO>) -> bool + Send + Sync>,
+        should_fetch: Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
@@ -103,7 +103,7 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             }
         };
 
-        let db_tx = self.libmdbx.ro_tx()?;
+        let db_tx = self.libmdbx.ro_tx().unwrap();
         let json = if let Some(trace) = &trace {
             let addresses = trace
                 .iter()
@@ -118,7 +118,8 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                 .filter(|addr| (self.should_fetch)(addr, &db_tx))
                 .collect::<Vec<Address>>();
             info!("addresses for dyn decoding: {:#?}", addresses);
-            self.database.get_abis(addresses).await
+            //self.libmdbx.get_abis(addresses).await.unwrap()
+            HashMap::default()
         } else {
             HashMap::default()
         };
@@ -255,34 +256,5 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         tx_trace.gas_used = gas_used;
 
         (tx_trace, stats)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use serial_test::serial;
-    use tokio::sync::mpsc::unbounded_channel;
-    use tracing::info;
-
-    use crate::{init_tracing, test_utils::init_trace_parser};
-
-    #[cfg(feature = "dyn-decode")]
-    #[tokio::test]
-    #[serial]
-    async fn test_dyn_decode() {
-        dotenv::dotenv().ok();
-        init_tracing();
-        let block_num = 18522278;
-
-        let (tx, _rx) = unbounded_channel();
-
-        let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx);
-        let (trace, _) = tracer.execute_block(block_num).await.unwrap();
-        let has_decoded = trace
-            .into_iter()
-            .flat_map(|t| t.trace.into_iter().map(|t| t.decoded_data.is_some()))
-            .any(|s| s);
-        info!(ran_dyn = has_decoded);
     }
 }

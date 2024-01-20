@@ -15,12 +15,18 @@ reth-db.workspace = true
 async-trait.workspace = true
 reth-interfaces.workspace = true
 reth-rpc.workspace = true
+
+
+# alloy
+alloy-json-abi = { workspace = true, features = ["serde_json"] }
+
 # tracing
 tracing.workspace = true
 
 # async
 rayon.workspace = true
 tokio = { workspace = true, features = ["full"] }
+paste = "1.0.14"
 
 # numbers
 malachite = { workspace = true, features = ["enable_serde"] }
@@ -48,6 +54,9 @@ parking_lot.workspace = true
 derive_more.workspace = true
 dyn-clone = "1.0.16"
 itertools.workspace = true
+rkyv.workspace = true
+redefined.workspace = true
+bytes.workspace = true
 
 [build-dependencies]
 strum = { workspace = true, features = ["derive"] }

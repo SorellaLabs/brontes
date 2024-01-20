@@ -1,10 +1,10 @@
 use alloy_primitives::{Address, U256};
-use brontes_database_libmdbx::{implementation::tx::LibmdbxTx, tables::AddressToTokens};
+use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::{
     NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
-use reth_db::{mdbx::RO, transaction::DbTx};
+use reth_db::mdbx::RO;
 
 use crate::SushiSwapV3::{
     burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall, swapReturn,
@@ -21,9 +21,10 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+     msg_sender: Address,
     call_data: swapCall,
     return_data: swapReturn,
-    db_tx: &LibmdbxTx<RO>| {
+    db_tx: &CompressedLibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
@@ -68,8 +69,9 @@ action_impl!(
     |trace_index,
      from_address: Address,
      target_address: Address,
+     msg_sender: Address,
      call_data: mintCall,
-     return_data: mintReturn,  db_tx: &LibmdbxTx<RO>| {
+     return_data: mintReturn,  db_tx: &CompressedLibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -95,8 +97,9 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+     msg_sender: Address,
     return_data: burnReturn,
-    db_tx: &LibmdbxTx<RO>| {
+    db_tx: &CompressedLibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
 
@@ -127,8 +130,9 @@ action_impl!(
     trace_index,
     from_addr: Address,
     to_addr: Address,
+     msg_sender: Address,
     call_data: collectCall,
-    return_data: collectReturn,  db_tx: &LibmdbxTx<RO>
+    return_data: collectReturn,  db_tx: &CompressedLibmdbxTx<RO>
     | {
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
