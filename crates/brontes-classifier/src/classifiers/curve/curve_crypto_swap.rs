@@ -22,6 +22,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+    msg_sender: Address,
     log: CurveCryptoExchange0Swap,
     db_tx: &LibmdbxTx<RO>| {
         let log = log.TokenExchange_field;
@@ -65,6 +66,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+    msg_sender: Address,
     call_data: exchange_1Call,
     log: CurveCryptoExchange1Swap,
     db_tx: &LibmdbxTx<RO>| {
@@ -121,6 +123,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+    msg_sender: Address,
     call_data: exchange_2Call,
     log: CurveCryptoExchange2Swap,
     db_tx: &LibmdbxTx<RO>| {
@@ -178,6 +181,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+    msg_sender: Address,
     log: CurveCryptoExchangeUnderlyingSwap,
     db_tx: &LibmdbxTx<RO>| {
         let log = log.TokenExchange_field;

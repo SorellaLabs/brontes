@@ -207,7 +207,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.pool_load_futures.is_empty()
+        self.pool_load_futures.is_empty() && self.buf.is_empty()
     }
 }
 
