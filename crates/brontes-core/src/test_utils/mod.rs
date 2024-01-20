@@ -52,7 +52,7 @@ impl TraceLoader {
 
     pub async fn get_metadata(&self, block: u64) -> Result<Metadata, TraceLoaderError> {
         self.libmdbx
-            .get_metadata(block)
+            .test_metadata(block)
             .map_err(|_| TraceLoaderError::NoMetadataFound(block))
     }
 
