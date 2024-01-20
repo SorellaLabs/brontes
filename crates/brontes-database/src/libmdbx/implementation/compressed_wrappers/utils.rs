@@ -5,6 +5,7 @@ use reth_db::{
 
 use crate::libmdbx::CompressedTable;
 
+#[derive(Debug)]
 pub struct CompressedTableRow<T>(
     pub <T as Table>::Key,
     pub <T as CompressedTable>::DecompressedValue,
