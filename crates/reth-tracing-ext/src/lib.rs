@@ -235,7 +235,6 @@ impl TracingInspectorLocal {
 
             let msg_sender = if let Action::Call(c) = &trace.action {
                 if c.call_type == CallType::DelegateCall {
-                    println!("failing at trace index {:?}, with caller {:?}", node.idx, c.from);
                     let prev_trace = traces
                         .iter()
                         .rev()
