@@ -1,5 +1,5 @@
 use alloy_primitives::Address;
-use brontes_database::libmdbx::{tx::CompressedLibmdbxTx, Libmdbx};
+use brontes_database::libmdbx::tx::CompressedLibmdbxTx;
 use brontes_macros::{action_dispatch, action_impl};
 use brontes_types::normalized_actions::NormalizedBatch;
 use reth_db::mdbx::RO;
