@@ -125,24 +125,24 @@ impl SandwichInspector<'_> {
         metadata: Arc<Metadata>,
         txes: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
-        mut searcher_actions: Vec<Vec<Actions>>,
+        searcher_actions: Vec<Vec<Actions>>,
         // victim
         victim_txes: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(ClassifiedMev, Box<dyn SpecificMev>)> {
         let frontrun_swaps = searcher_actions
-            .remove(0)
+            .get(0)?
             .into_iter()
             .filter(|s| s.is_swap())
-            .map(|s| s.force_swap())
+            .map(|s| s.clone().force_swap())
             .collect_vec();
 
         let backrun_swaps = searcher_actions
-            .remove(searcher_actions.len() - 1)
+            .get(searcher_actions.len() - 1)?
             .into_iter()
             .filter(|s| s.is_swap())
-            .map(|s| s.force_swap())
+            .map(|s| s.clone().force_swap())
             .collect_vec();
 
         let mut pools = HashSet::new();
