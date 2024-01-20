@@ -345,6 +345,7 @@ impl Future for ResultProcessing<'_> {
                     .map_or("None".to_string(), |v| format!("{:.2}", v)),
                 block_details.cumulative_mev_finalized_profit_usd
             );
+            println!("{:#?}", mev_details);
 
             if self
                 .database
