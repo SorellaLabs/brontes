@@ -81,8 +81,9 @@ impl Inspector for SandwichInspector<'_> {
                 if ps
                     .victims
                     .iter()
-                    .map(|v| tree.get_root(*v).unwrap().head.data.get_to_address())
-                    .any(|addr| ps.mev_executor_contract == addr)
+                    .map(|v| tree.get_root(*v).unwrap().head.data.clone())
+                    .filter(|d| !d.is_revert())
+                    .any(|d| ps.mev_executor_contract == d.get_to_address())
                 {
                     return None
                 }
@@ -235,6 +236,10 @@ impl SandwichInspector<'_> {
         let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
 
         for root in iter {
+            if root.head.data.is_revert() {
+                continue
+            }
+
             match duplicate_mev_contracts.entry(root.head.data.get_to_address()) {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
