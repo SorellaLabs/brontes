@@ -1,12 +1,14 @@
 use std::collections::HashSet;
 
+use alloy_primitives::{hex, Address, FixedBytes};
 use brontes_pricing::types::DexQuotes;
 pub mod cex;
 
 pub use brontes_types::extra_processing::Pair;
 use cex::CexPriceMap;
-use malachite::Rational;
-use reth_primitives::{Address, TxHash, U256};
+use clickhouse::WETH_ADDRESS;
+use malachite::{num::basic::traits::Zero, Rational};
+use reth_primitives::{TxHash, U256};
 
 use crate::clickhouse::types::DBTokenPricesDB;
 pub mod clickhouse;
@@ -17,6 +19,23 @@ pub struct Metadata {
     #[as_ref]
     pub db:         MetadataDB,
     pub dex_quotes: DexQuotes,
+}
+const USDC_ADDRESS: Address =
+    Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
+
+impl Metadata {
+    pub fn get_gas_price_usd(&self, gas_used: u128) -> Rational {
+        let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
+        let eth_price = if self.eth_prices == Rational::ZERO {
+            self.dex_quotes
+                .price_at_or_before(Pair(WETH_ADDRESS, USDC_ADDRESS), self.dex_quotes.0.len())
+                .unwrap()
+        } else {
+            self.eth_prices.clone()
+        };
+
+        gas_used_rational * eth_price
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -63,13 +82,5 @@ impl MetadataDB {
 
     pub fn into_finalized_metadata(self, prices: DexQuotes) -> Metadata {
         Metadata { db: self, dex_quotes: prices }
-    }
-}
-
-impl MetadataDB {
-    pub fn get_gas_price_usd(&self, gas_used: u128) -> Rational {
-        let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
-
-        &self.eth_prices * gas_used_rational
     }
 }

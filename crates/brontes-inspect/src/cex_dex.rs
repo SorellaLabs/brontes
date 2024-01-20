@@ -42,6 +42,7 @@ impl Inspector for CexDexInspector<'_> {
 
         intersting_state
             .into_par_iter()
+            .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
                 let gas_details = tree.get_gas_details(tx)?;
 
@@ -98,6 +99,7 @@ impl CexDexInspector<'_> {
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
         let classified = ClassifiedMev {
+            mev_tx_index: idx as u64,
             mev_profit_collector,
             tx_hash: hash,
             mev_contract,
@@ -154,7 +156,7 @@ impl CexDexInspector<'_> {
 
         let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u128.pow(18)) * eth_price;
 
-        if total_arb > gas_cost {
+        if total_arb > gas_cost || gas_details.coinbase_transfer.is_some() {
             Some(total_arb - gas_cost)
         } else {
             None
@@ -163,11 +165,7 @@ impl CexDexInspector<'_> {
 
     pub fn get_cex_dex(&self, swap: &NormalizedSwap, metadata: &Metadata) -> Option<Rational> {
         self.rational_prices(&Actions::Swap(swap.clone()), metadata)
-            .map(|(dex_price, best_ask)| {
-                self.profit_classifier(swap, &dex_price, &best_ask)
-                    .filter(|p| Rational::ZERO.lt(p))
-            })
-            .unwrap_or_default()
+            .and_then(|(dex_price, best_ask)| self.profit_classifier(swap, &dex_price, &best_ask))
     }
 
     fn profit_classifier(
