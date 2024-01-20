@@ -140,6 +140,10 @@ impl Actions {
         matches!(self, Actions::Burn(_))
     }
 
+    pub fn is_revert(&self) -> bool {
+        matches!(self, Actions::Revert)
+    }
+
     pub fn is_mint(&self) -> bool {
         matches!(self, Actions::Mint(_))
     }
