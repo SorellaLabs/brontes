@@ -643,7 +643,7 @@ fn queue_loading_returns(
     }))
 }
 
-#[cfg(test)]
+#[cfg(features = "testing")]
 impl<T: TracingProvider> BrontesBatchPricer<T> {
     pub fn get_lazy_loader(&mut self) -> &mut LazyExchangeLoader<T> {
         &mut self.lazy_loader
