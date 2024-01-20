@@ -148,6 +148,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         let classifier = self.classifier.clone();
 
         let fut = Box::pin(parser.then(|x| {
+            println!("failed to parse block {:?}", self.current_block);
             let (traces, header) = x.unwrap().unwrap();
             Self::on_parser_resolve(
                 meta,
