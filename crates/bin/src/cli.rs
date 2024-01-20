@@ -1,4 +1,4 @@
-use brontes_database_libmdbx::tables::Tables;
+use brontes_database::libmdbx::tables::Tables;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]

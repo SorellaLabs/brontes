@@ -11,11 +11,13 @@ use async_scoped::{Scope, TokioScope};
 use brontes::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::clickhouse::Clickhouse;
-use brontes_database_libmdbx::{
-    cursor::CompressedCursor,
-    tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
-    Libmdbx,
+use brontes_database::{
+    clickhouse::Clickhouse,
+    libmdbx::{
+        cursor::CompressedCursor,
+        tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
+        Libmdbx,
+    },
 };
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
@@ -131,7 +133,7 @@ async fn add_to_db(req: AddToDb) -> Result<(), Box<dyn Error>> {
                     Tables::$tables => {
                         db.write_table(
                             &vec![
-                            brontes_database_libmdbx::tables::$tables::into_table_data(
+                            brontes_database::libmdbx::tables::$tables::into_table_data(
                                     $arg0,
                                     $arg1
                                 )
@@ -206,8 +208,8 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
                         println!(
                             "{:#?}",
                             $fn(
-                                tx.$query::<brontes_database_libmdbx::tables::$tables>(
-                                    brontes_database_libmdbx::tables::$tables::into_key($args)
+                                tx.$query::<brontes_database::libmdbx::tables::$tables>(
+                                    brontes_database::libmdbx::tables::$tables::into_key($args)
                                     ).unwrap(),
                                 command
                             ).unwrap()
@@ -223,7 +225,7 @@ async fn query_db(command: DatabaseQuery) -> Result<(), Box<dyn Error>> {
                         println!(
                             "{:#?}",
                             $fn(
-                                tx.$query::<brontes_database_libmdbx::tables::$tables>()?,
+                                tx.$query::<brontes_database::libmdbx::tables::$tables>()?,
                                 command
                             )?
                         )

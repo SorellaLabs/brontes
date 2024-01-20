@@ -5,17 +5,19 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+
+[[bench]]
+name = "compression"
+harness = false
+
+
 [dependencies]
 
 # brontes
 brontes-types.workspace = true
 brontes-pricing.workspace = true
-
-
-derive_more = "0.99.17"
-
-petgraph = "0.6.4"
-itertools = "0.12.0"
+reth-tracing-ext.workspace = true
 
 # alloy
 alloy-primitives = { workspace = true, features = [
@@ -33,6 +35,8 @@ reth-primitives.workspace = true
 reth-interfaces.workspace = true
 reth-libmdbx.workspace = true
 reth-db.workspace = true
+reth-rpc.workspace = true
+
 
 # libmdbx deps
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
@@ -44,7 +48,11 @@ arbitrary = "1.3"
 rand = "0.8.5"
 modular-bitfield = "0.11.2"
 bytes = "1.5"
+zstd = "0.13"
 
+
+# numbers
+malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
 sorella-db-databases.workspace = true
@@ -52,35 +60,56 @@ sorella-db-databases.workspace = true
 # serde
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+serde_repr.workspace = true
 serde_with = { workspace = true, features = ["macros"] }
 
 # error handling
 thiserror.workspace = true
 
-# numbers
-malachite = { workspace = true, features = ["naturals_and_integers"] }
+
+# async
+futures.workspace = true
+tokio.workspace = true
+tokio-scoped = "0.2.0"
+
+
 
 # web
 hyper-tls.workspace = true
 hyper.workspace = true
 
-# async
-futures.workspace = true
-tokio.workspace = true
 
 # tracing
 tracing.workspace = true
 
 # misc
-dotenv.workspace = true
 eyre.workspace = true
-paste = "1.0.14"
 parking_lot.workspace = true
+dotenv.workspace = true
+owned_chunks = "0.1.1"
+bincode = "2.0.0-rc.3"
+redefined.workspace = true
+derive_more = "0.99.17"
+paste = "1.0.14"
+petgraph = "0.6.4"
+itertools = "0.12.0"
+
+
+# benches
+criterion = "0.5"
+parquet = "50"
+arrow = "50"
+human_bytes = "0.4.3"
+rkyv.workspace = true
 
 
 [dev-dependencies]
 serial_test.workspace = true
 test-fuzz = "4"
 
+
 [features]
 tests = []
+
+
+

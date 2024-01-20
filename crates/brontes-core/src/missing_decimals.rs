@@ -3,7 +3,7 @@ use std::{pin::Pin, sync::Arc, task::Poll};
 use alloy_primitives::{Address, Bytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
-use brontes_database_libmdbx::{
+use brontes_database::libmdbx::{
     tables::TokenDecimals, types::token_decimals::TokenDecimalsData, Libmdbx,
 };
 use futures::{future::join, stream::FuturesUnordered, Future, StreamExt};

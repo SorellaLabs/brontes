@@ -3,8 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use brontes_database::Metadata;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{Mev, MevType, Sandwich, SpecificMev},
     normalized_actions::Actions,
@@ -15,7 +14,7 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector};
+use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined};
 
 pub struct SandwichInspector<'db> {
     inner: SharedInspectorUtils<'db>,
@@ -41,7 +40,7 @@ impl Inspector for SandwichInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<Metadata>,
+        meta_data: Arc<MetadataCombined>,
     ) -> Vec<(ClassifiedMev, SpecificMev)> {
         // grab the set of all possible sandwich txes
 
@@ -123,7 +122,7 @@ impl SandwichInspector<'_> {
         idx: usize,
         eoa: Address,
         mev_executor_contract: Address,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         txes: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,

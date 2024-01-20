@@ -284,7 +284,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                 target_address: ::alloy_primitives::Address,
                 msg_sender: ::alloy_primitives::Address,
                 logs: &Vec<::alloy_primitives::Log>,
-                db_tx: &brontes_database_libmdbx::tx::CompressedLibmdbxTx<RO>,
+                db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
             ) -> Option<::brontes_types::normalized_actions::Actions> {
                 #(#option_parsing)*
                 Some(::brontes_types::normalized_actions::Actions::#action_type(#fn_call?))
@@ -482,7 +482,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 target_address: ::alloy_primitives::Address,
                 msg_sender: ::alloy_primitives::Address,
                 logs: &Vec<::alloy_primitives::Log>,
-                db_tx: &brontes_database_libmdbx::tx::CompressedLibmdbxTx<RO>,
+                db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
                 block: u64,
                 tx_idx: u64,
             ) -> Option<(

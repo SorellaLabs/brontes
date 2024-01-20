@@ -6,7 +6,12 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, traits::TracingProvider};
+use brontes_types::{
+    exchanges::StaticBindingsDb,
+    extra_processing::Pair,
+    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
+    traits::TracingProvider,
+};
 use futures::{
     future::BoxFuture,
     stream::{FuturesOrdered, FuturesUnordered},
@@ -16,8 +21,8 @@ use tokio::task::JoinHandle;
 use tracing::{error, info};
 
 use crate::{
-    errors::AmmError, graphs::PoolPairInfoDirection, types::PoolState, uniswap_v2::UniswapV2Pool,
-    uniswap_v3::UniswapV3Pool, PoolUpdate,
+    errors::AmmError, types::PoolState, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
+    PoolUpdate,
 };
 
 type PoolFetchError = (Address, StaticBindingsDb, u64, Pair, AmmError);

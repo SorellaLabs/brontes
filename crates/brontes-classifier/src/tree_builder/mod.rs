@@ -2,23 +2,24 @@ use std::sync::Arc;
 mod tree_pruning;
 mod utils;
 use alloy_sol_types::SolEvent;
-use brontes_database_libmdbx::{
+use brontes_database::libmdbx::{
     tables::{
         AddressToFactory, AddressToProtocol, AddressToTokens, PoolCreationBlocks, TokenDecimals,
     },
     types::{
-        address_to_protocol::AddressToProtocolData,
-        address_to_tokens::{AddressToTokensData, PoolTokens},
-        pool_creation_block,
-        pool_creation_block::{PoolCreationBlocksData, PoolsToAddresses},
+        address_to_protocol::AddressToProtocolData, address_to_tokens::AddressToTokensData,
+        pool_creation_block, pool_creation_block::PoolCreationBlocksData,
     },
     Libmdbx,
 };
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
+    db::{
+        address_to_tokens::PoolTokens, pool_creation_block::PoolsToAddresses,
+        redefined_types::primitives::Redefined_Address,
+    },
     exchanges::StaticBindingsDb,
     extra_processing::ExtraProcessing,
-    libmdbx::redefined_types::primitives::Redefined_Address,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     traits::TracingProvider,
@@ -533,5 +534,29 @@ pub mod test {
                 }
             }
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_aave_v3_liquidation() {
+        let classifier_utils = ClassifierTestUtils::new();
+        let aave_v3_liquidation =
+            B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
+
+        let eq_action = Actions::Liquidation(NormalizedLiquidation {
+            liquidated_collateral: U256::from(165516722u64),
+            covered_debt:          U256::from(63857746423u64),
+            debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
+            debt_asset:            Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
+            collateral_asset:      Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")),
+            liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
+            pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
+            trace_index:           6,
+        });
+
+        classifier_utils
+            .contains_action(aave_v3_liquidation, 0, eq_action, Actions::liquidation_collect_fn())
+            .await
+            .unwrap();
     }
 }

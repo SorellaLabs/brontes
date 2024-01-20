@@ -16,7 +16,12 @@ use std::{
 
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
-use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, tree::Node};
+use brontes_types::{
+    exchanges::StaticBindingsDb,
+    extra_processing::Pair,
+    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
+    tree::Node,
+};
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use malachite::Rational;
@@ -29,68 +34,11 @@ use petgraph::{
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
-pub use subgraph::SubGraphEdge;
 use tracing::{error, info};
 
 use self::registry::SubGraphRegistry;
 use super::PoolUpdate;
 use crate::types::PoolState;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-
-pub struct PoolPairInformation {
-    pub pool_addr: Address,
-    pub dex_type:  StaticBindingsDb,
-    pub token_0:   Address,
-    pub token_1:   Address,
-}
-
-impl PoolPairInformation {
-    fn new(
-        pool_addr: Address,
-        dex_type: StaticBindingsDb,
-        token_0: Address,
-        token_1: Address,
-    ) -> Self {
-        Self { pool_addr, dex_type, token_0, token_1 }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct PoolPairInfoDirection {
-    pub info:       PoolPairInformation,
-    pub token_0_in: bool,
-}
-
-impl PoolPairInfoDirection {
-    pub fn new(info: PoolPairInformation, token_0_in: bool) -> Self {
-        Self { info, token_0_in }
-    }
-}
-
-impl Deref for PoolPairInfoDirection {
-    type Target = PoolPairInformation;
-
-    fn deref(&self) -> &Self::Target {
-        &self.info
-    }
-}
-
-impl DerefMut for PoolPairInfoDirection {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.info
-    }
-}
-
-impl PoolPairInfoDirection {
-    pub fn get_base_token(&self) -> Address {
-        if self.token_0_in {
-            self.info.token_0
-        } else {
-            self.info.token_1
-        }
-    }
-}
 
 pub struct GraphManager {
     all_pair_graph:     AllPairGraph,

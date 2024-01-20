@@ -4,7 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use brontes_database_libmdbx::Libmdbx;
+use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
@@ -16,8 +16,8 @@ use malachite::Rational;
 use reth_primitives::{Address, B256, U256};
 
 use crate::{
-    shared_utils::SharedInspectorUtils, Actions, BlockTree, ClassifiedMev, Inspector, Metadata,
-    SpecificMev,
+    shared_utils::SharedInspectorUtils, Actions, BlockTree, ClassifiedMev, Inspector,
+    MetadataCombined, SpecificMev,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -44,7 +44,7 @@ impl Inspector for JitInspector<'_> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
     ) -> Vec<(ClassifiedMev, SpecificMev)> {
         self.possible_jit_set(tree.clone())
             .into_iter()
@@ -135,7 +135,7 @@ impl JitInspector<'_> {
         &self,
         eoa: Address,
         mev_addr: Address,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         back_jit_idx: usize,
         txes: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
@@ -311,7 +311,7 @@ impl JitInspector<'_> {
         set.into_iter().collect()
     }
 
-    fn get_bribes(&self, price: Arc<Metadata>, gas: [GasDetails; 2]) -> Rational {
+    fn get_bribes(&self, price: Arc<MetadataCombined>, gas: [GasDetails; 2]) -> Rational {
         let bribe = gas.into_iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe)
@@ -321,7 +321,7 @@ impl JitInspector<'_> {
         &self,
         idx: usize,
         collect: Vec<NormalizedCollect>,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
     ) -> Rational {
         let (tokens, amount): (Vec<Vec<_>>, Vec<Vec<_>>) =
             collect.into_iter().map(|t| (t.token, t.amount)).unzip();
@@ -336,7 +336,7 @@ impl JitInspector<'_> {
         &self,
         idx: usize,
         iter: impl Iterator<Item = (&'a Vec<Address>, &'a Vec<U256>)>,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
     ) -> Rational {
         iter.map(|(token, amount)| self.get_liquidity_price(idx, metadata.clone(), token, amount))
             .sum()
@@ -345,7 +345,7 @@ impl JitInspector<'_> {
     fn get_liquidity_price(
         &self,
         idx: usize,
-        metadata: Arc<Metadata>,
+        metadata: Arc<MetadataCombined>,
         token: &Vec<Address>,
         amount: &Vec<U256>,
     ) -> Rational {
