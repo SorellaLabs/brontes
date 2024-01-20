@@ -1,8 +1,4 @@
-use std::any::Any;
-
-use brontes_types::classified_mev::{
-    compose_sandwich_jit, ClassifiedMev, Mev, MevType, SpecificMev,
-};
+use brontes_types::classified_mev::{compose_sandwich_jit, ClassifiedMev, MevType, SpecificMev};
 use lazy_static::lazy_static;
 
 /// Defines rules for composing multiple MEV types

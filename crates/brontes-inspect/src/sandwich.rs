@@ -5,7 +5,7 @@ use std::{
 
 use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
-    classified_mev::{Mev, MevType, Sandwich, SpecificMev},
+    classified_mev::{MevType, Sandwich, SpecificMev},
     normalized_actions::Actions,
     tree::{BlockTree, GasDetails, Node},
     ToFloatNearest,
