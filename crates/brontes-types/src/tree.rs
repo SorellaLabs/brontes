@@ -1,6 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::{
+    iter::IntoParallelIterator,
+    prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
+};
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
@@ -249,21 +252,22 @@ impl<V: NormalizedAction> Root<V> {
         info: &T,
         removal: &Re,
     ) where
-        T: Fn(&Node<V>) -> R,
-        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64>,
+        T: Fn(&Node<V>) -> R + Sync,
+        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
         F: Fn(&Node<V>) -> (bool, bool),
         Re: Fn(&Node<V>) -> (bool, bool) + Sync,
     {
         let mut find_res = Vec::new();
         self.head.collect(&mut find_res, find, &|data| data.clone());
 
-        let mut bad_res = Vec::new();
-        self.head.collect(&mut bad_res, removal, info);
-
-        let mut indexes: HashSet<u64> = HashSet::default();
-        for node in find_res {
-            indexes.extend(classify(&bad_res, &node).into_iter());
-        }
+        let indexes = find_res
+            .into_par_iter()
+            .flat_map(|node| {
+                let mut bad_res = Vec::new();
+                node.collect(&mut bad_res, removal, info);
+                classify(&bad_res, &node)
+            })
+            .collect::<HashSet<_>>();
 
         indexes
             .into_iter()
