@@ -21,6 +21,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+     msg_sender: Address,
     call_data: swapCall,
     return_data: swapReturn,
     db_tx: &LibmdbxTx<RO>| {
@@ -68,6 +69,7 @@ action_impl!(
     |trace_index,
      from_address: Address,
      target_address: Address,
+     msg_sender: Address,
      call_data: mintCall,
      return_data: mintReturn,  db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
@@ -95,6 +97,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
+     msg_sender: Address,
     return_data: burnReturn,
     db_tx: &LibmdbxTx<RO>| {
         let token_0_delta = return_data.amount0;
@@ -127,6 +130,7 @@ action_impl!(
     trace_index,
     from_addr: Address,
     to_addr: Address,
+     msg_sender: Address,
     call_data: collectCall,
     return_data: collectReturn,  db_tx: &LibmdbxTx<RO>
     | {
