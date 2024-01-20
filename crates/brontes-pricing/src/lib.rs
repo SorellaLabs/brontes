@@ -656,7 +656,7 @@ pub mod test {
     use serial_test::serial;
 
     use super::*;
-    use crate::test_utils::PricingTestUtils;
+    use brontes_pricing::test_utils::PricingTestUtils;
 
     pub const USDC_ADDRESS: Address =
         Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
@@ -682,6 +682,7 @@ pub mod test {
             let res = pinned.poll_next(&mut cx);
             assert!(res.is_pending());
         }
+
         let missing_pricing_addr = Address(hex!("56c03b8c4fa80ba37f5a7b60caaaef749bb5b220").into());
         let missing_pair: Pair(missing_pricing_addr, USDC_ADDRESS);
 
