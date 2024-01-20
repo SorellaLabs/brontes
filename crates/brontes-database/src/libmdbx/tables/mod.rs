@@ -73,10 +73,10 @@ impl Tables {
         Tables::TokenDecimals,
         Tables::AddressToTokens,
         Tables::AddressToProtocol,
-        Tables::CexPrice,
-        Tables::Metadata,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
+        Tables::CexPrice,
+        Tables::Metadata,
         // Tables::TxTraces
     ];
 
