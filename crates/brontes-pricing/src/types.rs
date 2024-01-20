@@ -32,16 +32,15 @@ impl DexQuotes {
             return Some(Rational::from(1))
         }
 
-        while tx != 0 {
+        loop {
             if let Some(price) = self.get_price(pair, tx) {
                 return Some(price.clone())
             }
+            if tx == 0 {
+                break
+            }
 
             tx -= 1;
-        }
-        // for when idx == 0
-        if let Some(price) = self.get_price(pair, tx) {
-            return Some(price.clone())
         }
         error!(?pair, "no price for pair");
         None
