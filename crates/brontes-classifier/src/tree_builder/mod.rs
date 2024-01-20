@@ -443,7 +443,6 @@ pub mod test {
     };
 
     use alloy_primitives::{hex, hex::FromHex, U256};
-    use brontes_classifier::test_utils::build_raw_test_tree;
     use brontes_pricing::uniswap_v2::U256_64;
     use brontes_types::{
         normalized_actions::{Actions, NormalizedLiquidation},
@@ -469,7 +468,7 @@ pub mod test {
 
         let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
 
-        let swap = tree.collect(jarad_tx, |node| {
+        let swap = tree.collect(jared_tx, |node| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
                 node.subactions
