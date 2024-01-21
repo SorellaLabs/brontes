@@ -1,9 +1,13 @@
 use itertools::Itertools;
-use proc_macro::{Span, TokenStream};
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{bracketed, parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 
-pub fn action_impl(token_stream: TokenStream) -> TokenStream {
+//TODO: Remove need for writing out args that are always passed in the closure
+// like: from_address, target_address, index
+// Allow for passing a default config struct for optional args
+
+pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     let MacroParse {
         exchange_name,
         action_type,
@@ -14,7 +18,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         give_returns,
         call_function,
         give_calldata,
-    } = syn::parse2(token_stream.into()).unwrap();
+    } = syn::parse2(token_stream)?;
 
     let mut option_parsing = Vec::new();
 
@@ -49,27 +53,25 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                         Some(Index::from(i - shift))
                     })
                     .collect_vec(),
-                LitBool::new(n.0, Span::call_site().into()),
-                Ident::new(&(n.2.to_string() + "_field"), Span::call_site().into()),
+                LitBool::new(n.0, Span::call_site()),
+                Ident::new(&(n.2.to_string() + "_field"), Span::call_site()),
                 n.2,
             ))
         })
         .multiunzip();
 
-    let log_return_struct_name = Ident::new(
-        &(exchange_name.to_string() + &action_type.to_string()),
-        Span::call_site().into(),
-    );
+    let log_return_struct_name =
+        Ident::new(&(exchange_name.to_string() + &action_type.to_string()), Span::call_site());
     let log_return_builder_struct_name = Ident::new(
         &(exchange_name.to_string() + &action_type.to_string() + "Builder"),
-        Span::call_site().into(),
+        Span::call_site(),
     );
 
     let res_struct_fields = log_optional
         .iter()
         .zip(log_ident.iter())
         .filter_map(|(optional, res)| {
-            let field = Ident::new(&(res.to_string() + "_field"), Span::call_site().into());
+            let field = Ident::new(&(res.to_string() + "_field"), Span::call_site());
 
             Some(if optional.value {
                 quote!(#field : Option<crate::#exchange_mod_name::#res>)
@@ -83,7 +85,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         .iter()
         .zip(log_ident.iter())
         .filter_map(|(optional, res)| {
-            let field = Ident::new(&(res.to_string() + "_field"), Span::call_site().into());
+            let field = Ident::new(&(res.to_string() + "_field"), Span::call_site());
 
             Some(if optional.value {
                 // don't unwrap optional
@@ -128,12 +130,10 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         quote!()
     };
 
-    let a = call_type.to_string();
-    let decalled = Ident::new(&a[..a.len() - 4], Span::call_site().into());
-
     if give_calldata {
         option_parsing.push(quote!(
-                let call_data = crate::enum_unwrap!(data, #exchange_mod_name, #decalled);
+            let call_data = <crate::#exchange_mod_name::#call_type
+                as ::alloy_sol_types::SolCall>::abi_decode(&data[..],false).ok()?;
         ));
     }
 
@@ -258,12 +258,12 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         }
         (false, false, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address,msg_sender, db_tx)
+                (#call_function)(index, from_address, target_address, msg_sender, db_tx)
             )
         }
     };
 
-    quote! {
+    Ok(quote! {
         #log_struct
 
         #[derive(Debug, Default)]
@@ -271,14 +271,14 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
 
         impl crate::IntoAction for #exchange_name {
             fn get_signature(&self) -> [u8; 4] {
-                <#call_type as alloy_sol_types::SolCall>::SELECTOR
+                <#call_type as ::alloy_sol_types::SolCall>::SELECTOR
             }
 
             #[allow(unused)]
             fn decode_trace_data(
                 &self,
                 index: u64,
-                data: crate::StaticReturnBindings,
+                data: ::alloy_primitives::Bytes,
                 return_data: ::alloy_primitives::Bytes,
                 from_address: ::alloy_primitives::Address,
                 target_address: ::alloy_primitives::Address,
@@ -290,8 +290,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
                 Some(::brontes_types::normalized_actions::Actions::#action_type(#fn_call?))
             }
         }
-    }
-    .into()
+    })
 }
 
 struct MacroParse {
@@ -299,10 +298,12 @@ struct MacroParse {
     exchange_name: Ident,
     action_type:   Ident,
     // (sometimes, ignore, ident)
+    // TODO: could make optional
     log_types:     Vec<(bool, bool, Ident)>,
     call_type:     Ident,
 
-    /// for call data decoding
+    /// alloy sol! generated mod for call data decoding
+    //TODO: better name
     exchange_mod_name: Ident,
     /// wether we want logs or not
     give_logs:         bool,
@@ -451,11 +452,12 @@ impl Parse for MacroParse {
     }
 }
 
-pub fn action_dispatch(input: TokenStream) -> TokenStream {
-    let ActionDispatch { struct_name, rest } = syn::parse2(input.into()).unwrap();
+pub fn action_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
+    let ActionDispatch { struct_name, rest } = syn::parse2(input.into())?;
 
     if rest.is_empty() {
-        panic!("need more than one entry");
+        // Generate a compile_error! invocation as part of the output TokenStream
+        return Err(syn::Error::new(Span::call_site(), "need classifiers to dispatch to"))
     }
 
     let (mut i, name): (Vec<Index>, Vec<Ident>) = rest
@@ -465,7 +467,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
         .unzip();
     i.remove(0);
 
-    quote!(
+    Ok(quote!(
         #[derive(Default, Debug)]
         pub struct #struct_name(#(pub #name,)*);
 
@@ -474,9 +476,8 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
 
             fn dispatch(
                 &self,
-                sig: &[u8],
                 index: u64,
-                data: crate::StaticReturnBindings,
+                data: ::alloy_primitives::Bytes,
                 return_data: ::alloy_primitives::Bytes,
                 from_address: ::alloy_primitives::Address,
                 target_address: ::alloy_primitives::Address,
@@ -489,6 +490,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                     ::brontes_pricing::types::PoolUpdate,
                     ::brontes_types::normalized_actions::Actions
                 )> {
+                let sig = &data[0..4];
                 let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(sig);
 
                 if sig == crate::IntoAction::get_signature(&self.0) {
@@ -564,8 +566,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
                 None
             }
         }
-    )
-    .into()
+    ))
 }
 
 struct ActionDispatch {
