@@ -37,6 +37,7 @@ pub struct MevBlock {
     pub proposer_mev_reward: Option<u128>,
     pub proposer_finalized_profit_usd: Option<f64>,
     pub cumulative_mev_finalized_profit_usd: f64,
+    pub possible_missed_arbs: Vec<B256>,
 }
 
 #[serde_as]
@@ -204,6 +205,25 @@ pub trait Mev:
 
 dyn_clone::clone_trait_object!(Mev);
 
+/// Represents various MEV sandwich attack strategies, including standard
+/// sandwiches and more complex variations like the "Big Mac Sandwich."
+///
+/// The `Sandwich` struct is designed to be versatile, accommodating a range of
+/// sandwich attack scenarios. While a standard sandwich attack typically
+/// involves a single frontrunning and backrunning transaction around a victim's
+/// trade, more complex variations can involve multiple frontrunning and
+/// backrunning transactions targeting several victims with different slippage
+/// tolerances.
+///
+/// The structure of this struct is generalized to support these variations. For
+/// example, the "Big Mac Sandwich" is one such complex scenario where a bot
+/// exploits multiple victims in a sequence of transactions, each with different
+/// slippage tolerances. This struct can capture the details of both simple and
+/// complex sandwich strategies, making it a comprehensive tool for MEV
+/// analysis.
+///
+/// Example of a Complex Sandwich Attack ("Big Mac Sandwich") Transaction
+/// Sequence:
 /// Represents various MEV sandwich attack strategies, including standard
 /// sandwiches and more complex variations like the "Big Mac Sandwich."
 ///

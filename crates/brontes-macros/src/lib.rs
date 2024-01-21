@@ -53,30 +53,38 @@ use proc_macro::TokenStream;
 ///  call_data: true
 ///  ````
 ///  ```|index, from_address, target_address, return_data, log_data|```
-pub fn action_impl(token_stream: TokenStream) -> TokenStream {
-    action_classifier::action_impl(token_stream)
+pub fn action_impl(input: TokenStream) -> TokenStream {
+    action_classifier::action_impl(input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 #[proc_macro]
 pub fn action_dispatch(input: TokenStream) -> TokenStream {
-    action_classifier::action_dispatch(input)
+    action_classifier::action_dispatch(input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 #[proc_macro]
 /// the discovery impl macro deals with automatically parsing the data needed
 /// for discoverying new pools. The use is as followed
-/// ```rust
-/// discovery_impl!(DecoderName, FactoryName, EventType, ActionCallType, Option<ExchangeModName>, GiveLogs, GiveReturns, CallFn)
+/// ```ignore
+/// discovery_impl!(DecoderName, Path::To::Factory::DeployCall, factory address, Parse Fn)
 /// ```
-/// Where GiveLogs, GiveReturns are bools, and CallFn is a closure that takes
-/// ```rust
-/// |index, from_address, target_address, call_data, return_data, log_data| { <body> }
+/// where Parse Fn
+/// ```ignore
+/// |deployed_address: Address, decoded_call_data: DeployCall, provider: Arc<T>| { <body> }
 /// ```
 pub fn discovery_impl(input: TokenStream) -> TokenStream {
-    discovery_classifier::discovery_impl(input)
+    discovery_classifier::discovery_impl(input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 #[proc_macro]
 pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
-    discovery_classifier::discovery_dispatch(input)
+    discovery_classifier::discovery_dispatch(input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }

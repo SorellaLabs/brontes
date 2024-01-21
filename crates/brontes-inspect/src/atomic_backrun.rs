@@ -1,12 +1,9 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
-    normalized_actions::Actions,
+    normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
     ToFloatNearest,
 };
@@ -38,10 +35,10 @@ impl Inspector for AtomicBackrunInspector<'_> {
     ) -> Vec<(ClassifiedMev, SpecificMev)> {
         let intersting_state = tree.collect_all(|node| {
             (
-                node.data.is_swap() || node.data.is_transfer(),
-                node.subactions
-                    .iter()
-                    .any(|action| action.is_swap() || action.is_transfer()),
+                node.data.is_swap() || node.data.is_transfer() || node.data.is_flash_loan(),
+                node.subactions.iter().any(|action| {
+                    action.is_swap() || action.is_transfer() || node.data.is_flash_loan()
+                }),
             )
         });
 
@@ -51,32 +48,6 @@ impl Inspector for AtomicBackrunInspector<'_> {
                 let gas_details = tree.get_gas_details(tx)?.clone();
                 let root = tree.get_root(tx)?;
                 let idx = root.get_block_position();
-
-                // take all swaps and remove swaps that don't do more than a single swap. This
-                // removes all cex <> dex arbs and one off funky swaps
-                let mut tokens: HashMap<Address, Vec<Address>> = HashMap::new();
-                swaps
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|f| f.clone().force_swap())
-                    .for_each(|swap| {
-                        let e = tokens.entry(swap.pool).or_default();
-                        e.push(swap.token_in);
-                        e.push(swap.token_out);
-                    });
-
-                let entries = tokens.len() * 2;
-                let overlaps = tokens
-                    .values()
-                    .flatten()
-                    .sorted()
-                    .dedup_with_count()
-                    .map(|(i, _)| i)
-                    .sum::<usize>();
-
-                if overlaps <= entries {
-                    return None
-                }
 
                 self.process_swaps(
                     tx,
@@ -103,28 +74,25 @@ impl AtomicBackrunInspector<'_> {
         gas_details: GasDetails,
         searcher_actions: Vec<Vec<Actions>>,
     ) -> Option<(ClassifiedMev, SpecificMev)> {
-        let unique_tokens = searcher_actions
+        let swaps = searcher_actions
             .iter()
             .flatten()
-            .filter(|f| f.is_swap())
-            .map(|f| f.force_swap_ref())
-            .flat_map(|s| vec![s.token_in, s.token_out])
-            .collect::<HashSet<_>>();
+            .filter(|s| s.is_swap() || s.is_flash_loan())
+            .flat_map(|s| match s.clone() {
+                Actions::Swap(s) => vec![s],
+                Actions::FlashLoan(f) => f
+                    .child_actions
+                    .into_iter()
+                    .filter(|a| a.is_swap())
+                    .map(|s| s.force_swap())
+                    .collect_vec(),
+                _ => vec![],
+            })
+            .collect_vec();
 
-        // most likely just a false positive unless the person is holding shit_coin
-        // inventory.
-        // to keep the degens, we don't remove if there is a coinbase.transfer
-        //
-        // False positives come from this due to there being a small opportunity that
-        // exists within a single swap that can only be executed if you hold
-        // inventory. Because of this 99% of the time it is normal users who
-        // trigger this.
-        if unique_tokens.len() == 2 && gas_details.coinbase_transfer.is_none() {
-            return None
-        }
+        self.is_possible_arb(swaps)?;
 
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
-
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
@@ -167,6 +135,46 @@ impl AtomicBackrunInspector<'_> {
 
         Some((classified, SpecificMev::AtomicBackrun(backrun)))
     }
+
+    fn is_possible_arb(&self, swaps: Vec<NormalizedSwap>) -> Option<()> {
+        // check to see if more than 1 swap
+        if swaps.len() <= 1 {
+            return None
+        } else if swaps.len() == 2 {
+            let start = swaps[0].token_in;
+            let mid = swaps[0].token_out;
+            let mid1 = swaps[1].token_in;
+            let end = swaps[1].token_out;
+            // if not triangular or more than 2 unique tokens, then return.
+            // mid != mid1 looks weird. However it is needed as some transactions such as
+            // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a
+            // newer token version
+            if !(start == end && mid == mid1 || (start != end || mid != mid1)) || start == mid {
+                return None
+            }
+        } else {
+            let mut address_to_tokens: HashMap<Address, Vec<Address>> = HashMap::new();
+            swaps.iter().for_each(|swap| {
+                let e = address_to_tokens.entry(swap.pool).or_default();
+                e.push(swap.token_in);
+                e.push(swap.token_out);
+            });
+
+            let pools = address_to_tokens.len();
+
+            let unique_tokens = address_to_tokens
+                .values()
+                .flatten()
+                .sorted()
+                .dedup()
+                .count();
+
+            if unique_tokens < pools {
+                return None
+            }
+        }
+        Some(())
+    }
 }
 
 #[cfg(test)]
@@ -188,6 +196,20 @@ mod tests {
             .with_dex_prices()
             .with_expected_profit_usd(0.188588)
             .with_gas_paid_usd(71.632668);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_simple_triangular() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
+        let tx = hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into();
+        let config = InspectorTxRunConfig::new(MevType::Backrun)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(311.18)
+            .with_expected_gas_used(91.51);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }

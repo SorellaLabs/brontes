@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
 use alloy_rlp::{Decodable, Encodable};
-use brontes_types::{
-    db::{redefined_types::primitives::Redefined_Address, subgraph::SubGraphsEntry},
-    exchanges::StaticBindingsDb,
-    extra_processing::Pair,
-    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
+use brontes_pricing::{
+    PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge, SubGraphsEntry,
 };
+use brontes_types::{db::redefined_types::primitives::Redefined_Address, extra_processing::Pair};
 use bytes::BufMut;
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::{
@@ -107,7 +105,7 @@ impl Decompress for LibmdbxSubGraphsEntry {
 #[redefined(PoolPairInformation)]
 pub struct LibmdbxPoolPairInformation {
     pub pool_addr: Redefined_Address,
-    pub dex_type:  StaticBindingsDb,
+    pub dex_type:  Protocol,
     pub token_0:   Redefined_Address,
     pub token_1:   Redefined_Address,
 }
