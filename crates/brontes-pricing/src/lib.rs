@@ -1,6 +1,6 @@
 #![allow(unused)]
 #![feature(noop_waker)]
-pub mod exchanges;
+pub mod protocols;
 pub mod types;
 
 #[cfg(test)]
@@ -14,19 +14,21 @@ use std::{
 
 use alloy_primitives::{Address, U256};
 use brontes_types::{
-    exchanges::StaticBindingsDb,
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedAction, NormalizedSwap},
-    price_graph::{PoolPairInfoDirection, SubGraphEdge},
     traits::TracingProvider,
 };
 use ethers::core::k256::elliptic_curve::bigint::Zero;
-use exchanges::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
-pub use exchanges::*;
 pub use graphs::{AllPairGraph, GraphManager};
+pub use price_graph_types::{
+    PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
+};
+use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
+pub use protocols::{Protocol, *};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 mod graphs;
+mod price_graph_types;
 
 use brontes_types::db::dex::DexQuotes;
 use futures::{Future, Stream, StreamExt};
@@ -77,7 +79,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
-    new_graph_pairs: HashMap<Address, (StaticBindingsDb, Pair)>,
+    new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
     graph_manager:   GraphManager,
     /// lazy loads dex pairs so we only fetch init state that is needed
     lazy_loader:     LazyExchangeLoader<T>,
@@ -95,7 +97,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
-        new_graph_pairs: HashMap<Address, (StaticBindingsDb, Pair)>,
+        new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
     ) -> Self {
         Self {
             new_graph_pairs,
@@ -168,7 +170,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                             pool_info.pool_addr,
                             self.current_block,
                             pool_info.dex_type,
-                        );
+                        )
                     } else if lazy_loading {
                         self.lazy_loader
                             .add_protocol_parent(pool_info.pool_addr, pair);
@@ -360,23 +362,27 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
         } else if let LoadResult::Err { pool_address, pool_pair, block } = load_result {
-            self.lazy_loader
-                .remove_protocol_parents(&pool_address)
-                .into_iter()
-                .for_each(|parent_pair| {
-                    let (re_query, bad_state) =
-                        self.graph_manager
-                            .bad_pool_state(parent_pair, pool_pair, pool_address);
-
-                    if re_query {
-                        self.re_queue_bad_pair(parent_pair, block);
-                    }
-
-                    if let Some((address, protocol, pair)) = bad_state {
-                        self.new_graph_pairs.insert(address, (protocol, pair));
-                    }
-                });
+            self.on_state_load_error(pool_pair, pool_address, block);
         }
+    }
+
+    fn on_state_load_error(&mut self, pool_pair: Pair, pool_address: Address, block: u64) {
+        self.lazy_loader
+            .remove_protocol_parents(&pool_address)
+            .into_iter()
+            .for_each(|parent_pair| {
+                let (re_query, bad_state) =
+                    self.graph_manager
+                        .bad_pool_state(parent_pair, pool_pair, pool_address);
+
+                if re_query {
+                    self.re_queue_bad_pair(parent_pair, block);
+                }
+
+                if let Some((address, protocol, pair)) = bad_state {
+                    self.new_graph_pairs.insert(address, (protocol, pair));
+                }
+            });
     }
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
@@ -425,23 +431,16 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
         // because results tend to stack up, we always want to progress them first
-        let mut work = 256;
-        loop {
-            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                self.on_pool_resolve(state)
-            }
-
-            // check if we can progress to the next block.
-            let block_prices = self.try_resolve_block();
-            if block_prices.is_some() {
-                return Some(Poll::Ready(block_prices))
-            }
-
-            work -= 1;
-            if work == 0 {
-                break
-            }
+        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+            self.on_pool_resolve(state)
         }
+
+        // check if we can progress to the next block.
+        let block_prices = self.try_resolve_block();
+        if block_prices.is_some() {
+            return Some(Poll::Ready(block_prices))
+        }
+
         None
     }
 }
@@ -453,61 +452,68 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if let Some(new_prices) = self.poll_state_processing(cx) {
-            return new_prices
-        }
-
-        let mut block_updates = Vec::new();
+        /// loop is very heavy, low amount of work needed
+        let mut work = 128;
         loop {
-            match self.update_rx.poll_recv(cx).map(|inner| {
-                inner.and_then(|action| match action {
-                    DexPriceMsg::Update(update) => Some(PollResult::State(update)),
-                    DexPriceMsg::DiscoveredPool(
-                        DiscoveredPool { protocol, tokens, pool_address },
-                        block,
-                    ) => {
-                        if tokens.len() == 2 {
-                            self.new_graph_pairs
-                                .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
-                        };
-                        Some(PollResult::DiscoveredPool)
-                    }
-                    DexPriceMsg::Closed => None,
-                })
-            }) {
-                Poll::Ready(Some(u)) => {
-                    if let PollResult::State(update) = u {
-                        if let Some(overlap) = self.overlap_update.take() {
-                            block_updates.push(overlap);
+            if let Some(new_prices) = self.poll_state_processing(cx) {
+                return new_prices
+            }
+
+            let mut block_updates = Vec::new();
+            loop {
+                match self.update_rx.poll_recv(cx).map(|inner| {
+                    inner.and_then(|action| match action {
+                        DexPriceMsg::Update(update) => Some(PollResult::State(update)),
+                        DexPriceMsg::DiscoveredPool(
+                            DiscoveredPool { protocol, tokens, pool_address },
+                            block,
+                        ) => {
+                            if tokens.len() == 2 {
+                                self.new_graph_pairs
+                                    .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
+                            };
+                            Some(PollResult::DiscoveredPool)
                         }
-                        if update.block == self.current_block {
-                            block_updates.push(update);
+                        DexPriceMsg::Closed => None,
+                    })
+                }) {
+                    Poll::Ready(Some(u)) => {
+                        if let PollResult::State(update) = u {
+                            if let Some(overlap) = self.overlap_update.take() {
+                                block_updates.push(overlap);
+                            }
+                            if update.block == self.current_block {
+                                block_updates.push(update);
+                            } else {
+                                self.overlap_update = Some(update);
+                                break
+                            }
+                        }
+                    }
+                    Poll::Ready(None) => {
+                        if self.lazy_loader.is_empty() && block_updates.is_empty() {
+                            return Poll::Ready(self.on_close())
                         } else {
-                            self.overlap_update = Some(update);
                             break
                         }
                     }
+                    Poll::Pending => break,
                 }
-                Poll::Ready(None) => {
-                    if self.lazy_loader.is_empty() && block_updates.is_empty() {
-                        return Poll::Ready(self.on_close())
-                    } else {
-                        break
-                    }
+
+                // we poll here to continuously progress state fetches as they are slow
+                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                    self.on_pool_resolve(state)
                 }
-                Poll::Pending => break,
             }
 
-            // we poll here to continuously progress state fetches as they are slow
-            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                self.on_pool_resolve(state)
+            self.on_pool_updates(block_updates);
+
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
             }
         }
-
-        self.on_pool_updates(block_updates);
-
-        cx.waker().wake_by_ref();
-        return Poll::Pending
     }
 }
 

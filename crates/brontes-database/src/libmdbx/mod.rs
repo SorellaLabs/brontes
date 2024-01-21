@@ -5,9 +5,8 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 pub mod initialize;
 
 use alloy_primitives::Address;
-use brontes_types::{
-    exchanges::StaticBindingsDb, extra_processing::Pair, price_graph::SubGraphEdge,
-};
+use brontes_pricing::{Protocol, SubGraphEdge};
+use brontes_types::extra_processing::Pair;
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
@@ -28,8 +27,6 @@ pub mod implementation;
 pub use implementation::compressed_wrappers::*;
 pub mod tables;
 pub mod types;
-
-//const USDT_ADDRESS: &str = ;
 
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
@@ -168,7 +165,7 @@ impl Libmdbx {
     pub fn protocols_created_before(
         &self,
         block_num: u64,
-    ) -> eyre::Result<HashMap<(Address, StaticBindingsDb), Pair>> {
+    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>> {
         let tx = self.ro_tx()?;
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
@@ -197,7 +194,7 @@ impl Libmdbx {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<HashMap<u64, Vec<(Address, StaticBindingsDb, Pair)>>> {
+    ) -> eyre::Result<HashMap<u64, Vec<(Address, Protocol, Pair)>>> {
         let tx = self.ro_tx()?;
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
@@ -304,7 +301,7 @@ mod tests {
     pub fn protocols_created_at_block(
         &self,
         block_num: u64,
-    ) -> eyre::Result<Vec<(Address, StaticBindingsDb, Pair)>> {
+    ) -> eyre::Result<Vec<(Address, Protocol, Pair)>> {
         let tx = self.ro_tx()?;
         let binding_tx = self.ro_tx()?;
         let info_tx = self.ro_tx()?;

@@ -1,19 +1,21 @@
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 
+use brontes_pricing::{Protocol, SubGraphsEntry};
 use brontes_types::{
     db::{
         address_to_tokens::PoolTokens, cex::CexPriceMap, dex::DexQuoteWithIndex,
         metadata::MetadataInner, mev_block::MevBlockWithClassified,
-        pool_creation_block::PoolsToAddresses, subgraph::SubGraphsEntry,
+        pool_creation_block::PoolsToAddresses,
     },
-    exchanges::StaticBindingsDb,
     extra_processing::Pair,
 };
 use futures::StreamExt;
 use sorella_db_databases::Database;
 
+use crate::libmdbx::types::dex_price::DexKey;
+
 mod const_sql;
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::Address;
 use const_sql::*;
 use futures::Future;
 use paste::paste;
@@ -338,7 +340,7 @@ compressed_table!(
 
 compressed_table!(
     /// Address -> Static protocol enum
-    ( AddressToProtocol ) Address | StaticBindingsDb = True
+    ( AddressToProtocol ) Address | Protocol = True
 );
 
 compressed_table!(
@@ -353,7 +355,7 @@ compressed_table!(
 
 compressed_table!(
     /// block number concat tx idx -> cex quotes
-    ( DexPrice ) TxHash | LibmdbxDexQuoteWithIndex | DexQuoteWithIndex = False
+    ( DexPrice ) DexKey | LibmdbxDexQuoteWithIndex | DexQuoteWithIndex = False
 );
 
 compressed_table!(
@@ -373,7 +375,7 @@ compressed_table!(
 
 compressed_table!(
     /// address -> factory
-    ( AddressToFactory ) Address | StaticBindingsDb = True
+    ( AddressToFactory ) Address | Protocol = True
 );
 
 pub(crate) trait InitializeTable<'db, D>: CompressedTable + Sized + 'db
@@ -400,7 +402,7 @@ where
                 println!("{} OK", Self::NAME);
             }
 
-            let data = data?;
+            let data = data.unwrap_or(vec![]);
             println!("finished querying with {} entries", data.len());
             libmdbx.initialize_table(&data)
         })
