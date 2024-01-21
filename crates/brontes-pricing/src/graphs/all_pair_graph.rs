@@ -9,12 +9,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{
-    exchanges::Protocol,
-    extra_processing::Pair,
-    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
-    tree::Node,
-};
+use brontes_types::{extra_processing::Pair, tree::Node};
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use petgraph::{
@@ -29,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 use super::yens::yen;
+use crate::{PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
 
 const CAPACITY: usize = 650_000;
 

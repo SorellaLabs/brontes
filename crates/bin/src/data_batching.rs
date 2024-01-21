@@ -491,20 +491,13 @@ fn insert_mev_results(
 }
 
 fn insert_quotes(database: &Libmdbx, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
-    let mut data = quotes
+    let data = quotes
         .0
         .into_iter()
         .enumerate()
         .filter(|(_, v)| v.is_some())
-        .map(|(idx, value)| DexPriceData {
-            block_number: block_num,
-            tx_idx:       idx as u16,
-            quote:        DexQuote(value.unwrap()),
-        })
+        .map(|(idx, value)| DexPriceData::new(block_num, idx as u16, DexQuote(value.unwrap())))
         .collect::<Vec<_>>();
-
-    data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
-    data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
 
     database.update_db(|tx| {
         let mut cursor = tx.cursor_write::<DexPrice>()?;

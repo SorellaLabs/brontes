@@ -1,6 +1,6 @@
 use alloy_primitives::Address;
 use alloy_rlp::{RlpDecodable, RlpEncodable};
-use brontes_types::exchanges::Protocol;
+use brontes_pricing::Protocol;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
 

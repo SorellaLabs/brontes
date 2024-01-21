@@ -5,9 +5,8 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 pub mod initialize;
 
 use alloy_primitives::Address;
-use brontes_types::{
-    exchanges::Protocol, extra_processing::Pair, price_graph::SubGraphEdge,
-};
+use brontes_pricing::{Protocol, SubGraphEdge};
+use brontes_types::extra_processing::Pair;
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
@@ -28,8 +27,6 @@ pub mod implementation;
 pub use implementation::compressed_wrappers::*;
 pub mod tables;
 pub mod types;
-
-//const USDT_ADDRESS: &str = ;
 
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);

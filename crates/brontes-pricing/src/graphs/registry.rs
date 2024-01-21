@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
-use brontes_types::{exchanges::Protocol, extra_processing::Pair, price_graph::*};
+use brontes_types::extra_processing::Pair;
 use indexmap::set::Intersection;
 use itertools::Itertools;
 use malachite::{
@@ -14,7 +14,7 @@ use malachite::{
 use tracing::info;
 
 use super::{subgraph::PairSubGraph, PoolState};
-use crate::types::PoolUpdate;
+use crate::{price_graph_types::*, types::PoolUpdate, Protocol};
 
 /// stores all sub-graphs and supports the update mechanisms
 #[derive(Debug, Clone)]
