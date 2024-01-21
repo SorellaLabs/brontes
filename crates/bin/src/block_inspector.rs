@@ -137,11 +137,8 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
         }
 
         if let Some(mut inner) = self.composer_future.take() {
-            if let Poll::Ready(ComposerResults {
-                block_details,
-                mev_details,
-                possibly_missed_arbs,
-            }) = inner.poll_unpin(cx)
+            if let Poll::Ready(ComposerResults { block_details, mev_details, .. }) =
+                inner.poll_unpin(cx)
             {
                 info!(
                     target:"brontes",

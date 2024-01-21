@@ -1,45 +1,17 @@
-use std::{
-    env,
-    error::Error,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::Path,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{env, path::Path};
 
-use alloy_primitives::Address;
-use async_scoped::{Scope, TokioScope};
-use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::{
-    clickhouse::Clickhouse,
-    libmdbx::{
-        cursor::CompressedCursor,
-        tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
-        Libmdbx,
-    },
-};
-use brontes_inspect::{
-    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
-    sandwich::SandwichInspector, Inspector,
-};
-use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
+use brontes_database::libmdbx::{tables::AddressToProtocol, Libmdbx};
+use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
 use futures::stream::{FuturesUnordered, StreamExt};
 use itertools::Itertools;
-use metrics_process::Collector;
-use reth_db::mdbx::RO;
 use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
-use tracing::{error, info, Level};
-use tracing_subscriber::filter::Directive;
+use tracing::info;
 
 use super::{determine_max_tasks, get_env_vars, init_all_inspectors};
-use crate::{
-    runner::CliContext, Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT,
-};
+use crate::{runner::CliContext, DataBatching};
 
 #[derive(Debug, Parser)]
 pub struct DexPricingArgs {
@@ -140,7 +112,7 @@ impl DexPricingArgs {
             ));
         }
 
-        while let Some(task) = tasks.next().await {}
+        while let Some(_) = tasks.next().await {}
 
         info!("finnished running all batch , shutting down");
         Ok(())

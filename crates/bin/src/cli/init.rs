@@ -1,43 +1,11 @@
-use std::{
-    env,
-    error::Error,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::Path,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{env, sync::Arc};
 
-use alloy_primitives::Address;
-use async_scoped::{Scope, TokioScope};
-use brontes_classifier::Classifier;
-use brontes_core::decoding::Parser as DParser;
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{
-        cursor::CompressedCursor,
-        tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
-        Libmdbx,
-    },
+    libmdbx::{tables::Tables, Libmdbx},
 };
-use brontes_inspect::{
-    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
-    sandwich::SandwichInspector, Inspector,
-};
-use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
-use itertools::Itertools;
-use metrics_process::Collector;
-use reth_db::mdbx::RO;
-use reth_tracing_ext::TracingClient;
-use tokio::sync::mpsc::unbounded_channel;
-use tracing::{error, info, Level};
-use tracing_subscriber::filter::Directive;
 
-use crate::{
-    runner::CliContext, Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT,
-};
 #[derive(Debug, Parser)]
 pub struct Init {
     /// Initialize the local Libmdbx DB
