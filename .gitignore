@@ -24,3 +24,5 @@
 # Database and ABI builds
 data/db/
 abi-builds/
+data/mdbx.dat
+data/mdbx.lck
