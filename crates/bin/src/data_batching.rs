@@ -61,7 +61,8 @@ pub struct DataBatching<'db, T: TracingProvider + Clone> {
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
 
-    processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
+    processing_futures:
+        FuturesUnordered<Pin<Box<dyn Future<Output = Vec<(B256, u128)>> + Send + 'db>>>,
 
     current_block: u64,
     end_block:     u64,
@@ -335,7 +336,9 @@ impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
             self.classifier.close();
         }
         // poll insertion
-        while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
+        while let Poll::Ready(Some(missed_arbs)) = self.processing_futures.poll_next_unpin(cx) {
+            self.missed_mev_ops.extend(missed_arbs);
+        }
 
         // return condition
         if self.current_block == self.end_block
@@ -431,7 +434,7 @@ async fn process_results(
     inspectors: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<MetadataCombined>,
-) {
+) -> Vec<(B256, u128)> {
     let ComposerResults { block_details, mev_details, possibly_missed_arbs } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
 
@@ -440,6 +443,7 @@ async fn process_results(
     }
 
     insert_mev_results(db, block_details, mev_details);
+    possibly_missed_arbs
 }
 
 fn insert_mev_results(
