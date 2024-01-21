@@ -27,6 +27,7 @@ use brontes_inspect::{
 };
 use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
+use futures::stream::{FuturesUnordered, StreamExt};
 use itertools::Itertools;
 use metrics_process::Collector;
 use reth_db::mdbx::RO;
@@ -36,7 +37,9 @@ use tracing::{error, info, Level};
 use tracing_subscriber::filter::Directive;
 
 use super::{determine_max_tasks, get_env_vars, init_all_inspectors};
-use crate::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
+use crate::{
+    runner::CliContext, Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT,
+};
 
 #[derive(Debug, Parser)]
 pub struct DexPricingArgs {
@@ -56,41 +59,36 @@ pub struct DexPricingArgs {
     pub min_batch_size: u64,
 }
 impl DexPricingArgs {
-    pub async fn execute(self) -> Result<(), Box<dyn Error>> {
+    pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         assert!(self.start_block <= self.end_block);
         info!(?self);
 
         let db_path = get_env_vars()?;
-        let quote = self.quote_asset.parse()?;
+        let quote_asset = self.quote_asset.parse()?;
+
+        let task_executor = ctx.task_executor;
 
         let tracing_max_tasks = determine_max_tasks(self.max_tasks);
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
-        tokio::spawn(metrics_listener);
+        task_executor.spawn_critical("metrics listener", metrics_listener);
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let libmdbx =
             Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None)?)) as &'static Libmdbx;
 
-        let inspectors = init_all_inspectors(quote, libmdbx);
+        let inspectors = init_all_inspectors(quote_asset, libmdbx);
 
-        let (manager, tracer) = TracingClient::new(
-            Path::new(&db_path),
-            tokio::runtime::Handle::current(),
-            tracing_max_tasks,
-        );
+        let tracer =
+            TracingClient::new(Path::new(&db_path), tracing_max_tasks, task_executor.clone());
 
-        tokio::spawn(manager);
-
-        let parser = DParser::new(
+        let parser = &*Box::leak(Box::new(DParser::new(
             metrics_tx,
             &libmdbx,
             tracer,
             Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
-        );
-
-        let mut scope: TokioScope<'_, ()> = unsafe { Scope::create() };
+        )));
 
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 50% of physical threads of the system if not set
@@ -111,8 +109,9 @@ impl DexPricingArgs {
         // because these are lightweight tasks, we can stack them pretty easily without
         // much overhead concern
         let max_pool_loading_tasks = (remaining_cpus / chunks_amount + 1) * 3;
+        let mut tasks = FuturesUnordered::new();
 
-        for (i, mut chunk) in (self.start_block..=self.end_block)
+        for (batch_id, mut chunk) in (self.start_block..=self.end_block)
             .chunks(chunk_size.try_into().unwrap())
             .into_iter()
             .enumerate()
@@ -120,52 +119,30 @@ impl DexPricingArgs {
             let start_block = chunk.next().unwrap();
             let end_block = chunk.last().unwrap_or(start_block);
 
-            info!(batch_id = i, start_block, end_block, "starting batch");
-
-            scope.spawn(spawn_batches(
-                self.quote_asset.parse().unwrap(),
+            info!(batch_id, start_block, end_block, "starting batch");
+            let batch = DataBatching::new(
+                quote_asset,
                 max_pool_loading_tasks as usize,
-                i as u64,
+                batch_id as u64,
                 start_block,
                 end_block,
                 &parser,
-                libmdbx,
+                &libmdbx,
                 &inspectors,
+                task_executor.clone(),
+            );
+
+            tasks.push(task_executor.spawn_critical_with_graceful_shutdown_signal(
+                "pricing batch",
+                |grace| async move {
+                    batch.run_until_graceful_shutdown(grace).await;
+                },
             ));
         }
 
-        // collect and wait
-        scope.collect().await;
+        while let Some(task) = tasks.next().await {}
 
         info!("finnished running all batch , shutting down");
-        drop(scope);
-        std::thread::spawn(move || {
-            drop(parser);
-        });
-
         Ok(())
     }
-}
-
-async fn spawn_batches<'a>(
-    quote_asset: Address,
-    max_pool_loading_tasks: usize,
-    batch_id: u64,
-    start_block: u64,
-    end_block: u64,
-    parser: &DParser<'static, TracingClient>,
-    libmdbx: &'static Libmdbx,
-    inspectors: &[&'static Box<dyn Inspector>],
-) {
-    DataBatching::new(
-        quote_asset,
-        max_pool_loading_tasks,
-        batch_id,
-        start_block,
-        end_block,
-        &parser,
-        &libmdbx,
-        &inspectors,
-    )
-    .await
 }

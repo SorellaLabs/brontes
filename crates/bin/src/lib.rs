@@ -39,9 +39,10 @@ use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use tracing::info;
 
-mod banner;
+pub mod banner;
 mod block_inspector;
-mod cli;
+pub mod cli;
+pub mod runner;
 #[allow(unused_imports)]
 mod tip_inspector;
 
