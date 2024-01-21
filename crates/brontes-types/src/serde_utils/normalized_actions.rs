@@ -109,6 +109,17 @@ impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormal
     }
 }
 
+/// i.e. Sandwich: From <victim_tx_hashes, victim_swaps)
+impl From<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormalizedSwap {
+    fn from(value: (Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)) -> Self {
+        let tx_hashes = value.0.into_iter().flatten().collect_vec();
+        let swaps = value.1;
+
+        (tx_hashes, swaps).into()
+    }
+}
+
+#[derive(Default)]
 pub struct ClickhouseVecNormalizedMintOrBurn {
     pub trace_index: Vec<u64>,
     pub from:        Vec<FixedString>,
@@ -183,6 +194,97 @@ impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
                 .map(|val| val.amount.iter().map(|amt| amt.to_le_bytes()).collect_vec())
                 .collect(),
         }
+    }
+}
+
+#[derive(Default)]
+pub struct ClickhouseVecNormalizedMintOrBurnWithTxHash {
+    pub tx_hash:     Vec<FixedString>,
+    pub trace_index: Vec<u64>,
+    pub from:        Vec<FixedString>,
+    pub to:          Vec<FixedString>,
+    pub recipient:   Vec<FixedString>,
+    pub tokens:      Vec<Vec<FixedString>>,
+    pub amounts:     Vec<Vec<[u8; 32]>>,
+}
+
+// (tx_hashes, mints)
+impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)>
+    for ClickhouseVecNormalizedMintOrBurnWithTxHash
+{
+    fn from(value: (Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)) -> Self {
+        let mut this = ClickhouseVecNormalizedMintOrBurnWithTxHash::default();
+        value
+            .0
+            .into_iter()
+            .enumerate()
+            .filter_map(|(idx, tx_hash)| {
+                if let Some(mints) = &value.1[idx] {
+                    Some((tx_hash, mints.clone()))
+                } else {
+                    None
+                }
+            })
+            .map(|(tx_hash, mint)| {
+                let tx_hashes_repeated: Vec<FixedString> = vec![tx_hash]
+                    .repeat(mint.len())
+                    .into_iter()
+                    .map(|t| format!("{:?}", t).into())
+                    .collect();
+                let mut mint_db: ClickhouseVecNormalizedMintOrBurn = mint.into();
+                (tx_hashes_repeated, mint_db)
+            })
+            .for_each(|(tx_hashes_repeated, db_mint_with_tx)| {
+                this.tx_hash.extend(tx_hashes_repeated);
+                this.trace_index.extend(db_mint_with_tx.trace_index);
+                this.from.extend(db_mint_with_tx.from);
+                this.to.extend(db_mint_with_tx.to);
+                this.recipient.extend(db_mint_with_tx.recipient);
+                this.tokens.extend(db_mint_with_tx.tokens);
+                this.amounts.extend(db_mint_with_tx.amounts);
+            });
+
+        this
+    }
+}
+
+// (tx_hashes, burns)
+impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)>
+    for ClickhouseVecNormalizedMintOrBurnWithTxHash
+{
+    fn from(value: (Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)) -> Self {
+        let mut this = ClickhouseVecNormalizedMintOrBurnWithTxHash::default();
+        value
+            .0
+            .into_iter()
+            .enumerate()
+            .filter_map(|(idx, tx_hash)| {
+                if let Some(burns) = &value.1[idx] {
+                    Some((tx_hash, burns.clone()))
+                } else {
+                    None
+                }
+            })
+            .map(|(tx_hash, burn)| {
+                let tx_hashes_repeated: Vec<FixedString> = vec![tx_hash]
+                    .repeat(burn.len())
+                    .into_iter()
+                    .map(|t| format!("{:?}", t).into())
+                    .collect();
+                let mut burn_db: ClickhouseVecNormalizedMintOrBurn = burn.into();
+                (tx_hashes_repeated, burn_db)
+            })
+            .for_each(|(tx_hashes_repeated, db_burn_with_tx)| {
+                this.tx_hash.extend(tx_hashes_repeated);
+                this.trace_index.extend(db_burn_with_tx.trace_index);
+                this.from.extend(db_burn_with_tx.from);
+                this.to.extend(db_burn_with_tx.to);
+                this.recipient.extend(db_burn_with_tx.recipient);
+                this.tokens.extend(db_burn_with_tx.tokens);
+                this.amounts.extend(db_burn_with_tx.amounts);
+            });
+
+        this
     }
 }
 

@@ -19,7 +19,10 @@
 .env
 
 # Bench data
-/crates/brontes-database/benches/**/*.{parquet,dat,lck,version}
+/crates/brontes-database/benches/**/*.parquet
+/crates/brontes-database/benches/**/*.dat
+/crates/brontes-database/benches/**/*.lck
+/crates/brontes-database/benches/**/*.version
 
 # But not bindings.rs
 
