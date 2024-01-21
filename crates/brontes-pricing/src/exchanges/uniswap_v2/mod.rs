@@ -223,7 +223,7 @@ impl UniswapV2Pool {
         pool.populate_data(Some(block), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::PoolDataError)
+            return Err(AmmError::NoStateError(pair_addr))
         }
 
         Ok(pool)
