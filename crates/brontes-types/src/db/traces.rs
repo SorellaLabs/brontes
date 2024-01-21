@@ -1,46 +1,13 @@
 use alloy_rlp::{Decodable, Encodable};
-pub use brontes_types::extra_processing::Pair;
-use brontes_types::structured_trace::TxTrace;
 use bytes::BufMut;
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
-use reth_primitives::{Address, TxHash, U256};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
-use sorella_db_databases::{clickhouse, Row};
 
-use super::{
-    utils::{option_address, u256},
-    LibmdbxData,
-};
-use crate::tables::{Metadata, TxTracesDB};
+use crate::structured_trace::TxTrace;
 
-#[serde_as]
-#[derive(Debug, Clone, Row, Serialize, Deserialize)]
-pub struct TxTracesDBData {
-    pub block_number: u64,
-    //#[serde(flatten)]
-    pub inner:        TxTracesInner,
-}
-
-impl TxTracesDBData {
-    pub fn new(block_number: u64, inner: TxTracesInner) -> Self {
-        Self { block_number, inner }
-    }
-}
-
-impl LibmdbxData<TxTracesDB> for TxTracesDBData {
-    fn into_key_val(
-        &self,
-    ) -> (<TxTracesDB as reth_db::table::Table>::Key, <TxTracesDB as reth_db::table::Table>::Value)
-    {
-        (self.block_number, self.inner.clone())
-    }
-}
-
-#[serde_as]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct TxTracesInner {
     pub traces: Option<Vec<TxTrace>>,
