@@ -375,7 +375,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 StaticBindingsDb::AaveV2 => Box::new(AaveV2Classifier::default()),
                 StaticBindingsDb::AaveV3 => Box::new(AaveV3Classifier::default()),
                 StaticBindingsDb::UniswapX => Box::new(UniswapXClassifier::default()),
-                _ => unreachable!("no classifier"),
+                protocol => unreachable!("no classifier {:?}", protocol),
             };
 
             let calldata = trace.get_calldata();
