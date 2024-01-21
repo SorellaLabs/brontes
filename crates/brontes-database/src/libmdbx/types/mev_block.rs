@@ -125,6 +125,7 @@ pub struct LibmdbxMevBlock {
     pub proposer_mev_reward: Option<u128>,
     pub proposer_finalized_profit_usd: Option<f64>,
     pub cumulative_mev_finalized_profit_usd: f64,
+    pub possible_missed_arbs: Vec<Redefined_FixedBytes<32>>,
 }
 
 #[derive(

@@ -1,7 +1,5 @@
 //TODO: (Ludwig) Finish this once all other crates have been documented.
 
-//! # Brontes
-//!
 //! This is the main binary crate for the Brontes project. It uses several other
 //! crates in the workspace, which are documented separately:
 //!
@@ -39,8 +37,10 @@ use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use tracing::info;
 
-mod banner;
+pub mod banner;
 mod block_inspector;
+pub mod cli;
+pub mod runner;
 #[allow(unused_imports)]
 mod tip_inspector;
 

@@ -9,12 +9,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{
-    exchanges::StaticBindingsDb,
-    extra_processing::Pair,
-    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
-    tree::Node,
-};
+use brontes_types::{extra_processing::Pair, tree::Node};
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use petgraph::{
@@ -29,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 use super::yens::yen;
+use crate::{PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
 
 const CAPACITY: usize = 650_000;
 
@@ -41,7 +37,7 @@ pub struct AllPairGraph {
 }
 
 impl AllPairGraph {
-    pub fn init_from_hashmap(all_pool_data: HashMap<(Address, StaticBindingsDb), Pair>) -> Self {
+    pub fn init_from_hashmap(all_pool_data: HashMap<(Address, Protocol), Pair>) -> Self {
         let mut graph =
             UnGraph::<(), Vec<PoolPairInformation>, usize>::with_capacity(CAPACITY / 2, CAPACITY);
 
@@ -98,7 +94,7 @@ impl AllPairGraph {
         &mut self,
         pool_pair: Pair,
         pool_addr: Address,
-    ) -> Option<(Address, StaticBindingsDb, Pair)> {
+    ) -> Option<(Address, Protocol, Pair)> {
         let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return None };
         let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return None };
 
@@ -118,7 +114,7 @@ impl AllPairGraph {
         Some((bad_pool.pool_addr, bad_pool.dex_type, pool_pair))
     }
 
-    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
+    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: Protocol) {
         let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
 
         let node_0 = *self

@@ -2,7 +2,7 @@ use std::{collections::HashMap, ops::Deref};
 
 use alloy_primitives::{Address, TxHash};
 use brontes_core::{
-    decoding::TracingProvider, missing_decimals::MissingDecimals, BlockTracesWithHeaderAnd,
+    decoding::TracingProvider, missing_decimals::load_missing_decimals, BlockTracesWithHeaderAnd,
     TraceLoader, TraceLoaderError, TxTracesWithHeaderAnd,
 };
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
@@ -154,7 +154,7 @@ impl ClassifierTestUtils {
 
         let mut pricer = self.crate_dex_pricer(block, None, quote_asset, rx).await?;
         let (decimals, tree) = classifier.build_block_tree(vec![trace], header).await;
-        MissingDecimals::new(
+        load_missing_decimals(
             self.get_provider(),
             self.libmdbx,
             block,
@@ -189,7 +189,7 @@ impl ClassifierTestUtils {
                         .build_block_tree(block_info.traces, block_info.header)
                         .await;
 
-                    MissingDecimals::new(
+                    load_missing_decimals(
                         self.get_provider(),
                         self.libmdbx,
                         block_info.block,
@@ -229,7 +229,7 @@ impl ClassifierTestUtils {
             let (decimals, tree) = classifier
                 .build_block_tree(block_info.traces, block_info.header)
                 .await;
-            MissingDecimals::new(
+            load_missing_decimals(
                 self.get_provider(),
                 self.libmdbx,
                 block_info.block,
@@ -283,7 +283,7 @@ impl ClassifierTestUtils {
 
         let mut pricer = self.crate_dex_pricer(block, None, quote_asset, rx).await?;
         let (decimals, tree) = classifier.build_block_tree(traces, header).await;
-        MissingDecimals::new(
+        load_missing_decimals(
             self.get_provider(),
             self.libmdbx,
             block,

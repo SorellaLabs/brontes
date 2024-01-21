@@ -1,26 +1,31 @@
 use std::{
     cmp::max,
     collections::HashMap,
+    fs::File,
+    io::Write,
     pin::Pin,
-    str::FromStr,
     sync::Arc,
     task::{Context, Poll},
 };
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
-    missing_decimals::MissingDecimals,
+    missing_decimals::load_missing_decimals,
 };
 use brontes_database::libmdbx::{
     tables::{CexPrice, DexPrice, Metadata, MevBlocks},
     types::{dex_price::DexPriceData, mev_block::MevBlocksData, LibmdbxData},
     Libmdbx,
 };
-use brontes_inspect::{composer::Composer, Inspector};
+use brontes_inspect::{
+    composer::{compose_mev_results, ComposerResults},
+    Inspector,
+};
 use brontes_pricing::{BrontesBatchPricer, GraphManager};
 use brontes_types::{
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         cex::{CexPriceMap, CexQuote},
@@ -33,11 +38,14 @@ use brontes_types::{
     structured_trace::TxTrace,
     tree::BlockTree,
 };
-use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
+use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_db::DatabaseError;
 use reth_primitives::Header;
-use tokio::task::JoinHandle;
-use tracing::{debug, error, info};
+use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tracing::{debug, error, info, warn};
+
+const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";
 
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
@@ -49,7 +57,8 @@ pub struct DataBatching<'db, T: TracingProvider + Clone> {
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
 
-    processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
+    processing_futures:
+        FuturesUnordered<Pin<Box<dyn Future<Output = Vec<(B256, u128)>> + Send + 'db>>>,
 
     current_block: u64,
     end_block:     u64,
@@ -57,6 +66,8 @@ pub struct DataBatching<'db, T: TracingProvider + Clone> {
 
     libmdbx:    &'static Libmdbx,
     inspectors: &'db [&'db Box<dyn Inspector>],
+
+    missed_mev_ops: Vec<(B256, u128)>,
 }
 
 impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
@@ -69,6 +80,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         parser: &'db Parser<'db, T>,
         libmdbx: &'static Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>],
+        task_executor: TaskExecutor,
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
@@ -108,7 +120,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             rest_pairs,
         );
 
-        let pricer = WaitingForPricerFuture::new(pricer);
+        let pricer = WaitingForPricerFuture::new(pricer, task_executor);
 
         Self {
             collection_future: None,
@@ -121,7 +133,45 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             batch_id,
             libmdbx,
             inspectors,
+            missed_mev_ops: vec![],
         }
+    }
+
+    pub async fn run_until_graceful_shutdown(self, shutdown: GracefulShutdown) {
+        let data_batching = self;
+        pin_mut!(data_batching, shutdown);
+
+        let mut graceful_guard = None;
+        tokio::select! {
+            _= &mut data_batching => {
+
+            },
+            guard = shutdown => {
+                graceful_guard = Some(guard);
+            },
+        }
+        let mut data = std::mem::take(&mut data_batching.missed_mev_ops);
+
+        data.sort_by(|a, b| b.1.cmp(&a.1));
+        let path_str =
+            format!("{POSSIBLE_MISSED_MEV_RESULT_FOLDER}/batch-{}", data_batching.batch_id);
+        let path = std::path::Path::new(&path_str);
+        let _ = std::fs::create_dir_all(POSSIBLE_MISSED_MEV_RESULT_FOLDER);
+
+        let mut file = File::create(path).unwrap();
+
+        let data = data
+            .into_iter()
+            .map(|(arb, _)| format!("{arb:?}"))
+            .fold(String::new(), |acc, arb| acc + &arb + "\n");
+
+        if file.write_all(&data.into_bytes()).is_err() {
+            error!("failed to write possible missed arbs to folder")
+        }
+
+        while let Some(_) = data_batching.processing_futures.next().await {}
+
+        drop(graceful_guard);
     }
 
     fn on_parser_resolve(
@@ -135,7 +185,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         Box::pin(async move {
             let number = header.number;
             let (extra, tree) = classifier.build_block_tree(traces, header).await;
-            MissingDecimals::new(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
+            load_missing_decimals(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
 
             (tree, meta)
         })
@@ -164,7 +214,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: MetadataCombined) {
         info!(target:"brontes","dex pricing finished");
-        self.processing_futures.push(Box::pin(ResultProcessing::new(
+        self.processing_futures.push(Box::pin(process_results(
             self.libmdbx,
             self.inspectors,
             tree.into(),
@@ -179,35 +229,31 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
-        let db_cex_quotes: CexPriceMap = tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
         /*
-                let db_cex_quotes: CexPriceMap = match tx
+                let db_cex_quotes: CexPriceMap = tx
                     .get::<CexPrice>(block_num)?
-                    .ok_or_else(|| reth_db::DatabaseError::Read(-1))
-                {
-                    Ok(map) => map,
-                    Err(e) => {
-                        warn!(target:"brontes","failed to read CexPrice db table for block {} -- {:?}", block_num, e);
-                        CexPriceMap::default()
-                    }
-                };
+                    .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
         */
-        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
-            Address::from_str(WETH_ADDRESS).unwrap(),
-            Address::from_str(USDT_ADDRESS).unwrap(),
-        )) {
-            eth_usdt
-        } else {
-            db_cex_quotes
-                .get_quote(&Pair(
-                    Address::from_str(WETH_ADDRESS).unwrap(),
-                    Address::from_str(USDC_ADDRESS).unwrap(),
-                ))
-                .unwrap_or_default()
+
+        let db_cex_quotes: CexPriceMap = match tx
+            .get::<CexPrice>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))
+        {
+            Ok(map) => map,
+            Err(e) => {
+                warn!(target:"brontes","failed to read CexPrice db table for block {} -- {:?}", block_num, e);
+                CexPriceMap::default()
+            }
         };
+
+        let eth_prices =
+            if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
+                eth_usdt
+            } else {
+                db_cex_quotes
+                    .get_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
+                    .unwrap_or_default()
+            };
 
         let mut cex_quotes = CexPriceMap::new();
         db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
@@ -245,76 +291,85 @@ impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // poll pricer
-        if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
-            if meta.block_num == self.end_block {
-                info!(
-                    batch_id = self.batch_id,
-                    end_block = self.end_block,
-                    "batch finished completed"
-                );
+        let mut work = 256;
+        loop {
+            // poll pricer
+            if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
+                if meta.block_num == self.end_block {
+                    info!(
+                        batch_id = self.batch_id,
+                        end_block = self.end_block,
+                        "batch finished completed"
+                    );
+                }
+
+                self.on_price_finish(tree, meta);
             }
 
-            self.on_price_finish(tree, meta);
-        }
-
-        // progress collection future,
-        if let Some(mut future) = self.collection_future.take() {
-            if let Poll::Ready((tree, meta)) = future.poll_unpin(cx) {
-                debug!("built tree");
-                let block = self.current_block;
-                self.pricer.add_pending_inspection(block, tree, meta);
-            } else {
-                self.collection_future = Some(future);
+            // progress collection future,
+            if let Some(mut future) = self.collection_future.take() {
+                if let Poll::Ready((tree, meta)) = future.poll_unpin(cx) {
+                    debug!("built tree");
+                    let block = self.current_block;
+                    self.pricer.add_pending_inspection(block, tree, meta);
+                } else {
+                    self.collection_future = Some(future);
+                }
+            } else if self.current_block != self.end_block {
+                self.current_block += 1;
+                self.start_next_block();
             }
-        } else if self.current_block != self.end_block {
-            self.current_block += 1;
-            self.start_next_block();
-        }
 
-        // If we have reached end block and there is only 1 pending tree left,
-        // send the close message to indicate to the dex pricer that it should
-        // return. This will spam it till the pricer closes but this is needed as it
-        // could take multiple polls until the pricing is done for the final
-        // block.
-        if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
-            self.classifier.close();
-        }
-        // poll insertion
-        while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
+            // If we have reached end block and there is only 1 pending tree left,
+            // send the close message to indicate to the dex pricer that it should
+            // return. This will spam it till the pricer closes but this is needed as it
+            // could take multiple polls until the pricing is done for the final
+            // block.
+            if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
+                self.classifier.close();
+            }
+            // poll insertion
+            while let Poll::Ready(Some(missed_arbs)) = self.processing_futures.poll_next_unpin(cx) {
+                self.missed_mev_ops.extend(missed_arbs);
+            }
 
-        // return condition
-        if self.current_block == self.end_block
-            && self.collection_future.is_none()
-            && self.processing_futures.is_empty()
-            && self.pricer.is_done()
-        {
-            return Poll::Ready(())
-        }
+            // return condition
+            if self.current_block == self.end_block
+                && self.collection_future.is_none()
+                && self.processing_futures.is_empty()
+                && self.pricer.is_done()
+            {
+                return Poll::Ready(())
+            }
 
-        cx.waker().wake_by_ref();
-        Poll::Pending
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
+            }
+        }
     }
 }
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
-    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+    receiver: Receiver<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+    tx:       Sender<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+
     pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataNoDex)>,
+    task_executor: TaskExecutor,
 }
 
 impl<T: TracingProvider> WaitingForPricerFuture<T> {
-    pub fn new(mut pricer: BrontesBatchPricer<T>) -> Self {
-        let future = Box::pin(async move {
+    pub fn new(mut pricer: BrontesBatchPricer<T>, task_executor: TaskExecutor) -> Self {
+        let (tx, rx) = channel(2);
+        let tx_clone = tx.clone();
+        let fut = Box::pin(async move {
             let res = pricer.next().await;
-            (pricer, res)
+            tx_clone.try_send((pricer, res)).unwrap();
         });
 
-        let rt_handle = tokio::runtime::Handle::current();
-        let move_handle = rt_handle.clone();
-
-        let handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
-
-        Self { handle, pending_trees: HashMap::default() }
+        task_executor.spawn_critical("dex pricer", fut);
+        Self { pending_trees: HashMap::default(), task_executor, tx, receiver: rx }
     }
 
     pub fn is_done(&self) -> bool {
@@ -322,15 +377,13 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
     }
 
     fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
-        let future = Box::pin(async move {
+        let tx = self.tx.clone();
+        let fut = Box::pin(async move {
             let res = pricer.next().await;
-            (pricer, res)
+            tx.try_send((pricer, res)).unwrap();
         });
 
-        let rt_handle = tokio::runtime::Handle::current();
-        let move_handle = rt_handle.clone();
-
-        self.handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
+        self.task_executor.spawn_critical("dex pricer", fut);
     }
 
     pub fn add_pending_inspection(
@@ -350,7 +403,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
     type Item = (BlockTree<Actions>, MetadataCombined);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if let Poll::Ready(handle) = self.handle.poll_unpin(cx) {
+        if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
             let (pricer, inner) = handle.unwrap();
             self.resechedule(pricer);
 
@@ -373,112 +426,96 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
     }
 }
 
-// takes the composer + db and will process data and insert it into libmdx
-pub struct ResultProcessing<'db> {
-    database: &'db Libmdbx,
-    composer: Composer<'db>,
-}
+async fn process_results(
+    db: &Libmdbx,
+    inspectors: &[&Box<dyn Inspector>],
+    tree: Arc<BlockTree<Actions>>,
+    metadata: Arc<MetadataCombined>,
+) -> Vec<(B256, u128)> {
+    let ComposerResults { block_details, mev_details, possibly_missed_arbs } =
+        compose_mev_results(inspectors, tree, metadata.clone()).await;
 
-impl<'db> ResultProcessing<'db> {
-    pub fn new(
-        db: &'db Libmdbx,
-        inspectors: &'db [&'db Box<dyn Inspector>],
-        tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<MetadataCombined>,
-    ) -> Self {
-        let composer = Composer::new(inspectors, tree, meta_data.clone());
-        let this = Self { database: db, composer };
-
-        if let Err(e) =
-            this.insert_quotes(meta_data.block_num.clone(), meta_data.dex_quotes.clone())
-        {
-            tracing::error!(err=?e, block_num=meta_data.block_num, "failed to insert dex pricing and state into db");
-        }
-
-        this
+    if let Err(e) = insert_quotes(db, metadata.block_num.clone(), metadata.dex_quotes.clone()) {
+        tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
     }
 
-    pub fn insert_quotes(&self, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
-        let mut data = quotes
-            .0
-            .into_iter()
-            .enumerate()
-            .filter(|(_, v)| v.is_some())
-            .map(|(idx, value)| DexPriceData {
-                block_number: block_num,
-                tx_idx:       idx as u16,
-                quote:        DexQuote(value.unwrap()),
+    insert_mev_results(db, block_details, mev_details);
+    possibly_missed_arbs
+}
+
+fn insert_mev_results(
+    database: &Libmdbx,
+    block_details: MevBlock,
+    mev_details: Vec<(ClassifiedMev, SpecificMev)>,
+) {
+    info!(
+        target:"brontes",
+        "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
+         ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
+         {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- Builder \
+         ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer Fee \
+         Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized Profit (USD): \
+        {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n- Possibly Missed Mev:\n{}",
+        block_details.block_number,
+        block_details.mev_count,
+        block_details.finalized_eth_price,
+        block_details.cumulative_gas_used,
+        block_details.cumulative_gas_paid,
+        block_details.total_bribe,
+        block_details.cumulative_mev_priority_fee_paid,
+        block_details.builder_address,
+        block_details.builder_eth_profit,
+        block_details.builder_finalized_profit_usd,
+        block_details
+            .proposer_fee_recipient
+            .unwrap_or(Address::ZERO),
+        block_details
+            .proposer_mev_reward
+            .map_or("None".to_string(), |v| v.to_string()),
+        block_details
+            .proposer_finalized_profit_usd
+            .map_or("None".to_string(), |v| format!("{:.2}", v)),
+        block_details.cumulative_mev_finalized_profit_usd,
+    block_details
+        .possible_missed_arbs
+        .iter()
+        .map(|arb| format!("https://etherscan.io/tx/{arb:?}"))
+        .fold(String::new(), |acc, arb| acc + &arb + "\n")
+    );
+
+    let data = MevBlocksData {
+        block_number: block_details.block_number,
+        mev_blocks:   MevBlockWithClassified { block: block_details, mev: mev_details },
+    };
+
+    if database
+        .write_table::<MevBlocks, MevBlocksData>(&vec![data])
+        .is_err()
+    {
+        error!("failed to insert classified data into libmdx");
+    }
+}
+
+fn insert_quotes(database: &Libmdbx, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
+    let data = quotes
+        .0
+        .into_iter()
+        .enumerate()
+        .filter(|(_, v)| v.is_some())
+        .map(|(idx, value)| DexPriceData::new(block_num, idx as u16, DexQuote(value.unwrap())))
+        .collect::<Vec<_>>();
+
+    database.update_db(|tx| {
+        let mut cursor = tx.cursor_write::<DexPrice>()?;
+
+        data.into_iter()
+            .map(|entry| {
+                let (key, val) = entry.into_key_val();
+                cursor.upsert(key, val)?;
+                Ok(())
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, DatabaseError>>()
+    })??;
 
-        data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
-        data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
-
-        self.database.update_db(|tx| {
-            let mut cursor = tx.cursor_write::<DexPrice>()?;
-
-            data.into_iter()
-                .map(|entry| {
-                    let (key, val) = entry.into_key_val();
-                    cursor.upsert(key, val)?;
-                    Ok(())
-                })
-                .collect::<Result<Vec<_>, DatabaseError>>()
-        })??;
-
-        Ok(())
-    }
-}
-
-impl Future for ResultProcessing<'_> {
-    type Output = ();
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
-            info!(
-                target:"brontes",
-                "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
-                 ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
-                 {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- Builder \
-                 ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer Fee \
-                 Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized Profit (USD): \
-                 {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n",
-                block_details.block_number,
-                block_details.mev_count,
-                block_details.finalized_eth_price,
-                block_details.cumulative_gas_used,
-                block_details.cumulative_gas_paid,
-                block_details.total_bribe,
-                block_details.cumulative_mev_priority_fee_paid,
-                block_details.builder_address,
-                block_details.builder_eth_profit,
-                block_details.builder_finalized_profit_usd,
-                block_details
-                    .proposer_fee_recipient
-                    .unwrap_or(Address::ZERO),
-                block_details
-                    .proposer_mev_reward
-                    .map_or("None".to_string(), |v| v.to_string()),
-                block_details
-                    .proposer_finalized_profit_usd
-                    .map_or("None".to_string(), |v| format!("{:.2}", v)),
-                block_details.cumulative_mev_finalized_profit_usd
-            );
-
-            let data = MevBlocksData {
-                block_number: block_details.block_number,
-                mev_blocks:   MevBlockWithClassified { block: block_details, mev: mev_details },
-            };
-            if self
-                .database
-                .write_table::<MevBlocks, MevBlocksData>(&vec![data])
-                .is_err()
-            {
-                error!("failed to insert classified data into libmdx");
-            }
-
-            return Poll::Ready(())
-        }
-        Poll::Pending
-    }
+    Ok(())
 }
