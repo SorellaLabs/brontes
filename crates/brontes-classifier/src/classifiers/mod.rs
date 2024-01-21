@@ -31,5 +31,13 @@ discovery_dispatch!(
     SushiSwapV2Decoder,
     SushiSwapV3Decoder,
     UniswapV2Decoder,
-    UniswapV3Decoder
+    UniswapV3Decoder,
+    CurveV1MetapoolBaseDecoder,
+    CurveV1MetapoolMetaDecoder,
+    CurveV2MetapoolBaseDecoder,
+    CurveV2MetapoolMetaDecoder0,
+    CurveV2MetapoolMetaDecoder1,
+    CurveV2MetapoolPlainDecoder0,
+    CurveV2MetapoolPlainDecoder1,
+    CurveV2MetapoolPlainDecoder2
 );

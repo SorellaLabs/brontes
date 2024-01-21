@@ -1,62 +1,73 @@
-use core::panic;
-
-use proc_macro::TokenStream;
-use proc_macro2::Literal;
+use proc_macro2::{Literal, Span, TokenStream};
 use quote::quote;
 use syn::{parse::Parse, ExprClosure, Ident, Index, Path, Token};
 
-pub fn discovery_impl(token_stream: TokenStream) -> TokenStream {
+pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     let MacroParse { decoder_name, function_call_path, factory_address, address_call_function } =
-        syn::parse2(token_stream.into()).unwrap();
+        syn::parse2(token_stream.into())?;
 
-    assert_address(&factory_address);
+    is_proper_address(&factory_address)?;
     let stripped_address = &factory_address.to_string()[2..];
     let decoder_name_str = decoder_name.to_string();
+    let mod_name = Ident::new(&format!("{}_mod", decoder_name_str), decoder_name.span());
 
-    quote! (
-        use #function_call_path;
+    Ok(quote! (
+        pub use #mod_name::#decoder_name;
+        #[allow(non_snake_case)]
+        mod #mod_name {
+            use #function_call_path;
+            use super::*;
 
-        #[derive(Debug, Default)]
-        pub struct #decoder_name;
+            #[derive(Debug, Default)]
+            pub struct #decoder_name;
 
-        impl crate::FactoryDecoder for #decoder_name {
-            fn address_and_function_selector(&self) -> [u8; 24] {
-                let mut result = [0u8; 24];
-                result[0..20].copy_from_slice(&::alloy_primitives::hex!(#stripped_address));
-                result[20..].copy_from_slice(&<#function_call_path
-                                             as ::alloy_sol_types::SolCall>::SELECTOR);
+            impl crate::FactoryDecoder for #decoder_name {
+                fn address_and_function_selector(&self) -> [u8; 24] {
+                    let mut result = [0u8; 24];
+                    result[0..20].copy_from_slice(&::alloy_primitives::hex!(#stripped_address));
+                    result[20..].copy_from_slice(&<#function_call_path
+                                                 as ::alloy_sol_types::SolCall>::SELECTOR);
 
-                result
-            }
+                    result
+                }
 
-            fn decode_new_pool (
-                &self,
-                deployed_address: ::alloy_primitives::Address,
-                parent_calldata: ::alloy_primitives::Bytes,
-            ) -> Vec<::brontes_pricing::types::DiscoveredPool> {
-                let Ok(decoded_data) = <#function_call_path
-                    as ::alloy_sol_types::SolCall>::abi_decode(&parent_calldata[..], false)
-                    else {
-                        ::tracing::error!("{} failed to decode calldata", #decoder_name_str);
-                        return Vec::new();
-                };
-                (#address_call_function)(deployed_address, decoded_data)
+                fn decode_new_pool<T: ::brontes_types::traits::TracingProvider>(
+                    &self,
+                    tracer: ::std::sync::Arc<T>,
+                    deployed_address: ::alloy_primitives::Address,
+                    parent_calldata: ::alloy_primitives::Bytes,
+                ) -> impl ::std::future::Future<Output = Vec<::brontes_pricing::types::DiscoveredPool>> + Send {
+                    async move {
+                        let Ok(decoded_data) = <#function_call_path
+                            as ::alloy_sol_types::SolCall>::abi_decode(&parent_calldata[..], false)
+                            else {
+                                ::tracing::error!("{} failed to decode calldata", #decoder_name_str);
+                                return Vec::new();
+                        };
+                        (#address_call_function)(deployed_address, decoded_data, tracer).await
+                    }
+                }
             }
         }
-    )
-    .into()
+    ))
 }
 
-fn assert_address(possible_address: &Literal) -> bool {
+fn is_proper_address(possible_address: &Literal) -> syn::Result<()> {
     let stred = possible_address.to_string();
     if !stred.starts_with("0x") {
-        panic!("given factory address is invalid. Needs to start with 0x");
+        return Err(syn::Error::new(
+            possible_address.span(),
+            "given factory address is invalid. Needs to start with 0x",
+        ));
     }
     if stred.len() != 42 {
-        panic!("given factory address length is incorrect");
+        return Err(syn::Error::new(
+            possible_address.span(),
+            format!("given factory address length is incorrect got: {} wanted: 40", stred.len()),
+        ));
     }
 
-    true
+    Ok(())
 }
 
 struct MacroParse {
@@ -70,9 +81,13 @@ struct MacroParse {
 
 impl Parse for MacroParse {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let decoder_name: Ident = input.parse()?;
+        let decoder_name: Ident = input
+            .parse()
+            .map_err(|e| syn::Error::new(e.span(), "Failed to parse decoder name"))?;
         input.parse::<Token![,]>()?;
-        let function_call_path: Path = input.parse()?;
+        let function_call_path: Path = input
+            .parse()
+            .map_err(|e| syn::Error::new(e.span(), "Failed to parse path to function call"))?;
         input.parse::<Token![,]>()?;
         let factory_address: Literal = input.parse()?;
         input.parse::<Token![,]>()?;
@@ -89,8 +104,8 @@ impl Parse for MacroParse {
     }
 }
 
-pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
-    let DiscoveryDispatch { struct_name, rest } = syn::parse2(input.into()).unwrap();
+pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
+    let DiscoveryDispatch { struct_name, rest } = syn::parse2(input.into())?;
 
     let (mut i, name): (Vec<Index>, Vec<Ident>) = rest
         .into_iter()
@@ -100,51 +115,55 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
 
     i.remove(0);
 
-    quote!(
+    Ok(quote!(
         #[derive(Default, Debug)]
         pub struct #struct_name(#(pub #name,)*);
 
         impl crate::FactoryDecoderDispatch for #struct_name {
-            fn dispatch(
+            fn dispatch<T: ::brontes_types::traits::TracingProvider>(
+                    tracer: ::std::sync::Arc<T>,
                     factory: ::alloy_primitives::Address,
                     deployed_address: ::alloy_primitives::Address,
                     parent_calldata: ::alloy_primitives::Bytes,
-                ) -> Vec<::brontes_pricing::types::DiscoveredPool> {
-                if parent_calldata.len() < 4 {
-                    ::tracing::warn!(?deployed_address, ?factory, "invalid calldata length");
-                    return Vec::new()
-                }
-
-                let mut key = [0u8; 24];
-                key[0..20].copy_from_slice(&**factory);
-                key[0..4].copy_from_slice(&parent_calldata[0..4]);
-
-
-                let this = Self::default();
-
-                if key == crate::FactoryDecoder::address_and_function_selector(&this.0) {
-                    return
-                        crate::FactoryDecoder::decode_new_pool(
-                            &this.0,
-                            deployed_address,
-                            parent_calldata,
-                        )
-                }
-
-                #( else if key == crate::FactoryDecoder::address_and_function_selector(&this.#i) {
-                        return crate::FactoryDecoder::decode_new_pool(
-                            &this.#i,
-                            deployed_address,
-                            parent_calldata,
-                        )
+                ) -> impl ::std::future::Future<Output = Vec<::brontes_pricing::types::DiscoveredPool>> + Send  {
+                async move {
+                    if parent_calldata.len() < 4 {
+                        ::tracing::warn!(?deployed_address, ?factory, "invalid calldata length");
+                        return Vec::new()
                     }
-                )*
 
-                Vec::new()
+                    let mut key = [0u8; 24];
+                    key[0..20].copy_from_slice(&**factory);
+                    key[0..4].copy_from_slice(&parent_calldata[0..4]);
+
+
+                    let this = Self::default();
+
+                    if key == crate::FactoryDecoder::address_and_function_selector(&this.0) {
+                        return
+                            crate::FactoryDecoder::decode_new_pool(
+                                &this.0,
+                                tracer,
+                                deployed_address,
+                                parent_calldata,
+                            ).await
+                    }
+
+                    #( else if key == crate::FactoryDecoder::address_and_function_selector(&this.#i) {
+                            return crate::FactoryDecoder::decode_new_pool(
+                                &this.#i,
+                                tracer,
+                                deployed_address,
+                                parent_calldata,
+                            ).await
+                        }
+                    )*
+
+                    Vec::new()
+                }
             }
         }
-    )
-    .into()
+    ))
 }
 
 struct DiscoveryDispatch {
@@ -160,7 +179,10 @@ impl Parse for DiscoveryDispatch {
             rest.push(input.parse::<Ident>()?);
         }
         if !input.is_empty() {
-            panic!("unkown characters")
+            return Err(syn::Error::new(
+                Span::call_site(),
+                "no discovery implementations to dispatch to",
+            ));
         }
 
         Ok(Self { rest, struct_name })
