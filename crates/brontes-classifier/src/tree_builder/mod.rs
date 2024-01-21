@@ -453,6 +453,8 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         let from_address = trace.get_from_addr();
         let _target_address = trace.get_to_address();
 
+        let created_addr = trace.get_create_output();
+
         // get the immediate parent node of this create action so that we can decode the
         // deployment function params
         let _node_data = match root_head {
