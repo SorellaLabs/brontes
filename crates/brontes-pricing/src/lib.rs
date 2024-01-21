@@ -1,6 +1,6 @@
 #![allow(unused)]
 #![feature(noop_waker)]
-pub mod exchanges;
+pub mod protocols;
 pub mod types;
 
 #[cfg(test)]
@@ -21,9 +21,9 @@ use brontes_types::{
     traits::TracingProvider,
 };
 use ethers::core::k256::elliptic_curve::bigint::Zero;
-use exchanges::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
-pub use exchanges::*;
+pub use protocols::*;
 pub use graphs::{AllPairGraph, GraphManager};
+use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 mod graphs;
@@ -360,23 +360,27 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
         } else if let LoadResult::Err { pool_address, pool_pair, block } = load_result {
-            self.lazy_loader
-                .remove_protocol_parents(&pool_address)
-                .into_iter()
-                .for_each(|parent_pair| {
-                    let (re_query, bad_state) =
-                        self.graph_manager
-                            .bad_pool_state(parent_pair, pool_pair, pool_address);
-
-                    if re_query {
-                        self.re_queue_bad_pair(parent_pair, block);
-                    }
-
-                    if let Some((address, protocol, pair)) = bad_state {
-                        self.new_graph_pairs.insert(address, (protocol, pair));
-                    }
-                });
+            self.on_state_load_error(pool_pair, pool_address, block);
         }
+    }
+
+    fn on_state_load_error(&mut self, pool_pair: Pair, pool_address: Address, block: u64) {
+        self.lazy_loader
+            .remove_protocol_parents(&pool_address)
+            .into_iter()
+            .for_each(|parent_pair| {
+                let (re_query, bad_state) =
+                    self.graph_manager
+                        .bad_pool_state(parent_pair, pool_pair, pool_address);
+
+                if re_query {
+                    self.re_queue_bad_pair(parent_pair, block);
+                }
+
+                if let Some((address, protocol, pair)) = bad_state {
+                    self.new_graph_pairs.insert(address, (protocol, pair));
+                }
+            });
     }
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
