@@ -3,6 +3,10 @@ use proc_macro::{Span, TokenStream};
 use quote::quote;
 use syn::{bracketed, parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
 
+//TODO: Remove need for writing out args that are always passed in the closure
+// like: from_address, target_address, index
+// Allow for passing a default config struct for optional args
+
 pub fn action_impl(token_stream: TokenStream) -> TokenStream {
     let MacroParse {
         exchange_name,
@@ -258,7 +262,7 @@ pub fn action_impl(token_stream: TokenStream) -> TokenStream {
         }
         (false, false, false) => {
             quote!(
-                (#call_function)(index, from_address, target_address,msg_sender, db_tx)
+                (#call_function)(index, from_address, target_address, msg_sender, db_tx)
             )
         }
     };
@@ -299,10 +303,12 @@ struct MacroParse {
     exchange_name: Ident,
     action_type:   Ident,
     // (sometimes, ignore, ident)
+    // TODO: could make optional
     log_types:     Vec<(bool, bool, Ident)>,
     call_type:     Ident,
 
-    /// for call data decoding
+    /// alloy sol! generated mod for call data decoding
+    //TODO: better name
     exchange_mod_name: Ident,
     /// wether we want logs or not
     give_logs:         bool,
@@ -455,7 +461,11 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
     let ActionDispatch { struct_name, rest } = syn::parse2(input.into()).unwrap();
 
     if rest.is_empty() {
-        panic!("need more than one entry");
+        // Generate a compile_error! invocation as part of the output TokenStream
+        return quote! {
+            compile_error!("need more than one entry");
+        }
+        .into();
     }
 
     let (mut i, name): (Vec<Index>, Vec<Ident>) = rest
