@@ -4,9 +4,9 @@ use brontes_pricing::types::DiscoveredPool;
 use brontes_types::exchanges::StaticBindingsDb;
 
 discovery_impl!(
-    UniswapV2Decoder,
+    SushiSwapV2Decoder,
     crate::UniswapV2Factory::createPairCall,
-    0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f,
+    0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac,
     |deployed_address: Address, call_data: createPairCall, _| async move {
         let token_a = call_data.tokenA;
         let token_b = call_data.tokenB;
@@ -14,15 +14,15 @@ discovery_impl!(
         vec![DiscoveredPool::new(
             vec![token_a, token_b],
             deployed_address,
-            StaticBindingsDb::UniswapV2,
+            StaticBindingsDb::SushiSwapV2,
         )]
     }
 );
 
 discovery_impl!(
-    UniswapV3Decoder,
+    SushiSwapV3Decoder,
     crate::UniswapV3Factory::createPoolCall,
-    0x1F98431c8aD98523631AE4a59f267346ea31F984,
+    0xbACEB8eC6b9355Dfc0269C18bac9d6E2Bdc29C4F,
     |deployed_address: Address, call_data: createPoolCall, _| async move {
         let token_a = call_data.tokenA;
         let token_b = call_data.tokenB;
@@ -30,7 +30,7 @@ discovery_impl!(
         vec![DiscoveredPool::new(
             vec![token_a, token_b],
             deployed_address,
-            StaticBindingsDb::UniswapV3,
+            StaticBindingsDb::SushiSwapV3,
         )]
     }
 );

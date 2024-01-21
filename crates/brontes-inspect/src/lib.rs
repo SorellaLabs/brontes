@@ -1,5 +1,3 @@
-//! # Brontes Inspect Crate
-//!
 //! The `brontes_inspect` crate is designed to efficiently detect and analyze
 //! MEV. Emphasizing modularity and ease of use, this crate provides a robust
 //! foundation for developing custom inspectors, streamlining the process of MEV
