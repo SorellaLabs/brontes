@@ -24,7 +24,7 @@ use itertools::Itertools;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error};
+use tracing::error;
 use tree_pruning::{
     account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
@@ -461,7 +461,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         };
 
         let Some(calldata) = node_data.data.get_calldata() else {
-            error!(block, tx_idx, "parent call had no calldata");
             return (vec![], Actions::Unclassified(trace));
         };
 
