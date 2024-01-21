@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{collections::VecDeque, fmt::Debug};
 
 use alloy_primitives::Address;
 use dyn_clone::DynClone;
@@ -304,19 +304,43 @@ pub fn compose_sandwich_jit(
         classified_sandwich.expect("Expected Classified MEV data for Sandwich");
     let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
 
+    let mut frontrun_mints: Vec<Option<Vec<NormalizedMint>>> =
+        vec![None; sandwich.frontrun_tx_hash.len()];
+    frontrun_mints
+        .iter_mut()
+        .enumerate()
+        .for_each(|(idx, mint)| {
+            if &sandwich.frontrun_tx_hash[idx] == &jit.frontrun_mint_tx_hash {
+                *mint = Some(jit.frontrun_mints.clone())
+            }
+        });
+
+    let mut backrun_burns: Vec<Option<Vec<NormalizedBurn>>> =
+        vec![None; sandwich.frontrun_tx_hash.len()];
+    backrun_burns
+        .iter_mut()
+        .enumerate()
+        .for_each(|(idx, mint)| {
+            if &sandwich.frontrun_tx_hash[idx] == &jit.backrun_burn_tx_hash {
+                *mint = Some(jit.backrun_burns.clone())
+            }
+        });
+
+    // sandwich.frontrun_swaps
+
     // Combine data from Sandwich and JitLiquidity into JitLiquiditySandwich
     let jit_sand = JitLiquiditySandwich {
-        frontrun_tx_hash:         sandwich.frontrun_tx_hash,
-        frontrun_swaps:           sandwich.frontrun_swaps,
-        frontrun_mints:           jit.frontrun_mints,
-        frontrun_gas_details:     sandwich.frontrun_gas_details,
-        victim_swaps_tx_hashes:   sandwich.victim_swaps_tx_hashes,
-        victim_swaps:             sandwich.victim_swaps,
+        frontrun_tx_hash: sandwich.frontrun_tx_hash.clone(),
+        frontrun_swaps: sandwich.frontrun_swaps,
+        frontrun_mints,
+        frontrun_gas_details: sandwich.frontrun_gas_details,
+        victim_swaps_tx_hashes: sandwich.victim_swaps_tx_hashes,
+        victim_swaps: sandwich.victim_swaps,
         victim_swaps_gas_details: sandwich.victim_swaps_gas_details,
-        backrun_tx_hash:          sandwich.backrun_tx_hash,
-        backrun_swaps:            sandwich.backrun_swaps,
-        backrun_burns:            jit.backrun_burns,
-        backrun_gas_details:      sandwich.backrun_gas_details,
+        backrun_tx_hash: sandwich.backrun_tx_hash,
+        backrun_swaps: sandwich.backrun_swaps,
+        backrun_burns,
+        backrun_gas_details: sandwich.backrun_gas_details,
     };
 
     let sandwich_rev =
@@ -327,11 +351,7 @@ pub fn compose_sandwich_jit(
     // Create new classified MEV data
     let new_classified = ClassifiedMev {
         mev_tx_index:         classified_sandwich.mev_tx_index,
-        tx_hash:              sandwich
-            .frontrun_tx_hash
-            .get(0)
-            .cloned()
-            .unwrap_or_default(),
+        tx_hash:              *sandwich.frontrun_tx_hash.get(0).unwrap_or_default(),
         mev_type:             MevType::JitSandwich,
         block_number:         classified_sandwich.block_number,
         eoa:                  jit_classified.eoa,
@@ -388,7 +408,7 @@ impl Mev for Sandwich {
 pub struct JitLiquiditySandwich {
     pub frontrun_tx_hash:     Vec<B256>,
     pub frontrun_swaps:       Vec<Vec<NormalizedSwap>>,
-    pub frontrun_mints:       Vec<NormalizedMint>,
+    pub frontrun_mints:       Vec<Option<Vec<NormalizedMint>>>,
     pub frontrun_gas_details: Vec<GasDetails>,
 
     pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
@@ -398,7 +418,7 @@ pub struct JitLiquiditySandwich {
     // Similar to frontrun fields, backrun fields are also vectors to handle multiple transactions.
     pub backrun_tx_hash:     Vec<B256>,
     pub backrun_swaps:       Vec<Vec<NormalizedSwap>>,
-    pub backrun_burns:       Vec<NormalizedBurn>,
+    pub backrun_burns:       Vec<Option<Vec<NormalizedBurn>>>,
     pub backrun_gas_details: Vec<GasDetails>,
 }
 
