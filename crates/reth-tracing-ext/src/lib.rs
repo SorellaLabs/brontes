@@ -1,6 +1,6 @@
 use std::{fmt::Debug, path::Path, sync::Arc};
 
-use alloy_primitives::Log;
+use alloy_primitives::{Log, B256};
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
@@ -32,14 +32,12 @@ use reth_rpc_types::{
     trace::parity::{TransactionTrace, *},
     TransactionInfo,
 };
-use reth_tasks::TaskManager;
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use revm::interpreter::InstructionResult;
 use revm_primitives::{ExecutionResult, SpecId};
-use tokio::runtime::Handle;
 
 mod provider;
 
@@ -64,10 +62,7 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, handle: Handle, max_tasks: u64) -> (TaskManager, Self) {
-        let task_manager = TaskManager::new(handle);
-        let task_executor: reth_tasks::TaskExecutor = task_manager.executor();
-
+    pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
         let chain = MAINNET.clone();
         let db = Arc::new(init_db(db_path).unwrap());
         let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain));
@@ -136,7 +131,7 @@ impl TracingClient {
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        (task_manager, Self { api, trace, filter })
+        Self { api, trace, filter }
     }
 
     /// Replays all transactions in a block
@@ -190,7 +185,7 @@ impl TracingInspectorLocal {
     pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
         let gas_used = res.gas_used().into();
 
-        let trace = self.build_trace();
+        let trace = self.build_trace(info.hash.unwrap(), info.block_number.unwrap());
 
         TxTrace {
             trace: trace.unwrap_or_default(),
@@ -215,7 +210,11 @@ impl TracingInspectorLocal {
     /// the state diff, since this requires access to the account diffs.
     ///
     /// See [Self::into_trace_results_with_state] and [populate_state_diff].
-    pub fn build_trace(&self) -> Option<Vec<TransactionTraceWithLogs>> {
+    pub fn build_trace(
+        &self,
+        tx_hash: B256,
+        block_number: u64,
+    ) -> Option<Vec<TransactionTraceWithLogs>> {
         if self.traces.nodes().is_empty() {
             return None
         }
@@ -235,15 +234,21 @@ impl TracingInspectorLocal {
 
             let msg_sender = if let Action::Call(c) = &trace.action {
                 if c.call_type == CallType::DelegateCall {
-                    let prev_trace = traces
-                        .iter()
-                        .rev()
-                        .find(|n| {
-                            let Action::Call(c) = &n.trace.action else { return false };
-                            c.call_type != CallType::DelegateCall
-                        })
-                        .unwrap();
-                    prev_trace.msg_sender
+                    if let Some(prev_trace) = traces.iter().rev().find(|n| match &n.trace.action {
+                        Action::Call(c) => c.call_type != CallType::DelegateCall,
+                        Action::Create(_) => true,
+                        _ => false,
+                    }) {
+                        prev_trace.msg_sender
+                    } else {
+                        tracing::error!(
+                            target: "reth-tracing-ext",
+                            ?block_number,
+                            ?tx_hash,
+                            "couldn't find head of delegate call for block"
+                        );
+                        panic!("should never be reached");
+                    }
                 } else {
                     match &trace.action {
                         Action::Call(call) => call.from,

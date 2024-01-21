@@ -1,26 +1,27 @@
 pub mod uniswap;
-pub use uniswap::{UniswapDecoder, UniswapV2Classifier, UniswapV3Classifier, UniswapXClassifier};
+pub use uniswap::*;
 
 pub mod sushiswap;
-pub use sushiswap::{SushiSwapV2Classifier, SushiSwapV3Classifier};
+pub use sushiswap::*;
 
 pub mod curve;
-pub use curve::{CurveCryptoSwapClassifier, CurveDecoder};
+pub use curve::*;
 
 pub mod aave;
-pub use aave::{AaveV2Classifier, AaveV3Classifier};
-
-#[macro_export]
-macro_rules! enum_unwrap {
-    ($data:ident, $exchange:ident, $return:ident) => {{
-        paste::paste! {
-            match $data {
-                crate::StaticReturnBindings::$exchange(val) => match val {
-                    crate::$exchange::[<$exchange Calls>]::[<$return>](inner) => inner,
-                    _ => unreachable!(),
-                },
-                _ => unreachable!(),
-            }
-        }
-    }};
-}
+pub use aave::*;
+use brontes_macros::discovery_dispatch;
+discovery_dispatch!(
+    DiscoveryProtocols,
+    SushiSwapV2Decoder,
+    SushiSwapV3Decoder,
+    UniswapV2Decoder,
+    UniswapV3Decoder,
+    CurveV1MetapoolBaseDecoder,
+    CurveV1MetapoolMetaDecoder,
+    CurveV2MetapoolBaseDecoder,
+    CurveV2MetapoolMetaDecoder0,
+    CurveV2MetapoolMetaDecoder1,
+    CurveV2MetapoolPlainDecoder0,
+    CurveV2MetapoolPlainDecoder1,
+    CurveV2MetapoolPlainDecoder2
+);
