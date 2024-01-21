@@ -239,19 +239,20 @@ impl TracingInspectorLocal {
 
             let msg_sender = if let Action::Call(c) = &trace.action {
                 if c.call_type == CallType::DelegateCall {
-                    if let Some(prev_trace) = traces.iter().rev().find(|n| {
-                        let Action::Call(c) = &n.trace.action else { return false };
-                        c.call_type != CallType::DelegateCall
+                    if let Some(prev_trace) = traces.iter().rev().find(|n| match &n.trace.action {
+                        Action::Call(c) => c.call_type != CallType::DelegateCall,
+                        Action::Create(_) => true,
+                        _ => false,
                     }) {
                         prev_trace.msg_sender
                     } else {
                         tracing::error!(
-                            target: "brontes",
+                            target: "reth-tracing-ext",
                             ?block_number,
                             ?tx_hash,
                             "couldn't find head of delegate call for block"
                         );
-                        c.from
+                        panic!("should never be reached");
                     }
                 } else {
                     match &trace.action {
