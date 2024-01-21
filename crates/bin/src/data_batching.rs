@@ -11,7 +11,7 @@ use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
-    missing_decimals::MissingDecimals,
+    missing_decimals::load_missing_decimals,
 };
 use brontes_database::libmdbx::{
     tables::{CexPrice, DexPrice, Metadata, MevBlocks},
@@ -136,7 +136,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         Box::pin(async move {
             let number = header.number;
             let (extra, tree) = classifier.build_block_tree(traces, header).await;
-            MissingDecimals::new(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
+            load_missing_decimals(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
 
             (tree, meta)
         })

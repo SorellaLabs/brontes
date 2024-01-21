@@ -9,7 +9,7 @@ use std::{
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
-    missing_decimals::MissingDecimals,
+    missing_decimals::load_missing_decimals,
 };
 use brontes_database::{
     clickhouse::Clickhouse,
@@ -81,7 +81,7 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
             let block = header.number;
             let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
 
-            MissingDecimals::new(
+            load_missing_decimals(
                 self.parser.get_tracer(),
                 self.database,
                 block,
