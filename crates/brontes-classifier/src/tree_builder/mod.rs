@@ -94,7 +94,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 tree.insert_root(root_data.root);
                 root_data.pool_updates.into_iter().for_each(|update| {
                     self.pricing_update_sender.send(update).unwrap();
-                    error!("pricing update channel closed unexpectedly");
                 });
                 (root_data.further_classification_requests, root_data.missing_data_requests)
             })
