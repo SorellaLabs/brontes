@@ -76,7 +76,10 @@ fn main() {
     let brontes_directive: Directive = format!("brontes={}", Level::INFO).parse().unwrap();
     let tracing_directive: Directive = format!("reth-tracing-ext={}", Level::INFO).parse().unwrap();
 
-    let layers = vec![brontes_tracing::stdout(brontes_directive), brontes_tracing::stdout(tracing_directive)];
+    let layers = vec![
+        brontes_tracing::stdout(tracing_directive),
+        brontes_tracing::stdout(brontes_directive),
+    ];
 
     //let subscriber =
     // Registry::default().with(tracing_subscriber::fmt::layer().
