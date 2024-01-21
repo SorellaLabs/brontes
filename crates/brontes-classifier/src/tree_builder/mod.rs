@@ -444,8 +444,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         trace: TransactionTraceWithLogs,
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
-        info!("detected create has_root_head: {}",root_head.is_some());
-
         let from_address = trace.get_from_addr();
         let created_addr = trace.get_create_output();
 
