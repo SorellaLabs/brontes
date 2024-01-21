@@ -204,66 +204,114 @@ pub trait Mev:
 
 dyn_clone::clone_trait_object!(Mev);
 
+/// Represents various MEV sandwich attack strategies, including standard
+/// sandwiches and more complex variations like the "Big Mac Sandwich."
+///
+/// The `Sandwich` struct is designed to be versatile, accommodating a range of
+/// sandwich attack scenarios. While a standard sandwich attack typically
+/// involves a single frontrunning and backrunning transaction around a victim's
+/// trade, more complex variations can involve multiple frontrunning and
+/// backrunning transactions targeting several victims with different slippage
+/// tolerances.
+///
+/// The structure of this struct is generalized to support these variations. For
+/// example, the "Big Mac Sandwich" is one such complex scenario where a bot
+/// exploits multiple victims in a sequence of transactions, each with different
+/// slippage tolerances. This struct can capture the details of both simple and
+/// complex sandwich strategies, making it a comprehensive tool for MEV
+/// analysis.
+///
+/// Example of a Complex Sandwich Attack ("Big Mac Sandwich") Transaction
+/// Sequence:
+/// - Frontrun Tx 1: [Etherscan Link](https://etherscan.io/tx/0x2a187ed5ba38cc3b857726df51ce99ee6e29c9bcaa02be1a328f99c3783b3303)
+/// - Victim 1: [Etherscan Link](https://etherscan.io/tx/0x7325392f41338440f045cb1dba75b6099f01f8b00983e33cc926eb27aacd7e2d)
+/// - Frontrun 2: [Etherscan Link](https://etherscan.io/tx/0xbcb8115fb54b7d6b0a0b0faf6e65fae02066705bd4afde70c780d4251a771428)
+/// - Victim 2: [Etherscan Link](https://etherscan.io/tx/0x0b428553bc2ccc8047b0da46e6c1c1e8a338d9a461850fcd67ddb233f6984677)
+/// - Backrun: [Etherscan Link](https://etherscan.io/tx/0xfb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d)
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct Sandwich {
-    pub frontrun_tx_hash:         B256,
-    pub frontrun_swaps:           Vec<NormalizedSwap>,
-    pub frontrun_gas_details:     GasDetails,
-    pub victim_swaps_tx_hashes:   Vec<B256>,
+    /// Transaction hashes of the frontrunning transactions.
+    /// Supports multiple transactions for complex sandwich scenarios.
+    pub frontrun_tx_hash:         Vec<B256>,
+    /// Swaps executed in each frontrunning transaction.
+    /// Nested vectors represent multiple swaps within each transaction.
+    pub frontrun_swaps:           Vec<Vec<NormalizedSwap>>,
+    /// Gas details for each frontrunning transaction.
+    pub frontrun_gas_details:     Vec<GasDetails>,
+    /// Transaction hashes of the victim transactions, logically grouped by
+    /// their corresponding frontrunning transaction. Each outer vector
+    /// index corresponds to a frontrun transaction, grouping victims targeted
+    /// by that specific frontrun.
+    pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
+    /// Swaps executed by victims, grouped to align with corresponding
+    /// frontrunning transactions.
     pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
+    /// Gas details for each victim transaction.
     pub victim_swaps_gas_details: Vec<GasDetails>,
-    pub backrun_tx_hash:          B256,
-    pub backrun_swaps:            Vec<NormalizedSwap>,
-    pub backrun_gas_details:      GasDetails,
+    /// Transaction hashes of the backrunning transactions.
+    pub backrun_tx_hash:          Vec<B256>,
+    /// Swaps executed in each backrunning transaction.
+    pub backrun_swaps:            Vec<Vec<NormalizedSwap>>,
+    /// Gas details for each backrunning transaction.
+    pub backrun_gas_details:      Vec<GasDetails>,
 }
-
-//TODO: Potentially requires clean up later
 pub fn compose_sandwich_jit(
     mev: Vec<(ClassifiedMev, SpecificMev)>,
 ) -> (ClassifiedMev, SpecificMev) {
-    let mut sandwich: Sandwich = Sandwich::default();
-    let mut jit: JitLiquidity = JitLiquidity::default();
-    let mut classified_sandwich: ClassifiedMev = ClassifiedMev::default();
-    let mut jit_classified: ClassifiedMev = ClassifiedMev::default();
+    let mut sandwich: Option<Sandwich> = None;
+    let mut jit: Option<JitLiquidity> = None;
+    let mut classified_sandwich: Option<ClassifiedMev> = None;
+    let mut jit_classified: Option<ClassifiedMev> = None;
 
     for (classified, mev_data) in mev {
         match mev_data {
             SpecificMev::Sandwich(s) => {
-                sandwich = s;
-                classified_sandwich = classified;
+                sandwich = Some(s);
+                classified_sandwich = Some(classified);
             }
             SpecificMev::Jit(j) => {
-                jit = j;
-                jit_classified = classified;
+                jit = Some(j);
+                jit_classified = Some(classified);
             }
             _ => unreachable!(),
         }
     }
 
-    let jit_sand = JitLiquiditySandwich {
-        frontrun_tx_hash:     sandwich.frontrun_tx_hash,
-        frontrun_gas_details: sandwich.frontrun_gas_details,
+    let sandwich = sandwich.expect("Expected Sandwich MEV data");
+    let jit = jit.expect("Expected JIT MEV data");
+    let classified_sandwich =
+        classified_sandwich.expect("Expected Classified MEV data for Sandwich");
+    let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
 
-        backrun_tx_hash:          sandwich.backrun_tx_hash,
-        backrun_gas_details:      sandwich.backrun_gas_details,
+    // Combine data from Sandwich and JitLiquidity into JitLiquiditySandwich
+    let jit_sand = JitLiquiditySandwich {
+        frontrun_tx_hash:         sandwich.frontrun_tx_hash,
         frontrun_swaps:           sandwich.frontrun_swaps,
         frontrun_mints:           jit.frontrun_mints,
+        frontrun_gas_details:     sandwich.frontrun_gas_details,
         victim_swaps_tx_hashes:   sandwich.victim_swaps_tx_hashes,
         victim_swaps:             sandwich.victim_swaps,
         victim_swaps_gas_details: sandwich.victim_swaps_gas_details,
+        backrun_tx_hash:          sandwich.backrun_tx_hash,
         backrun_swaps:            sandwich.backrun_swaps,
         backrun_burns:            jit.backrun_burns,
+        backrun_gas_details:      sandwich.backrun_gas_details,
     };
 
     let sandwich_rev =
         classified_sandwich.finalized_bribe_usd + classified_sandwich.finalized_profit_usd;
-    let jit_rev = classified_sandwich.finalized_bribe_usd + jit_classified.finalized_profit_usd;
+    let jit_rev = jit_classified.finalized_bribe_usd + jit_classified.finalized_profit_usd;
     let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.finalized_bribe_usd;
 
-    let new_classifed = ClassifiedMev {
+    // Create new classified MEV data
+    let new_classified = ClassifiedMev {
         mev_tx_index:         classified_sandwich.mev_tx_index,
-        tx_hash:              sandwich.frontrun_tx_hash,
+        tx_hash:              sandwich
+            .frontrun_tx_hash
+            .get(0)
+            .cloned()
+            .unwrap_or_default(),
         mev_type:             MevType::JitSandwich,
         block_number:         classified_sandwich.block_number,
         eoa:                  jit_classified.eoa,
@@ -273,7 +321,7 @@ pub fn compose_sandwich_jit(
         finalized_profit_usd: jit_liq_profit,
     };
 
-    (new_classifed, jit_sand.into())
+    (new_classified, SpecificMev::JitSandwich(jit_sand))
 }
 
 impl Mev for Sandwich {
@@ -282,33 +330,56 @@ impl Mev for Sandwich {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_gas_details.gas_paid() + self.backrun_gas_details.gas_paid()
+        self.frontrun_gas_details
+            .iter()
+            .map(|gd| gd.gas_paid())
+            .sum::<u128>()
+            + self
+                .backrun_gas_details
+                .iter()
+                .map(|gd| gd.gas_paid())
+                .sum::<u128>()
     }
 
+    // Should always be on the backrun, but you never know
     fn bribe(&self) -> u128 {
-        self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
-            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)
+        self.frontrun_gas_details
+            .iter()
+            .filter_map(|gd| gd.coinbase_transfer)
+            .sum::<u128>()
+            + self
+                .backrun_gas_details
+                .iter()
+                .filter_map(|gd| gd.coinbase_transfer)
+                .sum::<u128>()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        vec![self.frontrun_tx_hash, self.backrun_tx_hash]
+        self.frontrun_tx_hash
+            .iter()
+            .chain(self.backrun_tx_hash.iter())
+            .cloned()
+            .collect()
     }
 }
 
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct JitLiquiditySandwich {
-    pub frontrun_tx_hash:         B256,
-    pub frontrun_swaps:           Vec<NormalizedSwap>,
-    pub frontrun_mints:           Vec<NormalizedMint>,
-    pub frontrun_gas_details:     GasDetails,
-    pub victim_swaps_tx_hashes:   Vec<B256>,
+    pub frontrun_tx_hash:     Vec<B256>,
+    pub frontrun_swaps:       Vec<Vec<NormalizedSwap>>,
+    pub frontrun_mints:       Vec<NormalizedMint>,
+    pub frontrun_gas_details: Vec<GasDetails>,
+
+    pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
     pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
     pub victim_swaps_gas_details: Vec<GasDetails>,
-    pub backrun_tx_hash:          B256,
-    pub backrun_swaps:            Vec<NormalizedSwap>,
-    pub backrun_burns:            Vec<NormalizedBurn>,
-    pub backrun_gas_details:      GasDetails,
+
+    // Similar to frontrun fields, backrun fields are also vectors to handle multiple transactions.
+    pub backrun_tx_hash:     Vec<B256>,
+    pub backrun_swaps:       Vec<Vec<NormalizedSwap>>,
+    pub backrun_burns:       Vec<NormalizedBurn>,
+    pub backrun_gas_details: Vec<GasDetails>,
 }
 
 impl Mev for JitLiquiditySandwich {
@@ -317,16 +388,36 @@ impl Mev for JitLiquiditySandwich {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_gas_details.gas_paid() + self.backrun_gas_details.gas_paid()
+        self.frontrun_gas_details
+            .iter()
+            .map(|gd| gd.gas_paid())
+            .sum::<u128>()
+            + self
+                .backrun_gas_details
+                .iter()
+                .map(|gd| gd.gas_paid())
+                .sum::<u128>()
     }
 
+    // Should always be on the backrun, but you never know
     fn bribe(&self) -> u128 {
-        self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
-            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)
+        self.frontrun_gas_details
+            .iter()
+            .filter_map(|gd| gd.coinbase_transfer)
+            .sum::<u128>()
+            + self
+                .backrun_gas_details
+                .iter()
+                .filter_map(|gd| gd.coinbase_transfer)
+                .sum::<u128>()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        vec![self.frontrun_tx_hash, self.backrun_tx_hash]
+        self.frontrun_tx_hash
+            .iter()
+            .chain(self.backrun_tx_hash.iter())
+            .cloned()
+            .collect()
     }
 }
 
