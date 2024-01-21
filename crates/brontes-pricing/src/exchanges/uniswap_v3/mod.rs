@@ -652,37 +652,6 @@ impl AutomatedMarketMaker for UniswapV3Pool {
 }
 
 impl UniswapV3Pool {
-    // #[allow(clippy::too_many_arguments)]
-    // pub fn new(
-    //     address: Address,
-    //     token_a: Address,
-    //     token_a_decimals: u8,
-    //     token_b: Address,
-    //     token_b_decimals: u8,
-    //     fee: u32,
-    //     liquidity: u128,
-    //     sqrt_price: U256,
-    //     tick: i32,
-    //     tick_spacing: i32,
-    //     tick_bitmap: HashMap<i16, U256>,
-    //     ticks: HashMap<i32, Info>,
-    // ) -> UniswapV3Pool {
-    //     UniswapV3Pool {
-    //         address,
-    //         token_a,
-    //         token_a_decimals,
-    //         token_b,
-    //         token_b_decimals,
-    //         fee,
-    //         liquidity,
-    //         sqrt_price,
-    //         tick,
-    //         tick_spacing,
-    //         tick_bitmap,
-    //         ticks,
-    //     }
-    // }
-
     // Creates a new instance of the pool from the pair address
     pub async fn new_from_address<M: 'static + TracingProvider>(
         pair_address: Address,
@@ -714,7 +683,7 @@ impl UniswapV3Pool {
         pool.populate_data(Some(block_number), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::PoolDataError)
+            return Err(AmmError::NoStateError(pair_address))
         }
 
         Ok(pool)

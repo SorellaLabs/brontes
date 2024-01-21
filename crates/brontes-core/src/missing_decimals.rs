@@ -9,7 +9,7 @@ use brontes_database::libmdbx::{
 use futures::{future::join, stream::FuturesUnordered, Future, StreamExt};
 use reth_provider::ProviderError;
 use reth_rpc_types::{CallInput, CallRequest};
-use tracing::{error, info};
+use tracing::{debug, error, warn};
 
 use crate::decoding::TracingProvider;
 
@@ -53,12 +53,12 @@ impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
         if let Ok(res) = res {
             let Some(dec) = decimalsCall::abi_decode_returns(&res, false).ok() else { return };
             let dec = dec._0;
-            info!(?dec, ?addr, "got new decimal");
+            debug!(?dec, ?addr, "got new decimal");
             if let Err(e) = self.insert_decimals(addr, dec) {
-                error!(?e);
+                error!(?e, "failed to insert missing decimals into libmdbx");
             }
         } else {
-            info!(?addr, "Token request failed for token");
+            warn!(?addr, "Token request failed for token");
         }
     }
 

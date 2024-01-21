@@ -239,8 +239,8 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     let res = LazyResult { block, state: Some(state), load_result: load };
                     Poll::Ready(Some(res))
                 }
-                Ok(Err((pool_address, dex, block, pool_pair, e))) => {
-                    error!(?pool_address, %e,"failed to load pool, most likely pool never had state");
+                Ok(Err((pool_address, dex, block, pool_pair, err))) => {
+                    error!(%err, ?pool_address,"lazy load failed");
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
