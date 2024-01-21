@@ -158,6 +158,8 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                             ).await
                         }
                     )*
+                    ::tracing::info!(?factory, ?deployed_address, "no match for");
+
 
                     Vec::new()
                 }
