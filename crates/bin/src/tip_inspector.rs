@@ -16,7 +16,7 @@ use brontes_database::{
     libmdbx::{tables::MevBlocks, types::mev_block::MevBlocksData, Libmdbx},
 };
 use brontes_inspect::{
-    composer::{Composer, ComposerResults},
+    composer::{compose_mev_results, ComposerResults},
     Inspector,
 };
 use brontes_types::{
@@ -122,8 +122,11 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
                 let meta_data = meta_data.into_finalized_metadata(DexQuotes(vec![]));
                 //TODO: wire in the dex pricing task here
 
-                self.composer_future =
-                    Some(Box::pin(Composer::new(self.inspectors, tree.into(), meta_data.into())));
+                self.composer_future = Some(Box::pin(compose_mev_results(
+                    self.inspectors,
+                    tree.into(),
+                    meta_data.into(),
+                )));
             }
             Poll::Pending => return,
             Poll::Ready(None) => return,
