@@ -28,10 +28,7 @@
 //! // Future execution of the composer to process MEV data
 //! ```
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::B256;
 use brontes_types::classified_mev::Mev;
@@ -52,7 +49,13 @@ use utils::{
 
 use crate::Inspector;
 
-pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, SpecificMev)>);
+#[derive(Debug)]
+pub struct ComposerResults {
+    pub block_details:        MevBlock,
+    pub mev_details:          Vec<(ClassifiedMev, SpecificMev)>,
+    /// all txes with coinbase.transfers that weren't classified
+    pub possibly_missed_arbs: Vec<(B256, u128)>,
+}
 
 pub async fn compose_mev_results(
     orchestra: &[&Box<dyn Inspector>],
@@ -63,14 +66,19 @@ pub async fn compose_mev_results(
     let (possibly_missed_arbs, classified_mev) =
         run_inspectors(orchestra, tree, metadata.clone()).await;
 
-    on_orchestra_resolution(pre_processing, possibly_missed_arbs, metadata, classified_mev)
+    let possible_arbs = possibly_missed_arbs.clone();
+    let (possibly_missed_arbs, _): (Vec<_>, Vec<_>) = possibly_missed_arbs.into_iter().unzip();
+
+    let (block_details, mev_details) =
+        on_orchestra_resolution(pre_processing, possibly_missed_arbs, metadata, classified_mev);
+    ComposerResults { block_details, mev_details, possibly_missed_arbs: possible_arbs }
 }
 
 async fn run_inspectors(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
     meta_data: Arc<MetadataCombined>,
-) -> (Vec<B256>, Vec<(ClassifiedMev, SpecificMev)>) {
+) -> (Vec<(B256, u128)>, Vec<(ClassifiedMev, SpecificMev)>) {
     let mut scope: TokioScope<'_, Vec<(ClassifiedMev, SpecificMev)>> = unsafe { Scope::create() };
     orchestra
         .iter()
@@ -80,8 +88,8 @@ async fn run_inspectors(
         .tx_roots
         .iter()
         .filter(|r| r.gas_details.coinbase_transfer.is_some())
-        .map(|r| r.tx_hash)
-        .collect::<HashSet<_>>();
+        .map(|r| (r.tx_hash, r.gas_details.gas_paid()))
+        .collect::<HashMap<_, _>>();
 
     let results = scope
         .collect()
@@ -107,7 +115,7 @@ fn on_orchestra_resolution(
     possibly_missed_arbs: Vec<B256>,
     metadata: Arc<MetadataCombined>,
     orchestra_data: Vec<(ClassifiedMev, SpecificMev)>,
-) -> ComposerResults {
+) -> (MevBlock, Vec<(ClassifiedMev, SpecificMev)>) {
     let mut header =
         build_mev_header(metadata.clone(), &pre_processing, possibly_missed_arbs, &orchestra_data);
 
