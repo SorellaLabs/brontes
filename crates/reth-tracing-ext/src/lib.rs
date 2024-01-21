@@ -246,6 +246,7 @@ impl TracingInspectorLocal {
                         prev_trace.msg_sender
                     } else {
                         tracing::error!(
+                            target: "brontes",
                             ?block_number,
                             ?tx_hash,
                             "couldn't find head of delegate call for block"
