@@ -95,28 +95,22 @@ pub trait IntoAction: Debug + Send + Sync {
 }
 
 pub trait FactoryDecoder {
-    fn get_signature(&self) -> [u8; 32];
+    /// is concat(factory_address, function_selector);
+    fn address_and_function_selector(&self) -> [u8; 24];
 
-    #[allow(unused)]
-    fn decode_new_pool<T: TracingProvider>(
+    fn decode_new_pool(
         &self,
-        node_handle: Arc<T>,
-        protocol: StaticBindingsDb,
-        logs: &Vec<Log>,
-        block_number: u64,
-        tx_hash: B256,
-    ) -> impl Future<Output = Vec<DiscoveredPool>> + Send;
+        deployed_address: Address,
+        parent_calldata: Bytes,
+    ) -> Vec<DiscoveredPool>;
 }
 
 pub trait FactoryDecoderDispatch: Sync + Send {
-    fn dispatch<T: TracingProvider>(
-        sig: [u8; 32],
-        node_handle: Arc<T>,
-        protocol: StaticBindingsDb,
-        logs: &Vec<Log>,
-        block_number: u64,
-        tx_hash: B256,
-    ) -> impl Future<Output = Vec<DiscoveredPool>> + Send;
+    fn dispatch(
+        factory: Address,
+        deployed_address: Address,
+        parent_calldata: Bytes,
+    ) -> Vec<DiscoveredPool>;
 }
 
 lazy_static! {

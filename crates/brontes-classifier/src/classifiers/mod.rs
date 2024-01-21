@@ -1,14 +1,14 @@
 pub mod uniswap;
-pub use uniswap::{UniswapDecoder, UniswapV2Classifier, UniswapV3Classifier, UniswapXClassifier};
+pub use uniswap::*;
 
 pub mod sushiswap;
-pub use sushiswap::{SushiSwapV2Classifier, SushiSwapV3Classifier};
+pub use sushiswap::*;
 
 pub mod curve;
-pub use curve::{CurveCryptoSwapClassifier, CurveDecoder};
+pub use curve::*;
 
 pub mod aave;
-pub use aave::{AaveV2Classifier, AaveV3Classifier};
+pub use aave::*;
 
 #[macro_export]
 macro_rules! enum_unwrap {
@@ -24,3 +24,12 @@ macro_rules! enum_unwrap {
         }
     }};
 }
+
+use brontes_macros::discovery_dispatch;
+discovery_dispatch!(
+    DiscoveryProtocols,
+    SushiSwapV2Decoder,
+    SushiSwapV3Decoder,
+    UniswapV2Decoder,
+    UniswapV3Decoder
+);

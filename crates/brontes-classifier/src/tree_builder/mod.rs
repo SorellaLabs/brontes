@@ -1,11 +1,8 @@
 use std::sync::Arc;
 mod tree_pruning;
 mod utils;
-use alloy_sol_types::SolEvent;
 use brontes_database::libmdbx::{
-    tables::{
-        AddressToFactory, AddressToProtocol, AddressToTokens, PoolCreationBlocks, TokenDecimals,
-    },
+    tables::{AddressToProtocol, AddressToTokens, PoolCreationBlocks, TokenDecimals},
     types::{
         address_to_protocol::AddressToProtocolData, address_to_tokens::AddressToTokensData,
         pool_creation_block::PoolCreationBlocksData,
@@ -33,7 +30,10 @@ use tree_pruning::{
 };
 use utils::{decode_transfer, get_coinbase_transfer};
 
-use crate::{classifiers::*, ActionCollection, FactoryDecoderDispatch, StaticBindings};
+use crate::{
+    classifiers::{DiscoveryProtocols, *},
+    ActionCollection, FactoryDecoderDispatch, StaticBindings,
+};
 
 //TODO: Document this module
 #[derive(Debug, Clone)]
@@ -445,63 +445,38 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         &self,
         block: u64,
         root_head: Option<&Node<Actions>>,
-        _tx_idx: u64,
+        tx_idx: u64,
         trace: TransactionTraceWithLogs,
-        _trace_index: u64,
+        trace_index: u64,
         tx_hash: B256,
     ) -> (Vec<DexPriceMsg>, Actions) {
         let from_address = trace.get_from_addr();
-        let _target_address = trace.get_to_address();
-
         let created_addr = trace.get_create_output();
 
         // get the immediate parent node of this create action so that we can decode the
         // deployment function params
-        let _node_data = match root_head {
-            Some(head) => &head.get_deepest_node().data,
+        let node_data = match root_head {
+            Some(head) => head.get_most_recent_parent_node(trace_index - 1),
             None => return (vec![], Actions::Unclassified(trace)),
+        };
+        let Some(node_data) = node_data else {
+            error!(block, tx_idx, "failed to find create parent node");
+            return (vec![], Actions::Unclassified(trace));
+        };
+
+        let Some(calldata) = node_data.data.get_calldata() else {
+            error!(block, tx_idx, "parent call had no calldata");
+            return (vec![], Actions::Unclassified(trace));
         };
 
         //TODO: (Joe) get rid of these unwraps
         let db_tx = self.libmdbx.ro_tx().unwrap();
-
-        if let Some(protocol) = db_tx.get::<AddressToFactory>(from_address).unwrap() {
-            let discovered_pools = match protocol {
-                StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
-                    UniswapDecoder::dispatch(
-                        crate::UniswapV2Factory::PairCreated::SIGNATURE_HASH.0,
-                        self.provider.clone(),
-                        protocol,
-                        &trace.logs,
-                        block,
-                        tx_hash,
-                    )
-                    .await
-                }
-                StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
-                    UniswapDecoder::dispatch(
-                        crate::UniswapV3Factory::PoolCreated::SIGNATURE_HASH.0,
-                        self.provider.clone(),
-                        protocol,
-                        &trace.logs,
-                        block,
-                        tx_hash,
-                    )
-                    .await
-                }
-                _ => {
-                    vec![]
-                }
-            }
-            .into_iter()
-            .map(|data| DexPriceMsg::DiscoveredPool(data, block))
-            .collect_vec();
-
-            // TODO: do we want to make a normalized pool deploy?
-            return (discovered_pools, Actions::Unclassified(trace))
-        } else {
-            return (vec![], Actions::Unclassified(trace))
-        }
+        return (
+            DiscoveryProtocols::dispatch(from_address, created_addr, calldata).into_iter().map(|pool|{
+                DexPriceMsg::DiscoveredPool(pool, block)
+            }).collect::<Vec<_>>(),
+            Actions::Unclassified(trace),
+        )
     }
 
     pub fn close(&self) {
