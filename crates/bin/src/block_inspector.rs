@@ -9,7 +9,7 @@ use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
-    missing_decimals::MissingDecimals,
+    missing_decimals::load_missing_decimals,
 };
 use brontes_database::libmdbx::{
     tables::{DexPrice, Metadata as MetadataTable, MevBlocks},
@@ -35,6 +35,7 @@ use brontes_types::{
 };
 use futures::{Future, FutureExt};
 use tracing::{debug, error, info, trace};
+
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (MetadataCombined, BlockTree<Actions>)> + Send + 'a>>;
 
@@ -82,7 +83,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
             let block_number = header.number;
             let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
 
-            MissingDecimals::new(
+            load_missing_decimals(
                 self.parser.get_tracer(),
                 self.database,
                 block_number,
