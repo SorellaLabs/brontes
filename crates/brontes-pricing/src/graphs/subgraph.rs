@@ -254,7 +254,6 @@ where
 
             for info in edge_weight {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
-                    warn!("no pool state found");
                     continue;
                 };
                 // returns is t1  / t0

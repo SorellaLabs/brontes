@@ -386,7 +386,7 @@ mod tests {
     #[serial]
     async fn test_sandwich_part_of_jit_sandwich() {
         // this is a jit sandwich
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
             .with_dex_prices()
