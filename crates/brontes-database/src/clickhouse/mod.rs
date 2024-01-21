@@ -6,11 +6,12 @@ use std::collections::HashMap;
 use alloy_json_abi::JsonAbi;
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev, *},
+    constants::{USDT_ADDRESS, WETH_ADDRESS},
     db::{cex::CexPriceMap, clickhouse::*, metadata::MetadataNoDex},
     extra_processing::Pair,
 };
 use futures::future::join_all;
-use reth_primitives::{hex, revm_primitives::FixedBytes, Address};
+use reth_primitives:: Address;
 use sorella_db_databases::{
     clickhouse::{
         config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
@@ -21,11 +22,6 @@ use sorella_db_databases::{
 use tracing::{error, info};
 
 use self::const_sql::*;
-
-pub const WETH_ADDRESS: Address =
-    Address(FixedBytes(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")));
-pub const USDT_ADDRESS: Address =
-    Address(FixedBytes(hex!("dac17f958d2ee523a2206206994597c13d831ec7")));
 
 #[derive(Default)]
 pub struct Clickhouse {

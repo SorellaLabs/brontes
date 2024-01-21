@@ -1,4 +1,4 @@
-use std::{collections::HashSet, str::FromStr};
+use std::collections::HashSet;
 
 use alloy_primitives::{Address, TxHash, U256};
 use malachite::{num::basic::traits::Zero, Rational};
@@ -41,13 +41,7 @@ impl MetadataCombined {
         let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
         let eth_price = if self.eth_prices == Rational::ZERO {
             self.dex_quotes
-                .price_at_or_before(
-                    Pair(
-                        Address::from_str(WETH_ADDRESS).unwrap(),
-                        Address::from_str(USDC_ADDRESS).unwrap(),
-                    ),
-                    self.dex_quotes.0.len(),
-                )
+                .price_at_or_before(Pair(WETH_ADDRESS, USDC_ADDRESS), self.dex_quotes.0.len())
                 .unwrap()
         } else {
             self.eth_prices.clone()
