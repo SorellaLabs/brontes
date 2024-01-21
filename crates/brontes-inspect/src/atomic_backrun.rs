@@ -187,7 +187,7 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
             .with_expected_profit_usd(0.188588)
-            .with_expected_gas_used(71.632668);
+            .with_gas_paid_usd(71.632668);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }

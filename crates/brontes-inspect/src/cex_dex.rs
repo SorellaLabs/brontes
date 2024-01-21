@@ -27,6 +27,11 @@ impl<'db> CexDexInspector<'db> {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
+//TODO: Support for multiple CEXs
+//TODO: Filtering by coinbase.transfer() to builder or directly to the proposer
+//TODO: Start adding filtering by function sig in the tree. Like executeFFsYo
+//TODO: If single swap with coinbase.transfer then flag token as missing cex
+// price (addr + symbol + name) in a db table so we can fill in what is missing
 
 #[async_trait::async_trait]
 impl Inspector for CexDexInspector<'_> {
@@ -221,6 +226,7 @@ impl CexDexInspector<'_> {
     }
 }
 
+//TODO: Update tests
 /*
 #[cfg(test)]
 mod tests {

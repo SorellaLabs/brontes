@@ -179,7 +179,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(MevType::Liquidation)
             .with_block(19042179)
             .with_dex_prices()
-            .with_expected_gas_used(2792.487)
+            .with_gas_paid_usd(2792.487)
             .with_expected_profit_usd(71.593);
 
         inspector_util.run_inspector(config, None).await.unwrap();
@@ -193,7 +193,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(MevType::Liquidation)
             .with_block(18979710)
             .with_dex_prices()
-            .with_expected_gas_used(636.54)
+            .with_gas_paid_usd(636.54)
             .with_expected_profit_usd(129.23);
 
         inspector_util.run_inspector(config, None).await.unwrap();
