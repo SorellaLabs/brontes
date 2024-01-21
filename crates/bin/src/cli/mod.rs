@@ -9,6 +9,8 @@ mod run;
 mod trace;
 mod utils;
 
+pub use utils::*;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 #[command(name = "brontes", author = "Sorella Labs", version = "0.1.0")]
