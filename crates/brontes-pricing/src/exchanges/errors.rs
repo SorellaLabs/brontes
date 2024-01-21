@@ -1,6 +1,7 @@
 use std::time::SystemTimeError;
 
-use alloy_primitives::{Address as H160, U256};
+use alloy_primitives::{Address, U256};
+use alloy_sol_types::Error as AlloyError;
 use brontes_types::traits::TracingProvider;
 use ethers::{
     prelude::{AbiError, ContractError},
@@ -15,6 +16,8 @@ use crate::exchanges::uniswap_v3_math::error::UniswapV3MathError;
 pub enum AmmError {
     #[error("call error")]
     CallError(#[from] eyre::Error),
+    #[error("No state was found for address: {0:?}")]
+    NoStateError(Address),
     #[error("Provider error")]
     ProviderError(#[from] ProviderError),
     #[error("ABI Codec error")]
@@ -32,11 +35,11 @@ pub enum AmmError {
     #[error("Uniswap V3 math error")]
     UniswapV3MathError(#[from] UniswapV3MathError),
     #[error("Pair for token_a/token_b does not exist in provided dexes")]
-    PairDoesNotExistInDexes(H160, H160),
+    PairDoesNotExistInDexes(Address, Address),
     #[error("Could not initialize new pool from event log")]
     UnrecognizedPoolCreatedEventLog,
     #[error("Error when syncing pool")]
-    SyncError(H160),
+    SyncError(Address),
     #[error("Error when getting pool data")]
     PoolDataError,
     #[error("Arithmetic error")]
@@ -56,9 +59,11 @@ pub enum AmmError {
     #[error("Swap simulation error")]
     SwapSimulationError(#[from] SwapSimulationError),
     #[error("Invalid data from batch request")]
-    BatchRequestError(H160),
+    BatchRequestError(Address),
     #[error("Checkpoint error")]
     CheckpointError(#[from] CheckpointError),
+    #[error(transparent)]
+    AlloyError(#[from] AlloyError),
 }
 
 #[derive(Error, Debug)]
