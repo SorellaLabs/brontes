@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
-    normalized_actions::Actions,
+    normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
     ToFloatNearest,
 };
@@ -90,27 +90,9 @@ impl AtomicBackrunInspector<'_> {
             })
             .collect_vec();
 
-        // check to see if more than 1 swap
-        if swaps.len() <= 1 {
-            return None
-        } else if swaps.len() == 2 {
-            let start = swaps[0].token_in;
-            let mid = swaps[0].token_out;
-            let mid1 = swaps[1].token_in;
-            let end = swaps[1].token_out;
-            // if not triangular or more than 2 unique tokens, then return.
-            // mid != mid1 looks weird. However it is needed as some transactions such as
-            // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a
-            // newer token version
-            if !(start == end && mid == mid1 || (start != end || mid != mid1)) {
-                return None
-            }
-        }
-
-        // if only 2 swaps, assert either unique tokens
+        self.is_possible_arb(swaps)?;
 
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
-
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
@@ -152,6 +134,46 @@ impl AtomicBackrunInspector<'_> {
         let backrun = AtomicBackrun { tx_hash, gas_details, swaps };
 
         Some((classified, SpecificMev::AtomicBackrun(backrun)))
+    }
+
+    fn is_possible_arb(&self, swaps: Vec<NormalizedSwap>) -> Option<()> {
+        // check to see if more than 1 swap
+        if swaps.len() <= 1 {
+            return None
+        } else if swaps.len() == 2 {
+            let start = swaps[0].token_in;
+            let mid = swaps[0].token_out;
+            let mid1 = swaps[1].token_in;
+            let end = swaps[1].token_out;
+            // if not triangular or more than 2 unique tokens, then return.
+            // mid != mid1 looks weird. However it is needed as some transactions such as
+            // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a
+            // newer token version
+            if !(start == end && mid == mid1 || (start != end || mid != mid1)) {
+                return None
+            }
+        } else {
+            let mut address_to_tokens: HashMap<Address, Vec<Address>> = HashMap::new();
+            swaps.iter().for_each(|swap| {
+                let e = address_to_tokens.entry(swap.pool).or_default();
+                e.push(swap.token_in);
+                e.push(swap.token_out);
+            });
+            let entries = address_to_tokens.len();
+
+            let overlaps = address_to_tokens
+                .values()
+                .flatten()
+                .sorted()
+                .dedup_with_count()
+                .map(|(i, _)| i)
+                .sum::<usize>();
+
+            if overlaps < entries {
+                return None
+            }
+        }
+        Some(())
     }
 }
 
