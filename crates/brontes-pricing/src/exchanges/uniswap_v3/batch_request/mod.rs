@@ -78,9 +78,9 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     let res = middleware
         .eth_call(req, block_number.map(|i| i.into()), None, None)
         .await
-        .unwrap();
+        .map_err(|_| eyre::eyre!("v3 data fetch call failed"))?;
 
-    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false).unwrap();
+    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false)?;
     *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
 
     let (r0, r1) = join!(

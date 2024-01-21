@@ -31,7 +31,7 @@ mod graphs;
 use brontes_types::db::dex::DexQuotes;
 use futures::{Future, Stream, StreamExt};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, trace};
 use types::{DexPriceMsg, DiscoveredPool, PoolUpdate};
 
 use crate::types::PoolState;
@@ -334,7 +334,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
 
-        info!(
+        debug!(
             block_number = self.completed_block,
             dex_quotes_length = res.0.len(),
             "got dex quotes"
@@ -384,7 +384,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return None
         }
 
-        info!(?self.completed_block,"getting ready to calc dex prices");
+        trace!(?self.completed_block,"getting ready to calc dex prices");
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing
         let (buffer, overrides) = (
@@ -413,7 +413,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
 
-        info!(dex_quotes = res.0.len(), "got dex quotes");
+        debug!(dex_quotes = res.0.len(), "got dex quotes");
 
         self.completed_block += 1;
 
