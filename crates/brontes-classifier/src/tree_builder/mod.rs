@@ -575,6 +575,7 @@ pub mod test {
 
         while let Ok(msg) = dex_pricing_chan.try_recv() {
             if let DexPriceMsg::DiscoveredPool(pool, _) = msg {
+                tracing::info!("{}", pool);
                 if pool.pool_address == deployed_address {
                     return
                 }
