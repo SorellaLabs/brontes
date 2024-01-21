@@ -1,5 +1,4 @@
 use std::{
-    collections::{HashMap, HashSet},
     sync::Arc,
 };
 
@@ -93,7 +92,6 @@ impl AtomicBackrunInspector<'_> {
             })
             .collect_vec();
 
-        tracing::info!(?swaps);
         // check to see if more than 1 swap
         if swaps.len() <= 1 {
             return None
