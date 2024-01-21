@@ -21,7 +21,7 @@ use brontes_types::{
 };
 use futures::future::join_all;
 use itertools::Itertools;
-use reth_primitives::{Address, Header, B256};
+use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::error;
@@ -123,8 +123,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                     if trace.trace.is_empty() || !trace.is_success {
                         return None
                     }
-                    let tx_hash = trace.tx_hash;
-
                     // post classification processing collectors
                     let mut missing_decimals = Vec::new();
                     let mut further_classification_requests = Vec::new();
@@ -138,7 +136,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                             None,
                             tx_idx as u64,
                             0,
-                            tx_hash,
                             root_trace,
                             &mut missing_decimals,
                             &mut further_classification_requests,
@@ -178,7 +175,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                                 Some(&tx_root.head),
                                 tx_idx as u64,
                                 (index + 1) as u64,
-                                tx_hash,
                                 trace.clone(),
                                 &mut missing_decimals,
                                 &mut further_classification_requests,
@@ -229,14 +225,13 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         root_head: Option<&Node<Actions>>,
         tx_index: u64,
         trace_index: u64,
-        tx_hash: B256,
         trace: TransactionTraceWithLogs,
         missing_decimals: &mut Vec<Address>,
         further_classification_requests: &mut Vec<u64>,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
         let (update, classification) = self
-            .classify_node(block_number, root_head, tx_index as u64, trace, trace_index, tx_hash)
+            .classify_node(block_number, root_head, tx_index as u64, trace, trace_index)
             .await;
 
         // Here we are marking more complex actions that require data
@@ -336,7 +331,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
-        tx_hash: B256,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.trace.error.is_some() {
             return (vec![], Actions::Revert)
@@ -345,7 +339,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             Action::Call(_) => return self.classify_call(block, tx_idx, trace, trace_index),
             Action::Create(_) => {
                 return self
-                    .classify_create(block, root_head, tx_idx, trace, trace_index, tx_hash)
+                    .classify_create(block, root_head, tx_idx, trace, trace_index)
                     .await
             }
             Action::Selfdestruct(sd) => {
@@ -381,6 +375,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 StaticBindingsDb::AaveV2 => Box::new(AaveV2Classifier::default()),
                 StaticBindingsDb::AaveV3 => Box::new(AaveV3Classifier::default()),
                 StaticBindingsDb::UniswapX => Box::new(UniswapXClassifier::default()),
+                _ => unreachable!("no classifier"),
             };
 
             let calldata = trace.get_calldata();
@@ -448,7 +443,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
-        tx_hash: B256,
     ) -> (Vec<DexPriceMsg>, Actions) {
         let from_address = trace.get_from_addr();
         let created_addr = trace.get_create_output();
@@ -469,12 +463,17 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             return (vec![], Actions::Unclassified(trace));
         };
 
-        //TODO: (Joe) get rid of these unwraps
-        let db_tx = self.libmdbx.ro_tx().unwrap();
         return (
-            DiscoveryProtocols::dispatch(from_address, created_addr, calldata).into_iter().map(|pool|{
-                DexPriceMsg::DiscoveredPool(pool, block)
-            }).collect::<Vec<_>>(),
+            DiscoveryProtocols::dispatch(
+                self.provider.clone(),
+                from_address,
+                created_addr,
+                calldata,
+            )
+            .await
+            .into_iter()
+            .map(|pool| DexPriceMsg::DiscoveredPool(pool, block))
+            .collect::<Vec<_>>(),
             Actions::Unclassified(trace),
         )
     }
@@ -515,8 +514,7 @@ pub mod test {
         env,
     };
 
-    use alloy_primitives::{hex, hex::FromHex, U256};
-    use brontes_pricing::uniswap_v2::U256_64;
+    use alloy_primitives::{hex, hex::FromHex, B256, U256};
     use brontes_types::{
         normalized_actions::{Actions, NormalizedLiquidation},
         structured_trace::TxTrace,

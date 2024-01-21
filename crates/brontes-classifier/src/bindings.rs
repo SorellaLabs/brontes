@@ -61,6 +61,7 @@ impl From<StaticBindingsDb> for StaticBindings {
             StaticBindingsDb::AaveV2 => StaticBindings::AaveV2(AaveV2_Enum::None),
             StaticBindingsDb::AaveV3 => StaticBindings::AaveV3(AaveV3_Enum::None),
             StaticBindingsDb::UniswapX => StaticBindings::UniswapX(UniswapX_Enum::None),
+            ex => unreachable!("no from impl from static binding db:{ex:?}"),
         }
     }
 }
