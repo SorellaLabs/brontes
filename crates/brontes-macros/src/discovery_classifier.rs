@@ -159,7 +159,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                         }
                     )*
 
-                        let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&parent_calldata[0..4]);
+                        let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&parent_calldata);
 
                     ::tracing::info!(?factory, ?deployed_address, "selector {:?} no match for", 
                                 ::malachite::strings::ToLowerHexString::to_lower_hex_string(
