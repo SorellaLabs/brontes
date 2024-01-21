@@ -574,6 +574,7 @@ pub mod test {
         let dex_pricing_chan = classifier_utils.get_pricing_receiver();
 
         while let Ok(msg) = dex_pricing_chan.try_recv() {
+            tracing::info!("pool update");
             if let DexPriceMsg::DiscoveredPool(pool, _) = msg {
                 tracing::info!("{:?}", pool);
                 if pool.pool_address == deployed_address {
