@@ -11,7 +11,7 @@ use alloy_primitives::{Address, Log, U256};
 use alloy_rlp::{Decodable, Encodable};
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider};
+use brontes_types::{extra_processing::Pair, normalized_actions::Actions, traits::TracingProvider};
 use malachite::Rational;
 use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_db::{
@@ -21,8 +21,15 @@ use reth_db::{
 use reth_primitives::BufMut;
 use reth_rpc_types::{CallInput, CallRequest};
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
-use crate::protocols::errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError};
+use crate::{
+    lazy::{PoolFetchError, PoolFetchSuccess},
+    protocols::errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
+    uniswap_v2::UniswapV2Pool,
+    uniswap_v3::UniswapV3Pool,
+    LoadResult, PoolState,
+};
 
 #[allow(non_camel_case_types)]
 #[derive(
@@ -54,6 +61,71 @@ pub enum Protocol {
     CurveV2BasePool,
     CurveV2MetaPool,
     CurveV2PlainPool,
+}
+
+impl Protocol {
+    pub(crate) async fn try_load_state<T: TracingProvider>(
+        self,
+        address: Address,
+        provider: Arc<T>,
+        block_number: u64,
+        pool_pair: Pair,
+    ) -> Result<PoolFetchSuccess, PoolFetchError> {
+        match self {
+            Self::UniswapV2 | Self::SushiSwapV2 => {
+                let (pool, res) = if let Ok(pool) =
+                    UniswapV2Pool::new_load_on_block(address, provider.clone(), block_number - 1)
+                        .await
+                {
+                    (pool, LoadResult::Ok)
+                } else {
+                    (
+                        UniswapV2Pool::new_load_on_block(address, provider, block_number)
+                            .await
+                            .map_err(|e| {
+                                (address, Protocol::UniswapV2, block_number, pool_pair, e)
+                            })?,
+                        LoadResult::PoolInitOnBlock,
+                    )
+                };
+
+                Ok((
+                    block_number,
+                    address,
+                    PoolState::new(crate::types::PoolVariants::UniswapV2(pool)),
+                    res,
+                ))
+            }
+            Self::UniswapV3 | Self::SushiSwapV3 => {
+                let (pool, res) = if let Ok(pool) =
+                    UniswapV3Pool::new_from_address(address, block_number - 1, provider.clone())
+                        .await
+                {
+                    (pool, LoadResult::Ok)
+                } else {
+                    (
+                        UniswapV3Pool::new_from_address(address, block_number, provider)
+                            .await
+                            .map_err(|e| {
+                                (address, Protocol::UniswapV3, block_number, pool_pair, e)
+                            })?,
+                        LoadResult::PoolInitOnBlock,
+                    )
+                };
+
+                Ok((
+                    block_number,
+                    address,
+                    PoolState::new(crate::types::PoolVariants::UniswapV3(pool)),
+                    res,
+                ))
+            }
+            rest => {
+                error!(protocol=?rest, "no state updater is build for");
+                Err((address, self, block_number, pool_pair, AmmError::UnsupportedProtocol))
+            }
+        }
+    }
 }
 
 impl Encodable for Protocol {

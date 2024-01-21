@@ -6,5 +6,4 @@ pub mod metadata;
 pub mod mev_block;
 pub mod pool_creation_block;
 pub mod redefined_types;
-pub mod subgraph;
 pub mod utils;

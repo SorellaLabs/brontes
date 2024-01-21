@@ -64,6 +64,8 @@ pub enum AmmError {
     CheckpointError(#[from] CheckpointError),
     #[error(transparent)]
     AlloyError(#[from] AlloyError),
+    #[error("")]
+    UnsupportedProtocol,
 }
 
 #[derive(Error, Debug)]

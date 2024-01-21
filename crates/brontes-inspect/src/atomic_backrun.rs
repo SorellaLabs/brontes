@@ -1,6 +1,4 @@
-use std::{
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{

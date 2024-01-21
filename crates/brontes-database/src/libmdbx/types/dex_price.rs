@@ -1,4 +1,4 @@
-use alloy_primitives::TxHash;
+use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use alloy_rlp::{Decodable, Encodable};
 use brontes_types::db::{
     dex::{DexQuote, DexQuoteWithIndex},
@@ -16,11 +16,35 @@ use sorella_db_databases::clickhouse::{self, Row};
 use super::{CompressedTable, LibmdbxData};
 use crate::libmdbx::DexPrice;
 
+wrap_fixed_bytes!(
+    extra_derives: [],
+    pub struct DexKey<10>;
+);
+
+impl reth_db::table::Encode for DexKey {
+    type Encoded = [u8; 10];
+
+    fn encode(self) -> Self::Encoded {
+        self.0 .0
+    }
+}
+
+impl reth_db::table::Decode for DexKey {
+    fn decode<B: AsRef<[u8]>>(value: B) -> Result<Self, DatabaseError> {
+        Ok(DexKey::from_slice(value.as_ref()))
+    }
+}
+
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DexPriceData {
-    pub block_number: u64,
-    pub tx_idx:       u16,
-    pub quote:        DexQuote,
+    key:   DexKey,
+    quote: DexQuote,
+}
+
+impl DexPriceData {
+    pub fn new(block: u64, tx_idx: u16, quote: DexQuote) -> Self {
+        Self { key: make_key(block, tx_idx), quote }
+    }
 }
 
 impl LibmdbxData<DexPrice> for DexPriceData {
@@ -29,38 +53,26 @@ impl LibmdbxData<DexPrice> for DexPriceData {
     ) -> (<DexPrice as reth_db::table::Table>::Key, <DexPrice as CompressedTable>::DecompressedValue)
     {
         (
-            make_key(self.block_number, self.tx_idx),
-            DexQuoteWithIndex { tx_idx: self.tx_idx, quote: self.quote.clone().into() },
+            self.key,
+            DexQuoteWithIndex {
+                tx_idx: u16::from_be_bytes(FixedBytes::<2>::from_slice(&self.key[8..]).0),
+                quote:  self.quote.clone().into(),
+            },
         )
     }
 }
 
-pub fn make_key(block_number: u64, tx_idx: u16) -> TxHash {
-    let mut bytes = [0u8; 8].to_vec();
-    let block_number = block_number.to_be_bytes();
-    bytes = [bytes, block_number.to_vec()].concat();
-    bytes = [bytes, [0; 14].to_vec()].concat();
-    let tx_idx = tx_idx.to_be_bytes();
-    bytes = [bytes, tx_idx.to_vec()].concat();
-    let key: TxHash = TxHash::from_slice(&bytes);
-    key
+pub fn make_key(block_number: u64, tx_idx: u16) -> DexKey {
+    let block_bytes = FixedBytes::new(block_number.to_be_bytes());
+    block_bytes.concat_const(tx_idx.to_be_bytes().into()).into()
 }
 
-pub fn make_filter_key_range(block_number: u64) -> (TxHash, TxHash) {
-    let mut f_bytes = [0u8; 8].to_vec();
-    let mut s_bytes = [0u8; 8].to_vec();
+pub fn make_filter_key_range(block_number: u64) -> (DexKey, DexKey) {
+    let base = FixedBytes::new(block_number.to_be_bytes());
+    let start_key = base.concat_const([0u8; 2].into());
+    let end_key = base.concat_const([u8::MAX; 2].into());
 
-    let block_number = block_number.to_be_bytes();
-    f_bytes = [f_bytes, block_number.to_vec()].concat();
-    s_bytes = [s_bytes, block_number.to_vec()].concat();
-
-    f_bytes = [f_bytes, [0; 16].to_vec()].concat();
-    s_bytes = [s_bytes, [u8::MAX; 16].to_vec()].concat();
-
-    let f_key: TxHash = TxHash::from_slice(&f_bytes);
-    let s_key: TxHash = TxHash::from_slice(&s_bytes);
-
-    (f_key, s_key)
+    (start_key.into(), end_key.into())
 }
 
 #[derive(

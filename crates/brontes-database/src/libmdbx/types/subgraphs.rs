@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
 use alloy_rlp::{Decodable, Encodable};
-use brontes_types::{
-    db::{redefined_types::primitives::Redefined_Address, subgraph::SubGraphsEntry},
-    exchanges::Protocol,
-    extra_processing::Pair,
-    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
+use brontes_pricing::{
+    PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge, SubGraphsEntry,
 };
+use brontes_types::{db::redefined_types::primitives::Redefined_Address, extra_processing::Pair};
 use bytes::BufMut;
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::{
