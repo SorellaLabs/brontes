@@ -12,7 +12,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_types::{
-    exchanges::StaticBindingsDb,
+    exchanges::Protocol,
     price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
 };
 use itertools::Itertools;
@@ -388,7 +388,7 @@ pub mod test {
     fn build_edge(lookup_pair: Address, t0: Address, t1: Address, d0: u8, d1: u8) -> SubGraphEdge {
         SubGraphEdge::new(
             PoolPairInfoDirection::new(
-                PoolPairInformation::new(lookup_pair, StaticBindingsDb::UniswapV2, t0, t1),
+                PoolPairInformation::new(lookup_pair, Protocol::UniswapV2, t0, t1),
                 true,
             ),
             d0,

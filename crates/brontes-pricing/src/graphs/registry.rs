@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
-use brontes_types::{exchanges::StaticBindingsDb, extra_processing::Pair, price_graph::*};
+use brontes_types::{exchanges::Protocol, extra_processing::Pair, price_graph::*};
 use indexmap::set::Intersection;
 use itertools::Itertools;
 use malachite::{
@@ -94,7 +94,7 @@ impl SubGraphRegistry {
     pub fn try_extend_subgraphs(
         &mut self,
         pool_address: Address,
-        dex: StaticBindingsDb,
+        dex: Protocol,
         pair: Pair,
     ) -> Vec<(Pair, Vec<SubGraphEdge>)> {
         let token_0 = pair.0;

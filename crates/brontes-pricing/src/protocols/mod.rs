@@ -40,7 +40,7 @@ use crate::protocols::errors::{AmmError, ArithmeticError, EventLogError, SwapSim
     strum::Display,
     strum::EnumString,
 )]
-pub enum StaticBindingsDb {
+pub enum Protocol {
     UniswapV2,
     SushiSwapV2,
     UniswapV3,
@@ -56,44 +56,44 @@ pub enum StaticBindingsDb {
     CurveV2PlainPool,
 }
 
-impl Encodable for StaticBindingsDb {
+impl Encodable for Protocol {
     fn encode(&self, out: &mut dyn BufMut) {
         match self {
-            StaticBindingsDb::UniswapV2 => 0u64.encode(out),
-            StaticBindingsDb::SushiSwapV2 => 1u64.encode(out),
-            StaticBindingsDb::UniswapV3 => 2u64.encode(out),
-            StaticBindingsDb::SushiSwapV3 => 3u64.encode(out),
-            StaticBindingsDb::CurveCryptoSwap => 4u64.encode(out),
-            StaticBindingsDb::AaveV2 => 5u64.encode(out),
-            StaticBindingsDb::AaveV3 => 6u64.encode(out),
-            StaticBindingsDb::UniswapX => 7u64.encode(out),
-            StaticBindingsDb::CurveV1BasePool => 8u64.encode(out),
-            StaticBindingsDb::CurveV1MetaPool => 9u64.encode(out),
-            StaticBindingsDb::CurveV2BasePool => 10u64.encode(out),
-            StaticBindingsDb::CurveV2MetaPool => 11u64.encode(out),
-            StaticBindingsDb::CurveV2PlainPool => 12u64.encode(out),
+            Protocol::UniswapV2 => 0u64.encode(out),
+            Protocol::SushiSwapV2 => 1u64.encode(out),
+            Protocol::UniswapV3 => 2u64.encode(out),
+            Protocol::SushiSwapV3 => 3u64.encode(out),
+            Protocol::CurveCryptoSwap => 4u64.encode(out),
+            Protocol::AaveV2 => 5u64.encode(out),
+            Protocol::AaveV3 => 6u64.encode(out),
+            Protocol::UniswapX => 7u64.encode(out),
+            Protocol::CurveV1BasePool => 8u64.encode(out),
+            Protocol::CurveV1MetaPool => 9u64.encode(out),
+            Protocol::CurveV2BasePool => 10u64.encode(out),
+            Protocol::CurveV2MetaPool => 11u64.encode(out),
+            Protocol::CurveV2PlainPool => 12u64.encode(out),
         }
     }
 }
 
-impl Decodable for StaticBindingsDb {
+impl Decodable for Protocol {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         let self_int = u64::decode(buf)?;
 
         let this = match self_int {
-            0 => StaticBindingsDb::UniswapV2,
-            1 => StaticBindingsDb::SushiSwapV2,
-            2 => StaticBindingsDb::UniswapV3,
-            3 => StaticBindingsDb::SushiSwapV3,
-            4 => StaticBindingsDb::CurveCryptoSwap,
-            5 => StaticBindingsDb::AaveV2,
-            6 => StaticBindingsDb::AaveV3,
-            7 => StaticBindingsDb::UniswapX,
-            8 => StaticBindingsDb::CurveV1BasePool,
-            9 => StaticBindingsDb::CurveV1MetaPool,
-            10 => StaticBindingsDb::CurveV2BasePool,
-            11 => StaticBindingsDb::CurveV2MetaPool,
-            12 => StaticBindingsDb::CurveV2PlainPool,
+            0 => Protocol::UniswapV2,
+            1 => Protocol::SushiSwapV2,
+            2 => Protocol::UniswapV3,
+            3 => Protocol::SushiSwapV3,
+            4 => Protocol::CurveCryptoSwap,
+            5 => Protocol::AaveV2,
+            6 => Protocol::AaveV3,
+            7 => Protocol::UniswapX,
+            8 => Protocol::CurveV1BasePool,
+            9 => Protocol::CurveV1MetaPool,
+            10 => Protocol::CurveV2BasePool,
+            11 => Protocol::CurveV2MetaPool,
+            12 => Protocol::CurveV2PlainPool,
             _ => unreachable!("no enum variant"),
         };
 
@@ -101,7 +101,7 @@ impl Decodable for StaticBindingsDb {
     }
 }
 
-impl Compress for StaticBindingsDb {
+impl Compress for Protocol {
     type Compressed = Vec<u8>;
 
     fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
@@ -111,15 +111,15 @@ impl Compress for StaticBindingsDb {
     }
 }
 
-impl Decompress for StaticBindingsDb {
+impl Decompress for Protocol {
     fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
         let binding = value.as_ref().to_vec();
         let buf = &mut binding.as_slice();
-        StaticBindingsDb::decode(buf).map_err(|_| DatabaseError::Decode)
+        Protocol::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }
 
-self_convert_redefined!(StaticBindingsDb);
+self_convert_redefined!(Protocol);
 
 async fn make_call_request<C: SolCall, T: TracingProvider>(
     call: C,

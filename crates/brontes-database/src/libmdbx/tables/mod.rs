@@ -6,7 +6,7 @@ use brontes_types::{
         metadata::MetadataInner, mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses, subgraph::SubGraphsEntry,
     },
-    exchanges::StaticBindingsDb,
+    exchanges::Protocol,
     extra_processing::Pair,
 };
 use futures::StreamExt;
@@ -338,7 +338,7 @@ compressed_table!(
 
 compressed_table!(
     /// Address -> Static protocol enum
-    ( AddressToProtocol ) Address | StaticBindingsDb = True
+    ( AddressToProtocol ) Address | Protocol = True
 );
 
 compressed_table!(
@@ -373,7 +373,7 @@ compressed_table!(
 
 compressed_table!(
     /// address -> factory
-    ( AddressToFactory ) Address | StaticBindingsDb = True
+    ( AddressToFactory ) Address | Protocol = True
 );
 
 pub(crate) trait InitializeTable<'db, D>: CompressedTable + Sized + 'db
