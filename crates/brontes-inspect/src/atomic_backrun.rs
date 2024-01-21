@@ -149,7 +149,7 @@ impl AtomicBackrunInspector<'_> {
             // mid != mid1 looks weird. However it is needed as some transactions such as
             // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a
             // newer token version
-            if !(start == end && mid == mid1 || (start != end || mid != mid1)) {
+            if !(start != mid1 && start == end && mid == mid1 || (start != end || mid != mid1)) {
                 return None
             }
         } else {
@@ -159,17 +159,19 @@ impl AtomicBackrunInspector<'_> {
                 e.push(swap.token_in);
                 e.push(swap.token_out);
             });
-            let entries = address_to_tokens.len();
 
-            let overlaps = address_to_tokens
+            // see wh
+
+            let pools = address_to_tokens.len();
+
+            let unique_tokens = address_to_tokens
                 .values()
                 .flatten()
                 .sorted()
-                .dedup_with_count()
-                .map(|(i, _)| i)
-                .sum::<usize>();
+                .dedup()
+                .count();
 
-            if overlaps < entries {
+            if unique_tokens< pools {
                 return None
             }
         }
