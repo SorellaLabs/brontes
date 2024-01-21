@@ -319,7 +319,7 @@ pub mod tests {
         let config =
             ComposerRunConfig::new(vec![MevType::Sandwich, MevType::Jit], MevType::JitSandwich)
                 .with_dex_prices()
-                .with_expected_gas_used(90.875025)
+                .with_gas_paid_usd(90.875025)
                 .with_expected_profit_usd(13.568977)
                 .with_mev_tx_hashes(vec![
                     hex!("22ea36d516f59cc90ccc01042e20f8fba196f32b067a7e5f1510099140ae5e0a").into(),
