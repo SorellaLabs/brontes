@@ -6,6 +6,7 @@ use brontes_database::libmdbx::{
     Libmdbx,
 };
 use clap::Parser;
+use itertools::Itertools;
 use reth_db::mdbx::RO;
 
 #[derive(Debug, Parser)]
@@ -52,7 +53,7 @@ impl DatabaseQuery {
                         println!(
                             "{:#?}",
                             $fn(
-                                tx.$query::<brontes_database::libmdbx::tables::$tables>()?,
+                                tx.$query::<brontes_database::libmdbx::tables::$tables>()?, self
                             )?
                         )
                     }
@@ -64,7 +65,7 @@ impl DatabaseQuery {
         if self.key.contains("..") {
             match_table!(
                 self.table,
-                self.process_range_query,
+                process_range_query,
                 new_cursor,
                 CexPrice,
                 Metadata,
@@ -97,35 +98,35 @@ impl DatabaseQuery {
 
         Ok(())
     }
+}
 
-    fn process_range_query<T, E>(
-        self,
-        mut cursor: CompressedCursor<T, RO>,
-    ) -> Result<Vec<T::DecompressedValue>, Box<dyn Error>>
-    where
-        T: CompressedTable,
-        T: for<'a> IntoTableKey<&'a str, T::Key, E>,
-        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-    {
-        let range = self.key.split("..").collect_vec();
-        let start = range[0];
-        let end = range[1];
+fn process_range_query<T, E>(
+    mut cursor: CompressedCursor<T, RO>,
+    config: DatabaseQuery,
+) -> Result<Vec<T::DecompressedValue>, Box<dyn Error>>
+where
+    T: CompressedTable,
+    T: for<'a> IntoTableKey<&'a str, T::Key, E>,
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+{
+    let range = config.key.split("..").collect_vec();
+    let start = range[0];
+    let end = range[1];
 
-        let start = T::into_key(start);
-        let end = T::into_key(end);
+    let start = T::into_key(start);
+    let end = T::into_key(end);
 
-        let mut res = Vec::new();
-        for entry in cursor.walk_range(start..end)? {
-            if let Ok(entry) = entry {
-                res.push(entry.1)
-            }
+    let mut res = Vec::new();
+    for entry in cursor.walk_range(start..end)? {
+        if let Ok(entry) = entry {
+            res.push(entry.1)
         }
-
-        Ok(res)
     }
+
+    Ok(res)
 }
 
 #[inline(always)]
-fn process_single_query<T>(res: Option<T>, _: DatabaseQuery) -> Result<T, Box<dyn Error>> {
+fn process_single_query<T>(res: Option<T>) -> Result<T, Box<dyn Error>> {
     Ok(res.ok_or_else(|| reth_db::DatabaseError::Read(-1))?)
 }

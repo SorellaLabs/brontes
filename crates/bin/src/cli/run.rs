@@ -1,12 +1,42 @@
-use std::{env, error::Error};
-
-use brontes_database::libmdbx::{
-    cursor::CompressedCursor,
-    tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
-    Libmdbx,
+use std::{
+    env,
+    error::Error,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
+
+use alloy_primitives::Address;
+use async_scoped::{Scope, TokioScope};
+use brontes_classifier::Classifier;
+use brontes_core::decoding::Parser as DParser;
+use brontes_database::{
+    clickhouse::Clickhouse,
+    libmdbx::{
+        cursor::CompressedCursor,
+        tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
+        Libmdbx,
+    },
+};
+use brontes_inspect::{
+    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
+    sandwich::SandwichInspector, Inspector,
+};
+use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
+use itertools::Itertools;
+use metrics_process::Collector;
 use reth_db::mdbx::RO;
+use reth_tracing_ext::TracingClient;
+use tokio::sync::mpsc::unbounded_channel;
+use tracing::{error, info, Level};
+use tracing_subscriber::filter::Directive;
+
+use super::{determine_max_tasks, get_env_vars, init_all_inspectors};
+use crate::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -25,10 +55,9 @@ pub struct RunArgs {
 }
 impl RunArgs {
     pub async fn execute(self) -> Result<(), Box<dyn Error>> {
-        initialize_prometheus().await;
-
         // Fetch required environment variables.
         let db_path = get_env_vars()?;
+        let quote_asset = self.quote_asset.parse()?;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
 
@@ -42,10 +71,7 @@ impl RunArgs {
             Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None)?)) as &'static Libmdbx;
         let clickhouse = Clickhouse::default();
 
-        let inspector_holder =
-            Box::leak(Box::new(InspectorHolder::new(self.quote_asset.parse().unwrap(), &libmdbx)));
-
-        let inspectors: Inspectors = inspector_holder.get_inspectors();
+        let inspectors = init_all_inspectors(quote_asset, libmdbx);
 
         let (manager, tracer) =
             TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), max_tasks);
@@ -78,6 +104,7 @@ impl RunArgs {
             &inspectors,
         );
         brontes.await;
+
         info!("finnished running brontes, shutting down");
         std::thread::spawn(move || {
             drop(parser);
