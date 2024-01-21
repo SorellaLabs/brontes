@@ -13,7 +13,7 @@ use sorella_db_databases::{
     clickhouse::{DbRow, InsertRow, Row},
 };
 
-use crate::structured_trace::{TransactionTraceWithLogs, TraceActions};
+use crate::structured_trace::{TraceActions, TransactionTraceWithLogs};
 
 /// A normalized action that has been classified
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

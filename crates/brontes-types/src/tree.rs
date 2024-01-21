@@ -542,7 +542,7 @@ impl<V: NormalizedAction> Node<V> {
             return Some(self).filter(|_| !self.data.get_action().is_static_call())
         }
 
-        result 
+        result
     }
 
     pub fn tree_right_path(&self) -> Vec<Address> {
