@@ -1,5 +1,3 @@
-use std::{fmt::Display, str::FromStr};
-
 use alloy_rlp::{Decodable, Encodable};
 use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_db::{
@@ -22,6 +20,8 @@ use serde::{Deserialize, Serialize};
     rkyv::Serialize,
     rkyv::Deserialize,
     rkyv::Archive,
+    strum::Display,
+    strum::EnumString,
 )]
 pub enum StaticBindingsDb {
     UniswapV2,
@@ -32,57 +32,11 @@ pub enum StaticBindingsDb {
     AaveV2,
     AaveV3,
     UniswapX,
-}
-
-impl StaticBindingsDb {
-    pub fn as_string(&self) -> String {
-        match self {
-            StaticBindingsDb::UniswapV2 => "UniswapV2".to_string(),
-            StaticBindingsDb::SushiSwapV2 => "SushiSwapV2".to_string(),
-            StaticBindingsDb::UniswapV3 => "UniswapV3".to_string(),
-            StaticBindingsDb::SushiSwapV3 => "SushiSwapV3".to_string(),
-            StaticBindingsDb::CurveCryptoSwap => "CurveCryptoSwap".to_string(),
-            StaticBindingsDb::AaveV2 => "AaveV2".to_string(),
-            StaticBindingsDb::AaveV3 => "AaveV3".to_string(),
-            StaticBindingsDb::UniswapX => "UniswapX".to_string(),
-        }
-    }
-}
-
-impl Display for StaticBindingsDb {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let string = self.as_string();
-        writeln!(f, "{string}")
-    }
-}
-impl FromStr for StaticBindingsDb {
-    type Err = u8;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(s.to_string().into())
-    }
-}
-
-impl From<String> for StaticBindingsDb {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "UniswapV2" => StaticBindingsDb::UniswapV2,
-            "SushiSwapV2" => StaticBindingsDb::SushiSwapV2,
-            "UniswapV3" => StaticBindingsDb::UniswapV3,
-            "SushiSwapV3" => StaticBindingsDb::SushiSwapV3,
-            "CurveCryptoSwap" => StaticBindingsDb::CurveCryptoSwap,
-            "AaveV2" => StaticBindingsDb::AaveV2,
-            "AaveV3" => StaticBindingsDb::AaveV3,
-            "UniswapX" => StaticBindingsDb::UniswapX,
-            _ => unreachable!("no value from str: {value}"),
-        }
-    }
-}
-
-impl From<StaticBindingsDb> for String {
-    fn from(val: StaticBindingsDb) -> Self {
-        val.as_string()
-    }
+    CurveV1BasePool,
+    CurveV1MetaPool,
+    CurveV2BasePool,
+    CurveV2MetaPool,
+    CurveV2PlainPool,
 }
 
 impl Encodable for StaticBindingsDb {
@@ -96,6 +50,11 @@ impl Encodable for StaticBindingsDb {
             StaticBindingsDb::AaveV2 => 5u64.encode(out),
             StaticBindingsDb::AaveV3 => 6u64.encode(out),
             StaticBindingsDb::UniswapX => 7u64.encode(out),
+            StaticBindingsDb::CurveV1BasePool => 8u64.encode(out),
+            StaticBindingsDb::CurveV1MetaPool => 9u64.encode(out),
+            StaticBindingsDb::CurveV2BasePool => 10u64.encode(out),
+            StaticBindingsDb::CurveV2MetaPool => 11u64.encode(out),
+            StaticBindingsDb::CurveV2PlainPool => 12u64.encode(out),
         }
     }
 }
@@ -113,6 +72,11 @@ impl Decodable for StaticBindingsDb {
             5 => StaticBindingsDb::AaveV2,
             6 => StaticBindingsDb::AaveV3,
             7 => StaticBindingsDb::UniswapX,
+            8 => StaticBindingsDb::CurveV1BasePool,
+            9 => StaticBindingsDb::CurveV1MetaPool,
+            10 => StaticBindingsDb::CurveV2BasePool,
+            11 => StaticBindingsDb::CurveV2MetaPool,
+            12 => StaticBindingsDb::CurveV2PlainPool,
             _ => unreachable!("no enum variant"),
         };
 
