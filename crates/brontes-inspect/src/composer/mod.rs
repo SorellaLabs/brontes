@@ -30,12 +30,10 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    future::Future,
-    pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
 };
 
+use alloy_primitives::B256;
 use brontes_types::classified_mev::Mev;
 mod composer_filters;
 mod utils;
@@ -47,8 +45,6 @@ use brontes_types::{
     tree::BlockTree,
 };
 use composer_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
-use futures::FutureExt;
-use tracing::warn;
 use utils::{
     build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
     BlockPreprocessing,
@@ -56,249 +52,214 @@ use utils::{
 
 use crate::Inspector;
 
-type InspectorFut<'a> =
-    Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, SpecificMev)>> + Send + 'a>>;
-
 pub type ComposerResults = (MevBlock, Vec<(ClassifiedMev, SpecificMev)>);
 
-pub struct Composer<'a> {
-    inspectors_execution: InspectorFut<'a>,
-    pre_processing:       BlockPreprocessing,
-    metadata:             Arc<MetadataCombined>,
+pub async fn compose_mev_results(
+    orchestra: &[&Box<dyn Inspector>],
+    tree: Arc<BlockTree<Actions>>,
+    metadata: Arc<MetadataCombined>,
+) -> ComposerResults {
+    let pre_processing = pre_process(tree.clone(), metadata.clone());
+    let (possibly_missed_arbs, classified_mev) =
+        run_inspectors(orchestra, tree, metadata.clone()).await;
+
+    on_orchestra_resolution(pre_processing, possibly_missed_arbs, metadata, classified_mev)
 }
 
-impl<'a> Composer<'a> {
-    pub fn new(
-        orchestra: &'a [&'a Box<dyn Inspector>],
-        tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<MetadataCombined>,
-    ) -> Self {
-        let processing = pre_process(tree.clone(), meta_data.clone());
-        let meta_data_clone = meta_data.clone();
-        let future = Box::pin(async move {
-            let mut scope: TokioScope<'a, Vec<(ClassifiedMev, SpecificMev)>> =
-                unsafe { Scope::create() };
-            orchestra.iter().for_each(|inspector| {
-                scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone()))
-            });
+async fn run_inspectors(
+    orchestra: &[&Box<dyn Inspector>],
+    tree: Arc<BlockTree<Actions>>,
+    meta_data: Arc<MetadataCombined>,
+) -> (Vec<B256>, Vec<(ClassifiedMev, SpecificMev)>) {
+    let mut scope: TokioScope<'_, Vec<(ClassifiedMev, SpecificMev)>> = unsafe { Scope::create() };
+    orchestra
+        .iter()
+        .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone())));
 
-            let mut interesting = tree
-                .tx_roots
-                .iter()
-                .filter(|r| r.gas_details.coinbase_transfer.is_some())
-                .map(|r| r.tx_hash)
-                .collect::<HashSet<_>>();
+    let mut possibly_missed_arbs = tree
+        .tx_roots
+        .iter()
+        .filter(|r| r.gas_details.coinbase_transfer.is_some())
+        .map(|r| r.tx_hash)
+        .collect::<HashSet<_>>();
 
-            let results = scope
-                .collect()
-                .await
+    let results = scope
+        .collect()
+        .await
+        .into_iter()
+        .flat_map(|r| r.unwrap())
+        .map(|mev| {
+            mev.1
+                .mev_transaction_hashes()
                 .into_iter()
-                .flat_map(|r| r.unwrap())
-                .map(|mev| {
-                    mev.1
-                        .mev_transaction_hashes()
-                        .into_iter()
-                        .for_each(|mev_tx| {
-                            interesting.remove(&mev_tx);
-                        });
-                    mev
-                })
-                .collect::<Vec<_>>();
-
-            for not_classified in interesting {
-                warn!(tx_hash=?not_classified,"found a tx with a coinbase transfer but wasn't picked up by a classifier");
-            }
-
-            results
+                .for_each(|mev_tx| {
+                    possibly_missed_arbs.remove(&mev_tx);
+                });
+            mev
         })
-            as Pin<Box<dyn Future<Output = Vec<(ClassifiedMev, SpecificMev)>> + 'a>>;
+        .collect::<Vec<_>>();
 
-        Self {
-            // The rust compiler struggles to prove that the tokio-scope lifetime is the same as
-            // the futures lifetime and errors. the transmute is simply casting the
-            // lifetime to what it truly is. This is totally safe and will never cause
-            // an error
-            inspectors_execution: unsafe { std::mem::transmute(future) },
-            pre_processing:       processing,
-            metadata:             meta_data_clone,
-        }
-    }
+    (possibly_missed_arbs.into_iter().collect(), results)
+}
 
-    fn on_orchestra_resolution(
-        &mut self,
-        orchestra_data: Vec<(ClassifiedMev, SpecificMev)>,
-    ) -> Poll<ComposerResults> {
-        let mut header =
-            build_mev_header(self.metadata.clone(), &self.pre_processing, &orchestra_data);
+fn on_orchestra_resolution(
+    pre_processing: BlockPreprocessing,
+    possibly_missed_arbs: Vec<B256>,
+    metadata: Arc<MetadataCombined>,
+    orchestra_data: Vec<(ClassifiedMev, SpecificMev)>,
+) -> ComposerResults {
+    let mut header =
+        build_mev_header(metadata.clone(), &pre_processing, possibly_missed_arbs, &orchestra_data);
 
-        let mut sorted_mev = sort_mev_by_type(orchestra_data);
+    let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
-        MEV_COMPOSABILITY_FILTER.iter().for_each(
-            |(parent_mev_type, compose_fn, child_mev_type)| {
-                self.try_compose_mev(parent_mev_type, child_mev_type, compose_fn, &mut sorted_mev);
-            },
-        );
+    MEV_COMPOSABILITY_FILTER
+        .iter()
+        .for_each(|(parent_mev_type, compose_fn, child_mev_type)| {
+            try_compose_mev(parent_mev_type, child_mev_type, compose_fn, &mut sorted_mev);
+        });
 
-        MEV_DEDUPLICATION_FILTER
-            .iter()
-            .for_each(|(dominant_mev_type, subordinate_mev_type)| {
-                self.deduplicate_mev(dominant_mev_type, subordinate_mev_type, &mut sorted_mev);
-            });
+    MEV_DEDUPLICATION_FILTER
+        .iter()
+        .for_each(|(dominant_mev_type, subordinate_mev_type)| {
+            deduplicate_mev(dominant_mev_type, subordinate_mev_type, &mut sorted_mev);
+        });
 
-        //TODO: (Will) Filter only specific unprofitable types of mev so we can capture
-        // bots that are subsidizing their bundles to dry out the competition
-        let mut flattened_mev = sorted_mev
-            .into_values()
-            .flatten()
-            .filter(|(classified, _)| {
-                if matches!(
-                    classified.mev_type,
-                    MevType::Sandwich | MevType::Jit | MevType::Backrun
-                ) {
-                    classified.finalized_profit_usd > 0.0
-                } else {
-                    true
-                }
-            })
-            .collect::<Vec<_>>();
-
-        let mev_count = flattened_mev.len();
-        header.mev_count = mev_count as u64;
-
-        // keep order
-        flattened_mev.sort_by(|a, b| a.0.mev_tx_index.cmp(&b.0.mev_tx_index));
-
-        Poll::Ready((header, flattened_mev))
-    }
-
-    fn deduplicate_mev(
-        &mut self,
-        dominant_mev_type: &MevType,
-        subordinate_mev_types: &[MevType],
-        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
-    ) {
-        let dominant_mev_list = match sorted_mev.get(dominant_mev_type) {
-            Some(list) => list,
-            None => return,
-        };
-
-        let mut removal_indices: Vec<(MevType, usize)> = Vec::new();
-
-        for (_, dominant_mev_bundle) in dominant_mev_list.iter() {
-            let hashes = dominant_mev_bundle.mev_transaction_hashes();
-
-            for &subordinate_mev_type in subordinate_mev_types {
-                if let Some(subordinate_mev_list) = sorted_mev.get(&subordinate_mev_type) {
-                    if let Some(index) =
-                        find_mev_with_matching_tx_hashes(subordinate_mev_list, &hashes)
-                    {
-                        removal_indices.push((subordinate_mev_type, index));
-                    }
-                }
+    //TODO: (Will) Filter only specific unprofitable types of mev so we can capture
+    // bots that are subsidizing their bundles to dry out the competition
+    let mut flattened_mev = sorted_mev
+        .into_values()
+        .flatten()
+        .filter(|(classified, _)| {
+            if matches!(classified.mev_type, MevType::Sandwich | MevType::Jit | MevType::Backrun) {
+                classified.finalized_profit_usd > 0.0
+            } else {
+                true
             }
-        }
+        })
+        .collect::<Vec<_>>();
 
-        // Remove the subordinate mev data that is being deduplicated
-        for (mev_type, index) in removal_indices.iter().rev() {
-            if let Some(mev_list) = sorted_mev.get_mut(mev_type) {
-                if mev_list.len() > *index {
-                    mev_list.remove(*index);
+    let mev_count = flattened_mev.len();
+    header.mev_count = mev_count as u64;
+
+    // keep order
+    flattened_mev.sort_by(|a, b| a.0.mev_tx_index.cmp(&b.0.mev_tx_index));
+
+    (header, flattened_mev)
+}
+
+fn deduplicate_mev(
+    dominant_mev_type: &MevType,
+    subordinate_mev_types: &[MevType],
+    sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
+) {
+    let dominant_mev_list = match sorted_mev.get(dominant_mev_type) {
+        Some(list) => list,
+        None => return,
+    };
+
+    let mut removal_indices: Vec<(MevType, usize)> = Vec::new();
+
+    for (_, dominant_mev_bundle) in dominant_mev_list.iter() {
+        let hashes = dominant_mev_bundle.mev_transaction_hashes();
+
+        for &subordinate_mev_type in subordinate_mev_types {
+            if let Some(subordinate_mev_list) = sorted_mev.get(&subordinate_mev_type) {
+                if let Some(index) = find_mev_with_matching_tx_hashes(subordinate_mev_list, &hashes)
+                {
+                    removal_indices.push((subordinate_mev_type, index));
                 }
             }
         }
     }
 
-    /// Attempts to compose a new complex MEV occurrence from a list of
-    /// MEV types that can be composed together.
-    ///
-    /// # Functionality:
-    ///
-    /// The function first checks if there are any MEV of the first type in
-    /// `composable_types` in `sorted_mev`. If there are, it iterates over them.
-    /// For each MEV, it gets the transaction hashes associated with that MEV
-    /// and attempts to find other MEV in `sorted_mev` that have matching
-    /// transaction hashes. If it finds matching MEV for all types in
-    /// `composable_types`, it uses the `compose` function to create a new MEV
-    /// and adds it to `sorted_mev` under `parent_mev_type`. It also records the
-    /// indices of the composed MEV in `removal_indices`.
-    ///
-    /// After attempting to compose MEV for all MEV of the first type in
-    /// `composable_types`, it removes all the composed MEV from `sorted_mev`
-    /// using the indices stored in `removal_indices`.
-    ///
-    /// This function does not return any value. Its purpose is to modify
-    /// `sorted_mev` by composing new MEV and removing the composed MEV.
-    fn try_compose_mev(
-        &mut self,
-        parent_mev_type: &MevType,
-        child_mev_type: &[MevType],
-        compose: &ComposeFunction,
-        sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
-    ) {
-        let first_mev_type = child_mev_type[0];
-        let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
-
-        if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
-            for (first_i, (classified, mev_data)) in first_mev_list.iter().enumerate() {
-                let tx_hashes = mev_data.mev_transaction_hashes();
-                let mut to_compose = vec![(classified.clone(), mev_data.clone())];
-                let mut temp_removal_indices = Vec::new();
-
-                for &other_mev_type in child_mev_type.iter().skip(1) {
-                    if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
-                        match find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes) {
-                            Some(index) => {
-                                let (other_classified, other_mev_data) =
-                                    &other_mev_data_list[index];
-
-                                to_compose.push((other_classified.clone(), other_mev_data.clone()));
-                                temp_removal_indices.push((other_mev_type, index));
-                            }
-                            None => break,
-                        }
-                    } else {
-                        break
-                    }
-                }
-
-                if to_compose.len() == child_mev_type.len() {
-                    sorted_mev
-                        .entry(*parent_mev_type)
-                        .or_default()
-                        .push(compose(to_compose));
-                    for (mev_type, index) in temp_removal_indices {
-                        removal_indices.entry(mev_type).or_default().push(index);
-                    }
-
-                    removal_indices
-                        .entry(first_mev_type)
-                        .or_default()
-                        .push(first_i)
-                }
-            }
-
-            sorted_mev.insert(first_mev_type, first_mev_list);
-        }
-
-        // Remove the mev data that was composed from the sorted mev list
-        for (mev_type, indices) in removal_indices {
-            if let Some(mev_list) = sorted_mev.get_mut(&mev_type) {
-                for &index in indices.iter().rev() {
-                    mev_list.remove(index);
-                }
+    // Remove the subordinate mev data that is being deduplicated
+    for (mev_type, index) in removal_indices.iter().rev() {
+        if let Some(mev_list) = sorted_mev.get_mut(mev_type) {
+            if mev_list.len() > *index {
+                mev_list.remove(*index);
             }
         }
     }
 }
 
-impl Future for Composer<'_> {
-    type Output = ComposerResults;
+/// Attempts to compose a new complex MEV occurrence from a list of
+/// MEV types that can be composed together.
+///
+/// # Functionality:
+///
+/// The function first checks if there are any MEV of the first type in
+/// `composable_types` in `sorted_mev`. If there are, it iterates over them.
+/// For each MEV, it gets the transaction hashes associated with that MEV
+/// and attempts to find other MEV in `sorted_mev` that have matching
+/// transaction hashes. If it finds matching MEV for all types in
+/// `composable_types`, it uses the `compose` function to create a new MEV
+/// and adds it to `sorted_mev` under `parent_mev_type`. It also records the
+/// indices of the composed MEV in `removal_indices`.
+///
+/// After attempting to compose MEV for all MEV of the first type in
+/// `composable_types`, it removes all the composed MEV from `sorted_mev`
+/// using the indices stored in `removal_indices`.
+///
+/// This function does not return any value. Its purpose is to modify
+/// `sorted_mev` by composing new MEV and removing the composed MEV.
+fn try_compose_mev(
+    parent_mev_type: &MevType,
+    child_mev_type: &[MevType],
+    compose: &ComposeFunction,
+    sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
+) {
+    let first_mev_type = child_mev_type[0];
+    let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Poll::Ready(calculation) = self.inspectors_execution.poll_unpin(cx) {
-            return self.on_orchestra_resolution(calculation)
+    if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
+        for (first_i, (classified, mev_data)) in first_mev_list.iter().enumerate() {
+            let tx_hashes = mev_data.mev_transaction_hashes();
+            let mut to_compose = vec![(classified.clone(), mev_data.clone())];
+            let mut temp_removal_indices = Vec::new();
+
+            for &other_mev_type in child_mev_type.iter().skip(1) {
+                if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
+                    match find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes) {
+                        Some(index) => {
+                            let (other_classified, other_mev_data) = &other_mev_data_list[index];
+
+                            to_compose.push((other_classified.clone(), other_mev_data.clone()));
+                            temp_removal_indices.push((other_mev_type, index));
+                        }
+                        None => break,
+                    }
+                } else {
+                    break
+                }
+            }
+
+            if to_compose.len() == child_mev_type.len() {
+                sorted_mev
+                    .entry(*parent_mev_type)
+                    .or_default()
+                    .push(compose(to_compose));
+                for (mev_type, index) in temp_removal_indices {
+                    removal_indices.entry(mev_type).or_default().push(index);
+                }
+
+                removal_indices
+                    .entry(first_mev_type)
+                    .or_default()
+                    .push(first_i)
+            }
         }
-        Poll::Pending
+
+        sorted_mev.insert(first_mev_type, first_mev_list);
+    }
+
+    // Remove the mev data that was composed from the sorted mev list
+    for (mev_type, indices) in removal_indices {
+        if let Some(mev_list) = sorted_mev.get_mut(&mev_type) {
+            for &index in indices.iter().rev() {
+                mev_list.remove(index);
+            }
+        }
     }
 }
 
