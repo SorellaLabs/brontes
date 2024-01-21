@@ -32,14 +32,12 @@ use reth_rpc_types::{
     trace::parity::{TransactionTrace, *},
     TransactionInfo,
 };
-use reth_tasks::TaskManager;
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use revm::interpreter::InstructionResult;
 use revm_primitives::{ExecutionResult, SpecId};
-use tokio::runtime::Handle;
 
 mod provider;
 
@@ -64,10 +62,7 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, handle: Handle, max_tasks: u64) -> (TaskManager, Self) {
-        let task_manager = TaskManager::new(handle);
-        let task_executor: reth_tasks::TaskExecutor = task_manager.executor();
-
+    pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
         let chain = MAINNET.clone();
         let db = Arc::new(init_db(db_path).unwrap());
         let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain));
@@ -136,7 +131,7 @@ impl TracingClient {
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        (task_manager, Self { api, trace, filter })
+        Self { api, trace, filter }
     }
 
     /// Replays all transactions in a block

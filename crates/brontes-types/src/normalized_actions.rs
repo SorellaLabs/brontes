@@ -4,15 +4,16 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use alloy_primitives::Log;
+use alloy_primitives::{Bytes, Log};
 use reth_primitives::{Address, U256};
+use reth_rpc_types::trace::parity::{Action, SelfdestructAction};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{DbRow, InsertRow, Row},
 };
 
-use crate::structured_trace::TransactionTraceWithLogs;
+use crate::structured_trace::{TraceActions, TransactionTraceWithLogs};
 
 /// A normalized action that has been classified
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -27,6 +28,7 @@ pub enum Actions {
     Collect(NormalizedCollect),
     Liquidation(NormalizedLiquidation),
     Unclassified(TransactionTraceWithLogs),
+    SelfDestruct(SelfdestructWithIndex),
     Revert,
 }
 
@@ -42,6 +44,7 @@ impl InsertRow for Actions {
             Actions::Burn(_) => NormalizedBurn::COLUMN_NAMES,
             Actions::Collect(_) => NormalizedCollect::COLUMN_NAMES,
             Actions::Liquidation(_) => NormalizedLiquidation::COLUMN_NAMES,
+            Actions::SelfDestruct(_) => todo!("joe pls dome this"),
             Actions::Unclassified(..) | Actions::Revert => panic!(),
         }
     }
@@ -54,6 +57,7 @@ impl Serialize for Actions {
     {
         match self {
             Actions::Swap(s) => s.serialize(serializer),
+            Actions::SwapWithFee(s) => s.serialize(serializer),
             Actions::FlashLoan(f) => f.serialize(serializer),
             Actions::Batch(b) => b.serialize(serializer),
             Actions::Mint(m) => m.serialize(serializer),
@@ -61,6 +65,7 @@ impl Serialize for Actions {
             Actions::Burn(b) => b.serialize(serializer),
             Actions::Collect(c) => c.serialize(serializer),
             Actions::Liquidation(c) => c.serialize(serializer),
+            Actions::SelfDestruct(sd) => sd.serialize(serializer),
             Actions::Unclassified(trace) => (trace).serialize(serializer),
             _ => unreachable!(),
         }
@@ -93,6 +98,7 @@ collect_action_fn!(
     mint,
     transfer,
     collect,
+    self_destruct,
     unclassified
 );
 
@@ -135,6 +141,16 @@ impl Actions {
         }
     }
 
+    pub fn get_calldata(&self) -> Option<Bytes> {
+        if let Actions::Unclassified(u) = &self {
+            if let Action::Call(call) = &u.trace.action {
+                return Some(call.input.clone())
+            }
+        }
+
+        None
+    }
+
     pub fn get_to_address(&self) -> Address {
         match self {
             Actions::Swap(s) => s.pool,
@@ -146,6 +162,7 @@ impl Actions {
             Actions::Transfer(t) => t.to,
             Actions::Collect(c) => c.to,
             Actions::Liquidation(c) => c.pool,
+            Actions::SelfDestruct(c) => c.get_refund_address(),
             Actions::Unclassified(t) => match &t.trace.action {
                 reth_rpc_types::trace::parity::Action::Call(c) => c.to,
                 reth_rpc_types::trace::parity::Action::Create(_) => Address::ZERO,
@@ -190,6 +207,17 @@ impl Actions {
 
     pub fn is_collect(&self) -> bool {
         matches!(self, Actions::Collect(_))
+    }
+
+    pub fn is_self_destruct(&self) -> bool {
+        matches!(self, Actions::SelfDestruct(_))
+    }
+
+    pub fn is_static_call(&self) -> bool {
+        if let Self::Unclassified(u) = &self {
+            return u.is_static_call()
+        }
+        false
     }
 
     pub fn is_unclassified(&self) -> bool {
@@ -384,6 +412,30 @@ pub struct NormalizedLiquidation {
     pub liquidated_collateral: U256,
 }
 
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+pub struct SelfdestructWithIndex {
+    pub trace_index:   u64,
+    pub self_destruct: SelfdestructAction,
+}
+
+impl SelfdestructWithIndex {
+    pub fn new(trace_index: u64, self_destruct: SelfdestructAction) -> Self {
+        Self { trace_index, self_destruct }
+    }
+
+    pub fn get_address(&self) -> Address {
+        self.self_destruct.address
+    }
+
+    pub fn get_balance(&self) -> U256 {
+        self.self_destruct.balance
+    }
+
+    pub fn get_refund_address(&self) -> Address {
+        self.self_destruct.refund_address
+    }
+}
+
 impl NormalizedLiquidation {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
         actions
@@ -440,6 +492,7 @@ impl NormalizedAction for Actions {
             Self::Transfer(_) => false,
             Self::Liquidation(_) => true,
             Self::Collect(_) => false,
+            Self::SelfDestruct(_) => false,
             Self::Unclassified(_) => false,
             Self::Revert => false,
         }
@@ -464,6 +517,7 @@ impl NormalizedAction for Actions {
             Actions::Transfer(_) => unreachable!(),
             Actions::Liquidation(_) => Box::new(|action: &Actions| action.is_transfer()),
             Actions::Collect(_) => unreachable!(),
+            Actions::SelfDestruct(_) => unreachable!(),
             Actions::Unclassified(_) => unreachable!(),
             Actions::Revert => unreachable!(),
         }
@@ -480,6 +534,7 @@ impl NormalizedAction for Actions {
             Self::Transfer(t) => t.trace_index,
             Self::Liquidation(t) => t.trace_index,
             Self::Collect(c) => c.trace_index,
+            Self::SelfDestruct(c) => c.trace_index,
             Self::Unclassified(u) => u.trace_idx,
             Self::Revert => unreachable!(),
         }
@@ -498,6 +553,7 @@ impl NormalizedAction for Actions {
             Self::Transfer(_) => unreachable!(),
             Self::Liquidation(l) => l.finish_classification(actions),
             Self::Collect(_) => unreachable!("Collect type never requires complex classification"),
+            Self::SelfDestruct(_) => unreachable!(),
             Self::Unclassified(_) => {
                 unreachable!("Unclassified type never requires complex classification")
             }

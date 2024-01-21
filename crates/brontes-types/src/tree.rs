@@ -336,7 +336,8 @@ pub struct Node<V: NormalizedAction> {
     pub index:     u64,
 
     /// This only has values when the node is frozen
-    pub subactions:    Vec<V>,
+    //TODO: Will: explain this shortcut
+    pub subactions: Vec<V>,
     pub trace_address: Vec<usize>,
     pub address:       Address,
     pub data:          V,
@@ -359,6 +360,7 @@ impl<V: NormalizedAction> Node<V> {
         self.finalized
     }
 
+    //TODO: Rename & edit docs
     /// Iterates through the tree until the head node is hit. When the head node
     /// is hit, collects all child node actions that are specified by the
     /// head nodes classification types closure.
@@ -526,6 +528,21 @@ impl<V: NormalizedAction> Node<V> {
 
             res
         }
+    }
+
+    /// fetches the most recent possible parent node that was a non static call
+    pub fn get_most_recent_parent_node(&self, index: u64) -> Option<&Node<V>> {
+        let result = if self.index == index {
+            Some(self).filter(|_| !self.data.get_action().is_static_call())
+        } else {
+            self.inner.last()?.get_most_recent_parent_node(index)
+        };
+
+        if result.is_none() {
+            return Some(self).filter(|_| !self.data.get_action().is_static_call())
+        }
+
+        result
     }
 
     pub fn tree_right_path(&self) -> Vec<Address> {
