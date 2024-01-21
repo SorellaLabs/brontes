@@ -40,7 +40,13 @@ impl DexPricingArgs {
 
         let task_executor = ctx.task_executor;
 
-        let tracing_max_tasks = determine_max_tasks(self.max_tasks);
+        // if we can we want max threads for these tasks
+        let tracing_max_tasks = if self.max_tasks.is_none() {
+            num_cpus::get_physical() as u64
+         } else {
+            self.max_tasks.unwrap()
+        };
+
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
@@ -63,7 +69,7 @@ impl DexPricingArgs {
         )));
 
         // calculate the chunk size using min batch size and max_tasks.
-        // max tasks defaults to 50% of physical threads of the system if not set
+        // max tasks defaults to 25% of physical threads of the system if not set
         let cpus = determine_max_tasks(self.max_tasks);
         let range = self.end_block - self.start_block;
         let cpus_min = range / self.min_batch_size;
@@ -80,7 +86,7 @@ impl DexPricingArgs {
         let chunks_amount = (range / chunk_size) + 1;
         // because these are lightweight tasks, we can stack them pretty easily without
         // much overhead concern
-        let max_pool_loading_tasks = (remaining_cpus / chunks_amount + 1) * 2;
+        let max_pool_loading_tasks = (remaining_cpus / chunks_amount + 1) * 10;
         let mut tasks = FuturesUnordered::new();
 
         for (batch_id, mut chunk) in (self.start_block..=self.end_block)
