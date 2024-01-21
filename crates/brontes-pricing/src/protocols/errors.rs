@@ -10,7 +10,7 @@ use ethers::{
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::exchanges::uniswap_v3_math::error::UniswapV3MathError;
+use super::uniswap_v3_math::error::UniswapV3MathError;
 
 #[derive(Error, Debug)]
 pub enum AmmError {
