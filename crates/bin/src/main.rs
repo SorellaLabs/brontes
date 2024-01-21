@@ -3,7 +3,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
 };
 
-use banner::print_banner;
 #[cfg(feature = "tests")]
 use brontes::cli::TraceArg;
 use brontes::{
@@ -18,7 +17,7 @@ use tracing::{error, info, Level};
 use tracing_subscriber::filter::Directive;
 
 fn main() {
-    print_banner();
+    banner::print_banner();
     dotenv::dotenv().ok();
 
     let brontes_directive: Directive = format!("brontes={}", Level::INFO).parse().unwrap();
@@ -57,7 +56,7 @@ fn run() -> eyre::Result<()> {
         Commands::Run(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
         Commands::RunBatchWithPricing(command) => {
             runner::run_command_until_exit(|ctx| command.execute(ctx))
-        },
+        }
         Commands::Init(command) => runner::run_command_until_exit(|_| command.execute()),
         Commands::QueryDb(command) => runner::run_command_until_exit(|_| command.execute()),
         Commands::AddToDb(command) => runner::run_command_until_exit(|_| command.execute()),
