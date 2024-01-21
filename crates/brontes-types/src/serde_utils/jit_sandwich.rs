@@ -1,7 +1,9 @@
 use ::serde::ser::{Serialize, SerializeStruct, Serializer};
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
-use super::normalized_actions::{ClickhouseVecNormalizedMintOrBurn, ClickhouseVecNormalizedSwap};
+use super::normalized_actions::{
+    ClickhouseVecNormalizedMintOrBurn, ClickhouseVecNormalizedMintOrBurnWithTxHash,
+};
 use crate::{
     classified_mev::JitLiquiditySandwich,
     serde_utils::{
@@ -16,14 +18,15 @@ impl Serialize for JitLiquiditySandwich {
     {
         let mut ser_struct = serializer.serialize_struct("JitLiquiditySandwich", 34)?;
 
-        // frontrun mint
+        // frontruns
         ser_struct.serialize_field(
-            "frontrun_mint_tx_hash",
-            &FixedString::from(format!("{:?}", self.frontrun_tx_hash)),
+            "frontrun_tx_hash",
+            &FixedString::from(format!("{:?}", self.frontrun_tx_hash.first().unwrap_or_default())),
         )?;
 
-        let frontrun_swaps: ClickhouseVecNormalizedSwap = self.frontrun_swaps.clone().into();
-
+        let frontrun_swaps: ClickhouseDoubleVecNormalizedSwap =
+            (self.frontrun_tx_hash.clone(), self.frontrun_swaps.clone()).into();
+        ser_struct.serialize_field("frontrun_swaps.tx_hash", &frontrun_swaps.tx_hash)?;
         ser_struct.serialize_field("frontrun_swaps.trace_idx", &frontrun_swaps.trace_index)?;
         ser_struct.serialize_field("frontrun_swaps.from", &frontrun_swaps.from)?;
         ser_struct.serialize_field("frontrun_swaps.recipient", &frontrun_swaps.recipient)?;
@@ -33,8 +36,10 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("frontrun_swaps.amount_in", &frontrun_swaps.amount_in)?;
         ser_struct.serialize_field("frontrun_swaps.amount_out", &frontrun_swaps.amount_out)?;
 
-        let frontrun_mints: ClickhouseVecNormalizedMintOrBurn = self.frontrun_mints.clone().into();
+        let frontrun_mints: ClickhouseVecNormalizedMintOrBurnWithTxHash =
+            (self.frontrun_tx_hash.clone(), self.frontrun_mints.clone()).into();
 
+        ser_struct.serialize_field("frontrun_mints.tx_hash", &frontrun_mints.tx_hash)?;
         ser_struct.serialize_field("frontrun_mints.trace_idx", &frontrun_mints.trace_index)?;
         ser_struct.serialize_field("frontrun_mints.from", &frontrun_mints.from)?;
         ser_struct.serialize_field("frontrun_mints.to", &frontrun_mints.to)?;
@@ -42,16 +47,26 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("frontrun_mints.tokens", &frontrun_mints.tokens)?;
         ser_struct.serialize_field("frontrun_mints.amounts", &frontrun_mints.amounts)?;
 
-        let frontrun_gas_details = (
-            self.frontrun_gas_details.coinbase_transfer,
-            self.frontrun_gas_details.priority_fee,
-            self.frontrun_gas_details.gas_used,
-            self.frontrun_gas_details.effective_gas_price,
-        );
+        let frontrun_gas_details: ClickhouseVecGasDetails =
+            (self.frontrun_tx_hash.clone(), self.frontrun_gas_details.clone()).into();
+        ser_struct
+            .serialize_field("frontrun_gas_details.tx_hash", &frontrun_gas_details.tx_hash)?;
+        ser_struct.serialize_field(
+            "frontrun_gas_details.coinbase_transfer",
+            &frontrun_gas_details.coinbase_transfer,
+        )?;
+        ser_struct.serialize_field(
+            "frontrun_gas_details.priority_fee",
+            &frontrun_gas_details.priority_fee,
+        )?;
+        ser_struct
+            .serialize_field("frontrun_gas_details.gas_used", &frontrun_gas_details.gas_used)?;
+        ser_struct.serialize_field(
+            "frontrun_gas_details.effective_gas_price",
+            &frontrun_gas_details.effective_gas_price,
+        )?;
 
-        ser_struct.serialize_field("frontrun_gas_details", &(frontrun_gas_details))?;
-
-        // victim swaps
+        // victims
         let victim_swaps: ClickhouseDoubleVecNormalizedSwap =
             (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone()).into();
         ser_struct.serialize_field("victim_swaps.tx_hash", &victim_swaps.tx_hash)?;
@@ -79,14 +94,15 @@ impl Serialize for JitLiquiditySandwich {
             &victim_gas_details.effective_gas_price,
         )?;
 
-        // backrun burn
+        // backrun s
         ser_struct.serialize_field(
             "backrun_tx_hash",
-            &FixedString::from(format!("{:?}", self.backrun_tx_hash)),
+            &FixedString::from(format!("{:?}", self.backrun_tx_hash.first().unwrap_or_default())),
         )?;
 
-        let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
-
+        let backrun_swaps: ClickhouseDoubleVecNormalizedSwap =
+            (self.backrun_tx_hash.clone(), self.backrun_swaps.clone()).into();
+        ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_swaps.tx_hash)?;
         ser_struct.serialize_field("backrun_swaps.trace_idx", &backrun_swaps.trace_index)?;
         ser_struct.serialize_field("backrun_swaps.from", &backrun_swaps.from)?;
         ser_struct.serialize_field("backrun_swaps.recipient", &backrun_swaps.recipient)?;
@@ -96,8 +112,10 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_swaps.amount_in", &backrun_swaps.amount_in)?;
         ser_struct.serialize_field("backrun_swaps.amount_out", &backrun_swaps.amount_out)?;
 
-        let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self.backrun_burns.clone().into();
+        let backrun_burns: ClickhouseVecNormalizedMintOrBurnWithTxHash =
+            (self.backrun_tx_hash.clone(), self.backrun_burns.clone()).into();
 
+        ser_struct.serialize_field("backrun_burns.tx_hash", &backrun_burns.tx_hash)?;
         ser_struct.serialize_field("backrun_burns.trace_idx", &backrun_burns.trace_index)?;
         ser_struct.serialize_field("backrun_burns.from", &backrun_burns.from)?;
         ser_struct.serialize_field("backrun_burns.to", &backrun_burns.to)?;
@@ -105,14 +123,23 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_burns.tokens", &backrun_burns.tokens)?;
         ser_struct.serialize_field("backrun_burns.amounts", &backrun_burns.amounts)?;
 
-        let backrun_gas_details = (
-            self.backrun_gas_details.coinbase_transfer,
-            self.backrun_gas_details.priority_fee,
-            self.backrun_gas_details.gas_used,
-            self.backrun_gas_details.effective_gas_price,
-        );
-
-        ser_struct.serialize_field("backrun_gas_details", &(backrun_gas_details))?;
+        let backrun_gas_details: ClickhouseVecGasDetails =
+            (self.backrun_tx_hash.clone(), self.backrun_gas_details.clone()).into();
+        ser_struct.serialize_field("backrun_gas_details.tx_hash", &backrun_gas_details.tx_hash)?;
+        ser_struct.serialize_field(
+            "backrun_gas_details.coinbase_transfer",
+            &backrun_gas_details.coinbase_transfer,
+        )?;
+        ser_struct.serialize_field(
+            "backrun_gas_details.priority_fee",
+            &backrun_gas_details.priority_fee,
+        )?;
+        ser_struct
+            .serialize_field("backrun_gas_details.gas_used", &backrun_gas_details.gas_used)?;
+        ser_struct.serialize_field(
+            "backrun_gas_details.effective_gas_price",
+            &backrun_gas_details.effective_gas_price,
+        )?;
 
         ser_struct.end()
     }
@@ -121,6 +148,7 @@ impl Serialize for JitLiquiditySandwich {
 impl DbRow for JitLiquiditySandwich {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "frontrun_tx_hash",
+        "frontrun_swaps.tx_hash",
         "frontrun_swaps.trace_idx",
         "frontrun_swaps.from",
         "frontrun_swaps.recipient",
@@ -129,13 +157,18 @@ impl DbRow for JitLiquiditySandwich {
         "frontrun_swaps.token_out",
         "frontrun_swaps.amount_in",
         "frontrun_swaps.amount_out",
+        "frontrun_mints.tx_hash",
         "frontrun_mints.trace_idx",
         "frontrun_mints.from",
         "frontrun_mints.to",
         "frontrun_mints.recipient",
         "frontrun_mints.tokens",
         "frontrun_mints.amounts",
-        "frontrun_gas_details",
+        "frontrun_gas_details.tx_hash",
+        "frontrun_gas_details.coinbase_transfer",
+        "frontrun_gas_details.priority_fee",
+        "frontrun_gas_details.gas_used",
+        "frontrun_gas_details.effective_gas_price",
         "victim_swaps.tx_hash",
         "victim_swaps.trace_idx",
         "victim_swaps.from",
@@ -151,6 +184,7 @@ impl DbRow for JitLiquiditySandwich {
         "victim_gas_details.gas_used",
         "victim_gas_details.effective_gas_price",
         "backrun_tx_hash",
+        "backrun_swaps.tx_hash",
         "backrun_swaps.trace_idx",
         "backrun_swaps.from",
         "backrun_swaps.recipient",
@@ -159,12 +193,17 @@ impl DbRow for JitLiquiditySandwich {
         "backrun_swaps.token_out",
         "backrun_swaps.amount_in",
         "backrun_swaps.amount_out",
+        "backrun_burns.tx_hash",
         "backrun_burns.trace_idx",
         "backrun_burns.from",
         "backrun_burns.to",
         "backrun_burns.recipient",
         "backrun_burns.tokens",
         "backrun_burns.amounts",
-        "backrun_gas_details",
+        "backrun_gas_details.tx_hash",
+        "backrun_gas_details.coinbase_transfer",
+        "backrun_gas_details.priority_fee",
+        "backrun_gas_details.gas_used",
+        "backrun_gas_details.effective_gas_price",
     ];
 }

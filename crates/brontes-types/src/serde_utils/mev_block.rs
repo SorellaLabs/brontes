@@ -52,6 +52,13 @@ pub mod ser_mev_block {
                 &self.cumulative_mev_finalized_profit_usd,
             )?;
 
+            let possible_missed_arbs = self
+                .possible_missed_arbs
+                .iter()
+                .map(|tx| format!("{:?}", tx).into())
+                .collect::<Vec<FixedString>>();
+            ser_struct.serialize_field("possible_missed_arbs", &possible_missed_arbs)?;
+
             ser_struct.end()
         }
     }
