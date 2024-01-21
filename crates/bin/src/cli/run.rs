@@ -1,38 +1,16 @@
-use std::{
-    env,
-    error::Error,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::Path,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{env, path::Path};
 
-use alloy_primitives::Address;
-use async_scoped::{Scope, TokioScope};
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{
-        cursor::CompressedCursor,
-        tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
-        Libmdbx,
-    },
+    libmdbx::{tables::AddressToProtocol, Libmdbx},
 };
-use brontes_inspect::{
-    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
-    sandwich::SandwichInspector, Inspector,
-};
-use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
+use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
-use itertools::Itertools;
-use metrics_process::Collector;
-use reth_db::mdbx::RO;
 use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
-use tracing::{error, info, Level};
+use tracing::info;
 
 use super::{determine_max_tasks, get_env_vars, init_all_inspectors};
 use crate::{runner::CliContext, Brontes};

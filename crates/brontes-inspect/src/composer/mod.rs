@@ -28,10 +28,7 @@
 //! // Future execution of the composer to process MEV data
 //! ```
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::B256;
 use brontes_types::classified_mev::Mev;

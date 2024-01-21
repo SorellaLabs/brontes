@@ -1,4 +1,4 @@
-use std::{env, error::Error};
+use std::env;
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::Libmdbx;

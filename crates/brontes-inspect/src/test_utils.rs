@@ -277,10 +277,10 @@ impl InspectorTestUtils {
             .map(|i| &*Box::leak(Box::new(i)))
             .collect::<Vec<&'static Box<dyn Inspector>>>();
 
-        let (_, results) =
-            compose_mev_results(inspector.as_slice(), tree.into(), metadata.into()).await;
+        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into()).await;
 
         let mut results = results
+            .mev_details
             .into_iter()
             .filter(|mev| {
                 config
