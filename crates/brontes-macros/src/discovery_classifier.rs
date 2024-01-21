@@ -134,7 +134,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
 
                     let mut key = [0u8; 24];
                     key[0..20].copy_from_slice(&**factory);
-                    key[0..4].copy_from_slice(&parent_calldata[0..4]);
+                    key[20..].copy_from_slice(&parent_calldata[0..4]);
 
 
                     let this = Self::default();
@@ -159,7 +159,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                         }
                     )*
 
-                        let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&parent_calldata);
+                        let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&parent_calldata[0..4]);
 
                     ::tracing::info!(?factory, ?deployed_address, "selector {:?} no match for", 
                                 ::malachite::strings::ToLowerHexString::to_lower_hex_string(
