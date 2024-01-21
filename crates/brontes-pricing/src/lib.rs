@@ -164,13 +164,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
                     // load exchange only if its not loaded already
                     if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
-                         self.lazy_loader.lazy_load_exchange(
+                        self.lazy_loader.lazy_load_exchange(
                             pair,
                             Pair(pool_info.token_0, pool_info.token_1),
                             pool_info.pool_addr,
                             self.current_block,
                             pool_info.dex_type,
-                        )                     } else if lazy_loading {
+                        )
+                    } else if lazy_loading {
                         self.lazy_loader
                             .add_protocol_parent(pool_info.pool_addr, pair);
                     }
