@@ -128,7 +128,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                 ) -> impl ::std::future::Future<Output = Vec<::brontes_pricing::types::DiscoveredPool>> + Send  {
                 async move {
                     if parent_calldata.len() < 4 {
-                        ::tracing::warn!(?deployed_address, ?factory, "invalid calldata length");
+                        ::tracing::debug!(?deployed_address, ?factory, "invalid calldata length");
                         return Vec::new()
                     }
 

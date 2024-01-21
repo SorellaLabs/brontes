@@ -291,57 +291,63 @@ impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // poll pricer
-        if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
-            if meta.block_num == self.end_block {
-                info!(
-                    batch_id = self.batch_id,
-                    end_block = self.end_block,
-                    "batch finished completed"
-                );
+        let mut work = 256;
+        loop {
+            // poll pricer
+            if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
+                if meta.block_num == self.end_block {
+                    info!(
+                        batch_id = self.batch_id,
+                        end_block = self.end_block,
+                        "batch finished completed"
+                    );
+                }
+
+                self.on_price_finish(tree, meta);
             }
 
-            self.on_price_finish(tree, meta);
-        }
-
-        // progress collection future,
-        if let Some(mut future) = self.collection_future.take() {
-            if let Poll::Ready((tree, meta)) = future.poll_unpin(cx) {
-                debug!("built tree");
-                let block = self.current_block;
-                self.pricer.add_pending_inspection(block, tree, meta);
-            } else {
-                self.collection_future = Some(future);
+            // progress collection future,
+            if let Some(mut future) = self.collection_future.take() {
+                if let Poll::Ready((tree, meta)) = future.poll_unpin(cx) {
+                    debug!("built tree");
+                    let block = self.current_block;
+                    self.pricer.add_pending_inspection(block, tree, meta);
+                } else {
+                    self.collection_future = Some(future);
+                }
+            } else if self.current_block != self.end_block {
+                self.current_block += 1;
+                self.start_next_block();
             }
-        } else if self.current_block != self.end_block {
-            self.current_block += 1;
-            self.start_next_block();
-        }
 
-        // If we have reached end block and there is only 1 pending tree left,
-        // send the close message to indicate to the dex pricer that it should
-        // return. This will spam it till the pricer closes but this is needed as it
-        // could take multiple polls until the pricing is done for the final
-        // block.
-        if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
-            self.classifier.close();
-        }
-        // poll insertion
-        while let Poll::Ready(Some(missed_arbs)) = self.processing_futures.poll_next_unpin(cx) {
-            self.missed_mev_ops.extend(missed_arbs);
-        }
+            // If we have reached end block and there is only 1 pending tree left,
+            // send the close message to indicate to the dex pricer that it should
+            // return. This will spam it till the pricer closes but this is needed as it
+            // could take multiple polls until the pricing is done for the final
+            // block.
+            if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
+                self.classifier.close();
+            }
+            // poll insertion
+            while let Poll::Ready(Some(missed_arbs)) = self.processing_futures.poll_next_unpin(cx) {
+                self.missed_mev_ops.extend(missed_arbs);
+            }
 
-        // return condition
-        if self.current_block == self.end_block
-            && self.collection_future.is_none()
-            && self.processing_futures.is_empty()
-            && self.pricer.is_done()
-        {
-            return Poll::Ready(())
-        }
+            // return condition
+            if self.current_block == self.end_block
+                && self.collection_future.is_none()
+                && self.processing_futures.is_empty()
+                && self.pricer.is_done()
+            {
+                return Poll::Ready(())
+            }
 
-        cx.waker().wake_by_ref();
-        Poll::Pending
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
+            }
+        }
     }
 }
 
@@ -491,20 +497,13 @@ fn insert_mev_results(
 }
 
 fn insert_quotes(database: &Libmdbx, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
-    let mut data = quotes
+    let data = quotes
         .0
         .into_iter()
         .enumerate()
         .filter(|(_, v)| v.is_some())
-        .map(|(idx, value)| DexPriceData {
-            block_number: block_num,
-            tx_idx:       idx as u16,
-            quote:        DexQuote(value.unwrap()),
-        })
+        .map(|(idx, value)| DexPriceData::new(block_num, idx as u16, DexQuote(value.unwrap())))
         .collect::<Vec<_>>();
-
-    data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
-    data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
 
     database.update_db(|tx| {
         let mut cursor = tx.cursor_write::<DexPrice>()?;

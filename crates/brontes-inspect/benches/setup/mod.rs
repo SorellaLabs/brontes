@@ -11,7 +11,7 @@ use brontes_database::{
 };
 use brontes_inspect::cex_dex::CexDexInspector;
 use brontes_types::{
-    exchanges::StaticBindingsDb, normalized_actions::NormalizedAction, tree::BlockTree,
+    exchanges::Protocol, normalized_actions::NormalizedAction, tree::BlockTree,
 };
 use criterion::{
     black_box, criterion_group, criterion_main, measurement::WallTime, BenchmarkGroup, Criterion,
