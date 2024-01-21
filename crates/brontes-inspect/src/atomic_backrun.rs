@@ -83,13 +83,12 @@ impl AtomicBackrunInspector<'_> {
             .filter(|s| s.is_swap() || s.is_flash_loan())
             .flat_map(|s| match s.clone() {
                 Actions::Swap(s) => vec![s],
-                Actions::FlashLoan(f) => {
-                    f.child_actions
-                        .into_iter()
-                        .filter(|a| a.is_swap())
-                        .map(|s| s.force_swap())
-                        .collect_vec()
-                }
+                Actions::FlashLoan(f) => f
+                    .child_actions
+                    .into_iter()
+                    .filter(|a| a.is_swap())
+                    .map(|s| s.force_swap())
+                    .collect_vec(),
                 _ => vec![],
             })
             .collect_vec();
@@ -103,8 +102,11 @@ impl AtomicBackrunInspector<'_> {
             let mid = swaps[0].token_out;
             let mid1 = swaps[1].token_in;
             let end = swaps[1].token_out;
-            // if not triangular or more than 2 unique tokens, then return
-            if !(start == end && mid == mid1 || start != end) {
+            // if not triangular or more than 2 unique tokens, then return.
+            // mid != mid1 looks weird. However it is needed as some transactions such as
+            // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a newer
+            // token version
+            if !(start == end && mid == mid1 || (start != end || mid != mid1)) {
                 return None
             }
         }
