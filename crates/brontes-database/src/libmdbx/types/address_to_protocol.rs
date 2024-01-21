@@ -1,4 +1,5 @@
-use brontes_types::{exchanges::StaticBindingsDb, serde_utils::primitives::address_string};
+use brontes_pricing::Protocol;
+use brontes_types::serde_utils::primitives::address_string;
 use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -15,11 +16,11 @@ pub struct AddressToProtocolData {
     pub address: Address,
 
     #[serde(with = "static_bindings")]
-    pub classifier_name: StaticBindingsDb,
+    pub classifier_name: Protocol,
 }
 
 impl AddressToProtocolData {
-    pub fn new(address: Address, classifier_name: StaticBindingsDb) -> Self {
+    pub fn new(address: Address, classifier_name: Protocol) -> Self {
         Self { classifier_name, address }
     }
 }

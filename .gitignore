@@ -21,8 +21,22 @@
 # Bench data
 /crates/brontes-database/benches/**/*.{parquet,dat,lck,version}
 
-# Database and ABI builds
-data/db/
-abi-builds/
+# But not bindings.rs
+
+stuff
+possible_missed_arbs/
+
+!abi-builds/protocol_addr_sets.rs
+crates/brontes-inspect/abis/**.json
+
+/crates/brontes-core/abi_cache/sources/*
+/crates/brontes-inspect/abi_cache/sources/*
+/crates/brontes-classifier/abi_cache/sources/*
+.cargo/
+
+data/db/*
+.vscode/
+crates/brontes-classifier/expanded.rs
+crates/brontes-classifier/expanded_uni.rs
 data/mdbx.dat
 data/mdbx.lck

@@ -283,34 +283,6 @@ pub mod pool_tokens {
     }
 }
 
-pub mod static_bindings {
-
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
-
-    use crate::exchanges::StaticBindingsDb;
-
-    pub fn serialize<S: Serializer>(
-        u: &StaticBindingsDb,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let st: String = (*u).into();
-        st.serialize(serializer)
-    }
-
-    #[allow(dead_code)]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<StaticBindingsDb, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let address: Option<String> = Deserialize::deserialize(deserializer)?;
-
-        Ok(address.unwrap().into())
-    }
-}
-
 pub mod u256 {
 
     use std::str::FromStr;
