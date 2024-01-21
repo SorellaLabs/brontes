@@ -9,14 +9,14 @@ use std::{
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
-    missing_decimals::MissingDecimals,
+    missing_decimals::load_missing_decimals,
 };
 use brontes_database::{
     clickhouse::Clickhouse,
     libmdbx::{tables::MevBlocks, types::mev_block::MevBlocksData, Libmdbx},
 };
 use brontes_inspect::{
-    composer::{Composer, ComposerResults},
+    composer::{compose_mev_results, ComposerResults},
     Inspector,
 };
 use brontes_types::{
@@ -81,7 +81,7 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
             let block = header.number;
             let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
 
-            MissingDecimals::new(
+            load_missing_decimals(
                 self.parser.get_tracer(),
                 self.database,
                 block,
@@ -122,8 +122,11 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
                 let meta_data = meta_data.into_finalized_metadata(DexQuotes(vec![]));
                 //TODO: wire in the dex pricing task here
 
-                self.composer_future =
-                    Some(Box::pin(Composer::new(self.inspectors, tree.into(), meta_data.into())));
+                self.composer_future = Some(Box::pin(compose_mev_results(
+                    self.inspectors,
+                    tree.into(),
+                    meta_data.into(),
+                )));
             }
             Poll::Pending => return,
             Poll::Ready(None) => return,
