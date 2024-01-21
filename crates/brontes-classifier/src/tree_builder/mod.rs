@@ -514,20 +514,13 @@ pub mod test {
         env,
     };
 
-    use alloy_primitives::{hex, hex::FromHex, B256, U256};
-    use brontes_types::{
-        normalized_actions::{Actions, NormalizedLiquidation},
-        structured_trace::TxTrace,
-        test_utils::force_call_action,
-        tree::{BlockTree, Node},
-    };
-    use reth_primitives::{Address, Header};
-    use reth_rpc_types::trace::parity::{Action, TraceType, TransactionTrace};
-    use reth_tracing_ext::TracingClient;
+    use alloy_primitives::{hex, B256, U256};
+    use brontes_pricing::types::DexPriceMsg;
+    use brontes_types::normalized_actions::{Actions, NormalizedLiquidation};
+    use reth_primitives::Address;
     use serial_test::serial;
 
-    use super::*;
-    use crate::{test_utils::ClassifierTestUtils, Classifier};
+    use crate::test_utils::ClassifierTestUtils;
 
     #[tokio::test]
     #[serial]
@@ -564,6 +557,33 @@ pub mod test {
             }
         }
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_discovery_classification() {
+        let curve_v1_meta_create =
+            B256::from(hex!("c033f5d8f5519056b24f93a5468f21b89ea880d31cefdc3da666bf2947908f83"));
+        let deployed_address = Address::new(hex!("84997fafc913f1613f51bb0e2b5854222900514b"));
+        let mut classifier_utils = ClassifierTestUtils::new();
+
+        // run classifier
+        classifier_utils
+            .build_tree_tx(curve_v1_meta_create)
+            .await
+            .unwrap();
+        let dex_pricing_chan = classifier_utils.get_pricing_receiver();
+
+        while let Ok(msg) = dex_pricing_chan.try_recv() {
+            if let DexPriceMsg::DiscoveredPool(pool, _) = msg {
+                if pool.pool_address == deployed_address {
+                    return
+                }
+            }
+        }
+
+        assert!(false, "create was not detected for {:?}", deployed_address);
+    }
+
     #[tokio::test]
     #[serial]
     async fn test_aave_v3_liquidation() {
