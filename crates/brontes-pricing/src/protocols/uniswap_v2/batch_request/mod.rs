@@ -12,7 +12,7 @@ use crate::{errors::AmmError, AutomatedMarketMaker};
 
 sol!(
     IGetUniswapV2PoolDataBatchRequest,
-    "./src/exchanges/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json"
+    "./src/protocols/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json"
 );
 
 sol!(

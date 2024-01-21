@@ -386,7 +386,7 @@ mod tests {
     #[serial]
     async fn test_sandwich_part_of_jit_sandwich() {
         // this is a jit sandwich
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(MevType::Sandwich)
             .with_dex_prices()
@@ -402,4 +402,6 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+    // TODO: write test for
+    // 0x0ddca9d4baf7bff16b59a564e86c0a6d7e648771d2cfd43a022494bb9c9a8624 https://etherscan.io/tx/0x56fa3506eea903de8d548225708385b48407d3fccdbcd40e1554795b6157dcf0
 }

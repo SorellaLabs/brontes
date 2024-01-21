@@ -11,10 +11,6 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{
-    exchanges::StaticBindingsDb,
-    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
-};
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -38,8 +34,9 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
 use crate::{
+    price_graph_types::*,
     types::{PoolState, ProtocolState},
-    Pair,
+    Pair, Protocol,
 };
 
 /// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
@@ -254,7 +251,6 @@ where
 
             for info in edge_weight {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
-                    warn!("no pool state found");
                     continue;
                 };
                 // returns is t1  / t0
@@ -389,7 +385,7 @@ pub mod test {
     fn build_edge(lookup_pair: Address, t0: Address, t1: Address, d0: u8, d1: u8) -> SubGraphEdge {
         SubGraphEdge::new(
             PoolPairInfoDirection::new(
-                PoolPairInformation::new(lookup_pair, StaticBindingsDb::UniswapV2, t0, t1),
+                PoolPairInformation::new(lookup_pair, Protocol::UniswapV2, t0, t1),
                 true,
             ),
             d0,

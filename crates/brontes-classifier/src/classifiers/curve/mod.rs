@@ -1,5 +1,5 @@
 #[allow(non_snake_case)]
-pub mod curve_crypto_swap;
-pub use curve_crypto_swap::CurveCryptoSwapClassifier;
-pub mod discovery;
+mod curve_crypto_swap;
+mod discovery;
+pub use curve_crypto_swap::*;
 pub use discovery::*;
