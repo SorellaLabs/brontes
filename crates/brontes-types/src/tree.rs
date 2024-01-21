@@ -530,6 +530,15 @@ impl<V: NormalizedAction> Node<V> {
         }
     }
 
+    /// fetches the most recent possible parent node
+    pub fn get_most_recent_parent_node(&self, index: u64) -> Option<&Node<V>> {
+        if self.index == index {
+            Some(self)
+        } else {
+            self.inner.last()?.get_most_recent_parent_node(index)
+        }
+    }
+
     //TODO: Ludwig: Write docs
     pub fn get_deepest_node(&self) -> &Node<V> {
         if self.inner.is_empty() {

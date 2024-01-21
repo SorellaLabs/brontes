@@ -4,9 +4,9 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use alloy_primitives::Log;
+use alloy_primitives::{Bytes, Log};
 use reth_primitives::{Address, U256};
-use reth_rpc_types::trace::parity::SelfdestructAction;
+use reth_rpc_types::trace::parity::{Action, SelfdestructAction};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
@@ -139,6 +139,16 @@ impl Actions {
             Self::Unclassified(a) => a.logs.clone(),
             _ => vec![],
         }
+    }
+
+    pub fn get_calldata(&self) -> Option<Bytes> {
+        if let Actions::Unclassified(u) = &self {
+            if let Action::Call(call) = &u.trace.action {
+                return Some(call.input.clone())
+            }
+        }
+
+        None
     }
 
     pub fn get_to_address(&self) -> Address {
