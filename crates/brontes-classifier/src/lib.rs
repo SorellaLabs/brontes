@@ -8,14 +8,12 @@ use reth_db::mdbx::RO;
 
 pub mod tree_builder;
 pub use tree_builder::Classifier;
-pub mod bindings;
-use bindings::*;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
 mod classifiers;
-use alloy_sol_types::{sol, SolInterface};
+use alloy_sol_types::sol;
 use brontes_types::normalized_actions::Actions;
 pub use classifiers::*;
 
@@ -48,9 +46,8 @@ sol! {
 pub trait ActionCollection: Sync + Send {
     fn dispatch(
         &self,
-        sig: &[u8],
         trace_index: u64,
-        data: StaticReturnBindings,
+        call_data: Bytes,
         return_data: Bytes,
         from_address: Address,
         target_address: Address,
@@ -62,27 +59,13 @@ pub trait ActionCollection: Sync + Send {
     ) -> Option<(PoolUpdate, Actions)>;
 }
 
-/// implements the above trait for decoding on the different binding enums
-#[macro_export]
-macro_rules! impl_decode_sol {
-    ($enum_name:ident, $inner_type:path) => {
-        impl TryDecodeSol for $enum_name {
-            type DecodingType = $inner_type;
-
-            fn try_decode(call_data: &[u8]) -> Result<Self::DecodingType, alloy_sol_types::Error> {
-                Self::DecodingType::abi_decode(call_data, false)
-            }
-        }
-    };
-}
-
 pub trait IntoAction: Debug + Send + Sync {
     fn get_signature(&self) -> [u8; 4];
 
     fn decode_trace_data(
         &self,
         index: u64,
-        data: StaticReturnBindings,
+        call_data: Bytes,
         return_data: Bytes,
         from_address: Address,
         target_address: Address,

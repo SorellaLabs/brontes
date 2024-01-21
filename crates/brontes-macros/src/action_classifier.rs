@@ -130,12 +130,10 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
         quote!()
     };
 
-    let a = call_type.to_string();
-    let decalled = Ident::new(&a[..a.len() - 4], Span::call_site());
-
     if give_calldata {
         option_parsing.push(quote!(
-                let call_data = crate::enum_unwrap!(data, #exchange_mod_name, #decalled);
+            let call_data = <crate::#exchange_mod_name::#call_type
+                as ::alloy_sol_types::SolCall>::abi_decode(&data[..],false).ok()?;
         ));
     }
 
@@ -273,14 +271,14 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
 
         impl crate::IntoAction for #exchange_name {
             fn get_signature(&self) -> [u8; 4] {
-                <#call_type as alloy_sol_types::SolCall>::SELECTOR
+                <#call_type as ::alloy_sol_types::SolCall>::SELECTOR
             }
 
             #[allow(unused)]
             fn decode_trace_data(
                 &self,
                 index: u64,
-                data: crate::StaticReturnBindings,
+                data: ::alloy_primitives::Bytes,
                 return_data: ::alloy_primitives::Bytes,
                 from_address: ::alloy_primitives::Address,
                 target_address: ::alloy_primitives::Address,
@@ -478,9 +476,8 @@ pub fn action_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
 
             fn dispatch(
                 &self,
-                sig: &[u8],
                 index: u64,
-                data: crate::StaticReturnBindings,
+                data: ::alloy_primitives::Bytes,
                 return_data: ::alloy_primitives::Bytes,
                 from_address: ::alloy_primitives::Address,
                 target_address: ::alloy_primitives::Address,
@@ -493,6 +490,7 @@ pub fn action_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                     ::brontes_pricing::types::PoolUpdate,
                     ::brontes_types::normalized_actions::Actions
                 )> {
+                let sig = &data[0..4];
                 let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(sig);
 
                 if sig == crate::IntoAction::get_signature(&self.0) {
