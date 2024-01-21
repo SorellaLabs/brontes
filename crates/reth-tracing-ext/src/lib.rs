@@ -1,6 +1,6 @@
 use std::{fmt::Debug, path::Path, sync::Arc};
 
-use alloy_primitives::Log;
+use alloy_primitives::{Log, B256};
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
@@ -190,7 +190,7 @@ impl TracingInspectorLocal {
     pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
         let gas_used = res.gas_used().into();
 
-        let trace = self.build_trace();
+        let trace = self.build_trace(info.hash.unwrap(), info.block_number.unwrap());
 
         TxTrace {
             trace: trace.unwrap_or_default(),
@@ -215,7 +215,11 @@ impl TracingInspectorLocal {
     /// the state diff, since this requires access to the account diffs.
     ///
     /// See [Self::into_trace_results_with_state] and [populate_state_diff].
-    pub fn build_trace(&self) -> Option<Vec<TransactionTraceWithLogs>> {
+    pub fn build_trace(
+        &self,
+        tx_hash: B256,
+        block_number: u64,
+    ) -> Option<Vec<TransactionTraceWithLogs>> {
         if self.traces.nodes().is_empty() {
             return None
         }
@@ -235,15 +239,19 @@ impl TracingInspectorLocal {
 
             let msg_sender = if let Action::Call(c) = &trace.action {
                 if c.call_type == CallType::DelegateCall {
-                    let prev_trace = traces
-                        .iter()
-                        .rev()
-                        .find(|n| {
-                            let Action::Call(c) = &n.trace.action else { return false };
-                            c.call_type != CallType::DelegateCall
-                        })
-                        .unwrap();
-                    prev_trace.msg_sender
+                    if let Some(prev_trace) = traces.iter().rev().find(|n| {
+                        let Action::Call(c) = &n.trace.action else { return false };
+                        c.call_type != CallType::DelegateCall
+                    }) {
+                        prev_trace.msg_sender
+                    } else {
+                        tracing::error!(
+                            ?block_number,
+                            ?tx_hash,
+                            "couldn't find head of delegate call for block"
+                        );
+                        c.from
+                    }
                 } else {
                     match &trace.action {
                         Action::Call(call) => call.from,
