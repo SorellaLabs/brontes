@@ -530,22 +530,19 @@ impl<V: NormalizedAction> Node<V> {
         }
     }
 
-    /// fetches the most recent possible parent node
+    /// fetches the most recent possible parent node that was a non static call
     pub fn get_most_recent_parent_node(&self, index: u64) -> Option<&Node<V>> {
-        if self.index == index {
-            Some(self)
+        let result = if self.index == index {
+            Some(self).filter(|_| !self.data.get_action().is_static_call())
         } else {
             self.inner.last()?.get_most_recent_parent_node(index)
-        }
-    }
+        };
 
-    //TODO: Ludwig: Write docs
-    pub fn get_deepest_node(&self) -> &Node<V> {
-        if self.inner.is_empty() {
-            return self
-        } else {
-            self.inner.last().unwrap().get_deepest_node()
+        if result.is_none() {
+            return Some(self).filter(|_| !self.data.get_action().is_static_call())
         }
+
+        result 
     }
 
     pub fn tree_right_path(&self) -> Vec<Address> {
