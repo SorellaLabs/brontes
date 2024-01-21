@@ -32,7 +32,7 @@ use utils::{decode_transfer, get_coinbase_transfer};
 
 use crate::{
     classifiers::{DiscoveryProtocols, *},
-    ActionCollection, FactoryDecoderDispatch, StaticBindings,
+    ActionCollection, FactoryDecoderDispatch,
 };
 
 //TODO: Document this module
@@ -349,6 +349,28 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         };
     }
 
+    fn try_get_classifier(&self, target_address: Address) -> Option<Box<dyn ActionCollection>> {
+        let db_tx = self.libmdbx.ro_tx().ok()?;
+
+        let protocol = db_tx.get::<AddressToProtocol>(target_address).ok()??;
+        match protocol {
+            StaticBindingsDb::UniswapV2 => Some(Box::new(UniswapV2Classifier::default())),
+            StaticBindingsDb::SushiSwapV2 => Some(Box::new(SushiSwapV2Classifier::default())),
+            StaticBindingsDb::UniswapV3 => Some(Box::new(UniswapV3Classifier::default())),
+            StaticBindingsDb::SushiSwapV3 => Some(Box::new(SushiSwapV3Classifier::default())),
+            StaticBindingsDb::CurveCryptoSwap => {
+                Some(Box::new(CurveCryptoSwapClassifier::default()))
+            }
+            StaticBindingsDb::AaveV2 => Some(Box::new(AaveV2Classifier::default())),
+            StaticBindingsDb::AaveV3 => Some(Box::new(AaveV3Classifier::default())),
+            StaticBindingsDb::UniswapX => Some(Box::new(UniswapXClassifier::default())),
+            protocol => {
+                error!("no classifier for {:?}, consider building one", protocol);
+                None
+            }
+        }
+    }
+
     fn classify_call(
         &self,
         block: u64,
@@ -362,46 +384,26 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        //TODO: (Joe) get rid of these unwraps
-        let db_tx = self.libmdbx.ro_tx().unwrap();
+        if let Some(classifier) = self.try_get_classifier(target_address) {
+            let db_tx = self.libmdbx.ro_tx().unwrap();
 
-        if let Some(protocol) = db_tx.get::<AddressToProtocol>(target_address).unwrap() {
-            let classifier: Box<dyn ActionCollection> = match protocol {
-                StaticBindingsDb::UniswapV2 => Box::new(UniswapV2Classifier::default()),
-                StaticBindingsDb::SushiSwapV2 => Box::new(SushiSwapV2Classifier::default()),
-                StaticBindingsDb::UniswapV3 => Box::new(UniswapV3Classifier::default()),
-                StaticBindingsDb::SushiSwapV3 => Box::new(SushiSwapV3Classifier::default()),
-                StaticBindingsDb::CurveCryptoSwap => Box::new(CurveCryptoSwapClassifier::default()),
-                StaticBindingsDb::AaveV2 => Box::new(AaveV2Classifier::default()),
-                StaticBindingsDb::AaveV3 => Box::new(AaveV3Classifier::default()),
-                StaticBindingsDb::UniswapX => Box::new(UniswapXClassifier::default()),
-                protocol => unreachable!("no classifier {:?}", protocol),
-            };
-
-            let calldata = trace.get_calldata();
+            let call_data = trace.get_calldata();
             let return_bytes = trace.get_return_calldata();
-            let sig = &calldata[0..4];
-            let decoded_result = Into::<StaticBindings>::into(protocol)
-                .try_decode(&calldata)
-                .map(|data| {
-                    classifier.dispatch(
-                        sig,
-                        trace_index,
-                        data,
-                        return_bytes.clone(),
-                        from_address,
-                        target_address,
-                        trace.msg_sender,
-                        &trace.logs,
-                        &db_tx,
-                        block,
-                        tx_idx,
-                    )
-                })
-                .ok()
-                .flatten();
 
-            if let Some(decoded_result) = decoded_result {
+            let results = classifier.dispatch(
+                trace_index,
+                call_data,
+                return_bytes.clone(),
+                from_address,
+                target_address,
+                trace.msg_sender,
+                &trace.logs,
+                &db_tx,
+                block,
+                tx_idx,
+            );
+
+            if let Some(decoded_result) = results {
                 return (vec![DexPriceMsg::Update(decoded_result.0)], decoded_result.1)
             }
         } else if trace.logs.len() > 0 {
