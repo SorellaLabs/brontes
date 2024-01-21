@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
-use brontes_core::{missing_decimals::MissingDecimals, test_utils::*};
+use brontes_core::{missing_decimals::load_missing_decimals, test_utils::*};
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::BlockTree};
 use thiserror::Error;
@@ -80,7 +80,7 @@ impl PricingTestUtils {
 
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
         let (decimals, tree) = classifier.build_block_tree(traces, header).await;
-        MissingDecimals::new(
+        load_missing_decimals(
             self.tracer.get_provider(),
             self.tracer.libmdbx,
             block,
@@ -103,7 +103,7 @@ impl PricingTestUtils {
         let mut pricer = self.crate_dex_pricer(block, None, rx).await?;
 
         let (decimals, tree) = classifier.build_block_tree(vec![trace], header).await;
-        MissingDecimals::new(
+        load_missing_decimals(
             self.tracer.get_provider(),
             self.tracer.libmdbx,
             block,
