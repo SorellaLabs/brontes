@@ -1,13 +1,15 @@
 use std::{
     cmp::max,
     collections::HashMap,
+    fs::File,
+    io::Write,
     pin::Pin,
     str::FromStr,
     sync::Arc,
     task::{Context, Poll},
 };
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
@@ -18,7 +20,10 @@ use brontes_database::libmdbx::{
     types::{dex_price::DexPriceData, mev_block::MevBlocksData, LibmdbxData},
     Libmdbx,
 };
-use brontes_inspect::{composer::compose_mev_results, Inspector};
+use brontes_inspect::{
+    composer::{compose_mev_results, ComposerResults},
+    Inspector,
+};
 use brontes_pricing::{BrontesBatchPricer, GraphManager};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
@@ -44,6 +49,8 @@ use tokio::{
 };
 use tracing::{debug, error, info, warn};
 
+const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";
+
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
 
@@ -62,6 +69,8 @@ pub struct DataBatching<'db, T: TracingProvider + Clone> {
 
     libmdbx:    &'static Libmdbx,
     inspectors: &'db [&'db Box<dyn Inspector>],
+
+    missed_mev_ops: Vec<(B256, u128)>,
 }
 
 impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
@@ -127,6 +136,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             batch_id,
             libmdbx,
             inspectors,
+            missed_mev_ops: vec![],
         }
     }
 
@@ -136,11 +146,32 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
 
         let mut graceful_guard = None;
         tokio::select! {
-            _ = &mut  data_batching => {},
+            _= &mut data_batching => {
+
+            },
             guard = shutdown => {
                 graceful_guard = Some(guard);
             },
         }
+        let mut data = std::mem::take(&mut data_batching.missed_mev_ops);
+
+        data.sort_by(|a, b| b.1.cmp(&a.1));
+        let path_str =
+            format!("{POSSIBLE_MISSED_MEV_RESULT_FOLDER}/batch-{}", data_batching.batch_id);
+        let path = std::path::Path::new(&path_str);
+        let _ = std::fs::create_dir_all(&path);
+
+        let mut file = File::create(path).unwrap();
+
+        let data = data
+            .into_iter()
+            .map(|(arb, _)| format!("{arb:?}"))
+            .fold(String::new(), |acc, arb| acc + &arb + "\n");
+
+        if file.write_all(&data.into_bytes()).is_err() {
+            error!("failed to write possible missed arbs to folder")
+        }
+
         while let Some(_) = data_batching.processing_futures.next().await {}
 
         drop(graceful_guard);
@@ -401,7 +432,7 @@ async fn process_results(
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<MetadataCombined>,
 ) {
-    let (block_details, mev_details) =
+    let ComposerResults { block_details, mev_details, possibly_missed_arbs } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
 
     if let Err(e) = insert_quotes(db, metadata.block_num.clone(), metadata.dex_quotes.clone()) {
