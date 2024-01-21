@@ -1,4 +1,5 @@
 use std::sync::Arc;
+
 mod tree_pruning;
 mod utils;
 use brontes_database::libmdbx::{
@@ -9,10 +10,9 @@ use brontes_database::libmdbx::{
     },
     Libmdbx,
 };
-use brontes_pricing::types::DexPriceMsg;
+use brontes_pricing::{types::DexPriceMsg, Protocol};
 use brontes_types::{
     db::{address_to_tokens::PoolTokens, pool_creation_block::PoolsToAddresses},
-    exchanges::StaticBindingsDb,
     extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer, SelfdestructWithIndex},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
@@ -24,7 +24,7 @@ use itertools::Itertools;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error};
+use tracing::error;
 use tree_pruning::{
     account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
@@ -283,7 +283,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         block: u64,
         address: Address,
         tokens: [Address; 2],
-        classifier_name: StaticBindingsDb,
+        classifier_name: Protocol,
     ) -> eyre::Result<()> {
         self.libmdbx
             .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
@@ -354,16 +354,14 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
 
         let protocol = db_tx.get::<AddressToProtocol>(target_address).ok()??;
         match protocol {
-            StaticBindingsDb::UniswapV2 => Some(Box::new(UniswapV2Classifier::default())),
-            StaticBindingsDb::SushiSwapV2 => Some(Box::new(SushiSwapV2Classifier::default())),
-            StaticBindingsDb::UniswapV3 => Some(Box::new(UniswapV3Classifier::default())),
-            StaticBindingsDb::SushiSwapV3 => Some(Box::new(SushiSwapV3Classifier::default())),
-            StaticBindingsDb::CurveCryptoSwap => {
-                Some(Box::new(CurveCryptoSwapClassifier::default()))
-            }
-            StaticBindingsDb::AaveV2 => Some(Box::new(AaveV2Classifier::default())),
-            StaticBindingsDb::AaveV3 => Some(Box::new(AaveV3Classifier::default())),
-            StaticBindingsDb::UniswapX => Some(Box::new(UniswapXClassifier::default())),
+            Protocol::UniswapV2 => Some(Box::new(UniswapV2Classifier::default())),
+            Protocol::SushiSwapV2 => Some(Box::new(SushiSwapV2Classifier::default())),
+            Protocol::UniswapV3 => Some(Box::new(UniswapV3Classifier::default())),
+            Protocol::SushiSwapV3 => Some(Box::new(SushiSwapV3Classifier::default())),
+            Protocol::CurveCryptoSwap => Some(Box::new(CurveCryptoSwapClassifier::default())),
+            Protocol::AaveV2 => Some(Box::new(AaveV2Classifier::default())),
+            Protocol::AaveV3 => Some(Box::new(AaveV3Classifier::default())),
+            Protocol::UniswapX => Some(Box::new(UniswapXClassifier::default())),
             protocol => {
                 error!("no classifier for {:?}, consider building one", protocol);
                 None
@@ -461,7 +459,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         };
 
         let Some(calldata) = node_data.data.get_calldata() else {
-            error!(block, tx_idx, "parent call had no calldata");
             return (vec![], Actions::Unclassified(trace));
         };
 

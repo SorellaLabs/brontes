@@ -27,7 +27,7 @@ use tokio::task::JoinHandle;
 use super::make_call_request;
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
-    exchanges::uniswap_v3::batch_request::get_uniswap_v3_tick_data_batch_request,
+    protocols::uniswap_v3::batch_request::get_uniswap_v3_tick_data_batch_request,
     uniswap_v2::IErc20,
     uniswap_v3_math, AutomatedMarketMaker,
 };

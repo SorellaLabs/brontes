@@ -8,7 +8,7 @@ use brontes_database::{
     Pair,
 };
 use brontes_pricing::AllPairGraph as PairGraph;
-use brontes_types::exchanges::StaticBindingsDb;
+use brontes_types::exchanges::Protocol;
 use criterion::{
     black_box, criterion_group, criterion_main, measurement::WallTime, BenchmarkGroup, Criterion,
 };
@@ -24,7 +24,7 @@ pub fn load_amount_of_pools_starting_from(
     db: &Libmdbx,
     start_block: u64,
     amount: usize,
-) -> (u64, HashMap<(Address, StaticBindingsDb), Pair>) {
+) -> (u64, HashMap<(Address, Protocol), Pair>) {
     let tx = db.ro_tx().unwrap();
     let mut cursor = tx.cursor_read::<PoolCreationBlocks>().unwrap();
     let _ = cursor.seek(start_block);
@@ -104,7 +104,7 @@ fn bench_insertions(
     name: &str,
     mut graph: PairGraph,
     g: &mut BenchmarkGroup<'_, WallTime>,
-    new_entries: HashMap<(Address, StaticBindingsDb), Pair>,
+    new_entries: HashMap<(Address, Protocol), Pair>,
 ) {
     g.bench_function(name, move |b| {
         b.iter(|| {
