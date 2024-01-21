@@ -27,6 +27,8 @@
 //!
 //! Please refer to the individual crate documentation for more details.
 
+mod cli;
+
 use std::{
     pin::Pin,
     task::{Context, Poll},
