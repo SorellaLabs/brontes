@@ -10,7 +10,7 @@ use brontes::{
     cli::{Args, Commands},
     runner, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT,
 };
-use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
+use brontes_metrics::prometheus_exporter::initialize;
 use clap::Parser;
 use metrics_process::Collector;
 use tracing::{error, info, Level};
@@ -65,6 +65,7 @@ fn run() -> eyre::Result<()> {
     }
 }
 
+#[allow(unused)]
 async fn initialize_prometheus() {
     // initializes the prometheus endpoint
     initialize(
