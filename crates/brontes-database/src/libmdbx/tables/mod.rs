@@ -402,7 +402,7 @@ where
                 println!("{} OK", Self::NAME);
             }
 
-            let data = data?;
+            let data = data.unwrap_or(vec![]);
             println!("finished querying with {} entries", data.len());
             libmdbx.initialize_table(&data)
         })
