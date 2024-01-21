@@ -15,7 +15,7 @@ pub trait TraceActions {
     fn is_static_call(&self) -> bool;
     fn is_create(&self) -> bool;
     fn action_type(&self) -> &Action;
-    fn get_create_output(&self) -> Option<Address>;
+    fn get_create_output(&self) -> Address;
     fn is_delegate_call(&self) -> bool;
 }
 
@@ -41,10 +41,10 @@ impl TraceActions for TransactionTraceWithLogs {
         }
     }
 
-    fn get_create_output(&self) -> Option<Address> {
+    fn get_create_output(&self) -> Address {
         match &self.trace.result {
-            Some(TraceOutput::Create(o)) => Some(o.address),
-            _ => None,
+            Some(TraceOutput::Create(o)) => o.address,
+            _ => Address::default(),
         }
     }
 
