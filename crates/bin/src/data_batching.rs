@@ -403,7 +403,7 @@ fn insert_mev_results(
          {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- Builder \
          ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer Fee \
          Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized Profit (USD): \
-        {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n- Possibly Missed Mev: {}",
+        {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n- Possibly Missed Mev:\n{}",
         block_details.block_number,
         block_details.mev_count,
         block_details.finalized_eth_price,
