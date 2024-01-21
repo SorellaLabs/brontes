@@ -93,7 +93,7 @@ impl DexPricingArgs {
 
             info!(batch_id, start_block, end_block, "starting batch");
 
-            let ex = tstask_executor.clone();
+            let ex = task_executor.clone();
             tasks.push(task_executor.spawn_critical_with_graceful_shutdown_signal(
                 "pricing batch",
                 |grace| async move {
