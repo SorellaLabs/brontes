@@ -84,7 +84,6 @@ impl AtomicBackrunInspector<'_> {
             .flat_map(|s| match s.clone() {
                 Actions::Swap(s) => vec![s],
                 Actions::FlashLoan(f) => {
-                    tracing::info!("got flashloan {:?}", f);
                     f.child_actions
                         .into_iter()
                         .filter(|a| a.is_swap())
@@ -95,6 +94,7 @@ impl AtomicBackrunInspector<'_> {
             })
             .collect_vec();
 
+        tracing::info!(?swaps);
         // check to see if more than 1 swap
         if swaps.len() <= 1 {
             return None
