@@ -11,7 +11,7 @@ use brontes_types::{
     extra_processing::Pair,
 };
 use futures::future::join_all;
-use reth_primitives:: Address;
+use reth_primitives::Address;
 use sorella_db_databases::{
     clickhouse::{
         config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,

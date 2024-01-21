@@ -1,7 +1,6 @@
 use std::{
     cmp::max,
     pin::Pin,
-    str::FromStr,
     task::{Context, Poll},
 };
 
