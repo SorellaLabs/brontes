@@ -38,10 +38,10 @@ impl Inspector for AtomicBackrunInspector<'_> {
     ) -> Vec<(ClassifiedMev, SpecificMev)> {
         let intersting_state = tree.collect_all(|node| {
             (
-                node.data.is_swap() || node.data.is_transfer(),
-                node.subactions
-                    .iter()
-                    .any(|action| action.is_swap() || action.is_transfer()),
+                node.data.is_swap() || node.data.is_transfer() || node.data.is_flash_loan(),
+                node.subactions.iter().any(|action| {
+                    action.is_swap() || action.is_transfer() || node.data.is_flash_loan()
+                }),
             )
         });
 
@@ -80,8 +80,17 @@ impl AtomicBackrunInspector<'_> {
         let swaps = searcher_actions
             .iter()
             .flatten()
-            .filter(|s| s.is_swap())
-            .map(|s| s.force_swap_ref())
+            .filter(|s| s.is_swap() || s.is_flash_loan())
+            .flat_map(|s| match s.clone() {
+                Actions::Swap(s) => vec![s],
+                Actions::FlashLoan(f) => f
+                    .child_actions
+                    .into_iter()
+                    .filter(|a| a.is_swap())
+                    .map(|s| s.force_swap())
+                    .collect_vec(),
+                _ => vec![],
+            })
             .collect_vec();
 
         // check to see if more than 1 swap
