@@ -38,3 +38,13 @@ impl From<(Vec<TxHash>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
         }
     }
 }
+
+/// i.e. Sandwich: From <victim_tx_hashes, victim_swaps)
+impl From<(Vec<Vec<TxHash>>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
+    fn from(value: (Vec<Vec<TxHash>>, Vec<GasDetails>)) -> Self {
+        let tx_hashes = value.0.into_iter().flatten().collect_vec();
+        let gas_details = value.1;
+
+        (tx_hashes, gas_details).into()
+    }
+}
