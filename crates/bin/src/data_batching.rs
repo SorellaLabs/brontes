@@ -4,7 +4,6 @@ use std::{
     fs::File,
     io::Write,
     pin::Pin,
-    str::FromStr,
     sync::Arc,
     task::{Context, Poll},
 };
@@ -247,19 +246,14 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             }
         };
 
-        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
-            Address::from_str(WETH_ADDRESS).unwrap(),
-            Address::from_str(USDT_ADDRESS).unwrap(),
-        )) {
-            eth_usdt
-        } else {
-            db_cex_quotes
-                .get_quote(&Pair(
-                    Address::from_str(WETH_ADDRESS).unwrap(),
-                    Address::from_str(USDC_ADDRESS).unwrap(),
-                ))
-                .unwrap_or_default()
-        };
+        let eth_prices =
+            if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
+                eth_usdt
+            } else {
+                db_cex_quotes
+                    .get_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
+                    .unwrap_or_default()
+            };
 
         let mut cex_quotes = CexPriceMap::new();
         db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {

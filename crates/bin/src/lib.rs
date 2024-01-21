@@ -1,7 +1,5 @@
 //TODO: (Ludwig) Finish this once all other crates have been documented.
 
-//! # Brontes
-//!
 //! This is the main binary crate for the Brontes project. It uses several other
 //! crates in the workspace, which are documented separately:
 //!

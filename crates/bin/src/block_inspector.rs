@@ -1,7 +1,6 @@
 use std::{
     cmp::max,
     pin::Pin,
-    str::FromStr,
     task::{Context, Poll},
 };
 
@@ -196,19 +195,14 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
 
         let db_cex_quotes: CexPriceMap = CexPriceMap::default();
 
-        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
-            Address::from_str(WETH_ADDRESS).unwrap(),
-            Address::from_str(USDT_ADDRESS).unwrap(),
-        )) {
-            eth_usdt
-        } else {
-            db_cex_quotes
-                .get_quote(&Pair(
-                    Address::from_str(WETH_ADDRESS).unwrap(),
-                    Address::from_str(USDC_ADDRESS).unwrap(),
-                ))
-                .unwrap_or_default()
-        };
+        let eth_prices =
+            if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
+                eth_usdt
+            } else {
+                db_cex_quotes
+                    .get_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
+                    .unwrap_or_default()
+            };
 
         let mut cex_quotes = CexPriceMap::new();
         db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {

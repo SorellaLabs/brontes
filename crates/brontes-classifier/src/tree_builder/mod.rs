@@ -1,11 +1,8 @@
 use std::sync::Arc;
 mod tree_pruning;
 mod utils;
-use alloy_sol_types::SolEvent;
 use brontes_database::libmdbx::{
-    tables::{
-        AddressToFactory, AddressToProtocol, AddressToTokens, PoolCreationBlocks, TokenDecimals,
-    },
+    tables::{AddressToProtocol, AddressToTokens, PoolCreationBlocks, TokenDecimals},
     types::{
         address_to_protocol::AddressToProtocolData, address_to_tokens::AddressToTokensData,
         pool_creation_block::PoolCreationBlocksData,
@@ -17,22 +14,26 @@ use brontes_types::{
     db::{address_to_tokens::PoolTokens, pool_creation_block::PoolsToAddresses},
     exchanges::StaticBindingsDb,
     extra_processing::ExtraProcessing,
-    normalized_actions::{Actions, NormalizedAction, NormalizedTransfer},
+    normalized_actions::{Actions, NormalizedAction, NormalizedTransfer, SelfdestructWithIndex},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     traits::TracingProvider,
     tree::{BlockTree, GasDetails, Node, Root},
 };
 use futures::future::join_all;
 use itertools::Itertools;
-use reth_primitives::{Address, Header, B256};
+use reth_primitives::{Address, Header};
+use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::error;
+use tracing::{error, info};
 use tree_pruning::{
     account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
 use utils::{decode_transfer, get_coinbase_transfer};
 
-use crate::{classifiers::*, ActionCollection, FactoryDecoderDispatch, StaticBindings};
+use crate::{
+    classifiers::{DiscoveryProtocols, *},
+    ActionCollection, FactoryDecoderDispatch,
+};
 
 //TODO: Document this module
 #[derive(Debug, Clone)]
@@ -51,50 +52,54 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         Self { libmdbx, pricing_update_sender, provider }
     }
 
-    pub fn close(&self) {
-        self.pricing_update_sender
-            .send(DexPriceMsg::Closed)
-            .unwrap();
-    }
-
     pub async fn build_block_tree(
         &self,
         traces: Vec<TxTrace>,
         header: Header,
     ) -> (ExtraProcessing, BlockTree<Actions>) {
         let tx_roots = self.build_all_tx_trees(traces, &header).await;
-        // send out all updates
         let mut tree = BlockTree::new(header, tx_roots.len());
 
-        let (further_classification_requests, missing_data_requests): (Vec<_>, Vec<_>) = tx_roots
-            .into_iter()
-            .map(|root_data| {
-                tree.insert_root(root_data.root);
-                root_data.pool_updates.into_iter().for_each(|update| {
-                    // if a channel closes when its not supposed to, we want to error
-                    self.pricing_update_sender.send(update).unwrap();
-                });
-                (root_data.further_classification_requests, root_data.missing_data_requests)
-            })
-            .unzip();
+        // send out all updates
+        let (further_classification_requests, missing_data_requests) =
+            self.process_tx_roots(tx_roots, &mut tree);
 
         Self::prune_tree(&mut tree);
         finish_classification(&mut tree, further_classification_requests);
 
         tree.finalize_tree();
 
-        let mut dec = missing_data_requests
+        let mut addresses_missing_decimals = missing_data_requests
             .into_iter()
             .flatten()
             .collect::<Vec<_>>();
 
         // need to sort before we can dedup
-        dec.sort();
-        dec.dedup();
+        addresses_missing_decimals.sort();
+        addresses_missing_decimals.dedup();
 
-        let processing = ExtraProcessing { tokens_decimal_fill: dec };
+        let processing = ExtraProcessing { tokens_decimal_fill: addresses_missing_decimals };
 
         (processing, tree)
+    }
+
+    fn process_tx_roots(
+        &self,
+        tx_roots: Vec<TxTreeResult>,
+        tree: &mut BlockTree<Actions>,
+    ) -> (Vec<Option<(usize, Vec<u64>)>>, Vec<Vec<Address>>) {
+        let (further_classification_requests, missing_data_requests): (Vec<_>, Vec<_>) = tx_roots
+            .into_iter()
+            .map(|root_data| {
+                tree.insert_root(root_data.root);
+                root_data.pool_updates.into_iter().for_each(|update| {
+                    self.pricing_update_sender.send(update).unwrap();
+                });
+                (root_data.further_classification_requests, root_data.missing_data_requests)
+            })
+            .unzip();
+
+        (further_classification_requests, missing_data_requests)
     }
 
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
@@ -114,11 +119,10 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                 .into_iter()
                 .enumerate()
                 .map(|(tx_idx, mut trace)| async move {
+                    // here only traces where the root tx failed are filtered out
                     if trace.trace.is_empty() || !trace.is_success {
                         return None
                     }
-                    let tx_hash = trace.tx_hash;
-
                     // post classification processing collectors
                     let mut missing_decimals = Vec::new();
                     let mut further_classification_requests = Vec::new();
@@ -129,9 +133,9 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                     let classification = self
                         .process_classification(
                             header.number,
+                            None,
                             tx_idx as u64,
                             0,
-                            tx_hash,
                             root_trace,
                             &mut missing_decimals,
                             &mut further_classification_requests,
@@ -168,9 +172,9 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         let classification = self
                             .process_classification(
                                 header.number,
+                                Some(&tx_root.head),
                                 tx_idx as u64,
                                 (index + 1) as u64,
-                                tx_hash,
                                 trace.clone(),
                                 &mut missing_decimals,
                                 &mut further_classification_requests,
@@ -218,16 +222,16 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
     async fn process_classification(
         &self,
         block_number: u64,
+        root_head: Option<&Node<Actions>>,
         tx_index: u64,
         trace_index: u64,
-        tx_hash: B256,
         trace: TransactionTraceWithLogs,
         missing_decimals: &mut Vec<Address>,
         further_classification_requests: &mut Vec<u64>,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
         let (update, classification) = self
-            .classify_node(block_number, tx_index as u64, trace, trace_index, tx_hash)
+            .classify_node(block_number, root_head, tx_index as u64, trace, trace_index)
             .await;
 
         // Here we are marking more complex actions that require data
@@ -323,102 +327,86 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
     async fn classify_node(
         &self,
         block: u64,
+        root_head: Option<&Node<Actions>>,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
-        tx_hash: B256,
     ) -> (Vec<DexPriceMsg>, Actions) {
-        // we don't classify static calls
-        if trace.is_static_call() {
-            return (vec![], Actions::Unclassified(trace))
-        }
         if trace.trace.error.is_some() {
             return (vec![], Actions::Revert)
         }
+        match trace.action_type() {
+            Action::Call(_) => return self.classify_call(block, tx_idx, trace, trace_index),
+            Action::Create(_) => {
+                return self
+                    .classify_create(block, root_head, tx_idx, trace, trace_index)
+                    .await
+            }
+            Action::Selfdestruct(sd) => {
+                return (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
+            }
+            Action::Reward(_) => return (vec![], Actions::Unclassified(trace)),
+        };
+    }
 
+    fn try_get_classifier(&self, target_address: Address) -> Option<Box<dyn ActionCollection>> {
+        let db_tx = self.libmdbx.ro_tx().ok()?;
+
+        let protocol = db_tx.get::<AddressToProtocol>(target_address).ok()??;
+        match protocol {
+            StaticBindingsDb::UniswapV2 => Some(Box::new(UniswapV2Classifier::default())),
+            StaticBindingsDb::SushiSwapV2 => Some(Box::new(SushiSwapV2Classifier::default())),
+            StaticBindingsDb::UniswapV3 => Some(Box::new(UniswapV3Classifier::default())),
+            StaticBindingsDb::SushiSwapV3 => Some(Box::new(SushiSwapV3Classifier::default())),
+            StaticBindingsDb::CurveCryptoSwap => {
+                Some(Box::new(CurveCryptoSwapClassifier::default()))
+            }
+            StaticBindingsDb::AaveV2 => Some(Box::new(AaveV2Classifier::default())),
+            StaticBindingsDb::AaveV3 => Some(Box::new(AaveV3Classifier::default())),
+            StaticBindingsDb::UniswapX => Some(Box::new(UniswapXClassifier::default())),
+            protocol => {
+                error!("no classifier for {:?}, consider building one", protocol);
+                None
+            }
+        }
+    }
+
+    fn classify_call(
+        &self,
+        block: u64,
+        tx_idx: u64,
+        trace: TransactionTraceWithLogs,
+        trace_index: u64,
+    ) -> (Vec<DexPriceMsg>, Actions) {
+        if trace.is_static_call() {
+            return (vec![], Actions::Unclassified(trace))
+        }
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        //TODO: get rid of these unwraps
-        let db_tx = self.libmdbx.ro_tx().unwrap();
+        if let Some(classifier) = self.try_get_classifier(target_address) {
+            let db_tx = self.libmdbx.ro_tx().unwrap();
 
-        if let Some(protocol) = db_tx.get::<AddressToProtocol>(target_address).unwrap() {
-            let classifier: Box<dyn ActionCollection> = match protocol {
-                StaticBindingsDb::UniswapV2 => Box::new(UniswapV2Classifier::default()),
-                StaticBindingsDb::SushiSwapV2 => Box::new(SushiSwapV2Classifier::default()),
-                StaticBindingsDb::UniswapV3 => Box::new(UniswapV3Classifier::default()),
-                StaticBindingsDb::SushiSwapV3 => Box::new(SushiSwapV3Classifier::default()),
-                StaticBindingsDb::CurveCryptoSwap => Box::new(CurveCryptoSwapClassifier::default()),
-                StaticBindingsDb::AaveV2 => Box::new(AaveV2Classifier::default()),
-                StaticBindingsDb::AaveV3 => Box::new(AaveV3Classifier::default()),
-                StaticBindingsDb::UniswapX => Box::new(UniswapXClassifier::default()),
-            };
-
-            let calldata = trace.get_calldata();
+            let call_data = trace.get_calldata();
             let return_bytes = trace.get_return_calldata();
-            let sig = &calldata[0..4];
-            let res = Into::<StaticBindings>::into(protocol)
-                .try_decode(&calldata)
-                .map(|data| {
-                    classifier.dispatch(
-                        sig,
-                        trace_index,
-                        data,
-                        return_bytes.clone(),
-                        from_address,
-                        target_address,
-                        trace.msg_sender,
-                        &trace.logs,
-                        &db_tx,
-                        block,
-                        tx_idx,
-                    )
-                })
-                .ok()
-                .flatten();
 
-            if let Some(res) = res {
-                return (vec![DexPriceMsg::Update(res.0)], res.1)
+            let results = classifier.dispatch(
+                trace_index,
+                call_data,
+                return_bytes.clone(),
+                from_address,
+                target_address,
+                trace.msg_sender,
+                &trace.logs,
+                &db_tx,
+                block,
+                tx_idx,
+            );
+
+            if let Some(decoded_result) = results {
+                return (vec![DexPriceMsg::Update(decoded_result.0)], decoded_result.1)
             }
-        }
-
-        if let Some(protocol) = db_tx.get::<AddressToFactory>(target_address).unwrap() {
-            let discovered_pools = match protocol {
-                StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
-                    UniswapDecoder::dispatch(
-                        crate::UniswapV2Factory::PairCreated::SIGNATURE_HASH.0,
-                        self.provider.clone(),
-                        protocol,
-                        &trace.logs,
-                        block,
-                        tx_hash,
-                    )
-                    .await
-                }
-                StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
-                    UniswapDecoder::dispatch(
-                        crate::UniswapV3Factory::PoolCreated::SIGNATURE_HASH.0,
-                        self.provider.clone(),
-                        protocol,
-                        &trace.logs,
-                        block,
-                        tx_hash,
-                    )
-                    .await
-                }
-                _ => {
-                    vec![]
-                }
-            }
-            .into_iter()
-            .map(|data| DexPriceMsg::DiscoveredPool(data, block))
-            .collect_vec();
-
-            // TODO: do we want to make a normalized pool deploy?
-            return (discovered_pools, Actions::Unclassified(trace))
-        }
-
-        if trace.logs.len() > 0 {
+        } else if trace.logs.len() > 0 {
             // A transfer should always be in its own call trace and have 1 log.
             // if forever reason there is a case with multiple logs, we take the first
             // transfer
@@ -448,6 +436,54 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         }
 
         (vec![], Actions::Unclassified(trace))
+    }
+
+    async fn classify_create(
+        &self,
+        block: u64,
+        root_head: Option<&Node<Actions>>,
+        tx_idx: u64,
+        trace: TransactionTraceWithLogs,
+        trace_index: u64,
+    ) -> (Vec<DexPriceMsg>, Actions) {
+        let from_address = trace.get_from_addr();
+        let created_addr = trace.get_create_output();
+
+        // get the immediate parent node of this create action so that we can decode the
+        // deployment function params
+        let node_data = match root_head {
+            Some(head) => head.get_most_recent_parent_node(trace_index - 1),
+            None => return (vec![], Actions::Unclassified(trace)),
+        };
+        let Some(node_data) = node_data else {
+            error!(block, tx_idx, "failed to find create parent node");
+            return (vec![], Actions::Unclassified(trace));
+        };
+
+        let Some(calldata) = node_data.data.get_calldata() else {
+            error!(block, tx_idx, "parent call had no calldata");
+            return (vec![], Actions::Unclassified(trace));
+        };
+
+        return (
+            DiscoveryProtocols::dispatch(
+                self.provider.clone(),
+                from_address,
+                created_addr,
+                calldata,
+            )
+            .await
+            .into_iter()
+            .map(|pool| DexPriceMsg::DiscoveredPool(pool, block))
+            .collect::<Vec<_>>(),
+            Actions::Unclassified(trace),
+        )
+    }
+
+    pub fn close(&self) {
+        self.pricing_update_sender
+            .send(DexPriceMsg::Closed)
+            .unwrap();
     }
 
     pub fn try_get_decimals(&self, token_addr: &Address) -> eyre::Result<Option<u8>> {
@@ -480,21 +516,13 @@ pub mod test {
         env,
     };
 
-    use alloy_primitives::{hex, hex::FromHex, U256};
-    use brontes_pricing::uniswap_v2::U256_64;
-    use brontes_types::{
-        normalized_actions::{Actions, NormalizedLiquidation},
-        structured_trace::TxTrace,
-        test_utils::force_call_action,
-        tree::{BlockTree, Node},
-    };
-    use reth_primitives::{Address, Header};
-    use reth_rpc_types::trace::parity::{Action, TraceType, TransactionTrace};
-    use reth_tracing_ext::TracingClient;
+    use alloy_primitives::{hex, B256, U256};
+    use brontes_pricing::types::DexPriceMsg;
+    use brontes_types::normalized_actions::{Actions, NormalizedLiquidation};
+    use reth_primitives::Address;
     use serial_test::serial;
 
-    use super::*;
-    use crate::{test_utils::ClassifierTestUtils, Classifier};
+    use crate::test_utils::ClassifierTestUtils;
 
     #[tokio::test]
     #[serial]
@@ -531,6 +559,7 @@ pub mod test {
             }
         }
     }
+
     #[tokio::test]
     #[serial]
     async fn test_aave_v3_liquidation() {
