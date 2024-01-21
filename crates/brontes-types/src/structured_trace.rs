@@ -1,6 +1,10 @@
 use alloy_primitives::Log;
 use reth_primitives::{Address, Bytes, B256};
-use reth_rpc_types::trace::parity::{Action, CallType, TransactionTrace};
+use reth_rpc_types::trace::parity::{
+    Action, CallType,
+    TraceOutput::{self},
+    TransactionTrace,
+};
 use serde::{Deserialize, Serialize};
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
@@ -9,6 +13,9 @@ pub trait TraceActions {
     fn get_calldata(&self) -> Bytes;
     fn get_return_calldata(&self) -> Bytes;
     fn is_static_call(&self) -> bool;
+    fn is_create(&self) -> bool;
+    fn action_type(&self) -> &Action;
+    fn get_create_output(&self) -> Address;
     fn is_delegate_call(&self) -> bool;
 }
 
@@ -20,11 +27,29 @@ impl TraceActions for TransactionTraceWithLogs {
         }
     }
 
+    fn is_create(&self) -> bool {
+        match &self.trace.action {
+            Action::Create(_) => true,
+            _ => false,
+        }
+    }
+
     fn is_delegate_call(&self) -> bool {
         match &self.trace.action {
             Action::Call(c) => c.call_type == CallType::DelegateCall,
             _ => false,
         }
+    }
+
+    fn get_create_output(&self) -> Address {
+        match &self.trace.result {
+            Some(TraceOutput::Create(o)) => o.address,
+            _ => Address::default(),
+        }
+    }
+
+    fn action_type(&self) -> &Action {
+        &self.trace.action
     }
 
     fn get_from_addr(&self) -> Address {
