@@ -40,7 +40,13 @@ impl DexPricingArgs {
 
         let task_executor = ctx.task_executor;
 
-        let tracing_max_tasks = determine_max_tasks(self.max_tasks);
+        // if we can we want max threads for these tasks
+        let tracing_max_tasks = if self.max_tasks.is_none() {
+            num_cpus::get_physical() as u64
+        } else {
+            self.max_tasks.unwrap()
+        };
+
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
@@ -63,7 +69,7 @@ impl DexPricingArgs {
         )));
 
         // calculate the chunk size using min batch size and max_tasks.
-        // max tasks defaults to 50% of physical threads of the system if not set
+        // max tasks defaults to 25% of physical threads of the system if not set
         let cpus = determine_max_tasks(self.max_tasks);
         let range = self.end_block - self.start_block;
         let cpus_min = range / self.min_batch_size;
@@ -77,10 +83,9 @@ impl DexPricingArgs {
             determine_max_tasks(None)
         };
 
-        let chunks_amount = (range / chunk_size) + 1;
         // because these are lightweight tasks, we can stack them pretty easily without
         // much overhead concern
-        let max_pool_loading_tasks = (remaining_cpus / chunks_amount + 1) * 3;
+        let max_pool_loading_tasks = (remaining_cpus / cpus + 1) * 15;
         let mut tasks = FuturesUnordered::new();
 
         for (batch_id, mut chunk) in (self.start_block..=self.end_block)
@@ -92,22 +97,24 @@ impl DexPricingArgs {
             let end_block = chunk.last().unwrap_or(start_block);
 
             info!(batch_id, start_block, end_block, "starting batch");
-            let batch = DataBatching::new(
-                quote_asset,
-                max_pool_loading_tasks as usize,
-                batch_id as u64,
-                start_block,
-                end_block,
-                &parser,
-                &libmdbx,
-                &inspectors,
-                task_executor.clone(),
-            );
 
+            let ex = task_executor.clone();
             tasks.push(task_executor.spawn_critical_with_graceful_shutdown_signal(
                 "pricing batch",
                 |grace| async move {
-                    batch.run_until_graceful_shutdown(grace).await;
+                    DataBatching::new(
+                        quote_asset,
+                        max_pool_loading_tasks as usize,
+                        batch_id as u64,
+                        start_block,
+                        end_block,
+                        &parser,
+                        &libmdbx,
+                        &inspectors,
+                        ex,
+                    )
+                    .run_until_graceful_shutdown(grace)
+                    .await;
                 },
             ));
         }
