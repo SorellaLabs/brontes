@@ -33,12 +33,9 @@ use reth_db::mdbx::RO;
 use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::{error, info, Level};
-use tracing_subscriber::filter::Directive;
 
 use super::{determine_max_tasks, get_env_vars, init_all_inspectors};
-use crate::{
-    runner::CliContext, Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT,
-};
+use crate::{runner::CliContext, Brontes};
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {

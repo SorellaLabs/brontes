@@ -97,15 +97,18 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
         self.classifier_future.push_back(classifier_fut);
     }
 
-    fn on_inspectors_finish(&mut self, results: (MevBlock, Vec<(ClassifiedMev, SpecificMev)>)) {
+    fn on_inspectors_finish(&mut self, results: ComposerResults) {
         info!(
             block_number = self.current_block,
             "inserting the collected results \n {:#?}", results
         );
 
         let data_res = MevBlocksData {
-            block_number: results.0.block_number,
-            mev_blocks:   MevBlockWithClassified { block: results.0, mev: results.1 },
+            block_number: results.block_details.block_number,
+            mev_blocks:   MevBlockWithClassified {
+                block: results.block_details,
+                mev:   results.mev_details,
+            },
         };
         if self
             .database
