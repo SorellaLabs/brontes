@@ -17,7 +17,7 @@ use brontes_database::libmdbx::{
     Libmdbx,
 };
 use brontes_inspect::{
-    composer::{Composer, ComposerResults},
+    composer::{compose_mev_results, ComposerResults},
     Inspector,
 };
 use brontes_types::{
@@ -122,7 +122,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
         if let Some(mut collection_fut) = self.classifier_future.take() {
             match collection_fut.poll_unpin(cx) {
                 Poll::Ready((meta_data, tree)) => {
-                    self.composer_future = Some(Box::pin(Composer::new(
+                    self.composer_future = Some(Box::pin(compose_mev_results(
                         self.inspectors,
                         tree.into(),
                         meta_data.into(),
