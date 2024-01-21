@@ -291,7 +291,7 @@ impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut work = 512;
+        let mut work = 256;
         loop {
             // poll pricer
             if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
