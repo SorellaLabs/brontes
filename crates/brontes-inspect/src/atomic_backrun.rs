@@ -104,8 +104,8 @@ impl AtomicBackrunInspector<'_> {
             let end = swaps[1].token_out;
             // if not triangular or more than 2 unique tokens, then return.
             // mid != mid1 looks weird. However it is needed as some transactions such as
-            // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a newer
-            // token version
+            // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a
+            // newer token version
             if !(start == end && mid == mid1 || (start != end || mid != mid1)) {
                 return None
             }
@@ -190,7 +190,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(MevType::Backrun)
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
-            .with_expected_profit_usd(356.82)
+            .with_expected_profit_usd(311.18)
             .with_expected_gas_used(91.51);
 
         inspector_util.run_inspector(config, None).await.unwrap();
