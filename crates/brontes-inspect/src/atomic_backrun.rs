@@ -83,12 +83,14 @@ impl AtomicBackrunInspector<'_> {
             .filter(|s| s.is_swap() || s.is_flash_loan())
             .flat_map(|s| match s.clone() {
                 Actions::Swap(s) => vec![s],
-                Actions::FlashLoan(f) => f
-                    .child_actions
-                    .into_iter()
-                    .filter(|a| a.is_swap())
-                    .map(|s| s.force_swap())
-                    .collect_vec(),
+                Actions::FlashLoan(f) => {
+                    tracing::info!("got flashloan {:?}", f);
+                    f.child_actions
+                        .into_iter()
+                        .filter(|a| a.is_swap())
+                        .map(|s| s.force_swap())
+                        .collect_vec()
+                }
                 _ => vec![],
             })
             .collect_vec();
