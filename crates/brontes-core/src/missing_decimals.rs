@@ -9,7 +9,7 @@ use brontes_database::libmdbx::{
 use futures::{future::join, stream::FuturesUnordered, Future, StreamExt};
 use reth_provider::ProviderError;
 use reth_rpc_types::{CallInput, CallRequest};
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
 use crate::decoding::TracingProvider;
 
@@ -58,7 +58,9 @@ impl<'db, T: TracingProvider + 'static> MissingDecimals<'db, T> {
                 error!(?e, "failed to insert missing decimals into libmdbx");
             }
         } else {
-            warn!(?addr, "Token request failed for token");
+            // this is a debug as its pretty common to come across tokens
+            // without a decimals fn
+            debug!(?addr, "Token request failed for token");
         }
     }
 
