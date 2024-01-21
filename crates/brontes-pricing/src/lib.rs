@@ -431,23 +431,16 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
         // because results tend to stack up, we always want to progress them first
-        let mut work = 256;
-        loop {
-            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                self.on_pool_resolve(state)
-            }
-
-            // check if we can progress to the next block.
-            let block_prices = self.try_resolve_block();
-            if block_prices.is_some() {
-                return Some(Poll::Ready(block_prices))
-            }
-
-            work -= 1;
-            if work == 0 {
-                break
-            }
+        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+            self.on_pool_resolve(state)
         }
+
+        // check if we can progress to the next block.
+        let block_prices = self.try_resolve_block();
+        if block_prices.is_some() {
+            return Some(Poll::Ready(block_prices))
+        }
+
         None
     }
 }
@@ -459,61 +452,68 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if let Some(new_prices) = self.poll_state_processing(cx) {
-            return new_prices
-        }
-
-        let mut block_updates = Vec::new();
+        /// loop is very heavy, low amount of work needed
+        let mut work = 128;
         loop {
-            match self.update_rx.poll_recv(cx).map(|inner| {
-                inner.and_then(|action| match action {
-                    DexPriceMsg::Update(update) => Some(PollResult::State(update)),
-                    DexPriceMsg::DiscoveredPool(
-                        DiscoveredPool { protocol, tokens, pool_address },
-                        block,
-                    ) => {
-                        if tokens.len() == 2 {
-                            self.new_graph_pairs
-                                .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
-                        };
-                        Some(PollResult::DiscoveredPool)
-                    }
-                    DexPriceMsg::Closed => None,
-                })
-            }) {
-                Poll::Ready(Some(u)) => {
-                    if let PollResult::State(update) = u {
-                        if let Some(overlap) = self.overlap_update.take() {
-                            block_updates.push(overlap);
+            if let Some(new_prices) = self.poll_state_processing(cx) {
+                return new_prices
+            }
+
+            let mut block_updates = Vec::new();
+            loop {
+                match self.update_rx.poll_recv(cx).map(|inner| {
+                    inner.and_then(|action| match action {
+                        DexPriceMsg::Update(update) => Some(PollResult::State(update)),
+                        DexPriceMsg::DiscoveredPool(
+                            DiscoveredPool { protocol, tokens, pool_address },
+                            block,
+                        ) => {
+                            if tokens.len() == 2 {
+                                self.new_graph_pairs
+                                    .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
+                            };
+                            Some(PollResult::DiscoveredPool)
                         }
-                        if update.block == self.current_block {
-                            block_updates.push(update);
+                        DexPriceMsg::Closed => None,
+                    })
+                }) {
+                    Poll::Ready(Some(u)) => {
+                        if let PollResult::State(update) = u {
+                            if let Some(overlap) = self.overlap_update.take() {
+                                block_updates.push(overlap);
+                            }
+                            if update.block == self.current_block {
+                                block_updates.push(update);
+                            } else {
+                                self.overlap_update = Some(update);
+                                break
+                            }
+                        }
+                    }
+                    Poll::Ready(None) => {
+                        if self.lazy_loader.is_empty() && block_updates.is_empty() {
+                            return Poll::Ready(self.on_close())
                         } else {
-                            self.overlap_update = Some(update);
                             break
                         }
                     }
+                    Poll::Pending => break,
                 }
-                Poll::Ready(None) => {
-                    if self.lazy_loader.is_empty() && block_updates.is_empty() {
-                        return Poll::Ready(self.on_close())
-                    } else {
-                        break
-                    }
+
+                // we poll here to continuously progress state fetches as they are slow
+                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                    self.on_pool_resolve(state)
                 }
-                Poll::Pending => break,
             }
 
-            // we poll here to continuously progress state fetches as they are slow
-            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                self.on_pool_resolve(state)
+            self.on_pool_updates(block_updates);
+
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
             }
         }
-
-        self.on_pool_updates(block_updates);
-
-        cx.waker().wake_by_ref();
-        return Poll::Pending
     }
 }
 
