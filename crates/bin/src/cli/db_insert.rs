@@ -53,6 +53,7 @@ impl AddToDb {
             AddressToProtocol,
             AddressToFactory,
             SubGraphs,
+            TxTraces,
             PoolCreationBlocks = &self.key,
             &self.value
         );
