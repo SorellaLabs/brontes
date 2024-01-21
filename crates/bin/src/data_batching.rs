@@ -34,10 +34,14 @@ use brontes_types::{
     structured_trace::TxTrace,
     tree::BlockTree,
 };
-use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
+use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_db::DatabaseError;
 use reth_primitives::Header;
-use tokio::task::JoinHandle;
+use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor, TaskSpawner};
+use tokio::{
+    sync::mpsc::{channel, Receiver, Sender},
+    task::JoinHandle,
+};
 use tracing::{debug, error, info, warn};
 
 type CollectionFut<'a> =
@@ -70,6 +74,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         parser: &'db Parser<'db, T>,
         libmdbx: &'static Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>],
+        task_executor: TaskExecutor,
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
@@ -109,7 +114,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             rest_pairs,
         );
 
-        let pricer = WaitingForPricerFuture::new(pricer);
+        let pricer = WaitingForPricerFuture::new(pricer, task_executor);
 
         Self {
             collection_future: None,
@@ -123,6 +128,22 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             libmdbx,
             inspectors,
         }
+    }
+
+    pub async fn run_until_graceful_shutdown(self, shutdown: GracefulShutdown) {
+        let data_batching = self;
+        pin_mut!(data_batching, shutdown);
+
+        let mut graceful_guard = None;
+        tokio::select! {
+            _ = &mut  data_batching => {},
+            guard = shutdown => {
+                graceful_guard = Some(guard);
+            },
+        }
+        while let Some(_) = data_batching.processing_futures.next().await {}
+
+        drop(graceful_guard);
     }
 
     fn on_parser_resolve(
@@ -300,23 +321,24 @@ impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
 }
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
-    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+    receiver: Receiver<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+    tx:       Sender<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+
     pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataNoDex)>,
+    task_executor: TaskExecutor,
 }
 
 impl<T: TracingProvider> WaitingForPricerFuture<T> {
-    pub fn new(mut pricer: BrontesBatchPricer<T>) -> Self {
-        let future = Box::pin(async move {
+    pub fn new(mut pricer: BrontesBatchPricer<T>, task_executor: TaskExecutor) -> Self {
+        let (tx, rx) = channel(2);
+        let tx_clone = tx.clone();
+        let fut = Box::pin(async move {
             let res = pricer.next().await;
-            (pricer, res)
+            tx_clone.try_send((pricer, res)).unwrap();
         });
 
-        let rt_handle = tokio::runtime::Handle::current();
-        let move_handle = rt_handle.clone();
-
-        let handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
-
-        Self { handle, pending_trees: HashMap::default() }
+        task_executor.spawn_critical("dex pricer", fut);
+        Self { pending_trees: HashMap::default(), task_executor, tx, receiver: rx }
     }
 
     pub fn is_done(&self) -> bool {
@@ -324,15 +346,13 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
     }
 
     fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
-        let future = Box::pin(async move {
+        let tx = self.tx.clone();
+        let fut = Box::pin(async move {
             let res = pricer.next().await;
-            (pricer, res)
+            tx.try_send((pricer, res)).unwrap();
         });
 
-        let rt_handle = tokio::runtime::Handle::current();
-        let move_handle = rt_handle.clone();
-
-        self.handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
+        self.task_executor.spawn_critical("dex pricer", fut);
     }
 
     pub fn add_pending_inspection(
@@ -352,7 +372,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
     type Item = (BlockTree<Actions>, MetadataCombined);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if let Poll::Ready(handle) = self.handle.poll_unpin(cx) {
+        if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
             let (pricer, inner) = handle.unwrap();
             self.resechedule(pricer);
 
