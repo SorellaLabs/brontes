@@ -20,7 +20,7 @@ pub struct AddToDb {
 }
 
 impl AddToDb {
-    pub async fn execute(self) -> Result<(), Box<dyn Error>> {
+    pub async fn execute(self) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 

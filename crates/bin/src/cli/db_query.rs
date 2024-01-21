@@ -23,7 +23,7 @@ pub struct DatabaseQuery {
 }
 
 impl DatabaseQuery {
-    pub async fn execute(self) -> Result<(), Box<dyn Error>> {
+    pub async fn execute(self) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 
@@ -103,7 +103,7 @@ impl DatabaseQuery {
 fn process_range_query<T, E>(
     mut cursor: CompressedCursor<T, RO>,
     config: DatabaseQuery,
-) -> Result<Vec<T::DecompressedValue>, Box<dyn Error>>
+) -> eyre::Result<Vec<T::DecompressedValue>>
 where
     T: CompressedTable,
     T: for<'a> IntoTableKey<&'a str, T::Key, E>,
@@ -127,6 +127,6 @@ where
 }
 
 #[inline(always)]
-fn process_single_query<T>(res: Option<T>) -> Result<T, Box<dyn Error>> {
+fn process_single_query<T>(res: Option<T>) -> eyre::Result<T> {
     Ok(res.ok_or_else(|| reth_db::DatabaseError::Read(-1))?)
 }

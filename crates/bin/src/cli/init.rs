@@ -35,7 +35,9 @@ use tokio::sync::mpsc::unbounded_channel;
 use tracing::{error, info, Level};
 use tracing_subscriber::filter::Directive;
 
-use crate::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
+use crate::{
+    runner::CliContext, Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT,
+};
 #[derive(Debug, Parser)]
 pub struct Init {
     /// Initialize the local Libmdbx DB
@@ -64,7 +66,7 @@ pub struct Init {
 }
 
 impl Init {
-    pub async fn execute(self) -> Result<(), Box<dyn Error>> {
+    pub async fn execute(self) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
         let clickhouse = Arc::new(Clickhouse::default());
