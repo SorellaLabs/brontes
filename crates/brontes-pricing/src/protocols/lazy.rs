@@ -111,7 +111,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         address: Address,
         block_number: u64,
         ex_type: StaticBindingsDb,
-    ) {
+    ) -> bool {
         let provider = self.provider.clone();
         *self.req_per_block.entry(block_number).or_default() += 1;
         self.pool_buf.insert(address);
@@ -160,6 +160,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 } else {
                     self.pool_load_futures.push_back(tokio::spawn(fut));
                 }
+                true
             }
             StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
                 let fut = Box::pin(async move {
@@ -200,9 +201,13 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 } else {
                     self.pool_load_futures.push_back(tokio::spawn(fut));
                 }
+                true
             }
             rest => {
                 error!(exchange=?ex_type, "no state updater is build for");
+                *self.req_per_block.entry(block_number).or_default() -= 1;
+                self.pool_buf.remove(&address);
+                false
             }
         }
     }
