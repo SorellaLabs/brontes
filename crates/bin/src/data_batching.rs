@@ -18,9 +18,10 @@ use brontes_database::libmdbx::{
     types::{dex_price::DexPriceData, mev_block::MevBlocksData, LibmdbxData},
     Libmdbx,
 };
-use brontes_inspect::{composer::Composer, Inspector};
+use brontes_inspect::{composer::compose_mev_results, Inspector};
 use brontes_pricing::{BrontesBatchPricer, GraphManager};
 use brontes_types::{
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         cex::{CexPriceMap, CexQuote},
@@ -164,7 +165,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: MetadataCombined) {
         info!(target:"brontes","dex pricing finished");
-        self.processing_futures.push(Box::pin(ResultProcessing::new(
+        self.processing_futures.push(Box::pin(process_results(
             self.libmdbx,
             self.inspectors,
             tree.into(),
@@ -374,112 +375,103 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
     }
 }
 
-// takes the composer + db and will process data and insert it into libmdx
-pub struct ResultProcessing<'db> {
-    database: &'db Libmdbx,
-    composer: Composer<'db>,
-}
+async fn process_results(
+    db: &Libmdbx,
+    inspectors: &[&Box<dyn Inspector>],
+    tree: Arc<BlockTree<Actions>>,
+    metadata: Arc<MetadataCombined>,
+) {
+    let (block_details, mev_details) =
+        compose_mev_results(inspectors, tree, metadata.clone()).await;
 
-impl<'db> ResultProcessing<'db> {
-    pub fn new(
-        db: &'db Libmdbx,
-        inspectors: &'db [&'db Box<dyn Inspector>],
-        tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<MetadataCombined>,
-    ) -> Self {
-        let composer = Composer::new(inspectors, tree, meta_data.clone());
-        let this = Self { database: db, composer };
-
-        if let Err(e) =
-            this.insert_quotes(meta_data.block_num.clone(), meta_data.dex_quotes.clone())
-        {
-            tracing::error!(err=?e, block_num=meta_data.block_num, "failed to insert dex pricing and state into db");
-        }
-
-        this
+    if let Err(e) = insert_quotes(db, metadata.block_num.clone(), metadata.dex_quotes.clone()) {
+        tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
     }
 
-    pub fn insert_quotes(&self, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
-        let mut data = quotes
-            .0
-            .into_iter()
-            .enumerate()
-            .filter(|(_, v)| v.is_some())
-            .map(|(idx, value)| DexPriceData {
-                block_number: block_num,
-                tx_idx:       idx as u16,
-                quote:        DexQuote(value.unwrap()),
+    insert_mev_results(db, block_details, mev_details);
+}
+
+fn insert_mev_results(
+    database: &Libmdbx,
+    block_details: MevBlock,
+    mev_details: Vec<(ClassifiedMev, SpecificMev)>,
+) {
+    info!(
+        target:"brontes",
+        "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
+         ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
+         {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- Builder \
+         ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer Fee \
+         Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized Profit (USD): \
+                 {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n
+                 possibly_missed_mev: {}",
+        block_details.block_number,
+        block_details.mev_count,
+        block_details.finalized_eth_price,
+        block_details.cumulative_gas_used,
+        block_details.cumulative_gas_paid,
+        block_details.total_bribe,
+        block_details.cumulative_mev_priority_fee_paid,
+        block_details.builder_address,
+        block_details.builder_eth_profit,
+        block_details.builder_finalized_profit_usd,
+        block_details
+            .proposer_fee_recipient
+            .unwrap_or(Address::ZERO),
+        block_details
+            .proposer_mev_reward
+            .map_or("None".to_string(), |v| v.to_string()),
+        block_details
+            .proposer_finalized_profit_usd
+            .map_or("None".to_string(), |v| format!("{:.2}", v)),
+        block_details.cumulative_mev_finalized_profit_usd,
+    block_details
+        .possible_missed_arbs
+        .iter()
+        .map(|arb| format!("https://etherscan.io/tx/{arb:?}"))
+        .fold(String::new(), |acc, arb| acc + &arb + "\n")
+    );
+
+    let data = MevBlocksData {
+        block_number: block_details.block_number,
+        mev_blocks:   MevBlockWithClassified { block: block_details, mev: mev_details },
+    };
+
+    if database
+        .write_table::<MevBlocks, MevBlocksData>(&vec![data])
+        .is_err()
+    {
+        error!("failed to insert classified data into libmdx");
+    }
+}
+
+fn insert_quotes(database: &Libmdbx, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
+    let mut data = quotes
+        .0
+        .into_iter()
+        .enumerate()
+        .filter(|(_, v)| v.is_some())
+        .map(|(idx, value)| DexPriceData {
+            block_number: block_num,
+            tx_idx:       idx as u16,
+            quote:        DexQuote(value.unwrap()),
+        })
+        .collect::<Vec<_>>();
+
+    data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
+    data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
+
+    database.update_db(|tx| {
+        let mut cursor = tx.cursor_write::<DexPrice>()?;
+
+        data.into_iter()
+            .map(|entry| {
+                let (key, val) = entry.into_key_val();
+                cursor.upsert(key, val)?;
+                Ok(())
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, DatabaseError>>()
+    })??;
 
-        data.sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
-        data.sort_by(|a, b| a.block_number.cmp(&b.block_number));
-
-        self.database.update_db(|tx| {
-            let mut cursor = tx.cursor_write::<DexPrice>()?;
-
-            data.into_iter()
-                .map(|entry| {
-                    let (key, val) = entry.into_key_val();
-                    cursor.upsert(key, val)?;
-                    Ok(())
-                })
-                .collect::<Result<Vec<_>, DatabaseError>>()
-        })??;
-
-        Ok(())
-    }
-}
-
-impl Future for ResultProcessing<'_> {
-    type Output = ();
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Poll::Ready((block_details, mev_details)) = self.composer.poll_unpin(cx) {
-            info!(
-                target:"brontes",
-                "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
-                 ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
-                 {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- Builder \
-                 ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer Fee \
-                 Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized Profit (USD): \
-                 {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n",
-                block_details.block_number,
-                block_details.mev_count,
-                block_details.finalized_eth_price,
-                block_details.cumulative_gas_used,
-                block_details.cumulative_gas_paid,
-                block_details.total_bribe,
-                block_details.cumulative_mev_priority_fee_paid,
-                block_details.builder_address,
-                block_details.builder_eth_profit,
-                block_details.builder_finalized_profit_usd,
-                block_details
-                    .proposer_fee_recipient
-                    .unwrap_or(Address::ZERO),
-                block_details
-                    .proposer_mev_reward
-                    .map_or("None".to_string(), |v| v.to_string()),
-                block_details
-                    .proposer_finalized_profit_usd
-                    .map_or("None".to_string(), |v| format!("{:.2}", v)),
-                block_details.cumulative_mev_finalized_profit_usd
-            );
-
-            let data = MevBlocksData {
-                block_number: block_details.block_number,
-                mev_blocks:   MevBlockWithClassified { block: block_details, mev: mev_details },
-            };
-            if self
-                .database
-                .write_table::<MevBlocks, MevBlocksData>(&vec![data])
-                .is_err()
-            {
-                error!("failed to insert classified data into libmdx");
-            }
-
-            return Poll::Ready(())
-        }
-        Poll::Pending
-    }
+    Ok(())
 }
