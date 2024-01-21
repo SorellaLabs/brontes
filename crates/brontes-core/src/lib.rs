@@ -1,3 +1,5 @@
+//TODO: Write documentation for this crate
+
 #![feature(trait_alias)]
 pub mod decoding;
 pub mod errors;

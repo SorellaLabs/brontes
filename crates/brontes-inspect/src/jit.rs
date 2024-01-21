@@ -388,7 +388,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(MevType::Jit)
             .with_dex_prices()
             .with_block(18539312)
-            .with_expected_gas_used(90.875025)
+            .with_gas_paid_usd(90.875025)
             .with_expected_profit_usd(-68.34);
 
         test_utils.run_inspector(config, None).await.unwrap();
