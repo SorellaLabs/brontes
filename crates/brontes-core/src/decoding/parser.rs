@@ -59,7 +59,8 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.2).into())
                 .unwrap();
             #[cfg(not(feature = "dyn-decode"))]
-            let _ =self.metrics_tx
+            let _ = self
+                .metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
             return None
         }

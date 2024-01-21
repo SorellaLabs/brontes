@@ -92,22 +92,23 @@ impl DexPricingArgs {
             let end_block = chunk.last().unwrap_or(start_block);
 
             info!(batch_id, start_block, end_block, "starting batch");
-            let batch = DataBatching::new(
-                quote_asset,
-                max_pool_loading_tasks as usize,
-                batch_id as u64,
-                start_block,
-                end_block,
-                &parser,
-                &libmdbx,
-                &inspectors,
-                task_executor.clone(),
-            );
 
             tasks.push(task_executor.spawn_critical_with_graceful_shutdown_signal(
                 "pricing batch",
                 |grace| async move {
-                    batch.run_until_graceful_shutdown(grace).await;
+                    DataBatching::new(
+                        quote_asset,
+                        max_pool_loading_tasks as usize,
+                        batch_id as u64,
+                        start_block,
+                        end_block,
+                        &parser,
+                        &libmdbx,
+                        &inspectors,
+                        task_executor.clone(),
+                    )
+                    .run_until_graceful_shutdown(grace)
+                    .await;
                 },
             ));
         }
