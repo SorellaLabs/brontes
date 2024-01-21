@@ -1,13 +1,15 @@
 use std::{
     cmp::max,
     collections::HashMap,
+    fs::File,
+    io::Write,
     pin::Pin,
     str::FromStr,
     sync::Arc,
     task::{Context, Poll},
 };
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
@@ -18,7 +20,10 @@ use brontes_database::libmdbx::{
     types::{dex_price::DexPriceData, mev_block::MevBlocksData, LibmdbxData},
     Libmdbx,
 };
-use brontes_inspect::{composer::compose_mev_results, Inspector};
+use brontes_inspect::{
+    composer::{compose_mev_results, ComposerResults},
+    Inspector,
+};
 use brontes_pricing::{BrontesBatchPricer, GraphManager};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
@@ -34,11 +39,14 @@ use brontes_types::{
     structured_trace::TxTrace,
     tree::BlockTree,
 };
-use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
+use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_db::DatabaseError;
 use reth_primitives::Header;
-use tokio::task::JoinHandle;
+use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::{debug, error, info, warn};
+
+const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";
 
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
@@ -50,7 +58,8 @@ pub struct DataBatching<'db, T: TracingProvider + Clone> {
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
 
-    processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'db>>>,
+    processing_futures:
+        FuturesUnordered<Pin<Box<dyn Future<Output = Vec<(B256, u128)>> + Send + 'db>>>,
 
     current_block: u64,
     end_block:     u64,
@@ -58,6 +67,8 @@ pub struct DataBatching<'db, T: TracingProvider + Clone> {
 
     libmdbx:    &'static Libmdbx,
     inspectors: &'db [&'db Box<dyn Inspector>],
+
+    missed_mev_ops: Vec<(B256, u128)>,
 }
 
 impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
@@ -70,6 +81,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         parser: &'db Parser<'db, T>,
         libmdbx: &'static Libmdbx,
         inspectors: &'db [&'db Box<dyn Inspector>],
+        task_executor: TaskExecutor,
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
@@ -109,7 +121,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             rest_pairs,
         );
 
-        let pricer = WaitingForPricerFuture::new(pricer);
+        let pricer = WaitingForPricerFuture::new(pricer, task_executor);
 
         Self {
             collection_future: None,
@@ -122,7 +134,45 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             batch_id,
             libmdbx,
             inspectors,
+            missed_mev_ops: vec![],
         }
+    }
+
+    pub async fn run_until_graceful_shutdown(self, shutdown: GracefulShutdown) {
+        let data_batching = self;
+        pin_mut!(data_batching, shutdown);
+
+        let mut graceful_guard = None;
+        tokio::select! {
+            _= &mut data_batching => {
+
+            },
+            guard = shutdown => {
+                graceful_guard = Some(guard);
+            },
+        }
+        let mut data = std::mem::take(&mut data_batching.missed_mev_ops);
+
+        data.sort_by(|a, b| b.1.cmp(&a.1));
+        let path_str =
+            format!("{POSSIBLE_MISSED_MEV_RESULT_FOLDER}/batch-{}", data_batching.batch_id);
+        let path = std::path::Path::new(&path_str);
+        let _ = std::fs::create_dir_all(POSSIBLE_MISSED_MEV_RESULT_FOLDER);
+
+        let mut file = File::create(path).unwrap();
+
+        let data = data
+            .into_iter()
+            .map(|(arb, _)| format!("{arb:?}"))
+            .fold(String::new(), |acc, arb| acc + &arb + "\n");
+
+        if file.write_all(&data.into_bytes()).is_err() {
+            error!("failed to write possible missed arbs to folder")
+        }
+
+        while let Some(_) = data_batching.processing_futures.next().await {}
+
+        drop(graceful_guard);
     }
 
     fn on_parser_resolve(
@@ -278,7 +328,9 @@ impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
             self.classifier.close();
         }
         // poll insertion
-        while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
+        while let Poll::Ready(Some(missed_arbs)) = self.processing_futures.poll_next_unpin(cx) {
+            self.missed_mev_ops.extend(missed_arbs);
+        }
 
         // return condition
         if self.current_block == self.end_block
@@ -295,23 +347,24 @@ impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
 }
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
-    handle:        JoinHandle<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+    receiver: Receiver<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+    tx:       Sender<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+
     pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataNoDex)>,
+    task_executor: TaskExecutor,
 }
 
 impl<T: TracingProvider> WaitingForPricerFuture<T> {
-    pub fn new(mut pricer: BrontesBatchPricer<T>) -> Self {
-        let future = Box::pin(async move {
+    pub fn new(mut pricer: BrontesBatchPricer<T>, task_executor: TaskExecutor) -> Self {
+        let (tx, rx) = channel(2);
+        let tx_clone = tx.clone();
+        let fut = Box::pin(async move {
             let res = pricer.next().await;
-            (pricer, res)
+            tx_clone.try_send((pricer, res)).unwrap();
         });
 
-        let rt_handle = tokio::runtime::Handle::current();
-        let move_handle = rt_handle.clone();
-
-        let handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
-
-        Self { handle, pending_trees: HashMap::default() }
+        task_executor.spawn_critical("dex pricer", fut);
+        Self { pending_trees: HashMap::default(), task_executor, tx, receiver: rx }
     }
 
     pub fn is_done(&self) -> bool {
@@ -319,15 +372,13 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
     }
 
     fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
-        let future = Box::pin(async move {
+        let tx = self.tx.clone();
+        let fut = Box::pin(async move {
             let res = pricer.next().await;
-            (pricer, res)
+            tx.try_send((pricer, res)).unwrap();
         });
 
-        let rt_handle = tokio::runtime::Handle::current();
-        let move_handle = rt_handle.clone();
-
-        self.handle = rt_handle.spawn_blocking(move || move_handle.block_on(future));
+        self.task_executor.spawn_critical("dex pricer", fut);
     }
 
     pub fn add_pending_inspection(
@@ -347,7 +398,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
     type Item = (BlockTree<Actions>, MetadataCombined);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if let Poll::Ready(handle) = self.handle.poll_unpin(cx) {
+        if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
             let (pricer, inner) = handle.unwrap();
             self.resechedule(pricer);
 
@@ -375,8 +426,8 @@ async fn process_results(
     inspectors: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<MetadataCombined>,
-) {
-    let (block_details, mev_details) =
+) -> Vec<(B256, u128)> {
+    let ComposerResults { block_details, mev_details, possibly_missed_arbs } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
 
     if let Err(e) = insert_quotes(db, metadata.block_num.clone(), metadata.dex_quotes.clone()) {
@@ -384,6 +435,7 @@ async fn process_results(
     }
 
     insert_mev_results(db, block_details, mev_details);
+    possibly_missed_arbs
 }
 
 fn insert_mev_results(
