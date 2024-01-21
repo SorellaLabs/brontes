@@ -368,7 +368,9 @@ impl InspectorTxRunConfig {
         self
     }
 
-    pub fn with_expected_gas_used(mut self, gas: f64) -> Self {
+    /// Total cost of transaction in USD. This includes base fee, priority fee &
+    /// bribe
+    pub fn with_gas_paid_usd(mut self, gas: f64) -> Self {
         self.expected_gas_usd = Some(gas);
         self
     }
@@ -422,7 +424,7 @@ impl ComposerRunConfig {
         self
     }
 
-    pub fn with_expected_gas_used(mut self, gas: f64) -> Self {
+    pub fn with_gas_paid_usd(mut self, gas: f64) -> Self {
         self.expected_gas_usd = Some(gas);
         self
     }
