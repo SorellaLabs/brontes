@@ -59,9 +59,8 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.2).into())
                 .unwrap();
             #[cfg(not(feature = "dyn-decode"))]
-            self.metrics_tx
-                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into())
-                .unwrap();
+            let _ =self.metrics_tx
+                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
             return None
         }
         #[cfg(feature = "dyn-decode")]
@@ -73,9 +72,10 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
             .fill_metadata(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
             .await;
 
-        self.metrics_tx
-            .send(TraceMetricEvent::BlockMetricRecieved(traces.1).into())
-            .unwrap();
+        let _ = self
+            .metrics_tx
+            .send(TraceMetricEvent::BlockMetricRecieved(traces.1).into());
+
         Some((traces.0, traces.2))
     }
 
