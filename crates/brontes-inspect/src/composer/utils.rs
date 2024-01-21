@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use alloy_primitives::FixedBytes;
+use alloy_primitives::{FixedBytes, B256};
 use brontes_types::{
     classified_mev::{ClassifiedMev, Mev, MevBlock, MevType, SpecificMev},
     db::metadata::MetadataCombined,
@@ -49,6 +49,7 @@ pub(crate) fn pre_process(
 pub(crate) fn build_mev_header(
     metadata: Arc<MetadataCombined>,
     pre_processing: &BlockPreprocessing,
+    possible_missed_arbs: Vec<B256>,
     orchestra_data: &Vec<(ClassifiedMev, SpecificMev)>,
 ) -> MevBlock {
     let total_bribe = orchestra_data
@@ -105,6 +106,7 @@ pub(crate) fn build_mev_header(
             RoundingMode::Nearest,
         )
         .0,
+        possible_missed_arbs,
     }
 }
 
