@@ -14,6 +14,7 @@ required-features = ["benchmarking"]
 brontes-types.workspace = true
 
 itertools = "0.12.0"
+redefined.workspace = true
 
 futures.workspace = true
 thiserror.workspace = true
