@@ -24,7 +24,7 @@ use itertools::Itertools;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::error;
+use tracing::{error, info};
 use tree_pruning::{
     account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
@@ -444,6 +444,8 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         trace: TransactionTraceWithLogs,
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
+        info!("detected create has_root_head: {}",root_head.is_some());
+
         let from_address = trace.get_from_addr();
         let created_addr = trace.get_create_output();
 
@@ -574,7 +576,6 @@ pub mod test {
         let dex_pricing_chan = classifier_utils.get_pricing_receiver();
 
         while let Ok(msg) = dex_pricing_chan.try_recv() {
-            tracing::info!("pool update");
             if let DexPriceMsg::DiscoveredPool(pool, _) = msg {
                 tracing::info!("{:?}", pool);
                 if pool.pool_address == deployed_address {
