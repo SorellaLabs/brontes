@@ -42,11 +42,8 @@ use brontes_types::{
 use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 use reth_db::DatabaseError;
 use reth_primitives::Header;
-use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor, TaskSpawner};
-use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
-    task::JoinHandle,
-};
+use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::{debug, error, info, warn};
 
 const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";

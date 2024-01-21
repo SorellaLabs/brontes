@@ -1,4 +1,4 @@
-use std::{env, error::Error};
+use std::env;
 
 use brontes_database::libmdbx::{
     tables::{IntoTableKey, Tables},
