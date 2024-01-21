@@ -159,7 +159,7 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         let path_str =
             format!("{POSSIBLE_MISSED_MEV_RESULT_FOLDER}/batch-{}", data_batching.batch_id);
         let path = std::path::Path::new(&path_str);
-        let _ = std::fs::create_dir_all(&path);
+        let _ = std::fs::create_dir_all(POSSIBLE_MISSED_MEV_RESULT_FOLDER);
 
         let mut file = File::create(path).unwrap();
 
