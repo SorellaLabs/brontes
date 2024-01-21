@@ -27,8 +27,6 @@
 //!
 //! Please refer to the individual crate documentation for more details.
 
-mod cli;
-
 use std::{
     pin::Pin,
     task::{Context, Poll},
@@ -43,6 +41,7 @@ use tracing::info;
 
 mod banner;
 mod block_inspector;
+mod cli;
 #[allow(unused_imports)]
 mod tip_inspector;
 

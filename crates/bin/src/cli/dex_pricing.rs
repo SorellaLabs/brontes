@@ -1,12 +1,42 @@
-use std::{env, error::Error};
-
-use brontes_database::libmdbx::{
-    cursor::CompressedCursor,
-    tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
-    Libmdbx,
+use std::{
+    env,
+    error::Error,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
+
+use alloy_primitives::Address;
+use async_scoped::{Scope, TokioScope};
+use brontes_classifier::Classifier;
+use brontes_core::decoding::Parser as DParser;
+use brontes_database::{
+    clickhouse::Clickhouse,
+    libmdbx::{
+        cursor::CompressedCursor,
+        tables::{AddressToProtocol, CompressedTable, IntoTableKey, Tables},
+        Libmdbx,
+    },
+};
+use brontes_inspect::{
+    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
+    sandwich::SandwichInspector, Inspector,
+};
+use brontes_metrics::{prometheus_exporter::initialize, PoirotMetricsListener};
 use clap::Parser;
+use itertools::Itertools;
+use metrics_process::Collector;
 use reth_db::mdbx::RO;
+use reth_tracing_ext::TracingClient;
+use tokio::sync::mpsc::unbounded_channel;
+use tracing::{error, info, Level};
+use tracing_subscriber::filter::Directive;
+
+use super::{determine_max_tasks, get_env_vars, init_all_inspectors};
+use crate::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 
 #[derive(Debug, Parser)]
 pub struct DexPricingArgs {
@@ -31,6 +61,7 @@ impl DexPricingArgs {
         info!(?self);
 
         let db_path = get_env_vars()?;
+        let quote = self.quote_asset.parse()?;
 
         let tracing_max_tasks = determine_max_tasks(self.max_tasks);
         let (metrics_tx, metrics_rx) = unbounded_channel();
@@ -42,9 +73,7 @@ impl DexPricingArgs {
         let libmdbx =
             Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None)?)) as &'static Libmdbx;
 
-        let inspector_holder =
-            Box::leak(Box::new(InspectorHolder::new(self.quote_asset.parse().unwrap(), &libmdbx)));
-        let inspectors: Inspectors = inspector_holder.get_inspectors();
+        let inspectors = init_all_inspectors(quote, libmdbx);
 
         let (manager, tracer) = TracingClient::new(
             Path::new(&db_path),
@@ -118,15 +147,15 @@ impl DexPricingArgs {
     }
 }
 
-async fn spawn_batches(
+async fn spawn_batches<'a>(
     quote_asset: Address,
     max_pool_loading_tasks: usize,
     batch_id: u64,
     start_block: u64,
     end_block: u64,
-    parser: &DParser<'_, TracingClient>,
+    parser: &DParser<'static, TracingClient>,
     libmdbx: &'static Libmdbx,
-    inspectors: &Inspectors<'_>,
+    inspectors: &[&'static Box<dyn Inspector>],
 ) {
     DataBatching::new(
         quote_asset,
