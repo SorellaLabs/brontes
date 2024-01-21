@@ -43,7 +43,7 @@ impl DexPricingArgs {
         // if we can we want max threads for these tasks
         let tracing_max_tasks = if self.max_tasks.is_none() {
             num_cpus::get_physical() as u64
-         } else {
+        } else {
             self.max_tasks.unwrap()
         };
 
