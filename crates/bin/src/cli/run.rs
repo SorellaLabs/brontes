@@ -36,7 +36,9 @@ use tracing::{error, info, Level};
 use tracing_subscriber::filter::Directive;
 
 use super::{determine_max_tasks, get_env_vars, init_all_inspectors};
-use crate::{Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
+use crate::{
+    runner::CliContext, Brontes, DataBatching, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT,
+};
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -54,17 +56,18 @@ pub struct RunArgs {
     pub quote_asset: String,
 }
 impl RunArgs {
-    pub async fn execute(self) -> Result<(), Box<dyn Error>> {
+    pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         // Fetch required environment variables.
         let db_path = get_env_vars()?;
         let quote_asset = self.quote_asset.parse()?;
+        let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
-        tokio::spawn(metrics_listener);
+        task_executor.spawn_critical("metrics", metrics_listener);
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let libmdbx =
@@ -73,9 +76,7 @@ impl RunArgs {
 
         let inspectors = init_all_inspectors(quote_asset, libmdbx);
 
-        let (manager, tracer) =
-            TracingClient::new(Path::new(&db_path), tokio::runtime::Handle::current(), max_tasks);
-        tokio::spawn(manager);
+        let tracer = TracingClient::new(Path::new(&db_path), max_tasks, task_executor.clone());
 
         let parser = DParser::new(
             metrics_tx,
@@ -106,10 +107,6 @@ impl RunArgs {
         brontes.await;
 
         info!("finnished running brontes, shutting down");
-        std::thread::spawn(move || {
-            drop(parser);
-        });
-
         Ok(())
     }
 }
