@@ -6,12 +6,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{
-    exchanges::Protocol,
-    extra_processing::Pair,
-    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
-    traits::TracingProvider,
-};
+use brontes_types::{extra_processing::Pair, traits::TracingProvider};
 use futures::{
     future::BoxFuture,
     stream::{FuturesOrdered, FuturesUnordered},
@@ -22,11 +17,11 @@ use tracing::{error, info};
 
 use crate::{
     errors::AmmError, types::PoolState, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
-    PoolUpdate,
+    PoolPairInfoDirection, PoolPairInformation, PoolUpdate, Protocol, SubGraphEdge,
 };
 
-type PoolFetchError = (Address, Protocol, u64, Pair, AmmError);
-type PoolFetchSuccess = (u64, Address, PoolState, LoadResult);
+pub(crate) type PoolFetchError = (Address, Protocol, u64, Pair, AmmError);
+pub(crate) type PoolFetchSuccess = (u64, Address, PoolState, LoadResult);
 
 pub enum LoadResult {
     Ok,
@@ -111,104 +106,18 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         address: Address,
         block_number: u64,
         ex_type: Protocol,
-    ) -> bool {
+    ) {
         let provider = self.provider.clone();
         *self.req_per_block.entry(block_number).or_default() += 1;
         self.pool_buf.insert(address);
         self.add_protocol_parent(address, parent_pair);
 
-        match ex_type {
-            Protocol::UniswapV2 | Protocol::SushiSwapV2 => {
-                let fut = Box::pin(async move {
-                    // we want end of last block state so that when the new state transition is
-                    // applied, the state is still correct
-                    let (pool, res) = if let Ok(pool) = UniswapV2Pool::new_load_on_block(
-                        address,
-                        provider.clone(),
-                        block_number - 1,
-                    )
-                    .await
-                    {
-                        (pool, LoadResult::Ok)
-                    } else {
-                        (
-                            UniswapV2Pool::new_load_on_block(address, provider, block_number)
-                                .await
-                                .map_err(|e| {
-                                    (
-                                        address,
-                                        Protocol::UniswapV2,
-                                        block_number,
-                                        pool_pair,
-                                        e,
-                                    )
-                                })?,
-                            LoadResult::PoolInitOnBlock,
-                        )
-                    };
+        let fut = ex_type.try_load_state(address, provider, block_number, pool_pair);
 
-                    Ok((
-                        block_number,
-                        address,
-                        PoolState::new(crate::types::PoolVariants::UniswapV2(pool)),
-                        res,
-                    ))
-                });
-
-                if self.pool_load_futures.len() >= self.max_tasks {
-                    self.buf.push_back(fut);
-                } else {
-                    self.pool_load_futures.push_back(tokio::spawn(fut));
-                }
-                true
-            }
-            Protocol::UniswapV3 | Protocol::SushiSwapV3 => {
-                let fut = Box::pin(async move {
-                    // we want end of last block state so that when the new state transition is
-                    // applied, the state is still correct
-                    let (pool, res) = if let Ok(pool) =
-                        UniswapV3Pool::new_from_address(address, block_number - 1, provider.clone())
-                            .await
-                    {
-                        (pool, LoadResult::Ok)
-                    } else {
-                        (
-                            UniswapV3Pool::new_from_address(address, block_number, provider)
-                                .await
-                                .map_err(|e| {
-                                    (
-                                        address,
-                                        Protocol::UniswapV3,
-                                        block_number,
-                                        pool_pair,
-                                        e,
-                                    )
-                                })?,
-                            LoadResult::PoolInitOnBlock,
-                        )
-                    };
-
-                    Ok((
-                        block_number,
-                        address,
-                        PoolState::new(crate::types::PoolVariants::UniswapV3(pool)),
-                        res,
-                    ))
-                });
-
-                if self.pool_load_futures.len() >= self.max_tasks {
-                    self.buf.push_back(fut);
-                } else {
-                    self.pool_load_futures.push_back(tokio::spawn(fut));
-                }
-                true
-            }
-            rest => {
-                error!(exchange=?ex_type, "no state updater is build for");
-                *self.req_per_block.entry(block_number).or_default() -= 1;
-                self.pool_buf.remove(&address);
-                false
-            }
+        if self.pool_load_futures.len() >= self.max_tasks {
+            self.buf.push_back(Box::pin(fut));
+        } else {
+            self.pool_load_futures.push_back(tokio::spawn(fut));
         }
     }
 

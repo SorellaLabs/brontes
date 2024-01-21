@@ -3,8 +3,7 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use alloy_primitives::{Address, Log, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::{
-    exchanges::Protocol, extra_processing::Pair, normalized_actions::Actions,
-    serde_utils::primitives::address_string,
+    extra_processing::Pair, normalized_actions::Actions, serde_utils::primitives::address_string,
 };
 use bytes::BufMut;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -15,7 +14,7 @@ use tracing::{error, warn};
 
 use crate::{
     errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
-    AutomatedMarketMaker,
+    AutomatedMarketMaker, Protocol,
 };
 
 pub(crate) trait ProtocolState {

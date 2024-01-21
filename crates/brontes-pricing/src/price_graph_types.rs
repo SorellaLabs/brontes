@@ -1,7 +1,15 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+};
 
 use alloy_primitives::Address;
 use serde::{Deserialize, Serialize};
+
+use crate::Protocol;
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SubGraphsEntry(pub HashMap<u64, Vec<SubGraphEdge>>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubGraphEdge {
@@ -41,12 +49,7 @@ pub struct PoolPairInformation {
 }
 
 impl PoolPairInformation {
-    pub fn new(
-        pool_addr: Address,
-        dex_type: Protocol,
-        token_0: Address,
-        token_1: Address,
-    ) -> Self {
+    pub fn new(pool_addr: Address, dex_type: Protocol, token_0: Address, token_1: Address) -> Self {
         Self { pool_addr, dex_type, token_0, token_1 }
     }
 }

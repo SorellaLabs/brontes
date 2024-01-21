@@ -3,7 +3,8 @@ use std::sync::Arc;
 use alloy_primitives::{Address, U256};
 use alloy_sol_types::SolCall;
 use brontes_macros::discovery_impl;
-use brontes_types::{exchanges::Protocol, traits::TracingProvider};
+use brontes_pricing::Protocol;
+use brontes_types::traits::TracingProvider;
 use itertools::Itertools;
 use reth_rpc_types::{CallInput, CallRequest};
 
@@ -98,12 +99,7 @@ discovery_impl!(
     crate::CurveV1MetapoolFactory::add_base_poolCall,
     0x0959158b6040d32d04c301a72cbfd6b39e21c9ae,
     |deployed_address: Address, call: add_base_poolCall, tracer: Arc<T>| {
-        curve_base_pool!(
-            Protocol::CurveV1BasePool,
-            deployed_address,
-            call._base_pool,
-            tracer
-        )
+        curve_base_pool!(Protocol::CurveV1BasePool, deployed_address, call._base_pool, tracer)
     }
 );
 
@@ -127,12 +123,7 @@ discovery_impl!(
     crate::CurveV2MetapoolFactory::add_base_poolCall,
     0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
     |deployed_address: Address, call: add_base_poolCall, tracer: Arc<T>| {
-        curve_base_pool!(
-            Protocol::CurveV2BasePool,
-            call._base_pool,
-            deployed_address,
-            tracer
-        )
+        curve_base_pool!(Protocol::CurveV2BasePool, call._base_pool, deployed_address, tracer)
     }
 );
 

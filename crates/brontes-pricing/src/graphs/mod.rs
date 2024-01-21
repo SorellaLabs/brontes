@@ -16,12 +16,7 @@ use std::{
 
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
-use brontes_types::{
-    exchanges::Protocol,
-    extra_processing::Pair,
-    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
-    tree::Node,
-};
+use brontes_types::{extra_processing::Pair, tree::Node};
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use malachite::Rational;
@@ -38,7 +33,11 @@ use tracing::{error, info};
 
 use self::registry::SubGraphRegistry;
 use super::PoolUpdate;
-use crate::types::PoolState;
+use crate::{
+    price_graph_types::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
+    types::PoolState,
+    Protocol,
+};
 
 pub struct GraphManager {
     all_pair_graph:     AllPairGraph,
