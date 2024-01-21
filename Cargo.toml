@@ -7,7 +7,7 @@ members = [
   "crates/brontes-types",
   "crates/brontes-classifier",
   "crates/brontes-metrics",
-  "crates/tracing",
+  "crates/brontes-tracing",
   "crates/brontes-database",
   "crates/brontes-macros",
   "crates/brontes-pricing",
@@ -30,7 +30,7 @@ brontes-database = { path = "./crates/brontes-database/" }
 brontes-macros = { path = "./crates/brontes-macros/" }
 brontes-pricing = { path = "./crates/brontes-pricing/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
-brontes-tracing = { path = "./crates/tracing" }
+brontes-tracing = { path = "./crates/brontes-tracing" }
 
 # Reth
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "9d65a4c" }
