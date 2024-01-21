@@ -80,7 +80,7 @@ impl DexPricingArgs {
         let chunks_amount = (range / chunk_size) + 1;
         // because these are lightweight tasks, we can stack them pretty easily without
         // much overhead concern
-        let max_pool_loading_tasks = (remaining_cpus / chunks_amount + 1) * 3;
+        let max_pool_loading_tasks = (remaining_cpus / chunks_amount + 1) * 2;
         let mut tasks = FuturesUnordered::new();
 
         for (batch_id, mut chunk) in (self.start_block..=self.end_block)
