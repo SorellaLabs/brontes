@@ -11,10 +11,6 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{
-    exchanges::Protocol,
-    price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
-};
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -38,8 +34,9 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
 use crate::{
+    price_graph_types::*,
     types::{PoolState, ProtocolState},
-    Pair,
+    Pair, Protocol,
 };
 
 /// PairSubGraph is a sub-graph that is made from the k-shortest paths for a

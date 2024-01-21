@@ -1,4 +1,5 @@
 use std::sync::Arc;
+
 mod tree_pruning;
 mod utils;
 use brontes_database::libmdbx::{
@@ -9,10 +10,9 @@ use brontes_database::libmdbx::{
     },
     Libmdbx,
 };
-use brontes_pricing::types::DexPriceMsg;
+use brontes_pricing::{types::DexPriceMsg, Protocol};
 use brontes_types::{
     db::{address_to_tokens::PoolTokens, pool_creation_block::PoolsToAddresses},
-    exchanges::Protocol,
     extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer, SelfdestructWithIndex},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
@@ -358,9 +358,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             Protocol::SushiSwapV2 => Some(Box::new(SushiSwapV2Classifier::default())),
             Protocol::UniswapV3 => Some(Box::new(UniswapV3Classifier::default())),
             Protocol::SushiSwapV3 => Some(Box::new(SushiSwapV3Classifier::default())),
-            Protocol::CurveCryptoSwap => {
-                Some(Box::new(CurveCryptoSwapClassifier::default()))
-            }
+            Protocol::CurveCryptoSwap => Some(Box::new(CurveCryptoSwapClassifier::default())),
             Protocol::AaveV2 => Some(Box::new(AaveV2Classifier::default())),
             Protocol::AaveV3 => Some(Box::new(AaveV3Classifier::default())),
             Protocol::UniswapX => Some(Box::new(UniswapXClassifier::default())),

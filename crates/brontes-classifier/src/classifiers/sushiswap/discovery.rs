@@ -1,7 +1,6 @@
 use alloy_primitives::Address;
 use brontes_macros::discovery_impl;
-use brontes_pricing::types::DiscoveredPool;
-use brontes_types::exchanges::Protocol;
+use brontes_pricing::{types::DiscoveredPool, Protocol};
 
 discovery_impl!(
     SushiSwapV2Decoder,
@@ -11,11 +10,7 @@ discovery_impl!(
         let token_a = call_data.tokenA;
         let token_b = call_data.tokenB;
 
-        vec![DiscoveredPool::new(
-            vec![token_a, token_b],
-            deployed_address,
-            Protocol::SushiSwapV2,
-        )]
+        vec![DiscoveredPool::new(vec![token_a, token_b], deployed_address, Protocol::SushiSwapV2)]
     }
 );
 
@@ -27,10 +22,6 @@ discovery_impl!(
         let token_a = call_data.tokenA;
         let token_b = call_data.tokenB;
 
-        vec![DiscoveredPool::new(
-            vec![token_a, token_b],
-            deployed_address,
-            Protocol::SushiSwapV3,
-        )]
+        vec![DiscoveredPool::new(vec![token_a, token_b], deployed_address, Protocol::SushiSwapV3)]
     }
 );
