@@ -1,13 +1,10 @@
-
-
 use alloy_primitives::TxHash;
 use alloy_rlp::{Decodable, Encodable};
 use brontes_types::db::{
-        dex::{DexQuote, DexQuoteWithIndex},
-        redefined_types::{malachite::Redefined_Rational, primitives::Redefined_Pair},
-    };
+    dex::{DexQuote, DexQuoteWithIndex},
+    redefined_types::{malachite::Redefined_Rational, primitives::Redefined_Pair},
+};
 use bytes::BufMut;
-
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::{
     table::{Compress, Decompress},

@@ -18,28 +18,27 @@ pub mod test_utils;
 
 mod classifiers;
 use alloy_sol_types::{sol, SolInterface};
-
 use brontes_types::normalized_actions::Actions;
 pub use classifiers::*;
 
 // Actions
-sol!(UniswapV2, "./abis/UniswapV2.json");
-sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
-sol!(UniswapV3, "./abis/UniswapV3.json");
-sol!(SushiSwapV3, "./abis/SushiSwapV3.json");
-sol!(CurveCryptoSwap, "./abis/CurveCryptoSwap.json");
-sol!(AaveV2, "./abis/AaveV2Pool.json");
-sol!(AaveV3, "./abis/AaveV3Pool.json");
-sol!(UniswapX, "./abis/UniswapXExclusiveDutchOrderReactor.json");
+sol!(UniswapV2, "./classifier-abis/UniswapV2.json");
+sol!(SushiSwapV2, "./classifier-abis/SushiSwapV2.json");
+sol!(UniswapV3, "./classifier-abis/UniswapV3.json");
+sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
+sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
+sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
+sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
+sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 
 // Discovery
-sol!(UniswapV2Factory, "./abis/UniswapV2Factory.json");
-sol!(UniswapV3Factory, "./abis/UniswapV3Factory.json");
-sol!(CurveV1MetapoolFactory, "./abis/CurveMetapoolFactoryV1.json");
-sol!(CurveV2MetapoolFactory, "./abis/CurveMetapoolFactoryV2.json");
-sol!(CurvecrvUSDFactory, "./abis/CurveCRVUSDFactory.json");
-sol!(CurveCryptoSwapFactory, "./abis/CurveCryptoSwapFactory.json");
-sol!(CurveTriCryptoFactory, "./abis/CurveTriCryptoFactory.json");
+sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
+sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
+sol!(CurveV1MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV1.json");
+sol!(CurveV2MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV2.json");
+sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
+sol!(CurveCryptoSwapFactory, "./classifier-abis/CurveCryptoSwapFactory.json");
+sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);

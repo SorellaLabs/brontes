@@ -3,6 +3,8 @@ use std::sync::Arc;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
+use eyre::anyhow;
+use futures::TryFutureExt;
 use reth_rpc_types::{CallInput, CallRequest};
 
 use super::UniswapV2Pool;
@@ -87,10 +89,10 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
 
     let res = middleware
         .eth_call(req, block.map(|i| i.into()), None, None)
-        .await
-        .unwrap();
+        .map_err(|_| eyre::eyre!("v2 state call failed"))
+        .await?;
 
-    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false).unwrap();
+    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false)?;
     *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
     Ok(())
 }
