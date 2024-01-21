@@ -1,6 +1,6 @@
 use alloy_primitives::Address;
 use alloy_rlp::{RlpDecodable, RlpEncodable};
-use brontes_types::exchanges::StaticBindingsDb;
+use brontes_types::exchanges::Protocol;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
 
@@ -11,11 +11,11 @@ use crate::libmdbx::AddressToFactory;
 #[derive(Debug, Serialize, Deserialize, Clone, Row, RlpDecodable, RlpEncodable)]
 pub struct AddressToFactoryData {
     pub address:      Address,
-    pub factory_type: StaticBindingsDb,
+    pub factory_type: Protocol,
 }
 
 impl AddressToFactoryData {
-    pub fn new(address: Address, factory_type: StaticBindingsDb) -> Self {
+    pub fn new(address: Address, factory_type: Protocol) -> Self {
         Self { factory_type, address }
     }
 }

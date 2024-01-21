@@ -35,7 +35,7 @@ impl SubGraphEdge {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PoolPairInformation {
     pub pool_addr: Address,
-    pub dex_type:  StaticBindingsDb,
+    pub dex_type:  Protocol,
     pub token_0:   Address,
     pub token_1:   Address,
 }
@@ -43,7 +43,7 @@ pub struct PoolPairInformation {
 impl PoolPairInformation {
     pub fn new(
         pool_addr: Address,
-        dex_type: StaticBindingsDb,
+        dex_type: Protocol,
         token_0: Address,
         token_1: Address,
     ) -> Self {

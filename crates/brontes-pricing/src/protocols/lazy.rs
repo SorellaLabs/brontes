@@ -7,7 +7,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_types::{
-    exchanges::StaticBindingsDb,
+    exchanges::Protocol,
     extra_processing::Pair,
     price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
     traits::TracingProvider,
@@ -25,7 +25,7 @@ use crate::{
     PoolUpdate,
 };
 
-type PoolFetchError = (Address, StaticBindingsDb, u64, Pair, AmmError);
+type PoolFetchError = (Address, Protocol, u64, Pair, AmmError);
 type PoolFetchSuccess = (u64, Address, PoolState, LoadResult);
 
 pub enum LoadResult {
@@ -110,7 +110,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         pool_pair: Pair,
         address: Address,
         block_number: u64,
-        ex_type: StaticBindingsDb,
+        ex_type: Protocol,
     ) -> bool {
         let provider = self.provider.clone();
         *self.req_per_block.entry(block_number).or_default() += 1;
@@ -118,7 +118,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.add_protocol_parent(address, parent_pair);
 
         match ex_type {
-            StaticBindingsDb::UniswapV2 | StaticBindingsDb::SushiSwapV2 => {
+            Protocol::UniswapV2 | Protocol::SushiSwapV2 => {
                 let fut = Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
@@ -137,7 +137,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                                 .map_err(|e| {
                                     (
                                         address,
-                                        StaticBindingsDb::UniswapV2,
+                                        Protocol::UniswapV2,
                                         block_number,
                                         pool_pair,
                                         e,
@@ -162,7 +162,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 }
                 true
             }
-            StaticBindingsDb::UniswapV3 | StaticBindingsDb::SushiSwapV3 => {
+            Protocol::UniswapV3 | Protocol::SushiSwapV3 => {
                 let fut = Box::pin(async move {
                     // we want end of last block state so that when the new state transition is
                     // applied, the state is still correct
@@ -178,7 +178,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                                 .map_err(|e| {
                                     (
                                         address,
-                                        StaticBindingsDb::UniswapV3,
+                                        Protocol::UniswapV3,
                                         block_number,
                                         pool_pair,
                                         e,
