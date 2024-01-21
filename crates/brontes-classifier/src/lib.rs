@@ -18,7 +18,6 @@ pub mod test_utils;
 
 mod classifiers;
 use alloy_sol_types::{sol, SolInterface};
-
 use brontes_types::normalized_actions::Actions;
 pub use classifiers::*;
 
