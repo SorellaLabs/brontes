@@ -4,7 +4,6 @@ use std::{
     fs::File,
     io::Write,
     pin::Pin,
-    str::FromStr,
     sync::Arc,
     task::{Context, Poll},
 };
