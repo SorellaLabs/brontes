@@ -476,7 +476,6 @@ fn insert_mev_results(
         .map(|arb| format!("https://etherscan.io/tx/{arb:?}"))
         .fold(String::new(), |acc, arb| acc + &arb + "\n")
     );
-    info!("{:#?}", mev_details);
 
     let data = MevBlocksData {
         block_number: block_details.block_number,
