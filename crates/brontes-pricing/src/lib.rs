@@ -14,7 +14,7 @@ use std::{
 
 use alloy_primitives::{Address, U256};
 use brontes_types::{
-    exchanges::StaticBindingsDb,
+    exchanges::Protocol,
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedAction, NormalizedSwap},
     price_graph::{PoolPairInfoDirection, SubGraphEdge},
@@ -77,7 +77,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
-    new_graph_pairs: HashMap<Address, (StaticBindingsDb, Pair)>,
+    new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
     graph_manager:   GraphManager,
     /// lazy loads dex pairs so we only fetch init state that is needed
     lazy_loader:     LazyExchangeLoader<T>,
@@ -95,7 +95,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
-        new_graph_pairs: HashMap<Address, (StaticBindingsDb, Pair)>,
+        new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
     ) -> Self {
         Self {
             new_graph_pairs,

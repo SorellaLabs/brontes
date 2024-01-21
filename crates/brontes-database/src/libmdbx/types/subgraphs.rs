@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use alloy_rlp::{Decodable, Encodable};
 use brontes_types::{
     db::{redefined_types::primitives::Redefined_Address, subgraph::SubGraphsEntry},
-    exchanges::StaticBindingsDb,
+    exchanges::Protocol,
     extra_processing::Pair,
     price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
 };
@@ -107,7 +107,7 @@ impl Decompress for LibmdbxSubGraphsEntry {
 #[redefined(PoolPairInformation)]
 pub struct LibmdbxPoolPairInformation {
     pub pool_addr: Redefined_Address,
-    pub dex_type:  StaticBindingsDb,
+    pub dex_type:  Protocol,
     pub token_0:   Redefined_Address,
     pub token_1:   Redefined_Address,
 }
