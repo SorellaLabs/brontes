@@ -428,7 +428,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                         // if we got delegate, the actual token address
                         // is the from addr (proxy) for pool swaps. without
                         // this our math gets fucked
-                        trace.get_from_addr()
+                        trace.get_msg_sender()
                     } else {
                         addr
                     };
