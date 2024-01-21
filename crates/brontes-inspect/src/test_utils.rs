@@ -10,8 +10,9 @@ use brontes_types::{
 use thiserror::Error;
 
 use crate::{
-    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, composer::Composer,
-    jit::JitInspector, liquidations::LiquidationInspector, sandwich::SandwichInspector, Inspector,
+    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector,
+    composer::compose_mev_results, jit::JitInspector, liquidations::LiquidationInspector,
+    sandwich::SandwichInspector, Inspector,
 };
 
 pub const USDC_ADDRESS: Address =
@@ -276,7 +277,8 @@ impl InspectorTestUtils {
             .map(|i| &*Box::leak(Box::new(i)))
             .collect::<Vec<&'static Box<dyn Inspector>>>();
 
-        let (_, results) = Composer::new(inspector.as_slice(), tree.into(), metadata.into()).await;
+        let (_, results) =
+            compose_mev_results(inspector.as_slice(), tree.into(), metadata.into()).await;
 
         let mut results = results
             .into_iter()
