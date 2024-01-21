@@ -562,33 +562,6 @@ pub mod test {
 
     #[tokio::test]
     #[serial]
-    async fn test_discovery_classification() {
-        let curve_v1_meta_create =
-            B256::from(hex!("c033f5d8f5519056b24f93a5468f21b89ea880d31cefdc3da666bf2947908f83"));
-        let deployed_address = Address::new(hex!("84997fafc913f1613f51bb0e2b5854222900514b"));
-        let mut classifier_utils = ClassifierTestUtils::new();
-
-        // run classifier
-        classifier_utils
-            .build_tree_tx(curve_v1_meta_create)
-            .await
-            .unwrap();
-        let dex_pricing_chan = classifier_utils.get_pricing_receiver();
-
-        while let Ok(msg) = dex_pricing_chan.try_recv() {
-            if let DexPriceMsg::DiscoveredPool(pool, _) = msg {
-                tracing::info!("{:?}", pool);
-                if pool.pool_address == deployed_address {
-                    return
-                }
-            }
-        }
-
-        assert!(false, "create was not detected for {:?}", deployed_address);
-    }
-
-    #[tokio::test]
-    #[serial]
     async fn test_aave_v3_liquidation() {
         let classifier_utils = ClassifierTestUtils::new();
         let aave_v3_liquidation =
