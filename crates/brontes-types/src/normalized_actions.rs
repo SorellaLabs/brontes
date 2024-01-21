@@ -13,7 +13,7 @@ use sorella_db_databases::{
     clickhouse::{DbRow, InsertRow, Row},
 };
 
-use crate::structured_trace::TransactionTraceWithLogs;
+use crate::structured_trace::{TransactionTraceWithLogs, TraceActions};
 
 /// A normalized action that has been classified
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -211,6 +211,13 @@ impl Actions {
 
     pub fn is_self_destruct(&self) -> bool {
         matches!(self, Actions::SelfDestruct(_))
+    }
+
+    pub fn is_static_call(&self) -> bool {
+        if let Self::Unclassified(u) = &self {
+            return u.is_static_call()
+        }
+        false
     }
 
     pub fn is_unclassified(&self) -> bool {
