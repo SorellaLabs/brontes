@@ -3,7 +3,7 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use alloy_primitives::{Address, Log, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use brontes_types::{
-    exchanges::StaticBindingsDb, extra_processing::Pair, normalized_actions::Actions,
+    exchanges::Protocol, extra_processing::Pair, normalized_actions::Actions,
     serde_utils::primitives::address_string,
 };
 use bytes::BufMut;
@@ -50,10 +50,10 @@ impl PoolState {
         }
     }
 
-    pub fn dex(&self) -> StaticBindingsDb {
+    pub fn dex(&self) -> Protocol {
         match &self.variant {
-            PoolVariants::UniswapV2(_) => StaticBindingsDb::UniswapV2,
-            PoolVariants::UniswapV3(_) => StaticBindingsDb::UniswapV3,
+            PoolVariants::UniswapV2(_) => Protocol::UniswapV2,
+            PoolVariants::UniswapV3(_) => Protocol::UniswapV3,
         }
     }
 
@@ -109,13 +109,13 @@ pub enum DexPriceMsg {
 
 #[derive(Debug, Clone)]
 pub struct DiscoveredPool {
-    pub protocol:     StaticBindingsDb,
+    pub protocol:     Protocol,
     pub pool_address: Address,
     pub tokens:       Vec<Address>,
 }
 
 impl DiscoveredPool {
-    pub fn new(tokens: Vec<Address>, pool_address: Address, protocol: StaticBindingsDb) -> Self {
+    pub fn new(tokens: Vec<Address>, pool_address: Address, protocol: Protocol) -> Self {
         Self { protocol, pool_address, tokens }
     }
 }

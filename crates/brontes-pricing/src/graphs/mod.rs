@@ -17,7 +17,7 @@ use std::{
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
 use brontes_types::{
-    exchanges::StaticBindingsDb,
+    exchanges::Protocol,
     extra_processing::Pair,
     price_graph::{PoolPairInfoDirection, PoolPairInformation, SubGraphEdge},
     tree::Node,
@@ -52,7 +52,7 @@ pub struct GraphManager {
 
 impl GraphManager {
     pub fn init_from_db_state(
-        all_pool_data: HashMap<(Address, StaticBindingsDb), Pair>,
+        all_pool_data: HashMap<(Address, Protocol), Pair>,
         sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>,
         db_load: Box<dyn Fn(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
         db_save: Box<dyn Fn(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
@@ -63,7 +63,7 @@ impl GraphManager {
         Self { all_pair_graph: graph, sub_graph_registry: registry, db_load, db_save }
     }
 
-    pub fn add_pool(&mut self, pair: Pair, pool_addr: Address, dex: StaticBindingsDb) {
+    pub fn add_pool(&mut self, pair: Pair, pool_addr: Address, dex: Protocol) {
         self.all_pair_graph.add_node(pair.ordered(), pool_addr, dex);
     }
 
@@ -133,7 +133,7 @@ impl GraphManager {
         subgraph_pair: Pair,
         pool_pair: Pair,
         pool_address: Address,
-    ) -> (bool, Option<(Address, StaticBindingsDb, Pair)>) {
+    ) -> (bool, Option<(Address, Protocol, Pair)>) {
         let requery_subgraph = self.sub_graph_registry.bad_pool_state(
             subgraph_pair.ordered(),
             pool_pair.ordered(),
