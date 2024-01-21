@@ -334,7 +334,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
 
-        deubg!(
+        debug!(
             block_number = self.completed_block,
             dex_quotes_length = res.0.len(),
             "got dex quotes"
