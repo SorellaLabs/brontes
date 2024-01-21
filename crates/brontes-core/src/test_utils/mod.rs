@@ -19,6 +19,7 @@ use futures::future::join_all;
 use log::Level;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
+use reth_tasks::TaskManager;
 use reth_tracing_ext::TracingClient;
 use thiserror::Error;
 use tokio::{
@@ -316,14 +317,13 @@ fn init_trace_parser<'a>(
     #[cfg(not(feature = "local"))]
 
     */
+    let executor = TaskManager::new(handle.clone());
 
     let tracer = {
-        let (t_handle, client) =
-            TracingClient::new(Path::new(&db_path), handle.clone(), max_tasks as u64);
-        handle.spawn(t_handle);
-
+        let client = TracingClient::new(Path::new(&db_path), max_tasks as u64, executor.executor());
         Box::new(client) as Box<dyn TracingProvider>
     };
+    handle.spawn(executor);
 
     let call = Box::new(|_: &_, _: &_| true);
 
