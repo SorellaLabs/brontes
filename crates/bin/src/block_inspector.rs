@@ -1,7 +1,6 @@
 use std::{
     cmp::max,
     pin::Pin,
-    str::FromStr,
     task::{Context, Poll},
 };
 
@@ -9,7 +8,7 @@ use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
-    missing_decimals::MissingDecimals,
+    missing_decimals::load_missing_decimals,
 };
 use brontes_database::libmdbx::{
     tables::{DexPrice, Metadata as MetadataTable, MevBlocks},
@@ -17,7 +16,7 @@ use brontes_database::libmdbx::{
     Libmdbx,
 };
 use brontes_inspect::{
-    composer::{Composer, ComposerResults},
+    composer::{compose_mev_results, ComposerResults},
     Inspector,
 };
 use brontes_types::{
@@ -35,6 +34,7 @@ use brontes_types::{
 };
 use futures::{Future, FutureExt};
 use tracing::{debug, error, info, trace};
+
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (MetadataCombined, BlockTree<Actions>)> + Send + 'a>>;
 
@@ -82,7 +82,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
             let block_number = header.number;
             let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
 
-            MissingDecimals::new(
+            load_missing_decimals(
                 self.parser.get_tracer(),
                 self.database,
                 block_number,
@@ -122,7 +122,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
         if let Some(mut collection_fut) = self.classifier_future.take() {
             match collection_fut.poll_unpin(cx) {
                 Poll::Ready((meta_data, tree)) => {
-                    self.composer_future = Some(Box::pin(Composer::new(
+                    self.composer_future = Some(Box::pin(compose_mev_results(
                         self.inspectors,
                         tree.into(),
                         meta_data.into(),
@@ -136,37 +136,44 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
         }
 
         if let Some(mut inner) = self.composer_future.take() {
-            if let Poll::Ready(data) = inner.poll_unpin(cx) {
+            if let Poll::Ready(ComposerResults { block_details, mev_details, .. }) =
+                inner.poll_unpin(cx)
+            {
                 info!(
                     target:"brontes",
                     "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
                      ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
-                     {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- \
-                     Builder ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer \
-                     Fee Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized \
-                     Profit (USD): {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n",
-                    data.0.block_number,
-                    data.0.mev_count,
-                    data.0.finalized_eth_price,
-                    data.0.cumulative_gas_used,
-                    data.0.cumulative_gas_paid,
-                    data.0.total_bribe,
-                    data.0.cumulative_mev_priority_fee_paid,
-                    data.0.builder_address,
-                    data.0.builder_eth_profit,
-                    data.0.builder_finalized_profit_usd,
-                    data.0
+                     {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- Builder \
+                     ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer Fee \
+                     Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized Profit (USD): \
+                    {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n- Possibly Missed Mev:\n{}",
+                    block_details.block_number,
+                    block_details.mev_count,
+                    block_details.finalized_eth_price,
+                    block_details.cumulative_gas_used,
+                    block_details.cumulative_gas_paid,
+                    block_details.total_bribe,
+                    block_details.cumulative_mev_priority_fee_paid,
+                    block_details.builder_address,
+                    block_details.builder_eth_profit,
+                    block_details.builder_finalized_profit_usd,
+                    block_details
                         .proposer_fee_recipient
-                        .map_or(Address::ZERO.to_string(), |v| format!("{:?}", v)),
-                    data.0
+                        .unwrap_or(Address::ZERO),
+                    block_details
                         .proposer_mev_reward
                         .map_or("None".to_string(), |v| v.to_string()),
-                    data.0
+                    block_details
                         .proposer_finalized_profit_usd
                         .map_or("None".to_string(), |v| format!("{:.2}", v)),
-                    data.0.cumulative_mev_finalized_profit_usd
+                    block_details.cumulative_mev_finalized_profit_usd,
+                block_details
+                    .possible_missed_arbs
+                    .iter()
+                    .map(|arb| format!("https://etherscan.io/tx/{arb:?}"))
+                    .fold(String::new(), |acc, arb| acc + &arb + "\n")
                 );
-                self.on_inspectors_finish(data);
+                self.on_inspectors_finish((block_details, mev_details));
             } else {
                 self.composer_future = Some(inner);
             }
@@ -188,19 +195,14 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
 
         let db_cex_quotes: CexPriceMap = CexPriceMap::default();
 
-        let eth_prices = if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(
-            Address::from_str(WETH_ADDRESS).unwrap(),
-            Address::from_str(USDT_ADDRESS).unwrap(),
-        )) {
-            eth_usdt
-        } else {
-            db_cex_quotes
-                .get_quote(&Pair(
-                    Address::from_str(WETH_ADDRESS).unwrap(),
-                    Address::from_str(USDC_ADDRESS).unwrap(),
-                ))
-                .unwrap_or_default()
-        };
+        let eth_prices =
+            if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
+                eth_usdt
+            } else {
+                db_cex_quotes
+                    .get_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
+                    .unwrap_or_default()
+            };
 
         let mut cex_quotes = CexPriceMap::new();
         db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {

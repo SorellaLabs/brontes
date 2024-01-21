@@ -37,6 +37,7 @@ pub struct MevBlock {
     pub proposer_mev_reward: Option<u128>,
     pub proposer_finalized_profit_usd: Option<f64>,
     pub cumulative_mev_finalized_profit_usd: f64,
+    pub possible_missed_arbs: Vec<B256>,
 }
 
 #[serde_as]
@@ -291,7 +292,9 @@ impl Mev for Sandwich {
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        vec![self.frontrun_tx_hash, self.backrun_tx_hash]
+        let mut res = vec![self.frontrun_tx_hash, self.backrun_tx_hash];
+        res.extend(self.victim_swaps_tx_hashes.clone());
+        res
     }
 }
 

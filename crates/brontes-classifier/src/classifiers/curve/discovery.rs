@@ -1,280 +1,226 @@
-use std::{pin::Pin, sync::Arc};
+use std::sync::Arc;
 
-use alloy_primitives::{Address, Log, B256};
-use alloy_rpc_types::Filter;
-use alloy_sol_types::SolEvent;
-use brontes_macros::{discovery_dispatch, discovery_impl};
-use brontes_types::{exchanges::StaticBindingsDb, traits::TracingProvider};
-use futures::{future::join_all, Future};
+use alloy_primitives::{Address, U256};
+use alloy_sol_types::SolCall;
+use brontes_macros::discovery_impl;
+use brontes_pricing::Protocol;
+use brontes_types::traits::TracingProvider;
+use itertools::Itertools;
+use reth_rpc_types::{CallInput, CallRequest};
 
-use crate::{
-    CurveV1MetapoolFactory::{
-        self, BasePoolAdded as V1BasePoolAdded, MetaPoolDeployed as V1MetaPoolDeployed,
-    },
-    CurveV2MetapoolFactory::{
-        self, BasePoolAdded as V2BasePoolAdded, MetaPoolDeployed as V2MetaPoolDeployed,
-        PlainPoolDeployed as V2PlainPoolDeployed,
-    },
-    CurvecrvUSDFactory::{
-        self, BasePoolAdded as crvUSDBasePoolAdded, MetaPoolDeployed as crvUSDMetaPoolDeployed,
-        PlainPoolDeployed as crvUSDPlainPoolDeployed,
-    },
-    DiscoveredPool, CURVE_BASE_POOLS_TOKENS,
-};
+alloy_sol_types::sol!(
+    function coins(uint256 arg0) external view returns (address);
+);
+
+async fn query_base_pool<T: TracingProvider>(tracer: Arc<T>, base_pool: Address) -> Vec<Address> {
+    let mut result = Vec::new();
+    let mut i = 0;
+    loop {
+        let encoded = coinsCall::new((U256::from(i),)).abi_encode();
+        let req = CallRequest {
+            to: Some(base_pool),
+            input: CallInput::new(encoded.into()),
+            ..Default::default()
+        };
+
+        let Ok(res) = tracer.eth_call(req, None, None, None).await else {
+            break;
+        };
+
+        let Ok(call) = coinsCall::abi_decode_returns(&res[..], false) else {
+            break;
+        };
+        i += 1;
+        result.push(call._0);
+    }
+    result
+}
 
 macro_rules! curve_plain_pool {
-    ($protocol:expr, $decoded_events:expr) => {
+    ($protocol:expr, $deployed_address:expr, $tokens:expr) => {
         async move {
-            join_all(
-                $decoded_events
-                    .into_iter()
-                    .map(|(evt, block_number, pool_addr_future)| {
-                        let protocol_clone = $protocol.clone();
-                        async move {
-                            let Some(pool_addr) = pool_addr_future.await else { return None };
-
-                            Some(::brontes_pricing::types::DiscoveredPool::new(
-                                evt.coins.to_vec(),
-                                pool_addr,
-                                protocol_clone,
-                            ))
-                        }
-                    }),
-            )
-            .await
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>()
+            $tokens
+                .into_iter()
+                .permutations(2)
+                .map(|tokens| {
+                    ::brontes_pricing::types::DiscoveredPool::new(
+                        tokens,
+                        $deployed_address,
+                        $protocol,
+                    )
+                })
+                .collect::<Vec<_>>()
         }
     };
 }
 
 macro_rules! curve_meta_pool {
-    ($protocol:expr, $decoded_events:expr) => {
+    ($protocol:expr, $deployed_address:expr, $base_pool:expr, $meta_token:expr, $tracer:expr) => {
         async move {
-            join_all(
-                $decoded_events
-                    .into_iter()
-                    .map(|(evt, block_number, pool_addr_future)| {
-                        let protocol_clone = $protocol.clone();
-                        async move {
-                            let base_pool_addr: reth_primitives::Address =
-                                evt.base_pool.clone().0 .0.into();
-                            let mut pool_tokens = CURVE_BASE_POOLS_TOKENS
-                                .get(&base_pool_addr)
-                                .unwrap()
-                                .clone();
-                            pool_tokens.push(evt.coin.0 .0.into());
-                            pool_tokens.sort();
+            let mut base_tokens = query_base_pool($tracer, $base_pool).await;
+            base_tokens.push($meta_token);
 
-                            let Some(pool_addr) = pool_addr_future.await else { return None };
-
-                            Some(::brontes_pricing::types::DiscoveredPool::new(
-                                pool_tokens
-                                    .into_iter()
-                                    .map(|token| token.0 .0.into())
-                                    .collect(),
-                                pool_addr,
-                                protocol_clone,
-                            ))
-                        }
-                    }),
-            )
-            .await
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>()
+            base_tokens
+                .into_iter()
+                .permutations(2)
+                .map(|tokens| {
+                    ::brontes_pricing::types::DiscoveredPool::new(
+                        tokens,
+                        $deployed_address,
+                        $protocol,
+                    )
+                })
+                .collect::<Vec<_>>()
         }
     };
 }
 
 macro_rules! curve_base_pool {
-    ($protocol:expr, $decoded_events:expr) => {
-        $decoded_events
-            .into_iter()
-            .map(|(evt, block_number)| {
-                let base_pool_addr: reth_primitives::Address = evt.base_pool.clone().0 .0.into();
-
-                let mut pool_tokens = CURVE_BASE_POOLS_TOKENS
-                    .get(&base_pool_addr)
-                    .unwrap()
-                    .clone();
-                pool_tokens.sort();
-
-                DiscoveredPool::new(
-                    pool_tokens
-                        .into_iter()
-                        .map(|token| token.0 .0.into())
-                        .collect(),
-                    evt.base_pool.0 .0.into(),
-                    $protocol.clone(),
-                )
-            })
-            .collect::<Vec<_>>()
+    ($protocol:expr, $deployed_address:expr, $base_pool:expr, $tracer:expr) => {
+        async move {
+            query_base_pool($tracer, $base_pool)
+                .await
+                .into_iter()
+                .permutations(2)
+                .map(|tokens| {
+                    ::brontes_pricing::types::DiscoveredPool::new(
+                        tokens,
+                        $deployed_address,
+                        $protocol,
+                    )
+                })
+                .collect::<Vec<_>>()
+        }
     };
 }
 
 discovery_impl!(
     CurveV1MetapoolBaseDecoder,
-    CurveV1MetapoolFactory,
-    BasePoolAdded,
-    true,
-    false,
-    |protocol: StaticBindingsDb,
-     decoded_events: Vec<(alloy_primitives::Log<V1BasePoolAdded>, u64)>| {
-        curve_base_pool!(protocol, decoded_events)
+    crate::CurveV1MetapoolFactory::add_base_poolCall,
+    0x0959158b6040d32d04c301a72cbfd6b39e21c9ae,
+    |deployed_address: Address, call: add_base_poolCall, tracer: Arc<T>| {
+        curve_base_pool!(Protocol::CurveV1BasePool, deployed_address, call._base_pool, tracer)
     }
 );
 
 discovery_impl!(
     CurveV1MetapoolMetaDecoder,
-    CurveV1MetapoolFactory,
-    MetaPoolDeployed,
-    false,
-    true,
-    |node_handle: Arc<T>,
-     protocol: StaticBindingsDb,
-     decoded_events: Vec<(
-        alloy_primitives::Log<V1MetaPoolDeployed>,
-        u64,
-        Pin<Box<dyn Future<Output = Option<Address>> + Send>>
-    )>| { curve_meta_pool!(protocol, decoded_events) }
-);
-
-discovery_impl!(
-    CurveV2MetapoolBaseDecoder,
-    CurveV2MetapoolFactory,
-    BasePoolAdded,
-    true,
-    false,
-    |protocol: StaticBindingsDb,
-     decoded_events: Vec<(alloy_primitives::Log<V2BasePoolAdded>, u64)>| {
-        curve_base_pool!(protocol, decoded_events)
+    crate::CurveV1MetapoolFactory::deploy_metapoolCall,
+    0x0959158b6040d32d04c301a72cbfd6b39e21c9ae,
+    |deployed_address: Address, call: deploy_metapoolCall, tracer: Arc<T>| {
+        curve_meta_pool!(
+            Protocol::CurveV1MetaPool,
+            deployed_address,
+            call._base_pool,
+            call._coin,
+            tracer
+        )
     }
 );
 
 discovery_impl!(
-    CurveV2MetapoolMetaDecoder,
-    CurveV2MetapoolFactory,
-    MetaPoolDeployed,
-    false,
-    true,
-    |node_handle: Arc<T>,
-     protocol: StaticBindingsDb,
-     decoded_events: Vec<(
-        alloy_primitives::Log<V2MetaPoolDeployed>,
-        u64,
-        Pin<Box<dyn Future<Output = Option<Address>> + Send>>
-    )>| { curve_meta_pool!(protocol, decoded_events) }
-);
-
-discovery_impl!(
-    CurveV2MetapoolPlainDecoder,
-    CurveV2MetapoolFactory,
-    PlainPoolDeployed,
-    false,
-    true,
-    |node_handle: Arc<T>,
-     protocol: StaticBindingsDb,
-     decoded_events: Vec<(
-        alloy_primitives::Log<V2PlainPoolDeployed>,
-        u64,
-        Pin<Box<dyn Future<Output = Option<Address>> + Send>>
-    )>| { curve_plain_pool!(protocol, decoded_events) }
-);
-
-discovery_impl!(
-    CurvecrvUSDBaseDecoder,
-    CurvecrvUSDFactory,
-    BasePoolAdded,
-    true,
-    false,
-    |protocol: StaticBindingsDb,
-     decoded_events: Vec<(alloy_primitives::Log<crvUSDBasePoolAdded>, u64)>| {
-        curve_base_pool!(protocol, decoded_events)
+    CurveV2MetapoolBaseDecoder,
+    crate::CurveV2MetapoolFactory::add_base_poolCall,
+    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
+    |deployed_address: Address, call: add_base_poolCall, tracer: Arc<T>| {
+        curve_base_pool!(Protocol::CurveV2BasePool, call._base_pool, deployed_address, tracer)
     }
 );
 
 discovery_impl!(
-    CurvecrvUSDMetaDecoder,
-    CurvecrvUSDFactory,
-    MetaPoolDeployed,
-    false,
-    true,
-    |node_handle: Arc<T>,
-     protocol: StaticBindingsDb,
-     decoded_events: Vec<(
-        alloy_primitives::Log<crvUSDMetaPoolDeployed>,
-        u64,
-        Pin<Box<dyn Future<Output = Option<Address>> + Send>>
-    )>| { curve_meta_pool!(protocol, decoded_events) }
+    CurveV2MetapoolMetaDecoder0,
+    crate::CurveV2MetapoolFactory::deploy_metapool_0Call,
+    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
+    |deployed_address: Address, call: deploy_metapool_0Call, tracer: Arc<T>| {
+        curve_meta_pool!(
+            Protocol::CurveV2MetaPool,
+            deployed_address,
+            call._base_pool,
+            call._coin,
+            tracer
+        )
+    }
 );
 
 discovery_impl!(
-    CurvecrvUSDPlainDecoder,
-    CurvecrvUSDFactory,
-    PlainPoolDeployed,
-    false,
-    true,
-    |node_handle: Arc<T>,
-     protocol: StaticBindingsDb,
-     decoded_events: Vec<(
-        alloy_primitives::Log<crvUSDPlainPoolDeployed>,
-        u64,
-        Pin<Box<dyn Future<Output = Option<Address>> + Send>>
-    )>| { curve_plain_pool!(protocol, decoded_events) }
+    CurveV2MetapoolMetaDecoder1,
+    crate::CurveV2MetapoolFactory::deploy_metapool_1Call,
+    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
+    |deployed_address: Address, call: deploy_metapool_1Call, tracer: Arc<T>| {
+        curve_meta_pool!(
+            Protocol::CurveV2MetaPool,
+            deployed_address,
+            call._base_pool,
+            call._coin,
+            tracer
+        )
+    }
 );
 
-discovery_dispatch!(
-    CurveDecoder,
-    CurveV1MetapoolBaseDecoder,
-    CurveV2MetapoolBaseDecoder,
-    CurveV2MetapoolMetaDecoder,
-    CurveV2MetapoolPlainDecoder,
-    CurvecrvUSDBaseDecoder,
-    CurvecrvUSDMetaDecoder,
-    CurvecrvUSDPlainDecoder
+discovery_impl!(
+    CurveV2MetapoolPlainDecoder0,
+    crate::CurveV2MetapoolFactory::deploy_plain_pool_0Call,
+    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
+    |deployed_address: Address, call: deploy_plain_pool_0Call, _| {
+        curve_plain_pool!(Protocol::CurveV2PlainPool, deployed_address, call._coins)
+    }
 );
 
-pub async fn get_log_from_tx<T: TracingProvider>(
-    node_handle: Arc<T>,
-    block_num: u64,
-    tx_hash: B256,
-    log_topic_bench: B256,
-    idicies_prior: usize,
-) -> Option<Log> {
-    let filter = Filter::new().from_block(block_num);
+discovery_impl!(
+    CurveV2MetapoolPlainDecoder1,
+    crate::CurveV2MetapoolFactory::deploy_plain_pool_1Call,
+    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
+    |deployed_address: Address, call: deploy_plain_pool_1Call, _| {
+        curve_plain_pool!(Protocol::CurveV2PlainPool, deployed_address, call._coins)
+    }
+);
+discovery_impl!(
+    CurveV2MetapoolPlainDecoder2,
+    crate::CurveV2MetapoolFactory::deploy_plain_pool_2Call,
+    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
+    |deployed_address: Address, call: deploy_plain_pool_2Call, _| {
+        curve_plain_pool!(Protocol::CurveV2PlainPool, deployed_address, call._coins)
+    }
+);
 
-    let logs = match node_handle.logs_from_filter(filter).await {
-        Ok(l) => l,
-        Err(_) => return None,
-    };
-
-    let tx_logs = logs
-        .into_iter()
-        .filter(|log| log.transaction_hash.is_some())
-        .filter(|log_tx| &log_tx.transaction_hash.unwrap() == &tx_hash)
-        .collect::<Vec<_>>();
-
-    let log_topic_bench: reth_primitives::TxHash = log_topic_bench.0.into();
-    let Some((idx, _)) = tx_logs
-        .iter()
-        .enumerate()
-        .find(|(_, log)| log.topics[0] == log_topic_bench)
-    else {
-        return None
-    };
-
-    Some(rpc_to_alloy_log(&tx_logs[idx - idicies_prior]))
-}
-
-fn rpc_to_alloy_log(log: &reth_rpc_types::Log) -> alloy_primitives::Log {
-    alloy_primitives::Log::new_unchecked(
-        log.address.0 .0.into(),
-        log.topics
-            .iter()
-            .map(|topic| topic.0.into())
-            .collect::<Vec<_>>(),
-        log.data.0.clone().into(),
-    )
-}
+// discovery_impl!(
+//     CurvecrvUSDBaseDecoder,
+//     CurvecrvUSDFactory,
+//     BasePoolAdded,
+//     true,
+//     false,
+//     |protocol: Protocol,
+//      decoded_events: Vec<(alloy_primitives::Log<crvUSDBasePoolAdded>, u64)>|
+// {         curve_base_pool!(protocol, decoded_events)
+//     }
+// );
+//
+// discovery_impl!(
+//     CurvecrvUSDMetaDecoder,
+//     CurvecrvUSDFactory,
+//     MetaPoolDeployed,
+//     false,
+//     true,
+//     |node_handle: Arc<T>,
+//      protocol: Protocol,
+//      decoded_events: Vec<(
+//         alloy_primitives::Log<crvUSDMetaPoolDeployed>,
+//         u64,
+//         Pin<Box<dyn Future<Output = Option<Address>> + Send>>
+//     )>| { curve_meta_pool!(protocol, decoded_events) }
+// );
+//
+// discovery_impl!(
+//     CurvecrvUSDPlainDecoder,
+//     CurvecrvUSDFactory,
+//     PlainPoolDeployed,
+//     false,
+//     true,
+//     |node_handle: Arc<T>,
+//      protocol: Protocol,
+//      decoded_events: Vec<(
+//         alloy_primitives::Log<crvUSDPlainPoolDeployed>,
+//         u64,
+//         Pin<Box<dyn Future<Output = Option<Address>> + Send>>
+//     )>| { curve_plain_pool!(protocol, decoded_events) }
+// );

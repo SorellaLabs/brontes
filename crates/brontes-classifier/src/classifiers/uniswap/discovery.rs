@@ -1,40 +1,27 @@
-use alloy_primitives::B256;
-use brontes_macros::{discovery_dispatch, discovery_impl};
-use brontes_pricing::types::DiscoveredPool;
-use brontes_types::exchanges::StaticBindingsDb;
-
-use crate::{UniswapV2Factory::PairCreated, UniswapV3Factory::PoolCreated};
+use alloy_primitives::Address;
+use brontes_macros::discovery_impl;
+use brontes_pricing::{types::DiscoveredPool, Protocol};
 
 discovery_impl!(
     UniswapV2Decoder,
-    UniswapV2Factory,
-    PairCreated,
-    true,
-    false,
-    |protocol: StaticBindingsDb, decoded_events: Vec<(alloy_primitives::Log<PairCreated>, u64)>| {
-        decoded_events
-            .into_iter()
-            .map(|(evt, block_number)| {
-                DiscoveredPool::new(vec![evt.token0, evt.token1], evt.pair, protocol)
-            })
-            .collect::<Vec<_>>()
+    crate::UniswapV2Factory::createPairCall,
+    0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f,
+    |deployed_address: Address, call_data: createPairCall, _| async move {
+        let token_a = call_data.tokenA;
+        let token_b = call_data.tokenB;
+
+        vec![DiscoveredPool::new(vec![token_a, token_b], deployed_address, Protocol::UniswapV2)]
     }
 );
 
 discovery_impl!(
     UniswapV3Decoder,
-    UniswapV3Factory,
-    PoolCreated,
-    true,
-    false,
-    |protocol: StaticBindingsDb, decoded_events: Vec<(alloy_primitives::Log<PoolCreated>, u64)>| {
-        decoded_events
-            .into_iter()
-            .map(|(evt, block_number)| {
-                DiscoveredPool::new(vec![evt.token0, evt.token1], evt.pool, protocol)
-            })
-            .collect::<Vec<_>>()
+    crate::UniswapV3Factory::createPoolCall,
+    0x1F98431c8aD98523631AE4a59f267346ea31F984,
+    |deployed_address: Address, call_data: createPoolCall, _| async move {
+        let token_a = call_data.tokenA;
+        let token_b = call_data.tokenB;
+
+        vec![DiscoveredPool::new(vec![token_a, token_b], deployed_address, Protocol::UniswapV3)]
     }
 );
-
-discovery_dispatch!(UniswapDecoder, UniswapV2Decoder, UniswapV3Decoder);

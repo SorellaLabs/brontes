@@ -1,27 +1,29 @@
 use std::{fmt::Debug, pin::Pin, str::FromStr, sync::Arc};
 
+use brontes_pricing::{Protocol, SubGraphsEntry};
 use brontes_types::{
     db::{
         address_to_tokens::PoolTokens, cex::CexPriceMap, dex::DexQuoteWithIndex,
         metadata::MetadataInner, mev_block::MevBlockWithClassified,
-        pool_creation_block::PoolsToAddresses, subgraph::SubGraphsEntry,
+        pool_creation_block::PoolsToAddresses,
     },
-    exchanges::StaticBindingsDb,
     extra_processing::Pair,
 };
 use futures::StreamExt;
 use sorella_db_databases::Database;
 
+use crate::libmdbx::types::dex_price::DexKey;
+
 mod const_sql;
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::Address;
 use const_sql::*;
 use futures::Future;
 use paste::paste;
 use reth_db::{table::Table, TableType};
 use serde::Deserialize;
 use sorella_db_databases::clickhouse::DbRow;
-//use tracing::info;
 
+//use tracing::info;
 use self::{
     address_to_tokens::LibmdbxPoolTokens, cex_price::LibmdbxCexPriceMap,
     dex_price::LibmdbxDexQuoteWithIndex, metadata::LibmdbxMetadataInner,
@@ -120,20 +122,20 @@ impl Tables {
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'a>> {
         match self {
             Tables::TokenDecimals => {
-               println!("Starting {}", self.name());
+                println!("Starting {}", self.name());
                 TokenDecimals::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::AddressToTokens => {
-               println!("Starting {}", self.name());
+                println!("Starting {}", self.name());
                 AddressToTokens::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::AddressToProtocol => {
-               println!("Starting {}", self.name());
+                println!("Starting {}", self.name());
                 AddressToProtocol::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::CexPrice => {
                 //let block_range = (15400000, 19000000);
-               println!("Starting {}", self.name());
+                println!("Starting {}", self.name());
                 Box::pin(async move {
                     
                     //libmdbx.clear_table::<CexPrice>()?;
@@ -145,75 +147,75 @@ impl Tables {
                         (15400000, 17800000),
                     )
                     .await?;
-                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 15400000, 17800000);
-                   /*
+                    println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 15400000, 16000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
                         (16000000, 17000000),
                     )
                     .await?;
-                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 16000000, 17000000);
+                    println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 16000000, 17000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
                         (17000000, 18000000),
                     )
                     .await?;
-                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 17000000, 18000000);
+                    println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 17000000, 18000000);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
                         (18000000, 19000000),
                     )
                     .await?;
-                   println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 18000000, 19000000);
-                    */
+                    println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 18000000, 19000000);
                     println!("{} OK", CexPrice::NAME);
                     Ok(())
                 })
             }
             Tables::Metadata => {
-               println!("Starting {}", self.name());
+                println!("Starting {}", self.name());
                 Box::pin(async move {
-                
-                libmdbx.clear_table::<Metadata>()?;
-                println!("Cleared Table: {}", Metadata::NAME);
+                    libmdbx.clear_table::<Metadata>()?;
+                    println!("Cleared Table: {}", Metadata::NAME);
 
-                Metadata::initialize_table_batching(
-                    libmdbx.clone(),
-                    clickhouse.clone(),
-                    (15400000, 19000000),
-                )
-                .await?;
-                println!("{} OK", Metadata::NAME);
-                Ok(())
-            })},
+                    Metadata::initialize_table_batching(
+                        libmdbx.clone(),
+                        clickhouse.clone(),
+                        (15400000, 19000000),
+                    )
+                    .await?;
+                    println!("{} OK", Metadata::NAME);
+                    Ok(())
+                })
+            }
             Tables::DexPrice => {
-               println!("Starting {}", self.name());
-                DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone())},
+                println!("Starting {}", self.name());
+                DexPrice::initialize_table(libmdbx.clone(), clickhouse.clone())
+            }
             Tables::PoolCreationBlocks => {
-               println!("Starting {}", self.name());
+                println!("Starting {}", self.name());
                 PoolCreationBlocks::initialize_table(libmdbx.clone(), clickhouse.clone())
             }
             Tables::MevBlocks => {
-               println!("Starting {}", self.name());
+                println!("Starting {}", self.name());
                 Box::pin(
                     async move { libmdbx.initialize_table::<MevBlocks, MevBlocksData>(&vec![]) },
                 )
             }
-            Tables::AddressToFactory => {               println!("Starting {}", self.name());
-            Box::pin(async move {
-                libmdbx.initialize_table::<AddressToFactory, AddressToFactoryData>(&vec![])
-            })},
+            Tables::AddressToFactory => {
+                println!("Starting {}", self.name());
+                Box::pin(async move {
+                    libmdbx.initialize_table::<AddressToFactory, AddressToFactoryData>(&vec![])
+                })
+            }
             Tables::SubGraphs => {
-               println!("Starting {}", self.name());
+                println!("Starting {}", self.name());
                 Box::pin(
                     async move { libmdbx.initialize_table::<SubGraphs, SubGraphsData>(&vec![]) },
                 )
             }
         }
-
     }
 }
 
@@ -340,7 +342,7 @@ compressed_table!(
 
 compressed_table!(
     /// Address -> Static protocol enum
-    ( AddressToProtocol ) Address | StaticBindingsDb = True
+    ( AddressToProtocol ) Address | Protocol = True
 );
 
 compressed_table!(
@@ -355,7 +357,7 @@ compressed_table!(
 
 compressed_table!(
     /// block number concat tx idx -> cex quotes
-    ( DexPrice ) TxHash | LibmdbxDexQuoteWithIndex | DexQuoteWithIndex = False
+    ( DexPrice ) DexKey | LibmdbxDexQuoteWithIndex | DexQuoteWithIndex = False
 );
 
 compressed_table!(
@@ -375,7 +377,7 @@ compressed_table!(
 
 compressed_table!(
     /// address -> factory
-    ( AddressToFactory ) Address | StaticBindingsDb = True
+    ( AddressToFactory ) Address | Protocol = True
 );
 
 pub(crate) trait InitializeTable<'db, D>: CompressedTable + Sized + 'db
@@ -402,7 +404,7 @@ where
                 println!("{} OK", Self::NAME);
             }
 
-            let data = data?;
+            let data = data.unwrap_or(vec![]);
             println!("finished querying with {} entries", data.len());
             libmdbx.initialize_table(&data)
         })
@@ -478,10 +480,9 @@ where
                 }).buffer_unordered(5);
 
 
-                //let mut data = Vec::new();
+                
                 println!("chunks remaining: {num_chunks}");
                 while let Some(val) = data_stream.next().await {
-                    //data.extend(val?);
                     let data = val?;
                     num_chunks -= 1;
                     println!("chunks remaining: {num_chunks}");
