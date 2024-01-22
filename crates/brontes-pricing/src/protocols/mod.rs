@@ -8,18 +8,20 @@ pub mod uniswap_v3_math;
 use std::sync::Arc;
 
 use alloy_primitives::{Address, Log, U256};
-use alloy_rlp::{Decodable, Encodable};
+use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
 use brontes_types::{extra_processing::Pair, normalized_actions::Actions, traits::TracingProvider};
 use malachite::Rational;
 use redefined::{self_convert_redefined, RedefinedConvert};
+use reth_codecs::{impl_compact_for_bytes, Compact};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
 use reth_primitives::BufMut;
 use reth_rpc_types::{CallInput, CallRequest};
+use rkyv::Deserialize as rkyv_Deserialize;
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
@@ -46,7 +48,7 @@ use crate::{
     rkyv::Archive,
     strum::Display,
     strum::EnumString,
-    brontes_macros::ToConstByte
+    brontes_macros::ToConstByte,
 )]
 #[repr(u8)]
 pub enum Protocol {
@@ -65,10 +67,42 @@ pub enum Protocol {
     CurveV2PlainPool,
 }
 
-fn test () {
-    let c = Protocol::UniswapV2.to_byte();
+impl Encodable for Protocol {
+    fn encode(&self, out: &mut dyn BufMut) {
+        let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
+        out.put_slice(&encoded)
     }
+}
 
+impl Decodable for Protocol {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let archived: &ArchivedProtocol = unsafe { rkyv::archived_root::<Self>(buf) };
+        let this = ArchivedProtocol::deserialize(&archived, &mut rkyv::Infallible).unwrap();
+        Ok(this)
+    }
+}
+
+impl Compress for Protocol {
+    type Compressed = Vec<u8>;
+
+    fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
+        let mut encoded = Vec::new();
+        self.encode(&mut encoded);
+        buf.put_slice(&encoded);
+    }
+}
+
+impl Decompress for Protocol {
+    fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
+        let binding = value.as_ref().to_vec();
+        let buf = &mut binding.as_slice();
+        Protocol::decode(buf).map_err(|_| DatabaseError::Decode)
+    }
+}
+
+fn test() {
+    let c = Protocol::UniswapV2.to_byte();
+}
 
 impl Protocol {
     pub(crate) async fn try_load_state<T: TracingProvider>(
@@ -134,7 +168,6 @@ impl Protocol {
         }
     }
 }
-
 
 self_convert_redefined!(Protocol);
 
