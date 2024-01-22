@@ -115,7 +115,7 @@ impl Libmdbx {
     }
 
     /// writes to a table
-    pub fn write_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
+    pub fn write_table<T, D>(&self, entries: &Vec<D>) -> Result<(), DatabaseError>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -137,7 +137,7 @@ impl Libmdbx {
 
     /// Takes a function and passes a RW transaction
     /// makes sure it's committed at the end of execution
-    pub fn update_db<F, R>(&self, f: F) -> eyre::Result<R>
+    pub fn update_db<F, R>(&self, f: F) -> Result<R, DatabaseError>
     where
         F: FnOnce(&CompressedLibmdbxTx<RW>) -> R,
     {
@@ -157,7 +157,7 @@ impl Libmdbx {
     }
 
     /// returns a RW transaction
-    fn rw_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RW>> {
+    fn rw_tx(&self) -> Result<CompressedLibmdbxTx<RW>, DatabaseError> {
         let tx = CompressedLibmdbxTx::new_rw_tx(&self.0)?;
 
         Ok(tx)
