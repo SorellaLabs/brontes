@@ -1,9 +1,16 @@
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
-use futures::future::join_all;
+use futures::{future::join_all, StreamExt};
+use itertools::Itertools;
+use serde::Deserialize;
+use sorella_db_databases::{clickhouse::DbRow, Database};
 
-use super::{tables::Tables, CompressedTable, Libmdbx};
+use super::{tables::Tables, types::LibmdbxData, CompressedTable, InitializeTable, Libmdbx};
 use crate::clickhouse::Clickhouse;
+
+const DEFAULT_START_BLOCK: u64 = 15400000;
+// change with tracing client
+const DEFAULT_END_BLOCK: u64 = 15400000;
 
 pub struct LibmdbxInitializer {
     libmdbx:    Arc<Libmdbx>,
@@ -25,40 +32,82 @@ impl LibmdbxInitializer {
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        join_all(tables.iter().map(|table| {
-            table.initialize_table(
-                self.libmdbx.clone(),
-                //self.tracer.clone(),
-                self.clickhouse.clone(),
-                block_range,
-            )
-        }))
+        join_all(
+            tables
+                .iter()
+                .map(|table| table.initialize_table(&self, block_range)),
+        )
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()
+    }
 
-        /*
-        for table in tables {
-            table
-                .initialize_table(
-                    self.libmdbx.clone(),
-                    //self.tracer.clone(),
-                    self.clickhouse.clone(),
-                    block_range,
-                )
-                .await?;
+    pub(crate) async fn initialize_table_from_clickhouse<'db, T, D>(
+        &'db self,
+        block_range: Option<(u64, u64)>,
+    ) -> eyre::Result<()>
+    where
+        T: CompressedTable + InitializeTable<'db, D>,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    {
+        println!("Starting {}", T::NAME);
+        let block_range_chunks = if let Some((s, e)) = block_range {
+            (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
+        } else {
+            (DEFAULT_START_BLOCK..DEFAULT_END_BLOCK).chunks(
+                T::INIT_CHUNK_SIZE
+                    .unwrap_or((DEFAULT_END_BLOCK - DEFAULT_START_BLOCK + 1) as usize),
+            )
+        };
+
+        let pair_ranges = block_range_chunks
+            .into_iter()
+            .map(|chk| chk.into_iter().collect_vec())
+            .filter_map(
+                |chk| if chk.len() != 0 { Some((chk[0], chk[chk.len() - 1])) } else { None },
+            )
+            .collect_vec();
+
+        let mut num_chunks = pair_ranges.len();
+
+        let mut query_stream = futures::stream::iter(pair_ranges)
+            .map(|(start, end)| async move {
+                let data = self
+                    .clickhouse
+                    .inner()
+                    .query_many::<D>(T::initialize_query(), &(start, end))
+                    .await;
+
+                if data.is_err() {
+                    println!(
+                        "{} Block Range: {} - {} --- ERROR: {:?}",
+                        T::NAME,
+                        start - end,
+                        start,
+                        data,
+                    );
+                }
+
+                data
+            })
+            .buffer_unordered(5);
+
+        println!("chunks remaining: {num_chunks}");
+        while let Some(val) = query_stream.next().await {
+            let data = val?;
+            num_chunks -= 1;
+            println!("chunks remaining: {num_chunks}");
+
+            println!("finished querying chunk {num_chunks} with {} entries", data.len());
+            if !data.is_empty() {
+                self.libmdbx.write_table(&data)?;
+            }
+            println!("wrote chunk {num_chunks} to table");
         }
 
         Ok(())
-        */
     }
-    /*
-    async fn initialize_table_from_clickhouse<T: CompressedTable>(
-        &self,
-        block_range: Option<(u64, u64)>,
-    ) -> eyre::Result<()> {
-    }
-    */
 }
 
 #[cfg(test)]
