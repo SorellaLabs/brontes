@@ -12,6 +12,8 @@ use crate::CurveCryptoSwap::{
 pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
 pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
 
+const PROTOCOL: brontes_pricing::Protocol = brontes_pricing::Protocol::CurveCryptoSwap;
+
 action_impl!(
     CurveCryptoExchange0,
     Swap,
@@ -221,11 +223,4 @@ action_impl!(
             })
         }
     }
-);
-
-action_dispatch!(
-    CurveCryptoSwapClassifier,
-    CurveCryptoExchange0,
-    CurveCryptoExchange1,
-    CurveCryptoExchangeUnderlying
 );

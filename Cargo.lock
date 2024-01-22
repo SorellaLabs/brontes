@@ -1631,6 +1631,7 @@ dependencies = [
  "brontes-classifier",
  "brontes-core",
  "brontes-inspect",
+ "brontes-macros",
  "brontes-pricing",
  "brontes-types",
  "bytes",
