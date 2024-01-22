@@ -59,7 +59,7 @@ mod tests {
     use std::{env, path::Path, sync::Arc};
 
     use brontes_pricing::types::PoolState;
-    use brontes_types::classified_mev::{ClassifiedMev, MevBlock, Sandwich};
+    use brontes_types::classified_mev::{BundleHeader, MevBlock, Sandwich};
     use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
     use reth_tracing_ext::TracingClient;
     use serial_test::serial;
@@ -247,7 +247,7 @@ mod tests {
 
     fn test_classified_mev_inserts(db: &Libmdbx) -> eyre::Result<()> {
         let block = MevBlock { ..Default::default() };
-        let classified_mev = ClassifiedMev::default();
+        let classified_mev = BundleHeader::default();
         let specific_mev = Sandwich::default();
 
         //let _ = db.insert_classified_data(block, vec![(classified_mev,
