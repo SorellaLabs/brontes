@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(private_bounds)]
+
 use std::{collections::HashMap, path::Path, sync::Arc};
 
 pub mod initialize;
@@ -25,6 +26,7 @@ use crate::clickhouse::Clickhouse;
 
 pub mod implementation;
 pub use implementation::compressed_wrappers::*;
+
 pub mod tables;
 pub mod types;
 

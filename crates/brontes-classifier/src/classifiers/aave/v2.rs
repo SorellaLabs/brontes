@@ -1,13 +1,14 @@
 use alloy_primitives::{Address, U256};
 use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
-use brontes_macros::{action_dispatch, action_impl};
+use brontes_macros::action_impl;
+use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation};
 use reth_db::mdbx::RO;
 
 use crate::AaveV2::{flashLoanCall, liquidationCallCall};
 
 action_impl!(
-    LiquidationCallImplV2,
+    Protocol::AaveV2,
     Liquidation,
     liquidationCallCall,
     [],
@@ -34,7 +35,7 @@ action_impl!(
 );
 
 action_impl!(
-    FlashloanImplV2,
+    Protocol::AaveV2,
     FlashLoan,
     flashLoanCall,
     [],
@@ -65,8 +66,4 @@ action_impl!(
         })
 
     }
-
-
 );
-
-action_dispatch!(AaveV2Classifier, LiquidationCallImplV2, FlashloanImplV2);
