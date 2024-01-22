@@ -190,9 +190,9 @@ pub struct LibmdbxSandwich {
     pub victim_swaps_tx_hashes:   Vec<Vec<Redefined_FixedBytes<32>>>,
     pub victim_swaps:             Vec<Vec<LibmdbxNormalizedSwap>>,
     pub victim_swaps_gas_details: Vec<GasDetails>,
-    pub backrun_tx_hash:          Vec<Redefined_FixedBytes<32>>,
-    pub backrun_swaps:            Vec<Vec<LibmdbxNormalizedSwap>>,
-    pub backrun_gas_details:      Vec<GasDetails>,
+    pub backrun_tx_hash:          Redefined_FixedBytes<32>,
+    pub backrun_swaps:            Vec<LibmdbxNormalizedSwap>,
+    pub backrun_gas_details:      GasDetails,
 }
 
 #[derive(
@@ -231,10 +231,10 @@ pub struct LibmdbxJitLiquiditySandwich {
     pub victim_swaps_tx_hashes:   Vec<Vec<Redefined_FixedBytes<32>>>,
     pub victim_swaps:             Vec<Vec<LibmdbxNormalizedSwap>>,
     pub victim_swaps_gas_details: Vec<GasDetails>,
-    pub backrun_tx_hash:          Vec<Redefined_FixedBytes<32>>,
-    pub backrun_swaps:            Vec<Vec<LibmdbxNormalizedSwap>>,
-    pub backrun_burns:            Vec<Option<Vec<LibmdbxNormalizedBurn>>>,
-    pub backrun_gas_details:      Vec<GasDetails>,
+    pub backrun_tx_hash:          Redefined_FixedBytes<32>,
+    pub backrun_swaps:            Vec<LibmdbxNormalizedSwap>,
+    pub backrun_burns:            Vec<LibmdbxNormalizedBurn>,
+    pub backrun_gas_details:      GasDetails,
 }
 
 #[derive(
