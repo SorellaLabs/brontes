@@ -11,7 +11,7 @@ use crate::UniswapV3::{
 };
 
 action_impl!(
-    V3SwapImpl,
+    Protocol::UniswapV3,
     Swap,
     swapCall,
     [Swap],
@@ -59,7 +59,7 @@ action_impl!(
     }
 );
 action_impl!(
-    V3MintImpl,
+    Protocol::UniswapV3,
     Mint,
     mintCall,
     [Mint],
@@ -88,7 +88,7 @@ action_impl!(
     }
 );
 action_impl!(
-    V3BurnImpl,
+    Protocol::UniswapV3,
     Burn,
     burnCall,
     [Burn],
@@ -119,7 +119,7 @@ action_impl!(
     }
 );
 action_impl!(
-    V3CollectImpl,
+    Protocol::UniswapV3,
     Collect,
     collectCall,
     [Collect],
@@ -147,4 +147,3 @@ action_impl!(
     }
 );
 
-action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);

@@ -1,6 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
-use alloy_primitives::{Address, Bytes, Log};
+use alloy_primitives::{Address, Bytes, FixedBytes, Log};
 use brontes_pricing::types::{DiscoveredPool, PoolUpdate};
 use brontes_types::traits::TracingProvider;
 use futures::Future;
@@ -60,8 +60,6 @@ pub trait ActionCollection: Sync + Send {
 }
 
 pub trait IntoAction: Debug + Send + Sync {
-    fn get_signature(&self) -> [u8; 4];
-
     fn decode_trace_data(
         &self,
         index: u64,
@@ -76,9 +74,6 @@ pub trait IntoAction: Debug + Send + Sync {
 }
 
 pub trait FactoryDecoder {
-    /// is concat(factory_address, function_selector);
-    fn address_and_function_selector(&self) -> [u8; 24];
-
     fn decode_new_pool<T: TracingProvider>(
         &self,
         tracer: Arc<T>,
