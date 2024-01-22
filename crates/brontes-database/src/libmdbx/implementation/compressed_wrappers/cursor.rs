@@ -16,8 +16,7 @@ use reth_libmdbx::{TransactionKind, RW};
 use super::utils::{
     CompressedPairResult, CompressedTableRow, DecompressedValueOnlyResult, IterCompressedPairResult,
 };
-use crate::libmdbx::{implementation::native::cursor::LibmdbxCursor, CompressedTable};
-
+use crate::libmdbx::{implementation::native::cursor::LibmdbxCursor, types::CompressedTable};
 #[derive(Debug)]
 pub struct CompressedCursor<T, K>(LibmdbxCursor<T, K>)
 where

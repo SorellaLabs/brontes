@@ -17,6 +17,8 @@ brontes-macros.workspace = true
 itertools = "0.12.0"
 redefined.workspace = true
 
+sorella-db-databases.workspace = true
+
 futures.workspace = true
 thiserror.workspace = true
 

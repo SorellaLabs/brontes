@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use malachite::Rational;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 use tracing::error;
 
 use crate::extra_processing::Pair;
@@ -37,7 +36,7 @@ impl DexQuotes {
     }
 }
 
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DexQuote(pub HashMap<Pair, Rational>);
 
 impl From<DexQuoteWithIndex> for DexQuote {
@@ -46,7 +45,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
     pub quote:  Vec<(Pair, Rational)>,

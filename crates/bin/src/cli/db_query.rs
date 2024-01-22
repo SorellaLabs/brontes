@@ -1,9 +1,8 @@
 use std::env;
 
-use brontes_database::libmdbx::{
-    cursor::CompressedCursor,
-    tables::{CompressedTable, IntoTableKey, Tables},
-    Libmdbx,
+use brontes_database::{
+    libmdbx::{cursor::CompressedCursor, Libmdbx},
+    CompressedTable, IntoTableKey, Tables,
 };
 use clap::Parser;
 use itertools::Itertools;
