@@ -6,7 +6,6 @@ use reth_db::mdbx::RO;
 
 use crate::UniswapV2::{burnCall, mintCall, swapCall};
 
-
 action_impl!(
     Protocol::UniswapV2,
     Swap,

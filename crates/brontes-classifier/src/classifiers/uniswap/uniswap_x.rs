@@ -6,7 +6,6 @@ use reth_db::mdbx::RO;
 
 use crate::UniswapX::executeCall;
 
-
 action_impl!(
     Protocol::UniswapX,
     Batch,
