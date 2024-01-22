@@ -267,103 +267,94 @@ where
     const INIT_CHUNK_SIZE: Option<usize>;
 }
 
-//  $compressed_value:ty |
-/// Macro to declare key value table + extra impl
+
 
 /*
+
 #[macro_export]
 macro_rules! compressed_table {
-    // Case where $init_chunk_size is present
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $value:ty = $($table:tt)* | $init_chunk_size:expr) => {
+    // WITH $compressed_value  
+    // WITH $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $init_chunk_size:expr, $value:ty = $($table:tt)*) => {
+
         impl CompressedTable for $table_name {
-            type DecompressedValue = $value;
-            const INIT_CHUNK_SIZE: Option<usize> = Some($init_chunk_size);
+            type DecompressedValue = $compressed_value;
+            const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
         }
 
-        table!(
-            /// token address -> decimals
-            ( $table_name ) $key | $compressed_value = $($table)*
-        );
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | Some($init_chunk_size), $value = $($table)*);
     };
 
-    // Case where $init_chunk_size is absent
+    // WITH $compressed_value  
+    // WITHOUT $init_chunk_size
     ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $value:ty = $($table:tt)*) => {
+
         impl CompressedTable for $table_name {
-            type DecompressedValue = $value;
+            type DecompressedValue = $compressed_value;
             const INIT_CHUNK_SIZE: Option<usize> = None;
         }
 
-        table!(
-            /// token address -> decimals
-            ( $table_name ) $key | $compressed_value = $($table)*
-        );
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | None, $value = $($table)*);
     };
 
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)* | $init_chunk_size:expr) => {
+    // WITHOUT $compressed_value  
+    // WITH $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_chunk_size:expr, $value:ty = $($table:tt)*) => {
+
         impl CompressedTable for $table_name {
-            type DecompressedValue = $value;
+            type DecompressedValue = $compressed_value;
             const INIT_CHUNK_SIZE: Option<usize> = Some($init_chunk_size);
         }
 
-        table!(
-            /// token address -> decimals
-            ( $table_name ) $key | $value = $($table)*
-        );
+        table!($(#[$docs])+ ( $table_name ) $key | $value | Some($init_chunk_size), $value = $($table)*);
     };
 
+    // WITHOUT $compressed_value  
+    // WITHOUT $init_chunk_size
     ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)*) => {
+
         impl CompressedTable for $table_name {
-            type DecompressedValue = $value;
-            const INIT_CHUNK_SIZE: Option<usize> = None;
+            type DecompressedValue = $compressed_value;
+            const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
         }
 
-        table!(
-            /// token address -> decimals
-            ( $table_name ) $key | $value = $($table)*
-        );
+        table!($(#[$docs])+ ( $table_name ) $key | $value | None, $value = $($table)*);
     };
 }
+
+
 */
 
 #[macro_export]
 macro_rules! compressed_table {
-    // Case with $compressed_value and $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $value:ty = $($table:tt)* | $init_chunk_size:expr) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | $value = $($table)* $(| $init_chunk_size:expr)?);
+    // WITH $compressed_value  
+    // WITH $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $init_chunk_size:expr, $decompressed_value:ty = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | Some($init_chunk_size), $decompressed_value = $($table)*);
     };
 
-    // Case with $compressed_value but without $init_chunk_size
-    //($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $value:ty = $($table:tt)*) => {
-       
-    //};
+    // WITH $compressed_value  
+    // WITHOUT $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $decompressed_value:ty = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | None, $decompressed_value = $($table)*);
+    };
 
-    // Case without $compressed_value, with or without $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)* $(| $init_chunk_size:expr)?) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $value | $value = $($table)* $(| $init_chunk_size)?);
+    // WITHOUT $compressed_value  
+    // WITH $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_chunk_size:expr, $decompressed_value:ty = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value | Some($init_chunk_size), $decompressed_value = $($table)*);
+    };
+
+    // WITHOUT $compressed_value  
+    // WITHOUT $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $decompressed_value:ty = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value | None, $decompressed_value = $($table)*);
     };
 }
-
-
-#[macro_export]
-macro_rules! compressed_table_internal {
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)* | $init_chunk_size:expr) => {
-        impl CompressedTable for $table_name {
-            type DecompressedValue = $value;
-            const INIT_CHUNK_SIZE: Option<usize> = Some($init_chunk_size);
-        }
-
-        table!(
-            /// token address -> decimals
-            ( $table_name ) $key | $value = $($table)*
-        );
-    };
-
-}
-
 
 
 macro_rules! table {
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $value:ty = $($table:tt)* | $init_chunk_size:expr) => {
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $init_chunk_size:expr, $decompressed_value:ty = $($table:tt)*) => {
         $(#[$docs])+
         #[doc = concat!("Takes [`", stringify!($key), "`] as a key and returns [`", stringify!($value), "`].")]
         #[derive(Clone, Copy, Debug, Default)]
@@ -376,17 +367,17 @@ macro_rules! table {
                 key
             }
 
-            table!($table_name, $key, $value, $($table)*);
+            table!($table_name, $key, $compressed_value, $($table)*);
         }
 
         impl reth_db::table::Table for $table_name {
             const NAME: &'static str = stringify!($table_name);
             type Key = $key;
-            type Value = $value;
+            type Value = $compressed_value;
         }
 
         impl CompressedTable for $table_name {
-            type DecompressedValue = $compressed_value;
+            type DecompressedValue = $decompressed_value;
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
         }
 
@@ -434,12 +425,12 @@ compressed_table!(
 
 compressed_table!(
     /// block num -> cex prices
-    ( CexPrice ) u64 | LibmdbxCexPriceMap | CexPriceMap = False | 200000
+    ( CexPrice ) u64 | LibmdbxCexPriceMap | 200000,  CexPriceMap = False 
 );
 
 compressed_table!(
     /// block num -> metadata
-    ( Metadata ) u64 | LibmdbxMetadataInner | MetadataInner = False | 200000
+    ( Metadata ) u64 | LibmdbxMetadataInner | 200000,  MetadataInner = False
 );
 
 compressed_table!(
