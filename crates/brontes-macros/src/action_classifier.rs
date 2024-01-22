@@ -1,7 +1,10 @@
 use itertools::Itertools;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{bracketed, parse::Parse, Error, ExprClosure, Ident, Index, LitBool, Token};
+use syn::{
+    bracketed, parse::Parse, spanned::Spanned, Error, ExprClosure, Ident, Index, LitBool, Path,
+    Token,
+};
 
 //TODO: Remove need for writing out args that are always passed in the closure
 // like: from_address, target_address, index
@@ -9,7 +12,7 @@ use syn::{bracketed, parse::Parse, Error, ExprClosure, Ident, Index, LitBool, To
 
 pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     let MacroParse {
-        exchange_name,
+        protocol_path,
         action_type,
         call_type,
         log_types,
@@ -19,6 +22,15 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
         call_function,
         give_calldata,
     } = syn::parse2(token_stream)?;
+
+    let exchange_name = Ident::new(
+        &format!(
+            "{}{}",
+            protocol_path.segments[protocol_path.segments.len() - 1].ident,
+            action_type
+        ),
+        Span::call_site(),
+    );
 
     let mut option_parsing = Vec::new();
 
@@ -62,6 +74,7 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
 
     let log_return_struct_name =
         Ident::new(&(exchange_name.to_string() + &action_type.to_string()), Span::call_site());
+
     let log_return_builder_struct_name = Ident::new(
         &(exchange_name.to_string() + &action_type.to_string() + "Builder"),
         Span::call_site(),
@@ -263,18 +276,23 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
         }
     };
 
+    let call_fn_name = Ident::new(&format!("__{}_action_sig", exchange_name), Span::call_site());
+
     Ok(quote! {
         #log_struct
+
+        pub const fn #call_fn_name() -> [u8; 5] {
+            let res = [0u8;5];
+            res[0..4] = <#call_type as ::alloy_sol_types::SolCall>::SELECTOR;
+            res[4] = #protocol_path.to_byte();
+
+            res
+        }
 
         #[derive(Debug, Default)]
         pub struct #exchange_name;
 
         impl crate::IntoAction for #exchange_name {
-            fn get_signature(&self) -> [u8; 4] {
-                <#call_type as ::alloy_sol_types::SolCall>::SELECTOR
-            }
-
-            #[allow(unused)]
             fn decode_trace_data(
                 &self,
                 index: u64,
@@ -284,7 +302,9 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
                 target_address: ::alloy_primitives::Address,
                 msg_sender: ::alloy_primitives::Address,
                 logs: &Vec<::alloy_primitives::Log>,
-                db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
+                db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<
+                    ::reth_db::mdbx::RO
+                >,
             ) -> Option<::brontes_types::normalized_actions::Actions> {
                 #(#option_parsing)*
                 Some(::brontes_types::normalized_actions::Actions::#action_type(#fn_call?))
@@ -295,7 +315,7 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
 
 struct MacroParse {
     // required for all
-    exchange_name: Ident,
+    protocol_path: Path,
     action_type:   Ident,
     // (sometimes, ignore, ident)
     // TODO: could make optional
@@ -317,7 +337,28 @@ struct MacroParse {
 
 impl Parse for MacroParse {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let exchange_name: Ident = input.parse()?;
+        let protocol_path: Path = input.parse().map_err(|_| {
+            syn::Error::new(
+                input.span(),
+                "No Protocol Found, Should be Protocol::<ProtocolVarient>",
+            )
+        })?;
+
+        if protocol_path.segments.len() < 2 {
+            return Err(syn::Error::new(
+                protocol_path.span(),
+                "incorrect path, Should be Protocol::<ProtocolVarient>",
+            ))
+        }
+
+        let should_protocol = &protocol_path.segments[protocol_path.segments.len() - 2].ident;
+        if !should_protocol.to_string().starts_with("Protocol") {
+            return Err(syn::Error::new(
+                should_protocol.span(),
+                "incorrect path, Should be Protocol::<ProtocolVarient>",
+            ))
+        }
+
         input.parse::<Token![,]>()?;
         let action_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
@@ -446,7 +487,7 @@ impl Parse for MacroParse {
             give_calldata: call_data,
             call_type,
             action_type,
-            exchange_name,
+            protocol_path,
             exchange_mod_name,
         })
     }
@@ -459,13 +500,22 @@ pub fn action_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
         // Generate a compile_error! invocation as part of the output TokenStream
         return Err(syn::Error::new(Span::call_site(), "need classifiers to dispatch to"))
     }
+    let (var_name, const_fns): (Vec<_>, Vec<_>) = rest
+        .iter()
+        .enumerate()
+        .map(|(i, ident)| {
+            (
+                Ident::new(&format!("VAR_{i}"), ident.span()),
+                Ident::new(&format!("__{}_action_sig", ident), ident.span()),
+            )
+        })
+        .unzip();
 
-    let (mut i, name): (Vec<Index>, Vec<Ident>) = rest
+    let (i, name): (Vec<Index>, Vec<Ident>) = rest
         .into_iter()
         .enumerate()
         .map(|(i, n)| (Index::from(i), n))
         .unzip();
-    i.remove(0);
 
     Ok(quote!(
         #[derive(Default, Debug)]
@@ -473,7 +523,6 @@ pub fn action_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
 
 
         impl crate::ActionCollection for #struct_name {
-
             fn dispatch(
                 &self,
                 index: u64,
@@ -483,87 +532,77 @@ pub fn action_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                 target_address: ::alloy_primitives::Address,
                 msg_sender: ::alloy_primitives::Address,
                 logs: &Vec<::alloy_primitives::Log>,
-                db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
+                db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<
+                    ::reth_db::mdbx::RO
+                >,
                 block: u64,
                 tx_idx: u64,
             ) -> Option<(
                     ::brontes_pricing::types::PoolUpdate,
                     ::brontes_types::normalized_actions::Actions
                 )> {
-                let sig = &data[0..4];
-                let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(sig);
 
-                if sig == crate::IntoAction::get_signature(&self.0) {
-                    return crate::IntoAction::decode_trace_data(
-                            &self.0,
-                            index,
-                            data,
-                            return_data,
-                            from_address,
-                            target_address,
-                            msg_sender,
-                            logs,
-                            db_tx
+
+                let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&data[0..4]);
+
+                let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(&data[0..4]).0;
+                let protocol_byte = db_tx.get::<AddressToProtocol>(target_address).ok()??.to_byte();
+
+                let mut sig_w_byte= [0u8;5];
+                sig_w_byte[0..4] = sig;
+                sig_w_byte[4] = protocol_byte;
+
+
+                #(
+                    const #var_name: [u8; 5] = #const_fns();
+                )*;
+
+                match sig_w_byte {
+                #(
+                    #var_name => {
+                         return crate::IntoAction::decode_trace_data(
+                                &self.#i,
+                                index,
+                                data,
+                                return_data,
+                                from_address,
+                                target_address,
+                                msg_sender,
+                                logs,
+                                db_tx
                         ).map(|res| {
-                        (::brontes_pricing::types::PoolUpdate {
-                            block,
-                            tx_idx,
-                            logs: logs.clone(),
-                            action: res.clone()
-                        },
-                        res)}).or_else(|| {
-                            ::tracing::error!(
-                                "classifier failed on function sig: {:?} for address: {:?}",
-                                ::malachite::strings::ToLowerHexString::to_lower_hex_string(
-                                    &hex_selector
-                                ),
-                                target_address.0,
-                            );
-                            None
-                        })
-
-                }
-                #( else if sig == crate::IntoAction::get_signature(&self.#i) {
-                     return crate::IntoAction::decode_trace_data(
-                            &self.#i,
-                            index,
-                            data,
-                            return_data,
-                            from_address,
-                            target_address,
-                            msg_sender,
-                            logs,
-                            db_tx
-                    ).map(|res| {
-                        (::brontes_pricing::types::PoolUpdate {
-                            block,
-                            tx_idx,
-                            logs: logs.clone(),
-                            action: res.clone()
-                        },
-                        res)}).or_else(|| {
-                            ::tracing::error!(
-                                "classifier failed on function sig: {:?} for address: {:?}",
-                                ::malachite::strings::ToLowerHexString::to_lower_hex_string(
-                                    &hex_selector
-                                ),
-                                target_address.0,
-                            );
-                            None
-                        })
-
+                            (::brontes_pricing::types::PoolUpdate {
+                                block,
+                                tx_idx,
+                                logs: logs.clone(),
+                                action: res.clone()
+                            },
+                            res)}).or_else(|| {
+                                ::tracing::error!(
+                                    "classifier failed on function sig: {:?} for address: {:?}",
+                                    ::malachite::strings::ToLowerHexString::to_lower_hex_string(
+                                        &hex_selector
+                                    ),
+                                    target_address.0,
+                                );
+                                None
+                            })
                     }
-                )*
+                    )*
 
-                ::tracing::debug!(
-                    "no inspector for function selector: {:?} with contract address: {:?}",
-                    ::malachite::strings::ToLowerHexString::to_lower_hex_string(
-                        &hex_selector
-                    ),
-                    target_address.0,
-                );
+                    _ => {
+                    ::tracing::debug!(
+                        "no inspector for function selector: {:?} with contract address: {:?}",
+                        ::malachite::strings::ToLowerHexString::to_lower_hex_string(
+                            &hex_selector
+                        ),
+                        target_address.0,
+                    );
 
-                None
+                        None
+                    }
+                }
+
             }
         }
     ))
@@ -582,7 +621,7 @@ impl Parse for ActionDispatch {
             rest.push(input.parse::<Ident>()?);
         }
         if !input.is_empty() {
-            panic!("unkown characters")
+            return Err(syn::Error::new(input.span(), "Unkown imput"))
         }
 
         Ok(Self { rest, struct_name })
