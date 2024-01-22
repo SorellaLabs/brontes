@@ -7,10 +7,8 @@ use reth_db::mdbx::RO;
 
 use crate::AaveV2::{flashLoanCall, liquidationCallCall};
 
-const PROTOCOL: Protocol = Protocol::AaveV2;
-
 action_impl!(
-    LiquidationCallImplV2,
+    Protocol::AaveV2,
     Liquidation,
     liquidationCallCall,
     [],
@@ -37,7 +35,7 @@ action_impl!(
 );
 
 action_impl!(
-    FlashloanImplV2,
+    Protocol::AaveV2,
     FlashLoan,
     flashLoanCall,
     [],
