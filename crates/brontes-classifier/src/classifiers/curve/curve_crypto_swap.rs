@@ -12,10 +12,8 @@ use crate::CurveCryptoSwap::{
 pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
 pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
 
-const PROTOCOL: brontes_pricing::Protocol = brontes_pricing::Protocol::CurveCryptoSwap;
-
 action_impl!(
-    CurveCryptoExchange0,
+    Protocol::CurveCryptoSwap,
     Swap,
     exchange_0Call,
     [TokenExchange],
@@ -25,7 +23,7 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     msg_sender: Address,
-    log: CurveCryptoExchange0Swap,
+    log: CurveCryptoSwapSwap,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -58,7 +56,7 @@ action_impl!(
 );
 
 action_impl!(
-    CurveCryptoExchange1,
+    Protocol::CurveCryptoSwap,
     Swap,
     exchange_1Call,
     [TokenExchange],
@@ -70,7 +68,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: exchange_1Call,
-    log: CurveCryptoExchange1Swap,
+    log: CurveCryptoSwapSwap,
     db_tx: &CompressedLibmdbxTx<RO>| {
 
         let log = log.TokenExchange_field;
@@ -115,7 +113,7 @@ action_impl!(
 );
 
 action_impl!(
-    CurveCryptoExchange2,
+    Protocol::CurveCryptoSwap,
     Swap,
     exchange_2Call,
     [TokenExchange],
@@ -127,7 +125,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: exchange_2Call,
-    log: CurveCryptoExchange2Swap,
+    log: CurveCryptoSwapSwap,
     db_tx: &CompressedLibmdbxTx<RO>| {
 
         let log = log.TokenExchange_field;
@@ -174,7 +172,7 @@ action_impl!(
 
 // I don't know who coded this contract, but I wish them great harm.
 action_impl!(
-    CurveCryptoExchangeUnderlying,
+    Protocol::CurveCryptoSwap,
     Swap,
     exchange_underlying_0Call,
     [TokenExchange],
@@ -184,7 +182,7 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     msg_sender: Address,
-    log: CurveCryptoExchangeUnderlyingSwap,
+    log: CurveCryptoSwapSwap,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;

@@ -281,6 +281,7 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     Ok(quote! {
         #log_struct
 
+        #[allow(non_snake_case)]
         pub const fn #call_fn_name() -> [u8; 5] {
             let res = [0u8;5];
             res[0..4] = <#call_type as ::alloy_sol_types::SolCall>::SELECTOR;

@@ -10,10 +10,9 @@ use crate::SushiSwapV3::{
     burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall, swapReturn,
 };
 
-const PROTOCOL: brontes_pricing::Protocol = brontes_pricing::Protocol::SushiSwapV3;
 
 action_impl!(
-    SushiV3SwapImpl,
+    Protocol::SushiSwapV3,
     Swap,
     swapCall,
     [Swap],
@@ -61,7 +60,7 @@ action_impl!(
     }
 );
 action_impl!(
-    SushiV3MintImpl,
+    Protocol::SushiSwapV3,
     Mint,
     mintCall,
     [Mint],
@@ -90,7 +89,7 @@ action_impl!(
     }
 );
 action_impl!(
-    SushiV3BurnImpl,
+    Protocol::SushiSwapV3,
     Burn,
     burnCall,
     [Burn],
@@ -121,7 +120,7 @@ action_impl!(
     }
 );
 action_impl!(
-    SushiV3CollectImpl,
+    Protocol::SushiSwapV3,
     Collect,
     collectCall,
     [Collect],
