@@ -1,9 +1,15 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{
+    fmt::Debug,
+    sync::{Arc, Mutex},
+};
 
 use futures::{future::join_all, StreamExt};
 use itertools::Itertools;
+use proptest::num;
+use reth_db::DatabaseError;
 use serde::Deserialize;
 use sorella_db_databases::{clickhouse::DbRow, Database};
+use tracing::info;
 
 use super::{tables::Tables, types::LibmdbxData, CompressedTable, InitializeTable, Libmdbx};
 use crate::clickhouse::Clickhouse;
@@ -51,7 +57,6 @@ impl LibmdbxInitializer {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
-        println!("Starting {}", T::NAME);
         let block_range_chunks = if let Some((s, e)) = block_range {
             (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
@@ -69,42 +74,36 @@ impl LibmdbxInitializer {
             )
             .collect_vec();
 
-        let mut num_chunks = pair_ranges.len();
+        let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
-        let mut query_stream = futures::stream::iter(pair_ranges)
-            .map(|(start, end)| async move {
-                let data = self
-                    .clickhouse
-                    .inner()
-                    .query_many::<D>(T::initialize_query(), &(start, end))
-                    .await;
+        info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
+       join_all(pair_ranges.into_iter().map(|(start, end)| {let num_chunks = num_chunks.clone(); async move {
+            let data = self
+                .clickhouse
+                .inner()
+                .query_many::<D>(T::initialize_query(), &(start, end))
+                .await;
 
-                if data.is_err() {
-                    println!(
-                        "{} Block Range: {} - {} --- ERROR: {:?}",
-                        T::NAME,
-                        start - end,
-                        start,
-                        data,
-                    );
+            let num = {
+                let mut n = num_chunks.lock().unwrap();
+                *n -= 1;
+                n.clone() + 1
+            };
+
+            match data {
+                Ok(d) => self.libmdbx.write_table(&d)?,
+                Err(e) => {
+                    info!(target: "brontes::init", "{} -- Error Writing Chunk {} -- {:?}", T::NAME, num, e)
                 }
-
-                data
-            })
-            .buffer_unordered(5);
-
-        println!("chunks remaining: {num_chunks}");
-        while let Some(val) = query_stream.next().await {
-            let data = val?;
-            num_chunks -= 1;
-            println!("chunks remaining: {num_chunks}");
-
-            println!("finished querying chunk {num_chunks} with {} entries", data.len());
-            if !data.is_empty() {
-                self.libmdbx.write_table(&data)?;
             }
-            println!("wrote chunk {num_chunks} to table");
-        }
+
+            info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
+
+            Ok::<(), DatabaseError>(())
+        }}))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
     }
