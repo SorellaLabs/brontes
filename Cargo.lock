@@ -1526,6 +1526,7 @@ dependencies = [
  "reth-libmdbx",
  "reth-primitives",
  "reth-rpc",
+ "reth-rpc-types",
  "reth-tracing-ext",
  "rkyv",
  "serde",
@@ -1631,6 +1632,7 @@ dependencies = [
  "brontes-classifier",
  "brontes-core",
  "brontes-inspect",
+ "brontes-macros",
  "brontes-pricing",
  "brontes-types",
  "bytes",
@@ -6323,7 +6325,7 @@ dependencies = [
 [[package]]
 name = "redefined"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#33d3384c87ef526718b2d27d2b5436fe037464fa"
+source = "git+https://github.com/0xlagrange/redefined#549db704cd8713c24f9e3031aeb7ab12ec64515a"
 dependencies = [
  "redefined-derive",
  "redefined-outside-crate-tests",
@@ -6332,7 +6334,7 @@ dependencies = [
 [[package]]
 name = "redefined-derive"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#33d3384c87ef526718b2d27d2b5436fe037464fa"
+source = "git+https://github.com/0xlagrange/redefined#549db704cd8713c24f9e3031aeb7ab12ec64515a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6342,7 +6344,7 @@ dependencies = [
 [[package]]
 name = "redefined-outside-crate-tests"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#33d3384c87ef526718b2d27d2b5436fe037464fa"
+source = "git+https://github.com/0xlagrange/redefined#549db704cd8713c24f9e3031aeb7ab12ec64515a"
 
 [[package]]
 name = "redox_syscall"
