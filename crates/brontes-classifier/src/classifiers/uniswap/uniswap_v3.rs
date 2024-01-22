@@ -10,10 +10,8 @@ use crate::UniswapV3::{
     burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall, swapReturn,
 };
 
-const PROTOCOL: brontes_pricing::Protocol = brontes_pricing::Protocol::UniswapV3;
-
 action_impl!(
-    UniV3SwapImpl,
+    Protocol::UniswapV3,
     Swap,
     swapCall,
     [Swap],
@@ -61,7 +59,7 @@ action_impl!(
     }
 );
 action_impl!(
-    UniV3MintImpl,
+    Protocol::UniswapV3,
     Mint,
     mintCall,
     [Mint],
@@ -90,7 +88,7 @@ action_impl!(
     }
 );
 action_impl!(
-    UniV3BurnImpl,
+    Protocol::UniswapV3,
     Burn,
     burnCall,
     [Burn],
@@ -121,7 +119,7 @@ action_impl!(
     }
 );
 action_impl!(
-    UniV3CollectImpl,
+    Protocol::UniswapV3,
     Collect,
     collectCall,
     [Collect],
@@ -149,4 +147,3 @@ action_impl!(
     }
 );
 
-action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);

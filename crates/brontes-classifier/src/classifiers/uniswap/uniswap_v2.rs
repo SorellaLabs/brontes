@@ -6,10 +6,9 @@ use reth_db::mdbx::RO;
 
 use crate::UniswapV2::{burnCall, mintCall, swapCall};
 
-const PROTOCOL: brontes_pricing::Protocol = brontes_pricing::Protocol::UniswapV2;
 
 action_impl!(
-    UniV2SwapImpl,
+    Protocol::UniswapV2,
     Swap,
     swapCall,
     [Ignore<Sync>, Swap],
@@ -21,7 +20,7 @@ action_impl!(
     target_address: Address,
      msg_sender: Address,
     call_data: swapCall,
-    log_data: UniV2SwapImplSwap,
+    log_data: UniswapV2Swap,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let data = log_data.Swap_field;
         let recipient = call_data.to;
@@ -57,7 +56,7 @@ action_impl!(
 );
 
 action_impl!(
-    UniV2MintImpl,
+    Protocol::UniswapV2,
     Mint,
     mintCall,
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Mint],
@@ -69,7 +68,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: mintCall,
-     log_data: UniV2MintImplMint,
+     log_data: UniswapV2Mint,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Mint_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -85,7 +84,7 @@ action_impl!(
     }
 );
 action_impl!(
-    UniV2BurnImpl,
+    Protocol::UniswapV2,
     Burn,
     burnCall,
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Burn],
@@ -97,7 +96,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: burnCall,
-     log_data: UniV2BurnImplBurn,
+     log_data: UniswapV2Burn,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Burn_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;

@@ -6,7 +6,6 @@ use reth_db::mdbx::RO;
 
 use crate::UniswapX::executeCall;
 
-const PROTOCOL: brontes_pricing::Protocol = brontes_pricing::Protocol::UniswapX;
 
 action_impl!(
     Protocol::UniswapX,
