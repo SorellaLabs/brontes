@@ -1,13 +1,15 @@
 use alloy_primitives::{Address, U256};
 use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
-use brontes_macros::{action_dispatch, action_impl};
+use brontes_macros::action_impl;
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::mdbx::RO;
 
 use crate::UniswapV2::{burnCall, mintCall, swapCall};
 
+const PROTOCOL: brontes_pricing::Protocol = brontes_pricing::Protocol::UniswapV2;
+
 action_impl!(
-    V2SwapImpl,
+    UniV2SwapImpl,
     Swap,
     swapCall,
     [Ignore<Sync>, Swap],
@@ -19,7 +21,7 @@ action_impl!(
     target_address: Address,
      msg_sender: Address,
     call_data: swapCall,
-    log_data: V2SwapImplSwap,
+    log_data: UniV2SwapImplSwap,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let data = log_data.Swap_field;
         let recipient = call_data.to;
@@ -55,7 +57,7 @@ action_impl!(
 );
 
 action_impl!(
-    V2MintImpl,
+    UniV2MintImpl,
     Mint,
     mintCall,
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Mint],
@@ -67,7 +69,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: mintCall,
-     log_data: V2MintImplMint,
+     log_data: UniV2MintImplMint,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Mint_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -83,7 +85,7 @@ action_impl!(
     }
 );
 action_impl!(
-    V2BurnImpl,
+    UniV2BurnImpl,
     Burn,
     burnCall,
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Burn],
@@ -95,7 +97,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: burnCall,
-     log_data: V2BurnImplBurn,
+     log_data: UniV2BurnImplBurn,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Burn_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -110,5 +112,3 @@ action_impl!(
         })
     }
 );
-
-action_dispatch!(UniswapV2Classifier, V2SwapImpl, V2BurnImpl, V2MintImpl);

@@ -5,5 +5,5 @@ mod sushiswap_v2;
 mod sushiswap_v3;
 
 pub use discovery::*;
-pub use sushiswap_v2::SushiSwapV2Classifier;
-pub use sushiswap_v3::SushiSwapV3Classifier;
+pub use sushiswap_v2::*;
+pub use sushiswap_v3::*;
