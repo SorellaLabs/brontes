@@ -336,7 +336,7 @@ pub struct Node<V: NormalizedAction> {
     pub index:     u64,
 
     /// This only has values when the node is frozen
-    //TODO: Will: explain this shortcut
+    //TODO: Will: document this shortcut
     pub subactions: Vec<V>,
     pub trace_address: Vec<usize>,
     pub address:       Address,
