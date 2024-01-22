@@ -20,7 +20,7 @@ use brontes_inspect::{
     Inspector,
 };
 use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    classified_mev::{BundleData, BundleHeader, MevBlock},
     db::{dex::DexQuotes, metadata::MetadataNoDex, mev_block::MevBlockWithClassified},
     normalized_actions::Actions,
     tree::BlockTree,

@@ -5,7 +5,7 @@ use std::{
 
 use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
-    classified_mev::{MevType, Sandwich, SpecificMev},
+    classified_mev::{BundleData, MevType, Sandwich},
     normalized_actions::Actions,
     tree::{BlockTree, GasDetails, Node},
     ToFloatNearest,
@@ -14,7 +14,7 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
 pub struct SandwichInspector<'db> {
     inner: SharedInspectorUtils<'db>,
@@ -41,7 +41,7 @@ impl Inspector for SandwichInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)> {
+    ) -> Vec<(BundleHeader, BundleData)> {
         // grab the set of all possible sandwich txes
 
         let search_fn = |node: &Node<Actions>| {
@@ -130,7 +130,7 @@ impl SandwichInspector<'_> {
         victim_txes: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
-    ) -> Option<(ClassifiedMev, SpecificMev)> {
+    ) -> Option<(BundleHeader, BundleData)> {
         todo!()
         /*
 
@@ -211,7 +211,7 @@ impl SandwichInspector<'_> {
                 backrun_gas_details: searcher_gas_details[1],
             };
 
-            let classified_mev = ClassifiedMev {
+            let classified_mev = BundleHeader {
                 mev_tx_index: idx as u64,
                 eoa,
                 mev_profit_collector,
@@ -223,7 +223,7 @@ impl SandwichInspector<'_> {
                 finalized_bribe_usd: gas_used.to_float(),
             };
 
-            Some((classified_mev, SpecificMev::Sandwich(sandwich)))
+            Some((classified_mev, BundleData::Sandwich(sandwich)))
         }
 
         fn get_possible_sandwich(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {

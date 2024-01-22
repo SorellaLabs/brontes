@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
-    classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
+    classified_mev::{BundleData, CexDex, MevType, PriceKind},
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
@@ -16,7 +16,7 @@ use rayon::{
 use reth_primitives::{Address, B256};
 use tracing::{debug, error};
 
-use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
 pub struct CexDexInspector<'db> {
     inner: SharedInspectorUtils<'db>,
@@ -39,7 +39,7 @@ impl Inspector for CexDexInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)> {
+    ) -> Vec<(BundleHeader, BundleData)> {
         // Get all normalized swaps
         let intersting_state = tree.collect_all(|node| {
             (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
@@ -79,7 +79,7 @@ impl CexDexInspector<'_> {
         metadata: Arc<MetadataCombined>,
         gas_details: &GasDetails,
         swaps: Vec<Actions>,
-    ) -> Option<(ClassifiedMev, SpecificMev)> {
+    ) -> Option<(BundleHeader, BundleData)> {
         let swap_sequences: Vec<(&Actions, _)> = swaps
             .iter()
             .filter_map(|action| {
@@ -103,7 +103,7 @@ impl CexDexInspector<'_> {
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
-        let classified = ClassifiedMev {
+        let classified = BundleHeader {
             mev_tx_index: idx as u64,
             mev_profit_collector,
             tx_hash: hash,
@@ -145,7 +145,7 @@ impl CexDexInspector<'_> {
                 .collect(),
         };
 
-        Some((classified, SpecificMev::CexDex(cex_dex)))
+        Some((classified, BundleData::CexDex(cex_dex)))
     }
 
     fn arb_gas_accounting(

@@ -13,7 +13,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
 
 use crate::{
-    shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined, SpecificMev,
+    shared_utils::SharedInspectorUtils, BundleData, BundleHeader, Inspector, MetadataCombined,
 };
 
 pub struct AtomicBackrunInspector<'db> {
@@ -32,7 +32,7 @@ impl Inspector for AtomicBackrunInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)> {
+    ) -> Vec<(BundleHeader, BundleData)> {
         let intersting_state = tree.collect_all(|node| {
             (
                 node.data.is_swap() || node.data.is_transfer() || node.data.is_flash_loan(),
@@ -73,7 +73,7 @@ impl AtomicBackrunInspector<'_> {
         metadata: Arc<MetadataCombined>,
         gas_details: GasDetails,
         searcher_actions: Vec<Vec<Actions>>,
-    ) -> Option<(ClassifiedMev, SpecificMev)> {
+    ) -> Option<(BundleHeader, BundleData)> {
         let swaps = searcher_actions
             .iter()
             .flatten()
@@ -112,7 +112,7 @@ impl AtomicBackrunInspector<'_> {
             return None
         }
 
-        let classified = ClassifiedMev {
+        let classified = BundleHeader {
             mev_tx_index: idx as u64,
             mev_type: MevType::Backrun,
             tx_hash,
@@ -133,7 +133,7 @@ impl AtomicBackrunInspector<'_> {
 
         let backrun = AtomicBackrun { tx_hash, gas_details, swaps };
 
-        Some((classified, SpecificMev::AtomicBackrun(backrun)))
+        Some((classified, BundleData::AtomicBackrun(backrun)))
     }
 
     fn is_possible_arb(&self, swaps: Vec<NormalizedSwap>) -> Option<()> {

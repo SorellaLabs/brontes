@@ -2,7 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use brontes_database::libmdbx::Libmdbx;
 use brontes_types::{
-    classified_mev::{ClassifiedMev, Liquidation, MevType, SpecificMev},
+    classified_mev::{BundleData, BundleHeader, Liquidation, MevType},
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node, Root},
@@ -30,7 +30,7 @@ impl Inspector for LiquidationInspector<'_> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)> {
+    ) -> Vec<(BundleHeader, BundleData)> {
         let liq_txs = tree.collect_all(|node| {
             (
                 node.data.is_liquidation() || node.data.is_swap(),
@@ -76,7 +76,7 @@ impl LiquidationInspector<'_> {
         metadata: Arc<MetadataCombined>,
         actions: Vec<Actions>,
         gas_details: &GasDetails,
-    ) -> Option<(ClassifiedMev, SpecificMev)> {
+    ) -> Option<(BundleHeader, BundleData)> {
         let swaps = actions
             .iter()
             .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
@@ -135,7 +135,7 @@ impl LiquidationInspector<'_> {
 
         let profit_usd = rev_usd - &gas_finalized;
 
-        let mev = ClassifiedMev {
+        let mev = BundleHeader {
             mev_tx_index: idx as u64,
             block_number: metadata.block_num,
             eoa,
@@ -155,7 +155,7 @@ impl LiquidationInspector<'_> {
             gas_details:         gas_details.clone(),
         };
 
-        Some((mev, SpecificMev::Liquidation(new_liquidation)))
+        Some((mev, BundleData::Liquidation(new_liquidation)))
     }
 }
 

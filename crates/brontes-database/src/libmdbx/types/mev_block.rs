@@ -1,8 +1,8 @@
 use alloy_rlp::{Decodable, Encodable};
 use brontes_types::{
     classified_mev::{
-        AtomicBackrun, CexDex, ClassifiedMev, JitLiquidity, JitLiquiditySandwich, Liquidation,
-        MevBlock, MevType, PriceKind, Sandwich, SpecificMev,
+        AtomicBackrun, BundleData, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich,
+        Liquidation, MevBlock, MevType, PriceKind, Sandwich,
     },
     db::{
         mev_block::MevBlockWithClassified,
@@ -53,7 +53,7 @@ impl LibmdbxData<MevBlocks> for MevBlocksData {
 #[redefined(MevBlockWithClassified)]
 pub struct LibmdbxMevBlockWithClassified {
     pub block: LibmdbxMevBlock,
-    pub mev:   Vec<(LibmdbxClassifiedMev, LibmdbxSpecificMev)>,
+    pub mev:   Vec<(LibmdbxBundleHeader, LibmdbxBundleData)>,
 }
 
 impl Encodable for LibmdbxMevBlockWithClassified {
@@ -138,8 +138,8 @@ pub struct LibmdbxMevBlock {
     Clone,
     Redefined,
 )]
-#[redefined(ClassifiedMev)]
-pub struct LibmdbxClassifiedMev {
+#[redefined(BundleHeader)]
+pub struct LibmdbxBundleHeader {
     pub block_number:         u64,
     pub mev_tx_index:         u64,
     pub tx_hash:              Redefined_FixedBytes<32>,
@@ -161,8 +161,8 @@ pub struct LibmdbxClassifiedMev {
     Clone,
     Redefined,
 )]
-#[redefined(SpecificMev)]
-pub enum LibmdbxSpecificMev {
+#[redefined(BundleData)]
+pub enum LibmdbxBundleData {
     Sandwich(LibmdbxSandwich),
     AtomicBackrun(LibmdbxAtomicBackrun),
     JitSandwich(LibmdbxJitLiquiditySandwich),
