@@ -349,26 +349,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         };
     }
 
-    fn try_get_classifier(&self, target_address: Address) -> Option<Box<dyn ActionCollection>> {
-        let db_tx = self.libmdbx.ro_tx().ok()?;
-
-        let protocol = db_tx.get::<AddressToProtocol>(target_address).ok()??;
-        match protocol {
-            Protocol::UniswapV2 => Some(Box::new(UniswapV2Classifier::default())),
-            Protocol::SushiSwapV2 => Some(Box::new(SushiSwapV2Classifier::default())),
-            Protocol::UniswapV3 => Some(Box::new(UniswapV3Classifier::default())),
-            Protocol::SushiSwapV3 => Some(Box::new(SushiSwapV3Classifier::default())),
-            Protocol::CurveCryptoSwap => Some(Box::new(CurveCryptoSwapClassifier::default())),
-            Protocol::AaveV2 => Some(Box::new(AaveV2Classifier::default())),
-            Protocol::AaveV3 => Some(Box::new(AaveV3Classifier::default())),
-            Protocol::UniswapX => Some(Box::new(UniswapXClassifier::default())),
-            protocol => {
-                error!("no classifier for {:?}, consider building one", protocol);
-                None
-            }
-        }
-    }
-
     fn classify_call(
         &self,
         block: u64,
@@ -382,28 +362,24 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        if let Some(classifier) = self.try_get_classifier(target_address) {
-            let db_tx = self.libmdbx.ro_tx().unwrap();
+        let db_tx = self.libmdbx.ro_tx().unwrap();
 
-            let call_data = trace.get_calldata();
-            let return_bytes = trace.get_return_calldata();
+        let call_data = trace.get_calldata();
+        let return_bytes = trace.get_return_calldata();
 
-            let results = classifier.dispatch(
-                trace_index,
-                call_data,
-                return_bytes.clone(),
-                from_address,
-                target_address,
-                trace.msg_sender,
-                &trace.logs,
-                &db_tx,
-                block,
-                tx_idx,
-            );
-
-            if let Some(decoded_result) = results {
-                return (vec![DexPriceMsg::Update(decoded_result.0)], decoded_result.1)
-            }
+        if let Some(results) = ProtocolClassifications::default().dispatch(
+            trace_index,
+            call_data,
+            return_bytes.clone(),
+            from_address,
+            target_address,
+            trace.msg_sender,
+            &trace.logs,
+            &db_tx,
+            block,
+            tx_idx,
+        ) {
+            return (vec![DexPriceMsg::Update(results.0)], results.1)
         } else if trace.logs.len() > 0 {
             // A transfer should always be in its own call trace and have 1 log.
             // if forever reason there is a case with multiple logs, we take the first
@@ -450,7 +426,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         // get the immediate parent node of this create action so that we can decode the
         // deployment function params
         let node_data = match root_head {
-            Some(head) => head.get_most_recent_parent_node(trace_index - 1),
+            Some(head) => head.get_immediate_parent_node(trace_index - 1),
             None => return (vec![], Actions::Unclassified(trace)),
         };
         let Some(node_data) = node_data else {
