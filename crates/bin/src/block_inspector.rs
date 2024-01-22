@@ -20,7 +20,7 @@ use brontes_inspect::{
     Inspector,
 };
 use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    classified_mev::{BundleData, BundleHeader, MevBlock},
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         cex::{CexPriceMap, CexQuote},
@@ -98,7 +98,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
         self.classifier_future = Some(classifier_fut);
     }
 
-    fn on_inspectors_finish(&mut self, results: (MevBlock, Vec<(ClassifiedMev, SpecificMev)>)) {
+    fn on_inspectors_finish(&mut self, results: (MevBlock, Vec<(BundleHeader, BundleData)>)) {
         trace!(
             block_number = self.block_number,
             "inserting the collected results \n {:#?}",
