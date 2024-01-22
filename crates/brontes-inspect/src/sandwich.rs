@@ -2,6 +2,7 @@ use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     hash::Hash,
     sync::Arc,
+    thread,
 };
 
 use brontes_database::libmdbx::Libmdbx;
@@ -27,7 +28,7 @@ impl<'db> SandwichInspector<'db> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct PossibleSandwich {
     eoa:                   Address,
     possible_frontruns:    Vec<B256>,
@@ -35,7 +36,7 @@ pub struct PossibleSandwich {
     mev_executor_contract: Address,
     // mapping of possible frontruns to set of possible victims
     // By definition the victims of latter tx are victims of the former
-    victims:               HashMap<B256, Vec<B256>>,
+    victims:               Vec<Vec<B256>>,
 }
 
 #[async_trait::async_trait]
@@ -45,8 +46,9 @@ impl Inspector for SandwichInspector<'_> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
     ) -> Vec<(BundleHeader, BundleData)> {
+        todo!()
         // grab the set of all possible sandwich txes
-
+        /*
         let search_fn = |node: &Node<Actions>| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
@@ -115,7 +117,7 @@ impl Inspector for SandwichInspector<'_> {
                     victim_gas,
                 )
             })
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>()  */
     }
 }
 
@@ -152,6 +154,7 @@ impl SandwichInspector<'_> {
             .collect_vec();
 
         let mut pools = HashSet::new();
+
 
             for swap in &frontrun_swaps {
                 pools.insert(swap.pool);
@@ -229,6 +232,10 @@ impl SandwichInspector<'_> {
             Some((classified_mev, BundleData::Sandwich(sandwich)))
         }
 
+
+         for swap in &frontrun_swaps {
+            pools.insert(swap.pool);
+
         let has_victim = victim_actions
             .iter()
             .flatten()
@@ -286,7 +293,7 @@ impl SandwichInspector<'_> {
             backrun_gas_details: searcher_gas_details[1],
         };
 
-        let classified_mev = ClassifiedMev {
+        let classified_mev = BundleHeader {
             mev_tx_index: idx as u64,
             eoa,
             mev_profit_collector,
@@ -298,121 +305,159 @@ impl SandwichInspector<'_> {
             finalized_bribe_usd: gas_used.to_float(),
         };
 
-        Some((classified_mev, SpecificMev::Sandwich(sandwich)))  */
+        Some((classified_mev, BundleData::Sandwich(sandwich)))  */
     }
 
     //TODO: Use transaction directionality to differentiate from possible frontruns
     //TODO: A set of victims backrun can be a subsequent frontrun for someone
     // elses. In this case, we should consider this backrun as one of the frontruns
     // tx & backruns
-    fn get_possible_sandwich(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
-        let iter = tree.tx_roots.iter();
-        if iter.len() < 3 {
-            return vec![]
+
+    fn get_possible_sandwich(tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
+        if tree.tx_roots.len() < 3 {
+            return vec![];
         }
 
-        let mut set: HashSet<PossibleSandwich> = HashSet::new();
-        let mut duplicate_mev_contracts: HashMap<Address, Vec<B256>> = HashMap::new();
-        let mut duplicate_senders: HashMap<Address, Vec<B256>> = HashMap::new();
-        let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
+        let tree_clone_for_senders = tree.clone();
+        let tree_clone_for_contracts = tree.clone();
 
-        for root in iter {
-            if root.head.data.is_revert() {
-                continue
-            }
+        // Using Rayon to execute functions in parallel
+        let (result_senders, result_contracts) = rayon::join(
+            || get_possible_sandwich_duplicate_senders(tree_clone_for_senders),
+            || get_possible_sandwich_duplicate_contracts(tree_clone_for_contracts),
+        );
 
-            match duplicate_mev_contracts.entry(root.head.data.get_to_address()) {
-                // If this contract has not been called within this block, we insert the tx hash
-                // into the map
-                Entry::Vacant(duplicate_mev_contract) => {
-                    duplicate_mev_contract.insert(vec![root.tx_hash]);
-                    possible_victims.insert(root.tx_hash, vec![]);
-                }
-                Entry::Occupied(mut duplicate_mev_contract) => {
-                    let prev_tx_hashes = duplicate_mev_contract.get();
+        // Combine and deduplicate results
+        let combined_results = result_senders
+            .into_iter()
+            .chain(result_contracts.into_iter());
+        let unique_results: HashSet<_> = combined_results.collect();
 
-                    for prev_tx_hash in prev_tx_hashes {
-                        // Find the victims between the previous and the current transaction
-                        if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 1 {
-                                // Create
-                                set.insert(PossibleSandwich {
-                                    eoa:                   root.head.address,
-                                    possible_frontruns:    *prev_tx_hash,
-                                    possible_backrun:      root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_to_address(),
-                                    victims:               victims.clone(),
-                                });
-                            }
-                        }
-                    }
-                    // Add current transaction hash to the list of transactions for this sender
-                    duplicate_mev_contract.get_mut().push(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
-                }
-            }
-
-            match duplicate_senders.entry(root.head.address) {
-                // If we have not seen this sender before, we insert the tx hash into the map
-                Entry::Vacant(v) => {
-                    v.insert(vec![root.tx_hash]);
-                    possible_victims.insert(root.tx_hash, vec![]);
-                }
-                Entry::Occupied(mut o) => {
-                    let prev_tx_hashes = o.get();
-
-                    let mut frontrun_victims_map: HashMap<B256, Vec<B256>> = HashMap::new();
-
-                    for (index, &prev_tx_hash) in prev_tx_hashes.iter().enumerate() {
-                        let mut victims_for_this_frontrun = Vec::new();
-
-                        if let Some(victims) = possible_victims.get(&prev_tx_hash) {
-                            for &victim in victims {
-                                // Stop adding victims if the next transaction from the same sender
-                                // is a frontrun or the backrun
-                                if index + 1 < prev_tx_hashes.len()
-                                    && victim == prev_tx_hashes[index + 1]
-                                {
-                                    break;
-                                }
-                                victims_for_this_frontrun.push(victim);
-                            }
-                        }
-
-                        if !victims_for_this_frontrun.is_empty() {
-                            frontrun_victims_map.insert(prev_tx_hash, victims_for_this_frontrun);
-                        }
-                    }
-
-                    if !frontrun_victims_map.is_empty() {
-                        // Create PossibleSandwich with the collected data
-                        set.insert(PossibleSandwich {
-                            eoa:                   root.head.address,
-                            possible_frontruns:    prev_tx_hashes.to_vec(),
-                            possible_backrun:      root.tx_hash,
-                            mev_executor_contract: root.head.data.get_to_address(),
-                            victims:               frontrun_victims_map,
-                        });
-                    }
-
-                    // Add current transaction hash to the list of transactions for this sender
-                    o.get_mut().push(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
-                }
-            }
-
-            // Now, for each existing entry in possible_victims, we add the current
-            // transaction hash as a potential victim, if it is not the same as
-            // the key (which represents another transaction hash)
-            for (k, v) in possible_victims.iter_mut() {
-                if k != &root.tx_hash {
-                    v.push(root.tx_hash);
-                }
-            }
-        }
-
-        set.into_iter().collect()
+        unique_results.into_iter().collect()
     }
+}
+
+fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
+    let mut duplicate_senders: HashMap<Address, B256> = HashMap::new();
+
+    let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
+
+    let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::new();
+
+    for root in tree.tx_roots.iter() {
+        if root.head.data.is_revert() {
+            continue
+        }
+        match duplicate_senders.entry(root.head.address) {
+            // If we have not seen this sender before, we insert the tx hash into the map
+            Entry::Vacant(v) => {
+                v.insert(root.tx_hash);
+                possible_victims.insert(root.tx_hash, vec![]);
+            }
+            Entry::Occupied(mut o) => {
+                // Get's prev tx hash for this sender & replaces it with the current tx hash
+                let prev_tx_hash = o.insert(root.tx_hash);
+                let frontrun_victims = possible_victims.remove(&prev_tx_hash).unwrap();
+
+                if !frontrun_victims.is_empty() {
+                    match possible_sandwiches.entry(root.head.address) {
+                        Entry::Vacant(e) => {
+                            e.insert(PossibleSandwich {
+                                eoa:                   root.head.address,
+                                possible_frontruns:    vec![prev_tx_hash],
+                                possible_backrun:      root.tx_hash,
+                                mev_executor_contract: root.head.data.get_to_address(),
+                                victims:               vec![frontrun_victims],
+                            });
+                        }
+                        Entry::Occupied(mut o) => {
+                            let sandwich = o.get_mut();
+                            sandwich.possible_frontruns.push(root.tx_hash);
+                            sandwich.possible_backrun = root.tx_hash;
+                            sandwich.victims.push(frontrun_victims);
+                        }
+                    }
+                }
+
+                // Add current transaction hash to the list of transactions for this sender
+                o.insert(root.tx_hash);
+                possible_victims.insert(root.tx_hash, vec![]);
+            }
+        }
+
+        // Now, for each existing entry in possible_victims, we add the current
+        // transaction hash as a potential victim, if it is not the same as
+        // the key (which represents another transaction hash)
+        for (k, v) in possible_victims.iter_mut() {
+            if k != &root.tx_hash {
+                v.push(root.tx_hash);
+            }
+        }
+    }
+    possible_sandwiches.values().cloned().collect()
+}
+
+fn get_possible_sandwich_duplicate_contracts(
+    tree: Arc<BlockTree<Actions>>,
+) -> Vec<PossibleSandwich> {
+    let mut duplicate_mev_contracts: HashMap<Address, (B256, Address)> = HashMap::new();
+
+    let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
+
+    let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::new();
+
+    for root in tree.tx_roots.iter() {
+        if root.head.data.is_revert() {
+            continue
+        }
+
+        match duplicate_mev_contracts.entry(root.head.data.get_to_address()) {
+            // If this contract has not been called within this block, we insert the tx hash
+            // into the map
+            Entry::Vacant(duplicate_mev_contract) => {
+                duplicate_mev_contract.insert((root.tx_hash, root.head.address));
+                possible_victims.insert(root.tx_hash, vec![]);
+            }
+            Entry::Occupied(mut o) => {
+                // Get's prev tx hash for this sender & replaces it with the current tx hash
+                let (prev_tx_hash, frontrun_eoa) = o.insert((root.tx_hash, root.head.address));
+                let frontrun_victims = possible_victims.remove(&prev_tx_hash).unwrap();
+
+                if !frontrun_victims.is_empty() {
+                    match possible_sandwiches.entry(root.head.data.get_to_address()) {
+                        Entry::Vacant(e) => {
+                            e.insert(PossibleSandwich {
+                                eoa:                   frontrun_eoa,
+                                possible_frontruns:    vec![prev_tx_hash],
+                                possible_backrun:      root.tx_hash,
+                                mev_executor_contract: root.head.data.get_to_address(),
+                                victims:               vec![frontrun_victims],
+                            });
+                        }
+                        Entry::Occupied(mut o) => {
+                            let sandwich = o.get_mut();
+                            sandwich.possible_frontruns.push(root.tx_hash);
+                            sandwich.possible_backrun = root.tx_hash;
+                            sandwich.victims.push(frontrun_victims);
+                        }
+                    }
+                }
+
+                possible_victims.insert(root.tx_hash, vec![]);
+            }
+        }
+
+        // Now, for each existing entry in possible_victims, we add the current
+        // transaction hash as a potential victim, if it is not the same as
+        // the key (which represents another transaction hash)
+        for (k, v) in possible_victims.iter_mut() {
+            if k != &root.tx_hash {
+                v.push(root.tx_hash);
+            }
+        }
+    }
+
+    possible_sandwiches.values().cloned().collect()
 }
 
 #[cfg(test)]
