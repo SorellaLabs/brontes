@@ -1,6 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
-use alloy_primitives::{Address, Bytes, FixedBytes, Log};
+use alloy_primitives::{Address, Bytes, Log};
 use brontes_pricing::types::{DiscoveredPool, PoolUpdate};
 use brontes_types::traits::TracingProvider;
 use futures::Future;

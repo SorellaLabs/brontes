@@ -367,7 +367,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         let call_data = trace.get_calldata();
         let return_bytes = trace.get_return_calldata();
 
-        if let Some(results) = classifier.dispatch(
+        if let Some(results) = ProtocolClassifications::default().dispatch(
             trace_index,
             call_data,
             return_bytes.clone(),

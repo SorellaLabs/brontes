@@ -1,6 +1,7 @@
 use alloy_primitives::{Address, U256};
 use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
 use brontes_macros::action_impl;
+use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::mdbx::RO;
 
@@ -19,7 +20,7 @@ action_impl!(
     target_address: Address,
      msg_sender: Address,
     call_data: swapCall,
-    log_data: UniswapV2Swap,
+    log_data: UniswapV2swapCallSwap,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let data = log_data.Swap_field;
         let recipient = call_data.to;
@@ -67,7 +68,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: mintCall,
-     log_data: UniswapV2Mint,
+     log_data: UniswapV2mintCallMint,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Mint_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -95,7 +96,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: burnCall,
-     log_data: UniswapV2Burn,
+     log_data: UniswapV2burnCallBurn,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Burn_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;

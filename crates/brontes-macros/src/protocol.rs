@@ -25,7 +25,7 @@ pub fn to_const_byte(input: DeriveInput) -> syn::Result<TokenStream> {
             let enum_name = &input.ident;
             Ok(quote!(
                 impl #enum_name {
-                    const fn to_byte(self) -> u8 {
+                    pub const fn to_byte(self) -> u8 {
                         match self {
                             #(
                                 Self::#name => #const_value as u8,
