@@ -32,7 +32,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::B256;
 use brontes_types::classified_mev::Mev;
-mod composer_filters;
+mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_types::{
@@ -41,7 +41,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use composer_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
+use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
 use utils::{
     build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
     BlockPreprocessing,
