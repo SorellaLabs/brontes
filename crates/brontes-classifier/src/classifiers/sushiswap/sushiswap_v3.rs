@@ -10,7 +10,6 @@ use crate::SushiSwapV3::{
     burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall, swapReturn,
 };
 
-
 action_impl!(
     Protocol::SushiSwapV3,
     Swap,
