@@ -75,7 +75,10 @@ Natural
     serde::Deserialize,
 )]
 #[redefined(Natural)]
-#[redefined_attr(to_source = "self.into()", from_source = "src.into()")]
+#[redefined_attr(
+    to_source = "redefined_to_natural(self)",
+    from_source = "natural_to_redefined(src)"
+)]
 pub struct Redefined_Natural(Redefined_InnerNatural);
 
 impl Redefined_Natural {
@@ -86,6 +89,14 @@ impl Redefined_Natural {
             Redefined_Natural(Redefined_InnerNatural::Large(ref limbs)) => limbs.clone(),
         }
     }
+}
+
+fn natural_to_redefined(natural: Natural) -> Redefined_Natural {
+    Redefined_Natural(Redefined_InnerNatural::from_limbs_asc(&natural.to_limbs_asc()))
+}
+
+fn redefined_to_natural(natural: Redefined_Natural) -> Natural {
+    Natural::from_limbs_asc(&natural.to_limbs_asc())
 }
 
 //

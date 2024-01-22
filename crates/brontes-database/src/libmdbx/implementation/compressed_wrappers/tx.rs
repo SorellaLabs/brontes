@@ -6,7 +6,7 @@ use reth_db::{
 use reth_libmdbx::{ffi::DBI, TransactionKind, RO, RW};
 
 use super::cursor::CompressedCursor;
-use crate::libmdbx::{implementation::native::tx::LibmdbxTx, CompressedTable};
+use crate::libmdbx::{implementation::native::tx::LibmdbxTx, types::CompressedTable};
 
 pub struct CompressedLibmdbxTx<K: TransactionKind>(pub(crate) LibmdbxTx<K>);
 

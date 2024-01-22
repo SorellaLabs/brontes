@@ -23,6 +23,7 @@ use reth_primitives::BufMut;
 use reth_rpc_types::{CallInput, CallRequest};
 use rkyv::Deserialize as rkyv_Deserialize;
 use serde::{Deserialize, Serialize};
+use sorella_db_databases::clickhouse::{self, DbRow};
 use tracing::error;
 
 use crate::{

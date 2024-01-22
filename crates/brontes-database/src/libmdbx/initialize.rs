@@ -1,9 +1,21 @@
-use std::sync::Arc;
+use std::{
+    fmt::Debug,
+    sync::{Arc, Mutex},
+};
 
 use futures::future::join_all;
+use itertools::Itertools;
+use reth_db::DatabaseError;
+use serde::Deserialize;
+use sorella_db_databases::{clickhouse::DbRow, Database};
+use tracing::info;
 
-use super::{tables::Tables, CompressedTable, Libmdbx};
-use crate::clickhouse::Clickhouse;
+use super::{tables::Tables, types::LibmdbxData, Libmdbx};
+use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
+
+const DEFAULT_START_BLOCK: u64 = 15400000;
+// change with tracing client
+const DEFAULT_END_BLOCK: u64 = 15400000;
 
 pub struct LibmdbxInitializer {
     libmdbx:    Arc<Libmdbx>,
@@ -25,40 +37,77 @@ impl LibmdbxInitializer {
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        join_all(tables.iter().map(|table| {
-            table.initialize_table(
-                self.libmdbx.clone(),
-                //self.tracer.clone(),
-                self.clickhouse.clone(),
-                block_range,
-            )
-        }))
+        join_all(
+            tables
+                .iter()
+                .map(|table| table.initialize_table(&self, block_range)),
+        )
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()
+    }
 
-        /*
-        for table in tables {
-            table
-                .initialize_table(
-                    self.libmdbx.clone(),
-                    //self.tracer.clone(),
-                    self.clickhouse.clone(),
-                    block_range,
-                )
-                .await?;
-        }
+    pub(crate) async fn initialize_table_from_clickhouse<'db, T, D>(
+        &'db self,
+        block_range: Option<(u64, u64)>,
+    ) -> eyre::Result<()>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    {
+        self.libmdbx.clear_table::<T>()?;
+
+        let block_range_chunks = if let Some((s, e)) = block_range {
+            (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
+        } else {
+            (DEFAULT_START_BLOCK..DEFAULT_END_BLOCK).chunks(
+                T::INIT_CHUNK_SIZE
+                    .unwrap_or((DEFAULT_END_BLOCK - DEFAULT_START_BLOCK + 1) as usize),
+            )
+        };
+
+        let pair_ranges = block_range_chunks
+            .into_iter()
+            .map(|chk| chk.into_iter().collect_vec())
+            .filter_map(
+                |chk| if chk.len() != 0 { Some((chk[0], chk[chk.len() - 1])) } else { None },
+            )
+            .collect_vec();
+
+        let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
+
+        info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
+        join_all(pair_ranges.into_iter().map(|(start, end)| {let num_chunks = num_chunks.clone(); async move {
+            let data = self
+                .clickhouse
+                .inner()
+                .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
+                .await;
+
+            let num = {
+                let mut n = num_chunks.lock().unwrap();
+                *n -= 1;
+                n.clone() + 1
+            };
+
+            match data {
+                Ok(d) => self.libmdbx.write_table(&d)?,
+                Err(e) => {
+                    info!(target: "brontes::init", "{} -- Error Writing Chunk {} -- {:?}", T::NAME, num, e)
+                }
+            }
+
+            info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
+
+            Ok::<(), DatabaseError>(())
+        }}))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
-        */
     }
-    /*
-    async fn initialize_table_from_clickhouse<T: CompressedTable>(
-        &self,
-        block_range: Option<(u64, u64)>,
-    ) -> eyre::Result<()> {
-    }
-    */
 }
 
 #[cfg(test)]
