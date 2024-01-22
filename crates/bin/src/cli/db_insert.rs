@@ -1,9 +1,6 @@
 use std::env;
 
-use brontes_database::libmdbx::{
-    tables::{IntoTableKey, Tables},
-    Libmdbx,
-};
+use brontes_database::{libmdbx::Libmdbx, IntoTableKey, Tables};
 use clap::Parser;
 
 #[derive(Debug, Parser)]

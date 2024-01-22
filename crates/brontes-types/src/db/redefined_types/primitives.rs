@@ -1,7 +1,6 @@
-use std::{fmt, hash::Hash, str::FromStr, sync::atomic::AtomicPtr};
+use std::{fmt, hash::Hash, str::FromStr};
 
 use alloy_primitives::{hex, Address, Bytes as Alloy_Bytes, FixedBytes, Uint};
-use bytes::Bytes;
 use derive_more::{Deref, DerefMut, From, Index, IndexMut, IntoIterator};
 use redefined::{Redefined, RedefinedConvert};
 
