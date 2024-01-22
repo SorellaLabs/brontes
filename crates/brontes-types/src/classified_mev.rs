@@ -42,7 +42,7 @@ pub struct MevBlock {
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
-pub struct ClassifiedMev {
+pub struct BundleHeader {
     // can be multiple for sandwich
     pub block_number:         u64,
     pub mev_tx_index:         u64,
@@ -94,7 +94,7 @@ pub enum MevType {
 self_convert_redefined!(MevType);
 
 #[derive(Debug, Deserialize, EnumIter, Clone, Default, Display)]
-pub enum SpecificMev {
+pub enum BundleData {
     Sandwich(Sandwich),
     AtomicBackrun(AtomicBackrun),
     JitSandwich(JitLiquiditySandwich),
@@ -105,89 +105,89 @@ pub enum SpecificMev {
     Unknown,
 }
 
-impl Mev for SpecificMev {
+impl Mev for BundleData {
     fn mev_type(&self) -> MevType {
         match self {
-            SpecificMev::Sandwich(m) => m.mev_type(),
-            SpecificMev::AtomicBackrun(m) => m.mev_type(),
-            SpecificMev::JitSandwich(m) => m.mev_type(),
-            SpecificMev::Jit(m) => m.mev_type(),
-            SpecificMev::CexDex(m) => m.mev_type(),
-            SpecificMev::Liquidation(m) => m.mev_type(),
-            SpecificMev::Unknown => MevType::Unknown,
+            BundleData::Sandwich(m) => m.mev_type(),
+            BundleData::AtomicBackrun(m) => m.mev_type(),
+            BundleData::JitSandwich(m) => m.mev_type(),
+            BundleData::Jit(m) => m.mev_type(),
+            BundleData::CexDex(m) => m.mev_type(),
+            BundleData::Liquidation(m) => m.mev_type(),
+            BundleData::Unknown => MevType::Unknown,
         }
     }
 
     fn priority_fee_paid(&self) -> u128 {
         match self {
-            SpecificMev::Sandwich(m) => m.priority_fee_paid(),
-            SpecificMev::AtomicBackrun(m) => m.priority_fee_paid(),
-            SpecificMev::JitSandwich(m) => m.priority_fee_paid(),
-            SpecificMev::Jit(m) => m.priority_fee_paid(),
-            SpecificMev::CexDex(m) => m.priority_fee_paid(),
-            SpecificMev::Liquidation(m) => m.priority_fee_paid(),
-            SpecificMev::Unknown => unimplemented!("calling priority_fee_paid() on unknown mev"),
+            BundleData::Sandwich(m) => m.priority_fee_paid(),
+            BundleData::AtomicBackrun(m) => m.priority_fee_paid(),
+            BundleData::JitSandwich(m) => m.priority_fee_paid(),
+            BundleData::Jit(m) => m.priority_fee_paid(),
+            BundleData::CexDex(m) => m.priority_fee_paid(),
+            BundleData::Liquidation(m) => m.priority_fee_paid(),
+            BundleData::Unknown => unimplemented!("calling priority_fee_paid() on unknown mev"),
         }
     }
 
     fn bribe(&self) -> u128 {
         match self {
-            SpecificMev::Sandwich(m) => m.bribe(),
-            SpecificMev::AtomicBackrun(m) => m.bribe(),
-            SpecificMev::JitSandwich(m) => m.bribe(),
-            SpecificMev::Jit(m) => m.bribe(),
-            SpecificMev::CexDex(m) => m.bribe(),
-            SpecificMev::Liquidation(m) => m.bribe(),
-            SpecificMev::Unknown => unimplemented!("calling bribe() on unknown mev"),
+            BundleData::Sandwich(m) => m.bribe(),
+            BundleData::AtomicBackrun(m) => m.bribe(),
+            BundleData::JitSandwich(m) => m.bribe(),
+            BundleData::Jit(m) => m.bribe(),
+            BundleData::CexDex(m) => m.bribe(),
+            BundleData::Liquidation(m) => m.bribe(),
+            BundleData::Unknown => unimplemented!("calling bribe() on unknown mev"),
         }
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
         match self {
-            SpecificMev::Sandwich(m) => m.mev_transaction_hashes(),
-            SpecificMev::AtomicBackrun(m) => m.mev_transaction_hashes(),
-            SpecificMev::JitSandwich(m) => m.mev_transaction_hashes(),
-            SpecificMev::Jit(m) => m.mev_transaction_hashes(),
-            SpecificMev::CexDex(m) => m.mev_transaction_hashes(),
-            SpecificMev::Liquidation(m) => m.mev_transaction_hashes(),
-            SpecificMev::Unknown => {
+            BundleData::Sandwich(m) => m.mev_transaction_hashes(),
+            BundleData::AtomicBackrun(m) => m.mev_transaction_hashes(),
+            BundleData::JitSandwich(m) => m.mev_transaction_hashes(),
+            BundleData::Jit(m) => m.mev_transaction_hashes(),
+            BundleData::CexDex(m) => m.mev_transaction_hashes(),
+            BundleData::Liquidation(m) => m.mev_transaction_hashes(),
+            BundleData::Unknown => {
                 unimplemented!("calling mev_transaction_hashes() on unknown mev")
             }
         }
     }
 }
 
-impl From<Sandwich> for SpecificMev {
+impl From<Sandwich> for BundleData {
     fn from(value: Sandwich) -> Self {
         Self::Sandwich(value)
     }
 }
 
-impl From<AtomicBackrun> for SpecificMev {
+impl From<AtomicBackrun> for BundleData {
     fn from(value: AtomicBackrun) -> Self {
         Self::AtomicBackrun(value)
     }
 }
 
-impl From<JitLiquiditySandwich> for SpecificMev {
+impl From<JitLiquiditySandwich> for BundleData {
     fn from(value: JitLiquiditySandwich) -> Self {
         Self::JitSandwich(value)
     }
 }
 
-impl From<JitLiquidity> for SpecificMev {
+impl From<JitLiquidity> for BundleData {
     fn from(value: JitLiquidity) -> Self {
         Self::Jit(value)
     }
 }
 
-impl From<CexDex> for SpecificMev {
+impl From<CexDex> for BundleData {
     fn from(value: CexDex) -> Self {
         Self::CexDex(value)
     }
 }
 
-impl From<Liquidation> for SpecificMev {
+impl From<Liquidation> for BundleData {
     fn from(value: Liquidation) -> Self {
         Self::Liquidation(value)
     }
@@ -276,21 +276,19 @@ pub struct Sandwich {
     /// Gas details for each backrunning transaction.
     pub backrun_gas_details:      GasDetails,
 }
-pub fn compose_sandwich_jit(
-    mev: Vec<(ClassifiedMev, SpecificMev)>,
-) -> (ClassifiedMev, SpecificMev) {
+pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHeader, BundleData) {
     let mut sandwich: Option<Sandwich> = None;
     let mut jit: Option<JitLiquidity> = None;
-    let mut classified_sandwich: Option<ClassifiedMev> = None;
-    let mut jit_classified: Option<ClassifiedMev> = None;
+    let mut classified_sandwich: Option<BundleHeader> = None;
+    let mut jit_classified: Option<BundleHeader> = None;
 
     for (classified, mev_data) in mev {
         match mev_data {
-            SpecificMev::Sandwich(s) => {
+            BundleData::Sandwich(s) => {
                 sandwich = Some(s);
                 classified_sandwich = Some(classified);
             }
-            SpecificMev::Jit(j) => {
+            BundleData::Jit(j) => {
                 jit = Some(j);
                 jit_classified = Some(classified);
             }
@@ -349,7 +347,7 @@ pub fn compose_sandwich_jit(
     let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.finalized_bribe_usd;
 
     // Create new classified MEV data
-    let new_classified = ClassifiedMev {
+    let new_classified = BundleHeader {
         mev_tx_index:         classified_sandwich.mev_tx_index,
         tx_hash:              *sandwich.frontrun_tx_hash.get(0).unwrap_or_default(),
         mev_type:             MevType::JitSandwich,
@@ -361,7 +359,7 @@ pub fn compose_sandwich_jit(
         finalized_profit_usd: jit_liq_profit,
     };
 
-    (new_classified, SpecificMev::JitSandwich(jit_sand))
+    (new_classified, BundleData::JitSandwich(jit_sand))
 }
 
 impl Mev for Sandwich {
@@ -631,17 +629,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_db_classified_mev() {
-        let test_mev = ClassifiedMev::default();
+        let test_mev = BundleHeader::default();
 
         let db = spawn_db();
 
-        db.insert_one(&test_mev, DatabaseTables::ClassifiedMev)
+        db.insert_one(&test_mev, DatabaseTables::BundleHeader)
             .await
             .unwrap();
 
         let delete_query = &format!(
             "DELETE FROM {} where tx_hash = ? and block_number = ?",
-            db.to_table_string(DatabaseTables::ClassifiedMev)
+            db.to_table_string(DatabaseTables::BundleHeader)
         );
 
         db.execute_remote(

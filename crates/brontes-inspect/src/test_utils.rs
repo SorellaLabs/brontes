@@ -2,7 +2,7 @@ use alloy_primitives::{hex, Address, FixedBytes, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
 use brontes_core::TraceLoaderError;
 use brontes_types::{
-    classified_mev::{MevType, SpecificMev},
+    classified_mev::{BundleData, MevType},
     db::{dex::DexQuotes, metadata::MetadataCombined},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -149,7 +149,7 @@ impl InspectorTestUtils {
     pub async fn run_inspector(
         &self,
         config: InspectorTxRunConfig,
-        specific_state_tests: Option<Box<dyn Fn(SpecificMev)>>,
+        specific_state_tests: Option<Box<dyn Fn(BundleData)>>,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::InspectorConfig(copied.clone());
@@ -226,7 +226,7 @@ impl InspectorTestUtils {
     pub async fn run_composer(
         &self,
         config: ComposerRunConfig,
-        specific_state_tests: Option<Box<dyn Fn(SpecificMev)>>,
+        specific_state_tests: Option<Box<dyn Fn(BundleData)>>,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::ComposerConfig(copied.clone());

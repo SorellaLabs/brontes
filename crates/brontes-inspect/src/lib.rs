@@ -14,7 +14,7 @@
 //!
 //! `Inspector` is a trait defining a method `process_tree`. This method takes a
 //! `BlockTree` and `Metadata` as input and returns a vector of tuples, each
-//! containing a `ClassifiedMev` and a `SpecificMev`.
+//! containing a `BundleHeader` and a `BundleData`.
 //!
 //! ```ignore
 //! #[async_trait::async_trait]
@@ -23,7 +23,7 @@
 //!         &self,
 //!         tree: Arc<BlockTree<Actions>>,
 //!         metadata: Arc<MetadataCombined>,
-//!     ) -> Vec<(ClassifiedMev, SpecificMev)>;
+//!     ) -> Vec<(BundleHeader, BundleData)>;
 //! }
 //! ```
 //!
@@ -97,7 +97,7 @@ pub mod test_utils;
 use std::sync::Arc;
 
 use brontes_types::{
-    classified_mev::{ClassifiedMev, SpecificMev},
+    classified_mev::{BundleData, BundleHeader},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
@@ -109,5 +109,5 @@ pub trait Inspector: Send + Sync {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)>;
+    ) -> Vec<(BundleHeader, BundleData)>;
 }

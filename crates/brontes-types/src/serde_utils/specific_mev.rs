@@ -1,7 +1,7 @@
 use serde::{Serialize, Serializer};
 use sorella_db_databases::clickhouse::InsertRow;
 
-use crate::classified_mev::SpecificMev;
+use crate::classified_mev::BundleData;
 
 /*
 macro_rules! decode_specific {
@@ -10,7 +10,7 @@ macro_rules! decode_specific {
         $(
             MevType::$mev => Box::new(
                 serde_json::from_value::<$name>($value).unwrap()
-            ) as SpecificMev,
+            ) as BundleData,
         )+
         _ => todo!("missing variant")
     }
@@ -18,19 +18,19 @@ macro_rules! decode_specific {
 }
 */
 
-impl Serialize for SpecificMev {
+impl Serialize for BundleData {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match self {
-            SpecificMev::Sandwich(sandwich) => sandwich.serialize(serializer),
-            SpecificMev::AtomicBackrun(backrun) => backrun.serialize(serializer),
-            SpecificMev::JitSandwich(jit_sandwich) => jit_sandwich.serialize(serializer),
-            SpecificMev::Jit(jit) => jit.serialize(serializer),
-            SpecificMev::CexDex(cex_dex) => cex_dex.serialize(serializer),
-            SpecificMev::Liquidation(liquidation) => liquidation.serialize(serializer),
-            SpecificMev::Unknown => {
+            BundleData::Sandwich(sandwich) => sandwich.serialize(serializer),
+            BundleData::AtomicBackrun(backrun) => backrun.serialize(serializer),
+            BundleData::JitSandwich(jit_sandwich) => jit_sandwich.serialize(serializer),
+            BundleData::Jit(jit) => jit.serialize(serializer),
+            BundleData::CexDex(cex_dex) => cex_dex.serialize(serializer),
+            BundleData::Liquidation(liquidation) => liquidation.serialize(serializer),
+            BundleData::Unknown => {
                 unimplemented!("attempted to serialize unknown mev: UNIMPLEMENTED")
             }
         }
@@ -38,7 +38,7 @@ impl Serialize for SpecificMev {
 }
 
 /*
-impl<'de> Deserialize<'de> for SpecificMev {
+impl<'de> Deserialize<'de> for BundleData {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -59,16 +59,16 @@ impl<'de> Deserialize<'de> for SpecificMev {
 }
 */
 
-impl InsertRow for SpecificMev {
+impl InsertRow for BundleData {
     fn get_column_names(&self) -> &'static [&'static str] {
         match self {
-            SpecificMev::Sandwich(sandwich) => sandwich.get_column_names(),
-            SpecificMev::AtomicBackrun(backrun) => backrun.get_column_names(),
-            SpecificMev::JitSandwich(jit_sandwich) => jit_sandwich.get_column_names(),
-            SpecificMev::Jit(jit) => jit.get_column_names(),
-            SpecificMev::CexDex(cex_dex) => cex_dex.get_column_names(),
-            SpecificMev::Liquidation(liquidation) => liquidation.get_column_names(),
-            SpecificMev::Unknown => {
+            BundleData::Sandwich(sandwich) => sandwich.get_column_names(),
+            BundleData::AtomicBackrun(backrun) => backrun.get_column_names(),
+            BundleData::JitSandwich(jit_sandwich) => jit_sandwich.get_column_names(),
+            BundleData::Jit(jit) => jit.get_column_names(),
+            BundleData::CexDex(cex_dex) => cex_dex.get_column_names(),
+            BundleData::Liquidation(liquidation) => liquidation.get_column_names(),
+            BundleData::Unknown => {
                 unimplemented!("attempted to inserted unknown mev into clickhouse: UNIMPLEMENTED")
             }
         }
