@@ -1,6 +1,8 @@
 mod action_classifier;
 mod discovery_classifier;
+mod protocol;
 use proc_macro::TokenStream;
+use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
@@ -85,6 +87,13 @@ pub fn discovery_impl(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
     discovery_classifier::discovery_dispatch(input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_derive(ToConstByte)]
+pub fn to_byte(input: TokenStream) -> TokenStream {
+    protocol::to_const_byte(parse_macro_input!(input as DeriveInput))
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

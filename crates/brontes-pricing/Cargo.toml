@@ -12,6 +12,7 @@ required-features = ["benchmarking"]
 [dependencies]
 #brontes 
 brontes-types.workspace = true
+brontes-macros.workspace = true
 
 itertools = "0.12.0"
 redefined.workspace = true

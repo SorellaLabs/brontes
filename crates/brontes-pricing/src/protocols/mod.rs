@@ -8,18 +8,20 @@ pub mod uniswap_v3_math;
 use std::sync::Arc;
 
 use alloy_primitives::{Address, Log, U256};
-use alloy_rlp::{Decodable, Encodable};
+use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
 use brontes_types::{extra_processing::Pair, normalized_actions::Actions, traits::TracingProvider};
 use malachite::Rational;
 use redefined::{self_convert_redefined, RedefinedConvert};
+use reth_codecs::{impl_compact_for_bytes, Compact};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
 };
 use reth_primitives::BufMut;
 use reth_rpc_types::{CallInput, CallRequest};
+use rkyv::Deserialize as rkyv_Deserialize;
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
@@ -46,7 +48,9 @@ use crate::{
     rkyv::Archive,
     strum::Display,
     strum::EnumString,
+    brontes_macros::ToConstByte,
 )]
+#[repr(u8)]
 pub enum Protocol {
     UniswapV2,
     SushiSwapV2,
@@ -61,6 +65,43 @@ pub enum Protocol {
     CurveV2BasePool,
     CurveV2MetaPool,
     CurveV2PlainPool,
+}
+
+impl Encodable for Protocol {
+    fn encode(&self, out: &mut dyn BufMut) {
+        let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
+        out.put_slice(&encoded)
+    }
+}
+
+impl Decodable for Protocol {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let archived: &ArchivedProtocol = unsafe { rkyv::archived_root::<Self>(buf) };
+        let this = ArchivedProtocol::deserialize(&archived, &mut rkyv::Infallible).unwrap();
+        Ok(this)
+    }
+}
+
+impl Compress for Protocol {
+    type Compressed = Vec<u8>;
+
+    fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
+        let mut encoded = Vec::new();
+        self.encode(&mut encoded);
+        buf.put_slice(&encoded);
+    }
+}
+
+impl Decompress for Protocol {
+    fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
+        let binding = value.as_ref().to_vec();
+        let buf = &mut binding.as_slice();
+        Protocol::decode(buf).map_err(|_| DatabaseError::Decode)
+    }
+}
+
+fn test() {
+    let c = Protocol::UniswapV2.to_byte();
 }
 
 impl Protocol {
@@ -125,69 +166,6 @@ impl Protocol {
                 Err((address, self, block_number, pool_pair, AmmError::UnsupportedProtocol))
             }
         }
-    }
-}
-
-impl Encodable for Protocol {
-    fn encode(&self, out: &mut dyn BufMut) {
-        match self {
-            Protocol::UniswapV2 => 0u64.encode(out),
-            Protocol::SushiSwapV2 => 1u64.encode(out),
-            Protocol::UniswapV3 => 2u64.encode(out),
-            Protocol::SushiSwapV3 => 3u64.encode(out),
-            Protocol::CurveCryptoSwap => 4u64.encode(out),
-            Protocol::AaveV2 => 5u64.encode(out),
-            Protocol::AaveV3 => 6u64.encode(out),
-            Protocol::UniswapX => 7u64.encode(out),
-            Protocol::CurveV1BasePool => 8u64.encode(out),
-            Protocol::CurveV1MetaPool => 9u64.encode(out),
-            Protocol::CurveV2BasePool => 10u64.encode(out),
-            Protocol::CurveV2MetaPool => 11u64.encode(out),
-            Protocol::CurveV2PlainPool => 12u64.encode(out),
-        }
-    }
-}
-
-impl Decodable for Protocol {
-    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let self_int = u64::decode(buf)?;
-
-        let this = match self_int {
-            0 => Protocol::UniswapV2,
-            1 => Protocol::SushiSwapV2,
-            2 => Protocol::UniswapV3,
-            3 => Protocol::SushiSwapV3,
-            4 => Protocol::CurveCryptoSwap,
-            5 => Protocol::AaveV2,
-            6 => Protocol::AaveV3,
-            7 => Protocol::UniswapX,
-            8 => Protocol::CurveV1BasePool,
-            9 => Protocol::CurveV1MetaPool,
-            10 => Protocol::CurveV2BasePool,
-            11 => Protocol::CurveV2MetaPool,
-            12 => Protocol::CurveV2PlainPool,
-            _ => unreachable!("no enum variant"),
-        };
-
-        Ok(this)
-    }
-}
-
-impl Compress for Protocol {
-    type Compressed = Vec<u8>;
-
-    fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-        let mut encoded = Vec::new();
-        self.encode(&mut encoded);
-        buf.put_slice(&encoded);
-    }
-}
-
-impl Decompress for Protocol {
-    fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-        let binding = value.as_ref().to_vec();
-        let buf = &mut binding.as_slice();
-        Protocol::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }
 

@@ -1,6 +1,7 @@
 use alloy_primitives::{Address, U256};
 use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
 use brontes_macros::{action_dispatch, action_impl};
+use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{
     NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
@@ -11,7 +12,7 @@ use crate::UniswapV3::{
 };
 
 action_impl!(
-    V3SwapImpl,
+    Protocol::UniswapV3,
     Swap,
     swapCall,
     [Swap],
@@ -59,7 +60,7 @@ action_impl!(
     }
 );
 action_impl!(
-    V3MintImpl,
+    Protocol::UniswapV3,
     Mint,
     mintCall,
     [Mint],
@@ -88,7 +89,7 @@ action_impl!(
     }
 );
 action_impl!(
-    V3BurnImpl,
+    Protocol::UniswapV3,
     Burn,
     burnCall,
     [Burn],
@@ -119,7 +120,7 @@ action_impl!(
     }
 );
 action_impl!(
-    V3CollectImpl,
+    Protocol::UniswapV3,
     Collect,
     collectCall,
     [Collect],
@@ -146,5 +147,3 @@ action_impl!(
         })
     }
 );
-
-action_dispatch!(UniswapV3Classifier, V3SwapImpl, V3BurnImpl, V3MintImpl, V3CollectImpl);

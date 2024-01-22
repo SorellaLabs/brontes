@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types)]
+
 use reth_db::table::DupSort;
 pub mod address_to_factory;
 pub mod address_to_protocol;
@@ -10,7 +11,7 @@ pub mod pool_creation_block;
 
 pub mod subgraphs;
 pub mod token_decimals;
-//pub mod traces;
+pub mod traces;
 pub mod utils;
 pub(crate) use token_decimals::*;
 
