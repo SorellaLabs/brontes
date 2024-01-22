@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use futures::future::join_all;
 
-use super::{tables::Tables, Libmdbx};
+use super::{tables::Tables, CompressedTable, Libmdbx};
 use crate::clickhouse::Clickhouse;
 
 pub struct LibmdbxInitializer {
@@ -52,6 +52,13 @@ impl LibmdbxInitializer {
         Ok(())
         */
     }
+    /*
+    async fn initialize_table_from_clickhouse<T: CompressedTable>(
+        &self,
+        block_range: Option<(u64, u64)>,
+    ) -> eyre::Result<()> {
+    }
+    */
 }
 
 #[cfg(test)]
