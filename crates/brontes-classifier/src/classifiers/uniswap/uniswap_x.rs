@@ -1,6 +1,7 @@
 use alloy_primitives::Address;
 use brontes_database::libmdbx::tx::CompressedLibmdbxTx;
 use brontes_macros::action_impl;
+use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::NormalizedBatch;
 use reth_db::mdbx::RO;
 
@@ -19,7 +20,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: executeCall,
-    logs: UniXExecuteImplBatch,
+    logs: UniswapXexecuteCallBatch,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let logs = logs.Fill_field;
 
