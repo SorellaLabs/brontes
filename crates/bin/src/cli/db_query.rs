@@ -76,7 +76,8 @@ impl DatabaseQuery {
                 AddressToProtocol,
                 PoolCreationBlocks,
                 AddressToFactory,
-                SubGraphs
+                SubGraphs,
+                TxTraces
             );
         } else {
             match_table!(
@@ -92,6 +93,7 @@ impl DatabaseQuery {
                 AddressToProtocol,
                 AddressToFactory,
                 SubGraphs,
+                TxTraces,
                 PoolCreationBlocks = &self.key
             );
         }
