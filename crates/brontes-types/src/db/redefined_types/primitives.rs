@@ -1,6 +1,7 @@
-use std::{fmt, hash::Hash, str::FromStr};
+use std::{fmt, hash::Hash, str::FromStr, sync::atomic::AtomicPtr};
 
-use alloy_primitives::{hex, Address, FixedBytes, Uint};
+use alloy_primitives::{hex, Address, Bytes as Alloy_Bytes, FixedBytes, Uint};
+use bytes::Bytes;
 use derive_more::{Deref, DerefMut, From, Index, IndexMut, IntoIterator};
 use redefined::{Redefined, RedefinedConvert};
 
@@ -62,6 +63,7 @@ impl<const BITS: usize, const LIMBS: usize> Default for Redefined_Uint<BITS, LIM
 }
 
 pub type Redefined_U256 = Redefined_Uint<256, 4>;
+pub type Redefined_U64 = Redefined_Uint<64, 1>;
 
 /*
 --------------
@@ -232,3 +234,30 @@ impl PartialEq for ArchivedRedefined_Pair {
 }
 
 impl Eq for ArchivedRedefined_Pair {}
+
+/*
+--------------
+
+
+alloy_primitives::Bytes
+
+
+
+*/
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(Alloy_Bytes)]
+#[redefined_attr(to_source = "self.0.into()", from_source = "Self(src.to_vec())")]
+pub struct Redefined_Alloy_Bytes(pub Vec<u8>);

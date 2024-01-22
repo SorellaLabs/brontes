@@ -5,14 +5,14 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens, cex::CexPriceMap, dex::DexQuoteWithIndex,
         metadata::MetadataInner, mev_block::MevBlockWithClassified,
-        pool_creation_block::PoolsToAddresses,
+        pool_creation_block::PoolsToAddresses, traces::TxTracesInner,
     },
     extra_processing::Pair,
 };
 use futures::StreamExt;
 use sorella_db_databases::Database;
 
-use crate::libmdbx::types::dex_price::DexKey;
+use crate::libmdbx::{tables::traces::TxTracesData, types::dex_price::DexKey};
 
 mod const_sql;
 use alloy_primitives::Address;
@@ -28,7 +28,7 @@ use self::{
     address_to_tokens::LibmdbxPoolTokens, cex_price::LibmdbxCexPriceMap,
     dex_price::LibmdbxDexQuoteWithIndex, metadata::LibmdbxMetadataInner,
     mev_block::LibmdbxMevBlockWithClassified, pool_creation_block::LibmdbxPoolsToAddresses,
-    subgraphs::LibmdbxSubGraphsEntry,
+    subgraphs::LibmdbxSubGraphsEntry, traces::LibmdbxTxTracesInner,
 };
 //use crate::types::traces::TxTracesDBData;
 use super::{
@@ -42,7 +42,7 @@ use super::{
 };
 use crate::clickhouse::Clickhouse;
 
-pub const NUM_TABLES: usize = 10;
+pub const NUM_TABLES: usize = 11;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tables {
@@ -56,6 +56,7 @@ pub enum Tables {
     MevBlocks,
     AddressToFactory,
     SubGraphs,
+    TxTraces,
 }
 
 impl Tables {
@@ -70,16 +71,17 @@ impl Tables {
         Tables::MevBlocks,
         Tables::AddressToFactory,
         Tables::SubGraphs,
+        Tables::TxTraces,
     ];
-    pub const ALL_NO_DEX: [Tables; NUM_TABLES - 4] = [
+    pub const ALL_NO_DEX: [Tables; NUM_TABLES - 3] = [
         Tables::TokenDecimals,
         Tables::AddressToTokens,
         Tables::AddressToProtocol,
         Tables::PoolCreationBlocks,
         Tables::MevBlocks,
         Tables::Metadata,
-        //Tables::CexPrice,
-        // Tables::TxTraces
+        Tables::CexPrice,
+        Tables::TxTraces,
     ];
 
     /// type of table
@@ -95,6 +97,7 @@ impl Tables {
             Tables::MevBlocks => TableType::Table,
             Tables::AddressToFactory => TableType::Table,
             Tables::SubGraphs => TableType::Table,
+            Tables::TxTraces => TableType::Table,
         }
     }
 
@@ -110,6 +113,7 @@ impl Tables {
             Tables::MevBlocks => MevBlocks::NAME,
             Tables::AddressToFactory => AddressToFactory::NAME,
             Tables::SubGraphs => SubGraphs::NAME,
+            Tables::TxTraces => TxTraces::NAME,
         }
     }
 
@@ -137,12 +141,13 @@ impl Tables {
                 //let block_range = (15400000, 19000000);
                 println!("Starting {}", self.name());
                 Box::pin(async move {
-                    libmdbx.clear_table::<CexPrice>()?;
-                    println!("Cleared Table: {}", CexPrice::NAME);
+                    //libmdbx.clear_table::<CexPrice>()?;
+
+                    //println!("Cleared Table: {}", CexPrice::NAME);
                     CexPrice::initialize_table_batching(
                         libmdbx.clone(),
                         clickhouse.clone(),
-                        (15400000, 16000000),
+                        (15400000, 17800000),
                     )
                     .await?;
                     println!("Finished {} Block Range: {}-{}", CexPrice::NAME, 15400000, 16000000);
@@ -213,6 +218,10 @@ impl Tables {
                     async move { libmdbx.initialize_table::<SubGraphs, SubGraphsData>(&vec![]) },
                 )
             }
+            Tables::TxTraces => {
+                println!("Starting {}", self.name());
+                Box::pin(async move { libmdbx.initialize_table::<TxTraces, TxTracesData>(&vec![]) })
+            }
         }
     }
 }
@@ -232,6 +241,7 @@ impl FromStr for Tables {
             MevBlocks::NAME => Ok(Tables::MevBlocks),
             AddressToFactory::NAME => Ok(Tables::AddressToFactory),
             SubGraphs::NAME => Ok(Tables::SubGraphs),
+            TxTraces::NAME => Ok(Tables::TxTraces),
             _ => Err("Unknown table".to_string()),
         }
     }
@@ -248,38 +258,94 @@ where
         + Into<<Self as CompressedTable>::DecompressedValue>,
 {
     type DecompressedValue: Debug;
+    const INIT_CHUNK_SIZE: Option<usize>;
 }
 
-//  $compressed_value:ty |
-/// Macro to declare key value table + extra impl
+/*
 
 #[macro_export]
 macro_rules! compressed_table {
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $value:ty = $($table:tt)*) => {
+    // WITH $compressed_value
+    // WITH $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $init_chunk_size:expr, $value:ty = $($table:tt)*) => {
+
         impl CompressedTable for $table_name {
-            type DecompressedValue = $value;
+            type DecompressedValue = $compressed_value;
+            const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
         }
 
-        table!(
-            /// token address -> decimals
-            ( $table_name ) $key | $compressed_value = $($table)*
-        );
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | Some($init_chunk_size), $value = $($table)*);
     };
 
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)*) => {
+    // WITH $compressed_value
+    // WITHOUT $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $value:ty = $($table:tt)*) => {
+
         impl CompressedTable for $table_name {
-            type DecompressedValue = $value;
+            type DecompressedValue = $compressed_value;
+            const INIT_CHUNK_SIZE: Option<usize> = None;
         }
 
-        table!(
-            /// token address -> decimals
-            ( $table_name ) $key | $value = $($table)*
-        );
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | None, $value = $($table)*);
+    };
+
+    // WITHOUT $compressed_value
+    // WITH $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_chunk_size:expr, $value:ty = $($table:tt)*) => {
+
+        impl CompressedTable for $table_name {
+            type DecompressedValue = $compressed_value;
+            const INIT_CHUNK_SIZE: Option<usize> = Some($init_chunk_size);
+        }
+
+        table!($(#[$docs])+ ( $table_name ) $key | $value | Some($init_chunk_size), $value = $($table)*);
+    };
+
+    // WITHOUT $compressed_value
+    // WITHOUT $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)*) => {
+
+        impl CompressedTable for $table_name {
+            type DecompressedValue = $compressed_value;
+            const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
+        }
+
+        table!($(#[$docs])+ ( $table_name ) $key | $value | None, $value = $($table)*);
+    };
+}
+
+
+*/
+
+#[macro_export]
+macro_rules! compressed_table {
+    // WITH $compressed_value
+    // WITH $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $init_chunk_size:expr, $decompressed_value:ty = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | Some($init_chunk_size), $decompressed_value = $($table)*);
+    };
+
+    // WITH $compressed_value
+    // WITHOUT $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $decompressed_value:ty = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | None, $decompressed_value = $($table)*);
+    };
+
+    // WITHOUT $compressed_value
+    // WITH $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_chunk_size:expr, $decompressed_value:ty = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value | Some($init_chunk_size), $decompressed_value = $($table)*);
+    };
+
+    // WITHOUT $compressed_value
+    // WITHOUT $init_chunk_size
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $decompressed_value:ty = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value | None, $decompressed_value = $($table)*);
     };
 }
 
 macro_rules! table {
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $value:ty = $($table:tt)*) => {
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ty | $init_chunk_size:expr, $decompressed_value:ty = $($table:tt)*) => {
         $(#[$docs])+
         #[doc = concat!("Takes [`", stringify!($key), "`] as a key and returns [`", stringify!($value), "`].")]
         #[derive(Clone, Copy, Debug, Default)]
@@ -292,13 +358,18 @@ macro_rules! table {
                 key
             }
 
-            table!($table_name, $key, $value, $($table)*);
+            table!($table_name, $key, $compressed_value, $($table)*);
         }
 
         impl reth_db::table::Table for $table_name {
             const NAME: &'static str = stringify!($table_name);
             type Key = $key;
-            type Value = $value;
+            type Value = $compressed_value;
+        }
+
+        impl CompressedTable for $table_name {
+            type DecompressedValue = $decompressed_value;
+            const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
         }
 
         impl std::fmt::Display for $table_name {
@@ -345,12 +416,12 @@ compressed_table!(
 
 compressed_table!(
     /// block num -> cex prices
-    ( CexPrice ) u64 | LibmdbxCexPriceMap | CexPriceMap = False
+    ( CexPrice ) u64 | LibmdbxCexPriceMap | 200000,  CexPriceMap = False
 );
 
 compressed_table!(
     /// block num -> metadata
-    ( Metadata ) u64 | LibmdbxMetadataInner | MetadataInner = False
+    ( Metadata ) u64 | LibmdbxMetadataInner | 200000,  MetadataInner = False
 );
 
 compressed_table!(
@@ -376,6 +447,11 @@ compressed_table!(
 compressed_table!(
     /// address -> factory
     ( AddressToFactory ) Address | Protocol = True
+);
+
+compressed_table!(
+    /// block number -> tx traces
+    ( TxTraces ) u64 | LibmdbxTxTracesInner | TxTracesInner = False
 );
 
 pub(crate) trait InitializeTable<'db, D>: CompressedTable + Sized + 'db
@@ -414,38 +490,6 @@ where
         block_range: (u64, u64), // inclusive of start only TODO
     ) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 'db>> {
         Box::pin(async move {
-            /*
-                        let block_chunks = [
-                            (15000000, 16000000),
-                            (16000000, 16250000),
-                            (16250000, 16500000),
-                            (16500000, 16750000),
-                            (16750000, 17000000),
-                            (17000000, 17250000),
-                            (17250000, 17500000),
-                            (17500000, 17750000),
-                            (17750000, 18000000),
-                            (18000000, 18250000),
-                            (18250000, 18500000),
-                            (18500000, 18750000),
-                            (18750000, 19000000),
-                        ];
-
-                        let data = join_all(block_chunks.into_iter().map(|params| {
-                            let db_client = db_client.clone();
-                            async move {
-                                db_client
-                                    .inner()
-                                    .query_many::<D>(Self::initialize_query(), &params)
-                                    .await
-                            }
-                        }))
-                        .await
-                        .into_iter()
-                        //.flatten()
-                        .collect::<Result<Vec<_>, _>>();
-            */
-
             let chunk = 100000;
             let mut num_chunks = (block_range.1 - block_range.0) / chunk;
 
@@ -453,9 +497,8 @@ where
                 .filter(|block| block % chunk == 0)
                 .collect::<Vec<_>>();
 
-            
-            let mut data_stream = //futures::stream::iter(tasks)
-                futures::stream::iter(tasks).map(|block| {
+            let mut data_stream = futures::stream::iter(tasks)
+                .map(|block| {
                     let db_client = db_client.clone();
                     tokio::spawn(async move {
                         let data = db_client
@@ -475,75 +518,23 @@ where
 
                         data.unwrap()
                     })
-                }).buffer_unordered(5);
+                })
+                .buffer_unordered(5);
 
-
-                
+            println!("chunks remaining: {num_chunks}");
+            while let Some(val) = data_stream.next().await {
+                let data = val?;
+                num_chunks -= 1;
                 println!("chunks remaining: {num_chunks}");
-                while let Some(val) = data_stream.next().await {
-                    let data = val?;
-                    num_chunks -= 1;
-                    println!("chunks remaining: {num_chunks}");
 
-                    println!("finished querying chunk {num_chunks} with {} entries", data.len());
-                    if !data.is_empty() {
-                        libmdbx.write_table(&data)?;
-                    }
-                    println!("wrote chunk {num_chunks} to table");
+                println!("finished querying chunk {num_chunks} with {} entries", data.len());
+                if !data.is_empty() {
+                    libmdbx.write_table(&data)?;
                 }
-                
-                //.await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
-
-
-
-
-
-
-            /* .buffeLibmdbxunordered(50);
-
-            while let Some(d) = data.next().await {
-                let data_des = d?;
-
-                libmdbx.write_table(&data_des)?;
-                //drop(data_des);
-            }*/
+                println!("wrote chunk {num_chunks} to table");
+            }
 
             Ok(())
         })
     }
 }
-
-/*
-
-impl TxTracesDB {
-    pub async fn initialize_table_node(libmdbx: Arc<Libmdbx>, tracer: Arc<TracingClient>) -> eyre::Result<()> {
-        let start_block: u64 = 15400000;
-        let current_block = tracer.api.provider().canonical_tip().number;
-
-        libmdbx.cleaLibmdbxtable::<TxTracesDB>()?;
-
-        let range = (start_block..current_block).collect::<Vec<_>>();
-    let chunks = range.chunks(1000).collect::<Vec<_>>();
-    let tracer = tracer.as_ref();
-        let mut tx_traces_stream = futures::stream::iter(chunks).map(|chunk| {
-            join_all( chunk.into_iter().map(|block_num|
-
-                async move {
-                    Ok(TxTracesDBData::new(*block_num, TxTracesInner::new(tracer.replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(*block_num))).await?)))
-                }
-         ) )}).buffeLibmdbxunordered(1);
-
-       // .await
-
-       while let Some(result) = tx_traces_stream.next().await {
-        let tx_traces = result.into_iter().collect::<Result<Vec<_>, EthApiError>>()?;
-        libmdbx.write_table(&tx_traces)?;
-        println!("FINISHED CHUNK: {:?} - {:?}", tx_traces.first().map(|val| val.block_number), tx_traces.last().map(|val| val.block_number));
-       }
-
-
-
-    Ok(())
-
-    }
-}*/

@@ -1,4 +1,5 @@
 use alloy_primitives::Log;
+use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::{Address, Bytes, B256};
 use reth_rpc_types::trace::parity::{
     Action, CallType,
@@ -6,6 +7,7 @@ use reth_rpc_types::trace::parity::{
     TransactionTrace,
 };
 use serde::{Deserialize, Serialize};
+
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
     fn get_to_address(&self) -> Address;
@@ -91,19 +93,43 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+)]
 pub struct DecodedCallData {
     pub function_name: String,
     pub call_data:     Vec<DecodedParams>,
     pub return_data:   Vec<DecodedParams>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+self_convert_redefined!(DecodedCallData);
+
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+)]
 pub struct DecodedParams {
     pub field_name: String,
     pub field_type: String,
     pub value:      String,
 }
+
+self_convert_redefined!(DecodedParams);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
