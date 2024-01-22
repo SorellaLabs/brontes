@@ -24,11 +24,7 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     } = syn::parse2(token_stream)?;
 
     let exchange_name = Ident::new(
-        &format!(
-            "{}{}",
-            protocol_path.segments[protocol_path.segments.len() - 1].ident,
-            action_type
-        ),
+        &format!("{}{}", protocol_path.segments[protocol_path.segments.len() - 1].ident, call_type),
         Span::call_site(),
     );
 
@@ -283,11 +279,14 @@ pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
 
         #[allow(non_snake_case)]
         pub const fn #call_fn_name() -> [u8; 5] {
-            let res = [0u8;5];
-            res[0..4] = <#call_type as ::alloy_sol_types::SolCall>::SELECTOR;
-            res[4] = #protocol_path.to_byte();
-
-            res
+            ::alloy_primitives::FixedBytes::new(
+                    <crate::#exchange_mod_name::#call_type as ::alloy_sol_types::SolCall>::SELECTOR
+                )
+                .concat_const(
+                ::alloy_primitives::FixedBytes::new(
+                    [#protocol_path.to_byte()]
+                    )
+                ).0
         }
 
         #[derive(Debug, Default)]
@@ -548,10 +547,11 @@ pub fn action_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
 
                 let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(&data[0..4]).0;
                 let protocol_byte = db_tx.get::<
-                    ::brontes_database::libmdbx::tables::AddressToProtocol>(target_address).ok()??.to_byte();
+                    ::brontes_database::libmdbx::tables::AddressToProtocol>
+                    (target_address).ok()??.to_byte();
 
                 let mut sig_w_byte= [0u8;5];
-                sig_w_byte[0..4] = sig;
+                sig_w_byte[0..4].copy_from_slice(&sig);
                 sig_w_byte[4] = protocol_byte;
 
 
