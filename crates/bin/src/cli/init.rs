@@ -1,9 +1,6 @@
 use std::{env, sync::Arc};
 
-use brontes_database::{
-    clickhouse::Clickhouse,
-    libmdbx::{tables::Tables, Libmdbx},
-};
+use brontes_database::{clickhouse::Clickhouse, libmdbx::Libmdbx, Tables};
 use clap::Parser;
 
 #[derive(Debug, Parser)]
@@ -48,7 +45,7 @@ impl Init {
                 None
             };
             libmdbx
-                .init_tables(
+                .initialize_tables(
                     clickhouse.clone(),
                     self.tables_to_init
                         .unwrap_or({
@@ -58,7 +55,7 @@ impl Init {
                                 //println!("TABLES: {:?}", tables);
                                 tables
                             } else {
-                                Tables::ALL_NO_DEX.to_vec()
+                                Tables::ALL.to_vec()
                             }
                         })
                         .as_slice(),

@@ -3,16 +3,15 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use futures::{future::join_all, StreamExt};
+use futures::future::join_all;
 use itertools::Itertools;
-use proptest::num;
 use reth_db::DatabaseError;
 use serde::Deserialize;
 use sorella_db_databases::{clickhouse::DbRow, Database};
 use tracing::info;
 
-use super::{tables::Tables, types::LibmdbxData, CompressedTable, InitializeTable, Libmdbx};
-use crate::clickhouse::Clickhouse;
+use super::{tables::Tables, types::LibmdbxData, Libmdbx};
+use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
 
 const DEFAULT_START_BLOCK: u64 = 15400000;
 // change with tracing client
@@ -53,10 +52,12 @@ impl LibmdbxInitializer {
         block_range: Option<(u64, u64)>,
     ) -> eyre::Result<()>
     where
-        T: CompressedTable + InitializeTable<'db, D>,
+        T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
+        self.libmdbx.clear_table::<T>()?;
+
         let block_range_chunks = if let Some((s, e)) = block_range {
             (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
@@ -77,11 +78,11 @@ impl LibmdbxInitializer {
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
-       join_all(pair_ranges.into_iter().map(|(start, end)| {let num_chunks = num_chunks.clone(); async move {
+        join_all(pair_ranges.into_iter().map(|(start, end)| {let num_chunks = num_chunks.clone(); async move {
             let data = self
                 .clickhouse
                 .inner()
-                .query_many::<D>(T::initialize_query(), &(start, end))
+                .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
                 .await;
 
             let num = {

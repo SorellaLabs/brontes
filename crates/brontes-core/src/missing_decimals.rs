@@ -61,8 +61,8 @@ fn on_decimal_query_resolution(
 }
 
 fn insert_decimals(database: &Libmdbx, address: Address, decimals: u8) -> eyre::Result<()> {
-    database.write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
+    Ok(database.write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
         address,
         decimals,
-    }])
+    }])?)
 }
