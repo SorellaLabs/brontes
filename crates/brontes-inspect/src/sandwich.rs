@@ -46,9 +46,6 @@ impl Inspector for SandwichInspector<'_> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
     ) -> Vec<(BundleHeader, BundleData)> {
-        todo!()
-        // grab the set of all possible sandwich txes
-        /*
         let search_fn = |node: &Node<Actions>| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
@@ -58,19 +55,16 @@ impl Inspector for SandwichInspector<'_> {
             )
         };
 
+
         self.get_possible_sandwich(tree.clone())
             .into_iter()
             .filter_map(|ps| {
-                let gas = [
-                    tree.get_gas_details(ps.tx0).cloned().unwrap(),
-                    tree.get_gas_details(ps.tx1).cloned().unwrap(),
-                ];
 
                 let victim_gas = ps
                     .victims
                     .iter()
-                    .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
-                    .collect::<Vec<_>>();
+                    .flat_map(|victim| tree.get_gas_details(*victim).cloned())
+                    .collect::<Vec<GasDetails>>();
 
                 let victim_actions = ps
                     .victims
@@ -128,7 +122,7 @@ impl SandwichInspector<'_> {
         eoa: Address,
         mev_executor_contract: Address,
         metadata: Arc<MetadataCombined>,
-        txes: [B256; 2],
+        possible_frontruns: [B256; 2],
         searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,
         // victim
@@ -136,24 +130,23 @@ impl SandwichInspector<'_> {
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(BundleHeader, BundleData)> {
-        todo!()
-        /*
 
-        let frontrun_swaps = searcher_actions
-            .get(0)?
-            .into_iter()
-            .filter(|s| s.is_swap())
-            .map(|s| s.clone().force_swap())
-            .collect_vec();
+        //TODO: Use transaction directionality to differentiate from possible frontruns
+            let frontrun_swaps = searcher_actions
+                .get(0)?
+                .into_iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap())
+                .collect_vec();
 
-        let backrun_swaps = searcher_actions
-            .get(searcher_actions.len() - 1)?
-            .into_iter()
-            .filter(|s| s.is_swap())
-            .map(|s| s.clone().force_swap())
-            .collect_vec();
+            let backrun_swaps = searcher_actions
+                .get(searcher_actions.len() - 1)?
+                .into_iter()
+                .filter(|s| s.is_swap())
+                .map(|s| s.clone().force_swap())
+                .collect_vec();
 
-        let mut pools = HashSet::new();
+            let mut pools = HashSet::new();
 
 
             for swap in &frontrun_swaps {
@@ -230,89 +223,84 @@ impl SandwichInspector<'_> {
             };
 
             Some((classified_mev, BundleData::Sandwich(sandwich)))
-        }
+            }
 
 
-         for swap in &frontrun_swaps {
-            pools.insert(swap.pool);
+            for swap in &frontrun_swaps {
+                pools.insert(swap.pool);
+             }
 
-        let has_victim = victim_actions
-            .iter()
-            .flatten()
-            .filter(|action| action.is_swap())
-            .map(|f| f.force_swap_ref().pool)
-            .filter(|f| pools.contains(f))
-            .collect::<HashSet<_>>();
+            let has_victim = victim_actions
+                .iter()
+                .flatten()
+                .filter(|action| action.is_swap())
+                .map(|f| f.force_swap_ref().pool)
+                .filter(|f| pools.contains(f))
+                .collect::<HashSet<_>>();
 
-        let victim_swaps = victim_actions
-            .iter()
-            .map(|tx_actions| {
-                tx_actions
-                    .iter()
-                    .filter(|action| action.is_swap())
-                    .map(|f| f.clone().force_swap())
-                    .collect::<Vec<_>>()
-            })
-            .collect();
+            let victim_swaps = victim_actions
+                .iter()
+                .map(|tx_actions| {
+                    tx_actions
+                        .iter()
+                        .filter(|action| action.is_swap())
+                        .map(|f| f.clone().force_swap())
+                        .collect::<Vec<_>>()
+                })
+                .collect();
 
-        if !backrun_swaps
-            .iter()
-            .any(|inner| pools.contains(&inner.pool) && has_victim.contains(&inner.pool))
-        {
-            return None
-        }
+            if !backrun_swaps
+                .iter()
+                .any(|inner| pools.contains(&inner.pool) && has_victim.contains(&inner.pool))
+            {
+                return None
+            }
 
-        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+            let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+            let addr_usd_deltas =
+                self.inner
+                    .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
 
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+            let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
-        let rev_usd = addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
+            let rev_usd = addr_usd_deltas
+                .values()
+                .fold(Rational::ZERO, |acc, delta| acc + delta);
 
-        let gas_used = searcher_gas_details
-            .iter()
-            .map(|g| g.gas_paid())
-            .sum::<u128>();
+            let gas_used = searcher_gas_details
+                .iter()
+                .map(|g| g.gas_paid())
+                .sum::<u128>();
 
-        let gas_used = metadata.get_gas_price_usd(gas_used);
+            let gas_used = metadata.get_gas_price_usd(gas_used);
 
-        let sandwich = Sandwich {
-            frontrun_tx_hash: txes[0],
-            frontrun_gas_details: searcher_gas_details[0],
-            frontrun_swaps,
-            victim_swaps_tx_hashes: victim_txes,
-            victim_swaps,
-            victim_swaps_gas_details: victim_gas,
-            backrun_tx_hash: txes[1],
-            backrun_swaps,
-            backrun_gas_details: searcher_gas_details[1],
-        };
+            let sandwich = Sandwich {
+                frontrun_tx_hash: txes[0],
+                frontrun_gas_details: searcher_gas_details[0],
+                frontrun_swaps,
+                victim_swaps_tx_hashes: victim_txes,
+                victim_swaps,
+                victim_swaps_gas_details: victim_gas,
+                backrun_tx_hash: txes[1],
+                backrun_swaps,
+                backrun_gas_details: searcher_gas_details[1],
+            };
 
-        let classified_mev = BundleHeader {
-            mev_tx_index: idx as u64,
-            eoa,
-            mev_profit_collector,
-            tx_hash: txes[0],
-            mev_contract: mev_executor_contract,
-            block_number: metadata.block_num,
-            mev_type: MevType::Sandwich,
-            finalized_profit_usd: (rev_usd - &gas_used).to_float(),
-            finalized_bribe_usd: gas_used.to_float(),
-        };
-
-        Some((classified_mev, BundleData::Sandwich(sandwich)))  */
+            Some((classified_mev, BundleData::Sandwich(sandwich))) 
     }
 
-    //TODO: Use transaction directionality to differentiate from possible frontruns
-    //TODO: A set of victims backrun can be a subsequent frontrun for someone
-    // elses. In this case, we should consider this backrun as one of the frontruns
-    // tx & backruns
-
+    /// Aggregates potential sandwich attacks from both duplicate senders and
+    /// MEV contracts.
+    ///
+    /// This higher-level function concurrently executes
+    /// `get_possible_sandwich_duplicate_senders`
+    /// and `get_possible_sandwich_duplicate_contracts` to gather a broad set of
+    /// potential sandwich attacks. It aims to cover intricate scenarios,
+    /// including multiple frontruns and backruns targeting different victims.
+    ///
+    /// The results from both functions are combined and deduplicated to form a
+    /// comprehensive set of potential sandwich attacks.
     fn get_possible_sandwich(tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
         if tree.tx_roots.len() < 3 {
             return vec![];
@@ -336,7 +324,6 @@ impl SandwichInspector<'_> {
         unique_results.into_iter().collect()
     }
 }
-
 fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
     let mut duplicate_senders: HashMap<Address, B256> = HashMap::new();
 
@@ -372,7 +359,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
                         }
                         Entry::Occupied(mut o) => {
                             let sandwich = o.get_mut();
-                            sandwich.possible_frontruns.push(root.tx_hash);
+                            sandwich.possible_frontruns.push(prev_tx_hash);
                             sandwich.possible_backrun = root.tx_hash;
                             sandwich.victims.push(frontrun_victims);
                         }
@@ -397,6 +384,13 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
     possible_sandwiches.values().cloned().collect()
 }
 
+/// This function iterates through the block tree to identify potential
+/// sandwiches by looking for a contract that is involved in multiple
+/// transactions within a block.
+///
+/// The approach is aimed at uncovering not just standard sandwich attacks but
+/// also complex scenarios like the "Big Mac Sandwich", where a sequence of
+/// transactions exploits multiple victims with varying slippage tolerances.
 fn get_possible_sandwich_duplicate_contracts(
     tree: Arc<BlockTree<Actions>>,
 ) -> Vec<PossibleSandwich> {
@@ -419,16 +413,18 @@ fn get_possible_sandwich_duplicate_contracts(
                 possible_victims.insert(root.tx_hash, vec![]);
             }
             Entry::Occupied(mut o) => {
-                // Get's prev tx hash for this sender & replaces it with the current tx hash
-                let (prev_tx_hash, frontrun_eoa) = o.insert((root.tx_hash, root.head.address));
-                let frontrun_victims = possible_victims.remove(&prev_tx_hash).unwrap();
+                // Get's prev tx hash &  for this sender & replaces it with the current tx hash
+                let (prev_tx_hash, frontrun_eoa) = o.get_mut();
+                *prev_tx_hash = root.tx_hash;
+
+                let frontrun_victims = possible_victims.remove(prev_tx_hash).unwrap();
 
                 if !frontrun_victims.is_empty() {
                     match possible_sandwiches.entry(root.head.data.get_to_address()) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
-                                eoa:                   frontrun_eoa,
-                                possible_frontruns:    vec![prev_tx_hash],
+                                eoa:                   *frontrun_eoa,
+                                possible_frontruns:    vec![*prev_tx_hash],
                                 possible_backrun:      root.tx_hash,
                                 mev_executor_contract: root.head.data.get_to_address(),
                                 victims:               vec![frontrun_victims],
@@ -436,7 +432,7 @@ fn get_possible_sandwich_duplicate_contracts(
                         }
                         Entry::Occupied(mut o) => {
                             let sandwich = o.get_mut();
-                            sandwich.possible_frontruns.push(root.tx_hash);
+                            sandwich.possible_frontruns.push(*prev_tx_hash);
                             sandwich.possible_backrun = root.tx_hash;
                             sandwich.victims.push(frontrun_victims);
                         }
