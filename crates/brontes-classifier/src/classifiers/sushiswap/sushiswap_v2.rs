@@ -7,7 +7,7 @@ use reth_db::mdbx::RO;
 use crate::SushiSwapV2::{burnCall, mintCall, swapCall};
 
 action_impl!(
-    V2SwapImpl,
+    Protocol::SushiSwapV2,
     Swap,
     swapCall,
     [Ignore<Sync>, Swap],
@@ -19,7 +19,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: swapCall,
-    logs: V2SwapImplSwap,
+    logs: SushiSwapV2Swap,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let logs = logs.Swap_field;
 
@@ -55,7 +55,7 @@ action_impl!(
 );
 
 action_impl!(
-    V2MintImpl,
+    Protocol::SushiSwapV2,
     Mint,
     mintCall,
     // can be a double transfer if the pool has no liquidity
@@ -68,7 +68,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: mintCall,
-     log_data: V2MintImplMint,
+     log_data: SushiSwapV2Mint,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Mint_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -85,7 +85,7 @@ action_impl!(
 );
 
 action_impl!(
-    V2BurnImpl,
+    Protocol::SushiSwapV2,
     Burn,
     burnCall,
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Burn],
@@ -97,7 +97,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: burnCall,
-     log_data: V2BurnImplBurn,
+     log_data: SushiSwapV2Burn,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Burn_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -112,5 +112,3 @@ action_impl!(
         })
     }
 );
-
-action_dispatch!(SushiSwapV2Classifier, V2SwapImpl, V2BurnImpl, V2MintImpl);

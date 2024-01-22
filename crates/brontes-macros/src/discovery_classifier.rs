@@ -11,32 +11,39 @@ pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     let decoder_name_str = decoder_name.to_string();
     let mod_name = Ident::new(&format!("{}_mod", decoder_name_str), decoder_name.span());
 
+    let fn_name = Ident::new(&format!("__{}_address_and_fn", decoder_name), Span::call_site());
+
     Ok(quote! (
         pub use #mod_name::#decoder_name;
+        pub use #mod_name::#fn_name;
+
         #[allow(non_snake_case)]
         mod #mod_name {
             use #function_call_path;
             use super::*;
 
+            pub const fn #fn_name() -> [u8; 24] {
+                    ::alloy_primitives::FixedBytes::new(::alloy_primitives::hex!(#stripped_address))
+                        .concat_const(
+                        ::alloy_primitives::FixedBytes::new(
+                            <#function_call_path as ::alloy_sol_types::SolCall>::SELECTOR
+                            )
+                        ).0
+            }
+
             #[derive(Debug, Default)]
             pub struct #decoder_name;
 
             impl crate::FactoryDecoder for #decoder_name {
-                fn address_and_function_selector(&self) -> [u8; 24] {
-                    let mut result = [0u8; 24];
-                    result[0..20].copy_from_slice(&::alloy_primitives::hex!(#stripped_address));
-                    result[20..].copy_from_slice(&<#function_call_path
-                                                 as ::alloy_sol_types::SolCall>::SELECTOR);
-
-                    result
-                }
 
                 fn decode_new_pool<T: ::brontes_types::traits::TracingProvider>(
                     &self,
                     tracer: ::std::sync::Arc<T>,
                     deployed_address: ::alloy_primitives::Address,
                     parent_calldata: ::alloy_primitives::Bytes,
-                ) -> impl ::std::future::Future<Output = Vec<::brontes_pricing::types::DiscoveredPool>> + Send {
+                ) -> impl ::std::future::Future<
+                    Output = Vec<::brontes_pricing::types::DiscoveredPool
+                        >> + Send {
                     async move {
                         let Ok(decoded_data) = <#function_call_path
                             as ::alloy_sol_types::SolCall>::abi_decode(&parent_calldata[..], false)
@@ -107,13 +114,22 @@ impl Parse for MacroParse {
 pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
     let DiscoveryDispatch { struct_name, rest } = syn::parse2(input.into())?;
 
-    let (mut i, name): (Vec<Index>, Vec<Ident>) = rest
+    let (var_name, fn_name): (Vec<_>, Vec<_>) = rest
+        .iter()
+        .enumerate()
+        .map(|(i, n)| {
+            (
+                Ident::new(&format!("VAR_{i}"), n.span()),
+                Ident::new(&format!("__{}_address_and_fn", n), n.span()),
+            )
+        })
+        .unzip();
+
+    let (i, name): (Vec<Index>, Vec<Ident>) = rest
         .into_iter()
         .enumerate()
         .map(|(i, n)| (Index::from(i), n))
         .unzip();
-
-    i.remove(0);
 
     Ok(quote!(
         #[derive(Default, Debug)]
@@ -125,7 +141,9 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                     factory: ::alloy_primitives::Address,
                     deployed_address: ::alloy_primitives::Address,
                     parent_calldata: ::alloy_primitives::Bytes,
-                ) -> impl ::std::future::Future<Output = Vec<::brontes_pricing::types::DiscoveredPool>> + Send  {
+                ) -> impl ::std::future::Future<
+                Output = Vec<::brontes_pricing::types::DiscoveredPool
+                    >> + Send  {
                 async move {
                     if parent_calldata.len() < 4 {
                         ::tracing::debug!(?deployed_address, ?factory, "invalid calldata length");
@@ -135,31 +153,26 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                     let mut key = [0u8; 24];
                     key[0..20].copy_from_slice(&**factory);
                     key[20..].copy_from_slice(&parent_calldata[0..4]);
-
-
                     let this = Self::default();
 
-                    if key == crate::FactoryDecoder::address_and_function_selector(&this.0) {
-                        return
-                            crate::FactoryDecoder::decode_new_pool(
-                                &this.0,
-                                tracer,
-                                deployed_address,
-                                parent_calldata,
-                            ).await
-                    }
-
-                    #( else if key == crate::FactoryDecoder::address_and_function_selector(&this.#i) {
-                            return crate::FactoryDecoder::decode_new_pool(
-                                &this.#i,
-                                tracer,
-                                deployed_address,
-                                parent_calldata,
-                            ).await
-                        }
+                    #(
+                        const #var_name: [u8; 24] = #fn_name();
                     )*
 
-                    Vec::new()
+                    match key {
+                        #(
+                            #var_name => {
+                            return
+                                crate::FactoryDecoder::decode_new_pool(
+                                    &this.#i,
+                                    tracer,
+                                    deployed_address,
+                                    parent_calldata,
+                                ).await
+                            }
+                        )*
+                        _ => Vec::new()
+                    }
                 }
             }
         }

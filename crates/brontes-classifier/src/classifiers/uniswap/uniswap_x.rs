@@ -1,13 +1,14 @@
 use alloy_primitives::Address;
 use brontes_database::libmdbx::tx::CompressedLibmdbxTx;
-use brontes_macros::{action_dispatch, action_impl};
+use brontes_macros::action_impl;
 use brontes_types::normalized_actions::NormalizedBatch;
 use reth_db::mdbx::RO;
 
 use crate::UniswapX::executeCall;
 
+
 action_impl!(
-    UniXExecuteImpl,
+    Protocol::UniswapX,
     Batch,
     executeCall,
     [Fill],
@@ -34,5 +35,3 @@ action_impl!(
         })
     }
 );
-
-action_dispatch!(UniswapXClassifier, UniXExecuteImpl);
