@@ -270,11 +270,11 @@ pub struct Sandwich {
     /// Gas details for each victim transaction.
     pub victim_swaps_gas_details: Vec<GasDetails>,
     /// Transaction hashes of the backrunning transactions.
-    pub backrun_tx_hash:          Vec<B256>,
+    pub backrun_tx_hash:          B256,
     /// Swaps executed in each backrunning transaction.
-    pub backrun_swaps:            Vec<Vec<NormalizedSwap>>,
+    pub backrun_swaps:            Vec<NormalizedSwap>,
     /// Gas details for each backrunning transaction.
-    pub backrun_gas_details:      Vec<GasDetails>,
+    pub backrun_gas_details:      GasDetails,
 }
 pub fn compose_sandwich_jit(
     mev: Vec<(ClassifiedMev, SpecificMev)>,
@@ -339,7 +339,7 @@ pub fn compose_sandwich_jit(
         victim_swaps_gas_details: sandwich.victim_swaps_gas_details,
         backrun_tx_hash: sandwich.backrun_tx_hash,
         backrun_swaps: sandwich.backrun_swaps,
-        backrun_burns,
+        backrun_burns: jit.backrun_burns,
         backrun_gas_details: sandwich.backrun_gas_details,
     };
 
@@ -374,11 +374,7 @@ impl Mev for Sandwich {
             .iter()
             .map(|gd| gd.gas_paid())
             .sum::<u128>()
-            + self
-                .backrun_gas_details
-                .iter()
-                .map(|gd| gd.gas_paid())
-                .sum::<u128>()
+            + self.backrun_gas_details.gas_paid()
     }
 
     // Should always be on the backrun, but you never know
@@ -389,17 +385,14 @@ impl Mev for Sandwich {
             .sum::<u128>()
             + self
                 .backrun_gas_details
-                .iter()
-                .filter_map(|gd| gd.coinbase_transfer)
-                .sum::<u128>()
+                .coinbase_transfer
+                .unwrap_or_default()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        self.frontrun_tx_hash
-            .iter()
-            .chain(self.backrun_tx_hash.iter())
-            .cloned()
-            .collect()
+        let mut txs = self.frontrun_tx_hash.clone();
+        txs.push(self.backrun_tx_hash);
+        txs
     }
 }
 
@@ -416,10 +409,10 @@ pub struct JitLiquiditySandwich {
     pub victim_swaps_gas_details: Vec<GasDetails>,
 
     // Similar to frontrun fields, backrun fields are also vectors to handle multiple transactions.
-    pub backrun_tx_hash:     Vec<B256>,
-    pub backrun_swaps:       Vec<Vec<NormalizedSwap>>,
-    pub backrun_burns:       Vec<Option<Vec<NormalizedBurn>>>,
-    pub backrun_gas_details: Vec<GasDetails>,
+    pub backrun_tx_hash:     B256,
+    pub backrun_swaps:       Vec<NormalizedSwap>,
+    pub backrun_burns:       Vec<NormalizedBurn>,
+    pub backrun_gas_details: GasDetails,
 }
 
 impl Mev for JitLiquiditySandwich {
@@ -432,11 +425,7 @@ impl Mev for JitLiquiditySandwich {
             .iter()
             .map(|gd| gd.gas_paid())
             .sum::<u128>()
-            + self
-                .backrun_gas_details
-                .iter()
-                .map(|gd| gd.gas_paid())
-                .sum::<u128>()
+            + self.backrun_gas_details.gas_paid()
     }
 
     // Should always be on the backrun, but you never know
@@ -447,17 +436,14 @@ impl Mev for JitLiquiditySandwich {
             .sum::<u128>()
             + self
                 .backrun_gas_details
-                .iter()
-                .filter_map(|gd| gd.coinbase_transfer)
-                .sum::<u128>()
+                .coinbase_transfer
+                .unwrap_or_default()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        self.frontrun_tx_hash
-            .iter()
-            .chain(self.backrun_tx_hash.iter())
-            .cloned()
-            .collect()
+        let mut txs = self.frontrun_tx_hash.clone();
+        txs.push(self.backrun_tx_hash);
+        txs
     }
 }
 

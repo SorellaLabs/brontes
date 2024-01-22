@@ -3,6 +3,7 @@ use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::normalized_actions::{
     ClickhouseVecNormalizedMintOrBurn, ClickhouseVecNormalizedMintOrBurnWithTxHash,
+    ClickhouseVecNormalizedSwap,
 };
 use crate::{
     classified_mev::JitLiquiditySandwich,
@@ -94,15 +95,18 @@ impl Serialize for JitLiquiditySandwich {
             &victim_gas_details.effective_gas_price,
         )?;
 
-        // backrun s
-        ser_struct.serialize_field(
-            "backrun_tx_hash",
-            &FixedString::from(format!("{:?}", self.backrun_tx_hash.first().unwrap_or_default())),
-        )?;
+        // backrun
+        let fixed_str_backrun_tx_hash = FixedString::from(format!("{:?}", &self.backrun_tx_hash));
+        ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
-        let backrun_swaps: ClickhouseDoubleVecNormalizedSwap =
-            (self.backrun_tx_hash.clone(), self.backrun_swaps.clone()).into();
-        ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_swaps.tx_hash)?;
+        let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
+        let backrun_tx_hash_repeated = vec![&self.backrun_tx_hash]
+            .repeat(backrun_swaps.amount_in.len())
+            .into_iter()
+            .map(|tx| FixedString::from(format!("{:?}", &tx)))
+            .collect::<Vec<_>>();
+
+        ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_tx_hash_repeated)?;
         ser_struct.serialize_field("backrun_swaps.trace_idx", &backrun_swaps.trace_index)?;
         ser_struct.serialize_field("backrun_swaps.from", &backrun_swaps.from)?;
         ser_struct.serialize_field("backrun_swaps.recipient", &backrun_swaps.recipient)?;
@@ -112,10 +116,9 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_swaps.amount_in", &backrun_swaps.amount_in)?;
         ser_struct.serialize_field("backrun_swaps.amount_out", &backrun_swaps.amount_out)?;
 
-        let backrun_burns: ClickhouseVecNormalizedMintOrBurnWithTxHash =
-            (self.backrun_tx_hash.clone(), self.backrun_burns.clone()).into();
+        let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self.backrun_burns.clone().into();
 
-        ser_struct.serialize_field("backrun_burns.tx_hash", &backrun_burns.tx_hash)?;
+        ser_struct.serialize_field("backrun_burns.tx_hash", &backrun_tx_hash_repeated)?;
         ser_struct.serialize_field("backrun_burns.trace_idx", &backrun_burns.trace_index)?;
         ser_struct.serialize_field("backrun_burns.from", &backrun_burns.from)?;
         ser_struct.serialize_field("backrun_burns.to", &backrun_burns.to)?;
@@ -123,22 +126,23 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_burns.tokens", &backrun_burns.tokens)?;
         ser_struct.serialize_field("backrun_burns.amounts", &backrun_burns.amounts)?;
 
-        let backrun_gas_details: ClickhouseVecGasDetails =
-            (self.backrun_tx_hash.clone(), self.backrun_gas_details.clone()).into();
-        ser_struct.serialize_field("backrun_gas_details.tx_hash", &backrun_gas_details.tx_hash)?;
+        ser_struct
+            .serialize_field("backrun_gas_details.tx_hash", &vec![fixed_str_backrun_tx_hash])?;
         ser_struct.serialize_field(
             "backrun_gas_details.coinbase_transfer",
-            &backrun_gas_details.coinbase_transfer,
+            &vec![self.backrun_gas_details.coinbase_transfer],
         )?;
         ser_struct.serialize_field(
             "backrun_gas_details.priority_fee",
-            &backrun_gas_details.priority_fee,
+            &vec![self.backrun_gas_details.priority_fee],
         )?;
-        ser_struct
-            .serialize_field("backrun_gas_details.gas_used", &backrun_gas_details.gas_used)?;
+        ser_struct.serialize_field(
+            "backrun_gas_details.gas_used",
+            &vec![self.backrun_gas_details.gas_used],
+        )?;
         ser_struct.serialize_field(
             "backrun_gas_details.effective_gas_price",
-            &backrun_gas_details.effective_gas_price,
+            &vec![self.backrun_gas_details.effective_gas_price],
         )?;
 
         ser_struct.end()
