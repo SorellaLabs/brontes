@@ -66,10 +66,8 @@ impl<'a> LogData<'a> {
     ) -> (TokenStream, Ident) {
         let mod_path = &self.mod_path;
 
-        let log_return_struct_name = Ident::new(
-            &(self.exchange_name.to_string() + &self.action_type.to_string()),
-            Span::call_site(),
-        );
+        let log_return_struct_name =
+            Ident::new(&(self.exchange_name.to_string() + "Logs"), Span::call_site());
 
         let log_return_builder_struct_name = Ident::new(
             &(self.exchange_name.to_string() + &self.action_type.to_string() + "Builder"),
