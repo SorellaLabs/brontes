@@ -62,9 +62,8 @@ impl ActionDispatch {
 
                     let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&data[0..4]);
                     let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(&data[0..4]).0;
-                    let protocol_byte = db_tx.get::<
-                        ::brontes_database::libmdbx::tables::AddressToProtocol>
-                        (target_address).ok()??.to_byte();
+
+                    let protocol_byte = db_tx.get_protocol(target_address).ok()??.to_byte();
 
                     let mut sig_w_byte= [0u8;5];
                     sig_w_byte[0..4].copy_from_slice(&sig);
