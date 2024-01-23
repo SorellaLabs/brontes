@@ -197,7 +197,6 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBat
             .get_metadata_no_dex_price(self.current_block)
             .unwrap();
 
-
         let fut = Box::pin(parser.then(|x| {
             let (traces, header) = x.unwrap().unwrap();
             Self::on_parser_resolve(
