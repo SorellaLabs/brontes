@@ -44,20 +44,22 @@ impl RunArgs {
         // let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         // task_executor.spawn_critical("metrics", metrics_listener);
         //
-        // let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        // let libmdbx = LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?;
+        // let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No
+        // BRONTES_DB_PATH in .env"); let libmdbx =
+        // LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?;
         // let clickhouse = Clickhouse::default();
         //
         // let inspectors = init_all_inspectors(quote_asset, &libmdbx);
         //
-        // let tracer = TracingClient::new(Path::new(&db_path), max_tasks, task_executor.clone());
+        // let tracer = TracingClient::new(Path::new(&db_path), max_tasks,
+        // task_executor.clone());
         //
         // let parser = DParser::new(
         //     metrics_tx,
         //     &libmdbx,
         //     tracer.clone(),
-        //     Box::new(|address, db_tx| db_tx.get_protocol(*address).unwrap().is_none()),
-        // );
+        //     Box::new(|address, db_tx|
+        // db_tx.get_protocol(*address).unwrap().is_none()), );
         //
         // let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         // let classifier = Classifier::new(&libmdbx, tx.clone(), tracer.into());
