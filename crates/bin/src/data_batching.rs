@@ -23,7 +23,7 @@ use brontes_inspect::{
     composer::{compose_mev_results, ComposerResults},
     Inspector,
 };
-use brontes_pricing::{BrontesBatchPricer, GraphManager};
+use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
     classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
@@ -42,7 +42,7 @@ use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, Stream, Stre
 use reth_db::DatabaseError;
 use reth_primitives::Header;
 use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedReceiver};
 use tracing::{debug, error, info, warn};
 
 const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";
@@ -52,7 +52,7 @@ type CollectionFut<'a> =
 
 pub struct DataBatching<'db, T: TracingProvider + Clone, DB: LibmdbxWriter + LibmdbxReader> {
     parser:     &'db Parser<'db, T, DB>,
-    classifier: Classifier<'db, T, DB>,
+    classifier: &'db Classifier<'db, T, DB>,
 
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
@@ -81,10 +81,9 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBat
         libmdbx: &'static DB,
         inspectors: &'db [&'db Box<dyn Inspector>],
         task_executor: TaskExecutor,
+        classifier: &'db Classifier<'db, T, DB>,
+        rx: UnboundedReceiver<DexPriceMsg>,
     ) -> Self {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let classifier = Classifier::new(libmdbx, tx, parser.get_tracer());
-
         let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
         let rest_pairs = libmdbx
@@ -174,11 +173,11 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBat
         drop(graceful_guard);
     }
 
-    fn on_parser_resolve<DB: LibmdbxWriter>(
+    fn on_parser_resolve(
         meta: MetadataNoDex,
         traces: Vec<TxTrace>,
         header: Header,
-        classifier: Classifier<'db, T>,
+        classifier: &'db Classifier<'db, T, DB>,
         tracer: Arc<T>,
         libmdbx: &'db DB,
     ) -> CollectionFut<'db> {
@@ -195,10 +194,9 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBat
         let parser = self.parser.execute(self.current_block);
         let meta = self
             .libmdbx
-            .get_metadata_no_dex(self.current_block)
+            .get_metadata_no_dex_price(self.current_block)
             .unwrap();
 
-        let classifier = self.classifier.clone();
 
         let fut = Box::pin(parser.then(|x| {
             let (traces, header) = x.unwrap().unwrap();
@@ -206,7 +204,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBat
                 meta,
                 traces,
                 header,
-                classifier,
+                self.classifier,
                 self.parser.get_tracer(),
                 self.libmdbx,
             )
@@ -226,7 +224,9 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBat
     }
 }
 
-impl<T: TracingProvider + Clone> Future for DataBatching<'_, T> {
+impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
+    for DataBatching<'_, T, DB>
+{
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -374,7 +374,7 @@ async fn process_results<DB: LibmdbxWriter>(
     let ComposerResults { block_details, mev_details, possibly_missed_arbs } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
 
-    if let Err(e) = db.insert_quotes(metadata.block_num.clone(), metadata.dex_quotes.clone()) {
+    if let Err(e) = db.write_dex_quotes(metadata.block_num.clone(), metadata.dex_quotes.clone()) {
         tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
     }
 
@@ -382,8 +382,8 @@ async fn process_results<DB: LibmdbxWriter>(
     possibly_missed_arbs
 }
 
-fn insert_mev_results(
-    database: &Libmdbx,
+fn insert_mev_results<DB: LibmdbxWriter>(
+    database: &DB,
     block_details: MevBlock,
     mev_details: Vec<(ClassifiedMev, SpecificMev)>,
 ) {
@@ -422,13 +422,8 @@ fn insert_mev_results(
         .fold(String::new(), |acc, arb| acc + &arb + "\n")
     );
 
-    let data = MevBlocksData {
-        block_number: block_details.block_number,
-        mev_blocks:   MevBlockWithClassified { block: block_details, mev: mev_details },
-    };
-
     if database
-        .write_table::<MevBlocks, MevBlocksData>(&vec![data])
+        .save_mev_blocks(block_details.block_number, block_details, mev_details)
         .is_err()
     {
         error!("failed to insert classified data into libmdx");

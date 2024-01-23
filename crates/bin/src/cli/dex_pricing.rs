@@ -1,9 +1,10 @@
 use std::{env, path::Path};
 
+use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 #[cfg(feature = "local")]
 use brontes_core::local_provider::LocalProvider;
-use brontes_database::libmdbx::{tables::AddressToProtocol, LibmdbxReadWriter};
+use brontes_database::libmdbx::{tables::AddressToProtocol, LibmdbxReadWriter, LibmdbxReader};
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -73,9 +74,11 @@ impl DexPricingArgs {
 
         let parser = &*Box::leak(Box::new(DParser::new(
             metrics_tx,
-            &libmdbx,
-            tracer,
-            Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
+            libmdbx,
+            tracer.clone(),
+            Box::new(|address, db_tx: &LibmdbxReadWriter| {
+                db_tx.get_protocol(*address).unwrap().is_none()
+            }),
         )));
 
         // calculate the chunk size using min batch size and max_tasks.
@@ -109,9 +112,12 @@ impl DexPricingArgs {
             info!(batch_id, start_block, end_block, "starting batch");
 
             let ex = task_executor.clone();
+            let tracer = tracer.clone();
             tasks.push(task_executor.spawn_critical_with_graceful_shutdown_signal(
                 "pricing batch",
                 |grace| async move {
+                    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+                    let classifier = Classifier::new(libmdbx, tx.clone(), tracer.into());
                     DataBatching::new(
                         quote_asset,
                         max_pool_loading_tasks as usize,
@@ -122,6 +128,8 @@ impl DexPricingArgs {
                         &libmdbx,
                         &inspectors,
                         ex,
+                        &classifier,
+                        rx,
                     )
                     .run_until_graceful_shutdown(grace)
                     .await;
