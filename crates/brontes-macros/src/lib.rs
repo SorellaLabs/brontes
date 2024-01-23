@@ -4,6 +4,8 @@ mod protocol;
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput};
 
+use crate::action_classifier::ActionMacro;
+
 #[proc_macro]
 /// the action impl macro deals with automatically parsing the data needed for
 /// underlying actions. The use is as followed
@@ -56,7 +58,8 @@ use syn::{parse_macro_input, DeriveInput};
 ///  ````
 ///  ```|index, from_address, target_address, return_data, log_data|```
 pub fn action_impl(input: TokenStream) -> TokenStream {
-    action_classifier::action_impl(input.into())
+    parse_macro_input!(input as ActionMacro)
+        .expand()
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
