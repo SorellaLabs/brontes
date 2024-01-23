@@ -1,4 +1,8 @@
+mod call_data;
+mod logs;
+mod return_data;
 use itertools::Itertools;
+use logs::LogData;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
@@ -6,10 +10,17 @@ use syn::{
     Token,
 };
 
+struct CallDataParsing {
+    log_data:    Option<LogData>,
+    call_data:   Option<CallData>,
+    return_data: Option<ReturnData>,
+}
+
+impl CallDataParsing {}
+
 //TODO: Remove need for writing out args that are always passed in the closure
 // like: from_address, target_address, index
 // Allow for passing a default config struct for optional args
-
 pub fn action_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     let MacroParse {
         protocol_path,
