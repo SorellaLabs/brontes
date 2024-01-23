@@ -5,14 +5,11 @@ use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::mdbx::RO;
 
-use crate::SushiSwapV2::{burnCall, mintCall, swapCall};
-
 action_impl!(
     Protocol::SushiSwapV2,
+    crate::SushiSwapV2::swapCall,
     Swap,
-    swapCall,
     [Ignore<Sync>, Swap],
-    SushiSwapV2,
     call_data: true,
     logs: true,
     |trace_index,
@@ -20,7 +17,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: swapCall,
-    logs: SushiSwapV2swapCallSwap,
+    logs: SushiSwapV2swapCallLogs,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let logs = logs.Swap_field;
 
@@ -57,11 +54,10 @@ action_impl!(
 
 action_impl!(
     Protocol::SushiSwapV2,
+    crate::SushiSwapV2::mintCall,
     Mint,
-    mintCall,
     // can be a double transfer if the pool has no liquidity
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Mint],
-    SushiSwapV2,
     logs: true,
     call_data: true,
     |trace_index,
@@ -69,7 +65,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: mintCall,
-     log_data: SushiSwapV2mintCallMint,
+     log_data: SushiSwapV2mintCallLogs,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Mint_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -87,10 +83,9 @@ action_impl!(
 
 action_impl!(
     Protocol::SushiSwapV2,
+    crate::SushiSwapV2::burnCall,
     Burn,
-    burnCall,
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Burn],
-    SushiSwapV2,
     call_data: true,
     logs: true,
     |trace_index,
@@ -98,7 +93,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: burnCall,
-     log_data: SushiSwapV2burnCallBurn,
+     log_data: SushiSwapV2burnCallLogs,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Burn_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
