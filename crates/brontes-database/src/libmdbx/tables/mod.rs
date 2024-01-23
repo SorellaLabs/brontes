@@ -254,8 +254,6 @@ macro_rules! compressed_table {
     };
 }
 
-
-
 macro_rules! table {
     ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident | $init_method:tt | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
         $(#[$docs])+
