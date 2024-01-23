@@ -2,7 +2,7 @@
 pub mod decoding;
 pub mod errors;
 pub mod executor;
-// #[cfg(feature = "local")]
+#[cfg(feature = "local")]
 pub mod local_provider;
 pub mod macros;
 pub mod missing_decimals;
