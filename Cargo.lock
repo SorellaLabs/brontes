@@ -1436,6 +1436,7 @@ dependencies = [
  "alloy-rpc-types",
  "alloy-sol-macro",
  "alloy-sol-types",
+ "alloy-transport-http",
  "async-trait",
  "auto_impl",
  "brontes-core",
