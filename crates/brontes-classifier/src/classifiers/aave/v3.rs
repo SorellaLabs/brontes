@@ -5,14 +5,11 @@ use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation};
 use reth_db::mdbx::RO;
 
-use crate::AaveV3::{flashLoanCall, flashLoanSimpleCall, liquidationCallCall};
-
 action_impl!(
     Protocol::AaveV3,
+    crate::AaveV3::liquidationCallCall,
     Liquidation,
-    liquidationCallCall,
     [LiquidationEvent],
-    AaveV3,
     call_data: true,
     |trace_index,
     from_address: Address,
@@ -36,10 +33,9 @@ action_impl!(
 
 action_impl!(
     Protocol::AaveV3,
+    crate::AaveV3::flashLoanCall,
     FlashLoan,
-    flashLoanCall,
     [],
-    AaveV3,
     call_data: true,
     |trace_index,
     from_address: Address,
@@ -72,10 +68,9 @@ action_impl!(
 
 action_impl!(
     Protocol::AaveV3,
+    crate::AaveV3::flashLoanSimpleCall,
     FlashLoan,
-    flashLoanSimpleCall,
     [],
-    AaveV3,
     call_data: true,
     |trace_index,
     from_address: Address,
