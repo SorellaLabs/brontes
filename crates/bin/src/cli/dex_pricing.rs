@@ -3,7 +3,7 @@ use std::{env, path::Path};
 use brontes_core::decoding::Parser as DParser;
 #[cfg(feature = "local")]
 use brontes_core::local_provider::LocalProvider;
-use brontes_database::libmdbx::{tables::AddressToProtocol, Libmdbx};
+use brontes_database::libmdbx::{tables::AddressToProtocol, LibmdbxReadWriter};
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -55,8 +55,8 @@ impl DexPricingArgs {
         task_executor.spawn_critical("metrics listener", metrics_listener);
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx =
-            Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None)?)) as &'static Libmdbx;
+        let libmdbx = Box::leak(Box::new(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?))
+            as &'static LibmdbxReadWriter;
 
         let inspectors = init_all_inspectors(quote_asset, libmdbx);
 
