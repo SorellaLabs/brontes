@@ -2,9 +2,7 @@ use alloy_primitives::TxHash;
 use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
 use reth_rpc::eth::error::EthResult;
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt,
-};
+use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
 
 use crate::structured_trace::TxTrace;
 
