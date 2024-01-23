@@ -5,7 +5,7 @@ use std::{
 };
 
 use alloy_primitives::U256;
-use brontes_database::libmdbx::{tables::TokenDecimals, Libmdbx};
+use brontes_database::libmdbx::{tables::TokenDecimals, Libmdbx, LibmdbxReader};
 use brontes_types::{
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedTransfer},
@@ -21,25 +21,20 @@ use tracing::error;
 use crate::MetadataCombined;
 
 #[derive(Debug)]
-pub struct SharedInspectorUtils<'db> {
-    quote: Address,
-    db:    &'db Libmdbx,
+pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
+    pub(crate) quote: Address,
+    pub(crate) db:    &'db DB,
 }
 
-impl<'db> SharedInspectorUtils<'db> {
-    pub fn new(quote_address: Address, db: &'db Libmdbx) -> Self {
+impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
+    pub fn new(quote_address: Address, db: &'db DB) -> Self {
         SharedInspectorUtils { quote: quote_address, db }
-    }
-
-    pub fn try_get_decimals(&self, address: Address) -> Option<u8> {
-        let tx = self.db.ro_tx().unwrap();
-        tx.get::<TokenDecimals>(address).unwrap()
     }
 }
 
 type SwapTokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 
-impl SharedInspectorUtils<'_> {
+impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the swap deltas.
     /// Change to keep address level deltas
     pub(crate) fn calculate_token_deltas(&self, actions: &Vec<Vec<Actions>>) -> SwapTokenDeltas {
@@ -51,11 +46,11 @@ impl SharedInspectorUtils<'_> {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-                let Some(decimals_in) = self.try_get_decimals(swap.token_in) else {
+                let Ok(Some(decimals_in)) = self.db.try_get_token_decimals(swap.token_in) else {
                     error!(?swap.token_in, "token decimals not found");
                     continue;
                 };
-                let Some(decimals_out) = self.try_get_decimals(swap.token_out) else {
+                let Ok(Some(decimals_out)) = self.db.try_get_token_decimals(swap.token_out) else {
                     error!(?swap.token_out, "token decimals not found");
                     continue;
                 };
@@ -132,7 +127,7 @@ impl SharedInspectorUtils<'_> {
         amount: U256,
         metadata: &Arc<MetadataCombined>,
     ) -> Option<Rational> {
-        let Some(decimals) = self.try_get_decimals(token_address) else {
+        let Ok(Some(decimals)) = self.db.try_get_token_decimals(token_address) else {
             error!("token decimals not found for calcuate dex usd amount");
             return None
         };
@@ -176,7 +171,7 @@ impl SharedInspectorUtils<'_> {
     fn transfer_deltas(&self, transfers: Vec<&NormalizedTransfer>, deltas: &mut SwapTokenDeltas) {
         for transfer in transfers.into_iter() {
             // normalize token decimals
-            let Some(decimals) = self.try_get_decimals(transfer.token) else {
+            let Ok(Some(decimals)) = self.db.try_get_token_decimals(transfer.token) else {
                 error!("token decimals not found");
                 continue;
             };

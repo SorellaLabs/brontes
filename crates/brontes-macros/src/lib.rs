@@ -103,7 +103,7 @@ pub fn action_impl(input: TokenStream) -> TokenStream {
 ///      msg_sender: Address,
 ///     call_data: swapCall,
 ///     log_data: UniswapV2swapCallLogs,
-///     db_tx: &CompressedLibmdbxTx<RO>| {
+///     db_tx: &DB| {
 ///         todo!()
 ///     }
 /// );
