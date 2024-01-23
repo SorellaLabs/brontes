@@ -4,7 +4,10 @@ use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
-use brontes_database::{libmdbx::Libmdbx, TxTraces};
+use brontes_database::{
+    libmdbx::{Libmdbx, LibmdbxReader},
+    TxTraces,
+};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -25,19 +28,18 @@ use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 //#[derive(Clone)]
-pub struct TraceParser<'db, T: TracingProvider> {
+pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader> {
+    libmdbx:               &'db DB,
     #[allow(unused)]
-    libmdbx:               &'db Libmdbx,
-    #[allow(unused)]
-    should_fetch:          Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
+    should_fetch:          Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl<'db, T: TracingProvider> TraceParser<'db, T> {
+impl<'db, T: TracingProvider, DB: LibmdbxReader> TraceParser<'db, T, DB> {
     pub fn new(
-        libmdbx: &'db Libmdbx,
-        should_fetch: Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
+        libmdbx: &'db DB,
+        should_fetch: Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
@@ -49,10 +51,10 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
     }
 
     pub async fn load_block_from_db(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
-        let tx = self.libmdbx.ro_tx().ok()?;
-        if let Some(trace) = tx.get::<TxTraces>(block_num).ok()? {
+        let traces = self.libmdbx.load_trace(block_num).ok()?;
+        if let Some(trace) = traces {
             return Some((
-                trace.traces.unwrap(),
+                trace,
                 self.tracer.header_by_number(block_num).await.ok()??,
             ))
         }

@@ -17,7 +17,7 @@ use brontes_core::{
 use brontes_database::libmdbx::{
     tables::{CexPrice, DexPrice, Metadata, MevBlocks},
     types::{dex_price::DexPriceData, mev_block::MevBlocksData, LibmdbxData},
-    Libmdbx,
+    Libmdbx, LibmdbxReader, LibmdbxWriter,
 };
 use brontes_inspect::{
     composer::{compose_mev_results, ComposerResults},
@@ -50,9 +50,9 @@ const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
 
-pub struct DataBatching<'db, T: TracingProvider + Clone> {
-    parser:     &'db Parser<'db, T>,
-    classifier: Classifier<'db, T>,
+pub struct DataBatching<'db, T: TracingProvider + Clone, DB: LibmdbxWriter + LibmdbxReader> {
+    parser:     &'db Parser<'db, T, DB>,
+    classifier: Classifier<'db, T, DB>,
 
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
@@ -64,21 +64,21 @@ pub struct DataBatching<'db, T: TracingProvider + Clone> {
     end_block:     u64,
     batch_id:      u64,
 
-    libmdbx:    &'static Libmdbx,
+    libmdbx:    &'static DB,
     inspectors: &'db [&'db Box<dyn Inspector>],
 
     missed_mev_ops: Vec<(B256, u128)>,
 }
 
-impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
+impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBatching<'db, T, DB> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
         max_pool_loading_tasks: usize,
         batch_id: u64,
         start_block: u64,
         end_block: u64,
-        parser: &'db Parser<'db, T>,
-        libmdbx: &'static Libmdbx,
+        parser: &'db Parser<'db, T, DB>,
+        libmdbx: &'static DB,
         inspectors: &'db [&'db Box<dyn Inspector>],
         task_executor: TaskExecutor,
     ) -> Self {
@@ -174,13 +174,13 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
         drop(graceful_guard);
     }
 
-    fn on_parser_resolve(
+    fn on_parser_resolve<DB: LibmdbxWriter>(
         meta: MetadataNoDex,
         traces: Vec<TxTrace>,
         header: Header,
         classifier: Classifier<'db, T>,
         tracer: Arc<T>,
-        libmdbx: &'db Libmdbx,
+        libmdbx: &'db DB,
     ) -> CollectionFut<'db> {
         Box::pin(async move {
             let number = header.number;
@@ -193,7 +193,10 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
 
     fn start_next_block(&mut self) {
         let parser = self.parser.execute(self.current_block);
-        let meta = self.get_metadata_no_dex(self.current_block).unwrap();
+        let meta = self
+            .libmdbx
+            .get_metadata_no_dex(self.current_block)
+            .unwrap();
 
         let classifier = self.classifier.clone();
 
@@ -220,70 +223,6 @@ impl<'db, T: TracingProvider + Clone> DataBatching<'db, T> {
             tree.into(),
             meta.into(),
         )));
-    }
-
-    pub fn get_metadata_no_dex(&self, block_num: u64) -> eyre::Result<MetadataNoDex> {
-        let tx = self.libmdbx.ro_tx()?;
-
-        let block_meta: MetadataInner = tx
-            .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        /*
-                let db_cex_quotes: CexPriceMap = tx
-                    .get::<CexPrice>(block_num)?
-                    .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-        */
-
-        let db_cex_quotes: CexPriceMap = match tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))
-        {
-            Ok(map) => map,
-            Err(e) => {
-                warn!(target:"brontes","failed to read CexPrice db table for block {} -- {:?}", block_num, e);
-                CexPriceMap::default()
-            }
-        };
-
-        let eth_prices =
-            if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
-                eth_usdt
-            } else {
-                db_cex_quotes
-                    .get_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-                    .unwrap_or_default()
-            };
-
-        let mut cex_quotes = CexPriceMap::new();
-        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
-            cex_quotes.0.insert(
-                pair,
-                quote
-                    .into_iter()
-                    .map(|q| CexQuote {
-                        exchange:  q.exchange,
-                        timestamp: q.timestamp,
-                        price:     q.price,
-                        token0:    q.token0,
-                    })
-                    .collect::<Vec<_>>(),
-            );
-        });
-
-        Ok(MetadataNoDex {
-            block_num,
-            block_hash: block_meta.block_hash,
-            relay_timestamp: block_meta.relay_timestamp,
-            p2p_timestamp: block_meta.p2p_timestamp,
-            proposer_fee_recipient: block_meta.proposer_fee_recipient,
-            proposer_mev_reward: block_meta.proposer_mev_reward,
-            cex_quotes,
-            eth_prices: max(eth_prices.price.0, eth_prices.price.1),
-
-            mempool_flow: block_meta.mempool_flow.into_iter().collect(),
-            block_timestamp: block_meta.block_timestamp,
-        })
     }
 }
 
@@ -426,8 +365,8 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
     }
 }
 
-async fn process_results(
-    db: &Libmdbx,
+async fn process_results<DB: LibmdbxWriter>(
+    db: &DB,
     inspectors: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<MetadataCombined>,
@@ -435,7 +374,7 @@ async fn process_results(
     let ComposerResults { block_details, mev_details, possibly_missed_arbs } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
 
-    if let Err(e) = insert_quotes(db, metadata.block_num.clone(), metadata.dex_quotes.clone()) {
+    if let Err(e) = db.insert_quotes(metadata.block_num.clone(), metadata.dex_quotes.clone()) {
         tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
     }
 
@@ -494,28 +433,4 @@ fn insert_mev_results(
     {
         error!("failed to insert classified data into libmdx");
     }
-}
-
-fn insert_quotes(database: &Libmdbx, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
-    let data = quotes
-        .0
-        .into_iter()
-        .enumerate()
-        .filter(|(_, v)| v.is_some())
-        .map(|(idx, value)| DexPriceData::new(block_num, idx as u16, DexQuote(value.unwrap())))
-        .collect::<Vec<_>>();
-
-    database.update_db(|tx| {
-        let mut cursor = tx.cursor_write::<DexPrice>()?;
-
-        data.into_iter()
-            .map(|entry| {
-                let (key, val) = entry.into_key_val();
-                cursor.upsert(key, val)?;
-                Ok(())
-            })
-            .collect::<Result<Vec<_>, DatabaseError>>()
-    })??;
-
-    Ok(())
 }

@@ -22,7 +22,7 @@ action_impl!(
      msg_sender: Address,
     call_data: swapCall,
     return_data: swapReturn,
-    db_tx: &CompressedLibmdbxTx<RO>| {
+    db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
@@ -68,7 +68,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: mintCall,
-     return_data: mintReturn,  db_tx: &CompressedLibmdbxTx<RO>| {
+     return_data: mintReturn,  db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -95,7 +95,7 @@ action_impl!(
     target_address: Address,
      msg_sender: Address,
     return_data: burnReturn,
-    db_tx: &CompressedLibmdbxTx<RO>| {
+    db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
 
@@ -127,7 +127,7 @@ action_impl!(
     to_addr: Address,
      msg_sender: Address,
     call_data: collectCall,
-    return_data: collectReturn,  db_tx: &CompressedLibmdbxTx<RO>
+    return_data: collectReturn,  db_tx: &DB
     | {
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];

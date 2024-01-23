@@ -1,23 +1,23 @@
 use std::sync::Arc;
 
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{classified_mev::SpecificMev, normalized_actions::Actions, tree::BlockTree};
 use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined};
 
-pub struct LongTailInspector<'db> {
-    _inner: SharedInspectorUtils<'db>,
+pub struct LongTailInspector<'db, DB: LibmdbxReader> {
+    _inner: SharedInspectorUtils<'db, DB>,
 }
 
-impl<'db> LongTailInspector<'db> {
-    pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
+impl<'db, DB: LibmdbxReader> LongTailInspector<'db, DB> {
+    pub fn new(quote: Address, db: &'db DB) -> Self {
         Self { _inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
 #[async_trait::async_trait]
-impl Inspector for LongTailInspector<'_> {
+impl<DB: LibmdbxReader> Inspector for LongTailInspector<'_, DB> {
     async fn process_tree(
         &self,
         _tree: Arc<BlockTree<Actions>>,

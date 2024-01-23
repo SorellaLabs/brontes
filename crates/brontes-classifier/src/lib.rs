@@ -1,6 +1,7 @@
 use std::{fmt::Debug, sync::Arc};
 
 use alloy_primitives::{Address, Bytes, Log};
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_pricing::types::{DiscoveredPool, PoolUpdate};
 use brontes_types::traits::TracingProvider;
 use futures::Future;
@@ -44,7 +45,7 @@ sol! {
 }
 
 pub trait ActionCollection: Sync + Send {
-    fn dispatch(
+    fn dispatch<DB: LibmdbxReader>(
         &self,
         trace_index: u64,
         call_data: Bytes,
@@ -53,14 +54,14 @@ pub trait ActionCollection: Sync + Send {
         target_address: Address,
         msg_sender: Address,
         logs: &Vec<Log>,
-        db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
+        db_tx: &DB,
         block: u64,
         tx_idx: u64,
     ) -> Option<(PoolUpdate, Actions)>;
 }
 
 pub trait IntoAction: Debug + Send + Sync {
-    fn decode_trace_data(
+    fn decode_trace_data<DB: LibmdbxReader>(
         &self,
         index: u64,
         call_data: Bytes,
@@ -69,7 +70,7 @@ pub trait IntoAction: Debug + Send + Sync {
         target_address: Address,
         msg_sender: Address,
         logs: &Vec<Log>,
-        db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<RO>,
+        db_tx: &DB,
     ) -> Option<Actions>;
 }
 

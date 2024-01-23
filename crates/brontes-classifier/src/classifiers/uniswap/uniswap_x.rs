@@ -18,7 +18,7 @@ action_impl!(
     msg_sender: Address,
     call_data: executeCall,
     logs: UniswapXexecuteCallLogs,
-    db_tx: &CompressedLibmdbxTx<RO>| {
+    db_tx: &DB| {
         let logs = logs.Fill_field;
 
         //TODO: Finish implementing this
