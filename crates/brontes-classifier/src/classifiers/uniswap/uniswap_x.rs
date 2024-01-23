@@ -5,14 +5,11 @@ use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::NormalizedBatch;
 use reth_db::mdbx::RO;
 
-use crate::UniswapX::executeCall;
-
 action_impl!(
     Protocol::UniswapX,
+    crate::UniswapX::executeCall,
     Batch,
-    executeCall,
     [Fill],
-    UniswapX,
     call_data: true,
     logs: true,
     |trace_index,
