@@ -60,6 +60,8 @@ impl ActionMacro {
             Ident::new(&format!("__{}_action_sig", exchange_name_w_call), Span::call_site());
 
         Ok(quote! {
+            #[allow(unused_imports)]
+            use #path_to_call;
 
             #[allow(non_snake_case)]
             pub const fn #call_fn_name() -> [u8; 5] {
@@ -170,8 +172,6 @@ fn parse_config(input: &mut syn::parse::ParseStream) -> syn::Result<(bool, bool,
     let mut return_data = false;
     let mut call_data = false;
 
-    input.parse::<Token![,]>()?;
-
     while !input.peek(Token![|]) {
         let arg: Ident = input.parse()?;
         input.parse::<Token![:]>()?;
@@ -231,7 +231,7 @@ fn parse_decode_fn_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path
     if fn_path.segments.len() < 2 {
         return Err(syn::Error::new(
             fn_path.span(),
-            "incorrect path, Should be ProtocolModName::FnCall",
+            "incorrect path, Should be <crate>::<path_to>::ProtocolModName::FnCall",
         ))
     }
 
