@@ -13,7 +13,9 @@ use brontes_core::{
 };
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{tables::MevBlocks, types::mev_block::MevBlocksData, Libmdbx},
+    libmdbx::{
+        tables::MevBlocks, types::mev_block::MevBlocksData, Libmdbx, LibmdbxReader, LibmdbxWriter,
+    },
 };
 use brontes_inspect::{
     composer::{compose_mev_results, ComposerResults},
@@ -31,13 +33,13 @@ use tracing::{debug, error, info};
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (MetadataNoDex, BlockTree<Actions>)> + Send + 'a>>;
 
-pub struct TipInspector<'inspector, T: TracingProvider> {
+pub struct TipInspector<'inspector, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     current_block: u64,
 
-    parser:            &'inspector Parser<'inspector, T>,
-    classifier:        &'inspector Classifier<'inspector, T>,
+    parser:            &'inspector Parser<'inspector, T, DB>,
+    classifier:        &'inspector Classifier<'inspector, T, DB>,
     clickhouse:        &'inspector Clickhouse,
-    database:          &'inspector Libmdbx,
+    database:          &'inspector DB,
     inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
     // pending future data
     classifier_future: FuturesOrdered<CollectionFut<'inspector>>,
@@ -48,12 +50,14 @@ pub struct TipInspector<'inspector, T: TracingProvider> {
     insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
-impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
+impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
+    TipInspector<'inspector, T, DB>
+{
     pub fn new(
-        parser: &'inspector Parser<'inspector, T>,
+        parser: &'inspector Parser<'inspector, T, DB>,
         clickhouse: &'inspector Clickhouse,
-        database: &'inspector Libmdbx,
-        classifier: &'inspector Classifier<'_, T>,
+        database: &'inspector DB,
+        classifier: &'inspector Classifier<'_, T, DB>,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>],
         current_block: u64,
     ) -> Self {
@@ -103,16 +107,9 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
             "inserting the collected results \n {:#?}", results
         );
 
-        let data_res = MevBlocksData {
-            block_number: results.block_details.block_number,
-            mev_blocks:   MevBlockWithClassified {
-                block: results.block_details,
-                mev:   results.mev_details,
-            },
-        };
         if self
             .database
-            .write_table::<MevBlocks, MevBlocksData>(&vec![data_res])
+            .save_mev_blocks(self.current_block, results.block_details, results.mev_details)
             .is_err()
         {
             error!("failed to insert classified data into libmdx");
@@ -181,7 +178,7 @@ impl<'inspector, T: TracingProvider> TipInspector<'inspector, T> {
     }
 }
 
-impl<T: TracingProvider> Future for TipInspector<'_, T> {
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspector<'_, T, DB> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
