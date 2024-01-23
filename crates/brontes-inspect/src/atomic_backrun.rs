@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter};
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::{Actions, NormalizedSwap},
@@ -16,18 +16,18 @@ use crate::{
     shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined, SpecificMev,
 };
 
-pub struct AtomicBackrunInspector<'db> {
-    inner: SharedInspectorUtils<'db>,
+pub struct AtomicBackrunInspector<'db, DB: LibmdbxReader> {
+    inner: SharedInspectorUtils<'db, DB>,
 }
 
-impl<'db> AtomicBackrunInspector<'db> {
-    pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
+impl<'db, DB: LibmdbxReader> AtomicBackrunInspector<'db, DB> {
+    pub fn new(quote: Address, db: &'db DB) -> Self {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
 #[async_trait::async_trait]
-impl Inspector for AtomicBackrunInspector<'_> {
+impl<DB: LibmdbxReader> Inspector for AtomicBackrunInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
@@ -63,7 +63,7 @@ impl Inspector for AtomicBackrunInspector<'_> {
     }
 }
 
-impl AtomicBackrunInspector<'_> {
+impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
     fn process_swaps(
         &self,
         tx_hash: B256,

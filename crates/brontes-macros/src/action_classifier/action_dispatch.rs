@@ -42,7 +42,7 @@ impl ActionDispatch {
             pub struct #struct_name(#(pub #name,)*);
 
             impl crate::ActionCollection for #struct_name {
-                fn dispatch(
+                fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader> (
                     &self,
                     index: u64,
                     data: ::alloy_primitives::Bytes,
@@ -51,9 +51,7 @@ impl ActionDispatch {
                     target_address: ::alloy_primitives::Address,
                     msg_sender: ::alloy_primitives::Address,
                     logs: &Vec<::alloy_primitives::Log>,
-                    db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<
-                        ::reth_db::mdbx::RO
-                    >,
+                    db_tx: &DB,
                     block: u64,
                     tx_idx: u64,
                 ) -> Option<(
