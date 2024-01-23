@@ -102,6 +102,7 @@ parquet = "50"
 arrow = "50"
 human_bytes = "0.4.3"
 rkyv.workspace = true
+auto_impl.workspace = true
 
 
 [dev-dependencies]

@@ -3,12 +3,14 @@ use std::{cmp::max, collections::HashMap, path::Path};
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
+    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_to_tokens::PoolTokens,
         cex::{CexPriceMap, CexQuote},
         dex::{DexQuote, DexQuotes},
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
+        mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
     },
     extra_processing::Pair,
@@ -23,10 +25,14 @@ use crate::{
     libmdbx::{
         tables::{CexPrice, DexPrice, Metadata, MevBlocks},
         types::{
-            address_to_protocol::AddressToProtocolData, address_to_tokens::AddressToTokensData,
-            dex_price::DexPriceData, mev_block::MevBlocksData,
-            pool_creation_block::PoolCreationBlocksData, subgraphs::SubGraphsData,
-            token_decimals::TokenDecimalsData, LibmdbxData,
+            address_to_protocol::AddressToProtocolData,
+            address_to_tokens::AddressToTokensData,
+            dex_price::{make_filter_key_range, DexPriceData},
+            mev_block::MevBlocksData,
+            pool_creation_block::PoolCreationBlocksData,
+            subgraphs::SubGraphsData,
+            token_decimals::TokenDecimalsData,
+            LibmdbxData,
         },
     },
     AddressToProtocol, AddressToTokens, PoolCreationBlocks, SubGraphs, TokenDecimals,
@@ -108,7 +114,76 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined> {
-        todo!()
+        let tx = self.0.ro_tx()?;
+        let block_meta: MetadataInner = tx
+            .get::<Metadata>(block_num)?
+            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+
+        let db_cex_quotes = CexPriceMap(
+            tx.get::<CexPrice>(block_num)?
+                .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
+                .0,
+        );
+
+        let db_cex_quotes: CexPriceMap = CexPriceMap::default();
+
+        let eth_prices =
+            if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
+                eth_usdt
+            } else {
+                db_cex_quotes
+                    .get_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
+                    .unwrap_or_default()
+            };
+
+        let mut cex_quotes = CexPriceMap::new();
+        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
+            cex_quotes.0.insert(
+                pair,
+                quote
+                    .into_iter()
+                    .map(|q| CexQuote {
+                        exchange:  q.exchange,
+                        timestamp: q.timestamp,
+                        price:     q.price,
+                        token0:    q.token0,
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        });
+
+        let dex_quotes = Vec::new();
+        let key_range = make_filter_key_range(block_num);
+        let _db_dex_quotes = tx
+            .cursor_read::<DexPrice>()?
+            .walk_range(key_range.0..key_range.1)?
+            .flat_map(|inner| {
+                if let Ok((key, _val)) = inner.map(|row| (row.0, row.1)) {
+                    //dex_quotes.push(Default::default());
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        //.get::<DexPrice>(block_num)?
+        //.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+
+        Ok(MetadataCombined {
+            db:         MetadataNoDex {
+                block_num,
+                block_hash: block_meta.block_hash,
+                relay_timestamp: block_meta.relay_timestamp,
+                p2p_timestamp: block_meta.p2p_timestamp,
+                proposer_fee_recipient: block_meta.proposer_fee_recipient,
+                proposer_mev_reward: block_meta.proposer_mev_reward,
+                cex_quotes,
+                eth_prices: max(eth_prices.price.0, eth_prices.price.1),
+                block_timestamp: block_meta.block_timestamp,
+                mempool_flow: block_meta.mempool_flow.into_iter().collect(),
+            },
+            dex_quotes: DexQuotes(dex_quotes),
+        })
     }
 
     fn try_get_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
@@ -211,6 +286,20 @@ impl LibmdbxReader for LibmdbxReadWriter {
 }
 
 impl LibmdbxWriter for LibmdbxReadWriter {
+    fn save_mev_blocks(
+        &self,
+        block_number: u64,
+        block: MevBlock,
+        mev: Vec<(ClassifiedMev, SpecificMev)>,
+    ) -> eyre::Result<()> {
+        let data =
+            MevBlocksData { block_number, mev_blocks: MevBlockWithClassified { block, mev } };
+
+        self.0
+            .write_table::<MevBlocks, MevBlocksData>(&vec![data])?;
+        Ok(())
+    }
+
     fn write_dex_quotes(&self, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
         let data = quotes
             .0
