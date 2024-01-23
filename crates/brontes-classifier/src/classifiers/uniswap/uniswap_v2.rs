@@ -22,8 +22,8 @@ action_impl!(
         let data = log_data.Swap_field;
         let recipient = call_data.to;
 
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
@@ -67,8 +67,8 @@ action_impl!(
      log_data: UniswapV2mintCallLogs,
      db_tx: &DB| {
         let log_data = log_data.Mint_field;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedMint {
             recipient: call_data.to,
             from: from_address,
@@ -94,8 +94,8 @@ action_impl!(
      log_data: UniswapV2burnCallLogs,
      db_tx: &DB| {
         let log_data = log_data.Burn_field;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedBurn {
             recipient: call_data.to,
             to: target_address,

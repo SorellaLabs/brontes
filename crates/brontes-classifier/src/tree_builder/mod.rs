@@ -318,8 +318,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        let db_tx = self.libmdbx.ro_tx().unwrap();
-
         let call_data = trace.get_calldata();
         let return_bytes = trace.get_return_calldata();
 
@@ -331,7 +329,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             target_address,
             trace.msg_sender,
             &trace.logs,
-            &db_tx,
+            self.libmdbx,
             block,
             tx_idx,
         ) {
