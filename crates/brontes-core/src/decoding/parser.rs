@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::{libmdbx::Libmdbx, TxTraces};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -48,8 +48,29 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         self.tracer.clone()
     }
 
+    pub async fn load_block_from_db(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+        let tx = self.libmdbx.ro_tx().ok()?;
+        if let Some(trace) = tx.get::<TxTraces>(block_num).ok()? {
+            return Some((
+                trace.traces.unwrap(),
+                self.tracer.header_by_number(block_num).await.ok()??,
+            ))
+        }
+
+        return None
+    }
+
     /// executes the tracing of a given block
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+        if let Some(res) = self.load_block_from_db(block_num).await {
+            return Some(res)
+        }
+        #[cfg(feature = "local")]
+        {
+            tracing::error!("no block found in db");
+            return None
+        }
+
         let parity_trace = self.trace_block(block_num).await;
         let receipts = self.get_receipts(block_num).await;
 
