@@ -1,6 +1,8 @@
 use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
+#[cfg(feature = "local")]
+use brontes_core::local_provider::LocalProvider;
 use brontes_database::libmdbx::{tables::AddressToProtocol, Libmdbx};
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
@@ -58,8 +60,16 @@ impl DexPricingArgs {
 
         let inspectors = init_all_inspectors(quote_asset, libmdbx);
 
+        #[cfg(not(feature = "local"))]
         let tracer =
             TracingClient::new(Path::new(&db_path), tracing_max_tasks, task_executor.clone());
+        #[cfg(feature = "local")]
+        let tracer = {
+            let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
+            let db_port = env::var("RETH_PORT").expect("No DB port.env");
+            let url = format!("{db_endpoint}:{db_port}");
+            LocalProvider::new(url)
+        };
 
         let parser = &*Box::leak(Box::new(DParser::new(
             metrics_tx,

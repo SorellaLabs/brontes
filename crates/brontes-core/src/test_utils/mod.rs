@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use brontes_database::{libmdbx::Libmdbx, TxTraces};
+use brontes_database::libmdbx::Libmdbx;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::{
@@ -53,28 +53,10 @@ impl TraceLoader {
     }
 
     async fn trace_block(&self, block: u64) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
-        let tx = self.libmdbx.ro_tx()?;
-        if let Some(trace) = tx.get::<TxTraces>(block).unwrap() {
-            return Ok((
-                trace.traces.unwrap(),
-                self.tracing_provider
-                    .get_tracer()
-                    .header_by_number(block)
-                    .await?
-                    .unwrap(),
-            ))
-        } else {
-            #[cfg(not(feature = "local"))]
-            {
-                self.tracing_provider
-                    .execute_block(block)
-                    .await
-                    .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
-            }
-
-            #[cfg(feature = "local")]
-            return Err(TraceLoaderError::LocalTraceMissingError)
-        }
+        self.tracing_provider
+            .execute_block(block)
+            .await
+            .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
     }
 
     pub async fn get_metadata(&self, block: u64) -> Result<MetadataCombined, TraceLoaderError> {
@@ -257,8 +239,6 @@ pub enum TraceLoaderError {
     BlockTraceError(u64),
     #[error(transparent)]
     ProviderError(#[from] ProviderError),
-    #[error("traces not saved in local db")]
-    LocalTraceMissingError,
     #[error(transparent)]
     EyreError(#[from] eyre::Report),
 }
