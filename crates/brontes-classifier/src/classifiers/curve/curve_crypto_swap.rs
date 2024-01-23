@@ -19,7 +19,7 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     msg_sender: Address,
-    log: CurveCryptoSwapexchange_0CallSwap,
+    log: CurveCryptoSwapexchange_0CallLogs,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -63,7 +63,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: exchange_1Call,
-    log: CurveCryptoSwapexchange_1CallSwap,
+    log: CurveCryptoSwapexchange_1CallLogs,
     db_tx: &CompressedLibmdbxTx<RO>| {
 
         let log = log.TokenExchange_field;
@@ -119,7 +119,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: exchange_2Call,
-    log: CurveCryptoSwapexchange_2CallSwap,
+    log: CurveCryptoSwapexchange_2CallLogs,
     db_tx: &CompressedLibmdbxTx<RO>| {
 
         let log = log.TokenExchange_field;
@@ -175,7 +175,7 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     msg_sender: Address,
-    log: CurveCryptoSwapexchange_underlying_0CallSwap,
+    log: CurveCryptoSwapexchange_underlying_0CallLogs,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let log = log.TokenExchange_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;

@@ -17,7 +17,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: swapCall,
-    logs: SushiSwapV2swapCallSwap,
+    logs: SushiSwapV2swapCallLogs,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let logs = logs.Swap_field;
 
@@ -65,7 +65,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: mintCall,
-     log_data: SushiSwapV2mintCallMint,
+     log_data: SushiSwapV2mintCallLogs,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Mint_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
@@ -93,7 +93,7 @@ action_impl!(
      target_address: Address,
      msg_sender: Address,
      call_data: burnCall,
-     log_data: SushiSwapV2burnCallBurn,
+     log_data: SushiSwapV2burnCallLogs,
      db_tx: &CompressedLibmdbxTx<RO>| {
         let log_data = log_data.Burn_field;
         let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
