@@ -30,7 +30,7 @@ stuff
 possible_missed_arbs/
 
 # Libmdbx files
-data/*
+data/db/*
 
 # Misc 
 .vscode/
