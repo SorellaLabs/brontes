@@ -7,16 +7,13 @@ use brontes_types::normalized_actions::{
 };
 use reth_db::mdbx::RO;
 
-use crate::UniswapV3::{
-    burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall, swapReturn,
-};
+use crate::UniswapV3::{burnReturn, collectReturn, mintReturn, swapReturn};
 
 action_impl!(
     Protocol::UniswapV3,
+    crate::UniswapV3::swapCall,
     Swap,
-    swapCall,
     [Swap],
-    UniswapV3,
     call_data: true,
     return_data: true,
     |trace_index,
@@ -61,10 +58,9 @@ action_impl!(
 );
 action_impl!(
     Protocol::UniswapV3,
+    crate::UniswapV3::mintCall,
     Mint,
-    mintCall,
     [Mint],
-    UniswapV3,
     return_data: true,
     call_data: true,
     |trace_index,
@@ -90,10 +86,9 @@ action_impl!(
 );
 action_impl!(
     Protocol::UniswapV3,
+    crate::UniswapV3::burnCall,
     Burn,
-    burnCall,
     [Burn],
-    UniswapV3,
     return_data: true,
     |trace_index,
     from_address: Address,
@@ -121,10 +116,9 @@ action_impl!(
 );
 action_impl!(
     Protocol::UniswapV3,
+    crate::UniswapV3::collectCall,
     Collect,
-    collectCall,
     [Collect],
-    UniswapV3,
     call_data: true,
     return_data: true,
     |

@@ -19,6 +19,7 @@ impl<'a> LogData<'a> {
     ) -> Self {
         let mut mod_path = fn_call_path.clone();
         mod_path.segments.pop().unwrap();
+        mod_path.segments.pop_punct();
 
         Self { action_type, exchange_name, log_config, mod_path }
     }
@@ -142,7 +143,7 @@ impl<'a> LogData<'a> {
 impl ToTokens for LogData<'_> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let (log_idx, log_optional, log_field, log_ident) = self.parse_log_config();
-        let (log_builder_struct, struct_parsing) =
+        let (struct_parsing, log_builder_struct) =
             self.generate_decoded_log_struct(&log_ident, &log_field, &log_optional);
 
         let mod_path = &self.mod_path;
@@ -165,7 +166,6 @@ impl ToTokens for LogData<'_> {
                 }
             )*
             let log_data = log_res.build();
-
         );
 
         tokens.extend(log_result)

@@ -5,14 +5,11 @@ use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::mdbx::RO;
 
-use crate::UniswapV2::{burnCall, mintCall, swapCall};
-
 action_impl!(
     Protocol::UniswapV2,
+    crate::UniswapV2::swapCall,
     Swap,
-    swapCall,
     [Ignore<Sync>, Swap],
-    UniswapV2,
     call_data: true,
     logs: true,
     |trace_index,
@@ -57,10 +54,9 @@ action_impl!(
 
 action_impl!(
     Protocol::UniswapV2,
+    crate::UniswapV2::mintCall,
     Mint,
-    mintCall,
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Mint],
-    UniswapV2,
     logs: true,
     call_data: true,
     |trace_index,
@@ -85,10 +81,9 @@ action_impl!(
 );
 action_impl!(
     Protocol::UniswapV2,
+    crate::UniswapV2::burnCall,
     Burn,
-    burnCall,
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Burn],
-    UniswapV2,
     call_data: true,
     logs: true,
     |trace_index,
