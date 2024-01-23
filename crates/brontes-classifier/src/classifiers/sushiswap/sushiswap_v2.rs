@@ -5,14 +5,11 @@ use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
 use reth_db::mdbx::RO;
 
-use crate::SushiSwapV2::{burnCall, mintCall, swapCall};
-
 action_impl!(
     Protocol::SushiSwapV2,
+    crate::SushiSwapV2::swapCall,
     Swap,
-    swapCall,
     [Ignore<Sync>, Swap],
-    SushiSwapV2,
     call_data: true,
     logs: true,
     |trace_index,
@@ -57,11 +54,10 @@ action_impl!(
 
 action_impl!(
     Protocol::SushiSwapV2,
+    crate::SushiSwapV2::mintCall,
     Mint,
-    mintCall,
     // can be a double transfer if the pool has no liquidity
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Mint],
-    SushiSwapV2,
     logs: true,
     call_data: true,
     |trace_index,
@@ -87,10 +83,9 @@ action_impl!(
 
 action_impl!(
     Protocol::SushiSwapV2,
+    crate::SushiSwapV2::burnCall,
     Burn,
-    burnCall,
     [Possible<Ignore<Transfer>>, Ignore<Transfer>, Ignore<Sync>, Burn],
-    SushiSwapV2,
     call_data: true,
     logs: true,
     |trace_index,
