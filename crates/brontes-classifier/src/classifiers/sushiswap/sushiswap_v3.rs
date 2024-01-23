@@ -26,8 +26,8 @@ action_impl!(
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
             (
                 U256::from_be_bytes(token_1_delta.to_be_bytes::<32>()),
@@ -71,8 +71,8 @@ action_impl!(
      return_data: mintReturn,  db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         Some(NormalizedMint {
             trace_index,
@@ -101,8 +101,8 @@ action_impl!(
 
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         Some(NormalizedBurn {
             to: target_address,
@@ -129,8 +129,8 @@ action_impl!(
     call_data: collectCall,
     return_data: collectReturn,  db_tx: &DB
     | {
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedCollect {
             trace_index,
             from: from_addr,
