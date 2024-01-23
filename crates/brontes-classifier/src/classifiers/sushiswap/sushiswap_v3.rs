@@ -7,16 +7,13 @@ use brontes_types::normalized_actions::{
 };
 use reth_db::mdbx::RO;
 
-use crate::SushiSwapV3::{
-    burnCall, burnReturn, collectCall, collectReturn, mintCall, mintReturn, swapCall, swapReturn,
-};
+use crate::SushiSwapV3::{burnReturn, collectReturn, mintReturn, swapReturn};
 
 action_impl!(
     Protocol::SushiSwapV3,
+    crate::SushiSwapV3::swapCall,
     Swap,
-    swapCall,
     [Swap],
-    SushiSwapV3,
     call_data: true,
     return_data: true,
     |trace_index,
@@ -61,10 +58,9 @@ action_impl!(
 );
 action_impl!(
     Protocol::SushiSwapV3,
+    crate::SushiSwapV3::mintCall,
     Mint,
-    mintCall,
     [Mint],
-    SushiSwapV3,
     return_data: true,
     call_data: true,
     |trace_index,
@@ -90,10 +86,9 @@ action_impl!(
 );
 action_impl!(
     Protocol::SushiSwapV3,
+    crate::SushiSwapV3::burnCall,
     Burn,
-    burnCall,
     [Burn],
-    SushiSwapV3,
     return_data: true,
     |trace_index,
     from_address: Address,
@@ -121,10 +116,9 @@ action_impl!(
 );
 action_impl!(
     Protocol::SushiSwapV3,
+    crate::SushiSwapV3::collectCall,
     Collect,
-    collectCall,
     [Collect],
-    SushiSwapV3,
     call_data: true,
     return_data: true,
     |

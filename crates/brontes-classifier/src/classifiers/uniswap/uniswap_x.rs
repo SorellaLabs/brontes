@@ -5,14 +5,11 @@ use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::NormalizedBatch;
 use reth_db::mdbx::RO;
 
-use crate::UniswapX::executeCall;
-
 action_impl!(
     Protocol::UniswapX,
+    crate::UniswapX::executeCall,
     Batch,
-    executeCall,
     [Fill],
-    UniswapX,
     call_data: true,
     logs: true,
     |trace_index,
@@ -20,7 +17,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: executeCall,
-    logs: UniswapXexecuteCallBatch,
+    logs: UniswapXexecuteCallLogs,
     db_tx: &CompressedLibmdbxTx<RO>| {
         let logs = logs.Fill_field;
 
@@ -31,7 +28,6 @@ action_impl!(
             settlement_contract: target_address,
             user_swaps: Vec::new(),
             solver_swaps: Some(Vec::new()),
-
         })
     }
 );
