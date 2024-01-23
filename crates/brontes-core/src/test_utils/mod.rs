@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::{libmdbx::Libmdbx, TxTraces};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::{
@@ -29,6 +29,8 @@ use tokio::{
 use tracing_subscriber::filter::Directive;
 
 use crate::decoding::parser::TraceParser;
+#[cfg(feature = "local")]
+use crate::local_provider::LocalProvider;
 
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
@@ -51,10 +53,28 @@ impl TraceLoader {
     }
 
     async fn trace_block(&self, block: u64) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
-        self.tracing_provider
-            .execute_block(block)
-            .await
-            .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
+        let tx = self.libmdbx.ro_tx()?;
+        if let Some(trace) = tx.get::<TxTraces>(block).unwrap() {
+            return Ok((
+                trace.traces.unwrap(),
+                self.tracing_provider
+                    .get_tracer()
+                    .header_by_number(block)
+                    .await?
+                    .unwrap(),
+            ))
+        } else {
+            #[cfg(not(feature = "local"))]
+            {
+                self.tracing_provider
+                    .execute_block(block)
+                    .await
+                    .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
+            }
+
+            #[cfg(feature = "local")]
+            return Err(TraceLoaderError::LocalTraceMissingError)
+        }
     }
 
     pub async fn get_metadata(&self, block: u64) -> Result<MetadataCombined, TraceLoaderError> {
@@ -237,6 +257,10 @@ pub enum TraceLoaderError {
     BlockTraceError(u64),
     #[error(transparent)]
     ProviderError(#[from] ProviderError),
+    #[error("traces not saved in local db")]
+    LocalTraceMissingError,
+    #[error(transparent)]
+    EyreError(#[from] eyre::Report),
 }
 
 pub struct TxTracesWithHeaderAnd<T> {
@@ -304,26 +328,20 @@ fn init_trace_parser<'a>(
 ) -> TraceParser<'a, Box<dyn TracingProvider>> {
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
-    /*
     #[cfg(feature = "local")]
     let tracer = {
         let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
         let db_port = env::var("RETH_PORT").expect("No DB port.env");
         let url = format!("{db_endpoint}:{db_port}");
-        Box::new(alloy_providers::provider::Provider::new(&url).unwrap())
-            as Box<dyn TracingProvider>
+        Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>
     };
-
     #[cfg(not(feature = "local"))]
-
-    */
-    let executor = TaskManager::new(handle.clone());
-
     let tracer = {
+        let executor = TaskManager::new(handle.clone());
         let client = TracingClient::new(Path::new(&db_path), max_tasks as u64, executor.executor());
+        handle.spawn(executor);
         Box::new(client) as Box<dyn TracingProvider>
     };
-    handle.spawn(executor);
 
     let call = Box::new(|_: &_, _: &_| true);
 
