@@ -10,6 +10,13 @@ pub struct LocalProvider {
     provider: Provider<Http<reqwest::Client>>,
 }
 
+impl LocalProvider {
+    pub fn new(url: String) -> Self {
+        let http = Http::new(url.parse().unwrap());
+        Self { provider: Provider::new(http) }
+    }
+}
+
 #[async_trait::async_trait]
 impl TracingProvider for LocalProvider {
     async fn eth_call(
