@@ -15,8 +15,6 @@ use super::{tables::Tables, types::LibmdbxData, Libmdbx};
 use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
 
 const DEFAULT_START_BLOCK: u64 = 0;
-// change with tracing client
-const DEFAULT_END_BLOCK: u64 = 15400000;
 const INNER_CHUNK_SIZE: usize = 10_000;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
@@ -106,7 +104,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
 
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
         join_all(pair_ranges.into_iter().map(|(start, end)| {
-            let num_chunks = num_chunks.clone(); 
+            let num_chunks = num_chunks.clone();
             // we spawn as the 
             async move {
                 iter(&(start..end).into_iter().chunks(INNER_CHUNK_SIZE)).map(|range| {
@@ -120,7 +118,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                     // compression and decompression is expensive on a ton of data thus we give
                     // them there own threads 
                 tokio::spawn(async move {
-            let data = 
+            let data =
                 clickhouse
                 .inner()
                 .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
