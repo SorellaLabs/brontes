@@ -2,7 +2,6 @@ use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     hash::Hash,
     sync::Arc,
-    thread,
 };
 
 use brontes_database::libmdbx::LibmdbxReader;
@@ -15,7 +14,6 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
-use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
@@ -86,7 +84,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         })
                         .collect::<Vec<_>>();
 
-                    if victim_actions.iter().any(|inner| inner.is_empty()) {
+                    if victim_actions
+                        .iter()
+                        .any(|inner| inner.iter().any(|s| s.is_empty()))
+                    {
                         return None
                     }
 
@@ -151,8 +152,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
         mut victim_gas: Vec<Vec<GasDetails>>,
     ) -> Option<(BundleHeader, BundleData)> {
+        let all_actions = searcher_actions.clone();
         let back_run_swaps = searcher_actions
-            .get(searcher_actions.len() - 1)?
+            .pop()?
             .iter()
             .filter(|s| s.is_swap())
             .map(|s| s.clone().force_swap())
@@ -177,7 +179,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_gas.pop()?;
                 victim_actions.pop()?;
                 victim_txes.pop()?;
-                searcher_actions.pop()?;
 
                 let back_run_tx = possible_front_runs.pop()?;
                 let back_run_gas = front_run_gas.pop()?;
@@ -213,7 +214,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .collect::<Vec<_>>();
 
-        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+        let deltas = self.inner.calculate_token_deltas(&all_actions);
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;

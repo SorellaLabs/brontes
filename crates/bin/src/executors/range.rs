@@ -1,5 +1,4 @@
 use std::{
-    cmp::max,
     collections::HashMap,
     fs::File,
     io::Write,
@@ -8,49 +7,39 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_primitives::{Address, B256};
+use alloy_primitives::B256;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::load_missing_decimals,
 };
-use brontes_database::libmdbx::{
-    tables::{CexPrice, DexPrice, Metadata, MevBlocks},
-    types::{dex_price::DexPriceData, mev_block::MevBlocksData, LibmdbxData},
-    Libmdbx, LibmdbxReader, LibmdbxWriter,
-};
-use brontes_inspect::{
-    composer::{compose_mev_results, ComposerResults},
-    Inspector,
-};
+use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_inspect::Inspector;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, MevBlock},
-    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
-    db::{
-        cex::{CexPriceMap, CexQuote},
-        dex::{DexQuote, DexQuotes},
-        metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
-        mev_block::MevBlockWithClassified,
-    },
-    extra_processing::Pair,
+    db::metadata::{MetadataCombined, MetadataNoDex},
     normalized_actions::Actions,
     structured_trace::TxTrace,
     tree::BlockTree,
 };
-use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
-use reth_db::DatabaseError;
+use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use reth_primitives::Header;
 use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
-use tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedReceiver};
-use tracing::{debug, error, info, warn};
+use tokio::sync::mpsc::UnboundedReceiver;
+use tracing::{debug, error, info};
+
+use super::{dex_pricing::WaitingForPricerFuture, utils::process_results};
 
 const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";
 
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
 
-pub struct DataBatching<'db, T: TracingProvider + Clone, DB: LibmdbxWriter + LibmdbxReader> {
+pub struct RangeExecutorWithPricing<
+    'db,
+    T: TracingProvider + Clone,
+    DB: LibmdbxWriter + LibmdbxReader,
+> {
     parser:     &'db Parser<'db, T, DB>,
     classifier: &'db Classifier<'db, T, DB>,
 
@@ -70,7 +59,9 @@ pub struct DataBatching<'db, T: TracingProvider + Clone, DB: LibmdbxWriter + Lib
     missed_mev_ops: Vec<(B256, u128)>,
 }
 
-impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBatching<'db, T, DB> {
+impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
+    RangeExecutorWithPricing<'db, T, DB>
+{
     pub fn new(
         quote_asset: alloy_primitives::Address,
         batch_id: u64,
@@ -222,7 +213,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBat
 }
 
 impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
-    for DataBatching<'_, T, DB>
+    for RangeExecutorWithPricing<'_, T, DB>
 {
     type Output = ();
 
@@ -284,145 +275,5 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
                 return Poll::Pending
             }
         }
-    }
-}
-
-pub struct WaitingForPricerFuture<T: TracingProvider> {
-    receiver: Receiver<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
-    tx:       Sender<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
-
-    pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataNoDex)>,
-    task_executor: TaskExecutor,
-}
-
-impl<T: TracingProvider> WaitingForPricerFuture<T> {
-    pub fn new(mut pricer: BrontesBatchPricer<T>, task_executor: TaskExecutor) -> Self {
-        let (tx, rx) = channel(2);
-        let tx_clone = tx.clone();
-        let fut = Box::pin(async move {
-            let res = pricer.next().await;
-            tx_clone.try_send((pricer, res)).unwrap();
-        });
-
-        task_executor.spawn_critical("dex pricer", fut);
-        Self { pending_trees: HashMap::default(), task_executor, tx, receiver: rx }
-    }
-
-    pub fn is_done(&self) -> bool {
-        self.pending_trees.is_empty()
-    }
-
-    fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
-        let tx = self.tx.clone();
-        let fut = Box::pin(async move {
-            let res = pricer.next().await;
-            let _ = tx.try_send((pricer, res));
-        });
-
-        self.task_executor.spawn_critical("dex pricer", fut);
-    }
-
-    pub fn add_pending_inspection(
-        &mut self,
-        block: u64,
-        tree: BlockTree<Actions>,
-        meta: MetadataNoDex,
-    ) {
-        assert!(
-            self.pending_trees.insert(block, (tree, meta)).is_none(),
-            "traced a duplicate block"
-        );
-    }
-}
-
-impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
-    type Item = (BlockTree<Actions>, MetadataCombined);
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
-            let (pricer, inner) = handle.unwrap();
-            self.resechedule(pricer);
-
-            if let Some((block, prices)) = inner {
-                info!(target:"brontes","Collected dex prices for block: {}", block);
-
-                let Some((tree, meta)) = self.pending_trees.remove(&block) else {
-                    return Poll::Ready(None)
-                };
-
-                let finalized_meta = meta.into_finalized_metadata(prices);
-                return Poll::Ready(Some((tree, finalized_meta)))
-            } else {
-                // means we have completed chunks
-                return Poll::Ready(None)
-            }
-        }
-
-        Poll::Pending
-    }
-}
-
-async fn process_results<DB: LibmdbxWriter>(
-    db: &DB,
-    inspectors: &[&Box<dyn Inspector>],
-    tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<MetadataCombined>,
-) -> Vec<(B256, u128)> {
-    let ComposerResults { block_details, mev_details, possibly_missed_arbs } =
-        compose_mev_results(inspectors, tree, metadata.clone()).await;
-
-    if let Err(e) = db.write_dex_quotes(metadata.block_num.clone(), metadata.dex_quotes.clone()) {
-        tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
-    }
-
-    insert_mev_results(db, block_details, mev_details);
-    possibly_missed_arbs
-}
-
-fn insert_mev_results<DB: LibmdbxWriter>(
-    database: &DB,
-    block_details: MevBlock,
-    mev_details: Vec<(BundleHeader, BundleData)>,
-) {
-    info!(
-        target:"brontes",
-        "Finished processing block: {} \n- MEV Count: {}\n- Finalized ETH Price: \
-         ${:.2}\n- Cumulative Gas Used: {}\n- Cumulative Gas Paid: {}\n- Total Bribe: \
-         {}\n- Cumulative MEV Priority Fee Paid: {}\n- Builder Address: {:?}\n- Builder \
-         ETH Profit: {}\n- Builder Finalized Profit (USD): ${:.2}\n- Proposer Fee \
-         Recipient: {:?}\n- Proposer MEV Reward: {:?}\n- Proposer Finalized Profit (USD): \
-        {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n- Possibly Missed Mev:\n{}",
-        block_details.block_number,
-        block_details.mev_count,
-        block_details.finalized_eth_price,
-        block_details.cumulative_gas_used,
-        block_details.cumulative_gas_paid,
-        block_details.total_bribe,
-        block_details.cumulative_mev_priority_fee_paid,
-        block_details.builder_address,
-        block_details.builder_eth_profit,
-        block_details.builder_finalized_profit_usd,
-        block_details
-            .proposer_fee_recipient
-            .unwrap_or(Address::ZERO),
-        block_details
-            .proposer_mev_reward
-            .map_or("None".to_string(), |v| v.to_string()),
-        block_details
-            .proposer_finalized_profit_usd
-            .map_or("None".to_string(), |v| format!("{:.2}", v)),
-        block_details.cumulative_mev_finalized_profit_usd,
-    block_details
-        .possible_missed_arbs
-        .iter()
-        .map(|arb| format!("https://etherscan.io/tx/{arb:?}"))
-        .fold(String::new(), |acc, arb| acc + &arb + "\n")
-    );
-
-    if database
-        .save_mev_blocks(block_details.block_number, block_details, mev_details)
-        .is_err()
-    {
-        error!("failed to insert classified data into libmdx");
     }
 }

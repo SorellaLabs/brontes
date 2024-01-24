@@ -218,33 +218,42 @@ macro_rules! implement_table_value_codecs_with_zc {
 macro_rules! compressed_table {
     // WITH $compressed_value
     // WITH $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident | $init_method:tt | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | $init_method | Some($init_chunk_size), $decompressed_value = $($table)*);
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident | $init_method:tt
+    | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | $init_method
+        | Some($init_chunk_size), $decompressed_value = $($table)*);
         implement_table_value_codecs_with_zc!($compressed_value);
     };
 
     // WITH $compressed_value
     // WITHOUT $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident | $init_method:tt | $decompressed_value:ident = $($table:tt)*) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | $init_method | None, $decompressed_value = $($table)*);
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident
+    | $init_method:tt | $decompressed_value:ident = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value
+        | $init_method | None, $decompressed_value = $($table)*);
         implement_table_value_codecs_with_zc!($compressed_value);
     };
 
     // WITHOUT $compressed_value
     // WITH $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_method:tt | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value | $init_method | Some($init_chunk_size), $decompressed_value = $($table)*);
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_method:tt
+    | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value
+        | $init_method | Some($init_chunk_size), $decompressed_value = $($table)*);
     };
 
     // WITHOUT $compressed_value
     // WITHOUT $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_method:tt | $decompressed_value:ident = $($table:tt)*) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value | $init_method | None, $decompressed_value = $($table)*);
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_method:tt
+    | $decompressed_value:ident = $($table:tt)*) => {
+        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value
+        | $init_method | None, $decompressed_value = $($table)*);
     };
 }
 
 macro_rules! table {
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident | $init_method:tt | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
+    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident
+    | $init_method:tt | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
         $(#[$docs])+
         #[doc = concat!("Takes [`", stringify!($key), "`] as a key and returns [`", stringify!($value), "`].")]
         #[derive(Clone, Copy, Debug, Default)]

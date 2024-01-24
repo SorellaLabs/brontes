@@ -5,7 +5,6 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_pricing::types::{DiscoveredPool, PoolUpdate};
 use brontes_types::traits::TracingProvider;
 use futures::Future;
-use reth_db::mdbx::RO;
 
 pub mod tree_builder;
 pub use tree_builder::Classifier;

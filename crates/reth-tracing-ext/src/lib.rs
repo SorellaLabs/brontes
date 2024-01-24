@@ -434,5 +434,5 @@ pub struct StackStep {
 
 /// Opens up an existing database at the specified path.
 pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
-    reth_db::open_db(path.as_ref(), None)
+    reth_db::open_db(path.as_ref(), Default::default())
 }
