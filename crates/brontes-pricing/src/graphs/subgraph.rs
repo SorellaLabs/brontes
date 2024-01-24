@@ -116,7 +116,10 @@ impl PairSubGraph {
         }
     }
 
-    pub fn fetch_price<T: ProtocolState>(&self,edge_state: &HashMap<Address, T>) -> Option<Rational> {
+    pub fn fetch_price<T: ProtocolState>(
+        &self,
+        edge_state: &HashMap<Address, T>,
+    ) -> Option<Rational> {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
     }
 
@@ -256,7 +259,7 @@ where
                     continue;
                 };
 
-                tracing::info!(?pool_price, "{}", poo);
+                tracing::info!(?pool_price, ?pool_state);
                 let (t0, t1) = pool_state.tvl(info.get_base_token());
 
                 // we only weight by the first token
