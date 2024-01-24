@@ -10,10 +10,7 @@ use reth_primitives::{Address, BlockNumberOrTag, Header, B256};
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 use self::parser::TraceParser;
-use crate::{
-    executor::{Executor, TaskKind},
-    init_trace,
-};
+use crate::executor::{Executor, TaskKind};
 
 #[cfg(feature = "dyn-decode")]
 mod dyn_decode;

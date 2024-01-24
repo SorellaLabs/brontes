@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::{
@@ -34,8 +34,8 @@ use crate::local_provider::LocalProvider;
 
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
-    pub libmdbx:          &'static Libmdbx,
-    pub tracing_provider: TraceParser<'static, Box<dyn TracingProvider>>,
+    pub libmdbx:          &'static LibmdbxReadWriter,
+    pub tracing_provider: TraceParser<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
     // store so when we trace we don't get a closed rx error
     _metrics:             UnboundedReceiver<PoirotMetricEvents>,
 }
@@ -259,14 +259,14 @@ pub struct BlockTracesWithHeaderAnd<T> {
 }
 
 // done because we can only have 1 instance of libmdbx or we error
-static DB_HANDLE: OnceLock<Libmdbx> = OnceLock::new();
+static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
 
-fn get_db_handle() -> &'static Libmdbx {
+fn get_db_handle() -> &'static LibmdbxReadWriter {
     DB_HANDLE.get_or_init(|| {
         let _ = dotenv::dotenv();
         init_tracing();
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        Libmdbx::init_db(&brontes_db_endpoint, None)
+        LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
             .expect(&format!("failed to open db path {}", brontes_db_endpoint))
     })
 }
@@ -303,9 +303,9 @@ fn init_tracing() {
 fn init_trace_parser<'a>(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-    libmdbx: &'a Libmdbx,
+    libmdbx: &'a LibmdbxReadWriterr,
     max_tasks: u32,
-) -> TraceParser<'a, Box<dyn TracingProvider>> {
+) -> TraceParser<'a, Box<dyn TracingProvider>, LibmdbxReadWriterr> {
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
     #[cfg(feature = "local")]
