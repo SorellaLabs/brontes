@@ -44,12 +44,7 @@ impl DexPricingArgs {
         let task_executor = ctx.task_executor;
 
         // if we can we want max threads for these tasks
-        let tracing_max_tasks = if self.max_tasks.is_none() {
-            num_cpus::get_physical() as u64
-        } else {
-            self.max_tasks.unwrap()
-        };
-
+        let tracing_max_tasks = determine_max_tasks(self.max_tasks);
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
@@ -90,15 +85,6 @@ impl DexPricingArgs {
         let cpus = std::cmp::min(cpus_min, cpus);
         let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
-        let remaining_cpus = if self.max_tasks.is_some() {
-            determine_max_tasks(None) * 2 - self.max_tasks.unwrap()
-        } else {
-            determine_max_tasks(None)
-        };
-
-        // because these are lightweight tasks, we can stack them pretty easily without
-        // much overhead concern
-        let max_pool_loading_tasks = (remaining_cpus / cpus + 1) * 15;
         let mut tasks = FuturesUnordered::new();
 
         for (batch_id, mut chunk) in (self.start_block..=self.end_block)
@@ -120,7 +106,6 @@ impl DexPricingArgs {
                     let classifier = Classifier::new(libmdbx, tx.clone(), tracer.into());
                     DataBatching::new(
                         quote_asset,
-                        max_pool_loading_tasks as usize,
                         batch_id as u64,
                         start_block,
                         end_block,
