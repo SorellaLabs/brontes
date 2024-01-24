@@ -259,7 +259,7 @@ where
                     continue;
                 };
 
-                tracing::info!(?pool_price, ?pool_state);
+                tracing::info!(?pool_price, "{:#?}", pool_state);
                 let (t0, t1) = pool_state.tvl(info.get_base_token());
 
                 // we only weight by the first token
