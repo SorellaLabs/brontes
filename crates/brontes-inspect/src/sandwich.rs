@@ -343,9 +343,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
             Entry::Occupied(mut o) => {
                 // Get's prev tx hash for this sender & replaces it with the current tx hash
                 let prev_tx_hash = o.insert(root.tx_hash);
-                let frontrun_victims = possible_victims.remove(&prev_tx_hash).unwrap();
-
-                if !frontrun_victims.is_empty() {
+                if let Some(frontrun_victims) = possible_victims.remove(&prev_tx_hash) {
                     match possible_sandwiches.entry(root.head.address) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
@@ -416,9 +414,7 @@ fn get_possible_sandwich_duplicate_contracts(
                 let (prev_tx_hash, frontrun_eoa) = o.get_mut();
                 *prev_tx_hash = root.tx_hash;
 
-                let frontrun_victims = possible_victims.remove(prev_tx_hash).unwrap();
-
-                if !frontrun_victims.is_empty() {
+                if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
                     match possible_sandwiches.entry(root.head.data.get_to_address()) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
