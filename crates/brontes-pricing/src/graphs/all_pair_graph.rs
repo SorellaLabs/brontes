@@ -168,7 +168,7 @@ impl AllPairGraph {
             },
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
-            15,
+            4,
         )
         .into_iter()
         .map(|(mut nodes, _)| {
