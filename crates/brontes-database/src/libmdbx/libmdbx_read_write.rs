@@ -3,7 +3,7 @@ use std::{cmp::max, collections::HashMap, path::Path};
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    classified_mev::{BundleData, BundleHeader, MevBlock},
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_to_tokens::PoolTokens,
@@ -40,7 +40,7 @@ use crate::{
     AddressToProtocol, AddressToTokens, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
-pub struct LibmdbxReadWriter(Libmdbx);
+pub struct LibmdbxReadWriter(pub(crate) Libmdbx);
 
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
@@ -294,7 +294,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         &self,
         block_number: u64,
         block: MevBlock,
-        mev: Vec<(ClassifiedMev, SpecificMev)>,
+        mev: Vec<(BundleHeader, BundleData)>,
     ) -> eyre::Result<()> {
         let data =
             MevBlocksData { block_number, mev_blocks: MevBlockWithClassified { block, mev } };

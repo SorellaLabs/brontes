@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use brontes_database::libmdbx::LibmdbxReadWriter;
+pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::{
@@ -303,9 +303,9 @@ fn init_tracing() {
 fn init_trace_parser<'a>(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-    libmdbx: &'a LibmdbxReadWriterr,
+    libmdbx: &'a LibmdbxReadWriter,
     max_tasks: u32,
-) -> TraceParser<'a, Box<dyn TracingProvider>, LibmdbxReadWriterr> {
+) -> TraceParser<'a, Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
     #[cfg(feature = "local")]
