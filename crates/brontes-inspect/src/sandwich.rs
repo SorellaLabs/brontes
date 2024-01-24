@@ -66,8 +66,13 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
-
-                    info!(?eoa, ?mev_executor_contract, ?possible_frontruns, ?victims, ?possible_backrun);
+                    info!(
+                        ?eoa,
+                        ?mev_executor_contract,
+                        ?possible_frontruns,
+                        ?victims,
+                        ?possible_backrun
+                    );
                     let victim_gas = victims
                         .iter()
                         .map(|victims| {
@@ -153,11 +158,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
         mut victim_gas: Vec<Vec<GasDetails>>,
     ) -> Option<(BundleHeader, BundleData)> {
-
-
         let back_run_swaps = searcher_actions
-            .pop()?
-            .into_iter()
+            .get(searcher_actions.len() - 1)?
+            .iter()
             .filter(|s| s.is_swap())
             .map(|s| s.clone().force_swap())
             .collect_vec();
@@ -181,6 +184,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_gas.pop()?;
                 victim_actions.pop()?;
                 victim_txes.pop()?;
+                searcher_actions.pop()?;
 
                 let back_run_tx = possible_front_runs.pop()?;
                 let back_run_gas = front_run_gas.pop()?;
@@ -324,9 +328,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
 fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
     let mut duplicate_senders: HashMap<Address, B256> = HashMap::new();
-
     let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
-
     let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::new();
 
     for root in tree.tx_roots.iter() {
@@ -391,9 +393,7 @@ fn get_possible_sandwich_duplicate_contracts(
     tree: Arc<BlockTree<Actions>>,
 ) -> Vec<PossibleSandwich> {
     let mut duplicate_mev_contracts: HashMap<Address, (B256, Address)> = HashMap::new();
-
     let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
-
     let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::new();
 
     for root in tree.tx_roots.iter() {
