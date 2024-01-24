@@ -282,14 +282,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return;
         };
 
-        if tx_idx != 0 {
-            // add price before state transition (useful for filtering false positives)
-            let pair0 = Pair(pool_pair.0, self.quote_asset);
-            let pair1 = Pair(pool_pair.1, self.quote_asset);
-            self.store_dex_price(block, tx_idx - 1, pair0);
-            self.store_dex_price(block, tx_idx - 1, pair1);
-        }
-
         self.graph_manager.update_state(addr, msg);
 
         // add price post state
