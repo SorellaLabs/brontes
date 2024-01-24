@@ -14,7 +14,7 @@ use alloy_primitives::Address;
 use itertools::Itertools;
 use malachite::{
     num::{
-        arithmetic::traits::{Reciprocal, ReciprocalAssign},
+        arithmetic::traits::{Abs, Reciprocal, ReciprocalAssign},
         basic::traits::{One, Zero},
     },
     Rational,
@@ -243,22 +243,56 @@ where
 
             // calculate tvl of pool using the start token as the quote
             let edge_weight = edge.weight();
+            let edge_len = edge_weight.len();
+
+            let mut outliers = Vec::with_capacity(edge_len);
+            let mut outlier_p = Rational::ZERO;
+            let mut not_outliers = Vec::with_capacity(edge_len);
+            let mut not_outlier_p = Rational::ZERO;
+
+            for info in edge_weight {
+                let Some(pool_state) = state.get(&info.pool_addr) else {
+                    continue;
+                };
+
+                // returns is t1  / t0
+                let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
+                    continue;
+                };
+
+                //  hacky method of splitting outliers from each_other. this assumes
+                //  that the outliers fit into two distinct sets.
+                //  for each entry, check the average price of the first set and if it is to far
+                //  away put into other set. then after all state has been gone through. take
+                // the longer set
+                if not_outlier_p == Rational::ZERO {
+                    not_outlier_p = pool_price.clone();
+                    not_outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
+                } else if ((&not_outlier_p / Rational::from(not_outliers.len())) - &pool_price)
+                    .abs()
+                    > (&not_outlier_p / Rational::from(not_outliers.len())) / Rational::from(4)
+                {
+                    if outlier_p == Rational::ZERO {
+                        outlier_p = pool_price.clone();
+                        outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
+                    } else {
+                        outlier_p += pool_price.clone();
+                        outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
+                    }
+                } else {
+                    not_outlier_p += pool_price.clone();
+                    not_outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
+                }
+            }
+
+            let set = if outliers.len() > not_outliers.len() { outliers } else { not_outliers };
 
             let mut pxw = Rational::ZERO;
             let mut weight = Rational::ZERO;
             let mut token_0_am = Rational::ZERO;
             let mut token_1_am = Rational::ZERO;
 
-            for info in edge_weight {
-                let Some(pool_state) = state.get(&info.pool_addr) else {
-                    continue;
-                };
-                // returns is t1  / t0
-                let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
-                    continue;
-                };
-                let (t0, t1) = pool_state.tvl(info.get_base_token());
-
+            for (pool_price, (t0, t1)) in set {
                 // we only weight by the first token
                 let t0xt1 = &t0 * &t1;
                 pxw += (pool_price * &t0xt1);
