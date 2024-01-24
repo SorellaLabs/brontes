@@ -187,7 +187,6 @@ impl SubGraphRegistry {
     }
 
     pub fn get_price(&self, unordered_pair: Pair) -> Option<Rational> {
-        tracing::info!("\n\n\n\n\n\n\n pair: {:?}", unordered_pair);
         let (swapped, pair) = unordered_pair.ordered_changed();
 
         self.sub_graphs
