@@ -129,8 +129,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 .0,
         );
 
-        let db_cex_quotes: CexPriceMap = CexPriceMap::default();
-
         let eth_prices =
             if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
                 eth_usdt

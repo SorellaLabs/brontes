@@ -1,9 +1,7 @@
 use alloy_primitives::{Address, U256};
-use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation};
-use reth_db::mdbx::RO;
 
 action_impl!(
     Protocol::AaveV3,
@@ -12,7 +10,7 @@ action_impl!(
     [LiquidationEvent],
     call_data: true,
     |trace_index,
-    from_address: Address,
+    _from_address: Address,
     target_address: Address,
     msg_sender: Address,
     call_data: liquidationCallCall,
@@ -40,7 +38,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     call_data: flashLoanCall,
     _db_tx: &DB | {
         return Some(NormalizedFlashLoan {
@@ -71,7 +69,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     call_data: flashLoanSimpleCall,
     _db_tx: &DB | {
         return Some(NormalizedFlashLoan {

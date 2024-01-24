@@ -21,7 +21,8 @@ use lazy_static::lazy_static;
 macro_rules! mev_composability {
     ($($($child_mev_type:ident),+ => $parent_mev_type:ident;)+) => {
         lazy_static! {
-            pub static ref MEV_COMPOSABILITY_FILTER: &'static [(MevType, ComposeFunction, Vec<MevType>)] = {
+            pub static ref MEV_COMPOSABILITY_FILTER:
+                &'static [(MevType, ComposeFunction, Vec<MevType>)] = {
                 &*Box::leak(Box::new([
                     $((
                         MevType::$parent_mev_type,
@@ -79,7 +80,8 @@ mev_composability!(
 macro_rules! define_mev_precedence {
     ($($($subordinate_mev_type:ident),+ => $dominant_mev_type:ident;)+) => {
         lazy_static! {
-            pub static ref MEV_DEDUPLICATION_FILTER: &'static [(MevType, Vec<MevType>)] = {
+            pub static ref MEV_DEDUPLICATION_FILTER:
+                &'static [(MevType, Vec<MevType>)] = {
                 &*Box::leak(Box::new([
                     $((
                         MevType::$dominant_mev_type,

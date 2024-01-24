@@ -89,7 +89,8 @@ macro_rules! bench_table {
             }
         }
 
-        impl<'db> InitializeTable<'db, paste::paste! {[<$table_name Data>]}, $parquet_table_name> for $table_name {}
+        impl<'db> InitializeTable<'db,
+            paste::paste! {[<$table_name Data>]}, $parquet_table_name> for $table_name {}
     };
 }
 

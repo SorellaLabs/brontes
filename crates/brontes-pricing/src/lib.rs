@@ -281,9 +281,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             error!(?addr, "failed to get pair for pool");
             return;
         };
+
         self.graph_manager.update_state(addr, msg);
 
-        // generate all variants of the price that might be used in the inspectors
+        // add price post state
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
@@ -645,10 +646,6 @@ fn queue_loading_returns(
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
         let (state, subgraph) = graph.crate_subpool_multithread(block, pair);
-
-        if subgraph.is_empty() {
-            error!("pool wasn't in graph {:?}", trigger_update.get_pool_address());
-        }
         (state, subgraph, pair)
     }))
 }
