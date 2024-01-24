@@ -4,6 +4,7 @@
 use std::{path::Path, sync::Arc};
 
 pub mod traits;
+use brontes_types::traits::TracingProvider;
 pub use traits::*;
 pub mod initialize;
 mod libmdbx_read_write;
@@ -73,14 +74,14 @@ impl Libmdbx {
     }
 
     /// initializes all the tables with data via the CLI
-    pub async fn initialize_tables(
+    pub async fn initialize_tables<T: TracingProvider>(
         self: Arc<Self>,
         clickhouse: Arc<Clickhouse>,
-        //tracer: Arc<TracingClient>,
+        tracer: Arc<T>,
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse); //, tracer);
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer); 
         initializer.initialize(tables, block_range).await?;
 
         Ok(())

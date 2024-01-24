@@ -10,7 +10,7 @@ use brontes_types::{
         metadata::MetadataInner, mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses, traces::TxTracesInner,
     },
-    extra_processing::Pair,
+    extra_processing::Pair, traits::TracingProvider,
 };
 
 mod const_sql;
@@ -105,9 +105,9 @@ macro_rules! tables {
 }
 
 impl Tables {
-    pub(crate) async fn initialize_table(
+    pub(crate) async fn initialize_table<T: TracingProvider>(
         &self,
-        initializer: &LibmdbxInitializer,
+        initializer: &LibmdbxInitializer<T>,
         block_range: Option<(u64, u64)>,
     ) -> eyre::Result<()> {
         match self {
