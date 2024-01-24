@@ -19,7 +19,7 @@ impl PricingTestUtils {
         Self { tracer, quote_address }
     }
 
-    async fn crate_dex_pricer(
+    async fn init_dex_pricer(
         &self,
         block: u64,
         end_block: Option<u64>,
@@ -75,7 +75,7 @@ impl PricingTestUtils {
             self.tracer.get_block_traces_with_header(block).await?;
 
         let (tx, rx) = unbounded_channel();
-        let pricer = self.crate_dex_pricer(block, None, rx).await?;
+        let pricer = self.init_dex_pricer(block, None, rx).await?;
 
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
         let (decimals, tree) = classifier.build_block_tree(traces, header).await;
@@ -99,7 +99,7 @@ impl PricingTestUtils {
         let (tx, rx) = unbounded_channel();
 
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
-        let mut pricer = self.crate_dex_pricer(block, None, rx).await?;
+        let mut pricer = self.init_dex_pricer(block, None, rx).await?;
 
         let (decimals, tree) = classifier.build_block_tree(vec![trace], header).await;
         load_missing_decimals(
