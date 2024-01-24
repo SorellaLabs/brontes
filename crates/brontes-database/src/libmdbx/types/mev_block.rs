@@ -1,7 +1,7 @@
 use brontes_types::{
     classified_mev::{
         AtomicBackrun, BundleData, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich,
-        Liquidation, MevBlock, MevType, PriceKind, Sandwich,
+        Liquidation, MevBlock, MevType, PossibleMev, PriceKind, Sandwich,
     },
     db::{
         mev_block::MevBlockWithClassified,
@@ -76,7 +76,24 @@ pub struct LibmdbxMevBlock {
     pub proposer_mev_reward: Option<u128>,
     pub proposer_finalized_profit_usd: Option<f64>,
     pub cumulative_mev_finalized_profit_usd: f64,
-    pub possible_missed_arbs: Vec<Redefined_FixedBytes<32>>,
+    pub possible_missed_arbs: Vec<LibmdbxPossibleMev>,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(PossibleMev)]
+pub struct LibmdbxPossibleMev {
+    pub tx_hash:           Redefined_FixedBytes<32>,
+    pub position_in_block: usize,
+    pub gas_paid:          u128,
 }
 
 #[derive(
