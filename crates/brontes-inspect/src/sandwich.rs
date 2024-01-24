@@ -86,7 +86,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         })
                         .collect::<Vec<_>>();
 
-                    if victim_actions.iter().any(|inner| inner.is_empty()) {
+                    if victim_actions
+                        .iter()
+                        .any(|inner| inner.iter().any(|s| s.is_empty()))
+                    {
                         return None
                     }
 
