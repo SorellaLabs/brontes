@@ -250,12 +250,13 @@ where
                 let Some(pool_state) = state.get(&info.pool_addr) else {
                     continue;
                 };
-                tracing::info!(?pool_state);
 
                 // returns is t1  / t0
                 let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
                     continue;
                 };
+
+                tracing::info!(?pool_price, "{}", poo);
                 let (t0, t1) = pool_state.tvl(info.get_base_token());
 
                 // we only weight by the first token
@@ -298,7 +299,9 @@ where
         visited.visit(node);
     }
 
-    node_price.remove(&goal)
+    let goal = node_price.remove(&goal);
+    tracing::info!(price=?goal);
+    goal
 }
 
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in
