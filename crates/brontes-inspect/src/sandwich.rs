@@ -66,6 +66,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
+
+                    info!(?eoa, ?mev_executor_contract, ?possible_frontruns, ?victims, ?possible_backrun);
                     let victim_gas = victims
                         .iter()
                         .map(|victims| {
@@ -151,6 +153,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
         mut victim_gas: Vec<Vec<GasDetails>>,
     ) -> Option<(BundleHeader, BundleData)> {
+
+
         let back_run_swaps = searcher_actions
             .pop()?
             .into_iter()
