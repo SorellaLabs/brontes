@@ -554,7 +554,7 @@ mod tests {
                 hex!("0b428553bc2ccc8047b0da46e6c1c1e8a338d9a461850fcd67ddb233f6984677").into(),
                 hex!("fb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d").into(),
             ])
-            .with_gas_paid_usd(26.0)
+            .with_gas_paid_usd(21.9)
             .with_expected_profit_usd(3.69);
 
         inspector_util
