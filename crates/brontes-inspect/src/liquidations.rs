@@ -1,6 +1,6 @@
 use std::{collections::HashSet, sync::Arc};
 
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
     classified_mev::{ClassifiedMev, Liquidation, MevType, SpecificMev},
     extra_processing::Pair,
@@ -14,18 +14,18 @@ use reth_primitives::{b256, Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
 
-pub struct LiquidationInspector<'db> {
-    inner: SharedInspectorUtils<'db>,
+pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
+    inner: SharedInspectorUtils<'db, DB>,
 }
 
-impl<'db> LiquidationInspector<'db> {
-    pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
+impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
+    pub fn new(quote: Address, db: &'db DB) -> Self {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
 #[async_trait::async_trait]
-impl Inspector for LiquidationInspector<'_> {
+impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
@@ -66,7 +66,7 @@ impl Inspector for LiquidationInspector<'_> {
     }
 }
 
-impl LiquidationInspector<'_> {
+impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
     fn calculate_liquidation(
         &self,
         tx_hash: B256,
