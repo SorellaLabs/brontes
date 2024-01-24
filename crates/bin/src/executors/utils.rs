@@ -70,6 +70,7 @@ fn insert_mev_results<DB: LibmdbxWriter>(
         .map(|arb| format!("https://etherscan.io/tx/{arb:?}"))
         .fold(String::new(), |acc, arb| acc + &arb + "\n")
     );
+    info!("{:#?}", mev_details);
 
     if database
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
