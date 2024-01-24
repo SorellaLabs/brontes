@@ -2,7 +2,6 @@ use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     hash::Hash,
     sync::Arc,
-    thread,
 };
 
 use brontes_database::libmdbx::LibmdbxReader;
@@ -15,7 +14,6 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
-use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 

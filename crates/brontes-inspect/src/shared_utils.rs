@@ -5,7 +5,7 @@ use std::{
 };
 
 use alloy_primitives::U256;
-use brontes_database::libmdbx::{tables::TokenDecimals, Libmdbx, LibmdbxReader};
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedTransfer},
@@ -168,15 +168,17 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Account for all transfers that are in relation with the addresses that
     /// swap, so we can track the end address that collects the funds if it is
     /// different to the execution address
-    fn transfer_deltas(&self, transfers: Vec<&NormalizedTransfer>, deltas: &mut SwapTokenDeltas) {
+    fn transfer_deltas(&self, _transfers: Vec<&NormalizedTransfer>, _deltas: &mut SwapTokenDeltas) {
         // currently messing with price
         // for transfer in transfers.into_iter() {
         //     // normalize token decimals
-        //     let Ok(Some(decimals)) = self.db.try_get_token_decimals(transfer.token) else {
+        //     let Ok(Some(decimals)) =
+        // self.db.try_get_token_decimals(transfer.token) else {
         //         error!("token decimals not found");
         //         continue;
         //     };
-        //     let adjusted_amount = transfer.amount.to_scaled_rational(decimals);
+        //     let adjusted_amount =
+        // transfer.amount.to_scaled_rational(decimals);
         //
         //     // fill forward
         //     if deltas.contains_key(&transfer.from) {
@@ -194,8 +196,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         //
         //         // add to transfer recipient
         //         let mut inner = deltas.entry(transfer.to).or_default();
-        //         apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-        //     }
+        //         apply_entry(transfer.token, adjusted_amount.clone(), &mut
+        // inner);     }
         // }
     }
 }
