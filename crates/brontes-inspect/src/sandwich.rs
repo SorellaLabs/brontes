@@ -405,13 +405,12 @@ fn get_possible_sandwich_duplicate_contracts(
             // If this contract has not been called within this block, we insert the tx hash
             // into the map
             Entry::Vacant(duplicate_mev_contract) => {
-                duplicate_mev_contract.insert((root.tx_hash, root.head.data.get_to_address()));
+                duplicate_mev_contract.insert((root.tx_hash, root.head.address));
                 possible_victims.insert(root.tx_hash, vec![]);
             }
             Entry::Occupied(mut o) => {
                 // Get's prev tx hash &  for this sender & replaces it with the current tx hash
                 let (prev_tx_hash, frontrun_eoa) = o.get_mut();
-                *prev_tx_hash = root.tx_hash;
 
                 if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
                     match possible_sandwiches.entry(root.head.data.get_to_address()) {
@@ -433,6 +432,7 @@ fn get_possible_sandwich_duplicate_contracts(
                     }
                 }
 
+                *prev_tx_hash = root.tx_hash;
                 possible_victims.insert(root.tx_hash, vec![]);
             }
         }
