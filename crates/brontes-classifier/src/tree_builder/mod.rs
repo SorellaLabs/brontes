@@ -2,17 +2,9 @@ use std::sync::Arc;
 
 mod tree_pruning;
 mod utils;
-use brontes_database::libmdbx::{
-    tables::{AddressToProtocol, AddressToTokens, PoolCreationBlocks, TokenDecimals},
-    types::{
-        address_to_protocol::AddressToProtocolData, address_to_tokens::AddressToTokensData,
-        pool_creation_block::PoolCreationBlocksData,
-    },
-    Libmdbx,
-};
-use brontes_pricing::{types::DexPriceMsg, Protocol};
+use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
-    db::{address_to_tokens::PoolTokens, pool_creation_block::PoolsToAddresses},
     extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer, SelfdestructWithIndex},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
@@ -24,7 +16,7 @@ use itertools::Itertools;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::error;
+use tracing::{debug, error};
 use tree_pruning::{
     account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
@@ -37,15 +29,15 @@ use crate::{
 
 //TODO: Document this module
 #[derive(Debug, Clone)]
-pub struct Classifier<'db, T: TracingProvider> {
-    libmdbx:               &'db Libmdbx,
+pub struct Classifier<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+    libmdbx:               &'db DB,
     provider:              Arc<T>,
     pricing_update_sender: UnboundedSender<DexPriceMsg>,
 }
 
-impl<'db, T: TracingProvider> Classifier<'db, T> {
+impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db, T, DB> {
     pub fn new(
-        libmdbx: &'db Libmdbx,
+        libmdbx: &'db DB,
         pricing_update_sender: UnboundedSender<DexPriceMsg>,
         provider: Arc<T>,
     ) -> Self {
@@ -242,7 +234,12 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         }
 
         if let Actions::Transfer(transfer) = &classification {
-            if self.try_get_decimals(&transfer.token).unwrap().is_none() {
+            if self
+                .libmdbx
+                .try_get_token_decimals(transfer.token)
+                .unwrap()
+                .is_none()
+            {
                 missing_decimals.push(transfer.token);
             }
         }
@@ -257,6 +254,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
                             .unwrap();
 
                         if self
+                            .libmdbx
                             .insert_pool(
                                 block_number,
                                 pool.pool_address,
@@ -278,50 +276,8 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         classification
     }
 
-    fn insert_pool(
-        &self,
-        block: u64,
-        address: Address,
-        tokens: [Address; 2],
-        classifier_name: Protocol,
-    ) -> eyre::Result<()> {
-        self.libmdbx
-            .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
-                AddressToProtocolData { address, classifier_name },
-            ])?;
-
-        let tx = self.libmdbx.ro_tx()?;
-        let mut addrs = tx
-            .get::<PoolCreationBlocks>(block)?
-            .map(|i| i.0)
-            .unwrap_or(vec![]);
-
-        addrs.push(address);
-        self.libmdbx
-            .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
-                PoolCreationBlocksData {
-                    block_number: block,
-                    pools:        PoolsToAddresses(addrs),
-                },
-            ])?;
-
-        self.libmdbx
-            .write_table::<AddressToTokens, AddressToTokensData>(&vec![AddressToTokensData {
-                address,
-                tokens: PoolTokens {
-                    token0: tokens[0],
-                    token1: tokens[1],
-                    init_block: block,
-                    ..Default::default()
-                },
-            }])?;
-
-        Ok(())
-    }
-
     fn contains_pool(&self, address: Address) -> eyre::Result<bool> {
-        let tx = self.libmdbx.ro_tx()?;
-        Ok(tx.get::<AddressToProtocol>(address)?.is_some())
+        Ok(self.libmdbx.get_protocol(address)?.is_some())
     }
 
     async fn classify_node(
@@ -362,8 +318,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         let from_address = trace.get_from_addr();
         let target_address = trace.get_to_address();
 
-        let db_tx = self.libmdbx.ro_tx().unwrap();
-
         let call_data = trace.get_calldata();
         let return_bytes = trace.get_return_calldata();
 
@@ -375,7 +329,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             target_address,
             trace.msg_sender,
             &trace.logs,
-            &db_tx,
+            self.libmdbx,
             block,
             tx_idx,
         ) {
@@ -430,7 +384,7 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
             None => return (vec![], Actions::Unclassified(trace)),
         };
         let Some(node_data) = node_data else {
-            error!(block, tx_idx, "failed to find create parent node");
+            debug!(block, tx_idx, "failed to find create parent node");
             return (vec![], Actions::Unclassified(trace));
         };
 
@@ -457,11 +411,6 @@ impl<'db, T: TracingProvider> Classifier<'db, T> {
         self.pricing_update_sender
             .send(DexPriceMsg::Closed)
             .unwrap();
-    }
-
-    pub fn try_get_decimals(&self, token_addr: &Address) -> eyre::Result<Option<u8>> {
-        let tx = self.libmdbx.ro_tx()?;
-        Ok(tx.get::<TokenDecimals>(*token_addr)?)
     }
 }
 

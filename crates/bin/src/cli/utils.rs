@@ -1,7 +1,7 @@
 use std::env;
 
 use alloy_primitives::Address;
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::libmdbx::{Libmdbx, LibmdbxReadWriter};
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
     sandwich::SandwichInspector, Inspector,
@@ -13,14 +13,14 @@ pub fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
         Some(max_tasks) => max_tasks as u64,
         None => {
             let cpus = num_cpus::get_physical();
-            (cpus as f64 * 0.25) as u64 // 50% of physical cores
+            (cpus as f64 * 0.25) as u64 // 25% of physical cores
         }
     }
 }
 
 pub fn init_all_inspectors<'a>(
     quote_token: Address,
-    db: &'static Libmdbx,
+    db: &'static LibmdbxReadWriter,
 ) -> &'static [&'static Box<dyn Inspector>] {
     let sandwich = &*Box::leak(Box::new(
         Box::new(SandwichInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>

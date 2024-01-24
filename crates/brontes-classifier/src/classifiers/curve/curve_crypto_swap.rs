@@ -20,9 +20,10 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     log: CurveCryptoSwapexchange_0CallLogs,
-    db_tx: &CompressedLibmdbxTx<RO>| {
+    db_tx: &DB| {
         let log = log.TokenExchange_field;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         if log.sold_id ==  U256::ZERO {
@@ -64,10 +65,10 @@ action_impl!(
     msg_sender: Address,
     call_data: exchange_1Call,
     log: CurveCryptoSwapexchange_1CallLogs,
-    db_tx: &CompressedLibmdbxTx<RO>| {
+    db_tx: &DB| {
 
         let log = log.TokenExchange_field;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         let is_eth = call_data.use_eth;
@@ -120,10 +121,10 @@ action_impl!(
     msg_sender: Address,
     call_data: exchange_2Call,
     log: CurveCryptoSwapexchange_2CallLogs,
-    db_tx: &CompressedLibmdbxTx<RO>| {
+    db_tx: &DB| {
 
         let log = log.TokenExchange_field;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         let is_eth = call_data.use_eth;
@@ -176,9 +177,9 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     log: CurveCryptoSwapexchange_underlying_0CallLogs,
-    db_tx: &CompressedLibmdbxTx<RO>| {
+    db_tx: &DB| {
         let log = log.TokenExchange_field;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
 

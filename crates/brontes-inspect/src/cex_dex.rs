@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
     classified_mev::{BundleData, CexDex, MevType, PriceKind},
     extra_processing::Pair,
@@ -18,12 +18,12 @@ use tracing::{debug, error};
 
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
-pub struct CexDexInspector<'db> {
-    inner: SharedInspectorUtils<'db>,
+pub struct CexDexInspector<'db, DB: LibmdbxReader> {
+    inner: SharedInspectorUtils<'db, DB>,
 }
 
-impl<'db> CexDexInspector<'db> {
-    pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
+impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
+    pub fn new(quote: Address, db: &'db DB) -> Self {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
@@ -34,7 +34,7 @@ impl<'db> CexDexInspector<'db> {
 // price (addr + symbol + name) in a db table so we can fill in what is missing
 
 #[async_trait::async_trait]
-impl Inspector for CexDexInspector<'_> {
+impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
@@ -69,7 +69,7 @@ impl Inspector for CexDexInspector<'_> {
     }
 }
 
-impl CexDexInspector<'_> {
+impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     fn process_swaps(
         &self,
         hash: B256,
@@ -187,7 +187,7 @@ impl CexDexInspector<'_> {
         let delta_price = cex_price - dex_price;
 
         // Calculate the potential profit
-        let Some(decimals_in) = self.inner.try_get_decimals(swap.token_in) else {
+        let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             return None
         };
@@ -202,13 +202,11 @@ impl CexDexInspector<'_> {
     ) -> Option<(Rational, Rational)> {
         let Actions::Swap(swap) = swap else { return None };
 
-        let Some(decimals_in) = self.inner.try_get_decimals(swap.token_in) else {
+        let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
             return None
         };
-        //TODO(JOE): this is ugly asf, but we should have some metrics shit so we can
-        // log it
-        let Some(decimals_out) = self.inner.try_get_decimals(swap.token_out) else {
+        let Ok(Some(decimals_out)) = self.inner.db.try_get_token_decimals(swap.token_out) else {
             debug!(missing_token=?swap.token_out, "missing token out token to decimal map");
             return None
         };
