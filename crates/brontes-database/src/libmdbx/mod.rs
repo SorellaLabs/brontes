@@ -21,12 +21,12 @@ use reth_libmdbx::{RO, RW};
 use tables::*;
 use tracing::info;
 
-use self::types::{subgraphs::SubGraphsData, LibmdbxData};
+use self::types::{subgraphs::SubGraphsData, CompressedTable, LibmdbxData};
 use crate::clickhouse::Clickhouse;
 
 pub mod implementation;
 pub use implementation::compressed_wrappers::*;
-
+pub(crate) mod codecs;
 pub mod tables;
 pub mod types;
 
@@ -73,7 +73,7 @@ impl Libmdbx {
     }
 
     /// initializes all the tables with data via the CLI
-    pub async fn init_tables(
+    pub async fn initialize_tables(
         self: Arc<Self>,
         clickhouse: Arc<Clickhouse>,
         //tracer: Arc<TracingClient>,
@@ -88,25 +88,12 @@ impl Libmdbx {
 
     /// Clears a table in the database
     /// Only called on initialization
-    pub(crate) fn initialize_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
-    where
-        T: CompressedTable,
-        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T>,
-    {
-        self.clear_table::<T>()?;
-        self.write_table(entries)?;
-
-        Ok(())
-    }
-
-    /// Clears a table in the database
-    /// Only called on initialization
     fn clear_table<T>(&self) -> eyre::Result<()>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     {
+        info!(target: "brontes::init", "{} -- Clearing Table", T::NAME);
         let tx = self.rw_tx()?;
         tx.clear::<T>()?;
         tx.commit()?;
@@ -115,7 +102,7 @@ impl Libmdbx {
     }
 
     /// writes to a table
-    pub fn write_table<T, D>(&self, entries: &Vec<D>) -> eyre::Result<()>
+    pub fn write_table<T, D>(&self, entries: &Vec<D>) -> Result<(), DatabaseError>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -137,7 +124,7 @@ impl Libmdbx {
 
     /// Takes a function and passes a RW transaction
     /// makes sure it's committed at the end of execution
-    pub fn update_db<F, R>(&self, f: F) -> eyre::Result<R>
+    pub fn update_db<F, R>(&self, f: F) -> Result<R, DatabaseError>
     where
         F: FnOnce(&CompressedLibmdbxTx<RW>) -> R,
     {
@@ -157,7 +144,7 @@ impl Libmdbx {
     }
 
     /// returns a RW transaction
-    fn rw_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RW>> {
+    fn rw_tx(&self) -> Result<CompressedLibmdbxTx<RW>, DatabaseError> {
         let tx = CompressedLibmdbxTx::new_rw_tx(&self.0)?;
 
         Ok(tx)

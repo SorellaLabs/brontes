@@ -1671,6 +1671,7 @@ dependencies = [
  "serde_repr",
  "serde_with",
  "serial_test",
+ "sorella-db-databases",
  "strum",
  "thiserror",
  "tokio",
