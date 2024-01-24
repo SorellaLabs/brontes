@@ -4,13 +4,11 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{tables::AddressToProtocol, Libmdbx, LibmdbxReadWriter, LibmdbxReader},
+    libmdbx::{LibmdbxReadWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
-use reth_tasks::{TaskExecutor, TaskSpawnerExt};
-use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::info;
 

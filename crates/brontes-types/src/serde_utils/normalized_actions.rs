@@ -231,7 +231,7 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)>
                     .into_iter()
                     .map(|t| format!("{:?}", t).into())
                     .collect();
-                let mut mint_db: ClickhouseVecNormalizedMintOrBurn = mint.into();
+                let mint_db: ClickhouseVecNormalizedMintOrBurn = mint.into();
                 (tx_hashes_repeated, mint_db)
             })
             .for_each(|(tx_hashes_repeated, db_mint_with_tx)| {
@@ -271,7 +271,7 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)>
                     .into_iter()
                     .map(|t| format!("{:?}", t).into())
                     .collect();
-                let mut burn_db: ClickhouseVecNormalizedMintOrBurn = burn.into();
+                let burn_db: ClickhouseVecNormalizedMintOrBurn = burn.into();
                 (tx_hashes_repeated, burn_db)
             })
             .for_each(|(tx_hashes_repeated, db_burn_with_tx)| {

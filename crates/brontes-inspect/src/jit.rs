@@ -4,7 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
