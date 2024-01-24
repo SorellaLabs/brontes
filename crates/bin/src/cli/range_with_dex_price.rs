@@ -1,5 +1,6 @@
 use std::{env, path::Path};
 
+use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 #[cfg(feature = "local")]
@@ -14,10 +15,10 @@ use tokio::sync::mpsc::unbounded_channel;
 use tracing::info;
 
 use super::{determine_max_tasks, get_env_vars, init_all_inspectors};
-use crate::{runner::CliContext, DataBatching};
+use crate::{cli::static_object, runner::CliContext, RangeExecutorWithPricing};
 
 #[derive(Debug, Parser)]
-pub struct DexPricingArgs {
+pub struct RangeWithDexPrice {
     #[arg(long, short)]
     pub start_block:    u64,
     /// Optional End Block, if omitted it will continue to run until killed
@@ -33,7 +34,7 @@ pub struct DexPricingArgs {
     #[arg(long, short, default_value = "500")]
     pub min_batch_size: u64,
 }
-impl DexPricingArgs {
+impl RangeWithDexPrice {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         assert!(self.start_block <= self.end_block);
         info!(?self);
@@ -51,8 +52,7 @@ impl DexPricingArgs {
         task_executor.spawn_critical("metrics listener", metrics_listener);
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = Box::leak(Box::new(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?))
-            as &'static LibmdbxReadWriter;
+        let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
 
         let inspectors = init_all_inspectors(quote_asset, libmdbx);
 
@@ -67,14 +67,14 @@ impl DexPricingArgs {
             LocalProvider::new(url)
         };
 
-        let parser = &*Box::leak(Box::new(DParser::new(
+        let parser = static_object(DParser::new(
             metrics_tx,
             libmdbx,
             tracer.clone(),
-            Box::new(|address, db_tx: &LibmdbxReadWriter| {
+            Box::new(|address: &Address, db_tx: &LibmdbxReadWriter| {
                 db_tx.get_protocol(*address).unwrap().is_none()
             }),
-        )));
+        ));
 
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -104,7 +104,7 @@ impl DexPricingArgs {
                 |grace| async move {
                     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
                     let classifier = Classifier::new(libmdbx, tx.clone(), tracer.into());
-                    DataBatching::new(
+                    RangeExecutorWithPricing::new(
                         quote_asset,
                         batch_id as u64,
                         start_block,
