@@ -166,23 +166,24 @@ fn deduplicate_mev(
         None => return,
     };
 
-    let mut removal_indices: Vec<(MevType, usize)> = Vec::new();
+    let mut removal_indices = Vec::new();
 
     for (_, dominant_mev_bundle) in dominant_mev_list.iter() {
         let hashes = dominant_mev_bundle.mev_transaction_hashes();
 
         for &subordinate_mev_type in subordinate_mev_types {
             if let Some(subordinate_mev_list) = sorted_mev.get(&subordinate_mev_type) {
-                if let Some(index) = find_mev_with_matching_tx_hashes(subordinate_mev_list, &hashes)
-                {
-                    removal_indices.push((subordinate_mev_type, index));
-                }
+                removal_indices.extend(
+                    find_mev_with_matching_tx_hashes(subordinate_mev_list, &hashes)
+                        .into_iter()
+                        .zip(vec![subordinate_mev_type].into_iter().cycle()),
+                );
             }
         }
     }
 
     // Remove the subordinate mev data that is being deduplicated
-    for (mev_type, index) in removal_indices.iter().rev() {
+    for (index, mev_type) in removal_indices.iter().rev() {
         if let Some(mev_list) = sorted_mev.get_mut(mev_type) {
             if mev_list.len() > *index {
                 mev_list.remove(*index);
