@@ -16,7 +16,7 @@ use itertools::Itertools;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::error;
+use tracing::debug;
 use tree_pruning::{
     account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
@@ -384,7 +384,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             None => return (vec![], Actions::Unclassified(trace)),
         };
         let Some(node_data) = node_data else {
-            error!(block, tx_idx, "failed to find create parent node");
+            debug!(block, tx_idx, "failed to find create parent node");
             return (vec![], Actions::Unclassified(trace));
         };
 
