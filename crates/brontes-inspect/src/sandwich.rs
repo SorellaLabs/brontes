@@ -5,7 +5,7 @@ use std::{
     thread,
 };
 
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     classified_mev::{BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
@@ -19,12 +19,12 @@ use tracing::info;
 
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
-pub struct SandwichInspector<'db> {
-    inner: SharedInspectorUtils<'db>,
+pub struct SandwichInspector<'db, DB: LibmdbxReader> {
+    inner: SharedInspectorUtils<'db, DB>,
 }
 
-impl<'db> SandwichInspector<'db> {
-    pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
+impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
+    pub fn new(quote: Address, db: &'db DB) -> Self {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
@@ -41,7 +41,7 @@ pub struct PossibleSandwich {
 }
 
 #[async_trait::async_trait]
-impl Inspector for SandwichInspector<'_> {
+impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
@@ -139,7 +139,7 @@ impl Inspector for SandwichInspector<'_> {
     }
 }
 
-impl SandwichInspector<'_> {
+impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn calculate_sandwich(
         &self,
         idx: usize,

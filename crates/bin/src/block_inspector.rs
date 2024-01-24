@@ -12,8 +12,8 @@ use brontes_core::{
 };
 use brontes_database::libmdbx::{
     tables::{DexPrice, Metadata as MetadataTable, MevBlocks},
-    types::{dex_price::make_filter_key_range, mev_block::MevBlocksData},
-    Libmdbx,
+    types::{dex_price::make_filter_key_range, mev_block::MevBlocksData, LibmdbxData},
+    Libmdbx, LibmdbxReader, LibmdbxWriter,
 };
 use brontes_inspect::{
     composer::{compose_mev_results, ComposerResults},
@@ -32,18 +32,18 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use futures::{Future, FutureExt};
+use futures::{task::waker, Future, FutureExt};
 use tracing::{debug, error, info, trace};
 
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (MetadataCombined, BlockTree<Actions>)> + Send + 'a>>;
 
-pub struct BlockInspector<'inspector, T: TracingProvider> {
+pub struct BlockInspector<'inspector, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     block_number: u64,
 
-    parser:            &'inspector Parser<'inspector, T>,
-    classifier:        &'inspector Classifier<'inspector, T>,
-    database:          &'inspector Libmdbx,
+    parser:            &'inspector Parser<'inspector, T, DB>,
+    classifier:        &'inspector Classifier<'inspector, T, DB>,
+    database:          &'inspector DB,
     inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
     composer_future:   Option<Pin<Box<dyn Future<Output = ComposerResults> + Send + 'inspector>>>,
     // pending future data
@@ -52,11 +52,13 @@ pub struct BlockInspector<'inspector, T: TracingProvider> {
     // insertion_future:  Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
 }
 
-impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
+impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
+    BlockInspector<'inspector, T, DB>
+{
     pub fn new(
-        parser: &'inspector Parser<'inspector, T>,
-        database: &'inspector Libmdbx,
-        classifier: &'inspector Classifier<'_, T>,
+        parser: &'inspector Parser<'inspector, T, DB>,
+        database: &'inspector DB,
+        classifier: &'inspector Classifier<'_, T, DB>,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>],
         block_number: u64,
     ) -> Self {
@@ -74,7 +76,7 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
     fn start_collection(&mut self) {
         trace!(target:"brontes", block_number = self.block_number, "starting collection of data");
         let parser_fut = self.parser.execute(self.block_number);
-        let labeller_fut = self.get_metadata(self.block_number);
+        let labeller_fut = self.database.get_metadata(self.block_number);
 
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
@@ -104,14 +106,9 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
             "inserting the collected results \n {:#?}",
             results
         );
-
-        let data = MevBlocksData {
-            block_number: results.0.block_number,
-            mev_blocks:   MevBlockWithClassified { block: results.0, mev: results.1 },
-        };
         if self
             .database
-            .write_table::<MevBlocks, MevBlocksData>(&vec![data])
+            .save_mev_blocks(self.block_number, results.0, results.1)
             .is_err()
         {
             error!("failed to insert classified mev to Libmdbx");
@@ -179,83 +176,9 @@ impl<'inspector, T: TracingProvider> BlockInspector<'inspector, T> {
             }
         }
     }
-
-    pub fn get_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined> {
-        let tx = self.database.ro_tx()?;
-        let block_meta: MetadataInner = tx
-            .get::<MetadataTable>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        /*
-        let db_cex_quotes = CexPriceMap(
-            tx.get::<CexPrice>(block_num)?
-                .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-                .0,
-        );*/
-
-        let db_cex_quotes: CexPriceMap = CexPriceMap::default();
-
-        let eth_prices =
-            if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
-                eth_usdt
-            } else {
-                db_cex_quotes
-                    .get_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-                    .unwrap_or_default()
-            };
-
-        let mut cex_quotes = CexPriceMap::new();
-        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
-            cex_quotes.0.insert(
-                pair,
-                quote
-                    .into_iter()
-                    .map(|q| CexQuote {
-                        exchange:  q.exchange,
-                        timestamp: q.timestamp,
-                        price:     q.price,
-                        token0:    q.token0,
-                    })
-                    .collect::<Vec<_>>(),
-            );
-        });
-
-        let dex_quotes = Vec::new();
-        let key_range = make_filter_key_range(block_num);
-        let _db_dex_quotes = tx
-            .cursor_read::<DexPrice>()?
-            .walk_range(key_range.0..key_range.1)?
-            .flat_map(|inner| {
-                if let Ok((key, _val)) = inner.map(|row| (row.0, row.1)) {
-                    //dex_quotes.push(Default::default());
-                    Some(key)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        //.get::<DexPrice>(block_num)?
-        //.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        Ok(MetadataCombined {
-            db:         MetadataNoDex {
-                block_num,
-                block_hash: block_meta.block_hash,
-                relay_timestamp: block_meta.relay_timestamp,
-                p2p_timestamp: block_meta.p2p_timestamp,
-                proposer_fee_recipient: block_meta.proposer_fee_recipient,
-                proposer_mev_reward: block_meta.proposer_mev_reward,
-                cex_quotes,
-                eth_prices: max(eth_prices.price.0, eth_prices.price.1),
-                block_timestamp: block_meta.block_timestamp,
-                mempool_flow: block_meta.mempool_flow.into_iter().collect(),
-            },
-            dex_quotes: DexQuotes(dex_quotes),
-        })
-    }
 }
 
-impl<T: TracingProvider> Future for BlockInspector<'_, T> {
+impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future for BlockInspector<'_, T, DB> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

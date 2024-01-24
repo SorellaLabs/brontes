@@ -4,7 +4,8 @@
 pub mod decoding;
 pub mod errors;
 pub mod executor;
-pub mod macros;
+#[cfg(feature = "local")]
+pub mod local_provider;
 pub mod missing_decimals;
 
 #[cfg(feature = "tests")]

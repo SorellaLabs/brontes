@@ -4,7 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
     classified_mev::{JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
@@ -29,18 +29,18 @@ struct PossibleJit {
     pub victims:               Vec<B256>,
 }
 
-pub struct JitInspector<'db> {
-    inner: SharedInspectorUtils<'db>,
+pub struct JitInspector<'db, DB: LibmdbxReader> {
+    inner: SharedInspectorUtils<'db, DB>,
 }
 
-impl<'db> JitInspector<'db> {
-    pub fn new(quote: Address, db: &'db Libmdbx) -> Self {
+impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
+    pub fn new(quote: Address, db: &'db DB) -> Self {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
 #[async_trait]
-impl Inspector for JitInspector<'_> {
+impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
@@ -130,7 +130,7 @@ impl Inspector for JitInspector<'_> {
     }
 }
 
-impl JitInspector<'_> {
+impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     fn calculate_jit(
         &self,
         eoa: Address,
@@ -358,7 +358,9 @@ impl JitInspector<'_> {
                 Some(
                     self.inner
                         .get_dex_usd_price(idx, *token, metadata.clone())?
-                        * amount.to_scaled_rational(self.inner.try_get_decimals(*token)?),
+                        * amount.to_scaled_rational(
+                            self.inner.db.try_get_token_decimals(*token).ok()??,
+                        ),
                 )
             })
             .sum::<Rational>()
