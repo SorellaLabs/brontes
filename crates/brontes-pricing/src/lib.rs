@@ -281,7 +281,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             error!(?addr, "failed to get pair for pool");
             return;
         };
-
         self.graph_manager.update_state(addr, msg);
 
         // add price post state
