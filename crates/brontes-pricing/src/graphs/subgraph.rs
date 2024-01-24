@@ -117,9 +117,9 @@ impl PairSubGraph {
     }
 
     pub fn fetch_price<T: ProtocolState>(
-        &self,
         edge_state: &HashMap<Address, T>,
     ) -> Option<Rational> {
+        pri
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
     }
 
@@ -253,6 +253,8 @@ where
                 let Some(pool_state) = state.get(&info.pool_addr) else {
                     continue;
                 };
+                tracing::info!(?pool_state);
+
                 // returns is t1  / t0
                 let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
                     continue;

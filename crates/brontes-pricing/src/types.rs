@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc, fmt::Debug};
 
 use alloy_primitives::{Address, Log, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
@@ -17,7 +17,7 @@ use crate::{
     AutomatedMarketMaker, Protocol,
 };
 
-pub(crate) trait ProtocolState {
+pub(crate) trait ProtocolState: Debug{
     fn price(&self, base: Address) -> Result<Rational, ArithmeticError>;
     fn tvl(&self, base: Address) -> (Rational, Rational);
 }
