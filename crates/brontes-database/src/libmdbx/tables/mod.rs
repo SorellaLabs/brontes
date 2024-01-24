@@ -11,6 +11,7 @@ use brontes_types::{
         pool_creation_block::PoolsToAddresses, traces::TxTracesInner,
     },
     extra_processing::Pair,
+    traits::TracingProvider,
 };
 
 mod const_sql;
@@ -22,7 +23,6 @@ use reth_db::{table::Table, TableType};
 use super::{
     initialize::LibmdbxInitializer,
     types::{
-        address_to_factory::AddressToFactoryData,
         address_to_protocol::AddressToProtocolData,
         address_to_tokens::{AddressToTokensData, ArchivedLibmdbxPoolTokens, LibmdbxPoolTokens},
         cex_price::{ArchivedLibmdbxCexPriceMap, CexPriceData, LibmdbxCexPriceMap},
@@ -44,7 +44,7 @@ use super::{
     CompressedTable,
 };
 
-pub const NUM_TABLES: usize = 11;
+pub const NUM_TABLES: usize = 10;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -105,30 +105,27 @@ macro_rules! tables {
 }
 
 impl Tables {
-    pub(crate) async fn initialize_table(
+    pub(crate) async fn initialize_table<T: TracingProvider>(
         &self,
-        initializer: &LibmdbxInitializer,
+        initializer: &LibmdbxInitializer<T>,
         block_range: Option<(u64, u64)>,
     ) -> eyre::Result<()> {
         match self {
             Tables::TokenDecimals => {
                 initializer
-                    .initialize_table_from_clickhouse::<TokenDecimals, TokenDecimalsData>(
-                        block_range,
+                    .initialize_table_from_clickhouse_no_args::<TokenDecimals, TokenDecimalsData>(
                     )
                     .await
             }
             Tables::AddressToTokens => {
                 initializer
-                    .initialize_table_from_clickhouse::<AddressToTokens, AddressToTokensData>(
-                        block_range,
+                    .initialize_table_from_clickhouse_no_args::<AddressToTokens, AddressToTokensData>(
                     )
                     .await
             }
             Tables::AddressToProtocol => {
                 initializer
-                    .initialize_table_from_clickhouse::<AddressToProtocol, AddressToProtocolData>(
-                        block_range,
+                    .initialize_table_from_clickhouse_no_args::<AddressToProtocol, AddressToProtocolData>(
                     )
                     .await
             }
@@ -142,7 +139,6 @@ impl Tables {
                     .initialize_table_from_clickhouse::<Metadata, MetadataData>(block_range)
                     .await
             }
-            Tables::DexPrice => todo!(),
             Tables::PoolCreationBlocks => {
                 initializer
                     .initialize_table_from_clickhouse::<PoolCreationBlocks, PoolCreationBlocksData>(
@@ -150,16 +146,10 @@ impl Tables {
                     )
                     .await
             }
-            Tables::MevBlocks => todo!(),
-            Tables::AddressToFactory => {
-                initializer
-                    .initialize_table_from_clickhouse::<AddressToFactory, AddressToFactoryData>(
-                        block_range,
-                    )
-                    .await
-            }
-            Tables::SubGraphs => todo!(),
-            Tables::TxTraces => todo!(),
+            Tables::DexPrice => Ok(()),
+            Tables::MevBlocks => Ok(()),
+            Tables::SubGraphs => Ok(()),
+            Tables::TxTraces => Ok(()),
         }
     }
 }
@@ -173,7 +163,6 @@ tables!(
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
-    AddressToFactory,
     SubGraphs,
     TxTraces
 );
@@ -357,11 +346,6 @@ compressed_table!(
 compressed_table!(
     /// pair -> Vec<(block_number, entry)>
     ( SubGraphs ) Pair | LibmdbxSubGraphsEntry | Other | SubGraphsEntry = False
-);
-
-compressed_table!(
-    /// address -> factory
-    ( AddressToFactory ) Address | Clickhouse | Protocol = True
 );
 
 compressed_table!(

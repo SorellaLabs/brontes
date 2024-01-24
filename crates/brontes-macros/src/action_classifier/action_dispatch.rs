@@ -42,7 +42,7 @@ impl ActionDispatch {
             pub struct #struct_name(#(pub #name,)*);
 
             impl crate::ActionCollection for #struct_name {
-                fn dispatch(
+                fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader> (
                     &self,
                     index: u64,
                     data: ::alloy_primitives::Bytes,
@@ -51,9 +51,7 @@ impl ActionDispatch {
                     target_address: ::alloy_primitives::Address,
                     msg_sender: ::alloy_primitives::Address,
                     logs: &Vec<::alloy_primitives::Log>,
-                    db_tx: &brontes_database::libmdbx::tx::CompressedLibmdbxTx<
-                        ::reth_db::mdbx::RO
-                    >,
+                    db_tx: &DB,
                     block: u64,
                     tx_idx: u64,
                 ) -> Option<(
@@ -61,14 +59,12 @@ impl ActionDispatch {
                         ::brontes_types::normalized_actions::Actions
                     )> {
 
+                    let protocol_byte = db_tx.get_protocol(target_address).ok()??.to_byte();
 
                     let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&data[0..4]);
                     let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(&data[0..4]).0;
-                    let protocol_byte = db_tx.get::<
-                        ::brontes_database::libmdbx::tables::AddressToProtocol>
-                        (target_address).ok()??.to_byte();
 
-                    let mut sig_w_byte= [0u8;5];
+                    let mut sig_w_byte= [0u8; 5];
                     sig_w_byte[0..4].copy_from_slice(&sig);
                     sig_w_byte[4] = protocol_byte;
 

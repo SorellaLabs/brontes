@@ -3,9 +3,7 @@ use std::sync::Arc;
 use alloy_primitives::{Address, Bytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
-use brontes_database::libmdbx::{
-    tables::TokenDecimals, types::token_decimals::TokenDecimalsData, Libmdbx,
-};
+use brontes_database::libmdbx::LibmdbxWriter;
 use futures::{future::join, stream::FuturesUnordered, StreamExt};
 use reth_provider::ProviderError;
 use reth_rpc_types::{CallInput, CallRequest};
@@ -17,9 +15,9 @@ sol!(
     function decimals() public view returns (uint8);
 );
 
-pub async fn load_missing_decimals<T: TracingProvider>(
+pub async fn load_missing_decimals<T: TracingProvider, W: LibmdbxWriter>(
     provider: Arc<T>,
-    db: &Libmdbx,
+    db: &W,
     block: u64,
     missing: Vec<Address>,
 ) {
@@ -41,8 +39,8 @@ pub async fn load_missing_decimals<T: TracingProvider>(
     }
 }
 
-fn on_decimal_query_resolution(
-    database: &Libmdbx,
+fn on_decimal_query_resolution<W: LibmdbxWriter>(
+    database: &W,
     addr: Address,
     res: Result<Bytes, ProviderError>,
 ) {
@@ -50,7 +48,7 @@ fn on_decimal_query_resolution(
         let Some(dec) = decimalsCall::abi_decode_returns(&res, false).ok() else { return };
         let dec = dec._0;
         debug!(?dec, ?addr, "got new decimal");
-        if let Err(e) = insert_decimals(database, addr, dec) {
+        if let Err(e) = database.write_token_decimals(addr, dec) {
             error!(?e, "failed to insert missing decimals into libmdbx");
         }
     } else {
@@ -58,11 +56,4 @@ fn on_decimal_query_resolution(
         // without a decimals fn
         debug!(?addr, "Token request failed for token");
     }
-}
-
-fn insert_decimals(database: &Libmdbx, address: Address, decimals: u8) -> eyre::Result<()> {
-    Ok(database.write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
-        address,
-        decimals,
-    }])?)
 }
