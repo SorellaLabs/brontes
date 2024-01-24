@@ -120,11 +120,11 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             match data {
                 Ok(d) => self.libmdbx.write_table(&d)?,
                 Err(e) => {
-                    error!(target: "brontes::init", "{} -- Error Writing Chunk {} -- {:?}", T::NAME, num, e)
+                    error!(target: "brontes::init", "{} -- Error Writing Chunk {} -- Blocks: {} - {} -- {:?}", T::NAME, start, end, num, e)
                 }
             }
 
-            info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
+            info!(target: "brontes::init", "{} -- Finished Chunk {} -- Blocks: {} - {}", T::NAME, num, start, end);
 
             Ok::<(), DatabaseError>(())
         }}))
