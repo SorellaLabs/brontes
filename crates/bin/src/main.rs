@@ -54,7 +54,7 @@ fn run() -> eyre::Result<()> {
     let opt = Args::parse();
     match opt.command {
         Commands::Run(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
-        Commands::RunBatchWithPricing(command) => {
+        Commands::RangeWithDexPrice(command) => {
             runner::run_command_until_exit(|ctx| command.execute(ctx))
         }
         Commands::Init(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
