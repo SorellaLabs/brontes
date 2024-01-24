@@ -316,7 +316,7 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         let tx = self.tx.clone();
         let fut = Box::pin(async move {
             let res = pricer.next().await;
-            tx.try_send((pricer, res)).unwrap();
+            let _ = tx.try_send((pricer, res));
         });
 
         self.task_executor.spawn_critical("dex pricer", fut);
