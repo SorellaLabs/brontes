@@ -42,6 +42,7 @@ use brontes_types::{
     tree::BlockTree,
 };
 use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
+use rand::seq::index;
 use utils::{
     build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
     BlockPreprocessing,
@@ -227,9 +228,11 @@ fn try_compose_mev(
 
             for &other_mev_type in child_mev_type.iter().skip(1) {
                 if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
-                    for index in find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes)
-                        .into_iter()
-                    {
+                    let indexes = find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes);
+                    if indexes.is_empty() {
+                        break
+                    }
+                    for index in indexes {
                         let (other_classified, other_mev_data) = &other_mev_data_list[index];
 
                         to_compose.push((other_classified.clone(), other_mev_data.clone()));
