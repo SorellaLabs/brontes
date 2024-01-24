@@ -90,6 +90,8 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             })
             .collect_vec();
 
+
+
         self.is_possible_arb(swaps)?;
 
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
@@ -216,6 +218,16 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+    #[tokio::test]
+    #[serial]
+    async fn test_not_false_positive() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
+        let tx = hex!("ac1127310fdec0b07e618407eabfb7cdf5ada81dc47e914c76fc759843346a0e").into();
+        let config = InspectorTxRunConfig::new(MevType::Backrun)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices();
 
-    //TOOD: run, find false positives and write tests + fix
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
 }
