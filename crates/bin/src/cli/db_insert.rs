@@ -48,7 +48,6 @@ impl AddToDb {
             TokenDecimals,
             AddressToTokens,
             AddressToProtocol,
-            AddressToFactory,
             SubGraphs,
             TxTraces,
             PoolCreationBlocks = &self.key,
