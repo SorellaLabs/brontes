@@ -55,7 +55,6 @@ impl PricingTestUtils {
             HashMap::new()
         };
         Ok(BrontesBatchPricer::new(
-            5,
             self.quote_address,
             pair_graph,
             rx,

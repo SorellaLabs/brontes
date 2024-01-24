@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
-    classified_mev::{CexDex, MevType, PriceKind, SpecificMev},
+    classified_mev::{BundleData, CexDex, MevType, PriceKind},
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
@@ -16,7 +16,7 @@ use rayon::{
 use reth_primitives::{Address, B256};
 use tracing::{debug, error};
 
-use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -27,6 +27,11 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
+//TODO: Support for multiple CEXs
+//TODO: Filtering by coinbase.transfer() to builder or directly to the proposer
+//TODO: Start adding filtering by function sig in the tree. Like executeFFsYo
+//TODO: If single swap with coinbase.transfer then flag token as missing cex
+// price (addr + symbol + name) in a db table so we can fill in what is missing
 
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
@@ -34,7 +39,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)> {
+    ) -> Vec<(BundleHeader, BundleData)> {
         // Get all normalized swaps
         let intersting_state = tree.collect_all(|node| {
             (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
@@ -74,7 +79,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: Arc<MetadataCombined>,
         gas_details: &GasDetails,
         swaps: Vec<Actions>,
-    ) -> Option<(ClassifiedMev, SpecificMev)> {
+    ) -> Option<(BundleHeader, BundleData)> {
         let swap_sequences: Vec<(&Actions, _)> = swaps
             .iter()
             .filter_map(|action| {
@@ -98,7 +103,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
-        let classified = ClassifiedMev {
+        let classified = BundleHeader {
             mev_tx_index: idx as u64,
             mev_profit_collector,
             tx_hash: hash,
@@ -140,7 +145,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 .collect(),
         };
 
-        Some((classified, SpecificMev::CexDex(cex_dex)))
+        Some((classified, BundleData::CexDex(cex_dex)))
     }
 
     fn arb_gas_accounting(
@@ -219,6 +224,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     }
 }
 
+//TODO: Update tests
 /*
 #[cfg(test)]
 mod tests {

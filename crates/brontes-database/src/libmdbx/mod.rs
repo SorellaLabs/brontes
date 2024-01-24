@@ -28,7 +28,6 @@ use crate::clickhouse::Clickhouse;
 
 pub mod implementation;
 pub use implementation::compressed_wrappers::*;
-pub(crate) mod codecs;
 pub mod tables;
 pub mod types;
 
