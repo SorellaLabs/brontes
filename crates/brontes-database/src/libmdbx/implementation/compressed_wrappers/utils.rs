@@ -3,7 +3,7 @@ use reth_db::{
     DatabaseError,
 };
 
-use crate::libmdbx::CompressedTable;
+use crate::libmdbx::types::CompressedTable;
 
 #[derive(Debug)]
 pub struct CompressedTableRow<T>(
