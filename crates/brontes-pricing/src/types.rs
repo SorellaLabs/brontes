@@ -39,9 +39,9 @@ pub struct PoolState {
 impl Debug for PoolState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Pool State")
-            .field("pair", self.variant.pair())
-            .field("tvl 0", &self.get_tvl(self.variant.pair().0).0)
-            .field("tvl 1", &self.get_tvl(self.variant.pair().0).1)
+            .field("pair", &self.pair())
+            .field("tvl 0", &self.get_tvl(self.pair().0).0)
+            .field("tvl 1", &self.get_tvl(self.pair().0).1)
             .finish()
     }
 }
