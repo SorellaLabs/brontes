@@ -8,6 +8,7 @@ use brontes_types::{
     tree::BlockTree,
     ToScaledRational,
 };
+use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::Address;
 
@@ -135,11 +136,11 @@ pub(crate) fn sort_mev_by_type(
 pub(crate) fn find_mev_with_matching_tx_hashes(
     mev_data_list: &[(BundleHeader, BundleData)],
     tx_hashes: &[FixedBytes<32>],
-) -> Option<usize> {
+) -> Vec<usize> {
     mev_data_list
         .iter()
         .enumerate()
-        .find_map(|(index, (_, mev_data))| {
+        .filter_map(|(index, (_, mev_data))| {
             let tx_hashes_in_mev = mev_data.mev_transaction_hashes();
             if tx_hashes_in_mev.iter().any(|hash| tx_hashes.contains(hash)) {
                 Some(index)
@@ -147,4 +148,5 @@ pub(crate) fn find_mev_with_matching_tx_hashes(
                 None
             }
         })
+        .collect_vec()
 }
