@@ -182,14 +182,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 // subtract balance from sender
                 let mut inner = deltas.entry(transfer.from).or_default();
 
-                match inner.entry(token) {
+                match inner.entry(transfer.token) {
                     Entry::Occupied(mut o) => {
                         if *o.get_mut() == adjusted_amount {
                             *o.get_mut() -= adjusted_amount.clone();
                         }
                     }
                     Entry::Vacant(v) => {
-                        continue;
+                        continue
                     }
                 }
 
