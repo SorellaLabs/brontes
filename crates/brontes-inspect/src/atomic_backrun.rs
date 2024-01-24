@@ -129,6 +129,8 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             return None
         }
 
+        info!(?pre_state_rev_usd, ?rev_usd, "found valid backrun");
+
         let classified = BundleHeader {
             mev_tx_index: idx as u64,
             mev_type: MevType::Backrun,
