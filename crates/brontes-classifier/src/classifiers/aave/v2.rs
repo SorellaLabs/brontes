@@ -1,9 +1,7 @@
 use alloy_primitives::{Address, U256};
-use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation};
-use reth_db::mdbx::RO;
 
 action_impl!(
     Protocol::AaveV2,

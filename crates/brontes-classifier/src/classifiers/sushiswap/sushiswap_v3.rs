@@ -1,11 +1,9 @@
 use alloy_primitives::{Address, U256};
-use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
-use brontes_macros::{action_dispatch, action_impl};
+use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{
     NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
 };
-use reth_db::mdbx::RO;
 
 use crate::SushiSwapV3::{burnReturn, collectReturn, mintReturn, swapReturn};
 
@@ -96,9 +94,6 @@ action_impl!(
     _msg_sender: Address,
     return_data: burnReturn,
     db_tx: &DB| {
-        let token_0_delta = return_data.amount0;
-        let token_1_delta = return_data.amount1;
-
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
