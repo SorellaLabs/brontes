@@ -30,7 +30,6 @@ use petgraph::{
     Graph,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::revm_primitives::HashMap;
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
@@ -260,23 +259,22 @@ where
                     continue;
                 };
 
-                if not_outliers_avg == Rational::ZERO {
-                    not_outliers_avg = pool_price;
+                if not_outlier_p == Rational::ZERO {
+                    not_outlier_p = pool_price.clone();
                     not_outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                    continue
                 // if the diff is greater than 1/3 in price add to other
-                } else if ((not_outlier_p / not_outliers.len()) - pool_price).abs()
-                    > (not_outlier_p / not_outliers.len()) / 3
+                } else if ((&not_outlier_p / Rational::from(not_outliers.len())) - &pool_price).abs()
+                    > (&not_outlier_p / Rational::from(not_outliers.len())) / Rational::from(3)
                 {
-                    if outlier_avg == Rational::ZERO {
-                        outlier_p = pool_price;
+                    if outlier_p == Rational::ZERO {
+                        outlier_p = pool_price.clone();
                         outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
                     } else {
-                        outlier_p += pool_price;
+                        outlier_p += pool_price.clone();
                         outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
                     }
                 } else {
-                    not_outliers_avg += pool_price;
+                    not_outlier_p += pool_price.clone();
                     not_outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
                 }
             }
@@ -288,9 +286,7 @@ where
             let mut token_0_am = Rational::ZERO;
             let mut token_1_am = Rational::ZERO;
 
-            for (price, (t0, t1)) in set {
-                let (t0, t1) = pool_state.tvl(info.get_base_token());
-
+            for (pool_price, (t0, t1)) in set {
                 // we only weight by the first token
                 let t0xt1 = &t0 * &t1;
                 pxw += (pool_price * &t0xt1);
@@ -298,10 +294,6 @@ where
 
                 token_0_am += t0;
                 token_1_am += t1;
-            }
-
-            if weight_prices.is_empty() {
-                continue
             }
 
             if weight == Rational::ZERO {
