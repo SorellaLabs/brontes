@@ -116,9 +116,7 @@ impl PairSubGraph {
         }
     }
 
-    pub fn fetch_price<T: ProtocolState>(
-        edge_state: &HashMap<Address, T>,
-    ) -> Option<Rational> {
+    pub fn fetch_price<T: ProtocolState>(&self,edge_state: &HashMap<Address, T>) -> Option<Rational> {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
     }
 
