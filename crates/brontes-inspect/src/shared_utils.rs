@@ -181,18 +181,19 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             if deltas.contains_key(&transfer.from) {
                 // subtract balance from sender
                 let mut inner = deltas.entry(transfer.from).or_default();
-                apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
+
+                match inner.entry(token) {
+                    Entry::Occupied(mut o) => {
+                        if *o.get_mut() == adjusted_amount {
+                            *o.get_mut() -= adjusted_amount.clone();
+                        }
+                    }
+                    Entry::Vacant(v) => {
+                        continue;
+                    }
+                }
 
                 // add to transfer recipient
-                let mut inner = deltas.entry(transfer.to).or_default();
-                apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
-            }
-
-            // fill backwards
-            if deltas.contains_key(&transfer.to) {
-                let mut inner = deltas.entry(transfer.from).or_default();
-                apply_entry(transfer.token, -adjusted_amount.clone(), &mut inner);
-
                 let mut inner = deltas.entry(transfer.to).or_default();
                 apply_entry(transfer.token, adjusted_amount.clone(), &mut inner);
             }
