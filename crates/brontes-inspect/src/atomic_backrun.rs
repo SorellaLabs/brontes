@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use tracing::info;
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter};
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
@@ -102,6 +103,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         let rev_usd = addr_usd_deltas
             .values()
             .fold(Rational::ZERO, |acc, delta| acc + delta);
+        info!(?rev_usd);
 
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
