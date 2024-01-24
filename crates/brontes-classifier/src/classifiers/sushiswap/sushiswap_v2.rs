@@ -18,12 +18,12 @@ action_impl!(
     msg_sender: Address,
     call_data: swapCall,
     logs: SushiSwapV2swapCallLogs,
-    db_tx: &CompressedLibmdbxTx<RO>| {
+    db_tx: &DB| {
         let logs = logs.Swap_field;
 
         let recipient = call_data.to;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         let amount_0_in: U256 = logs.amount0In;
         if amount_0_in == U256::ZERO {
@@ -66,10 +66,11 @@ action_impl!(
      msg_sender: Address,
      call_data: mintCall,
      log_data: SushiSwapV2mintCallLogs,
-     db_tx: &CompressedLibmdbxTx<RO>| {
+     db_tx: &DB| {
         let log_data = log_data.Mint_field;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedMint {
             recipient: call_data.to,
             from: from_address,
@@ -94,10 +95,10 @@ action_impl!(
      msg_sender: Address,
      call_data: burnCall,
      log_data: SushiSwapV2burnCallLogs,
-     db_tx: &CompressedLibmdbxTx<RO>| {
+     db_tx: &DB| {
         let log_data = log_data.Burn_field;
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedBurn {
             recipient: call_data.to,
             to: target_address,

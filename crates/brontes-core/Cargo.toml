@@ -49,6 +49,7 @@ alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
 alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git" }
 
 # Serde 
 serde.workspace = true
@@ -110,4 +111,3 @@ default = []
 dyn-decode = []
 tests = []
 local = []
-
