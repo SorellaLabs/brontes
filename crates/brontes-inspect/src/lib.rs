@@ -96,12 +96,20 @@ pub mod test_utils;
 
 use std::sync::Arc;
 
+use alloy_primitives::Address;
+use atomic_backrun::AtomicBackrunInspector;
+use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader},
+    classified_mev::{AtomicBackrun, BundleData, BundleHeader},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
 };
+use cex_dex::CexDexInspector;
+use jit::JitInspector;
+use liquidations::LiquidationInspector;
+use long_tail::LongTailInspector;
+use sandwich::SandwichInspector;
 
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
@@ -110,4 +118,53 @@ pub trait Inspector: Send + Sync {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
     ) -> Vec<(BundleHeader, BundleData)>;
+}
+
+#[derive(
+    Debug, PartialEq, Clone, Copy, Eq, Hash, strum::Display, strum::EnumString, strum::EnumIter,
+)]
+pub enum Inspectors {
+    AtomicBackrun,
+    CexDex,
+    Jit,
+    Liquidations,
+    LongTail,
+    Sandwich,
+}
+
+impl Inspectors {
+    pub fn init_inspector(
+        &self,
+        quote_token: Address,
+        db: &'static LibmdbxReadWriter,
+    ) -> &'static Box<dyn Inspector> {
+        match &self {
+            Self::AtomicBackrun => {
+                static_object(Box::new(AtomicBackrunInspector::new(quote_token, db))
+                    as Box<dyn Inspector + 'static>)
+            }
+            Self::Jit => static_object(
+                Box::new(JitInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
+            ),
+            Self::LongTail => {
+                static_object(Box::new(LongTailInspector::new(quote_token, db))
+                    as Box<dyn Inspector + 'static>)
+            }
+            Self::CexDex => static_object(
+                Box::new(CexDexInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
+            ),
+            Self::Sandwich => {
+                static_object(Box::new(SandwichInspector::new(quote_token, db))
+                    as Box<dyn Inspector + 'static>)
+            }
+            Self::Liquidations => {
+                static_object(Box::new(LiquidationInspector::new(quote_token, db))
+                    as Box<dyn Inspector + 'static>)
+            }
+        }
+    }
+}
+
+fn static_object<T>(obj: T) -> &'static T {
+    &*Box::leak(Box::new(obj))
 }

@@ -6,29 +6,33 @@ use brontes_database::{
     clickhouse::Clickhouse,
     libmdbx::{tables::AddressToProtocol, Libmdbx, LibmdbxReadWriter, LibmdbxReader},
 };
+use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
 use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::info;
 
-use super::{determine_max_tasks, get_env_vars, init_all_inspectors};
+use super::{determine_max_tasks, get_env_vars};
 use crate::{runner::CliContext, Brontes};
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
     /// Start Block
     #[arg(long, short)]
-    pub start_block: u64,
+    pub start_block:       u64,
     /// Optional End Block, if omitted it will continue to run until killed
     #[arg(long, short)]
-    pub end_block:   Option<u64>,
+    pub end_block:         Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
-    pub max_tasks:   Option<u64>,
+    pub max_tasks:         Option<u64>,
     /// Optional quote asset, if omitted it will default to USDC
     #[arg(long, short, default_value = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")]
-    pub quote_asset: String,
+    pub quote_asset:       String,
+    /// inspectors wanted for the run. If empty will run all inspectors
+    #[arg(long, short, value_delimiter = ',')]
+    pub inspectors_to_run: Option<Vec<Inspectors>>,
 }
 impl RunArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
