@@ -16,7 +16,7 @@ use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
 
 const DEFAULT_START_BLOCK: u64 = 15400000;
 // change with tracing client
-const DEFAULT_END_BLOCK: u64 = 15400001;
+const DEFAULT_END_BLOCK: u64 = 15400000;
 
 pub struct LibmdbxInitializer<TP: TracingProvider>{
     libmdbx:    Arc<Libmdbx>,
@@ -63,6 +63,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
             let end_block = self.tracer.best_block_number()?;
+            info!(?end_block);
             (DEFAULT_START_BLOCK..end_block).chunks(
                 T::INIT_CHUNK_SIZE
                     .unwrap_or((end_block- DEFAULT_START_BLOCK + 1) as usize),
