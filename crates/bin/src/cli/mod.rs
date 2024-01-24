@@ -2,8 +2,8 @@ use clap::{Parser, Subcommand};
 
 mod db_insert;
 mod db_query;
-mod dex_pricing;
 mod init;
+mod range_with_dex_price;
 mod run;
 #[cfg(feature = "tests")]
 mod trace;
@@ -27,8 +27,8 @@ pub enum Commands {
     Run(run::RunArgs),
     #[command(name = "init")]
     Init(init::Init),
-    #[command(name = "dex-pricing")]
-    RunBatchWithPricing(dex_pricing::DexPricingArgs),
+    #[command(name = "range-with-dex-price")]
+    RangeWithDexPrice(range_with_dex_price::RangeWithDexPrice),
     #[command(name = "db")]
     QueryDb(db_query::DatabaseQuery),
     #[command(name = "db_add")]

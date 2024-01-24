@@ -15,6 +15,7 @@ pub use libmdbx_read_write::LibmdbxReadWriter;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reth_db::{
     is_database_empty,
+    mdbx::DatabaseArguments,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseEnv, DatabaseEnvKind, DatabaseError,
 };
@@ -52,7 +53,11 @@ impl Libmdbx {
             }
         }
 
-        let db = DatabaseEnv::open(rpath, DatabaseEnvKind::RW, log_level)?;
+        let db = DatabaseEnv::open(
+            rpath,
+            DatabaseEnvKind::RW,
+            DatabaseArguments::default().log_level(log_level),
+        )?;
 
         let this = Self(db);
         this.create_tables()?;

@@ -13,29 +13,33 @@ pub fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
         Some(max_tasks) => max_tasks as u64,
         None => {
             let cpus = num_cpus::get_physical();
-            (cpus as f64 * 0.25) as u64 // 25% of physical cores
+            (cpus as f64 * 0.30) as u64 // 30% of physical cores
         }
     }
 }
 
-pub fn init_all_inspectors<'a>(
+pub fn static_object<T>(obj: T) -> &'static T {
+    &*Box::leak(Box::new(obj))
+}
+
+pub fn init_all_inspectors(
     quote_token: Address,
     db: &'static LibmdbxReadWriter,
 ) -> &'static [&'static Box<dyn Inspector>] {
-    let sandwich = &*Box::leak(Box::new(
+    let sandwich = static_object(
         Box::new(SandwichInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
-    ));
-    let cex_dex = &*Box::leak(Box::new(
+    );
+    let cex_dex = static_object(
         Box::new(CexDexInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
-    ));
-    let jit = &*Box::leak(Box::new(
-        Box::new(JitInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
-    ));
-    let backrun = &*Box::leak(Box::new(
-        Box::new(AtomicBackrunInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
-    ));
+    );
+    let jit =
+        static_object(Box::new(JitInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>);
 
-    &*Box::leak(vec![sandwich, cex_dex, jit, backrun].into_boxed_slice())
+    let backrun = static_object(
+        Box::new(AtomicBackrunInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
+    );
+
+    static_object(vec![sandwich, cex_dex, jit, backrun].into_boxed_slice())
 }
 
 pub fn get_env_vars() -> eyre::Result<String> {
