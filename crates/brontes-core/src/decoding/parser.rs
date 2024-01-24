@@ -99,7 +99,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
             .metrics_tx
             .send(TraceMetricEvent::BlockMetricRecieved(traces.1).into());
 
-        if self.libmdbx.save_traces(block_num, traces.0).is_err() {
+        if self
+            .libmdbx
+            .save_traces(block_num, traces.0.clone())
+            .is_err()
+        {
             error!(%block_num, "failed to store traces for block");
         }
 
