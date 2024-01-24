@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use brontes_types::traits::TracingProvider;
 use futures::future::join_all;
 use itertools::Itertools;
 use reth_db::DatabaseError;
@@ -15,21 +16,21 @@ use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
 
 const DEFAULT_START_BLOCK: u64 = 15400000;
 // change with tracing client
-const DEFAULT_END_BLOCK: u64 = 15400000;
+const DEFAULT_END_BLOCK: u64 = 15400001;
 
-pub struct LibmdbxInitializer {
+pub struct LibmdbxInitializer<TP: TracingProvider>{
     libmdbx:    Arc<Libmdbx>,
     clickhouse: Arc<Clickhouse>,
-    //tracer:     Arc<TracingClient>,
+    tracer:     Arc<TP>,
 }
 
-impl LibmdbxInitializer {
+impl<TP: TracingProvider> LibmdbxInitializer<TP> {
     pub fn new(
         libmdbx: Arc<Libmdbx>,
         clickhouse: Arc<Clickhouse>,
-        //tracer: Arc<TracingClient>,
+        tracer: Arc<TP>,
     ) -> Self {
-        Self { libmdbx, clickhouse } //, tracer }
+        Self { libmdbx, clickhouse, tracer } 
     }
 
     pub async fn initialize(
@@ -61,9 +62,10 @@ impl LibmdbxInitializer {
         let block_range_chunks = if let Some((s, e)) = block_range {
             (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
-            (DEFAULT_START_BLOCK..DEFAULT_END_BLOCK).chunks(
+            let end_block = self.tracer.best_block_number()?;
+            (DEFAULT_START_BLOCK..end_block).chunks(
                 T::INIT_CHUNK_SIZE
-                    .unwrap_or((DEFAULT_END_BLOCK - DEFAULT_START_BLOCK + 1) as usize),
+                    .unwrap_or((end_block- DEFAULT_START_BLOCK + 1) as usize),
             )
         };
 
