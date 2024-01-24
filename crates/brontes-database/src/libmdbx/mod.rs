@@ -12,6 +12,7 @@ use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
 pub use libmdbx_read_write::LibmdbxReadWriter;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reth_db::{
     is_database_empty,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
@@ -111,7 +112,7 @@ impl Libmdbx {
     {
         self.update_db(|tx| {
             entries
-                .iter()
+                .par_iter()
                 .map(|entry| {
                     let (key, val) = entry.into_key_val();
                     tx.put::<T>(key, val)
