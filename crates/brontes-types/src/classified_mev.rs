@@ -42,7 +42,7 @@ pub struct MevBlock {
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
-pub struct ClassifiedMev {
+pub struct BundleHeader {
     // can be multiple for sandwich
     pub block_number:         u64,
     pub mev_tx_index:         u64,
@@ -94,7 +94,7 @@ pub enum MevType {
 self_convert_redefined!(MevType);
 
 #[derive(Debug, Deserialize, EnumIter, Clone, Default, Display)]
-pub enum SpecificMev {
+pub enum BundleData {
     Sandwich(Sandwich),
     AtomicBackrun(AtomicBackrun),
     JitSandwich(JitLiquiditySandwich),
@@ -105,89 +105,89 @@ pub enum SpecificMev {
     Unknown,
 }
 
-impl Mev for SpecificMev {
+impl Mev for BundleData {
     fn mev_type(&self) -> MevType {
         match self {
-            SpecificMev::Sandwich(m) => m.mev_type(),
-            SpecificMev::AtomicBackrun(m) => m.mev_type(),
-            SpecificMev::JitSandwich(m) => m.mev_type(),
-            SpecificMev::Jit(m) => m.mev_type(),
-            SpecificMev::CexDex(m) => m.mev_type(),
-            SpecificMev::Liquidation(m) => m.mev_type(),
-            SpecificMev::Unknown => MevType::Unknown,
+            BundleData::Sandwich(m) => m.mev_type(),
+            BundleData::AtomicBackrun(m) => m.mev_type(),
+            BundleData::JitSandwich(m) => m.mev_type(),
+            BundleData::Jit(m) => m.mev_type(),
+            BundleData::CexDex(m) => m.mev_type(),
+            BundleData::Liquidation(m) => m.mev_type(),
+            BundleData::Unknown => MevType::Unknown,
         }
     }
 
     fn priority_fee_paid(&self) -> u128 {
         match self {
-            SpecificMev::Sandwich(m) => m.priority_fee_paid(),
-            SpecificMev::AtomicBackrun(m) => m.priority_fee_paid(),
-            SpecificMev::JitSandwich(m) => m.priority_fee_paid(),
-            SpecificMev::Jit(m) => m.priority_fee_paid(),
-            SpecificMev::CexDex(m) => m.priority_fee_paid(),
-            SpecificMev::Liquidation(m) => m.priority_fee_paid(),
-            SpecificMev::Unknown => unimplemented!("calling priority_fee_paid() on unknown mev"),
+            BundleData::Sandwich(m) => m.priority_fee_paid(),
+            BundleData::AtomicBackrun(m) => m.priority_fee_paid(),
+            BundleData::JitSandwich(m) => m.priority_fee_paid(),
+            BundleData::Jit(m) => m.priority_fee_paid(),
+            BundleData::CexDex(m) => m.priority_fee_paid(),
+            BundleData::Liquidation(m) => m.priority_fee_paid(),
+            BundleData::Unknown => unimplemented!("calling priority_fee_paid() on unknown mev"),
         }
     }
 
     fn bribe(&self) -> u128 {
         match self {
-            SpecificMev::Sandwich(m) => m.bribe(),
-            SpecificMev::AtomicBackrun(m) => m.bribe(),
-            SpecificMev::JitSandwich(m) => m.bribe(),
-            SpecificMev::Jit(m) => m.bribe(),
-            SpecificMev::CexDex(m) => m.bribe(),
-            SpecificMev::Liquidation(m) => m.bribe(),
-            SpecificMev::Unknown => unimplemented!("calling bribe() on unknown mev"),
+            BundleData::Sandwich(m) => m.bribe(),
+            BundleData::AtomicBackrun(m) => m.bribe(),
+            BundleData::JitSandwich(m) => m.bribe(),
+            BundleData::Jit(m) => m.bribe(),
+            BundleData::CexDex(m) => m.bribe(),
+            BundleData::Liquidation(m) => m.bribe(),
+            BundleData::Unknown => unimplemented!("calling bribe() on unknown mev"),
         }
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
         match self {
-            SpecificMev::Sandwich(m) => m.mev_transaction_hashes(),
-            SpecificMev::AtomicBackrun(m) => m.mev_transaction_hashes(),
-            SpecificMev::JitSandwich(m) => m.mev_transaction_hashes(),
-            SpecificMev::Jit(m) => m.mev_transaction_hashes(),
-            SpecificMev::CexDex(m) => m.mev_transaction_hashes(),
-            SpecificMev::Liquidation(m) => m.mev_transaction_hashes(),
-            SpecificMev::Unknown => {
+            BundleData::Sandwich(m) => m.mev_transaction_hashes(),
+            BundleData::AtomicBackrun(m) => m.mev_transaction_hashes(),
+            BundleData::JitSandwich(m) => m.mev_transaction_hashes(),
+            BundleData::Jit(m) => m.mev_transaction_hashes(),
+            BundleData::CexDex(m) => m.mev_transaction_hashes(),
+            BundleData::Liquidation(m) => m.mev_transaction_hashes(),
+            BundleData::Unknown => {
                 unimplemented!("calling mev_transaction_hashes() on unknown mev")
             }
         }
     }
 }
 
-impl From<Sandwich> for SpecificMev {
+impl From<Sandwich> for BundleData {
     fn from(value: Sandwich) -> Self {
         Self::Sandwich(value)
     }
 }
 
-impl From<AtomicBackrun> for SpecificMev {
+impl From<AtomicBackrun> for BundleData {
     fn from(value: AtomicBackrun) -> Self {
         Self::AtomicBackrun(value)
     }
 }
 
-impl From<JitLiquiditySandwich> for SpecificMev {
+impl From<JitLiquiditySandwich> for BundleData {
     fn from(value: JitLiquiditySandwich) -> Self {
         Self::JitSandwich(value)
     }
 }
 
-impl From<JitLiquidity> for SpecificMev {
+impl From<JitLiquidity> for BundleData {
     fn from(value: JitLiquidity) -> Self {
         Self::Jit(value)
     }
 }
 
-impl From<CexDex> for SpecificMev {
+impl From<CexDex> for BundleData {
     fn from(value: CexDex) -> Self {
         Self::CexDex(value)
     }
 }
 
-impl From<Liquidation> for SpecificMev {
+impl From<Liquidation> for BundleData {
     fn from(value: Liquidation) -> Self {
         Self::Liquidation(value)
     }
@@ -205,66 +205,138 @@ pub trait Mev:
 
 dyn_clone::clone_trait_object!(Mev);
 
+/// Represents various MEV sandwich attack strategies, including standard
+/// sandwiches and more complex variations like the "Big Mac Sandwich."
+///
+/// The `Sandwich` struct is designed to be versatile, accommodating a range of
+/// sandwich attack scenarios. While a standard sandwich attack typically
+/// involves a single frontrunning and backrunning transaction around a victim's
+/// trade, more complex variations can involve multiple frontrunning and
+/// backrunning transactions targeting several victims with different slippage
+/// tolerances.
+///
+/// The structure of this struct is generalized to support these variations. For
+/// example, the "Big Mac Sandwich" is one such complex scenario where a bot
+/// exploits multiple victims in a sequence of transactions, each with different
+/// slippage tolerances. This struct can capture the details of both simple and
+/// complex sandwich strategies, making it a comprehensive tool for MEV
+/// analysis.
+///
+/// Example of a Complex Sandwich Attack ("Big Mac Sandwich") Transaction
+/// Sequence:
+/// Represents various MEV sandwich attack strategies, including standard
+/// sandwiches and more complex variations like the "Big Mac Sandwich."
+
+///
+/// Example of a Complex Sandwich Attack ("Big Mac Sandwich") Transaction
+/// Sequence:
+/// - Frontrun Tx 1: [Etherscan Link](https://etherscan.io/tx/0x2a187ed5ba38cc3b857726df51ce99ee6e29c9bcaa02be1a328f99c3783b3303)
+/// - Victim 1: [Etherscan Link](https://etherscan.io/tx/0x7325392f41338440f045cb1dba75b6099f01f8b00983e33cc926eb27aacd7e2d)
+/// - Frontrun 2: [Etherscan Link](https://etherscan.io/tx/0xbcb8115fb54b7d6b0a0b0faf6e65fae02066705bd4afde70c780d4251a771428)
+/// - Victim 2: [Etherscan Link](https://etherscan.io/tx/0x0b428553bc2ccc8047b0da46e6c1c1e8a338d9a461850fcd67ddb233f6984677)
+/// - Backrun: [Etherscan Link](https://etherscan.io/tx/0xfb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d)
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct Sandwich {
-    pub frontrun_tx_hash:         B256,
-    pub frontrun_swaps:           Vec<NormalizedSwap>,
-    pub frontrun_gas_details:     GasDetails,
-    pub victim_swaps_tx_hashes:   Vec<B256>,
+    /// Transaction hashes of the frontrunning transactions.
+    /// Supports multiple transactions for complex sandwich scenarios.
+    pub frontrun_tx_hash:         Vec<B256>,
+    /// Swaps executed in each frontrunning transaction.
+    /// Nested vectors represent multiple swaps within each transaction.
+    pub frontrun_swaps:           Vec<Vec<NormalizedSwap>>,
+    /// Gas details for each frontrunning transaction.
+    pub frontrun_gas_details:     Vec<GasDetails>,
+    /// Transaction hashes of the victim transactions, logically grouped by
+    /// their corresponding frontrunning transaction. Each outer vector
+    /// index corresponds to a frontrun transaction, grouping victims targeted
+    /// by that specific frontrun.
+    pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
+    /// Swaps executed by victims, grouped to align with corresponding
+    /// frontrunning transactions.
     pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
+    /// Gas details for each victim transaction.
     pub victim_swaps_gas_details: Vec<GasDetails>,
+    /// Transaction hashes of the backrunning transactions.
     pub backrun_tx_hash:          B256,
+    /// Swaps executed in each backrunning transaction.
     pub backrun_swaps:            Vec<NormalizedSwap>,
+    /// Gas details for each backrunning transaction.
     pub backrun_gas_details:      GasDetails,
 }
-
-//TODO: Potentially requires clean up later
-pub fn compose_sandwich_jit(
-    mev: Vec<(ClassifiedMev, SpecificMev)>,
-) -> (ClassifiedMev, SpecificMev) {
-    let mut sandwich: Sandwich = Sandwich::default();
-    let mut jit: JitLiquidity = JitLiquidity::default();
-    let mut classified_sandwich: ClassifiedMev = ClassifiedMev::default();
-    let mut jit_classified: ClassifiedMev = ClassifiedMev::default();
+pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHeader, BundleData) {
+    let mut sandwich: Option<Sandwich> = None;
+    let mut jit: Option<JitLiquidity> = None;
+    let mut classified_sandwich: Option<BundleHeader> = None;
+    let mut jit_classified: Option<BundleHeader> = None;
 
     for (classified, mev_data) in mev {
         match mev_data {
-            SpecificMev::Sandwich(s) => {
-                sandwich = s;
-                classified_sandwich = classified;
+            BundleData::Sandwich(s) => {
+                sandwich = Some(s);
+                classified_sandwich = Some(classified);
             }
-            SpecificMev::Jit(j) => {
-                jit = j;
-                jit_classified = classified;
+            BundleData::Jit(j) => {
+                jit = Some(j);
+                jit_classified = Some(classified);
             }
             _ => unreachable!(),
         }
     }
 
-    let jit_sand = JitLiquiditySandwich {
-        frontrun_tx_hash:     sandwich.frontrun_tx_hash,
-        frontrun_gas_details: sandwich.frontrun_gas_details,
+    let sandwich = sandwich.expect("Expected Sandwich MEV data");
+    let jit = jit.expect("Expected JIT MEV data");
+    let classified_sandwich =
+        classified_sandwich.expect("Expected Classified MEV data for Sandwich");
+    let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
 
-        backrun_tx_hash:          sandwich.backrun_tx_hash,
-        backrun_gas_details:      sandwich.backrun_gas_details,
-        frontrun_swaps:           sandwich.frontrun_swaps,
-        frontrun_mints:           jit.frontrun_mints,
-        victim_swaps_tx_hashes:   sandwich.victim_swaps_tx_hashes,
-        victim_swaps:             sandwich.victim_swaps,
+    let mut frontrun_mints: Vec<Option<Vec<NormalizedMint>>> =
+        vec![None; sandwich.frontrun_tx_hash.len()];
+    frontrun_mints
+        .iter_mut()
+        .enumerate()
+        .for_each(|(idx, mint)| {
+            if &sandwich.frontrun_tx_hash[idx] == &jit.frontrun_mint_tx_hash {
+                *mint = Some(jit.frontrun_mints.clone())
+            }
+        });
+
+    let mut backrun_burns: Vec<Option<Vec<NormalizedBurn>>> =
+        vec![None; sandwich.frontrun_tx_hash.len()];
+    backrun_burns
+        .iter_mut()
+        .enumerate()
+        .for_each(|(idx, mint)| {
+            if &sandwich.frontrun_tx_hash[idx] == &jit.backrun_burn_tx_hash {
+                *mint = Some(jit.backrun_burns.clone())
+            }
+        });
+
+    // sandwich.frontrun_swaps
+
+    // Combine data from Sandwich and JitLiquidity into JitLiquiditySandwich
+    let jit_sand = JitLiquiditySandwich {
+        frontrun_tx_hash: sandwich.frontrun_tx_hash.clone(),
+        frontrun_swaps: sandwich.frontrun_swaps,
+        frontrun_mints,
+        frontrun_gas_details: sandwich.frontrun_gas_details,
+        victim_swaps_tx_hashes: sandwich.victim_swaps_tx_hashes,
+        victim_swaps: sandwich.victim_swaps,
         victim_swaps_gas_details: sandwich.victim_swaps_gas_details,
-        backrun_swaps:            sandwich.backrun_swaps,
-        backrun_burns:            jit.backrun_burns,
+        backrun_tx_hash: sandwich.backrun_tx_hash,
+        backrun_swaps: sandwich.backrun_swaps,
+        backrun_burns: jit.backrun_burns,
+        backrun_gas_details: sandwich.backrun_gas_details,
     };
 
     let sandwich_rev =
         classified_sandwich.finalized_bribe_usd + classified_sandwich.finalized_profit_usd;
-    let jit_rev = classified_sandwich.finalized_bribe_usd + jit_classified.finalized_profit_usd;
+    let jit_rev = jit_classified.finalized_bribe_usd + jit_classified.finalized_profit_usd;
     let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.finalized_bribe_usd;
 
-    let new_classifed = ClassifiedMev {
+    // Create new classified MEV data
+    let new_classified = BundleHeader {
         mev_tx_index:         classified_sandwich.mev_tx_index,
-        tx_hash:              sandwich.frontrun_tx_hash,
+        tx_hash:              *sandwich.frontrun_tx_hash.get(0).unwrap_or_default(),
         mev_type:             MevType::JitSandwich,
         block_number:         classified_sandwich.block_number,
         eoa:                  jit_classified.eoa,
@@ -274,7 +346,7 @@ pub fn compose_sandwich_jit(
         finalized_profit_usd: jit_liq_profit,
     };
 
-    (new_classifed, jit_sand.into())
+    (new_classified, BundleData::JitSandwich(jit_sand))
 }
 
 impl Mev for Sandwich {
@@ -283,35 +355,49 @@ impl Mev for Sandwich {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_gas_details.gas_paid() + self.backrun_gas_details.gas_paid()
+        self.frontrun_gas_details
+            .iter()
+            .map(|gd| gd.gas_paid())
+            .sum::<u128>()
+            + self.backrun_gas_details.gas_paid()
     }
 
+    // Should always be on the backrun, but you never know
     fn bribe(&self) -> u128 {
-        self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
-            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)
+        self.frontrun_gas_details
+            .iter()
+            .filter_map(|gd| gd.coinbase_transfer)
+            .sum::<u128>()
+            + self
+                .backrun_gas_details
+                .coinbase_transfer
+                .unwrap_or_default()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        let mut res = vec![self.frontrun_tx_hash, self.backrun_tx_hash];
-        res.extend(self.victim_swaps_tx_hashes.clone());
-        res
+        let mut txs = self.frontrun_tx_hash.clone();
+        txs.push(self.backrun_tx_hash);
+        txs
     }
 }
 
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct JitLiquiditySandwich {
-    pub frontrun_tx_hash:         B256,
-    pub frontrun_swaps:           Vec<NormalizedSwap>,
-    pub frontrun_mints:           Vec<NormalizedMint>,
-    pub frontrun_gas_details:     GasDetails,
-    pub victim_swaps_tx_hashes:   Vec<B256>,
+    pub frontrun_tx_hash:     Vec<B256>,
+    pub frontrun_swaps:       Vec<Vec<NormalizedSwap>>,
+    pub frontrun_mints:       Vec<Option<Vec<NormalizedMint>>>,
+    pub frontrun_gas_details: Vec<GasDetails>,
+
+    pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
     pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
     pub victim_swaps_gas_details: Vec<GasDetails>,
-    pub backrun_tx_hash:          B256,
-    pub backrun_swaps:            Vec<NormalizedSwap>,
-    pub backrun_burns:            Vec<NormalizedBurn>,
-    pub backrun_gas_details:      GasDetails,
+
+    // Similar to frontrun fields, backrun fields are also vectors to handle multiple transactions.
+    pub backrun_tx_hash:     B256,
+    pub backrun_swaps:       Vec<NormalizedSwap>,
+    pub backrun_burns:       Vec<NormalizedBurn>,
+    pub backrun_gas_details: GasDetails,
 }
 
 impl Mev for JitLiquiditySandwich {
@@ -320,16 +406,29 @@ impl Mev for JitLiquiditySandwich {
     }
 
     fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_gas_details.gas_paid() + self.backrun_gas_details.gas_paid()
+        self.frontrun_gas_details
+            .iter()
+            .map(|gd| gd.gas_paid())
+            .sum::<u128>()
+            + self.backrun_gas_details.gas_paid()
     }
 
+    // Should always be on the backrun, but you never know
     fn bribe(&self) -> u128 {
-        self.frontrun_gas_details.coinbase_transfer.unwrap_or(0)
-            + self.backrun_gas_details.coinbase_transfer.unwrap_or(0)
+        self.frontrun_gas_details
+            .iter()
+            .filter_map(|gd| gd.coinbase_transfer)
+            .sum::<u128>()
+            + self
+                .backrun_gas_details
+                .coinbase_transfer
+                .unwrap_or_default()
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
-        vec![self.frontrun_tx_hash, self.backrun_tx_hash]
+        let mut txs = self.frontrun_tx_hash.clone();
+        txs.push(self.backrun_tx_hash);
+        txs
     }
 }
 
@@ -517,17 +616,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_db_classified_mev() {
-        let test_mev = ClassifiedMev::default();
+        let test_mev = BundleHeader::default();
 
         let db = spawn_db();
 
-        db.insert_one(&test_mev, DatabaseTables::ClassifiedMev)
+        db.insert_one(&test_mev, DatabaseTables::BundleHeader)
             .await
             .unwrap();
 
         let delete_query = &format!(
             "DELETE FROM {} where tx_hash = ? and block_number = ?",
-            db.to_table_string(DatabaseTables::ClassifiedMev)
+            db.to_table_string(DatabaseTables::BundleHeader)
         );
 
         db.execute_remote(

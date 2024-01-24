@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::{FixedBytes, B256};
 use brontes_types::{
-    classified_mev::{ClassifiedMev, Mev, MevBlock, MevType, SpecificMev},
+    classified_mev::{BundleData, BundleHeader, Mev, MevBlock, MevType},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
@@ -50,7 +50,7 @@ pub(crate) fn build_mev_header(
     metadata: Arc<MetadataCombined>,
     pre_processing: &BlockPreprocessing,
     possible_missed_arbs: Vec<B256>,
-    orchestra_data: &Vec<(ClassifiedMev, SpecificMev)>,
+    orchestra_data: &Vec<(BundleHeader, BundleData)>,
 ) -> MevBlock {
     let total_bribe = orchestra_data
         .iter()
@@ -112,18 +112,18 @@ pub(crate) fn build_mev_header(
 /// Sorts the given MEV data by type.
 ///
 /// This function takes a vector of tuples, where each tuple contains a
-/// `ClassifiedMev` and a `SpecificMev`. It returns a HashMap where the keys are
+/// `BundleHeader` and a `BundleData`. It returns a HashMap where the keys are
 /// `MevType` and the values are vectors of tuples (same as input). Each vector
 /// contains all the MEVs of the corresponding type.
 pub(crate) fn sort_mev_by_type(
-    orchestra_data: Vec<(ClassifiedMev, SpecificMev)>,
-) -> HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>> {
+    orchestra_data: Vec<(BundleHeader, BundleData)>,
+) -> HashMap<MevType, Vec<(BundleHeader, BundleData)>> {
     orchestra_data
         .into_iter()
         .map(|(classified_mev, specific)| (classified_mev.mev_type, (classified_mev, specific)))
         .fold(
             HashMap::default(),
-            |mut acc: HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>, (mev_type, v)| {
+            |mut acc: HashMap<MevType, Vec<(BundleHeader, BundleData)>>, (mev_type, v)| {
                 acc.entry(mev_type).or_default().push(v);
                 acc
             },
@@ -133,7 +133,7 @@ pub(crate) fn sort_mev_by_type(
 /// Finds the index of the first classified mev in the list whose transaction
 /// hashes match any of the provided hashes.
 pub(crate) fn find_mev_with_matching_tx_hashes(
-    mev_data_list: &[(ClassifiedMev, SpecificMev)],
+    mev_data_list: &[(BundleHeader, BundleData)],
     tx_hashes: &[FixedBytes<32>],
 ) -> Option<usize> {
     mev_data_list

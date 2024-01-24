@@ -16,8 +16,8 @@ use malachite::Rational;
 use reth_primitives::{Address, B256, U256};
 
 use crate::{
-    shared_utils::SharedInspectorUtils, Actions, BlockTree, ClassifiedMev, Inspector,
-    MetadataCombined, SpecificMev,
+    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, BundleHeader, Inspector,
+    MetadataCombined,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -45,7 +45,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)> {
+    ) -> Vec<(BundleHeader, BundleData)> {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
@@ -144,7 +144,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_txs: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
-    ) -> Option<(ClassifiedMev, SpecificMev)> {
+    ) -> Option<(BundleHeader, BundleData)> {
         let (mints, burns, collect): (
             Vec<Option<NormalizedMint>>,
             Vec<Option<NormalizedBurn>>,
@@ -181,7 +181,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         let profit = jit_fee - mint - &bribe;
 
-        let classified = ClassifiedMev {
+        let classified = BundleHeader {
             mev_tx_index: back_jit_idx as u64,
             block_number: metadata.block_num,
             tx_hash: txes[0],
@@ -217,7 +217,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burns: burns,
         };
 
-        Some((classified, SpecificMev::Jit(jit_details)))
+        Some((classified, BundleData::Jit(jit_details)))
     }
 
     fn possible_jit_set(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleJit> {
@@ -386,11 +386,11 @@ mod tests {
     async fn test_jit() {
         // eth price in usdc
         // 2146.65037178
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
         let config = InspectorTxRunConfig::new(MevType::Jit)
             .with_dex_prices()
             .with_block(18539312)
-            .with_expected_gas_used(90.875025)
+            .with_gas_paid_usd(90.875025)
             .with_expected_profit_usd(-68.34);
 
         test_utils.run_inspector(config, None).await.unwrap();

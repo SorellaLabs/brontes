@@ -1,11 +1,11 @@
 use ::serde::ser::{Serialize, SerializeStruct, Serializer};
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
+use super::normalized_actions::ClickhouseVecNormalizedSwap;
 use crate::{
     classified_mev::Sandwich,
     serde_utils::{
-        gas_details::ClickhouseVecGasDetails,
-        normalized_actions::{ClickhouseDoubleVecNormalizedSwap, ClickhouseVecNormalizedSwap},
+        gas_details::ClickhouseVecGasDetails, normalized_actions::ClickhouseDoubleVecNormalizedSwap,
     },
 };
 
@@ -19,11 +19,12 @@ impl Serialize for Sandwich {
         // frontrun
         ser_struct.serialize_field(
             "frontrun_tx_hash",
-            &FixedString::from(format!("{:?}", self.frontrun_tx_hash)),
+            &FixedString::from(format!("{:?}", self.frontrun_tx_hash.first().unwrap_or_default())),
         )?;
 
-        let frontrun_swaps: ClickhouseVecNormalizedSwap = self.frontrun_swaps.clone().into();
-
+        let frontrun_swaps: ClickhouseDoubleVecNormalizedSwap =
+            (self.frontrun_tx_hash.clone(), self.frontrun_swaps.clone()).into();
+        ser_struct.serialize_field("frontrun_swaps.tx_hash", &frontrun_swaps.tx_hash)?;
         ser_struct.serialize_field("frontrun_swaps.trace_idx", &frontrun_swaps.trace_index)?;
         ser_struct.serialize_field("frontrun_swaps.from", &frontrun_swaps.from)?;
         ser_struct.serialize_field("frontrun_swaps.recipient", &frontrun_swaps.recipient)?;
@@ -33,14 +34,24 @@ impl Serialize for Sandwich {
         ser_struct.serialize_field("frontrun_swaps.amount_in", &frontrun_swaps.amount_in)?;
         ser_struct.serialize_field("frontrun_swaps.amount_out", &frontrun_swaps.amount_out)?;
 
-        let frontrun_gas_details = (
-            self.frontrun_gas_details.coinbase_transfer,
-            self.frontrun_gas_details.priority_fee,
-            self.frontrun_gas_details.gas_used,
-            self.frontrun_gas_details.effective_gas_price,
-        );
-        //serializer.seri
-        ser_struct.serialize_field("frontrun_gas_details", &(frontrun_gas_details))?;
+        let frontrun_gas_details: ClickhouseVecGasDetails =
+            (self.frontrun_tx_hash.clone(), self.frontrun_gas_details.clone()).into();
+        ser_struct
+            .serialize_field("frontrun_gas_details.tx_hash", &frontrun_gas_details.tx_hash)?;
+        ser_struct.serialize_field(
+            "frontrun_gas_details.coinbase_transfer",
+            &frontrun_gas_details.coinbase_transfer,
+        )?;
+        ser_struct.serialize_field(
+            "frontrun_gas_details.priority_fee",
+            &frontrun_gas_details.priority_fee,
+        )?;
+        ser_struct
+            .serialize_field("frontrun_gas_details.gas_used", &frontrun_gas_details.gas_used)?;
+        ser_struct.serialize_field(
+            "frontrun_gas_details.effective_gas_price",
+            &frontrun_gas_details.effective_gas_price,
+        )?;
 
         // victims
         let victim_swaps: ClickhouseDoubleVecNormalizedSwap =
@@ -71,13 +82,17 @@ impl Serialize for Sandwich {
         )?;
 
         // backrun
-        ser_struct.serialize_field(
-            "backrun_tx_hash",
-            &FixedString::from(format!("{:?}", self.backrun_tx_hash)),
-        )?;
+        let fixed_str_backrun_tx_hash = FixedString::from(format!("{:?}", &self.backrun_tx_hash));
+        ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
         let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
+        let backrun_tx_hash_repeated = vec![&self.backrun_tx_hash]
+            .repeat(backrun_swaps.amount_in.len())
+            .into_iter()
+            .map(|tx| FixedString::from(format!("{:?}", &tx)))
+            .collect::<Vec<_>>();
 
+        ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_tx_hash_repeated)?;
         ser_struct.serialize_field("backrun_swaps.trace_idx", &backrun_swaps.trace_index)?;
         ser_struct.serialize_field("backrun_swaps.from", &backrun_swaps.from)?;
         ser_struct.serialize_field("backrun_swaps.recipient", &backrun_swaps.recipient)?;
@@ -87,13 +102,24 @@ impl Serialize for Sandwich {
         ser_struct.serialize_field("backrun_swaps.amount_in", &backrun_swaps.amount_in)?;
         ser_struct.serialize_field("backrun_swaps.amount_out", &backrun_swaps.amount_out)?;
 
-        let backrun_gas_details = (
-            self.backrun_gas_details.coinbase_transfer,
-            self.backrun_gas_details.priority_fee,
-            self.backrun_gas_details.gas_used,
-            self.backrun_gas_details.effective_gas_price,
-        );
-        ser_struct.serialize_field("backrun_gas_details", &(backrun_gas_details))?;
+        ser_struct
+            .serialize_field("backrun_gas_details.tx_hash", &vec![fixed_str_backrun_tx_hash])?;
+        ser_struct.serialize_field(
+            "backrun_gas_details.coinbase_transfer",
+            &vec![self.backrun_gas_details.coinbase_transfer],
+        )?;
+        ser_struct.serialize_field(
+            "backrun_gas_details.priority_fee",
+            &vec![self.backrun_gas_details.priority_fee],
+        )?;
+        ser_struct.serialize_field(
+            "backrun_gas_details.gas_used",
+            &vec![self.backrun_gas_details.gas_used],
+        )?;
+        ser_struct.serialize_field(
+            "backrun_gas_details.effective_gas_price",
+            &vec![self.backrun_gas_details.effective_gas_price],
+        )?;
 
         ser_struct.end()
     }
@@ -102,6 +128,7 @@ impl Serialize for Sandwich {
 impl DbRow for Sandwich {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "frontrun_tx_hash",
+        "frontrun_swaps.tx_hash",
         "frontrun_swaps.trace_idx",
         "frontrun_swaps.from",
         "frontrun_swaps.recipient",
@@ -110,7 +137,11 @@ impl DbRow for Sandwich {
         "frontrun_swaps.token_out",
         "frontrun_swaps.amount_in",
         "frontrun_swaps.amount_out",
-        "frontrun_gas_details",
+        "frontrun_gas_details.tx_hash",
+        "frontrun_gas_details.coinbase_transfer",
+        "frontrun_gas_details.priority_fee",
+        "frontrun_gas_details.gas_used",
+        "frontrun_gas_details.effective_gas_price",
         "victim_swaps.tx_hash",
         "victim_swaps.trace_idx",
         "victim_swaps.from",
@@ -126,6 +157,7 @@ impl DbRow for Sandwich {
         "victim_gas_details.gas_used",
         "victim_gas_details.effective_gas_price",
         "backrun_tx_hash",
+        "backrun_swaps.tx_hash",
         "backrun_swaps.trace_idx",
         "backrun_swaps.from",
         "backrun_swaps.recipient",
@@ -134,6 +166,10 @@ impl DbRow for Sandwich {
         "backrun_swaps.token_out",
         "backrun_swaps.amount_in",
         "backrun_swaps.amount_out",
-        "backrun_gas_details",
+        "backrun_gas_details.tx_hash",
+        "backrun_gas_details.coinbase_transfer",
+        "backrun_gas_details.priority_fee",
+        "backrun_gas_details.gas_used",
+        "backrun_gas_details.effective_gas_price",
     ];
 }

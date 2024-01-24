@@ -11,9 +11,10 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
+use tracing::info;
 
 use crate::{
-    shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined, SpecificMev,
+    shared_utils::SharedInspectorUtils, BundleData, BundleHeader, Inspector, MetadataCombined,
 };
 
 pub struct AtomicBackrunInspector<'db, DB: LibmdbxReader> {
@@ -32,7 +33,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicBackrunInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)> {
+    ) -> Vec<(BundleHeader, BundleData)> {
         let intersting_state = tree.collect_all(|node| {
             (
                 node.data.is_swap() || node.data.is_transfer() || node.data.is_flash_loan(),
@@ -73,7 +74,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         metadata: Arc<MetadataCombined>,
         gas_details: GasDetails,
         searcher_actions: Vec<Vec<Actions>>,
-    ) -> Option<(ClassifiedMev, SpecificMev)> {
+    ) -> Option<(BundleHeader, BundleData)> {
         let swaps = searcher_actions
             .iter()
             .flatten()
@@ -112,7 +113,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             return None
         }
 
-        let classified = ClassifiedMev {
+        let classified = BundleHeader {
             mev_tx_index: idx as u64,
             mev_type: MevType::Backrun,
             tx_hash,
@@ -133,7 +134,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let backrun = AtomicBackrun { tx_hash, gas_details, swaps };
 
-        Some((classified, SpecificMev::AtomicBackrun(backrun)))
+        Some((classified, BundleData::AtomicBackrun(backrun)))
     }
 
     fn is_possible_arb(&self, swaps: Vec<NormalizedSwap>) -> Option<()> {
@@ -153,6 +154,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
                 return None
             }
         } else {
+            info!("unique tokens");
             let mut address_to_tokens: HashMap<Address, Vec<Address>> = HashMap::new();
             swaps.iter().for_each(|swap| {
                 let e = address_to_tokens.entry(swap.pool).or_default();
@@ -169,7 +171,9 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
                 .dedup()
                 .count();
 
-            if unique_tokens < pools {
+            // in the case there is a ton of unique_tokens its also most likely
+            // a arb
+            if unique_tokens < pools && unique_tokens <= 3 {
                 return None
             }
         }
@@ -195,7 +199,7 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
             .with_expected_profit_usd(0.188588)
-            .with_expected_gas_used(71.632668);
+            .with_gas_paid_usd(71.632668);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -209,8 +213,10 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
             .with_expected_profit_usd(311.18)
-            .with_expected_gas_used(91.51);
+            .with_gas_paid_usd(91.51);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    //TOOD: run, find false positives and write tests + fix
 }
