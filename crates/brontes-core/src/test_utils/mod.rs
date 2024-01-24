@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::{
@@ -29,11 +29,13 @@ use tokio::{
 use tracing_subscriber::filter::Directive;
 
 use crate::decoding::parser::TraceParser;
+#[cfg(feature = "local")]
+use crate::local_provider::LocalProvider;
 
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
-    pub libmdbx:          &'static Libmdbx,
-    pub tracing_provider: TraceParser<'static, Box<dyn TracingProvider>>,
+    pub libmdbx:          &'static LibmdbxReadWriter,
+    pub tracing_provider: TraceParser<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
     // store so when we trace we don't get a closed rx error
     _metrics:             UnboundedReceiver<PoirotMetricEvents>,
 }
@@ -237,6 +239,8 @@ pub enum TraceLoaderError {
     BlockTraceError(u64),
     #[error(transparent)]
     ProviderError(#[from] ProviderError),
+    #[error(transparent)]
+    EyreError(#[from] eyre::Report),
 }
 
 pub struct TxTracesWithHeaderAnd<T> {
@@ -255,14 +259,14 @@ pub struct BlockTracesWithHeaderAnd<T> {
 }
 
 // done because we can only have 1 instance of libmdbx or we error
-static DB_HANDLE: OnceLock<Libmdbx> = OnceLock::new();
+static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
 
-fn get_db_handle() -> &'static Libmdbx {
+fn get_db_handle() -> &'static LibmdbxReadWriter {
     DB_HANDLE.get_or_init(|| {
         let _ = dotenv::dotenv();
         init_tracing();
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        Libmdbx::init_db(&brontes_db_endpoint, None)
+        LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
             .expect(&format!("failed to open db path {}", brontes_db_endpoint))
     })
 }
@@ -299,31 +303,25 @@ fn init_tracing() {
 fn init_trace_parser<'a>(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-    libmdbx: &'a Libmdbx,
+    libmdbx: &'a LibmdbxReadWriterr,
     max_tasks: u32,
-) -> TraceParser<'a, Box<dyn TracingProvider>> {
+) -> TraceParser<'a, Box<dyn TracingProvider>, LibmdbxReadWriterr> {
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
-    /*
     #[cfg(feature = "local")]
     let tracer = {
         let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
         let db_port = env::var("RETH_PORT").expect("No DB port.env");
         let url = format!("{db_endpoint}:{db_port}");
-        Box::new(alloy_providers::provider::Provider::new(&url).unwrap())
-            as Box<dyn TracingProvider>
+        Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>
     };
-
     #[cfg(not(feature = "local"))]
-
-    */
-    let executor = TaskManager::new(handle.clone());
-
     let tracer = {
+        let executor = TaskManager::new(handle.clone());
         let client = TracingClient::new(Path::new(&db_path), max_tasks as u64, executor.executor());
+        handle.spawn(executor);
         Box::new(client) as Box<dyn TracingProvider>
     };
-    handle.spawn(executor);
 
     let call = Box::new(|_: &_, _: &_| true);
 

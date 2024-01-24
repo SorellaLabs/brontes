@@ -32,7 +32,10 @@ use std::{
 
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{clickhouse::Clickhouse, libmdbx::Libmdbx};
+use brontes_database::{
+    clickhouse::Clickhouse,
+    libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter},
+};
 use brontes_inspect::Inspector;
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use tracing::info;
@@ -57,31 +60,31 @@ enum Mode {
     Tip,
 }
 
-pub struct Brontes<'inspector, T: TracingProvider> {
+pub struct Brontes<'inspector, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     current_block:    u64,
     end_block:        Option<u64>,
     chain_tip:        u64,
     mode:             Mode,
     max_tasks:        u64,
-    parser:           &'inspector Parser<'inspector, T>,
-    classifier:       &'inspector Classifier<'inspector, T>,
+    parser:           &'inspector Parser<'inspector, T, DB>,
+    classifier:       &'inspector Classifier<'inspector, T, DB>,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>],
     clickhouse:       &'inspector Clickhouse,
-    database:         &'inspector Libmdbx,
-    block_inspectors: FuturesUnordered<BlockInspector<'inspector, T>>,
-    tip_inspector:    Option<TipInspector<'inspector, T>>,
+    database:         &'inspector DB,
+    block_inspectors: FuturesUnordered<BlockInspector<'inspector, T, DB>>,
+    tip_inspector:    Option<TipInspector<'inspector, T, DB>>,
 }
 
-impl<'inspector, T: TracingProvider> Brontes<'inspector, T> {
+impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<'inspector, T, DB> {
     pub fn new(
         init_block: u64,
         end_block: Option<u64>,
         chain_tip: u64,
         max_tasks: u64,
-        parser: &'inspector Parser<'inspector, T>,
+        parser: &'inspector Parser<'inspector, T, DB>,
         clickhouse: &'inspector Clickhouse,
-        database: &'inspector Libmdbx,
-        classifier: &'inspector Classifier<'_, T>,
+        database: &'inspector DB,
+        classifier: &'inspector Classifier<'_, T, DB>,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>],
     ) -> Self {
         let mut brontes = Self {
@@ -180,7 +183,7 @@ impl<'inspector, T: TracingProvider> Brontes<'inspector, T> {
     }
 }
 
-impl<T: TracingProvider> Future for Brontes<'_, T> {
+impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future for Brontes<'_, T, DB> {
     type Output = ();
 
     //TODO: Fix this comment

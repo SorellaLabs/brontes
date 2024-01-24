@@ -16,7 +16,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: liquidationCallCall,
-    db_tx: &CompressedLibmdbxTx<RO>| {
+    _db_tx: &DB| {
         return Some(NormalizedLiquidation {
             trace_index,
             pool: target_address,
@@ -42,11 +42,7 @@ action_impl!(
     target_address: Address,
     msg_sender: Address,
     call_data: flashLoanCall,
-    db_tx: &CompressedLibmdbxTx<RO> | {
-
-        let tokens = db_tx.get::<AddressToTokens>(target_address).ok()??;
-        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
-
+    _db_tx: &DB| {
         return Some(NormalizedFlashLoan {
             trace_index,
             from: msg_sender,

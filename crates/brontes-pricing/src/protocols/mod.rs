@@ -78,6 +78,7 @@ impl Encodable for Protocol {
 impl Decodable for Protocol {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         let archived: &ArchivedProtocol = unsafe { rkyv::archived_root::<Self>(buf) };
+
         let this = ArchivedProtocol::deserialize(&archived, &mut rkyv::Infallible).unwrap();
         Ok(this)
     }

@@ -1,5 +1,4 @@
 #![allow(non_camel_case_types)]
-pub mod address_to_factory;
 pub mod address_to_protocol;
 pub mod address_to_tokens;
 pub mod cex_price;
@@ -16,7 +15,7 @@ use std::fmt::Debug;
 
 use reth_db::table::{DupSort, Table};
 
-pub trait LibmdbxData<T: CompressedTable>: Sized
+pub trait LibmdbxData<T: CompressedTable>: Sized + Send + Sync
 where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
@@ -35,7 +34,7 @@ pub trait IntoTableKey<T, K, D> {
     fn into_table_data(key: T, value: T) -> D;
 }
 
-pub trait CompressedTable: reth_db::table::Table
+pub trait CompressedTable: reth_db::table::Table + Send + Sync
 where
     <Self as Table>::Value: From<<Self as CompressedTable>::DecompressedValue>
         + Into<<Self as CompressedTable>::DecompressedValue>,
