@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use alloy_primitives::{Address, TxHash, U256};
 use malachite::{num::basic::traits::Zero, Rational};
 use serde_with::{serde_as, DisplayFromStr};
+use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use super::{cex::CexPriceMap, dex::DexQuotes};
 use crate::{
@@ -13,7 +14,7 @@ use crate::{
 
 /// libmdbx type
 #[serde_as]
-#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Row, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MetadataInner {
     #[serde(with = "u256")]
     pub block_hash:             U256,
