@@ -147,9 +147,9 @@ impl Tables {
                     )
                     .await
             }
-            Tables::MevBlocks => todo!(),
-            Tables::SubGraphs => todo!(),
-            Tables::TxTraces => todo!(),
+            Tables::MevBlocks => Ok(()),
+            Tables::SubGraphs => Ok(()),
+            Tables::TxTraces => Ok(()),
         }
     }
 }

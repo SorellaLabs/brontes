@@ -101,8 +101,6 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             )
             .collect_vec();
 
-        // TODO: (JOE) bro this is clearly chat-gpt, there is a way better way to track
-        // chunks
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
