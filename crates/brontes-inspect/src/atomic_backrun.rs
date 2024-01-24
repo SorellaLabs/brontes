@@ -98,7 +98,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         // check profit pre state.
         let pre_state_deltas =
             self.inner
-                .usd_delta_by_address(idx - 1, deltas, metadata.clone(), false)?;
+                .usd_delta_by_address(idx - 1, deltas.clone(), metadata.clone(), false)?;
 
         let pre_state_rev_usd = pre_state_deltas
             .values()
