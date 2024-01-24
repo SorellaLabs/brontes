@@ -22,10 +22,10 @@ pub struct Init {
     #[arg(long, short, requires = "init_libmdbx", value_delimiter = ',')]
     pub tables_to_init:       Option<Vec<Tables>>,
     /// Start Block to download metadata from Sorella's MEV DB
-    #[arg(long, short, default_value = "0")]
+    #[arg(long, short)]
     pub start_block:          Option<u64>,
     /// End Block to download metadata from Sorella's MEV DB
-    #[arg(long, short, default_value = "0")]
+    #[arg(long, short)]
     pub end_block:            Option<u64>,
     /// Download Dex Prices from Sorella's MEV DB for the given block range. If
     /// false it will run the dex pricing locally using raw on-chain data
