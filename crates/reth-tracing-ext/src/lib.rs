@@ -104,7 +104,7 @@ impl TracingClient {
         );
         // blocking task pool
         // fee history cache
-        let api = EthApi::new(
+        let api = EthApi::with_spawner(
             provider.clone(),
             tx_pool.clone(),
             NoopNetwork::default(),
@@ -114,7 +114,8 @@ impl TracingClient {
                 GasPriceOracleConfig::default(),
                 state_cache.clone(),
             ),
-            RPC_DEFAULT_GAS_CAP,
+            RPC_DEFAULT_GAS_CAP.into(),
+            Box::new(task_executor.clone()),
             blocking,
             fee_history,
         );

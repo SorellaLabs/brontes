@@ -4,7 +4,10 @@ use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
-use brontes_database::libmdbx::Libmdbx;
+use brontes_database::{
+    libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter},
+    TxTraces,
+};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -14,6 +17,7 @@ use reth_primitives::{Address, Header, B256};
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::TransactionReceipt;
+use tracing::error;
 #[cfg(feature = "dyn-decode")]
 use tracing::info;
 
@@ -25,19 +29,18 @@ use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 //#[derive(Clone)]
-pub struct TraceParser<'db, T: TracingProvider> {
+pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+    libmdbx:               &'db DB,
     #[allow(unused)]
-    libmdbx:               &'db Libmdbx,
-    #[allow(unused)]
-    should_fetch:          Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
+    should_fetch:          Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl<'db, T: TracingProvider> TraceParser<'db, T> {
+impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db, T, DB> {
     pub fn new(
-        libmdbx: &'db Libmdbx,
-        should_fetch: Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
+        libmdbx: &'db DB,
+        should_fetch: Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
@@ -48,9 +51,28 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         self.tracer.clone()
     }
 
+    pub async fn load_block_from_db(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+        let traces = self.libmdbx.load_trace(block_num).ok()?;
+        if let Some(trace) = traces {
+            return Some((trace, self.tracer.header_by_number(block_num).await.ok()??))
+        }
+
+        return None
+    }
+
     /// executes the tracing of a given block
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+        if let Some(res) = self.load_block_from_db(block_num).await {
+            return Some(res)
+        }
+        #[cfg(feature = "local")]
+        {
+            tracing::error!("no block found in db");
+            return None
+        }
+
         let parity_trace = self.trace_block(block_num).await;
+
         let receipts = self.get_receipts(block_num).await;
 
         if parity_trace.0.is_none() && receipts.0.is_none() {
@@ -76,6 +98,14 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         let _ = self
             .metrics_tx
             .send(TraceMetricEvent::BlockMetricRecieved(traces.1).into());
+
+        if self
+            .libmdbx
+            .save_traces(block_num, traces.0.clone())
+            .is_err()
+        {
+            error!(%block_num, "failed to store traces for block");
+        }
 
         Some((traces.0, traces.2))
     }
@@ -231,7 +261,6 @@ impl<'db, T: TracingProvider> TraceParser<'db, T> {
         gas_used: u128,
         effective_gas_price: u128,
     ) -> (TxTrace, TransactionStats) {
-        init_trace!(tx_hash, tx_idx, tx_trace.trace.len());
         let stats = TransactionStats {
             block_num,
             tx_hash,

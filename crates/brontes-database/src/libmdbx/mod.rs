@@ -1,16 +1,18 @@
 #![allow(non_camel_case_types)]
 #![allow(private_bounds)]
 
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 
+pub mod traits;
+use brontes_types::traits::TracingProvider;
+pub use traits::*;
 pub mod initialize;
-
-use alloy_primitives::Address;
-use brontes_pricing::{Protocol, SubGraphEdge};
-use brontes_types::extra_processing::Pair;
+mod libmdbx_read_write;
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
+pub use libmdbx_read_write::LibmdbxReadWriter;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reth_db::{
     is_database_empty,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
@@ -21,7 +23,7 @@ use reth_libmdbx::{RO, RW};
 use tables::*;
 use tracing::info;
 
-use self::types::{subgraphs::SubGraphsData, CompressedTable, LibmdbxData};
+use self::types::{CompressedTable, LibmdbxData};
 use crate::clickhouse::Clickhouse;
 
 pub mod implementation;
@@ -72,14 +74,14 @@ impl Libmdbx {
     }
 
     /// initializes all the tables with data via the CLI
-    pub async fn initialize_tables(
+    pub async fn initialize_tables<T: TracingProvider>(
         self: Arc<Self>,
         clickhouse: Arc<Clickhouse>,
-        //tracer: Arc<TracingClient>,
+        tracer: Arc<T>,
         tables: &[Tables],
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse); //, tracer);
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
         initializer.initialize(tables, block_range).await?;
 
         Ok(())
@@ -109,7 +111,7 @@ impl Libmdbx {
     {
         self.update_db(|tx| {
             entries
-                .iter()
+                .par_iter()
                 .map(|entry| {
                     let (key, val) = entry.into_key_val();
                     tx.put::<T>(key, val)
@@ -147,116 +149,6 @@ impl Libmdbx {
         let tx = CompressedLibmdbxTx::new_rw_tx(&self.0)?;
 
         Ok(tx)
-    }
-
-    /// idk
-    pub fn protocols_created_before(
-        &self,
-        block_num: u64,
-    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>> {
-        let tx = self.ro_tx()?;
-
-        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
-
-        for result in cursor.walk_range(0..=block_num)? {
-            let res = result?.1;
-            for addr in res.0.into_iter() {
-                let Some(protocol) = tx.get::<AddressToProtocol>(addr)? else {
-                    continue;
-                };
-                let Some(info) = tx.get::<AddressToTokens>(addr)? else {
-                    continue;
-                };
-                map.insert((addr, protocol), Pair(info.token0, info.token1));
-            }
-        }
-
-        info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
-
-        Ok(map)
-    }
-
-    /// idk
-    pub fn protocols_created_range(
-        &self,
-        start_block: u64,
-        end_block: u64,
-    ) -> eyre::Result<HashMap<u64, Vec<(Address, Protocol, Pair)>>> {
-        let tx = self.ro_tx()?;
-
-        let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
-
-        for result in cursor.walk_range(start_block..end_block)? {
-            let result = result?;
-            let (block, res) = (result.0, result.1);
-            for addr in res.0.into_iter() {
-                let Some(protocol) = tx.get::<AddressToProtocol>(addr)? else {
-                    continue;
-                };
-                let Some(info) = tx.get::<AddressToTokens>(addr)? else {
-                    continue;
-                };
-                map.entry(block).or_insert(vec![]).push((
-                    addr,
-                    protocol,
-                    Pair(info.token0, info.token1),
-                ));
-            }
-        }
-        info!(target:"brontes-libmdbx", "loaded {} pairs range: {}..{}", map.len(), start_block, end_block);
-
-        Ok(map)
-    }
-
-    /// idl
-    pub fn save_pair_at(
-        &self,
-        block: u64,
-        pair: Pair,
-        edges: Vec<SubGraphEdge>,
-    ) -> eyre::Result<()> {
-        let tx = self.ro_tx()?;
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
-            entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
-
-            let data = SubGraphsData { pair, data: entry };
-            self.write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
-        }
-
-        Ok(())
-    }
-
-    /// idl
-    pub fn try_load_pair_before(
-        &self,
-        block: u64,
-        pair: Pair,
-    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
-        let tx = self.ro_tx()?;
-        let subgraphs = tx
-            .get::<SubGraphs>(pair)?
-            .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
-
-        // load the latest version of the sub graph relative to the block. if the
-        // sub graph is the last entry in the vector, we return an error as we cannot
-        // grantee that we have a run from last update to request block
-        let last_block = *subgraphs.0.keys().max().unwrap();
-        if block > last_block {
-            eyre::bail!("possible missing state");
-        }
-
-        let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
-
-        for (cur_block, update) in subgraphs.0 {
-            if cur_block > block {
-                return last.ok_or_else(|| eyre::eyre!("no subgraph found"))
-            }
-            last = Some((pair, update))
-        }
-
-        unreachable!()
     }
 }
 

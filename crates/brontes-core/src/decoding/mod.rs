@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc};
 
-use brontes_database::libmdbx::{tx::CompressedLibmdbxTx, Libmdbx};
+use brontes_database::libmdbx::{tx::CompressedLibmdbxTx, Libmdbx, LibmdbxReader, LibmdbxWriter};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
@@ -10,10 +10,7 @@ use reth_primitives::{Address, BlockNumberOrTag, Header, B256};
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 use self::parser::TraceParser;
-use crate::{
-    executor::{Executor, TaskKind},
-    init_trace,
-};
+use crate::executor::{Executor, TaskKind};
 
 #[cfg(feature = "dyn-decode")]
 mod dyn_decode;
@@ -32,17 +29,17 @@ use reth_primitives::BlockId;
 pub type ParserFuture<'a> =
     Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
 
-pub struct Parser<'a, T: TracingProvider> {
+pub struct Parser<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     executor: Executor,
-    parser:   TraceParser<'a, T>,
+    parser:   TraceParser<'a, T, DB>,
 }
 
-impl<'a, T: TracingProvider> Parser<'a, T> {
+impl<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Parser<'a, T, DB> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
-        libmdbx: &'a Libmdbx,
+        libmdbx: &'a DB,
         tracing: T,
-        should_fetch: Box<dyn Fn(&Address, &CompressedLibmdbxTx<RO>) -> bool + Send + Sync>,
+        should_fetch: Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
     ) -> Self {
         let executor = Executor::new();
 
@@ -74,7 +71,7 @@ impl<'a, T: TracingProvider> Parser<'a, T> {
     pub fn execute(&self, block_num: u64) -> ParserFuture {
         // This will satisfy its lifetime scope do to the lifetime itself living longer
         // than the process that runs brontes.
-        let parser: &'static TraceParser<'_, T> = unsafe { std::mem::transmute(&self.parser) };
+        let parser: &'static TraceParser<'_, T, DB> = unsafe { std::mem::transmute(&self.parser) };
 
         Box::pin(
             self.executor

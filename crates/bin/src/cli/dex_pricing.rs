@@ -1,7 +1,10 @@
 use std::{env, path::Path};
 
+use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::libmdbx::{tables::AddressToProtocol, Libmdbx};
+#[cfg(feature = "local")]
+use brontes_core::local_provider::LocalProvider;
+use brontes_database::libmdbx::{tables::AddressToProtocol, LibmdbxReadWriter, LibmdbxReader};
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -41,31 +44,36 @@ impl DexPricingArgs {
         let task_executor = ctx.task_executor;
 
         // if we can we want max threads for these tasks
-        let tracing_max_tasks = if self.max_tasks.is_none() {
-            num_cpus::get_physical() as u64
-        } else {
-            self.max_tasks.unwrap()
-        };
-
+        let tracing_max_tasks = determine_max_tasks(self.max_tasks);
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics listener", metrics_listener);
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx =
-            Box::leak(Box::new(Libmdbx::init_db(brontes_db_endpoint, None)?)) as &'static Libmdbx;
+        let libmdbx = Box::leak(Box::new(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?))
+            as &'static LibmdbxReadWriter;
 
         let inspectors = init_all_inspectors(quote_asset, libmdbx);
 
+        #[cfg(not(feature = "local"))]
         let tracer =
             TracingClient::new(Path::new(&db_path), tracing_max_tasks, task_executor.clone());
+        #[cfg(feature = "local")]
+        let tracer = {
+            let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
+            let db_port = env::var("RETH_PORT").expect("No DB port.env");
+            let url = format!("{db_endpoint}:{db_port}");
+            LocalProvider::new(url)
+        };
 
         let parser = &*Box::leak(Box::new(DParser::new(
             metrics_tx,
-            &libmdbx,
-            tracer,
-            Box::new(|address, db_tx| db_tx.get::<AddressToProtocol>(*address).unwrap().is_none()),
+            libmdbx,
+            tracer.clone(),
+            Box::new(|address, db_tx: &LibmdbxReadWriter| {
+                db_tx.get_protocol(*address).unwrap().is_none()
+            }),
         )));
 
         // calculate the chunk size using min batch size and max_tasks.
@@ -77,15 +85,6 @@ impl DexPricingArgs {
         let cpus = std::cmp::min(cpus_min, cpus);
         let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
-        let remaining_cpus = if self.max_tasks.is_some() {
-            determine_max_tasks(None) * 2 - self.max_tasks.unwrap()
-        } else {
-            determine_max_tasks(None)
-        };
-
-        // because these are lightweight tasks, we can stack them pretty easily without
-        // much overhead concern
-        let max_pool_loading_tasks = (remaining_cpus / cpus + 1) * 15;
         let mut tasks = FuturesUnordered::new();
 
         for (batch_id, mut chunk) in (self.start_block..=self.end_block)
@@ -99,12 +98,14 @@ impl DexPricingArgs {
             info!(batch_id, start_block, end_block, "starting batch");
 
             let ex = task_executor.clone();
+            let tracer = tracer.clone();
             tasks.push(task_executor.spawn_critical_with_graceful_shutdown_signal(
                 "pricing batch",
                 |grace| async move {
+                    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+                    let classifier = Classifier::new(libmdbx, tx.clone(), tracer.into());
                     DataBatching::new(
                         quote_asset,
-                        max_pool_loading_tasks as usize,
                         batch_id as u64,
                         start_block,
                         end_block,
@@ -112,6 +113,8 @@ impl DexPricingArgs {
                         &libmdbx,
                         &inspectors,
                         ex,
+                        &classifier,
+                        rx,
                     )
                     .run_until_graceful_shutdown(grace)
                     .await;
