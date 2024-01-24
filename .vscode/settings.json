@@ -1,4 +1,4 @@
 {
   "rust-analyzer.files.excludeDirs": ["abi_builds"],
-  "cSpell.words": ["Backrun", "flashloan"]
+  "cSpell.words": ["Backrun", "backruns", "flashloan", "frontruns"]
 }

@@ -25,7 +25,7 @@ use brontes_inspect::{
 };
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev},
+    classified_mev::{BundleData, BundleHeader, MevBlock},
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         cex::{CexPriceMap, CexQuote},
@@ -382,7 +382,7 @@ async fn process_results<DB: LibmdbxWriter>(
 fn insert_mev_results<DB: LibmdbxWriter>(
     database: &DB,
     block_details: MevBlock,
-    mev_details: Vec<(ClassifiedMev, SpecificMev)>,
+    mev_details: Vec<(BundleHeader, BundleData)>,
 ) {
     info!(
         target:"brontes",

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use alloy_json_abi::JsonAbi;
 use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, SpecificMev, *},
+    classified_mev::{BundleData, BundleHeader, MevBlock, *},
     constants::{USDT_ADDRESS, WETH_ADDRESS},
     db::{cex::CexPriceMap, clickhouse::*, metadata::MetadataNoDex},
     extra_processing::Pair,
@@ -73,7 +73,7 @@ impl Clickhouse {
 
     async fn insert_singe_classified_data(
         db_client: &ClickhouseClient,
-        mev_detail: SpecificMev,
+        mev_detail: BundleData,
         table: DatabaseTables,
     ) {
         if let Err(e) = db_client.insert_one(&mev_detail, table).await {
@@ -84,7 +84,7 @@ impl Clickhouse {
     pub async fn insert_classified_data(
         &self,
         block_details: MevBlock,
-        mev_details: Vec<(ClassifiedMev, SpecificMev)>,
+        mev_details: Vec<(BundleHeader, BundleData)>,
     ) {
         if let Err(e) = self
             .client
@@ -103,7 +103,7 @@ impl Clickhouse {
                 .map(|(classified, specific)| async move {
                     if let Err(e) = self
                         .client
-                        .insert_one(&classified, DatabaseTables::ClassifiedMev)
+                        .insert_one(&classified, DatabaseTables::BundleHeader)
                         .await
                     {
                         error!(?e, "failed to insert classified mev");
@@ -162,7 +162,7 @@ impl Clickhouse {
     }
 }
 
-fn mev_table_type(mev: &SpecificMev) -> DatabaseTables {
+fn mev_table_type(mev: &BundleData) -> DatabaseTables {
     match mev.mev_type() {
         brontes_types::classified_mev::MevType::Sandwich => DatabaseTables::Sandwich,
         brontes_types::classified_mev::MevType::Backrun => DatabaseTables::AtomicBackrun,

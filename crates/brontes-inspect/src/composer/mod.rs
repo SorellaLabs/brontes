@@ -36,7 +36,7 @@ mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_types::{
-    classified_mev::{ClassifiedMev, MevBlock, MevType, SpecificMev},
+    classified_mev::{BundleData, BundleHeader, MevBlock, MevType},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
@@ -52,7 +52,7 @@ use crate::Inspector;
 #[derive(Debug)]
 pub struct ComposerResults {
     pub block_details:        MevBlock,
-    pub mev_details:          Vec<(ClassifiedMev, SpecificMev)>,
+    pub mev_details:          Vec<(BundleHeader, BundleData)>,
     /// all txes with coinbase.transfers that weren't classified
     pub possibly_missed_arbs: Vec<(B256, u128)>,
 }
@@ -78,8 +78,8 @@ async fn run_inspectors(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
     meta_data: Arc<MetadataCombined>,
-) -> (Vec<(B256, u128)>, Vec<(ClassifiedMev, SpecificMev)>) {
-    let mut scope: TokioScope<'_, Vec<(ClassifiedMev, SpecificMev)>> = unsafe { Scope::create() };
+) -> (Vec<(B256, u128)>, Vec<(BundleHeader, BundleData)>) {
+    let mut scope: TokioScope<'_, Vec<(BundleHeader, BundleData)>> = unsafe { Scope::create() };
     orchestra
         .iter()
         .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone())));
@@ -114,8 +114,8 @@ fn on_orchestra_resolution(
     pre_processing: BlockPreprocessing,
     possibly_missed_arbs: Vec<B256>,
     metadata: Arc<MetadataCombined>,
-    orchestra_data: Vec<(ClassifiedMev, SpecificMev)>,
-) -> (MevBlock, Vec<(ClassifiedMev, SpecificMev)>) {
+    orchestra_data: Vec<(BundleHeader, BundleData)>,
+) -> (MevBlock, Vec<(BundleHeader, BundleData)>) {
     let mut header =
         build_mev_header(metadata.clone(), &pre_processing, possibly_missed_arbs, &orchestra_data);
 
@@ -159,7 +159,7 @@ fn on_orchestra_resolution(
 fn deduplicate_mev(
     dominant_mev_type: &MevType,
     subordinate_mev_types: &[MevType],
-    sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
+    sorted_mev: &mut HashMap<MevType, Vec<(BundleHeader, BundleData)>>,
 ) {
     let dominant_mev_list = match sorted_mev.get(dominant_mev_type) {
         Some(list) => list,
@@ -215,7 +215,7 @@ fn try_compose_mev(
     parent_mev_type: &MevType,
     child_mev_type: &[MevType],
     compose: &ComposeFunction,
-    sorted_mev: &mut HashMap<MevType, Vec<(ClassifiedMev, SpecificMev)>>,
+    sorted_mev: &mut HashMap<MevType, Vec<(BundleHeader, BundleData)>>,
 ) {
     let first_mev_type = child_mev_type[0];
     let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
@@ -290,7 +290,7 @@ pub mod tests {
         let config =
             ComposerRunConfig::new(vec![MevType::Sandwich, MevType::Jit], MevType::JitSandwich)
                 .with_dex_prices()
-                .with_expected_gas_used(90.875025)
+                .with_gas_paid_usd(90.875025)
                 .with_expected_profit_usd(13.568977)
                 .with_mev_tx_hashes(vec![
                     hex!("22ea36d516f59cc90ccc01042e20f8fba196f32b067a7e5f1510099140ae5e0a").into(),

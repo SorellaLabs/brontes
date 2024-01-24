@@ -1,7 +1,7 @@
 use brontes_types::{
     classified_mev::{
-        AtomicBackrun, CexDex, ClassifiedMev, JitLiquidity, JitLiquiditySandwich, Liquidation,
-        MevBlock, MevType, PriceKind, Sandwich, SpecificMev,
+        AtomicBackrun, BundleData, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich,
+        Liquidation, MevBlock, MevType, PriceKind, Sandwich,
     },
     db::{
         mev_block::MevBlockWithClassified,
@@ -46,7 +46,7 @@ impl LibmdbxData<MevBlocks> for MevBlocksData {
 #[redefined(MevBlockWithClassified)]
 pub struct LibmdbxMevBlockWithClassified {
     pub block: LibmdbxMevBlock,
-    pub mev:   Vec<(LibmdbxClassifiedMev, LibmdbxSpecificMev)>,
+    pub mev:   Vec<(LibmdbxBundleHeader, LibmdbxBundleData)>,
 }
 
 #[derive(
@@ -89,8 +89,8 @@ pub struct LibmdbxMevBlock {
     Clone,
     Redefined,
 )]
-#[redefined(ClassifiedMev)]
-pub struct LibmdbxClassifiedMev {
+#[redefined(BundleHeader)]
+pub struct LibmdbxBundleHeader {
     pub block_number:         u64,
     pub mev_tx_index:         u64,
     pub tx_hash:              Redefined_FixedBytes<32>,
@@ -112,8 +112,8 @@ pub struct LibmdbxClassifiedMev {
     Clone,
     Redefined,
 )]
-#[redefined(SpecificMev)]
-pub enum LibmdbxSpecificMev {
+#[redefined(BundleData)]
+pub enum LibmdbxBundleData {
     Sandwich(LibmdbxSandwich),
     AtomicBackrun(LibmdbxAtomicBackrun),
     JitSandwich(LibmdbxJitLiquiditySandwich),
@@ -135,10 +135,10 @@ pub enum LibmdbxSpecificMev {
 )]
 #[redefined(Sandwich)]
 pub struct LibmdbxSandwich {
-    pub frontrun_tx_hash:         Redefined_FixedBytes<32>,
-    pub frontrun_swaps:           Vec<LibmdbxNormalizedSwap>,
-    pub frontrun_gas_details:     GasDetails,
-    pub victim_swaps_tx_hashes:   Vec<Redefined_FixedBytes<32>>,
+    pub frontrun_tx_hash:         Vec<Redefined_FixedBytes<32>>,
+    pub frontrun_swaps:           Vec<Vec<LibmdbxNormalizedSwap>>,
+    pub frontrun_gas_details:     Vec<GasDetails>,
+    pub victim_swaps_tx_hashes:   Vec<Vec<Redefined_FixedBytes<32>>>,
     pub victim_swaps:             Vec<Vec<LibmdbxNormalizedSwap>>,
     pub victim_swaps_gas_details: Vec<GasDetails>,
     pub backrun_tx_hash:          Redefined_FixedBytes<32>,
@@ -175,11 +175,11 @@ pub struct LibmdbxAtomicBackrun {
 )]
 #[redefined(JitLiquiditySandwich)]
 pub struct LibmdbxJitLiquiditySandwich {
-    pub frontrun_tx_hash:         Redefined_FixedBytes<32>,
-    pub frontrun_swaps:           Vec<LibmdbxNormalizedSwap>,
-    pub frontrun_mints:           Vec<LibmdbxNormalizedMint>,
-    pub frontrun_gas_details:     GasDetails,
-    pub victim_swaps_tx_hashes:   Vec<Redefined_FixedBytes<32>>,
+    pub frontrun_tx_hash:         Vec<Redefined_FixedBytes<32>>,
+    pub frontrun_swaps:           Vec<Vec<LibmdbxNormalizedSwap>>,
+    pub frontrun_mints:           Vec<Option<Vec<LibmdbxNormalizedMint>>>,
+    pub frontrun_gas_details:     Vec<GasDetails>,
+    pub victim_swaps_tx_hashes:   Vec<Vec<Redefined_FixedBytes<32>>>,
     pub victim_swaps:             Vec<Vec<LibmdbxNormalizedSwap>>,
     pub victim_swaps_gas_details: Vec<GasDetails>,
     pub backrun_tx_hash:          Redefined_FixedBytes<32>,

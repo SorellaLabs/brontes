@@ -1,10 +1,14 @@
 use std::sync::Arc;
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
-use brontes_types::{classified_mev::SpecificMev, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{
+    classified_mev::{BundleData, BundleHeader},
+    normalized_actions::Actions,
+    tree::BlockTree,
+};
 use reth_primitives::Address;
 
-use crate::{shared_utils::SharedInspectorUtils, ClassifiedMev, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
 
 pub struct LongTailInspector<'db, DB: LibmdbxReader> {
     _inner: SharedInspectorUtils<'db, DB>,
@@ -22,7 +26,7 @@ impl<DB: LibmdbxReader> Inspector for LongTailInspector<'_, DB> {
         &self,
         _tree: Arc<BlockTree<Actions>>,
         _meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)> {
+    ) -> Vec<(BundleHeader, BundleData)> {
         todo!()
     }
 }

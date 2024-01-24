@@ -2,7 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
-    classified_mev::{ClassifiedMev, Liquidation, MevType, SpecificMev},
+    classified_mev::{BundleData, BundleHeader, Liquidation, MevType},
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node, Root},
@@ -30,7 +30,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
-    ) -> Vec<(ClassifiedMev, SpecificMev)> {
+    ) -> Vec<(BundleHeader, BundleData)> {
         let liq_txs = tree.collect_all(|node| {
             (
                 node.data.is_liquidation() || node.data.is_swap(),
@@ -76,7 +76,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<MetadataCombined>,
         actions: Vec<Actions>,
         gas_details: &GasDetails,
-    ) -> Option<(ClassifiedMev, SpecificMev)> {
+    ) -> Option<(BundleHeader, BundleData)> {
         let swaps = actions
             .iter()
             .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
@@ -135,7 +135,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let profit_usd = rev_usd - &gas_finalized;
 
-        let mev = ClassifiedMev {
+        let mev = BundleHeader {
             mev_tx_index: idx as u64,
             block_number: metadata.block_num,
             eoa,
@@ -155,7 +155,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             gas_details:         gas_details.clone(),
         };
 
-        Some((mev, SpecificMev::Liquidation(new_liquidation)))
+        Some((mev, BundleData::Liquidation(new_liquidation)))
     }
 }
 
@@ -179,7 +179,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(MevType::Liquidation)
             .with_block(19042179)
             .with_dex_prices()
-            .with_expected_gas_used(2792.487)
+            .with_gas_paid_usd(2792.487)
             .with_expected_profit_usd(71.593);
 
         inspector_util.run_inspector(config, None).await.unwrap();
@@ -193,7 +193,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(MevType::Liquidation)
             .with_block(18979710)
             .with_dex_prices()
-            .with_expected_gas_used(636.54)
+            .with_gas_paid_usd(636.54)
             .with_expected_profit_usd(129.23);
 
         inspector_util.run_inspector(config, None).await.unwrap();
