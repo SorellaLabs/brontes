@@ -647,7 +647,7 @@ fn queue_loading_returns(
         let (state, subgraph) = graph.crate_subpool_multithread(block, pair);
 
         if subgraph.is_empty() {
-            error!("pool wasn't in graph {:?}",trigger_update.get_pool_address());
+            error!("pool wasn't in graph {:?}", trigger_update.get_pool_address());
         }
         (state, subgraph, pair)
     }))
