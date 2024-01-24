@@ -26,7 +26,6 @@ use tracing::{error, info};
 use super::yens::yen;
 use crate::{PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
 
-const CAPACITY: usize = 650_000;
 
 /// All known pairs represented in the graph. All sub-graphs are generated off
 /// of a k-shortest-path algorithm that is ran on this graph
@@ -39,9 +38,9 @@ pub struct AllPairGraph {
 impl AllPairGraph {
     pub fn init_from_hashmap(all_pool_data: HashMap<(Address, Protocol), Pair>) -> Self {
         let mut graph =
-            UnGraph::<(), Vec<PoolPairInformation>, usize>::with_capacity(CAPACITY / 2, CAPACITY);
+            UnGraph::<(), Vec<PoolPairInformation>, usize>::new_undirected();
 
-        let mut token_to_index = HashMap::with_capacity(CAPACITY);
+        let mut token_to_index = HashMap::new();
         let mut connections: HashMap<(usize, usize), Vec<PoolPairInformation>> = HashMap::new();
 
         let t0 = SystemTime::now();
