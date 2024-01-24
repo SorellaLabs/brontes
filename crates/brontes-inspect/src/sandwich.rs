@@ -114,11 +114,6 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .filter(|f| !f.is_empty())
                         .collect::<Vec<Vec<Actions>>>();
 
-                    // if less than two actions we know its not a sandwich
-                    if searcher_actions.len() < 2 {
-                        return None
-                    }
-
                     self.calculate_sandwich(
                         tx_idx,
                         eoa,
