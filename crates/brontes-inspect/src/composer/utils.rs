@@ -1,8 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
-use alloy_primitives::{FixedBytes, B256};
+use alloy_primitives::FixedBytes;
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, Mev, MevBlock, MevType},
+    classified_mev::{BundleData, BundleHeader, Mev, MevBlock, MevType, PossibleMev},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
@@ -50,7 +50,7 @@ pub(crate) fn pre_process(
 pub(crate) fn build_mev_header(
     metadata: Arc<MetadataCombined>,
     pre_processing: &BlockPreprocessing,
-    possible_missed_arbs: Vec<B256>,
+    possible_missed_arbs: Vec<PossibleMev>,
     orchestra_data: &Vec<(BundleHeader, BundleData)>,
 ) -> MevBlock {
     let total_bribe = orchestra_data

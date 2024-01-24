@@ -37,7 +37,7 @@ pub struct MevBlock {
     pub proposer_mev_reward: Option<u128>,
     pub proposer_finalized_profit_usd: Option<f64>,
     pub cumulative_mev_finalized_profit_usd: f64,
-    pub possible_missed_arbs: Vec<B256>,
+    pub possible_missed_arbs: Vec<PossibleMev>,
 }
 
 #[serde_as]
@@ -57,6 +57,14 @@ pub struct BundleHeader {
     pub finalized_profit_usd: f64,
     pub finalized_bribe_usd:  f64,
     pub mev_type:             MevType,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Row, Clone, Default)]
+pub struct PossibleMev {
+    pub tx_hash:           B256,
+    pub position_in_block: usize,
+    pub gas_paid:          u128,
 }
 
 #[derive(

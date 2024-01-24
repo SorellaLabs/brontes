@@ -7,7 +7,6 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_primitives::B256;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
@@ -17,6 +16,7 @@ use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
+    classified_mev::PossibleMev,
     db::metadata::{MetadataCombined, MetadataNoDex},
     normalized_actions::Actions,
     structured_trace::TxTrace,
@@ -30,10 +30,10 @@ use tracing::{debug, error, info};
 
 use super::{dex_pricing::WaitingForPricerFuture, utils::process_results};
 
-const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";
-
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
+
+const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";
 
 pub struct RangeExecutorWithPricing<
     'db,
@@ -47,7 +47,7 @@ pub struct RangeExecutorWithPricing<
     pricer:            WaitingForPricerFuture<T>,
 
     processing_futures:
-        FuturesUnordered<Pin<Box<dyn Future<Output = Vec<(B256, u128)>> + Send + 'db>>>,
+        FuturesUnordered<Pin<Box<dyn Future<Output = Vec<PossibleMev>> + Send + 'db>>>,
 
     current_block: u64,
     end_block:     u64,
@@ -56,7 +56,7 @@ pub struct RangeExecutorWithPricing<
     libmdbx:    &'static DB,
     inspectors: &'db [&'db Box<dyn Inspector>],
 
-    missed_mev_ops: Vec<(B256, u128)>,
+    missed_mev_ops: Vec<PossibleMev>,
 }
 
 impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
@@ -138,19 +138,24 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
                 graceful_guard = Some(guard);
             },
         }
-        let mut data = std::mem::take(&mut data_batching.missed_mev_ops);
 
-        data.sort_by(|a, b| b.1.cmp(&a.1));
+        let missed_mev_ops = std::mem::take(&mut data_batching.missed_mev_ops);
+
         let path_str =
-            format!("{POSSIBLE_MISSED_MEV_RESULT_FOLDER}/batch-{}", data_batching.batch_id);
+            format!("{}/batch-{}", POSSIBLE_MISSED_MEV_RESULT_FOLDER, data_batching.batch_id);
         let path = std::path::Path::new(&path_str);
         let _ = std::fs::create_dir_all(POSSIBLE_MISSED_MEV_RESULT_FOLDER);
 
         let mut file = File::create(path).unwrap();
 
-        let data = data
-            .into_iter()
-            .map(|(arb, _)| format!("{arb:?}"))
+        let data = missed_mev_ops
+            .iter()
+            .map(|mev| {
+                format!(
+                    "Transaction Hash: {:?}, Position: {}, Gas Paid: {}",
+                    mev.tx_hash, mev.position_in_block, mev.gas_paid
+                )
+            })
             .fold(String::new(), |acc, arb| acc + &arb + "\n");
 
         if file.write_all(&data.into_bytes()).is_err() {

@@ -290,6 +290,10 @@ impl<V: NormalizedAction> Root<V> {
     pub fn finalize(&mut self) {
         self.head.finalize();
     }
+
+    pub fn is_private(&self) -> bool {
+        self.private
+    }
 }
 
 #[derive(

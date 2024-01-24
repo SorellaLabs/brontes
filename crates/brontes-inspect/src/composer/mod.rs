@@ -36,7 +36,7 @@ mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, MevBlock, MevType},
+    classified_mev::{BundleData, BundleHeader, MevBlock, MevType, PossibleMev},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
@@ -51,10 +51,10 @@ use crate::Inspector;
 
 #[derive(Debug)]
 pub struct ComposerResults {
-    pub block_details:        MevBlock,
-    pub mev_details:          Vec<(BundleHeader, BundleData)>,
+    pub block_details:     MevBlock,
+    pub mev_details:       Vec<(BundleHeader, BundleData)>,
     /// all txes with coinbase.transfers that weren't classified
-    pub possibly_missed_arbs: Vec<(B256, u128)>,
+    pub possible_mev_txes: Vec<PossibleMev>,
 }
 
 pub async fn compose_mev_results(
@@ -63,34 +63,43 @@ pub async fn compose_mev_results(
     metadata: Arc<MetadataCombined>,
 ) -> ComposerResults {
     let pre_processing = pre_process(tree.clone(), metadata.clone());
-    let (possibly_missed_arbs, classified_mev) =
+    let (possible_mev_txes, classified_mev) =
         run_inspectors(orchestra, tree, metadata.clone()).await;
 
-    let possible_arbs = possibly_missed_arbs.clone();
-    let (possibly_missed_arbs, _): (Vec<_>, Vec<_>) = possibly_missed_arbs.into_iter().unzip();
+    let possible_arbs = possible_mev_txes.clone();
 
     let (block_details, mev_details) =
-        on_orchestra_resolution(pre_processing, possibly_missed_arbs, metadata, classified_mev);
-    ComposerResults { block_details, mev_details, possibly_missed_arbs: possible_arbs }
+        on_orchestra_resolution(pre_processing, possible_mev_txes, metadata, classified_mev);
+    ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
 async fn run_inspectors(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
     meta_data: Arc<MetadataCombined>,
-) -> (Vec<(B256, u128)>, Vec<(BundleHeader, BundleData)>) {
+) -> (Vec<PossibleMev>, Vec<(BundleHeader, BundleData)>) {
     let mut scope: TokioScope<'_, Vec<(BundleHeader, BundleData)>> = unsafe { Scope::create() };
     orchestra
         .iter()
         .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone())));
 
-    let mut possibly_missed_arbs = tree
+    let mut possible_mev_txes = tree
         .tx_roots
         .iter()
-        .filter(|r| r.gas_details.coinbase_transfer.is_some())
-        .map(|r| (r.tx_hash, r.gas_details.gas_paid()))
-        .collect::<HashMap<_, _>>();
+        .filter(|r| r.gas_details.coinbase_transfer.is_some() || r.is_private())
+        .map(|r| {
+            (
+                r.tx_hash,
+                PossibleMev {
+                    tx_hash:           r.tx_hash,
+                    position_in_block: r.position,
+                    gas_paid:          r.gas_details.gas_paid(),
+                },
+            )
+        })
+        .collect::<HashMap<B256, PossibleMev>>();
 
+    // Remove the classified mev txes from the possibly missed tx list
     let results = scope
         .collect()
         .await
@@ -101,23 +110,23 @@ async fn run_inspectors(
                 .mev_transaction_hashes()
                 .into_iter()
                 .for_each(|mev_tx| {
-                    possibly_missed_arbs.remove(&mev_tx);
+                    possible_mev_txes.remove(&mev_tx);
                 });
             mev
         })
         .collect::<Vec<_>>();
 
-    (possibly_missed_arbs.into_iter().collect(), results)
+    (possible_mev_txes.into_iter().map(|(_, v)| v).collect(), results)
 }
 
 fn on_orchestra_resolution(
     pre_processing: BlockPreprocessing,
-    possibly_missed_arbs: Vec<B256>,
+    possible_mev_txes: Vec<PossibleMev>,
     metadata: Arc<MetadataCombined>,
     orchestra_data: Vec<(BundleHeader, BundleData)>,
 ) -> (MevBlock, Vec<(BundleHeader, BundleData)>) {
     let mut header =
-        build_mev_header(metadata.clone(), &pre_processing, possibly_missed_arbs, &orchestra_data);
+        build_mev_header(metadata.clone(), &pre_processing, possible_mev_txes, &orchestra_data);
 
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
