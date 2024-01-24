@@ -277,6 +277,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
+        let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
+            error!(?addr, "failed to get pair for pool");
+            return;
+        };
 
         // add price before state transition (useful for filtering false positives)
         let pair0 = Pair(pool_pair.0, self.quote_asset);
@@ -284,13 +288,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         self.store_dex_price(block, tx_idx - 1, pair0);
         self.store_dex_price(block, tx_idx - 1, pair1);
 
-        let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
-            error!(?addr, "failed to get pair for pool");
-            return;
-        };
         self.graph_manager.update_state(addr, msg);
 
-        // generate all variants of the price that might be used in the inspectors
+        // add price post state
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
