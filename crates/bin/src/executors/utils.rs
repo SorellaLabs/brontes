@@ -44,7 +44,7 @@ fn insert_mev_results<DB: LibmdbxWriter>(
             let eth_paid = possible_mev.gas_paid as f64 * 1e-18;
             let tx_url = format!("https://etherscan.io/tx/{:?}", possible_mev.tx_hash);
             format!(
-                "{} paid {} ETH in gas\nEtherscan link: {}",
+                "{} paid {} ETH for inclusion\nEtherscan link: {}",
                 format!("Tx number {}", possible_mev.position_in_block).blue(),
                 eth_paid.to_string().green(),
                 tx_url.underline().blue()
