@@ -72,7 +72,7 @@ impl Init {
                 .await?;
         }
 
-        //TODO: Joe, have it download the full range of metadata from the MEV DB so
+        // TODO: Joe, have it download the full range of metadata from the MEV DB so
         // they can run everything in parallel
         Ok(())
     }
