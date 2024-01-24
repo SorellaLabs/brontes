@@ -405,7 +405,7 @@ fn get_possible_sandwich_duplicate_contracts(
             // If this contract has not been called within this block, we insert the tx hash
             // into the map
             Entry::Vacant(duplicate_mev_contract) => {
-                duplicate_mev_contract.insert((root.tx_hash, root.head.address));
+                duplicate_mev_contract.insert((root.tx_hash, root.head.data.get_to_address()));
                 possible_victims.insert(root.tx_hash, vec![]);
             }
             Entry::Occupied(mut o) => {
