@@ -34,7 +34,7 @@ pub struct PossibleSandwich {
     possible_backrun:      B256,
     mev_executor_contract: Address,
     // mapping of possible frontruns to set of possible victims
-    // By definition the victims of latter tx are victims of the former
+    // By definition the victims of latter txes are victims of the former
     victims:               Vec<Vec<B256>>,
 }
 
