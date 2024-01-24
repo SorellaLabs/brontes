@@ -229,14 +229,13 @@ fn try_compose_mev(
 
             for &other_mev_type in child_mev_type.iter().skip(1) {
                 if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
-                    match find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes) {
-                        Some(index) => {
-                            let (other_classified, other_mev_data) = &other_mev_data_list[index];
+                    for index in find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes)
+                        .into_iter()
+                    {
+                        let (other_classified, other_mev_data) = &other_mev_data_list[index];
 
-                            to_compose.push((other_classified.clone(), other_mev_data.clone()));
-                            temp_removal_indices.push((other_mev_type, index));
-                        }
-                        None => break,
+                        to_compose.push((other_classified.clone(), other_mev_data.clone()));
+                        temp_removal_indices.push((other_mev_type, index));
                     }
                 } else {
                     break
