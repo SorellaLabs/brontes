@@ -18,13 +18,13 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     log: CurveCryptoSwapexchange_0CallLogs,
     db_tx: &DB| {
         let log = log.TokenExchange_field;
 
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         if log.sold_id ==  U256::ZERO {
             return Some(NormalizedSwap {
@@ -62,7 +62,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     call_data: exchange_1Call,
     log: CurveCryptoSwapexchange_1CallLogs,
     db_tx: &DB| {
@@ -118,7 +118,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     call_data: exchange_2Call,
     log: CurveCryptoSwapexchange_2CallLogs,
     db_tx: &DB| {
@@ -175,7 +175,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     log: CurveCryptoSwapexchange_underlying_0CallLogs,
     db_tx: &DB| {
         let log = log.TokenExchange_field;

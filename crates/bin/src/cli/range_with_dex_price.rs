@@ -5,13 +5,12 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 #[cfg(feature = "local")]
 use brontes_core::local_provider::LocalProvider;
-use brontes_database::libmdbx::{tables::AddressToProtocol, LibmdbxReadWriter, LibmdbxReader};
+use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader};
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
 use futures::stream::{FuturesUnordered, StreamExt};
 use itertools::Itertools;
-use reth_tracing_ext::TracingClient;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::info;
 

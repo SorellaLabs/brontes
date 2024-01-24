@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use brontes_database::libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::{Actions, NormalizedSwap},
@@ -11,7 +11,6 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
-use tracing::{error, info};
 
 use crate::{
     shared_utils::SharedInspectorUtils, BundleData, BundleHeader, Inspector, MetadataCombined,
@@ -95,19 +94,6 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
-        // check profit pre state.
-        if idx != 0 {
-            let pre_state_deltas = self.inner.usd_delta_by_address(
-                idx - 1,
-                deltas.clone(),
-                metadata.clone(),
-                false,
-            )?;
-            let pre_state_rev_usd = pre_state_deltas
-                .values()
-                .fold(Rational::ZERO, |acc, delta| acc + delta);
-        }
-
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
@@ -168,7 +154,6 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
                 return None
             }
         } else {
-            info!("unique tokens");
             let mut address_to_tokens: HashMap<Address, Vec<Address>> = HashMap::new();
             swaps.iter().for_each(|swap| {
                 let e = address_to_tokens.entry(swap.pool).or_default();

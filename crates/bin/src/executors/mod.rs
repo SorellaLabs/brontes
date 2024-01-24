@@ -16,7 +16,7 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter},
+    libmdbx::{LibmdbxReader, LibmdbxWriter},
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::types::DexPriceMsg;
@@ -98,7 +98,7 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<
         brontes
     }
 
-    pub async fn run_until_graceful_shutdown(mut self, shutdown: GracefulShutdown) {
+    pub async fn run_until_graceful_shutdown(self, shutdown: GracefulShutdown) {
         let brontes = self;
         pin_mut!(brontes, shutdown);
 
