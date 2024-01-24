@@ -111,7 +111,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     metadata.dex_quotes.price_at_or_before(pair, tx_position)?
                 };
 
-                traceing::info!(?token_addr, ?price);
+                tracing::info!(?token_addr, ?price);
 
                 let usd_amount = amount * price;
 
