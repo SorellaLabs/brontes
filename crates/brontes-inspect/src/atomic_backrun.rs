@@ -94,6 +94,8 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
+        let idx = if idx == 0 { 0 } else { idx -1 };
+
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
@@ -216,6 +218,7 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
     #[tokio::test]
     #[serial]
     async fn test_not_false_positive_uni_router() {
