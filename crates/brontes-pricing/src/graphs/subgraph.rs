@@ -259,12 +259,17 @@ where
                     continue;
                 };
 
+                //  hacky method of splitting outliers from each_other. this assumes
+                //  that the outliers fit into two distinct sets.
+                //  for each entry, check the average price of the first set and if it is to far
+                //  away put into other set. then after all state has been gone through. take
+                // the longer set
                 if not_outlier_p == Rational::ZERO {
                     not_outlier_p = pool_price.clone();
                     not_outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                // if the diff is greater than 1/3 in price add to other
-                } else if ((&not_outlier_p / Rational::from(not_outliers.len())) - &pool_price).abs()
-                    > (&not_outlier_p / Rational::from(not_outliers.len())) / Rational::from(3)
+                } else if ((&not_outlier_p / Rational::from(not_outliers.len())) - &pool_price)
+                    .abs()
+                    > (&not_outlier_p / Rational::from(not_outliers.len())) / Rational::from(4)
                 {
                     if outlier_p == Rational::ZERO {
                         outlier_p = pool_price.clone();
@@ -327,7 +332,7 @@ where
         visited.visit(node);
     }
 
-     node_price.remove(&goal)
+    node_price.remove(&goal)
 }
 
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in
