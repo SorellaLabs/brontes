@@ -243,10 +243,11 @@ where
 
             // calculate tvl of pool using the start token as the quote
             let edge_weight = edge.weight();
+            let edge_len = edge_weight.len();
 
-            let mut outliers = Vec::new();
+            let mut outliers = Vec::with_capacity(edge_len);
             let mut outlier_p = Rational::ZERO;
-            let mut not_outliers = Vec::new();
+            let mut not_outliers = Vec::with_capacity(edge_len);
             let mut not_outlier_p = Rational::ZERO;
 
             for info in edge_weight {
