@@ -1,12 +1,16 @@
 mod block;
+mod dex_pricing;
+mod error;
 mod range;
 mod tip;
 mod utils;
+
 use std::{
     pin::Pin,
     task::{Context, Poll},
 };
 
+use alloy_primitives::Address;
 pub use block::BlockInspector;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
@@ -15,9 +19,12 @@ use brontes_database::{
     libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter},
 };
 use brontes_inspect::Inspector;
-use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
+use brontes_pricing::types::DexPriceMsg;
+use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, StreamExt};
 pub use range::RangeExecutorWithPricing;
+use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
 pub use tip::TipInspector;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::info;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
@@ -32,15 +39,18 @@ pub struct Brontes<'inspector, T: TracingProvider, DB: LibmdbxReader + LibmdbxWr
     current_block:    u64,
     end_block:        Option<u64>,
     chain_tip:        u64,
+    quote_asset:      Address,
     mode:             Mode,
     max_tasks:        u64,
     parser:           &'inspector Parser<'inspector, T, DB>,
     classifier:       &'inspector Classifier<'inspector, T, DB>,
     inspectors:       &'inspector [&'inspector Box<dyn Inspector>],
     clickhouse:       &'inspector Clickhouse,
-    database:         &'inspector DB,
+    database:         &'static DB,
     block_inspectors: FuturesUnordered<BlockInspector<'inspector, T, DB>>,
     tip_inspector:    Option<TipInspector<'inspector, T, DB>>,
+    task_executor:    TaskExecutor,
+    dex_price_rx:     Option<UnboundedReceiver<DexPriceMsg>>,
 }
 
 impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<'inspector, T, DB> {
@@ -51,9 +61,12 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<
         max_tasks: u64,
         parser: &'inspector Parser<'inspector, T, DB>,
         clickhouse: &'inspector Clickhouse,
-        database: &'inspector DB,
+        database: &'static DB,
         classifier: &'inspector Classifier<'_, T, DB>,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>],
+        task_executor: TaskExecutor,
+        dex_price_rx: UnboundedReceiver<DexPriceMsg>,
+        quote_asset: Address,
     ) -> Self {
         let mut brontes = Self {
             current_block: init_block,
@@ -68,6 +81,9 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<
             inspectors,
             block_inspectors: FuturesUnordered::new(),
             tip_inspector: None,
+            task_executor,
+            dex_price_rx: Some(dex_price_rx),
+            quote_asset,
         };
 
         let max_blocks = match end_block {
@@ -80,6 +96,30 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<
         }
 
         brontes
+    }
+
+    pub async fn run_until_graceful_shutdown(mut self, shutdown: GracefulShutdown) {
+        let brontes = self;
+        pin_mut!(brontes, shutdown);
+
+        let mut graceful_guard = None;
+        tokio::select! {
+            _= &mut brontes=> {
+
+            },
+            guard = shutdown => {
+                graceful_guard = Some(guard);
+            },
+        }
+        // finish all block inspectors
+        while let Some(_) = brontes.block_inspectors.next().await {}
+        if let Some(tip) = brontes.tip_inspector.take() {
+            tip.shutdown().await;
+        }
+
+        info!("brontes properly shutdown");
+
+        drop(graceful_guard);
     }
 
     fn spawn_block_inspector(&mut self) {
@@ -96,6 +136,10 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<
     }
 
     fn spawn_tip_inspector(&mut self) {
+        let mut rx = self.dex_price_rx.take().unwrap();
+        // drain all historical
+        while let Ok(_) = rx.try_recv() {}
+
         let inspector = TipInspector::new(
             self.parser,
             self.clickhouse,
@@ -103,7 +147,11 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<
             self.classifier,
             self.inspectors,
             self.chain_tip,
+            self.task_executor.clone(),
+            rx,
+            self.quote_asset,
         );
+
         info!(block_number = self.chain_tip, "Finished historical inspectors, now tracking tip");
         self.tip_inspector = Some(inspector);
     }
@@ -154,22 +202,8 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future for Brontes<'_, T, DB> {
     type Output = ();
 
-    //TODO: Fix this comment
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // This loop drives the entire state of network and does a lot of work.
-        // Under heavy load (many messages/events), data may arrive faster than it can
-        // be processed (incoming messages/requests -> events), and it is
-        // possible that more data has already arrived by the time an internal
-        // event is processed. Which could turn this loop into a busy loop.
-        // Without yielding back to the executor, it can starve other tasks waiting on
-        // that executor to execute them, or drive underlying resources To prevent this,
-        // we preemptively return control when the `budget` is exhausted. The
-        // value itself is chosen somewhat arbitrarily, it is high enough so the
-        // swarm can make meaningful progress but low enough that this loop does
-        // not starve other tasks for too long. If the budget is exhausted we
-        // manually yield back control to the (coop) scheduler. This manual yield point should prevent situations where polling appears to be frozen. See also <https://tokio.rs/blog/2020-04-preemption>
-        // And tokio's docs on cooperative scheduling <https://docs.rs/tokio/latest/tokio/task/#cooperative-scheduling>
-        let mut iters = 1024;
+        let mut iters = 256;
         loop {
             match self.mode {
                 Mode::Historical => {
@@ -198,9 +232,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future for Brontes<'
             iters -= 1;
             if iters == 0 {
                 cx.waker().wake_by_ref();
-                break
+                return Poll::Pending
             }
         }
-        Poll::Pending
     }
 }
