@@ -1,9 +1,7 @@
 use alloy_primitives::{Address, U256};
-use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
-use brontes_macros::{action_dispatch, action_impl};
+use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
-use reth_db::mdbx::RO;
 
 action_impl!(
     Protocol::SushiSwapV2,
@@ -92,7 +90,7 @@ action_impl!(
     |trace_index,
      from_address: Address,
      target_address: Address,
-     msg_sender: Address,
+     _msg_sender: Address,
      call_data: burnCall,
      log_data: SushiSwapV2burnCallLogs,
      db_tx: &DB| {

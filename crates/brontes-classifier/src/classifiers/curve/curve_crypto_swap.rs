@@ -1,13 +1,11 @@
 use alloy_primitives::{hex, FixedBytes};
-use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
-use brontes_macros::{action_dispatch, action_impl};
+use brontes_macros::action_impl;
+use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::NormalizedSwap;
-use reth_db::mdbx::RO;
 use reth_primitives::{Address, U256};
 
 pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
 pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
-use brontes_pricing::Protocol;
 
 action_impl!(
     Protocol::CurveCryptoSwap,
