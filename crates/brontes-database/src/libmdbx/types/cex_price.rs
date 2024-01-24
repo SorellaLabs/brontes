@@ -19,8 +19,6 @@ pub struct CexPriceData {
     pub cex_price_map: CexPriceMap,
 }
 
-
-
 impl LibmdbxData<CexPrice> for CexPriceData {
     fn into_key_val(
         &self,
@@ -29,8 +27,6 @@ impl LibmdbxData<CexPrice> for CexPriceData {
         (self.block_num, self.cex_price_map.clone())
     }
 }
-
-
 
 #[derive(
     Debug, Clone, serde::Serialize, rkyv::Serialize, rkyv::Deserialize, rkyv::Archive, Redefined,
@@ -62,5 +58,3 @@ impl PartialEq for LibmdbxCexQuote {
         self.clone().to_source().eq(&other.clone().to_source())
     }
 }
-
-

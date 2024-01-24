@@ -4,7 +4,7 @@ use std::{
 };
 
 use brontes_types::traits::TracingProvider;
-use futures::future::join_all;
+use futures::{future::join_all, stream::iter, StreamExt};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use serde::Deserialize;
@@ -17,6 +17,7 @@ use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
 const DEFAULT_START_BLOCK: u64 = 15400000;
 // change with tracing client
 const DEFAULT_END_BLOCK: u64 = 15400000;
+const INNER_CHUNK_SIZE: usize = 10_000;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
     libmdbx:    Arc<Libmdbx>,
@@ -73,8 +74,8 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         Ok(())
     }
 
-    pub(crate) async fn initialize_table_from_clickhouse<'db, T, D>(
-        &'db self,
+    pub(crate) async fn initialize_table_from_clickhouse<T, D>(
+        &self,
         block_range: Option<(u64, u64)>,
     ) -> eyre::Result<()>
     where
@@ -104,12 +105,37 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
-        join_all(pair_ranges.into_iter().map(|(start, end)| {let num_chunks = num_chunks.clone(); async move {
-            let data = self
-                .clickhouse
+        join_all(pair_ranges.into_iter().map(|(start, end)| {
+            let num_chunks = num_chunks.clone(); 
+            // we spawn as the 
+            async move {
+                iter(&(start..end).into_iter().chunks(INNER_CHUNK_SIZE)).map(|range| {
+
+                    let mut range = range.collect_vec();
+                    let start = range.remove(0);
+                    let end = range.pop().unwrap();
+                    let clickhouse = self.clickhouse.clone();
+                    let libmdbx = self.libmdbx.clone();
+
+                    // compression and decompression is expensive on a ton of data thus we give
+                    // them there own threads 
+                tokio::spawn(async move {
+            let data = 
+                clickhouse
                 .inner()
                 .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
                 .await;
+
+
+            match data {
+                Ok(d) => libmdbx.write_table(&d)?,
+                Err(e) => {
+                    info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
+                }
+            }
+            Ok::<(), DatabaseError>(())
+                })}).buffer_unordered(5).collect::<Vec<_>>().await;
+
 
             let num = {
                 let mut n = num_chunks.lock().unwrap();
@@ -117,19 +143,10 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                 n.clone() + 1
             };
 
-            match data {
-                Ok(d) => self.libmdbx.write_table(&d)?,
-                Err(e) => {
-                    error!(target: "brontes::init", "{} -- Error Writing Chunk {} -- Blocks: {} - {} -- {:?}", T::NAME, start, end, num, e)
-                }
-            }
-
-            info!(target: "brontes::init", "{} -- Finished Chunk {} -- Blocks: {} - {}", T::NAME, num, start, end);
+            info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
 
             Ok::<(), DatabaseError>(())
-        }}))
-        .await
-        .into_iter()
+        }})).await.into_iter()
         .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
