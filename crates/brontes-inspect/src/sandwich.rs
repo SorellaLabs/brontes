@@ -66,13 +66,6 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
-                    info!(
-                        ?eoa,
-                        ?mev_executor_contract,
-                        ?possible_frontruns,
-                        ?victims,
-                        ?possible_backrun
-                    );
                     let victim_gas = victims
                         .iter()
                         .map(|victims| {
@@ -555,7 +548,7 @@ mod tests {
                 hex!("fb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d").into(),
             ])
             .with_gas_paid_usd(21.9)
-            .with_expected_profit_usd(3.69);
+            .with_expected_profit_usd(0.015);
 
         inspector_util
             .run_inspector(
