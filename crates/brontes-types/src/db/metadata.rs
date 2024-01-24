@@ -4,7 +4,6 @@ use alloy_primitives::{Address, TxHash, U256};
 use malachite::{num::basic::traits::Zero, Rational};
 use serde_with::{serde_as, DisplayFromStr};
 use sorella_db_databases::{clickhouse, clickhouse::Row};
-use tracing::info;
 
 use super::{cex::CexPriceMap, dex::DexQuotes};
 use crate::{
@@ -48,8 +47,6 @@ impl MetadataCombined {
         } else {
             self.eth_prices.clone()
         };
-
-        info!(?eth_price, block_num=%self.block_num,"eth price for block");
 
         gas_used_rational * eth_price
     }
