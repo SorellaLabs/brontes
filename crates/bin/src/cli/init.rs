@@ -9,7 +9,7 @@ use crate::{cli::get_env_vars, runner::CliContext};
 #[derive(Debug, Parser)]
 pub struct Init {
     /// Initialize the local Libmdbx DB
-    #[arg(long, short, default_value = "true")]
+    #[arg(long, short)]
     pub init_libmdbx:         bool,
     /// Libmdbx tables to init:
     ///     TokenDecimals
