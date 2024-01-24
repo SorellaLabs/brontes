@@ -104,6 +104,10 @@ impl<K: TransactionKind> DbTx for LibmdbxTx<K> {
             .map_err(|e| DatabaseError::Commit(e.into()))
     }
 
+    fn disable_long_read_transaction_safety(&mut self) {
+        self.inner.disable_timeout();
+    }
+
     fn abort(self) {
         drop(self.inner)
     }
