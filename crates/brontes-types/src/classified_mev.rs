@@ -376,6 +376,7 @@ impl Mev for Sandwich {
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
         let mut txs = self.frontrun_tx_hash.clone();
+        txs.extend(self.victim_swaps_tx_hashes.into_iter().flatten());
         txs.push(self.backrun_tx_hash);
         txs
     }
