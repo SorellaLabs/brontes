@@ -91,7 +91,6 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
     pub fn new(
-        max_pool_loading_tasks: usize,
         quote_asset: Address,
         graph_manager: GraphManager,
         update_rx: UnboundedReceiver<DexPriceMsg>,
@@ -106,7 +105,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             update_rx,
             graph_manager,
             dex_quotes: HashMap::default(),
-            lazy_loader: LazyExchangeLoader::new(provider, max_pool_loading_tasks),
+            lazy_loader: LazyExchangeLoader::new(provider),
             current_block,
             completed_block: current_block,
             overlap_update: None,

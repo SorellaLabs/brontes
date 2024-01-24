@@ -1,1 +1,0 @@
-Block traces with headers
