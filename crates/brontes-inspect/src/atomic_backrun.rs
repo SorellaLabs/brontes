@@ -171,7 +171,9 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
                 .dedup()
                 .count();
 
-            if unique_tokens < pools {
+            // in the case there is a ton of unique_tokens its also most likely
+            // a arb
+            if unique_tokens < pools && unique_tokens.len() <= 3 {
                 return None
             }
         }
