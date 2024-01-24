@@ -176,7 +176,7 @@ fn deduplicate_mev(
                 removal_indices.extend(
                     find_mev_with_matching_tx_hashes(subordinate_mev_list, &hashes)
                         .into_iter()
-                        .zip(vec![subordinate_mev_type].into_iter().cycle()),
+                        .map(|i| (i, subordinate_mev_type)),
                 );
             }
         }
