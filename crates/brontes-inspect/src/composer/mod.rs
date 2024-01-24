@@ -185,7 +185,9 @@ fn deduplicate_mev(
     // Remove the subordinate mev data that is being deduplicated
     for (index, mev_type) in removal_indices.iter().rev() {
         if let Some(mev_list) = sorted_mev.get_mut(mev_type) {
-            mev_list.remove(*index);
+            if mev_list.len() > *index {
+                mev_list.remove(*index);
+            }
         }
     }
 }
