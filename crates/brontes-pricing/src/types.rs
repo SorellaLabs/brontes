@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, str::FromStr, sync::Arc};
 
 use alloy_primitives::{Address, Log, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
@@ -17,7 +17,7 @@ use crate::{
     AutomatedMarketMaker, Protocol,
 };
 
-pub(crate) trait ProtocolState {
+pub(crate) trait ProtocolState: Debug {
     fn price(&self, base: Address) -> Result<Rational, ArithmeticError>;
     fn tvl(&self, base: Address) -> (Rational, Rational);
 }
@@ -32,9 +32,19 @@ impl ProtocolState for PoolState {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PoolState {
     variant: PoolVariants,
+}
+impl Debug for PoolState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Pool State")
+            .field("addr", &self.address())
+            .field("pair", &self.pair())
+            .field("tvl 0", &self.get_tvl(self.pair().0).0)
+            .field("tvl 1", &self.get_tvl(self.pair().0).1)
+            .finish()
+    }
 }
 
 impl PoolState {
