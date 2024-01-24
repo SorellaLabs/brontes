@@ -11,7 +11,7 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
-use tracing::info;
+use tracing::{error, info};
 
 use crate::{
     shared_utils::SharedInspectorUtils, BundleData, BundleHeader, Inspector, MetadataCombined,
@@ -94,6 +94,16 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         self.is_possible_arb(swaps)?;
 
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+
+        // check profit pre state.
+        let pre_state_deltas =
+            self.inner
+                .usd_delta_by_address(idx - 1, deltas, metadata.clone(), false)?;
+
+        let pre_state_rev_usd = pre_state_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
+
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
@@ -110,6 +120,12 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         // Can change this later to check if people are subsidising arbs to kill ops for
         // competitors
         if &rev_usd - &gas_used_usd <= Rational::ZERO {
+            return None
+        }
+
+        if &pre_state_rev_usd - &gas_used_usd <= Rational::ZERO {
+            let diff = rev_usd - pre_state_rev_usd;
+            error!(profit_diff=?diff, "pre state profit was negitive");
             return None
         }
 
