@@ -327,9 +327,7 @@ where
         visited.visit(node);
     }
 
-    let goal = node_price.remove(&goal);
-    tracing::info!(price=?goal);
-    goal
+     node_price.remove(&goal)
 }
 
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in
