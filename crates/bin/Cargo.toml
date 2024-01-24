@@ -64,6 +64,7 @@ colored.workspace = true
 eyre.workspace = true
 dotenv.workspace = true
 num_cpus.workspace = true
+strum = { workspace = true, features = ["derive"] }
 
 # http/rpc
 hyper.workspace = true

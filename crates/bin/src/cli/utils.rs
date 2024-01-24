@@ -4,8 +4,10 @@ use alloy_primitives::Address;
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReadWriter};
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
-    sandwich::SandwichInspector, Inspector,
+    sandwich::SandwichInspector, Inspector, Inspectors,
 };
+use itertools::Itertools;
+use strum::IntoEnumIterator;
 use tracing::info;
 
 pub fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
@@ -22,24 +24,20 @@ pub fn static_object<T>(obj: T) -> &'static T {
     &*Box::leak(Box::new(obj))
 }
 
-pub fn init_all_inspectors(
+pub fn init_inspectors(
     quote_token: Address,
     db: &'static LibmdbxReadWriter,
+    inspectors: Option<Vec<Inspectors>>,
 ) -> &'static [&'static Box<dyn Inspector>] {
-    let sandwich = static_object(
-        Box::new(SandwichInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
-    );
-    let cex_dex = static_object(
-        Box::new(CexDexInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
-    );
-    let jit =
-        static_object(Box::new(JitInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>);
+    let mut res = Vec::new();
+    for inspector in inspectors
+        .map(|i| i.into_iter())
+        .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())
+    {
+        res.push(inspector.init_inspector(quote_token, db));
+    }
 
-    let backrun = static_object(
-        Box::new(AtomicBackrunInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
-    );
-
-    static_object(vec![sandwich, cex_dex, jit, backrun].into_boxed_slice())
+    &*Box::leak(res.into_boxed_slice())
 }
 
 pub fn get_env_vars() -> eyre::Result<String> {
