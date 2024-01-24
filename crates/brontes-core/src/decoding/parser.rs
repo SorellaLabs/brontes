@@ -5,7 +5,7 @@ use std::sync::Arc;
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 use brontes_database::{
-    libmdbx::{Libmdbx, LibmdbxReader},
+    libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter},
     TxTraces,
 };
 use brontes_metrics::{
@@ -17,6 +17,7 @@ use reth_primitives::{Address, Header, B256};
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::TransactionReceipt;
+use tracing::error;
 #[cfg(feature = "dyn-decode")]
 use tracing::info;
 
@@ -28,7 +29,7 @@ use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 //#[derive(Clone)]
-pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader> {
+pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     libmdbx:               &'db DB,
     #[allow(unused)]
     should_fetch:          Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
@@ -36,7 +37,7 @@ pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader> {
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl<'db, T: TracingProvider, DB: LibmdbxReader> TraceParser<'db, T, DB> {
+impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db, T, DB> {
     pub fn new(
         libmdbx: &'db DB,
         should_fetch: Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
@@ -71,6 +72,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader> TraceParser<'db, T, DB> {
         }
 
         let parity_trace = self.trace_block(block_num).await;
+
         let receipts = self.get_receipts(block_num).await;
 
         if parity_trace.0.is_none() && receipts.0.is_none() {
@@ -96,6 +98,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader> TraceParser<'db, T, DB> {
         let _ = self
             .metrics_tx
             .send(TraceMetricEvent::BlockMetricRecieved(traces.1).into());
+
+        if self.libmdbx.save_traces(block_num, traces.0).is_err() {
+            error!(%block_num, "failed to store traces for block");
+        }
 
         Some((traces.0, traces.2))
     }

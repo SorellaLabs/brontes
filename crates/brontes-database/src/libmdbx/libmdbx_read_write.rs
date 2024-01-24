@@ -12,6 +12,7 @@ use brontes_types::{
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
+        traces::TxTracesInner,
     },
     extra_processing::Pair,
     structured_trace::TxTrace,
@@ -32,10 +33,11 @@ use crate::{
             pool_creation_block::PoolCreationBlocksData,
             subgraphs::SubGraphsData,
             token_decimals::TokenDecimalsData,
+            traces::TxTracesData,
             LibmdbxData,
         },
     },
-    AddressToProtocol, AddressToTokens, PoolCreationBlocks, SubGraphs, TokenDecimals,
+    AddressToProtocol, AddressToTokens, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
 pub struct LibmdbxReadWriter(Libmdbx);
@@ -48,11 +50,13 @@ impl LibmdbxReadWriter {
 
 impl LibmdbxReader for LibmdbxReadWriter {
     fn load_trace(&self, block_num: u64) -> eyre::Result<Option<Vec<TxTrace>>> {
-        todo!()
+        let tx = self.0.ro_tx()?;
+        Ok(tx.get::<TxTraces>(block_num)?.and_then(|i| i.traces))
     }
 
     fn get_protocol(&self, address: Address) -> eyre::Result<Option<Protocol>> {
-        todo!()
+        let tx = self.0.ro_tx()?;
+        Ok(tx.get::<AddressToProtocol>(address)?)
     }
 
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<MetadataNoDex> {
@@ -388,6 +392,11 @@ impl LibmdbxWriter for LibmdbxReadWriter {
     }
 
     fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        todo!()
+        let table = TxTracesData {
+            block_number: block,
+            inner:        TxTracesInner { traces: Some(traces) },
+        };
+
+        Ok(self.0.write_table(&vec![table])?)
     }
 }
