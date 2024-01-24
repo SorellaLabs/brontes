@@ -1,13 +1,11 @@
 use alloy_primitives::{hex, FixedBytes};
-use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
-use brontes_macros::{action_dispatch, action_impl};
+use brontes_macros::action_impl;
+use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::NormalizedSwap;
-use reth_db::mdbx::RO;
 use reth_primitives::{Address, U256};
 
 pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
 pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
-use brontes_pricing::Protocol;
 
 action_impl!(
     Protocol::CurveCryptoSwap,
@@ -18,13 +16,13 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     log: CurveCryptoSwapexchange_0CallLogs,
     db_tx: &DB| {
         let log = log.TokenExchange_field;
 
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         if log.sold_id ==  U256::ZERO {
             return Some(NormalizedSwap {
@@ -62,7 +60,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     call_data: exchange_1Call,
     log: CurveCryptoSwapexchange_1CallLogs,
     db_tx: &DB| {
@@ -118,7 +116,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     call_data: exchange_2Call,
     log: CurveCryptoSwapexchange_2CallLogs,
     db_tx: &DB| {
@@ -175,7 +173,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-    msg_sender: Address,
+    _msg_sender: Address,
     log: CurveCryptoSwapexchange_underlying_0CallLogs,
     db_tx: &DB| {
         let log = log.TokenExchange_field;

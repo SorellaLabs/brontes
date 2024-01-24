@@ -1,9 +1,7 @@
 use alloy_primitives::{Address, U256};
-use brontes_database::libmdbx::{tables::AddressToTokens, tx::CompressedLibmdbxTx};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap};
-use reth_db::mdbx::RO;
 
 action_impl!(
     Protocol::UniswapV2,
@@ -15,7 +13,7 @@ action_impl!(
     |trace_index,
     from_address: Address,
     target_address: Address,
-     msg_sender: Address,
+    _msg_sender: Address,
     call_data: swapCall,
     log_data: UniswapV2swapCallLogs,
     db_tx: &DB| {
@@ -23,7 +21,7 @@ action_impl!(
         let recipient = call_data.to;
 
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         let amount_0_in: U256 = data.amount0In;
         if amount_0_in == U256::ZERO {
@@ -62,13 +60,13 @@ action_impl!(
     |trace_index,
      from_address: Address,
      target_address: Address,
-     msg_sender: Address,
+     _msg_sender: Address,
      call_data: mintCall,
      log_data: UniswapV2mintCallLogs,
      db_tx: &DB| {
         let log_data = log_data.Mint_field;
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedMint {
             recipient: call_data.to,
             from: from_address,
@@ -89,13 +87,13 @@ action_impl!(
     |trace_index,
      from_address: Address,
      target_address: Address,
-     msg_sender: Address,
+     _msg_sender: Address,
      call_data: burnCall,
      log_data: UniswapV2burnCallLogs,
      db_tx: &DB| {
         let log_data = log_data.Burn_field;
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
+        let [token_0, token_1] = [tokens.token0, tokens.token1];
         Some(NormalizedBurn {
             recipient: call_data.to,
             to: target_address,

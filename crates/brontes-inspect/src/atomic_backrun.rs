@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use brontes_database::libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
     normalized_actions::{Actions, NormalizedSwap},
@@ -11,7 +11,6 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
-use tracing::info;
 
 use crate::{
     shared_utils::SharedInspectorUtils, BundleData, BundleHeader, Inspector, MetadataCombined,
@@ -94,6 +93,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         self.is_possible_arb(swaps)?;
 
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+
         let addr_usd_deltas =
             self.inner
                 .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
@@ -154,7 +154,6 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
                 return None
             }
         } else {
-            info!("unique tokens");
             let mut address_to_tokens: HashMap<Address, Vec<Address>> = HashMap::new();
             swaps.iter().for_each(|swap| {
                 let e = address_to_tokens.entry(swap.pool).or_default();
