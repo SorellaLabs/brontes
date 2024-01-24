@@ -1,5 +1,4 @@
 #![allow(non_camel_case_types)]
-pub mod address_to_factory;
 pub mod address_to_protocol;
 pub mod address_to_tokens;
 pub mod cex_price;
