@@ -96,13 +96,17 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         let deltas = self.inner.calculate_token_deltas(&searcher_actions);
 
         // check profit pre state.
-        let pre_state_deltas =
-            self.inner
-                .usd_delta_by_address(idx - 1, deltas.clone(), metadata.clone(), false)?;
-
-        let pre_state_rev_usd = pre_state_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
+        if idx != 0 {
+            let pre_state_deltas = self.inner.usd_delta_by_address(
+                idx - 1,
+                deltas.clone(),
+                metadata.clone(),
+                false,
+            )?;
+            let pre_state_rev_usd = pre_state_deltas
+                .values()
+                .fold(Rational::ZERO, |acc, delta| acc + delta);
+        }
 
         let addr_usd_deltas =
             self.inner
@@ -122,14 +126,6 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         if &rev_usd - &gas_used_usd <= Rational::ZERO {
             return None
         }
-
-        if &pre_state_rev_usd - &gas_used_usd <= Rational::ZERO {
-            let diff = rev_usd - pre_state_rev_usd;
-            error!(profit_diff=?diff, "pre state profit was negitive");
-            return None
-        }
-
-        info!(?pre_state_rev_usd, ?rev_usd, "found valid backrun");
 
         let classified = BundleHeader {
             mev_tx_index: idx as u64,
