@@ -17,7 +17,7 @@ use tracing::info;
 
 use super::{determine_max_tasks, get_env_vars};
 use crate::{
-    cli::{init_inspectors, static_object},
+    cli::{get_tracing_provider, init_inspectors, static_object},
     runner::CliContext,
     RangeExecutorWithPricing,
 };
@@ -63,17 +63,8 @@ impl RangeWithDexPrice {
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
 
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors_to_run);
-
-        #[cfg(not(feature = "local"))]
         let tracer =
-            TracingClient::new(Path::new(&db_path), tracing_max_tasks, task_executor.clone());
-        #[cfg(feature = "local")]
-        let tracer = {
-            let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
-            let db_port = env::var("RETH_PORT").expect("No DB port.env");
-            let url = format!("{db_endpoint}:{db_port}");
-            LocalProvider::new(url)
-        };
+            get_tracing_provider(&Path::new(&db_path), tracing_max_tasks, task_executor.clone());
 
         let parser = static_object(DParser::new(
             metrics_tx,

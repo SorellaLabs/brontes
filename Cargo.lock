@@ -1418,6 +1418,7 @@ dependencies = [
  "reth-tracing-ext",
  "reth-transaction-pool",
  "strum",
+ "thiserror",
  "tokio",
  "toml",
  "tracing",

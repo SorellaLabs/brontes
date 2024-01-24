@@ -6,6 +6,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
@@ -21,14 +22,19 @@ use brontes_inspect::{
     composer::{compose_mev_results, ComposerResults},
     Inspector,
 };
+use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
     classified_mev::{BundleData, BundleHeader, MevBlock},
     db::{dex::DexQuotes, metadata::MetadataNoDex, mev_block::MevBlockWithClassified},
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use futures::{stream::FuturesOrdered, Future, FutureExt, StreamExt};
+use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
+use reth_tasks::TaskExecutor;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info};
+
+use super::{dex_pricing::WaitingForPricerFuture, utils::process_results};
 
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (MetadataNoDex, BlockTree<Actions>)> + Send + 'a>>;
@@ -39,15 +45,12 @@ pub struct TipInspector<'inspector, T: TracingProvider, DB: LibmdbxReader + Libm
     parser:            &'inspector Parser<'inspector, T, DB>,
     classifier:        &'inspector Classifier<'inspector, T, DB>,
     clickhouse:        &'inspector Clickhouse,
-    database:          &'inspector DB,
+    database:          &'static DB,
     inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
+    pricer:            WaitingForPricerFuture<T>,
     // pending future data
-    classifier_future: FuturesOrdered<CollectionFut<'inspector>>,
-
-    composer_future:  Option<Pin<Box<dyn Future<Output = ComposerResults> + Send + 'inspector>>>,
-    // pending insertion data
-    #[allow(dead_code)]
-    insertion_future: Option<Pin<Box<dyn Future<Output = ()> + Send + Sync + 'inspector>>>,
+    classifier_future: Option<CollectionFut<'inspector>>,
+    composer_future:   FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'inspector>>>,
 }
 
 impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
@@ -56,22 +59,67 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
     pub fn new(
         parser: &'inspector Parser<'inspector, T, DB>,
         clickhouse: &'inspector Clickhouse,
-        database: &'inspector DB,
+        database: &'static DB,
         classifier: &'inspector Classifier<'_, T, DB>,
         inspectors: &'inspector [&'inspector Box<dyn Inspector>],
         current_block: u64,
+        task_executor: TaskExecutor,
+        rx: UnboundedReceiver<DexPriceMsg>,
+        quote_asset: Address,
     ) -> Self {
+        let pairs = database.protocols_created_before(current_block).unwrap();
+
+        let pair_graph = GraphManager::init_from_db_state(
+            pairs,
+            HashMap::default(),
+            Box::new(|block, pair| database.try_load_pair_before(block, pair).ok()),
+            Box::new(|block, pair, edges| {
+                if database.save_pair_at(block, pair, edges).is_err() {
+                    error!("failed to save subgraph to db");
+                }
+            }),
+        );
+
+        let pricer = BrontesBatchPricer::new(
+            quote_asset,
+            pair_graph,
+            rx,
+            parser.get_tracer(),
+            current_block,
+            HashMap::new(),
+        );
         Self {
+            pricer: WaitingForPricerFuture::new(pricer, task_executor),
             inspectors,
             current_block,
             parser,
             clickhouse,
-            composer_future: None,
+            composer_future: FuturesUnordered::new(),
             database,
             classifier,
-            classifier_future: FuturesOrdered::new(),
-            insertion_future: None,
+            classifier_future: None,
         }
+    }
+
+    pub async fn shutdown(mut self) {
+        if let Some(fut) = self.classifier_future.take() {
+            let (meta, tree) = fut.await;
+            self.pricer
+                .add_pending_inspection(self.current_block, tree, meta);
+        }
+        self.classifier.close();
+
+        // triggers pricing shutdown
+        while let Some((tree, meta_data)) = self.pricer.next().await {
+            self.classifier.close();
+            self.composer_future.push(Box::pin(
+                process_results(self.database, self.inspectors, tree.into(), meta_data.into())
+                    .map(|_| ()),
+            ));
+        }
+
+        while let Some(_) = self.composer_future.next().await {}
+        info!("tip inspector properly shutdown");
     }
 
     fn start_collection(&mut self) {
@@ -98,55 +146,32 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
             (meta, tree)
         });
 
-        self.classifier_future.push_back(classifier_fut);
-    }
-
-    fn on_inspectors_finish(&mut self, results: ComposerResults) {
-        info!(
-            block_number = self.current_block,
-            "inserting the collected results \n {:#?}", results
-        );
-
-        if self
-            .database
-            .save_mev_blocks(self.current_block, results.block_details, results.mev_details)
-            .is_err()
-        {
-            error!("failed to insert classified data into libmdx");
-        }
+        self.classifier_future = Some(classifier_fut);
     }
 
     fn progress_futures(&mut self, cx: &mut Context<'_>) {
-        match self.classifier_future.poll_next_unpin(cx) {
-            Poll::Ready(Some((meta_data, tree))) => {
-                let meta_data = meta_data.into_finalized_metadata(DexQuotes(vec![]));
-                //TODO: wire in the dex pricing task here
-
-                self.composer_future = Some(Box::pin(compose_mev_results(
-                    self.inspectors,
-                    tree.into(),
-                    meta_data.into(),
-                )));
-            }
-            Poll::Pending => return,
-            Poll::Ready(None) => return,
-        }
-
-        if let Some(mut inner) = self.composer_future.take() {
-            if let Poll::Ready(data) = inner.poll_unpin(cx) {
-                self.on_inspectors_finish(data);
+        if let Some(mut future) = self.classifier_future.take() {
+            if let Poll::Ready((meta, tree)) = future.poll_unpin(cx) {
+                debug!("built tree");
+                let block = self.current_block;
+                self.pricer.add_pending_inspection(block, tree, meta);
             } else {
-                self.composer_future = Some(inner);
+                self.classifier_future = Some(future);
             }
         }
+        if let Poll::Ready(Some(res)) = self.composer_future.poll_next_unpin(cx) {}
     }
 
     #[cfg(not(feature = "local"))]
     fn start_block_inspector(&mut self) -> bool {
+        if self.classifier_future.is_some() {
+            return false
+        }
+
         match self.parser.get_latest_block_number() {
             Ok(chain_tip) => {
                 if chain_tip > self.current_block {
-                    self.current_block = chain_tip;
+                    self.current_block += 1;
                     true
                 } else {
                     false
@@ -164,7 +189,7 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
         match self.parser.get_latest_block_number().await {
             Ok(chain_tip) => {
                 if chain_tip > self.current_block {
-                    self.current_block = chain_tip;
+                    self.current_block += 1;
                     true
                 } else {
                     false
@@ -182,20 +207,20 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspec
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // If the classifier_future is None (not started yet), start the collection
-        // phase
-
-        loop {
-            #[cfg(not(feature = "local"))]
-            {
-                if self.start_block_inspector() {
-                    self.start_collection();
-                }
-                self.progress_futures(cx);
+        #[cfg(not(feature = "local"))]
+        {
+            if self.start_block_inspector() {
+                self.start_collection();
+            }
+            self.progress_futures(cx);
+            if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
+                self.composer_future.push(Box::pin(
+                    process_results(self.database, self.inspectors, tree.into(), meta.into())
+                        .map(|_| ()),
+                ));
             }
         }
 
-        #[allow(unreachable_code)]
         Poll::Pending
     }
 }

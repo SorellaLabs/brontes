@@ -1,12 +1,16 @@
-use std::env;
+use std::{env, path::Path};
 
 use alloy_primitives::Address;
+#[cfg(feature = "local")]
+use brontes_core::local_provider::LocalProvider;
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReadWriter};
 use brontes_inspect::{
     atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
     sandwich::SandwichInspector, Inspector, Inspectors,
 };
 use itertools::Itertools;
+use reth_tasks::TaskExecutor;
+use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
 use tracing::info;
 
@@ -45,4 +49,21 @@ pub fn get_env_vars() -> eyre::Result<String> {
     info!("Found DB Path");
 
     Ok(db_path)
+}
+
+#[cfg(feature = "local")]
+pub fn get_tracing_provider(_: Path, _: u64, _: TaskExecutor) -> LocalProvider {
+    let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
+    let db_port = env::var("RETH_PORT").expect("No DB port.env");
+    let url = format!("{db_endpoint}:{db_port}");
+    LocalProvider::new(url)
+}
+
+#[cfg(not(feature = "local"))]
+pub fn get_tracing_provider(
+    db_path: &Path,
+    tracing_tasks: u64,
+    executor: TaskExecutor,
+) -> TracingClient {
+    TracingClient::new(db_path, tracing_tasks, executor.clone())
 }
