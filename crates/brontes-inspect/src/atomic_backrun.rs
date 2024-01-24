@@ -1,6 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
 
-use tracing::info;
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter};
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType},
@@ -12,6 +11,7 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
+use tracing::info;
 
 use crate::{
     shared_utils::SharedInspectorUtils, BundleData, BundleHeader, Inspector, MetadataCombined,
@@ -103,7 +103,6 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         let rev_usd = addr_usd_deltas
             .values()
             .fold(Rational::ZERO, |acc, delta| acc + delta);
-        info!(?rev_usd);
 
         let gas_used = gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
@@ -155,6 +154,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
                 return None
             }
         } else {
+            info!("unique tokens");
             let mut address_to_tokens: HashMap<Address, Vec<Address>> = HashMap::new();
             swaps.iter().for_each(|swap| {
                 let e = address_to_tokens.entry(swap.pool).or_default();
