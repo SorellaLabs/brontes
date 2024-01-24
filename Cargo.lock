@@ -1417,6 +1417,7 @@ dependencies = [
  "reth-tasks",
  "reth-tracing-ext",
  "reth-transaction-pool",
+ "strum",
  "tokio",
  "toml",
  "tracing",
@@ -1608,6 +1609,7 @@ dependencies = [
  "brontes-pricing",
  "brontes-types",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
+ "convert_case 0.6.0",
  "criterion",
  "dotenv",
  "eyre",
@@ -1617,6 +1619,7 @@ dependencies = [
  "itertools 0.11.0",
  "lazy_static",
  "malachite",
+ "quote",
  "rand 0.8.5",
  "rayon",
  "reqwest",
@@ -1633,6 +1636,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "walkdir",
 ]
 
 [[package]]
