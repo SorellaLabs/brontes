@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     classified_mev::{BundleData, CexDex, MevType, PriceKind},
     extra_processing::Pair,

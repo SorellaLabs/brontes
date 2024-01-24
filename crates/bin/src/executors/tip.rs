@@ -1,8 +1,6 @@
 use std::{
     collections::HashMap,
-    future::IntoFuture,
-    pin::{pin, Pin},
-    sync::Arc,
+    pin::Pin,
     task::{Context, Poll},
 };
 
@@ -14,21 +12,11 @@ use brontes_core::{
 };
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{
-        tables::MevBlocks, types::mev_block::MevBlocksData, Libmdbx, LibmdbxReader, LibmdbxWriter,
-    },
+    libmdbx::{LibmdbxReader, LibmdbxWriter},
 };
-use brontes_inspect::{
-    composer::{compose_mev_results, ComposerResults},
-    Inspector,
-};
+use brontes_inspect::Inspector;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, MevBlock},
-    db::{dex::DexQuotes, metadata::MetadataNoDex, mev_block::MevBlockWithClassified},
-    normalized_actions::Actions,
-    tree::BlockTree,
-};
+use brontes_types::{db::metadata::MetadataNoDex, normalized_actions::Actions, tree::BlockTree};
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -159,7 +147,7 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
                 self.classifier_future = Some(future);
             }
         }
-        if let Poll::Ready(Some(res)) = self.composer_future.poll_next_unpin(cx) {}
+        if let Poll::Ready(Some(_)) = self.composer_future.poll_next_unpin(cx) {}
     }
 
     #[cfg(not(feature = "local"))]

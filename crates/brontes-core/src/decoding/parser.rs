@@ -4,10 +4,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
-use brontes_database::{
-    libmdbx::{Libmdbx, LibmdbxReader, LibmdbxWriter},
-    TxTraces,
-};
+use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,

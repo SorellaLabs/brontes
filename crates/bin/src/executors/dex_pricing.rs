@@ -1,49 +1,23 @@
 use std::{
-    cmp::max,
     collections::HashMap,
-    fs::File,
-    io::Write,
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
 };
 
-use alloy_primitives::{Address, B256};
-use brontes_classifier::Classifier;
-use brontes_core::{
-    decoding::{Parser, TracingProvider},
-    missing_decimals::load_missing_decimals,
-};
-use brontes_database::libmdbx::{
-    tables::{CexPrice, DexPrice, Metadata, MevBlocks},
-    types::{dex_price::DexPriceData, mev_block::MevBlocksData, LibmdbxData},
-    Libmdbx, LibmdbxReader, LibmdbxWriter,
-};
-use brontes_inspect::{
-    composer::{compose_mev_results, ComposerResults},
-    Inspector,
-};
-use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
+use brontes_core::decoding::TracingProvider;
+use brontes_pricing::BrontesBatchPricer;
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, MevBlock},
-    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
-        cex::{CexPriceMap, CexQuote},
-        dex::{DexQuote, DexQuotes},
-        metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
-        mev_block::MevBlockWithClassified,
+        dex::DexQuotes,
+        metadata::{MetadataCombined, MetadataNoDex},
     },
-    extra_processing::Pair,
     normalized_actions::Actions,
-    structured_trace::TxTrace,
     tree::BlockTree,
 };
-use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
-use reth_db::DatabaseError;
-use reth_primitives::Header;
-use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
-use tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedReceiver};
-use tracing::{debug, error, info, warn};
+use futures::{Stream, StreamExt};
+use reth_tasks::TaskExecutor;
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tracing::info;
 
 pub struct WaitingForPricerFuture<T: TracingProvider> {
     receiver: Receiver<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,

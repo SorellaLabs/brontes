@@ -3,11 +3,8 @@ use std::{env, path::Path};
 use alloy_primitives::Address;
 #[cfg(feature = "local")]
 use brontes_core::local_provider::LocalProvider;
-use brontes_database::libmdbx::{Libmdbx, LibmdbxReadWriter};
-use brontes_inspect::{
-    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector, jit::JitInspector,
-    sandwich::SandwichInspector, Inspector, Inspectors,
-};
+use brontes_database::libmdbx::LibmdbxReadWriter;
+use brontes_inspect::{Inspector, Inspectors};
 use itertools::Itertools;
 use reth_tasks::TaskExecutor;
 use reth_tracing_ext::TracingClient;

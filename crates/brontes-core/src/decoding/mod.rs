@@ -1,10 +1,9 @@
 use std::{pin::Pin, sync::Arc};
 
-use brontes_database::libmdbx::{tx::CompressedLibmdbxTx, Libmdbx, LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
-use reth_db::mdbx::RO;
 use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{Address, BlockNumberOrTag, Header, B256};
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};

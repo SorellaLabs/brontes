@@ -1,42 +1,18 @@
 use std::{
-    cmp::max,
     pin::Pin,
     task::{Context, Poll},
 };
 
-use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
     missing_decimals::load_missing_decimals,
 };
-use brontes_database::{
-    clickhouse::errors::DatabaseError,
-    libmdbx::{
-        tables::{DexPrice, Metadata as MetadataTable, MevBlocks},
-        types::{dex_price::make_filter_key_range, mev_block::MevBlocksData, LibmdbxData},
-        Libmdbx, LibmdbxReader, LibmdbxWriter,
-    },
-};
-use brontes_inspect::{
-    composer::{compose_mev_results, ComposerResults},
-    Inspector,
-};
-use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, MevBlock},
-    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
-    db::{
-        cex::{CexPriceMap, CexQuote},
-        dex::DexQuotes,
-        metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
-        mev_block::MevBlockWithClassified,
-    },
-    extra_processing::Pair,
-    normalized_actions::Actions,
-    tree::BlockTree,
-};
-use eyre::{anyhow, eyre};
-use futures::{task::waker, Future, FutureExt};
+use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_inspect::Inspector;
+use brontes_types::{db::metadata::MetadataCombined, normalized_actions::Actions, tree::BlockTree};
+use eyre::eyre;
+use futures::{Future, FutureExt};
 use tracing::{debug, error, info, trace};
 
 use super::utils::process_results;
