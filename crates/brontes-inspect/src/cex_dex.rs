@@ -226,13 +226,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::{HashMap, HashSet},
-        str::FromStr,
-        time::SystemTime,
-    };
+    use std::{str::FromStr, time::SystemTime};
 
-    use reth_primitives::U256;
     use serial_test::serial;
 
     use super::*;
