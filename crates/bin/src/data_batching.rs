@@ -73,7 +73,6 @@ pub struct DataBatching<'db, T: TracingProvider + Clone, DB: LibmdbxWriter + Lib
 impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBatching<'db, T, DB> {
     pub fn new(
         quote_asset: alloy_primitives::Address,
-        max_pool_loading_tasks: usize,
         batch_id: u64,
         start_block: u64,
         end_block: u64,
@@ -110,7 +109,6 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> DataBat
         );
 
         let pricer = BrontesBatchPricer::new(
-            max_pool_loading_tasks,
             quote_asset,
             pair_graph,
             rx,
