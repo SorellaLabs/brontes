@@ -139,7 +139,6 @@ impl Tables {
                     .initialize_table_from_clickhouse::<Metadata, MetadataData>(block_range)
                     .await
             }
-            Tables::DexPrice => todo!(),
             Tables::PoolCreationBlocks => {
                 initializer
                     .initialize_table_from_clickhouse::<PoolCreationBlocks, PoolCreationBlocksData>(
@@ -147,6 +146,7 @@ impl Tables {
                     )
                     .await
             }
+            Tables::DexPrice => Ok(()),
             Tables::MevBlocks => Ok(()),
             Tables::SubGraphs => Ok(()),
             Tables::TxTraces => Ok(()),
