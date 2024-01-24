@@ -27,7 +27,7 @@ impl<DB: LibmdbxReader> Inspector for LongTailInspector<'_, DB> {
         _tree: Arc<BlockTree<Actions>>,
         _meta_data: Arc<MetadataCombined>,
     ) -> Vec<(BundleHeader, BundleData)> {
-        todo!()
+        return vec![]
     }
 }
 //atomically profitable
