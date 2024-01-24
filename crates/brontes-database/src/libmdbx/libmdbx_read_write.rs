@@ -86,7 +86,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
                     .unwrap_or_default()
             };
 
-
         let mut cex_quotes = CexPriceMap::new();
         db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
             cex_quotes.0.insert(

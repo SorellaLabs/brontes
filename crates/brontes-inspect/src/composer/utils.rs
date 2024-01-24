@@ -62,7 +62,6 @@ pub(crate) fn build_mev_header(
         .map(|(_, mev)| mev.priority_fee_paid())
         .sum::<u128>();
 
-    //TODO: need to check if decimals are correct
     let builder_eth_profit = Rational::from_signeds(
         (total_bribe as i128 + pre_processing.cumulative_gas_paid as i128)
             - (metadata.proposer_mev_reward.unwrap_or_default() as i128),
