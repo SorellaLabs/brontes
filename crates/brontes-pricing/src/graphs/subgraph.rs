@@ -289,7 +289,6 @@ where
             let mut token_1_am = Rational::ZERO;
 
             for (price, (t0, t1)) in set {
-                tracing::info!(?pool_price, "{:#?}", pool_state);
                 let (t0, t1) = pool_state.tvl(info.get_base_token());
 
                 // we only weight by the first token
@@ -304,7 +303,6 @@ where
             if weight_prices.is_empty() {
                 continue
             }
-
 
             if weight == Rational::ZERO {
                 continue
