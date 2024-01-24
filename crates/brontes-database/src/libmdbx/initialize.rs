@@ -134,7 +134,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                 }
             }
             Ok::<(), DatabaseError>(())
-                })}).buffer_unordered(5).collect::<Vec<_>>().await;
+                })}).buffer_unordered(1).collect::<Vec<_>>().await;
 
 
             let num = {
