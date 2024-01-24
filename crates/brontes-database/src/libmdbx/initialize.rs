@@ -9,7 +9,7 @@ use itertools::Itertools;
 use reth_db::DatabaseError;
 use serde::Deserialize;
 use sorella_db_databases::{clickhouse::DbRow, Database};
-use tracing::info;
+use tracing::{error, info};
 
 use super::{tables::Tables, types::LibmdbxData, Libmdbx};
 use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
@@ -18,19 +18,15 @@ const DEFAULT_START_BLOCK: u64 = 15400000;
 // change with tracing client
 const DEFAULT_END_BLOCK: u64 = 15400000;
 
-pub struct LibmdbxInitializer<TP: TracingProvider>{
+pub struct LibmdbxInitializer<TP: TracingProvider> {
     libmdbx:    Arc<Libmdbx>,
     clickhouse: Arc<Clickhouse>,
     tracer:     Arc<TP>,
 }
 
 impl<TP: TracingProvider> LibmdbxInitializer<TP> {
-    pub fn new(
-        libmdbx: Arc<Libmdbx>,
-        clickhouse: Arc<Clickhouse>,
-        tracer: Arc<TP>,
-    ) -> Self {
-        Self { libmdbx, clickhouse, tracer } 
+    pub fn new(libmdbx: Arc<Libmdbx>, clickhouse: Arc<Clickhouse>, tracer: Arc<TP>) -> Self {
+        Self { libmdbx, clickhouse, tracer }
     }
 
     pub async fn initialize(
@@ -48,6 +44,35 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         .collect::<eyre::Result<_>>()
     }
 
+    pub(crate) async fn initialize_table_from_clickhouse_no_args<'db, T, D>(
+        &'db self,
+    ) -> eyre::Result<()>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    {
+        self.libmdbx.clear_table::<T>()?;
+
+        let data = self
+            .clickhouse
+            .inner()
+            .query_many::<D>(
+                T::INIT_QUERY.expect("Should only be called on clickhouse tables"),
+                &(),
+            )
+            .await;
+
+        match data {
+            Ok(d) => self.libmdbx.write_table(&d)?,
+            Err(e) => {
+                error!(target: "brontes::init", error=%e, "error initing {}", T::NAME)
+            }
+        }
+
+        Ok(())
+    }
+
     pub(crate) async fn initialize_table_from_clickhouse<'db, T, D>(
         &'db self,
         block_range: Option<(u64, u64)>,
@@ -63,10 +88,8 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
             let end_block = self.tracer.best_block_number()?;
-            info!(?end_block);
             (DEFAULT_START_BLOCK..end_block).chunks(
-                T::INIT_CHUNK_SIZE
-                    .unwrap_or((end_block- DEFAULT_START_BLOCK + 1) as usize),
+                T::INIT_CHUNK_SIZE.unwrap_or((end_block - DEFAULT_START_BLOCK + 1) as usize),
             )
         };
 
@@ -78,6 +101,8 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             )
             .collect_vec();
 
+        // TODO: (JOE) bro this is clearly chat-gpt, there is a way better way to track
+        // chunks
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
@@ -97,7 +122,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             match data {
                 Ok(d) => self.libmdbx.write_table(&d)?,
                 Err(e) => {
-                    info!(target: "brontes::init", "{} -- Error Writing Chunk {} -- {:?}", T::NAME, num, e)
+                    error!(target: "brontes::init", "{} -- Error Writing Chunk {} -- {:?}", T::NAME, num, e)
                 }
             }
 
