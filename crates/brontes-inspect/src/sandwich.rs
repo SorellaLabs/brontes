@@ -544,6 +544,36 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-    // TODO: write test for
-    // 0x0ddca9d4baf7bff16b59a564e86c0a6d7e648771d2cfd43a022494bb9c9a8624 https://etherscan.io/tx/0x56fa3506eea903de8d548225708385b48407d3fccdbcd40e1554795b6157dcf0
+
+    #[tokio::test]
+    #[serial]
+    async fn test_big_mac_sandwich() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+
+        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("2a187ed5ba38cc3b857726df51ce99ee6e29c9bcaa02be1a328f99c3783b3303").into(),
+                hex!("7325392f41338440f045cb1dba75b6099f01f8b00983e33cc926eb27aacd7e2d").into(),
+                hex!("bcb8115fb54b7d6b0a0b0faf6e65fae02066705bd4afde70c780d4251a771428").into(),
+                hex!("0b428553bc2ccc8047b0da46e6c1c1e8a338d9a461850fcd67ddb233f6984677").into(),
+                hex!("fb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d").into(),
+            ])
+            .with_gas_paid_usd(26.0)
+            .with_expected_profit_usd(3.69);
+
+        inspector_util
+            .run_inspector(
+                config,
+                Some(Box::new(|bundle: BundleData| {
+                    let BundleData::Sandwich(sando) = bundle else {
+                        assert!(false, "given bundle wasn't a sandwich");
+                        return
+                    };
+                    assert!(sando.frontrun_tx_hash.len() == 2, "didn't find the big mac");
+                })),
+            )
+            .await
+            .unwrap();
+    }
 }

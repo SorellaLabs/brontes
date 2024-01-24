@@ -146,6 +146,58 @@ impl InspectorTestUtils {
         Ok(res)
     }
 
+    pub async fn assert_no_mev(
+        &self,
+        config: InspectorTxRunConfig,
+    ) -> Result<(), InspectorTestUtilsError> {
+        let copied = config.clone();
+        let err = || InspectorTestUtilsError::InspectorConfig(copied.clone());
+
+        let mut quotes = None;
+        let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
+            if config.calculate_dex_prices {
+                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes).await?;
+                quotes = Some(prices);
+                tree
+            } else {
+                self.get_tree_txes(tx_hashes).await?
+            }
+        } else if let Some(block) = config.mev_block {
+            if config.calculate_dex_prices {
+                let (tree, prices) = self.get_tree_block_with_pricing(block).await?;
+                quotes = Some(prices);
+                tree
+            } else {
+                self.get_tree_block(block).await?
+            }
+        } else {
+            return Err(err())
+        };
+
+        let block = tree.header.number;
+
+        let mut metadata = if let Some(meta) = config.metadata_override {
+            meta
+        } else {
+            self.classifier_inspector.get_metadata(block).await?
+        };
+
+        if let Some(quotes) = quotes {
+            metadata.dex_quotes = quotes;
+        }
+
+        if metadata.dex_quotes.0.is_empty() {
+            assert!(false, "no dex quotes found in metadata. test suite will fail");
+        }
+
+        let inspector = self.get_inspector(config.expected_mev_type)?;
+
+        let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
+        assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
+
+        Ok(())
+    }
+
     pub async fn run_inspector(
         &self,
         config: InspectorTxRunConfig,
