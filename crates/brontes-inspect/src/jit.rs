@@ -386,7 +386,7 @@ mod tests {
     async fn test_jit() {
         // eth price in usdc
         // 2146.65037178
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 0.1);
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2);
         let config = InspectorTxRunConfig::new(MevType::Jit)
             .with_dex_prices()
             .with_block(18539312)
