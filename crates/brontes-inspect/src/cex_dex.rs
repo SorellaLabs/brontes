@@ -240,11 +240,20 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
         let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
-        let cex_best_ask = metadata
+        let cex_best_ask = match metadata
             .clone()
             .cex_quotes
-            .get_quote(&Pair(swap.token_in, swap.token_out))?
-            .best_ask();
+            .get_quote(&Pair(swap.token_in, swap.token_out))
+        {
+            Some(quote) => quote.best_ask(),
+            None => {
+                error!(
+                    "No CEX quote found for pair: {}, {} at block: {}",
+                    swap.token_in, swap.token_out, metadata.block_num
+                );
+                return None;
+            }
+        };
 
         Some(((adjusted_out / adjusted_in), cex_best_ask))
     }
