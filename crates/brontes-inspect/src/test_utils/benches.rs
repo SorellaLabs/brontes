@@ -15,11 +15,12 @@ pub struct InspectorBenchUtils {
 }
 impl InspectorBenchUtils {
     pub fn new(quote_address: Address) -> Self {
-        let classifier_inspector = ClassifierTestUtils::new();
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap();
+
+        let classifier_inspector = ClassifierTestUtils::new_with_rt(rt.handle().clone());
         Self { classifier_inspector, quote_address, rt }
     }
 
@@ -149,6 +150,7 @@ impl InspectorBenchUtils {
             .into_iter()
             .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
             .collect::<Vec<_>>();
+
         let mut trees = self
             .rt
             .block_on(self.classifier_inspector.build_tree_txes(tx_hashes))?;

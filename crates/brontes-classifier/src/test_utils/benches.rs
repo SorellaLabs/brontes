@@ -30,14 +30,13 @@ pub struct ClassifierBenchUtils {
 }
 impl ClassifierBenchUtils {
     pub fn new() -> Self {
-        let trace_loader = TraceLoader::new();
         let (tx, rx) = unbounded_channel();
-        let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap();
-
+        let trace_loader = TraceLoader::new_with_rt(rt.handle().clone());
+        let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
         Self { classifier, trace_loader, _dex_pricing_receiver: rx, rt }
     }
 
