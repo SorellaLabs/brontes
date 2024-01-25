@@ -332,7 +332,7 @@ mod tests {
             .with_metadata_override(metadata)
             .with_block(18264694)
             .with_mev_tx_hashes(vec![tx_hash])
-            .with_gas_paid_usd(78878.11)
+            .with_gas_paid_usd(79836.4183)
             .with_expected_profit_usd(22229.27);
 
         test_utils.run_inspector(config, None).await.unwrap();
