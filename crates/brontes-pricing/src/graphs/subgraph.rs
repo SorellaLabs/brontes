@@ -422,6 +422,7 @@ pub mod test {
     use brontes_types::constants::USDC_ADDRESS;
     use futures::StreamExt;
 
+    use serial_test::serial;
     use super::*;
     use crate::test_utils::PricingTestUtils;
 
@@ -524,6 +525,7 @@ pub mod test {
     }
 
     #[tokio::test]
+    #[serial]
     async fn price_price_graph_for_shit() {
         let utils = PricingTestUtils::new(USDC_ADDRESS);
         let mut pricer = utils
