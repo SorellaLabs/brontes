@@ -52,7 +52,7 @@ pub(crate) fn pre_process(
 pub(crate) fn build_mev_header(
     metadata: Arc<MetadataCombined>,
     pre_processing: &BlockPreprocessing,
-    possible_missed_arbs: Vec<PossibleMev>,
+    possible_mev: Vec<PossibleMev>,
     orchestra_data: &Vec<(BundleHeader, BundleData)>,
 ) -> MevBlock {
     let total_bribe = orchestra_data
@@ -75,40 +75,38 @@ pub(crate) fn build_mev_header(
         block_hash: pre_processing.meta_data.block_hash.into(),
         block_number: pre_processing.meta_data.block_num,
         mev_count: orchestra_data.len() as u64,
-        finalized_eth_price: f64::rounding_from(
-            &pre_processing.meta_data.eth_prices,
-            RoundingMode::Nearest,
-        )
-        .0,
+        eth_price: f64::rounding_from(&pre_processing.meta_data.eth_prices, RoundingMode::Nearest)
+            .0,
         cumulative_gas_used: pre_processing.cumulative_gas_used,
         cumulative_gas_paid: pre_processing.cumulative_gas_paid,
         total_bribe,
         cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
         builder_address: pre_processing.builder_address,
         builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
-        builder_finalized_profit_usd: f64::rounding_from(
+        builder_profit_usd: f64::rounding_from(
             builder_eth_profit * &pre_processing.meta_data.eth_prices,
             RoundingMode::Nearest,
         )
         .0,
         proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
         proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
-        proposer_finalized_profit_usd: pre_processing.meta_data.proposer_mev_reward.map(
-            |mev_reward| {
+        proposer_profit_usd: pre_processing
+            .meta_data
+            .proposer_mev_reward
+            .map(|mev_reward| {
                 f64::rounding_from(
                     mev_reward.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
                     RoundingMode::Nearest,
                 )
                 .0
-            },
-        ),
-        cumulative_mev_finalized_profit_usd: f64::rounding_from(
+            }),
+        cumulative_mev_profit_usd: f64::rounding_from(
             (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(18)
                 * &pre_processing.meta_data.eth_prices,
             RoundingMode::Nearest,
         )
         .0,
-        possible_missed_arbs,
+        possible_mev,
     }
 }
 

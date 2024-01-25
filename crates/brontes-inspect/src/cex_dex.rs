@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{BundleData, CexDex, MevType, PriceKind},
+    classified_mev::{BundleData, CexDex, MevType, PriceKind, TokenProfit, TokenProfits},
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
@@ -99,9 +99,34 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), true)?;
+                .usd_delta_by_address(idx, &deltas, metadata.clone(), true)?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let token_profits = TokenProfits {
+            profits: mev_profit_collector
+                .iter()
+                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
+                .flat_map(|(address, delta)| {
+                    delta.iter().map(|(token, amount)| {
+                        let usd_value = metadata
+                            .cex_quotes
+                            .get_quote(&Pair(*token, self.inner.quote))
+                            .unwrap_or_default()
+                            .price
+                            .1
+                            .to_float()
+                            * amount.clone().to_float();
+                        TokenProfit {
+                            profit_collector: *address,
+                            token: *token,
+                            amount: amount.clone().to_float(),
+                            usd_value,
+                        }
+                    })
+                })
+                .collect(),
+        };
 
         let classified = BundleHeader {
             mev_tx_index: idx as u64,
@@ -111,8 +136,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             eoa,
             block_number: metadata.block_num,
             mev_type: MevType::CexDex,
-            finalized_profit_usd: profit?.to_float(),
-            finalized_bribe_usd: gas_finalized.to_float(),
+            profit_usd: profit?.to_float(),
+            token_profits,
+            bribe_usd: gas_finalized.to_float(),
         };
 
         let prices = swaps

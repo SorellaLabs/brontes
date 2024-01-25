@@ -3,7 +3,7 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::NormalizedBatch;
 
-use crate::UniswapX::Fill;
+
 
 action_impl!(
     Protocol::UniswapX,
@@ -13,10 +13,10 @@ action_impl!(
     call_data: true,
     logs: true,
     |trace_index,
-    from_address: Address,
+    _from_address: Address,
     target_address: Address,
     _msg_sender: Address,
-    call_data: executeCall,
+    _call_data: executeCall,
     logs_data: UniswapXexecuteCallLogs,
     _db_tx: &DB| {
         //TODO: When the fill is a vec, iterate over to get each user order
@@ -44,7 +44,7 @@ action_impl!(
     from_address: Address,
     target_address: Address,
     _msg_sender: Address,
-    call_data: executeBatchCall,
+    _call_data: executeBatchCall,
     _db_tx: &DB| {
         Some(NormalizedBatch {
             trace_index,
@@ -68,7 +68,7 @@ action_impl!(
     target_address: Address,
     _msg_sender: Address,
     _call_data: executeBatchWithCallbackCall,
-    log_data: UniswapXexecuteBatchWithCallbackCallLogs,
+    _log_data: UniswapXexecuteBatchWithCallbackCallLogs,
     _db_tx: &DB| {
         Some(NormalizedBatch {
             trace_index,
