@@ -414,9 +414,7 @@ mod tests {
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
         Inspectors,
     };
-    //TODO: Found another JIT sandwich:
-    // 0xcca2c7f24d153ea698f6db11f46eae63d71790d244ca123b7a612b81ba7cfa56
-    // Test it
+
     #[tokio::test]
     #[serial]
     async fn test_jit() {
@@ -428,6 +426,22 @@ mod tests {
             .with_block(18539312)
             .with_gas_paid_usd(90.875025)
             .with_expected_profit_usd(-68.34);
+
+        test_utils.run_inspector(config, None).await.unwrap();
+    }
+    #[tokio::test]
+    #[serial]
+    async fn test_only_jit() {
+
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("11a88cf8d0cab67c146709eae4803a65af4b7f70fba6d4b657c25b853a57b0f7").into(),
+                hex!("0424da7217b8d10b07fc31bca18558861ce8156597746f29d88813594330f6a0").into(),
+            ])
+            .with_gas_paid_usd(92.65)
+            .with_expected_profit_usd(743.31);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
