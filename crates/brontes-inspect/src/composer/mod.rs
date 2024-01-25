@@ -46,6 +46,8 @@ use utils::{
     BlockPreprocessing,
 };
 
+const DISCOVERY_PRIORITY_FEE_MULTIPLIER: u128 = 5;
+
 use crate::{discovery::DiscoveryInspector, Inspector};
 
 #[derive(Debug)]
@@ -82,7 +84,7 @@ async fn run_inspectors(
         .iter()
         .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone())));
 
-    let mut possible_mev_txes = DiscoveryInspector::new(3).find_possible_mev(tree);
+    let mut possible_mev_txes = DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree);
 
     // Remove the classified mev txes from the possibly missed tx list
     let results = scope
