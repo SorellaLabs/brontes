@@ -275,7 +275,10 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
-    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
+    use crate::{
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
+        Inspectors,
+    };
 
     #[tokio::test]
     #[serial]
@@ -335,9 +338,8 @@ mod tests {
 
         let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
 
-        let config = InspectorTxRunConfig::new(MevType::CexDex)
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_metadata_override(metadata)
-            .with_block(18264694)
             .with_mev_tx_hashes(vec![tx_hash])
             .with_gas_paid_usd(79836.4183)
             .with_expected_profit_usd(21270.966);
