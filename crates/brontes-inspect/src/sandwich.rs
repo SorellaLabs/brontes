@@ -232,11 +232,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                         address,
                         token,
                         amount.clone().to_float(),
-                        metadata
+                        (metadata
                             .dex_quotes
                             .price_at_or_before(Pair(*token, self.inner.quote), idx)
                             .unwrap_or(Rational::ZERO)
                             .to_float()
+                            * amount.clone().to_float())
                     );
                 });
             }
