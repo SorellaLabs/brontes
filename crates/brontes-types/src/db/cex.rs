@@ -2,7 +2,10 @@ use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use malachite::{
-    num::arithmetic::traits::{Floor, ReciprocalAssign},
+    num::{
+        arithmetic::traits::{Floor, ReciprocalAssign},
+        basic::traits::One,
+    },
     Rational,
 };
 use sorella_db_databases::clickhouse::{self, Row};
@@ -66,6 +69,10 @@ impl CexPriceMap {
 
     /// Assumes binance quote, for retro compatibility
     pub fn get_quote(&self, pair: &Pair) -> Option<CexQuote> {
+        if pair.0 == pair.1 {
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+        }
+
         let ordered_pair = pair.ordered();
         self.0.get(&ordered_pair).and_then(|quotes| {
             quotes.first().map(|quote| {
@@ -81,6 +88,10 @@ impl CexPriceMap {
     }
 
     pub fn get_binance_quote(&self, pair: &Pair) -> Option<CexQuote> {
+        if pair.0 == pair.1 {
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+        }
+
         let ordered_pair = pair.ordered();
         self.0.get(&ordered_pair).and_then(|quotes| {
             quotes.first().map(|quote| {
@@ -96,6 +107,10 @@ impl CexPriceMap {
     }
 
     pub fn get_avg_quote(&self, pair: &Pair) -> Option<CexQuote> {
+        if pair.0 == pair.1 {
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+        }
+
         let ordered_pair = pair.ordered();
         self.0.get(&ordered_pair).and_then(|quotes| {
             if quotes.is_empty() {
