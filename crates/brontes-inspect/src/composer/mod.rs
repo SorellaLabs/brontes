@@ -287,7 +287,6 @@ fn try_compose_mev(
 #[cfg(test)]
 pub mod tests {
     use alloy_primitives::hex;
-    use brontes_types::classified_mev::JitLiquiditySandwich;
     use serial_test::serial;
 
     use super::*;
