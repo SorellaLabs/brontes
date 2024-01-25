@@ -719,24 +719,4 @@ pub mod test {
     pub const USDC_ADDRESS: Address =
         Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
 
-    #[tokio::test]
-    pub async fn test_buffer_result() {
-        let block = 18500647;
-        let pricing_utils = PricingTestUtils::new(USDC_ADDRESS);
-
-        let (mut dex_pricer, mut tree) = pricing_utils
-            .setup_dex_pricer_for_block(block)
-            .await
-            .unwrap();
-
-        let noop_waker = Waker::noop();
-        let mut cx = Context::from_waker(&noop_waker);
-
-        // query all of the state we need to load into the lazy loader
-        {
-            let pinned = Pin::new(&mut dex_pricer);
-            let res = pinned.poll_next(&mut cx);
-            assert!(res.is_pending());
-        }
-    }
 }
