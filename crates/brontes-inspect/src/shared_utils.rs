@@ -112,11 +112,12 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                 let usd_amount = amount.clone() * price.clone();
                 println!(
-                    "Token: {} is worth: {:?}, total of {}, worth {}",
+                    "Token: {} \n Is worth: {:?} USD \n The address gained a total of {}, worth \
+                     {} USD",
                     token_addr,
-                    price.clone(),
-                    amount.clone(),
-                    usd_amount.clone()
+                    price.clone().to_f64(),
+                    amount.clone().to_f64(),
+                    usd_amount.clone().to_f64()
                 );
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
