@@ -25,19 +25,19 @@ pub struct MevBlock {
     pub block_hash: B256,
     pub block_number: u64,
     pub mev_count: u64,
-    pub finalized_eth_price: f64,
+    pub eth_price: f64,
     pub cumulative_gas_used: u128,
     pub cumulative_gas_paid: u128,
     pub total_bribe: u128,
     pub cumulative_mev_priority_fee_paid: u128,
     pub builder_address: Address,
     pub builder_eth_profit: f64,
-    pub builder_finalized_profit_usd: f64,
+    pub builder_profit_usd: f64,
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward: Option<u128>,
-    pub proposer_finalized_profit_usd: Option<f64>,
-    pub cumulative_mev_finalized_profit_usd: f64,
-    pub possible_missed_arbs: Vec<PossibleMev>,
+    pub proposer_profit_usd: Option<f64>,
+    pub cumulative_mev_profit_usd: f64,
+    pub possible_mev: Vec<PossibleMev>,
 }
 
 #[serde_as]
@@ -54,9 +54,59 @@ pub struct BundleHeader {
     pub mev_contract:         Address,
     #[serde(with = "vec_fixed_string")]
     pub mev_profit_collector: Vec<Address>,
-    pub finalized_profit_usd: f64,
-    pub finalized_bribe_usd:  f64,
+    pub profit_usd:           f64,
+    pub token_profits:        TokenProfits,
+    pub bribe_usd:            f64,
     pub mev_type:             MevType,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Row, Clone, Default, Serialize)]
+pub struct TokenProfit {
+    pub profit_collector: Address,
+    pub token:            Address,
+    pub amount:           f64,
+    pub usd_value:        f64,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Row, Clone, Default, Serialize)]
+pub struct TokenProfits {
+    pub profits: Vec<TokenProfit>,
+}
+
+impl TokenProfits {
+    //TODO: Find is short circuiting, in this case this should be fine but not
+    // entirely sure.
+    pub fn compose(&mut self, to_compose: &TokenProfits) {
+        for profit in &to_compose.profits {
+            if let Some(existing_profit) = self
+                .profits
+                .iter_mut()
+                .find(|p| p.profit_collector == profit.profit_collector && p.token == profit.token)
+            {
+                if existing_profit.amount < profit.amount {
+                    existing_profit.amount = profit.amount;
+                }
+            }
+        }
+    }
+    //TODO: Alternatively we could do something like this, but I'm not sure it's
+    // even necessary
+
+    /*
+    pub fn compose(&mut self, to_compose: &TokenProfits) {
+        for profit in &to_compose.profits {
+            for existing_profit in self.profits.iter_mut().filter(|p|
+                p.profit_collector == profit.profit_collector && p.token_address == profit.token_address
+            ) {
+                if existing_profit.amount < profit.amount {
+                    existing_profit.amount = profit.amount;
+                }
+            }
+        }
+    }
+     */
 }
 
 #[serde_as]
@@ -293,7 +343,7 @@ pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHead
 
     let sandwich = sandwich.expect("Expected Sandwich MEV data");
     let jit = jit.expect("Expected JIT MEV data");
-    let classified_sandwich =
+    let mut classified_sandwich =
         classified_sandwich.expect("Expected Classified MEV data for Sandwich");
     let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
 
@@ -336,10 +386,14 @@ pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHead
         backrun_gas_details: sandwich.backrun_gas_details,
     };
 
-    let sandwich_rev =
-        classified_sandwich.finalized_bribe_usd + classified_sandwich.finalized_profit_usd;
-    let jit_rev = jit_classified.finalized_bribe_usd + jit_classified.finalized_profit_usd;
-    let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.finalized_bribe_usd;
+    let sandwich_rev = classified_sandwich.bribe_usd + classified_sandwich.profit_usd;
+    let jit_rev = jit_classified.bribe_usd + jit_classified.profit_usd;
+    let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.bribe_usd;
+
+    // Compose token profits
+    classified_sandwich
+        .token_profits
+        .compose(&jit_classified.token_profits);
 
     // Create new classified MEV data
     let new_classified = BundleHeader {
@@ -350,8 +404,9 @@ pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHead
         eoa:                  jit_classified.eoa,
         mev_contract:         classified_sandwich.mev_contract,
         mev_profit_collector: classified_sandwich.mev_profit_collector,
-        finalized_bribe_usd:  classified_sandwich.finalized_bribe_usd,
-        finalized_profit_usd: jit_liq_profit,
+        profit_usd:           jit_liq_profit,
+        token_profits:        classified_sandwich.token_profits,
+        bribe_usd:            classified_sandwich.bribe_usd,
     };
 
     (new_classified, BundleData::JitSandwich(jit_sand))

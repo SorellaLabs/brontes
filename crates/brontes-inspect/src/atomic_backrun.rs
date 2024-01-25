@@ -2,7 +2,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{AtomicBackrun, MevType},
+    classified_mev::{AtomicBackrun, MevType, TokenProfit, TokenProfits},
+    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
     ToFloatNearest,
@@ -96,9 +97,32 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+                .usd_delta_by_address(idx, &deltas, metadata.clone(), false)?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let token_profits = TokenProfits {
+            profits: mev_profit_collector
+                .iter()
+                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
+                .flat_map(|(address, delta)| {
+                    delta.iter().map(|(token, amount)| {
+                        let usd_value = metadata
+                            .dex_quotes
+                            .price_at_or_before(Pair(*token, self.inner.quote), idx)
+                            .unwrap_or(Rational::ZERO)
+                            .to_float()
+                            * amount.clone().to_float();
+                        TokenProfit {
+                            profit_collector: *address,
+                            token: *token,
+                            amount: amount.clone().to_float(),
+                            usd_value,
+                        }
+                    })
+                })
+                .collect(),
+        };
 
         let rev_usd = addr_usd_deltas
             .values()
@@ -114,15 +138,16 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         }
 
         let classified = BundleHeader {
-            mev_tx_index: idx as u64,
-            mev_type: MevType::Backrun,
-            tx_hash,
-            mev_contract,
             block_number: metadata.block_num,
-            mev_profit_collector,
+            mev_tx_index: idx as u64,
+            tx_hash,
             eoa,
-            finalized_bribe_usd: gas_used_usd.clone().to_float(),
-            finalized_profit_usd: (rev_usd - gas_used_usd).to_float(),
+            mev_contract,
+            mev_profit_collector,
+            profit_usd: (rev_usd - gas_used_usd.clone()).to_float(),
+            token_profits,
+            bribe_usd: gas_used_usd.to_float(),
+            mev_type: MevType::Backrun,
         };
 
         let swaps = searcher_actions
