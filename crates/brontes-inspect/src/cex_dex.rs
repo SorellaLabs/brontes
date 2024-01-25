@@ -97,7 +97,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, &deltas, metadata.clone(), true)?;
+                .usd_delta_by_address(idx, true, &deltas, metadata.clone(), true)?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
@@ -231,8 +231,14 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let pair_in = Pair(swap.token_in, self.inner.quote);
         let pair_out = Pair(swap.token_out, self.inner.quote);
 
-        let in_usd = metadata.dex_quotes.price_at_or_before(pair_in, tx_idx)?;
-        let out_usd = metadata.dex_quotes.price_at_or_before(pair_out, tx_idx)?;
+        let in_usd = metadata
+            .dex_quotes
+            .price_at_or_before(pair_in, tx_idx)?
+            .post_state;
+        let out_usd = metadata
+            .dex_quotes
+            .price_at_or_before(pair_out, tx_idx)?
+            .post_state;
 
         let dex_usd_price = out_usd / in_usd;
 

@@ -94,6 +94,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn usd_delta_by_address(
         &self,
         tx_position: usize,
+        post_state: bool,
         deltas: &SwapTokenDeltas,
         metadata: Arc<MetadataCombined>,
         cex: bool,
@@ -107,7 +108,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     // Fetch CEX price
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
                 } else {
-                    metadata.dex_quotes.price_at_or_before(pair, tx_position)?
+                    metadata
+                        .dex_quotes
+                        .price_at_or_before(pair, tx_position)
+                        .map(|price| if post_state { price.post_state } else { price.pre_state })?
                 };
 
                 let usd_amount = amount.clone() * price.clone();
@@ -122,6 +126,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn calculate_dex_usd_amount(
         &self,
         block_position: usize,
+        post_state: bool,
         token_address: Address,
         amount: U256,
         metadata: &Arc<MetadataCombined>,
@@ -138,7 +143,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         Some(
             metadata
                 .dex_quotes
-                .price_at_or_before(pair, block_position)?
+                .price_at_or_before(pair, block_position)
+                .map(|price| if post_state { price.post_state } else { price.pre_state })?
                 * amount.to_scaled_rational(decimals),
         )
     }
@@ -146,6 +152,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn get_dex_usd_price(
         &self,
         block_position: usize,
+        post_state: bool,
         token_address: Address,
         metadata: Arc<MetadataCombined>,
     ) -> Option<Rational> {
@@ -154,7 +161,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         }
 
         let pair = Pair(token_address, self.quote);
-        metadata.dex_quotes.price_at_or_before(pair, block_position)
+        metadata
+            .dex_quotes
+            .price_at_or_before(pair, block_position)
+            .map(|price| if post_state { price.post_state } else { price.pre_state })
     }
 
     pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {

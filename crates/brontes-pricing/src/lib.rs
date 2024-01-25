@@ -14,12 +14,14 @@ use std::{
 
 use alloy_primitives::{Address, U256};
 use brontes_types::{
+    db::dex::DexPrices,
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedAction, NormalizedSwap},
     traits::TracingProvider,
 };
 use ethers::core::k256::elliptic_curve::bigint::Zero;
 pub use graphs::{AllPairGraph, GraphManager};
+use malachite::Rational;
 pub use price_graph_types::{
     PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
 };
@@ -205,19 +207,16 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
+    fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
+        if pool_pair.0 == pool_pair.1 {
+            return None
+        }
+        self.graph_manager.get_price(pool_pair)
+    }
+
     /// For a given block number and tx idx, finds the path to the following
     /// tokens and inserts the data into dex_quotes.
-    fn store_dex_price(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
-        if pool_pair.0 == pool_pair.1 {
-            return
-        }
-
-        // query graph for all keys needed to properly query price for a given pair
-        let Some(price) = self.graph_manager.get_price(pool_pair) else {
-            error!(?pool_pair, "no price from graph manager");
-            return
-        };
-
+    fn store_dex_price(&mut self, block: u64, tx_idx: u64, pool_pair: Pair, prices: DexPrices) {
         // insert the pool keys into the price map
         match self.dex_quotes.entry(block) {
             Entry::Occupied(mut quotes) => {
@@ -230,10 +229,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 let tx = q.0.get_mut(tx_idx as usize).unwrap();
 
                 if let Some(tx) = tx.as_mut() {
-                    tx.insert(pool_pair, price);
+                    tx.insert(pool_pair, prices);
                 } else {
                     let mut tx_pairs = HashMap::default();
-                    tx_pairs.insert(pool_pair, price);
+                    tx_pairs.insert(pool_pair, prices);
                     *tx = Some(tx_pairs)
                 }
             }
@@ -245,7 +244,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
                 // insert
                 let mut map = HashMap::new();
-                map.insert(pool_pair, price);
+                map.insert(pool_pair, prices);
 
                 let entry = vec.get_mut(tx_idx as usize).unwrap();
                 *entry = Some(map);
@@ -269,9 +268,21 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         // generate all variants of the price that might be used in the inspectors
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
+        let Some(price0) = self.get_dex_price(pair0) else {
+            error!(?pair0, "no price for token");
+            return
+        };
 
-        self.store_dex_price(block, tx_idx, pair0);
-        self.store_dex_price(block, tx_idx, pair1);
+        let Some(price1) = self.get_dex_price(pair1) else {
+            error!(?pair1, "no price for token");
+            return
+        };
+
+        let price0 = DexPrices { post_state: price0.clone(), pre_state: price0 };
+        let price1 = DexPrices { post_state: price1.clone(), pre_state: price1 };
+
+        self.store_dex_price(block, tx_idx, pair0, price0);
+        self.store_dex_price(block, tx_idx, pair1, price1);
     }
 
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
@@ -281,14 +292,44 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             error!(?addr, "failed to get pair for pool");
             return;
         };
-        self.graph_manager.update_state(addr, msg);
 
         // add price post state
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
-        self.store_dex_price(block, tx_idx, pair0);
-        self.store_dex_price(block, tx_idx, pair1);
+        let Some(price0_pre) = self.get_dex_price(pair0) else {
+            error!(?pair0, "no price for token");
+            return
+        };
+        let Some(price1_pre) = self.get_dex_price(pair1) else {
+            error!(?pair1, "no price for token");
+            return
+        };
+
+        self.graph_manager.update_state(addr, msg);
+
+        let Some(price0_post) = self.get_dex_price(pair0) else {
+            error!(?pair0, "no price for token");
+            return
+        };
+        let Some(price1_post) = self.get_dex_price(pair1) else {
+            error!(?pair1, "no price for token");
+            return
+        };
+
+        self.store_dex_price(
+            block,
+            tx_idx,
+            pair0,
+            DexPrices { pre_state: price0_pre, post_state: price0_post },
+        );
+
+        self.store_dex_price(
+            block,
+            tx_idx,
+            pair1,
+            DexPrices { pre_state: price1_pre, post_state: price1_post },
+        );
     }
 
     fn can_progress(&self) -> bool {
