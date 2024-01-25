@@ -7,6 +7,7 @@ use std::{
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     classified_mev::{BundleData, MevType, Sandwich},
+    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node},
     ToFloatNearest,
@@ -170,7 +171,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .collect_vec()
             })
             .collect_vec();
-
+        //TODO: Check later if this method correctly identifies an incorrect middle
+        // frontrun that is unrelated
         if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions) {
             // if we don't satisfy a sandwich but we have more than 1 possible front run
             // tx remaining, lets remove the false positive backrun tx and try again
@@ -215,11 +217,30 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .collect::<Vec<_>>();
 
         let deltas = self.inner.calculate_token_deltas(&all_actions);
+
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+                .usd_delta_by_address(idx, &deltas, metadata.clone(), false)?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        for address in &mev_profit_collector {
+            if let Some(delta) = deltas.get(address) {
+                delta.iter().for_each(|(token, amount)| {
+                    println!(
+                        "Token Deltas for Address ({}):\n Token: {} delta: {}, usd delta: {}\n",
+                        address,
+                        token,
+                        amount.clone().to_float(),
+                        metadata
+                            .dex_quotes
+                            .price_at_or_before(Pair(*token, self.inner.quote), idx)
+                            .unwrap_or(Rational::ZERO)
+                            .to_float()
+                    );
+                });
+            }
+        }
 
         let rev_usd = addr_usd_deltas
             .values()

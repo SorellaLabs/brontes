@@ -104,7 +104,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let deltas = self.inner.calculate_token_deltas(&vec![actions]);
         let swap_profit = self
             .inner
-            .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+            .usd_delta_by_address(idx, &deltas, metadata.clone(), false)?;
         let mev_profit_collector = self.inner.profit_collectors(&swap_profit);
 
         let liq_profit = liqs
