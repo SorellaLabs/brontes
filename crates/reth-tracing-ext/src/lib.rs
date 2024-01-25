@@ -125,6 +125,7 @@ impl TracingClient {
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
 
+        println!("here");
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
         Self { api, trace }
