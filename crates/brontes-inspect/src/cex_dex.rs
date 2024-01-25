@@ -14,7 +14,7 @@ use rayon::{
     prelude::IntoParallelRefIterator,
 };
 use reth_primitives::{Address, B256};
-use tracing::{debug, error, log::info};
+use tracing::{debug, error, trace, warn};
 
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
@@ -246,14 +246,16 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .get_quote(&Pair(swap.token_in, swap.token_out))
         {
             Some(quote) => {
-                info!(
+                trace!(
                     "CEX quote found for pair: {}, {} at block: {}",
-                    swap.token_in, swap.token_out, metadata.block_num
+                    swap.token_in,
+                    swap.token_out,
+                    metadata.block_num
                 );
                 quote.best_ask()
             }
             None => {
-                error!(
+                warn!(
                     "No CEX quote found for pair: {}, {} at block: {}",
                     swap.token_in, swap.token_out, metadata.block_num
                 );
