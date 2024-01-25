@@ -267,13 +267,10 @@ mod tests {
     use std::{
         collections::{HashMap, HashSet},
         str::FromStr,
-        time::SystemTime,
     };
 
-    use alloy_primitives::hex;
-    use brontes_database::libmdbx::types::metadata::MetadataData;
+    use alloy_primitives::{hex, B256, U256};
     use brontes_types::db::cex::{CexPriceMap, CexQuote};
-    use reth_primitives::revm_primitives::HashMap;
     use serial_test::serial;
 
     use super::*;
@@ -309,15 +306,16 @@ mod tests {
             })]),
             db:         brontes_types::db::metadata::MetadataNoDex {
                 block_num: 18264694,
-                block_hash: hex!(
+                block_hash: U256::from_be_bytes(hex!(
                     "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729"
-                )
-                .into(),
+                )),
                 block_timestamp: 0,
-                relay_timestamp: 0,
-                p2p_timestamp: 0,
-                proposer_fee_recipient: hex!("95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5").into(),
-                proposer_mev_reward: 10,
+                relay_timestamp: None,
+                p2p_timestamp: None,
+                proposer_fee_recipient: Some(
+                    hex!("95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5").into(),
+                ),
+                proposer_mev_reward: None,
                 cex_quotes,
                 eth_prices: eth_price,
                 mempool_flow: HashSet::new(),
