@@ -154,6 +154,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 .collect::<Vec<Vec<_>>>(),
         );
 
+        // grab all mints and burns
         let (mints, burns, collect): (
             Vec<Option<NormalizedMint>>,
             Vec<Option<NormalizedBurn>>,
@@ -178,8 +179,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
+        // calculate profit, is alwasys jit collect amount - mint amount - bribe
         let jit_fee = self.get_collect_amount(back_jit_idx, fee_collect, metadata.clone());
-
         let mint = self.get_total_pricing(
             back_jit_idx,
             mints.iter().map(|mint| (&mint.token, &mint.amount)),
@@ -187,7 +188,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         );
 
         let bribe = self.get_bribes(metadata.clone(), searcher_gas_details);
-
         let profit = jit_fee - mint - &bribe;
 
         let addr_usd_deltas =
