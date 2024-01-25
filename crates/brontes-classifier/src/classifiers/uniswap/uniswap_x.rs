@@ -3,13 +3,11 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::normalized_actions::NormalizedBatch;
 
-
-
 action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeCall,
     Batch,
-    [Fill],
+    [..Fill],
     call_data: true,
     logs: true,
     |trace_index,
@@ -38,7 +36,7 @@ action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeBatchCall,
     Batch,
-    [Fill],
+    [..Fill*],
     call_data: true,
     |trace_index,
     from_address: Address,
@@ -60,7 +58,7 @@ action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeBatchWithCallbackCall,
     Batch,
-    [Fill],
+    [..Fill*],
     call_data: true,
     logs: true,
     |trace_index,
@@ -84,7 +82,7 @@ action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeWithCallbackCall,
     Batch,
-    [Fill],
+    [..Fill],
     call_data: true,
     |trace_index,
     from_address: Address,
@@ -101,3 +99,4 @@ action_impl!(
         })
     }
 );
+
