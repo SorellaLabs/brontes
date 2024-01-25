@@ -410,8 +410,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 mod tests {
     use serial_test::serial;
 
-    use super::*;
-    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
+    use crate::{
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
+        Inspectors,
+    };
     //TODO: Found another JIT sandwich:
     // 0xcca2c7f24d153ea698f6db11f46eae63d71790d244ca123b7a612b81ba7cfa56
     // Test it
@@ -421,7 +423,7 @@ mod tests {
         // eth price in usdc
         // 2146.65037178
         let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
-        let config = InspectorTxRunConfig::new(MevType::Jit)
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
             .with_block(18539312)
             .with_gas_paid_usd(90.875025)
