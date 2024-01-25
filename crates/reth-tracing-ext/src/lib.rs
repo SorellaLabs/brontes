@@ -23,10 +23,10 @@ use reth_rpc::{
         cache::{EthStateCache, EthStateCacheConfig},
         error::EthResult,
         gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
-        EthFilterConfig, EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig,
+         EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig,
         RPC_DEFAULT_GAS_CAP,
     },
-    BlockingTaskGuard, BlockingTaskPool, EthApi, EthFilter, TraceApi,
+    BlockingTaskGuard, BlockingTaskPool, EthApi,  TraceApi,
 };
 use reth_rpc_types::{
     trace::parity::{TransactionTrace, *},
