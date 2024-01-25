@@ -105,6 +105,8 @@ impl TracingClient {
             EthStateCache::spawn(provider.clone(), eth_state_config),
             FeeHistoryCacheConfig::default(),
         );
+
+        println!("loading eth api");
         // blocking task pool
         // fee history cache
         let api = EthApi::with_spawner(
