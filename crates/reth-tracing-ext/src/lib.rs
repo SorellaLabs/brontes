@@ -102,11 +102,9 @@ impl TracingClient {
         let blocking = BlockingTaskPool::build().unwrap();
         let eth_state_config = EthStateCacheConfig::default();
         let fee_history = FeeHistoryCache::new(
-            EthStateCache::spawn(provider.clone(), eth_state_config),
+            EthStateCache::spawn_with(provider.clone(), eth_state_config, task_executor.clone()),
             FeeHistoryCacheConfig::default(),
         );
-
-        println!("loading eth api");
         // blocking task pool
         // fee history cache
         let api = EthApi::with_spawner(
@@ -127,7 +125,6 @@ impl TracingClient {
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
 
-        println!("here");
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
         Self { api, trace }
