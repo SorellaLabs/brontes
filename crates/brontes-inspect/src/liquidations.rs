@@ -2,7 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, Liquidation, MevType},
+    classified_mev::{BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits},
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node, Root},
@@ -107,6 +107,29 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             .usd_delta_by_address(idx, &deltas, metadata.clone(), false)?;
         let mev_profit_collector = self.inner.profit_collectors(&swap_profit);
 
+        let token_profits = TokenProfits {
+            profits: mev_profit_collector
+                .iter()
+                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
+                .flat_map(|(address, delta)| {
+                    delta.iter().map(|(token, amount)| {
+                        let usd_value = metadata
+                            .dex_quotes
+                            .price_at_or_before(Pair(*token, self.inner.quote), idx)
+                            .unwrap_or(Rational::ZERO)
+                            .to_float()
+                            * amount.clone().to_float();
+                        TokenProfit {
+                            profit_collector: *address,
+                            token: *token,
+                            amount: amount.clone().to_float(),
+                            usd_value,
+                        }
+                    })
+                })
+                .collect(),
+        };
+
         let liq_profit = liqs
             .par_iter()
             .filter_map(|liq| {
@@ -142,8 +165,9 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             tx_hash,
             mev_contract,
             mev_profit_collector,
-            finalized_profit_usd: profit_usd.to_float(),
-            finalized_bribe_usd: gas_finalized.to_float(),
+            profit_usd: profit_usd.to_float(),
+            token_profits,
+            bribe_usd: gas_finalized.to_float(),
             mev_type: MevType::Liquidation,
         };
 

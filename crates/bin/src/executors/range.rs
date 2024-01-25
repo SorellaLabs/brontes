@@ -33,7 +33,7 @@ use super::{dex_pricing::WaitingForPricerFuture, utils::process_results};
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
 
-const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_missed_arbs/";
+const POSSIBLE_MISSED_MEV_RESULT_FOLDER: &str = "./possible_mev/";
 
 pub struct RangeExecutorWithPricing<
     'db,
