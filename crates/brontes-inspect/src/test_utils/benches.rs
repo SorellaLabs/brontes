@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::ClassifierTestUtils;
+use brontes_types::db::metadata::MetadataCombined;
 use criterion::{black_box, Criterion};
 
 use super::InspectorTestUtilsError;
@@ -22,7 +23,7 @@ impl InspectorBenchUtils {
         Self { classifier_inspector, quote_address, rt }
     }
 
-    pub async fn bench_inspectors_block(
+    pub fn bench_inspectors_block(
         &self,
         bench_name: &str,
         block: u64,
@@ -35,12 +36,14 @@ impl InspectorBenchUtils {
             .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
             .collect::<Vec<_>>();
 
-        let (tree, prices) = self
-            .classifier_inspector
-            .build_tree_block_with_pricing(block, self.quote_address)
-            .await?;
+        let (tree, prices) = self.rt.block_on(
+            self.classifier_inspector
+                .build_tree_block_with_pricing(block, self.quote_address),
+        )?;
 
-        let mut metadata = self.classifier_inspector.get_metadata(block).await?;
+        let mut metadata = self
+            .rt
+            .block_on(self.classifier_inspector.get_metadata(block))?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
@@ -57,10 +60,10 @@ impl InspectorBenchUtils {
         Ok(())
     }
 
-    pub async fn bench_inspector_tx(
+    pub fn bench_inspector_txes(
         &self,
         bench_name: &str,
-        tx_hash: TxHash,
+        tx_hashes: Vec<TxHash>,
         iters: usize,
         inspector: Inspectors,
         c: &mut Criterion,
@@ -68,15 +71,22 @@ impl InspectorBenchUtils {
         let inspector =
             inspector.init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
 
-        let (tree, prices) = self
-            .classifier_inspector
-            .build_tree_tx_with_pricing(tx_hash, self.quote_address)
-            .await?;
+        let mut trees = self.rt.block_on(
+            self.classifier_inspector
+                .build_tree_txes_with_pricing(tx_hashes, self.quote_address),
+        )?;
+
+        if trees.len() != 1 {
+            return Err(InspectorTestUtilsError::MultipleBlockError(
+                trees.into_iter().map(|(t, _)| t.header.number).collect(),
+            ))
+        }
+
+        let (tree, prices) = trees.remove(0);
 
         let mut metadata = self
-            .classifier_inspector
-            .get_metadata(tree.header.number)
-            .await?;
+            .rt
+            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
@@ -91,10 +101,46 @@ impl InspectorBenchUtils {
         Ok(())
     }
 
-    pub async fn bench_composer(
+    pub fn bench_inspector_txes_with_meta(
         &self,
         bench_name: &str,
-        block: u64,
+        tx_hashes: Vec<TxHash>,
+        metadata: MetadataCombined,
+        iters: usize,
+        inspector: Inspectors,
+        c: &mut Criterion,
+    ) -> Result<(), InspectorTestUtilsError> {
+        let inspector =
+            inspector.init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
+
+        let mut trees = self
+            .rt
+            .block_on(self.classifier_inspector.build_tree_txes(tx_hashes))?;
+
+        if trees.len() != 1 {
+            return Err(InspectorTestUtilsError::MultipleBlockError(
+                trees.into_iter().map(|t| t.header.number).collect(),
+            ))
+        }
+
+        let tree = trees.remove(0);
+
+        let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
+        c.bench_function(bench_name, move |b| {
+            b.to_async(&self.rt).iter(|| async {
+                for _ in 0..=iters {
+                    black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                }
+            });
+        });
+
+        Ok(())
+    }
+
+    pub fn bench_composer(
+        &self,
+        bench_name: &str,
+        tx_hashes: Vec<TxHash>,
         iters: usize,
         inspectors: Vec<Inspectors>,
         c: &mut Criterion,
@@ -103,16 +149,19 @@ impl InspectorBenchUtils {
             .into_iter()
             .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
             .collect::<Vec<_>>();
+        let mut trees = self
+            .rt
+            .block_on(self.classifier_inspector.build_tree_txes(tx_hashes))?;
 
-        let (tree, prices) = self
-            .classifier_inspector
-            .build_tree_block_with_pricing(block, self.quote_address)
-            .await?;
+        if trees.len() != 1 {
+            return Err(InspectorTestUtilsError::MultipleBlockError(
+                trees.into_iter().map(|t| t.header.number).collect(),
+            ))
+        }
 
         let mut metadata = self
-            .classifier_inspector
-            .get_metadata(tree.header.number)
-            .await?;
+            .rt
+            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
