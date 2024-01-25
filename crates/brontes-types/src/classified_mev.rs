@@ -666,11 +666,10 @@ impl Mev for AtomicBackrun {
 #[cfg(test)]
 mod tests {
 
-    use std::{any::Any, str::FromStr};
+    use std::str::FromStr;
 
-    use serde::Serialize;
     use sorella_db_databases::{
-        clickhouse::{db::ClickhouseClient, DbRow},
+        clickhouse::db::ClickhouseClient,
         tables::{DatabaseTables, FromDatabaseTables},
         Database,
     };

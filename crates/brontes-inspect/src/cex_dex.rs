@@ -14,7 +14,7 @@ use rayon::{
     prelude::IntoParallelRefIterator,
 };
 use reth_primitives::{Address, B256};
-use tracing::{error, trace, debug};
+use tracing::{debug, error, trace};
 
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
