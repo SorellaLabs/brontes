@@ -2,12 +2,15 @@ use std::{collections::HashSet, sync::Arc};
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits},
+    classified_mev::{
+        Bundle, BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits,
+    },
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node, Root},
     ToFloatNearest,
 };
+use hyper::header;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth_primitives::{b256, Address, B256};
@@ -30,7 +33,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
-    ) -> Vec<(BundleHeader, BundleData)> {
+    ) -> Vec<Bundle> {
         let liq_txs = tree.collect_all(|node| {
             (
                 node.data.is_liquidation() || node.data.is_swap(),
@@ -76,7 +79,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<MetadataCombined>,
         actions: Vec<Actions>,
         gas_details: &GasDetails,
-    ) -> Option<(BundleHeader, BundleData)> {
+    ) -> Option<Bundle> {
         let swaps = actions
             .iter()
             .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
@@ -158,7 +161,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let profit_usd = rev_usd - &gas_finalized;
 
-        let mev = BundleHeader {
+        let header = BundleHeader {
             mev_tx_index: idx as u64,
             block_number: metadata.block_num,
             eoa,
@@ -179,7 +182,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             gas_details:         gas_details.clone(),
         };
 
-        Some((mev, BundleData::Liquidation(new_liquidation)))
+        Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }
 }
 

@@ -7,7 +7,7 @@ use brontes_inspect::{
     Inspector,
 };
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, MevBlock, PossibleMev},
+    classified_mev::{Bundle, MevBlock, PossibleMev},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
@@ -35,7 +35,7 @@ pub async fn process_results<DB: LibmdbxWriter>(
 fn insert_mev_results<DB: LibmdbxWriter>(
     database: &DB,
     block_details: MevBlock,
-    mev_details: Vec<(BundleHeader, BundleData)>,
+    mev_details: Vec<Bundle>,
 ) {
     let mev_summary = block_details
         .possible_mev
@@ -65,7 +65,7 @@ fn insert_mev_results<DB: LibmdbxWriter>(
         block_details.mev_count.to_string().bold().red(),
         block_details.eth_price,
         block_details.cumulative_gas_used as f64 * 1e-18,
-        block_details.cumulative_gas_paid as f64 * 1e-18,
+        block_details.cumulative_priority_fee as f64 * 1e-18,
         block_details.total_bribe as f64 * 1e-18,
         block_details.cumulative_mev_priority_fee_paid as f64 * 1e-18,
         block_details.builder_address,
