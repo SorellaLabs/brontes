@@ -36,7 +36,6 @@ type SwapTokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the swap deltas.
-    /// Change to keep address level deltas
     pub(crate) fn calculate_token_deltas(&self, actions: &Vec<Vec<Actions>>) -> SwapTokenDeltas {
         let mut transfers = Vec::new();
         // Address and there token delta's
@@ -111,8 +110,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     metadata.dex_quotes.price_at_or_before(pair, tx_position)?
                 };
 
-                let usd_amount = amount * price;
-
+                let usd_amount = amount.clone() * price.clone();
+                println!(
+                    "Token: {} is worth: {:?}, total of {}, worth {}",
+                    token_addr,
+                    price.clone(),
+                    amount.clone(),
+                    usd_amount.clone()
+                );
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
         }
