@@ -1,13 +1,11 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
-    bracketed,
-    parse::{Parse, ParseBuffer},
-    spanned::Spanned,
-    Error, ExprClosure, Ident, LitBool, Path, Token,
+    bracketed, parse::Parse, spanned::Spanned, token::Star, Error, ExprClosure, Ident, LitBool,
+    Path, Token,
 };
 
-use super::{data_preparation::CallDataParsing, ACTION_SIG_NAME};
+use super::{data_preparation::CallDataParsing, logs::LogConfig, ACTION_SIG_NAME};
 
 pub struct ActionMacro {
     // required for all
@@ -15,7 +13,7 @@ pub struct ActionMacro {
     path_to_call:         Path,
     action_type:          Ident,
     exchange_name_w_call: Ident,
-    log_types:            Vec<(bool, bool, Ident)>,
+    log_types:            Vec<LogConfig>,
     /// wether we want logs or not
     give_logs:            bool,
     /// wether we want return data or not
@@ -231,34 +229,31 @@ fn parse_decode_fn_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path
     Ok(fn_path)
 }
 
-fn parse_logs(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<(bool, bool, Ident)>> {
+fn parse_logs(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<LogConfig>> {
     let mut log_types = Vec::new();
-    let mut content;
+    let content;
     bracketed!(content in input);
 
     loop {
-        let mut possible = false;
-        let mut ignore = false;
+        let mut can_repeat = false;
+        let mut ignore_before = false;
 
-        if content.peek2(Token![<]) {
-            parse_log_modifier(&mut content, &mut possible, &mut ignore)?;
-        }
-        if content.peek2(Token![<]) {
-            parse_log_modifier(&mut content, &mut possible, &mut ignore)?;
+        if content.peek(Token![..]) {
+            let _ = content.parse::<Token![..]>()?;
+
+            ignore_before = true;
         }
 
         let Ok(log_type) = content.parse::<Ident>() else {
             break;
         };
 
-        if content.peek(Token![>]) {
-            let _ = content.parse::<Token![>]>()?;
-        }
-        if content.peek(Token![>]) {
-            let _ = content.parse::<Token![>]>()?;
+        if content.peek(Star) {
+            let _ = content.parse::<Star>()?;
+            can_repeat = true;
         }
 
-        log_types.push((possible, ignore, log_type));
+        log_types.push(LogConfig { ignore_before, can_repeat, log_ident: log_type });
 
         let Ok(_) = content.parse::<Token![,]>() else {
             break;
@@ -266,21 +261,4 @@ fn parse_logs(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<(bool, boo
     }
 
     Ok(log_types)
-}
-
-fn parse_log_modifier(
-    content: &mut ParseBuffer,
-    possible: &mut bool,
-    ignore: &mut bool,
-) -> syn::Result<()> {
-    let new_content = content.parse::<Ident>()?;
-    if new_content.to_string().starts_with("Possible") {
-        *possible = true;
-    } else if new_content.to_string().starts_with("Ignore") {
-        *ignore = true;
-    } else {
-        return Err(syn::Error::new(content.span(), "Only valid modifiers are Possible and Ignore"))
-    }
-    let _ = content.parse::<Token![<]>()?;
-    Ok(())
 }
