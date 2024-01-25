@@ -46,7 +46,7 @@ use utils::{
     BlockPreprocessing,
 };
 
-const DISCOVERY_PRIORITY_FEE_MULTIPLIER: u128 = 5;
+const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
 
 use crate::{discovery::DiscoveryInspector, Inspector};
 
