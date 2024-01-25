@@ -38,7 +38,7 @@ fn insert_mev_results<DB: LibmdbxWriter>(
     mev_details: Vec<(BundleHeader, BundleData)>,
 ) {
     let mev_summary = block_details
-        .possible_missed_arbs
+        .possible_mev
         .iter()
         .map(|possible_mev| {
             let eth_paid = possible_mev.gas_paid as f64 * 1e-18;
@@ -62,14 +62,14 @@ fn insert_mev_results<DB: LibmdbxWriter>(
         {:?}\n- Cumulative MEV Finalized Profit (USD): ${:.2}\n- Possibly Missed Mev:\n{}",
         block_details.block_number,
         block_details.mev_count.to_string().bold().red(),
-        block_details.finalized_eth_price,
+        block_details.eth_price,
         block_details.cumulative_gas_used as f64 * 1e-18,
         block_details.cumulative_gas_paid as f64 * 1e-18,
         block_details.total_bribe as f64 * 1e-18,
         block_details.cumulative_mev_priority_fee_paid as f64 * 1e-18,
         block_details.builder_address,
         block_details.builder_eth_profit,
-        block_details.builder_finalized_profit_usd,
+        block_details.builder_profit_usd,
         block_details
             .proposer_fee_recipient
             .unwrap_or(Address::ZERO),
@@ -77,9 +77,9 @@ fn insert_mev_results<DB: LibmdbxWriter>(
             .proposer_mev_reward
             .map_or(0.0, |v| v as f64 * 1e-18),
         block_details
-            .proposer_finalized_profit_usd
+            .proposer_profit_usd
             .map_or("None".to_string(), |v| format!("{:.2}", v)),
-        block_details.cumulative_mev_finalized_profit_usd,
+        block_details.cumulative_mev_profit_usd,
         mev_summary
     );
 

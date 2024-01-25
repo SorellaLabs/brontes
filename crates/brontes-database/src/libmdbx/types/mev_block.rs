@@ -1,7 +1,8 @@
 use brontes_types::{
     classified_mev::{
         AtomicBackrun, BundleData, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich,
-        Liquidation, MevBlock, MevType, PossibleMev, PriceKind, Sandwich,
+        Liquidation, MevBlock, MevType, PossibleMev, PriceKind, Sandwich, TokenProfit,
+        TokenProfits,
     },
     db::{
         mev_block::MevBlockWithClassified,
@@ -64,19 +65,19 @@ pub struct LibmdbxMevBlock {
     pub block_hash: Redefined_FixedBytes<32>,
     pub block_number: u64,
     pub mev_count: u64,
-    pub finalized_eth_price: f64,
+    pub eth_price: f64,
     pub cumulative_gas_used: u128,
     pub cumulative_gas_paid: u128,
     pub total_bribe: u128,
     pub cumulative_mev_priority_fee_paid: u128,
     pub builder_address: Redefined_Address,
     pub builder_eth_profit: f64,
-    pub builder_finalized_profit_usd: f64,
+    pub builder_profit_usd: f64,
     pub proposer_fee_recipient: Option<Redefined_Address>,
     pub proposer_mev_reward: Option<u128>,
-    pub proposer_finalized_profit_usd: Option<f64>,
-    pub cumulative_mev_finalized_profit_usd: f64,
-    pub possible_missed_arbs: Vec<LibmdbxPossibleMev>,
+    pub proposer_profit_usd: Option<f64>,
+    pub cumulative_mev_profit_usd: f64,
+    pub possible_mev: Vec<LibmdbxPossibleMev>,
 }
 
 #[derive(
@@ -114,9 +115,43 @@ pub struct LibmdbxBundleHeader {
     pub eoa:                  Redefined_Address,
     pub mev_contract:         Redefined_Address,
     pub mev_profit_collector: Vec<Redefined_Address>,
-    pub finalized_profit_usd: f64,
-    pub finalized_bribe_usd:  f64,
+    pub profit_usd:           f64,
+    pub token_profits:        LibmdbxTokenProfits,
+    pub bribe_usd:            f64,
     pub mev_type:             MevType,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(TokenProfit)]
+pub struct LibmdbxTokenProfit {
+    pub profit_collector: Redefined_Address,
+    pub token:            Redefined_Address,
+    pub amount:           f64,
+    pub usd_value:        f64,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(TokenProfits)]
+pub struct LibmdbxTokenProfits {
+    pub profits: Vec<LibmdbxTokenProfit>,
 }
 
 #[derive(
