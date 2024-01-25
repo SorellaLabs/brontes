@@ -41,7 +41,6 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
 
-
 # misc
 hex-literal.workspace = true
 rayon.workspace = true
@@ -58,11 +57,11 @@ eyre.workspace = true
 reth-tracing-ext = { workspace = true, optional = true }
 brontes-core = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = true }
-
+criterion = { version = "0.5", features = ["async", "async_tokio"], optional = true}
 
 [features]
+tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
 default = []
-tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror"]
 local = ["brontes-core/local"]
 
 [dev-dependencies]
