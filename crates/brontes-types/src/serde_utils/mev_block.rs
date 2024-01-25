@@ -20,7 +20,7 @@ pub mod ser_mev_block {
             ser_struct.serialize_field("mev_count", &self.mev_count)?;
             ser_struct.serialize_field("eth_price", &self.eth_price)?;
             ser_struct.serialize_field("cumulative_gas_used", &self.cumulative_gas_used)?;
-            ser_struct.serialize_field("cumulative_gas_paid", &self.cumulative_gas_paid)?;
+            ser_struct.serialize_field("cumulative_priority_fee", &self.cumulative_priority_fee)?;
             ser_struct.serialize_field("total_bribe", &self.total_bribe)?;
             ser_struct.serialize_field(
                 "cumulative_mev_priority_fee_paid",

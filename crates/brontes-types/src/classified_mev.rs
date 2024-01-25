@@ -27,7 +27,7 @@ pub struct MevBlock {
     pub mev_count: u64,
     pub eth_price: f64,
     pub cumulative_gas_used: u128,
-    pub cumulative_gas_paid: u128,
+    pub cumulative_priority_fee: u128,
     pub total_bribe: u128,
     pub cumulative_mev_priority_fee_paid: u128,
     pub builder_address: Address,
@@ -58,6 +58,13 @@ pub struct BundleHeader {
     pub token_profits:        TokenProfits,
     pub bribe_usd:            f64,
     pub mev_type:             MevType,
+}
+
+#[serde_as]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+pub struct Bundle {
+    pub header: BundleHeader,
+    pub data:   BundleData,
 }
 
 #[serde_as]
@@ -345,21 +352,21 @@ pub struct Sandwich {
     /// Gas details for each backrunning transaction.
     pub backrun_gas_details:      GasDetails,
 }
-pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHeader, BundleData) {
+pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
     let mut sandwich: Option<Sandwich> = None;
     let mut jit: Option<JitLiquidity> = None;
     let mut classified_sandwich: Option<BundleHeader> = None;
     let mut jit_classified: Option<BundleHeader> = None;
 
-    for (classified, mev_data) in mev {
-        match mev_data {
+    for bundle in mev {
+        match bundle.data {
             BundleData::Sandwich(s) => {
                 sandwich = Some(s);
-                classified_sandwich = Some(classified);
+                classified_sandwich = Some(bundle.header);
             }
             BundleData::Jit(j) => {
                 jit = Some(j);
-                jit_classified = Some(classified);
+                jit_classified = Some(bundle.header);
             }
             _ => unreachable!(),
         }
@@ -433,7 +440,7 @@ pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHead
         bribe_usd:            classified_sandwich.bribe_usd,
     };
 
-    (new_classified, BundleData::JitSandwich(jit_sand))
+    Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) }
 }
 
 impl Mev for Sandwich {

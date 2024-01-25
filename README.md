@@ -65,7 +65,7 @@ pub trait Inspector: Send + Sync {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
-    ) -> Vec<(BundleHeader, BundleData)>;
+    ) -> Vec<Bundle>;
 }
 ```
 
