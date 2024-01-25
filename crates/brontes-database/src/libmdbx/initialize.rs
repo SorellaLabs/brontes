@@ -51,7 +51,6 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
-
         let data = self
             .clickhouse
             .inner()
