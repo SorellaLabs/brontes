@@ -478,14 +478,17 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
-    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
+    use crate::{
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
+        Inspectors,
+    };
 
     #[tokio::test]
     #[serial]
     async fn test_sandwich_different_contract_address() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
-        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_mev_tx_hashes(vec![
                 hex!("849c3cb1f299fa181e12b0506166e4aa221fce4384a710ac0d2e064c9b4e1c42").into(),
                 hex!("055f8dd4eb02c15c1c1faa9b65da5521eaaff54f332e0fa311bc6ce6a4149d18").into(),
@@ -505,7 +508,7 @@ mod tests {
     async fn test_sandwich_different_eoa() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
-        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_mev_tx_hashes(vec![
                 hex!("ff79c471b191c0021cfb62408cb1d7418d09334665a02106191f6ed16a47e36c").into(),
                 hex!("19122ffe65a714f0551edbb16a24551031056df16ccaab39db87a73ac657b722").into(),
@@ -523,7 +526,7 @@ mod tests {
     async fn test_sandwich_part_of_jit_sandwich_simple() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
-        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_mev_tx_hashes(vec![
                 hex!("a203940b1d15c1c395b4b05cef9f0a05bf3c4a29fdb1bed47baddeac866e3729").into(),
                 hex!("af2143d2448a2e639637f9184bc2539428230226c281a174ba4ef4ef00e00220").into(),
@@ -543,7 +546,7 @@ mod tests {
         // this is a jit sandwich
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
-        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_dex_prices()
             .with_mev_tx_hashes(vec![
                 hex!("22ea36d516f59cc90ccc01042e20f8fba196f32b067a7e5f1510099140ae5e0a").into(),
@@ -563,7 +566,7 @@ mod tests {
     async fn test_big_mac_sandwich() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
-        let config = InspectorTxRunConfig::new(MevType::Sandwich)
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_dex_prices()
             .with_mev_tx_hashes(vec![
                 hex!("2a187ed5ba38cc3b857726df51ce99ee6e29c9bcaa02be1a328f99c3783b3303").into(),
