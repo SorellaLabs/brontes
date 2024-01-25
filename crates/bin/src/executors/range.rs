@@ -153,7 +153,9 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
             .map(|mev| {
                 format!(
                     "Transaction Hash: {:?}, Position: {}, Gas Paid: {}",
-                    mev.tx_hash, mev.position_in_block, mev.gas_paid
+                    mev.tx_hash,
+                    mev.tx_idx,
+                    mev.gas_details.gas_paid()
                 )
             })
             .fold(String::new(), |acc, arb| acc + &arb + "\n");
