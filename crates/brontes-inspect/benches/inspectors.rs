@@ -16,7 +16,9 @@ use brontes_types::{
     extra_processing::Pair,
 };
 use criterion::{criterion_group, criterion_main, Criterion};
+use itertools::Itertools;
 use malachite::{num::arithmetic::traits::Reciprocal, Rational};
+use strum::IntoEnumIterator;
 
 fn bench_sandwich(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
@@ -177,6 +179,19 @@ fn bench_composer(c: &mut Criterion) {
         .unwrap()
 }
 
+fn bench_regular_block(c: &mut Criterion) {
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+    bencher
+        .bench_composer_block(
+            "bench block 28mill gas",
+            18672183,
+            0,
+            Inspectors::iter().collect_vec(),
+            c,
+        )
+        .unwrap()
+}
+
 criterion_group!(
     inspector_benches,
     bench_sandwich,
@@ -185,7 +200,8 @@ criterion_group!(
     bench_backrun_10_swaps,
     bench_liquidation,
     bench_cex_dex,
-    bench_composer
+    bench_composer,
+    bench_regular_block
 );
 
 criterion_main!(inspector_benches);
