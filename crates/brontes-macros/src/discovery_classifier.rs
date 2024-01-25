@@ -65,13 +65,13 @@ fn is_proper_address(possible_address: &Literal) -> syn::Result<()> {
         return Err(syn::Error::new(
             possible_address.span(),
             "given factory address is invalid. Needs to start with 0x",
-        ));
+        ))
     }
     if stred.len() != 42 {
         return Err(syn::Error::new(
             possible_address.span(),
             format!("given factory address length is incorrect got: {} wanted: 40", stred.len()),
-        ));
+        ))
     }
 
     Ok(())
@@ -195,7 +195,7 @@ impl Parse for DiscoveryDispatch {
             return Err(syn::Error::new(
                 Span::call_site(),
                 "no discovery implementations to dispatch to",
-            ));
+            ))
         }
 
         Ok(Self { rest, struct_name })
