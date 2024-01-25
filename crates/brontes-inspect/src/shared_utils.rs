@@ -1,6 +1,7 @@
 use core::hash::Hash;
 use std::{
     collections::{hash_map::Entry, HashMap},
+    str::FromStr,
     sync::Arc,
 };
 
@@ -111,14 +112,19 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 };
 
                 let usd_amount = amount.clone() * price.clone();
-                println!(
-                    "Token: {} \n Is worth: {:?} USD \n The address gained a total of {}, worth \
-                     {} USD",
-                    token_addr,
-                    price.clone().to_float(),
-                    amount.clone().to_float(),
-                    usd_amount.clone().to_float()
-                );
+                if address
+                    == Address::from_str("0x6b75d8af000000e20b7a7ddf000ba900b4009a80").unwrap()
+                {
+                    println!(
+                        "Token: {} \n Is worth: {:?} USD \n The address {} gained a total of {}, \
+                         worth {} USD",
+                        token_addr,
+                        price.clone().to_float(),
+                        address,
+                        amount.clone().to_float(),
+                        usd_amount.clone().to_float()
+                    );
+                }
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
         }
