@@ -250,7 +250,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 token_out_price.best_ask() / token_in_price.best_ask()
             }
             (..) => {
-                warn!(
+                debug!(
                     "No CEX quote found for pair: {}, {} at block: {}",
                     swap.token_in, swap.token_out, metadata.block_num
                 );
