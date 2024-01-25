@@ -84,6 +84,7 @@ pub trait FactoryDecoder {
 
 pub trait FactoryDecoderDispatch: Sync + Send {
     fn dispatch<T: TracingProvider>(
+        &self,
         tracer: Arc<T>,
         factory: Address,
         deployed_address: Address,

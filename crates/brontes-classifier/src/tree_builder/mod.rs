@@ -393,16 +393,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         };
 
         return (
-            DiscoveryProtocols::dispatch(
-                self.provider.clone(),
-                from_address,
-                created_addr,
-                calldata,
-            )
-            .await
-            .into_iter()
-            .map(|pool| DexPriceMsg::DiscoveredPool(pool, block))
-            .collect::<Vec<_>>(),
+            DiscoveryProtocols::default()
+                .dispatch(self.provider.clone(), from_address, created_addr, calldata)
+                .await
+                .into_iter()
+                .map(|pool| DexPriceMsg::DiscoveredPool(pool, block))
+                .collect::<Vec<_>>(),
             Actions::Unclassified(trace),
         )
     }
@@ -433,13 +429,9 @@ pub struct TxTreeResult {
 
 #[cfg(test)]
 pub mod test {
-    use std::{
-        collections::{HashMap, HashSet},
-        env,
-    };
+    use std::collections::{HashMap, HashSet};
 
     use alloy_primitives::{hex, B256, U256};
-    use brontes_pricing::types::DexPriceMsg;
     use brontes_types::normalized_actions::{Actions, NormalizedLiquidation};
     use reth_primitives::Address;
     use serial_test::serial;
@@ -449,7 +441,6 @@ pub mod test {
     #[tokio::test]
     #[serial]
     async fn test_remove_swap_transfer() {
-        let block_num = 18530326;
         let classifier_utils = ClassifierTestUtils::new();
         let jared_tx =
             B256::from(hex!("d40905a150eb45f04d11c05b5dd820af1b381b6807ca196028966f5a3ba94b8d"));
