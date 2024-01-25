@@ -82,6 +82,7 @@ tokio.workspace = true
 reth-tracing-ext.workspace = true
 criterion = { version = "0.5" }
 rand = "0.8.5"
+statrs = "0.16"
 
 [build-dependencies]
 rayon.workspace = true
