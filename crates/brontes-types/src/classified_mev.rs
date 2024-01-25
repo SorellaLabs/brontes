@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 use alloy_primitives::Address;
 use dyn_clone::DynClone;
@@ -112,9 +112,33 @@ impl TokenProfits {
 #[serde_as]
 #[derive(Debug, Deserialize, Row, Clone, Default)]
 pub struct PossibleMev {
-    pub tx_hash:           B256,
-    pub position_in_block: usize,
-    pub gas_paid:          u128,
+    pub tx_hash:     B256,
+    pub tx_idx:      u64,
+    pub gas_details: GasDetails,
+    pub triggers:    PossibleMevTriggers,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Row, Clone, Default)]
+pub struct PossibleMevTriggers {
+    pub is_private:        bool,
+    pub coinbase_transfer: bool,
+    pub high_priority_fee: bool,
+}
+
+impl Display for PossibleMevTriggers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Possible Mev Triggers")?;
+        writeln!(f, "Is private: {}", self.is_private)?;
+        writeln!(f, "Transfer to builder: {}", self.coinbase_transfer)?;
+        writeln!(f, "High priority fee: {}", self.high_priority_fee)
+    }
+}
+
+impl PossibleMevTriggers {
+    pub fn was_triggered(&self) -> bool {
+        self.is_private || self.coinbase_transfer || self.high_priority_fee
+    }
 }
 
 #[derive(
