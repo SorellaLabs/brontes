@@ -62,6 +62,7 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
+    #[track_caller]
     pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
         let chain = MAINNET.clone();
         let db = Arc::new(init_db(db_path).unwrap());
