@@ -3,8 +3,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
 };
 
-#[cfg(feature = "tests")]
-use brontes::cli::TraceArg;
 use brontes::{
     banner,
     cli::{Args, Commands},
@@ -60,8 +58,6 @@ fn run() -> eyre::Result<()> {
         Commands::Init(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
         Commands::QueryDb(command) => runner::run_command_until_exit(|_| command.execute()),
         Commands::AddToDb(command) => runner::run_command_until_exit(|_| command.execute()),
-        #[cfg(feature = "tests")]
-        Commands::Traces(args) => runner::run_command_until_exit(|_| command.execute()),
     }
 }
 
