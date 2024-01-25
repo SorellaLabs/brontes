@@ -351,11 +351,18 @@ pub struct NormalizedBatch {
     pub solver_swaps:        Option<Vec<NormalizedSwap>>,
 }
 
+impl NormalizedBatch {
+    pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
+        todo!("finish classification for batch")
+    }
+}
+
+//TODO: Smith you terrorist fix the order ffs
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedTransfer {
     pub trace_index: u64,
-    pub to:          Address,
     pub from:        Address,
+    pub to:          Address,
     pub token:       Address,
     pub amount:      U256,
 }
