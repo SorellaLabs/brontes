@@ -90,7 +90,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let jared = Address::from_str("0x6b75d8af000000e20b7a7ddf000ba900b4009a80").unwrap();
 
-        println!("jared deltas {:?}", deltas.get(&jared).unwrap_or(&HashMap::new()));
+        if let Some(jared_deltas) = deltas.get(&jared) {
+            for (token, amount) in jared_deltas {
+                println!("Token: {}, Amount: {}", token, amount.clone().to_float());
+            }
+        }
 
         deltas
     }
@@ -121,9 +125,22 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             }
         }
 
-        let jared = Address::from_str("0x6b75d8af000000e20b7a7ddf000ba900b4009a80").unwrap();
+        // Define the address for Jared
+        let jared_address =
+            Address::from_str("0x6b75d8af000000e20b7a7ddf000ba900b4009a80").unwrap();
 
-        println!("jared deltas {:?}", usd_deltas.get(&jared).unwrap_or(&Rational::ZERO));
+        // Retrieve the USD deltas for Jared's address
+        let binding = Rational::ZERO;
+        let jared_usd_deltas = usd_deltas.get(&jared_address).unwrap_or(&binding);
+
+        // Print the USD deltas for Jared's address in a readable format
+        if *jared_usd_deltas != Rational::ZERO {
+            println!(
+                "USD Deltas for Jared's Address ({}): {:?}",
+                jared_address,
+                jared_usd_deltas.clone().to_float()
+            );
+        }
 
         Some(usd_deltas)
     }
