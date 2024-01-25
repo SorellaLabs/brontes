@@ -97,6 +97,8 @@ impl ClassifierBenchUtils {
             .rt
             .block_on(self.trace_loader.get_block_traces_with_header(block))?;
 
+        print!("traces {}", traces.len());
+
         c.bench_function(bench_name, move |b| {
             b.to_async(&self.rt).iter_batched(
                 || (traces.clone(), header.clone()),
