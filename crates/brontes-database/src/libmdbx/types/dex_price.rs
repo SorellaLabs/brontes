@@ -1,6 +1,6 @@
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use brontes_types::db::{
-    dex::{DexQuote, DexQuoteWithIndex},
+    dex::{DexPrices, DexQuote, DexQuoteWithIndex},
     redefined_types::{malachite::Redefined_Rational, primitives::Redefined_Pair},
 };
 use redefined::{Redefined, RedefinedConvert};
@@ -84,9 +84,26 @@ pub fn make_filter_key_range(block_number: u64) -> (DexKey, DexKey) {
 #[redefined(DexQuoteWithIndex)]
 pub struct LibmdbxDexQuoteWithIndex {
     pub tx_idx: u16,
-    pub quote:  Vec<(Redefined_Pair, Redefined_Rational)>,
+    pub quote:  Vec<(Redefined_Pair, LibmdbxDexPrices)>,
 }
 
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+    Redefined,
+)]
+#[redefined(DexPrices)]
+pub struct LibmdbxDexPrices {
+    pub pre_state:  Redefined_Rational,
+    pub post_state: Redefined_Rational,
+}
 /*
 #[cfg(test)]
 mod tests {

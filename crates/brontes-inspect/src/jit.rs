@@ -190,9 +190,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let bribe = self.get_bribes(metadata.clone(), searcher_gas_details);
         let profit = jit_fee - mint - &bribe;
 
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(back_jit_idx, &deltas, metadata.clone(), false)?;
+        let addr_usd_deltas = self.inner.usd_delta_by_address(
+            back_jit_idx,
+            true,
+            &deltas,
+            metadata.clone(),
+            false,
+        )?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
@@ -202,10 +206,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 .filter_map(|address| deltas.get(address).map(|d| (address, d)))
                 .flat_map(|(address, delta)| {
                     delta.iter().map(|(token, amount)| {
-                        let usd_value = metadata
-                            .dex_quotes
-                            .price_at_or_before(Pair(*token, self.inner.quote), back_jit_idx)
-                            .unwrap_or(Rational::ZERO)
+                        let usd_value = self
+                            .inner
+                            .get_dex_usd_price(back_jit_idx, false, *address, metadata.clone())
+                            .unwrap_or_default()
                             .to_float()
                             * amount.clone().to_float();
                         TokenProfit {
@@ -396,7 +400,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter_map(|(token, amount)| {
                 Some(
                     self.inner
-                        .get_dex_usd_price(idx, *token, metadata.clone())?
+                        .get_dex_usd_price(idx, true, *token, metadata.clone())?
                         * amount.to_scaled_rational(
                             self.inner.db.try_get_token_decimals(*token).ok()??,
                         ),

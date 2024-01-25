@@ -3,7 +3,6 @@ use std::{collections::HashMap, sync::Arc};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     classified_mev::{AtomicBackrun, MevType, TokenProfit, TokenProfits},
-    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
     ToFloatNearest,
@@ -97,7 +96,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, &deltas, metadata.clone(), false)?;
+                .usd_delta_by_address(idx, false, &deltas, metadata.clone(), false)?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
@@ -107,10 +106,10 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
                 .filter_map(|address| deltas.get(address).map(|d| (address, d)))
                 .flat_map(|(address, delta)| {
                     delta.iter().map(|(token, amount)| {
-                        let usd_value = metadata
-                            .dex_quotes
-                            .price_at_or_before(Pair(*token, self.inner.quote), idx)
-                            .unwrap_or(Rational::ZERO)
+                        let usd_value = self
+                            .inner
+                            .get_dex_usd_price(idx, false, *address, metadata.clone())
+                            .unwrap_or_default()
                             .to_float()
                             * amount.clone().to_float();
                         TokenProfit {
