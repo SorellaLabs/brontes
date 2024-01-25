@@ -18,6 +18,7 @@ pub trait LibmdbxWriter: Send + Sync + 'static {
         block: MevBlock,
         mev: Vec<(BundleHeader, BundleData)>,
     ) -> eyre::Result<()>;
+
     fn insert_pool(
         &self,
         block: u64,

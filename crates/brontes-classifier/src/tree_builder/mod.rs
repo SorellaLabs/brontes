@@ -393,16 +393,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         };
 
         return (
-            DiscoveryProtocols::dispatch(
-                self.provider.clone(),
-                from_address,
-                created_addr,
-                calldata,
-            )
-            .await
-            .into_iter()
-            .map(|pool| DexPriceMsg::DiscoveredPool(pool, block))
-            .collect::<Vec<_>>(),
+            DiscoveryProtocols::default()
+                .dispatch(self.provider.clone(), from_address, created_addr, calldata)
+                .await
+                .into_iter()
+                .map(|pool| DexPriceMsg::DiscoveredPool(pool, block))
+                .collect::<Vec<_>>(),
             Actions::Unclassified(trace),
         )
     }

@@ -1,55 +1,11 @@
-use std::{collections::HashSet, env};
-
-use brontes_classifier::{
-    test_utils::{build_raw_test_tree, get_traces_with_meta},
-    Classifier,
-};
-use brontes_core::{decoding::parser::TraceParser, init_tracing, test_utils::init_trace_parser};
-use brontes_database::{clickhouse::Clickhouse, libmdbx::Libmdbx, Metadata};
-use brontes_types::{
-    normalized_actions::Actions, structured_trace::TxTrace, test_utils::force_call_action,
-    tree::Node,
-};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use reth_primitives::{Address, Header};
-use reth_rpc_types::trace::parity::{TraceType, TransactionTrace};
-use reth_tracing_ext::TracingClient;
-use serial_test::serial;
-use tokio::sync::mpsc::unbounded_channel;
-
-pub async fn setup_data(block_number: u64) -> (Vec<TxTrace>, Header, Metadata) {
-    init_tracing();
-
-    dotenv::dotenv().ok();
-    let (tx, _rx) = unbounded_channel();
-    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
-
-    let tracer = init_trace_parser(tokio::runtime::Handle::current().clone(), tx, &libmdbx);
-    let db = Clickhouse::default();
-
-    let classifier = Classifier::new(&libmdbx);
-
-    get_traces_with_meta(&tracer, &db, block_number).await
-}
+use brontes_classifier::test_utils::ClassifierBenchUtils;
+use criterion::{criterion_group, criterion_main, Criterion};
 
 fn bench_tree_building(c: &mut Criterion) {
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
+    let utils = ClassifierBenchUtils::new();
+    utils
+        .bench_block_classification("build 28m gas tree", 18672183, c)
         .unwrap();
-
-    // massive almost gas cap block
-    // https://etherscan.io/block/18672183
-    let block_number = 18672183;
-    let (traces, header, metadata) = rt.block_on(setup_data(block_number));
-    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let libmdbx = Libmdbx::init_db(brontes_db_endpoint, None).unwrap();
-    let classifier = Classifier::new(&libmdbx);
-
-    c.bench_function("build 28m gas tree", |b| {
-        b.iter(|| black_box(classifier.build_block_tree(traces.clone(), header.clone())))
-    });
 }
 
 criterion_group!(tree, bench_tree_building);
