@@ -526,7 +526,7 @@ pub mod test {
     #[tokio::test]
     async fn price_price_graph_for_shit() {
         let utils = PricingTestUtils::new(USDC_ADDRESS);
-        let pricer = utils
+        let mut pricer = utils
             .setup_dex_pricer_for_tx(
                 hex!("ebabf4a04fede867f7f681e30b4f5a79451e9d9e5bd1e50b4b455df8355571b6").into(),
             )
