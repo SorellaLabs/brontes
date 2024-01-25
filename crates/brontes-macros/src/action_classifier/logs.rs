@@ -157,8 +157,8 @@ impl<'a> LogData<'a> {
         &self,
         next_log: Option<&Ident>,
         log_name: &Ident,
-        log_field_name: &Ident,
         index: &Index,
+        on_result: TokenStream,
     ) -> TokenStream {
         let mod_path = &self.mod_path;
 
@@ -176,16 +176,15 @@ impl<'a> LogData<'a> {
         };
 
         quote!(
-        let mut repeating_results = Vec::new();
-        let mut i = 0usize;
+            let mut i = 0usize;
             let mut started = false;
             loop {
                 if let Some(log) = &logs.get(#index + repeating_modifier + i) {
-                    if let Some(decoded) = <#mod_path::#log_name
+                    if let Some(decoded_result) = <#mod_path::#log_name
                         as ::alloy_sol_types::SolEvent>
                             ::decode_log_data(&log.data, false).ok() {
                             started = true;
-                            repeating_results.push(decoded);
+                            #on_result
                     };
 
                     #has_next_log
@@ -198,8 +197,6 @@ impl<'a> LogData<'a> {
             }
             // move the index to where we finished
             repeating_modifier += i - 1;
-
-            log_res.#log_field_name = Some(repeating_results);
         )
     }
 
@@ -223,7 +220,20 @@ impl<'a> LogData<'a> {
             let res = if *repeating {
                 if *ignore_before {
                     let next_log = log_names.get(enum_i + 1);
-                    self.parse_ignore_before(next_log, log_name, log_field_name, indexes)
+
+                    let parse = self.parse_ignore_before(
+                        next_log,
+                        log_name,
+                        indexes,
+                        quote!( log_result.push(decoded_result);),
+                    );
+
+                    quote!(
+                        let mut log_result = Vec::new();
+                        #parse
+                        log_res.#log_field_name = Some(log_result);
+                    )
+
                 // repeating not ignore before
                 } else {
                     quote!(
@@ -253,26 +263,38 @@ impl<'a> LogData<'a> {
                     )
                 }
             } else {
-                quote!(
-                'possible: {
-                        if let Some(log) = &logs.get(#indexes + repeating_modifier) {
-                            if let Some(decoded) = <#mod_path::#log_name
-                                as ::alloy_sol_types::SolEvent>
-                                ::decode_log_data(&log.data, false).ok() {
-                                    log_res.#log_field_name = Some(decoded);
-                                    break 'possible
-                            }
-                            else {
-                                ::tracing::error!(?from_address,
-                                                  ?target_address,
-                                                  ?self,
-                                                  "decoding a default log failed, this should never occur,
-                                                  please make a issue if you come across this"
-                                );
+                if *ignore_before {
+                    let next_log = log_names.get(enum_i + 1);
+                    self.parse_ignore_before(
+                        next_log,
+                        log_name,
+                        indexes,
+                        quote!(
+                        log_res.#log_field_name = Some(decoded_result);
+                        ),
+                    )
+                } else {
+                    quote!(
+                    'possible: {
+                            if let Some(log) = &logs.get(#indexes + repeating_modifier) {
+                                if let Some(decoded) = <#mod_path::#log_name
+                                    as ::alloy_sol_types::SolEvent>
+                                    ::decode_log_data(&log.data, false).ok() {
+                                        log_res.#log_field_name = Some(decoded);
+                                        break 'possible
+                                }
+                                else {
+                                    ::tracing::error!(?from_address,
+                                                      ?target_address,
+                                                      ?self,
+                                                      "decoding a default log failed, this should never occur,
+                                                      please make a issue if you come across this"
+                                    );
+                                }
                             }
                         }
-                    }
-                )
+                    )
+                }
             };
 
             stream.extend(res);
