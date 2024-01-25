@@ -6,7 +6,7 @@ use std::{
 use async_trait::async_trait;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{JitLiquidity, MevType, TokenProfit, TokenProfits},
+    classified_mev::{Bundle, JitLiquidity, MevType, TokenProfit, TokenProfits},
     extra_processing::Pair,
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     tree::GasDetails,
@@ -46,7 +46,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
-    ) -> Vec<(BundleHeader, BundleData)> {
+    ) -> Vec<Bundle> {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
@@ -146,7 +146,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_txs: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
-    ) -> Option<(BundleHeader, BundleData)> {
+    ) -> Option<Bundle> {
         let deltas = self.inner.calculate_token_deltas(
             &[searcher_actions.clone(), victim_actions.clone()]
                 .into_iter()
@@ -219,7 +219,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 .collect(),
         };
 
-        let classified = BundleHeader {
+        let header = BundleHeader {
             mev_tx_index: back_jit_idx as u64,
             block_number: metadata.block_num,
             tx_hash: txes[0],
@@ -256,7 +256,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burns: burns,
         };
 
-        Some((classified, BundleData::Jit(jit_details)))
+        Some(Bundle { header, data: BundleData::Jit(jit_details) })
     }
 
     fn possible_jit_set(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleJit> {
