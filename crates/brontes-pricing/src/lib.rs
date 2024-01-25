@@ -208,6 +208,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
+        tracing::info!(?pool_pair, "getting pair");
         if pool_pair.0 == pool_pair.1 {
             return Some(Rational::ONE)
         }
@@ -718,5 +719,4 @@ pub mod test {
 
     pub const USDC_ADDRESS: Address =
         Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
-
 }
