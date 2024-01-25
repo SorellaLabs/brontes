@@ -24,7 +24,10 @@ use futures::{future::join_all, StreamExt};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
 use thiserror::Error;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
+use tokio::{
+    runtime::Handle,
+    sync::mpsc::{unbounded_channel, UnboundedReceiver},
+};
 
 use crate::{
     ActionCollection, Actions, Classifier, DiscoveryProtocols, FactoryDecoderDispatch,
@@ -41,6 +44,14 @@ pub struct ClassifierTestUtils {
 impl ClassifierTestUtils {
     pub fn new() -> Self {
         let trace_loader = TraceLoader::new();
+        let (tx, rx) = unbounded_channel();
+        let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
+
+        Self { classifier, trace_loader, dex_pricing_receiver: rx }
+    }
+
+    pub fn new_with_rt(handle: Handle) -> Self {
+        let trace_loader = TraceLoader::new_with_rt(handle);
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
 

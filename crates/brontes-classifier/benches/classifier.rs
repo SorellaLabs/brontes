@@ -8,7 +8,5 @@ fn bench_tree_building(c: &mut Criterion) {
         .unwrap();
 }
 
-
-
 criterion_group!(tree, bench_tree_building);
 criterion_main!(tree);
