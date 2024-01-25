@@ -192,8 +192,67 @@ fn bench_regular_block(c: &mut Criterion) {
         .unwrap()
 }
 
+fn bench_sandwich_regular_block(c: &mut Criterion) {
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+    bencher
+        .bench_inspectors_block(
+            "bench sandwich 12mil gas",
+            18500002,
+            0,
+            vec![Inspectors::Sandwich],
+            c,
+        )
+        .unwrap()
+}
+
+fn bench_liquidations_regular_block(c: &mut Criterion) {
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+    bencher
+        .bench_inspectors_block(
+            "aave v2 liquidation 14 mill gas block",
+            18979710,
+            0,
+            vec![Inspectors::Liquidations],
+            c,
+        )
+        .unwrap()
+}
+
+fn bench_backrun_regular_block(c: &mut Criterion) {
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+    bencher
+        .bench_inspectors_block(
+            "backrun 15 mill gas block",
+            18000103,
+            0,
+            vec![Inspectors::AtomicBackrun],
+            c,
+        )
+        .unwrap()
+}
+
+fn bench_jit_regular_block(c: &mut Criterion) {
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+    bencher
+        .bench_inspectors_block("jit 16 mill gas block", 18500009, 0, vec![Inspectors::Jit], c)
+        .unwrap()
+}
+
+fn bench_cex_dex_regular_block(c: &mut Criterion) {
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+    bencher
+        .bench_inspectors_block(
+            "cex dex 16 mill gas block",
+            18264694,
+            0,
+            vec![Inspectors::CexDex],
+            c,
+        )
+        .unwrap()
+}
+
 criterion_group!(
-    inspector_benches,
+    inspector_specific_tx_benches,
     bench_sandwich,
     bench_sandwich_big_mac,
     bench_backrun_triagular,
@@ -201,7 +260,16 @@ criterion_group!(
     bench_liquidation,
     bench_cex_dex,
     bench_composer,
-    bench_regular_block
 );
 
-criterion_main!(inspector_benches);
+criterion_group!(
+    inspector_full_block_benches,
+    bench_regular_block,
+    bench_sandwich_regular_block,
+    bench_liquidations_regular_block,
+    bench_backrun_regular_block,
+    bench_jit_regular_block,
+    bench_cex_dex_regular_block
+);
+
+criterion_main!(inspector_specific_tx_benches, inspector_full_block_benches);
