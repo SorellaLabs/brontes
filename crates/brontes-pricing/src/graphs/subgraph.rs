@@ -418,12 +418,12 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
 
 #[cfg(test)]
 pub mod test {
-    use alloy_primitives::Address;
+    use alloy_primitives::{hex, Address};
     use brontes_types::constants::USDC_ADDRESS;
     use futures::StreamExt;
 
     use super::*;
-    use crate::{test::USDC_ADDRESS, test_utils::PricingTestUtils};
+    use crate::test_utils::PricingTestUtils;
 
     #[derive(Debug)]
     struct MockPoolState {
