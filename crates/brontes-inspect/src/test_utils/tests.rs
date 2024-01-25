@@ -9,7 +9,7 @@ use brontes_types::{
 };
 use thiserror::Error;
 
-use crate::{composer::compose_mev_results, Inspector, Inspectors};
+use crate::{composer::compose_mev_results,  Inspectors};
 
 pub const USDC_ADDRESS: Address =
     Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
