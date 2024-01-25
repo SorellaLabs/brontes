@@ -5,7 +5,7 @@ use brontes_core::{
     decoding::TracingProvider, missing_decimals::load_missing_decimals, BlockTracesWithHeaderAnd,
     TraceLoader, TraceLoaderError, TxTracesWithHeaderAnd,
 };
-use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader};
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
     db::dex::DexQuotes,
