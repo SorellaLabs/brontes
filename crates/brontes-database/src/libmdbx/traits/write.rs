@@ -1,7 +1,7 @@
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, MevBlock},
+    classified_mev::{Bundle, MevBlock},
     db::dex::DexQuotes,
     extra_processing::Pair,
     structured_trace::TxTrace,
@@ -16,7 +16,7 @@ pub trait LibmdbxWriter: Send + Sync + 'static {
         &self,
         block_number: u64,
         block: MevBlock,
-        mev: Vec<(BundleHeader, BundleData)>,
+        mev: Vec<Bundle>,
     ) -> eyre::Result<()>;
 
     fn insert_pool(

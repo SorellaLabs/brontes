@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader},
+    classified_mev::{Bundle, BundleData, BundleHeader},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -26,7 +26,7 @@ impl<DB: LibmdbxReader> Inspector for LongTailInspector<'_, DB> {
         &self,
         _tree: Arc<BlockTree<Actions>>,
         _meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(BundleHeader, BundleData)> {
+    ) -> Vec<Bundle> {
         return vec![]
     }
 }
