@@ -48,6 +48,13 @@ impl TraceLoader {
         Self { libmdbx, tracing_provider, _metrics: b }
     }
 
+    pub fn new_with_rt(handle: Handle) -> Self {
+        let libmdbx = get_db_handle();
+        let (a, b) = unbounded_channel();
+        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
+        Self { libmdbx, tracing_provider, _metrics: b }
+    }
+
     pub fn get_provider(&self) -> Arc<Box<dyn TracingProvider>> {
         self.tracing_provider.get_tracer()
     }
