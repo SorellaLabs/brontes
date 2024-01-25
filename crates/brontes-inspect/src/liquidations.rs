@@ -102,9 +102,9 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         }
 
         let deltas = self.inner.calculate_token_deltas(&vec![actions]);
-        let swap_profit = self
-            .inner
-            .usd_delta_by_address(idx, &deltas, metadata.clone(), false)?;
+        let swap_profit =
+            self.inner
+                .usd_delta_by_address(idx, false, &deltas, metadata.clone(), false)?;
         let mev_profit_collector = self.inner.profit_collectors(&swap_profit);
 
         let token_profits = TokenProfits {
@@ -113,10 +113,10 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
                 .filter_map(|address| deltas.get(address).map(|d| (address, d)))
                 .flat_map(|(address, delta)| {
                     delta.iter().map(|(token, amount)| {
-                        let usd_value = metadata
-                            .dex_quotes
-                            .price_at_or_before(Pair(*token, self.inner.quote), idx)
-                            .unwrap_or(Rational::ZERO)
+                        let usd_value = self
+                            .inner
+                            .get_dex_usd_price(idx, false, *address, metadata.clone())
+                            .unwrap_or_default()
                             .to_float()
                             * amount.clone().to_float();
                         TokenProfit {
@@ -135,12 +135,14 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             .filter_map(|liq| {
                 let repaid_debt_usd = self.inner.calculate_dex_usd_amount(
                     idx,
+                    false,
                     liq.debt_asset,
                     liq.covered_debt,
                     &metadata,
                 )?;
                 let collected_collateral = self.inner.calculate_dex_usd_amount(
                     idx,
+                    false,
                     liq.collateral_asset,
                     liq.liquidated_collateral,
                     &metadata,
