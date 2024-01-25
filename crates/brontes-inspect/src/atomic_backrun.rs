@@ -101,9 +101,8 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
         let token_profits = TokenProfits {
-            profits: mev_profit_collector
+            profits: deltas
                 .iter()
-                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
                 .flat_map(|(address, delta)| {
                     delta.iter().map(|(token, amount)| {
                         let usd_value = self
