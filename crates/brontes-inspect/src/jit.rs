@@ -380,7 +380,9 @@ mod tests {
 
     use super::*;
     use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
-
+    //TODO: Found another JIT sandwich:
+    // 0xcca2c7f24d153ea698f6db11f46eae63d71790d244ca123b7a612b81ba7cfa56
+    // Test it
     #[tokio::test]
     #[serial]
     async fn test_jit() {
