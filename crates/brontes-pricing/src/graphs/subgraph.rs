@@ -359,7 +359,7 @@ where
         prev = new_prev;
     }
     let price_path = price_path.into_iter().rev().collect::<Vec<_>>();
-    #[cfg(test)]
+
     tracing::info!("{:#?}", price_path);
 
     Some((price, price_path))
@@ -421,8 +421,8 @@ pub mod test {
     use alloy_primitives::{hex, Address};
     use brontes_types::constants::USDC_ADDRESS;
     use futures::StreamExt;
-
     use serial_test::serial;
+
     use super::*;
     use crate::test_utils::PricingTestUtils;
 
