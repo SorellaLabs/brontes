@@ -30,7 +30,7 @@ fn bench_sandwich(c: &mut Criterion) {
                 hex!("06424e50ee53df1e06fa80a741d1549224e276aed08c3674b65eac9e97a39c45").into(),
                 hex!("c0422b6abac94d29bc2a752aa26f406234d45e4f52256587be46255f7b861893").into(),
             ],
-            100,
+            0,
             Inspectors::Sandwich,
             c,
         )
@@ -49,7 +49,7 @@ fn bench_sandwich_big_mac(c: &mut Criterion) {
                 hex!("0b428553bc2ccc8047b0da46e6c1c1e8a338d9a461850fcd67ddb233f6984677").into(),
                 hex!("fb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d").into(),
             ],
-            100,
+            0,
             Inspectors::Sandwich,
             c,
         )
@@ -62,7 +62,7 @@ fn bench_backrun_triagular(c: &mut Criterion) {
         .bench_inspector_txes(
             "backrun triagular",
             vec![hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into()],
-            100,
+            0,
             Inspectors::AtomicBackrun,
             c,
         )
@@ -74,7 +74,7 @@ fn bench_backrun_10_swaps(c: &mut Criterion) {
         .bench_inspector_txes(
             "bench backrun 10 swaps",
             vec![hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into()],
-            100,
+            0,
             Inspectors::AtomicBackrun,
             c,
         )
@@ -87,7 +87,7 @@ fn bench_liquidation(c: &mut Criterion) {
         .bench_inspector_txes(
             "bench aave v2 bench_liquidation",
             vec![hex!("725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db").into()],
-            100,
+            0,
             Inspectors::Liquidations,
             c,
         )
@@ -148,7 +148,7 @@ fn bench_cex_dex(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
     bencher
         .bench_inspector_txes_with_meta(
-            "bench cex dex",
+            "bench cex dex, 100 per iter",
             vec![tx_hash],
             metadata,
             100,
@@ -170,7 +170,7 @@ fn bench_composer(c: &mut Criterion) {
                 hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
                 hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
             ],
-            100,
+            0,
             vec![Inspectors::Sandwich, Inspectors::Jit],
             c,
         )
