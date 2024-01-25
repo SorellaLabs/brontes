@@ -408,13 +408,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::{HashMap, HashSet},
-        str::FromStr,
-        time::SystemTime,
-    };
-
-    use reth_primitives::U256;
     use serial_test::serial;
 
     use super::*;
