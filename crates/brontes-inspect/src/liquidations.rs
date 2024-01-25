@@ -115,7 +115,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
                     delta.iter().map(|(token, amount)| {
                         let usd_value = self
                             .inner
-                            .get_dex_usd_price(idx, false, *address, metadata.clone())
+                            .get_dex_usd_price(idx, false, *token, metadata.clone())
                             .unwrap_or_default()
                             .to_float()
                             * amount.clone().to_float();
