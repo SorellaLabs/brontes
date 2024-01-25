@@ -352,7 +352,7 @@ pub struct NormalizedBatch {
 }
 
 impl NormalizedBatch {
-    pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
+    pub fn finish_classification(&mut self, _actions: Vec<(u64, Actions)>) -> Vec<u64> {
         todo!("finish classification for batch")
     }
 }

@@ -18,7 +18,7 @@ pub mod ser_mev_block {
             )?;
             ser_struct.serialize_field("block_number", &self.block_number)?;
             ser_struct.serialize_field("mev_count", &self.mev_count)?;
-            ser_struct.serialize_field("finalized_eth_price", &self.finalized_eth_price)?;
+            ser_struct.serialize_field("eth_price", &self.eth_price)?;
             ser_struct.serialize_field("cumulative_gas_used", &self.cumulative_gas_used)?;
             ser_struct.serialize_field("cumulative_gas_paid", &self.cumulative_gas_paid)?;
             ser_struct.serialize_field("total_bribe", &self.total_bribe)?;
@@ -31,10 +31,7 @@ pub mod ser_mev_block {
                 &FixedString::from(format!("{:?}", self.builder_address)),
             )?;
             ser_struct.serialize_field("builder_eth_profit", &self.builder_eth_profit)?;
-            ser_struct.serialize_field(
-                "builder_finalized_profit_usd",
-                &self.builder_finalized_profit_usd,
-            )?;
+            ser_struct.serialize_field("builder_profit_usd", &self.builder_profit_usd)?;
 
             ser_struct.serialize_field(
                 "proposer_fee_recipient",
@@ -43,21 +40,16 @@ pub mod ser_mev_block {
                     .map(|addr| FixedString::from(format!("{:?}", addr))),
             )?;
             ser_struct.serialize_field("proposer_mev_reward", &self.proposer_mev_reward)?;
-            ser_struct.serialize_field(
-                "proposer_finalized_profit_usd",
-                &self.proposer_finalized_profit_usd,
-            )?;
-            ser_struct.serialize_field(
-                "cumulative_mev_finalized_profit_usd",
-                &self.cumulative_mev_finalized_profit_usd,
-            )?;
+            ser_struct.serialize_field("proposer_profit_usd", &self.proposer_profit_usd)?;
+            ser_struct
+                .serialize_field("cumulative_mev_profit_usd", &self.cumulative_mev_profit_usd)?;
 
-            let possible_missed_arbs = self
-                .possible_missed_arbs
+            let possible_mev = self
+                .possible_mev
                 .iter()
                 .map(|tx| format!("{:?}", tx).into())
                 .collect::<Vec<FixedString>>();
-            ser_struct.serialize_field("possible_missed_arbs", &possible_missed_arbs)?;
+            ser_struct.serialize_field("possible_mev", &possible_mev)?;
 
             ser_struct.end()
         }

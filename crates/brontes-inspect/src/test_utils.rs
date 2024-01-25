@@ -266,9 +266,9 @@ impl InspectorTestUtils {
         );
         // check profit
         assert!(
-            (classified_mev.finalized_profit_usd - profit_usd).abs() < self.max_result_difference,
+            (classified_mev.profit_usd - profit_usd).abs() < self.max_result_difference,
             "Finalized Profit != Expected Profit, {} != {}",
-            classified_mev.finalized_profit_usd,
+            classified_mev.profit_usd,
             profit_usd
         );
 
@@ -361,9 +361,9 @@ impl InspectorTestUtils {
         );
         // check profit
         assert!(
-            (classified_mev.finalized_profit_usd - profit_usd).abs() < self.max_result_difference,
+            (classified_mev.profit_usd - profit_usd).abs() < self.max_result_difference,
             "Finalized Profit != Expected Profit, {} != {}",
-            classified_mev.finalized_profit_usd,
+            classified_mev.profit_usd,
             profit_usd
         );
 
