@@ -1,8 +1,8 @@
 use brontes_types::{
     classified_mev::{
         AtomicBackrun, BundleData, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich,
-        Liquidation, MevBlock, MevType, PossibleMev, PriceKind, Sandwich, TokenProfit,
-        TokenProfits,
+        Liquidation, MevBlock, MevType, PossibleMev, PossibleMevTriggers, PriceKind, Sandwich,
+        TokenProfit, TokenProfits,
     },
     db::{
         mev_block::MevBlockWithClassified,
@@ -80,6 +80,16 @@ pub struct LibmdbxMevBlock {
     pub possible_mev: Vec<LibmdbxPossibleMev>,
 }
 
+// pub struct LibmdbxPossibleMev {
+//     pub tx_hash:     Redefined_FixedBytes<32>,
+//     pub tx_idx:      u64,
+//     pub gas_details: GasDetails,
+//     pub triggers:    PossibleMevTriggers,
+//
+//     pub position_in_block: usize,
+//     pub gas_paid:          u128,
+// }
+
 #[derive(
     Debug,
     serde::Serialize,
@@ -92,9 +102,27 @@ pub struct LibmdbxMevBlock {
 )]
 #[redefined(PossibleMev)]
 pub struct LibmdbxPossibleMev {
-    pub tx_hash:           Redefined_FixedBytes<32>,
-    pub position_in_block: usize,
-    pub gas_paid:          u128,
+    pub tx_hash:     Redefined_FixedBytes<32>,
+    pub tx_idx:      u64,
+    pub gas_details: GasDetails,
+    pub triggers:    LibmdbxPossibleMevTriggers,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(PossibleMevTriggers)]
+pub struct LibmdbxPossibleMevTriggers {
+    pub is_private:        bool,
+    pub coinbase_transfer: bool,
+    pub high_priority_fee: bool,
 }
 
 #[derive(

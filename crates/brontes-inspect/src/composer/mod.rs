@@ -30,7 +30,6 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use alloy_primitives::B256;
 use brontes_types::classified_mev::Mev;
 mod mev_filters;
 mod utils;
@@ -47,7 +46,7 @@ use utils::{
     BlockPreprocessing,
 };
 
-use crate::Inspector;
+use crate::{discovery::DiscoveryInspector, Inspector};
 
 #[derive(Debug)]
 pub struct ComposerResults {
@@ -83,21 +82,7 @@ async fn run_inspectors(
         .iter()
         .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone())));
 
-    let mut possible_mev_txes = tree
-        .tx_roots
-        .iter()
-        .filter(|r| r.gas_details.coinbase_transfer.is_some() || r.is_private())
-        .map(|r| {
-            (
-                r.tx_hash,
-                PossibleMev {
-                    tx_hash:           r.tx_hash,
-                    position_in_block: r.position,
-                    gas_paid:          r.gas_details.gas_paid(),
-                },
-            )
-        })
-        .collect::<HashMap<B256, PossibleMev>>();
+    let mut possible_mev_txes = DiscoveryInspector::new(3).find_possible_mev(tree);
 
     // Remove the classified mev txes from the possibly missed tx list
     let results = scope

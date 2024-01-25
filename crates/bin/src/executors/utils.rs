@@ -41,13 +41,14 @@ fn insert_mev_results<DB: LibmdbxWriter>(
         .possible_mev
         .iter()
         .map(|possible_mev| {
-            let eth_paid = possible_mev.gas_paid as f64 * 1e-18;
+            let eth_paid = possible_mev.gas_details.gas_paid() as f64 * 1e-18;
             let tx_url = format!("https://etherscan.io/tx/{:?}", possible_mev.tx_hash);
             format!(
-                "{} paid {} ETH for inclusion\nEtherscan link: {}",
-                format!("Tx number {}", possible_mev.position_in_block).blue(),
+                "{} paid {} ETH for inclusion\nEtherscan link: {}\n{}",
+                format!("Tx number {}", possible_mev.tx_idx).blue(),
                 eth_paid.to_string().green(),
-                tx_url.underline().blue()
+                tx_url.underline().blue(),
+                possible_mev.triggers
             )
         })
         .fold(String::new(), |acc, line| acc + &line + "\n");
