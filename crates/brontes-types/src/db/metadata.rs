@@ -43,6 +43,7 @@ impl MetadataCombined {
         let eth_price = if self.eth_prices == Rational::ZERO {
             self.dex_quotes
                 .price_at_or_before(Pair(WETH_ADDRESS, USDC_ADDRESS), self.dex_quotes.0.len())
+                .map(|price| price.post_state)
                 .unwrap()
         } else {
             self.eth_prices.clone()
