@@ -52,7 +52,10 @@ impl TraceLoader {
         self.tracing_provider.get_tracer()
     }
 
-    async fn trace_block(&self, block: u64) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
+    pub async fn trace_block(
+        &self,
+        block: u64,
+    ) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
         self.tracing_provider
             .execute_block(block)
             .await
