@@ -235,7 +235,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let in_usd = metadata.dex_quotes.price_at_or_before(pair_in, tx_idx)?;
         let out_usd = metadata.dex_quotes.price_at_or_before(pair_out, tx_idx)?;
 
-        let dex_usd_price = in_usd / out_usd;
+        let dex_usd_price = out_usd / in_usd;
 
         let cex_best_ask = match (
             metadata.cex_quotes.get_quote(&pair_in),
@@ -248,7 +248,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     swap.token_out,
                     metadata.block_num
                 );
-                token_in_price.best_ask() / token_out_price.best_ask()
+                token_out_price.best_ask() / token_in_price.best_ask()
             }
             (..) => {
                 warn!(
@@ -272,6 +272,7 @@ mod tests {
 
     use alloy_primitives::{hex, B256, U256};
     use brontes_types::db::cex::{CexPriceMap, CexQuote};
+    use malachite::num::arithmetic::traits::Reciprocal;
     use serial_test::serial;
 
     use super::*;
@@ -285,8 +286,13 @@ mod tests {
             B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
                 .unwrap();
 
-        let eth_price = Rational::try_from_float_simplest(1665.81).unwrap();
-        let eth_cex = Rational::try_from_float_simplest(1645.81).unwrap();
+        let eth_price = Rational::try_from_float_simplest(1665.81)
+            .unwrap()
+            .reciprocal();
+        let eth_cex = Rational::try_from_float_simplest(1645.81)
+            .unwrap()
+            .reciprocal();
+
         let eth_usdc = Pair(
             hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
             hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
