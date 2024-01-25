@@ -1,4 +1,4 @@
-use core::panic;
+use std::sync::Arc;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_core::{
@@ -10,7 +10,7 @@ use brontes_database::{
     AddressToProtocol,
 };
 use brontes_pricing::{types::DexPriceMsg, Protocol};
-use brontes_types::structured_trace::TraceActions;
+use brontes_types::{normalized_actions::Actions, structured_trace::TraceActions, tree::BlockTree};
 use criterion::{black_box, Criterion};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
@@ -106,6 +106,47 @@ impl ClassifierBenchUtils {
                 criterion::BatchSize::NumIterations(1),
             );
         });
+        Ok(())
+    }
+
+    pub fn bench_tree_operations_tx(
+        &self,
+        bench_name: &str,
+        tx: TxHash,
+        c: &mut Criterion,
+        bench_fn: impl Fn(Arc<BlockTree<Actions>>),
+    ) -> Result<(), ClassifierBenchError> {
+        let TxTracesWithHeaderAnd { trace, header, .. } = self
+            .rt
+            .block_on(self.trace_loader.get_tx_trace_with_header(tx))?;
+
+        let (_, tree) = self
+            .rt
+            .block_on(self.classifier.build_block_tree(vec![trace], header));
+        let tree = Arc::new(tree);
+
+        c.bench_function(bench_name, move |b| b.iter(|| black_box(bench_fn(tree.clone()))));
+
+        Ok(())
+    }
+
+    pub fn bench_tree_operations(
+        &self,
+        bench_name: &str,
+        block: u64,
+        c: &mut Criterion,
+        bench_fn: impl Fn(Arc<BlockTree<Actions>>),
+    ) -> Result<(), ClassifierBenchError> {
+        let BlockTracesWithHeaderAnd { traces, header, .. } = self
+            .rt
+            .block_on(self.trace_loader.get_block_traces_with_header(block))?;
+        let (_, tree) = self
+            .rt
+            .block_on(self.classifier.build_block_tree(traces, header));
+        let tree = Arc::new(tree);
+
+        c.bench_function(bench_name, move |b| b.iter(|| black_box(bench_fn(tree.clone()))));
+
         Ok(())
     }
 
