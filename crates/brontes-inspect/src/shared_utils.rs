@@ -1,7 +1,6 @@
 use core::hash::Hash;
 use std::{
     collections::{hash_map::Entry, HashMap},
-    str::FromStr,
     sync::Arc,
 };
 
@@ -10,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedTransfer},
-    ToFloatNearest, ToScaledRational,
+    ToScaledRational,
 };
 use malachite::{
     num::basic::traits::{One, Zero},

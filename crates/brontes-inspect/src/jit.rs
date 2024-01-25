@@ -6,13 +6,14 @@ use std::{
 use async_trait::async_trait;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{JitLiquidity, MevType},
+    classified_mev::{JitLiquidity, MevType, TokenProfit, TokenProfits},
+    extra_processing::Pair,
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     tree::GasDetails,
     ToFloatNearest, ToScaledRational,
 };
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256, U256};
 
 use crate::{
@@ -131,6 +132,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 }
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
+    //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
         eoa: Address,
@@ -145,6 +147,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_actions: Vec<Vec<Actions>>,
         victim_gas: Vec<GasDetails>,
     ) -> Option<(BundleHeader, BundleData)> {
+        let deltas = self.inner.calculate_token_deltas(
+            &[searcher_actions.clone(), victim_actions.clone()]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<Vec<_>>>(),
+        );
+
         let (mints, burns, collect): (
             Vec<Option<NormalizedMint>>,
             Vec<Option<NormalizedBurn>>,
@@ -181,6 +190,35 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         let profit = jit_fee - mint - &bribe;
 
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(back_jit_idx, &deltas, metadata.clone(), false)?;
+
+        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let token_profits = TokenProfits {
+            profits: mev_profit_collector
+                .iter()
+                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
+                .flat_map(|(address, delta)| {
+                    delta.iter().map(|(token, amount)| {
+                        let usd_value = metadata
+                            .dex_quotes
+                            .price_at_or_before(Pair(*token, self.inner.quote), back_jit_idx)
+                            .unwrap_or(Rational::ZERO)
+                            .to_float()
+                            * amount.clone().to_float();
+                        TokenProfit {
+                            profit_collector: *address,
+                            token: *token,
+                            amount: amount.clone().to_float(),
+                            usd_value,
+                        }
+                    })
+                })
+                .collect(),
+        };
+
         let classified = BundleHeader {
             mev_tx_index: back_jit_idx as u64,
             block_number: metadata.block_num,
@@ -189,8 +227,9 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             mev_contract: mev_addr,
             mev_profit_collector: vec![mev_addr],
             mev_type: MevType::Jit,
-            finalized_profit_usd: profit.to_float(),
-            finalized_bribe_usd: bribe.to_float(),
+            profit_usd: profit.to_float(),
+            token_profits,
+            bribe_usd: bribe.to_float(),
         };
 
         let victim_swaps = victim_actions

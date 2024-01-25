@@ -27,7 +27,7 @@
 # But not bindings.rs
 
 stuff
-possible_missed_arbs/
+possible_mev/
 
 # Libmdbx files
 data/*
