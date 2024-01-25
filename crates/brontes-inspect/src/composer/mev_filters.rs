@@ -1,6 +1,5 @@
-use brontes_types::classified_mev::{compose_sandwich_jit, BundleData, BundleHeader, MevType};
+use brontes_types::classified_mev::{compose_sandwich_jit, Bundle, MevType};
 use lazy_static::lazy_static;
-
 /// Defines rules for composing multiple child MEV types into a single, complex
 /// parent MEV type.
 ///
@@ -35,8 +34,7 @@ macro_rules! mev_composability {
     };
 }
 
-pub type ComposeFunction =
-    Box<dyn Fn(Vec<(BundleHeader, BundleData)>) -> (BundleHeader, BundleData) + Send + Sync>;
+pub type ComposeFunction = Box<dyn Fn(Vec<Bundle>) -> Bundle + Send + Sync>;
 
 pub fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     match mev_type {

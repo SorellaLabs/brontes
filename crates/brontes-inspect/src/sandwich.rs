@@ -6,7 +6,7 @@ use std::{
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{BundleData, MevType, Sandwich, TokenProfit, TokenProfits},
+    classified_mev::{Bundle, BundleData, MevType, Sandwich, TokenProfit, TokenProfits},
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node},
@@ -45,7 +45,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(BundleHeader, BundleData)> {
+    ) -> Vec<Bundle> {
         let search_fn = |node: &Node<Actions>| {
             (
                 node.data.is_swap() || node.data.is_transfer(),
@@ -152,7 +152,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_txes: Vec<Vec<B256>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
         mut victim_gas: Vec<Vec<GasDetails>>,
-    ) -> Option<(BundleHeader, BundleData)> {
+    ) -> Option<Bundle> {
         let all_actions = searcher_actions.clone();
         let back_run_swaps = searcher_actions
             .pop()?
@@ -259,7 +259,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
 
-        let classified_mev = BundleHeader {
+        let header = BundleHeader {
             mev_tx_index: idx as u64,
             eoa,
             mev_profit_collector,
@@ -284,7 +284,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_gas_details: back_run_gas.clone(),
         };
 
-        Some((classified_mev, BundleData::Sandwich(sandwich)))
+        Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
     }
 
     fn has_pool_overlap(
