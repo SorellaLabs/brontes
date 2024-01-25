@@ -5,19 +5,35 @@ use brontes_core::{
     decoding::TracingProvider, missing_decimals::load_missing_decimals, BlockTracesWithHeaderAnd,
     TraceLoader, TraceLoaderError, TxTracesWithHeaderAnd,
 };
-use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader};
-use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
+use brontes_database::{
+    libmdbx::{
+        types::address_to_protocol::AddressToProtocolData, LibmdbxReadWriter, LibmdbxReader,
+    },
+    AddressToProtocol,
+};
+use brontes_pricing::{
+    types::{DexPriceMsg, DiscoveredPool, PoolUpdate},
+    BrontesBatchPricer, GraphManager, Protocol,
+};
 use brontes_types::{
     db::dex::DexQuotes,
+    structured_trace::TraceActions,
     tree::{BlockTree, Node},
 };
 use futures::{future::join_all, StreamExt};
+use reth_db::DatabaseError;
+use reth_rpc_types::trace::parity::Action;
 use thiserror::Error;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
+use tokio::{
+    runtime::Handle,
+    sync::mpsc::{unbounded_channel, UnboundedReceiver},
+};
 
-use crate::{Actions, Classifier};
+use crate::{
+    ActionCollection, Actions, Classifier, DiscoveryProtocols, FactoryDecoderDispatch,
+    ProtocolClassifications,
+};
 
-/// Classifier specific functionality
 pub struct ClassifierTestUtils {
     trace_loader: TraceLoader,
     classifier:   Classifier<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
@@ -28,6 +44,14 @@ pub struct ClassifierTestUtils {
 impl ClassifierTestUtils {
     pub fn new() -> Self {
         let trace_loader = TraceLoader::new();
+        let (tx, rx) = unbounded_channel();
+        let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
+
+        Self { classifier, trace_loader, dex_pricing_receiver: rx }
+    }
+
+    pub fn new_with_rt(handle: Handle) -> Self {
+        let trace_loader = TraceLoader::new_with_rt(handle);
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
 
@@ -320,14 +344,112 @@ impl ClassifierTestUtils {
         Ok(())
     }
 
-    pub async fn is_missing_action(
+    pub async fn has_no_actions(
         &self,
-        _tx_hash: TxHash,
-        _action_number_in_block: usize,
-        _eq_action: Actions,
-        _tree_collect_fn: impl Fn(&Node<Actions>) -> (bool, bool),
+        tx_hash: TxHash,
+        tree_collect_fn: impl Fn(&Node<Actions>) -> (bool, bool),
     ) -> Result<(), ClassifierTestUtilsError> {
-        todo!()
+        let mut tree = self.build_tree_tx(tx_hash).await?;
+        let root = tree.tx_roots.remove(0);
+        let actions = root.collect(&tree_collect_fn);
+
+        assert!(actions.is_empty(), "found: {:#?}", actions);
+        Ok(())
+    }
+
+    pub async fn test_protocol_classification(
+        &self,
+        tx_hash: TxHash,
+        protocol: Protocol,
+        address: Address,
+        cmp_fn: impl Fn(Option<(PoolUpdate, Actions)>),
+    ) -> Result<(), ClassifierTestUtilsError> {
+        // write protocol to libmdbx
+        self.libmdbx
+            .0
+            .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
+                AddressToProtocolData { address, classifier_name: protocol },
+            ])?;
+
+        let TxTracesWithHeaderAnd { trace, block, .. } =
+            self.get_tx_trace_with_header(tx_hash).await?;
+
+        let trace = trace
+            .trace
+            .into_iter()
+            .find(|t| t.get_to_address() == address)
+            .ok_or_else(|| ClassifierTestUtilsError::ProtocolClassificationError(address))?;
+
+        let dispatcher = ProtocolClassifications::default();
+
+        let from_address = trace.get_from_addr();
+        let target_address = trace.get_to_address();
+
+        let call_data = trace.get_calldata();
+        let return_bytes = trace.get_return_calldata();
+
+        let result = dispatcher.dispatch(
+            0,
+            call_data.clone(),
+            return_bytes.clone(),
+            from_address,
+            target_address,
+            trace.msg_sender,
+            &trace.logs,
+            self.trace_loader.libmdbx,
+            block,
+            0,
+        );
+
+        cmp_fn(result);
+
+        Ok(())
+    }
+
+    pub async fn test_discovery_classification(
+        &self,
+        tx: TxHash,
+        created_pool: Address,
+        cmp_fn: impl Fn(Vec<DiscoveredPool>),
+    ) -> Result<(), ClassifierTestUtilsError> {
+        let TxTracesWithHeaderAnd { trace, .. } = self.get_tx_trace_with_header(tx).await?;
+
+        let found_trace = trace
+            .trace
+            .iter()
+            .filter(|t| t.is_create())
+            .find(|t| t.get_create_output() == created_pool)
+            .ok_or_else(|| ClassifierTestUtilsError::DiscoveryError(created_pool))?;
+
+        let mut trace_addr = found_trace.get_trace_address();
+
+        if trace_addr.len() > 1 {
+            trace_addr.pop().unwrap();
+        } else {
+            return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))
+        };
+
+        let p_trace = trace
+            .trace
+            .iter()
+            .find(|f| f.get_trace_address() == trace_addr)
+            .ok_or_else(|| ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))?;
+
+        let Action::Call(call) = &p_trace.trace.action else { panic!() };
+
+        let from_address = found_trace.get_from_addr();
+        let created_addr = found_trace.get_create_output();
+        let dispatcher = DiscoveryProtocols::default();
+        let call_data = call.input.clone();
+        let tracer = self.trace_loader.get_provider();
+
+        let res = dispatcher
+            .dispatch(tracer.clone(), from_address, created_addr, call_data.clone())
+            .await;
+
+        cmp_fn(res);
+
+        Ok(())
     }
 }
 
@@ -343,8 +465,16 @@ impl Deref for ClassifierTestUtils {
 pub enum ClassifierTestUtilsError {
     #[error(transparent)]
     TraceLoaderError(#[from] TraceLoaderError),
+    #[error(transparent)]
+    DatabaseError(#[from] DatabaseError),
     #[error("failed to read from libmdbx")]
     LibmdbxError,
     #[error("dex pricing failed")]
     DexPricingError,
+    #[error("couldn't find trace for address: {0:?}")]
+    DiscoveryError(Address),
+    #[error("couldn't find parent node for created pool {0:?}")]
+    ProtocolDiscoveryError(Address),
+    #[error("couldn't find trace that matched {0:?}")]
+    ProtocolClassificationError(Address),
 }

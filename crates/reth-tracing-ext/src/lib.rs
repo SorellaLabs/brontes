@@ -23,10 +23,9 @@ use reth_rpc::{
         cache::{EthStateCache, EthStateCacheConfig},
         error::EthResult,
         gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
-        EthFilterConfig, EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig,
-        RPC_DEFAULT_GAS_CAP,
+        EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig, RPC_DEFAULT_GAS_CAP,
     },
-    BlockingTaskGuard, BlockingTaskPool, EthApi, EthFilter, TraceApi,
+    BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
 };
 use reth_rpc_types::{
     trace::parity::{TransactionTrace, *},
@@ -56,9 +55,8 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:    EthApi<Provider, RethTxPool, NoopNetwork>,
-    pub filter: EthFilter<Provider, RethTxPool>,
-    pub trace:  TraceApi<Provider, RethApi>,
+    pub api:   EthApi<Provider, RethTxPool, NoopNetwork>,
+    pub trace: TraceApi<Provider, RethApi>,
 }
 
 impl TracingClient {
@@ -85,7 +83,11 @@ impl TracingClient {
         )
         .unwrap();
 
-        let state_cache = EthStateCache::spawn(provider.clone(), EthStateCacheConfig::default());
+        let state_cache = EthStateCache::spawn_with(
+            provider.clone(),
+            EthStateCacheConfig::default(),
+            task_executor.clone(),
+        );
 
         let transaction_validator = EthTransactionValidatorBuilder::new(chain.clone())
             .build_with_tasks(provider.clone(), task_executor.clone(), NoopBlobStore::default());
@@ -99,7 +101,7 @@ impl TracingClient {
         let blocking = BlockingTaskPool::build().unwrap();
         let eth_state_config = EthStateCacheConfig::default();
         let fee_history = FeeHistoryCache::new(
-            EthStateCache::spawn(provider.clone(), eth_state_config),
+            EthStateCache::spawn_with(provider.clone(), eth_state_config, task_executor.clone()),
             FeeHistoryCacheConfig::default(),
         );
         // blocking task pool
@@ -119,20 +121,12 @@ impl TracingClient {
             blocking,
             fee_history,
         );
-        let filter_config = EthFilterConfig::default();
-        let filter = EthFilter::new(
-            provider.clone(),
-            tx_pool,
-            state_cache.clone(),
-            filter_config,
-            Box::new(task_executor),
-        );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        Self { api, trace, filter }
+        Self { api, trace }
     }
 
     /// Replays all transactions in a block
