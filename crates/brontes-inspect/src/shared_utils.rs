@@ -88,6 +88,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
         });
 
+        let jared = Address::from_str("0x6b75d8af000000e20b7a7ddf000ba900b4009a80").unwrap();
+
+        println!("jared deltas {:?}", deltas.get(&jared).unwrap_or(&HashMap::new()));
+
         deltas
     }
 
@@ -112,22 +116,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 };
 
                 let usd_amount = amount.clone() * price.clone();
-                if address
-                    == Address::from_str("0x6b75d8af000000e20b7a7ddf000ba900b4009a80").unwrap()
-                {
-                    println!(
-                        "Token: {} \n Is worth: {:?} USD \n The address {} gained a total of {}, \
-                         worth {} USD",
-                        token_addr,
-                        price.clone().to_float(),
-                        address,
-                        amount.clone().to_float(),
-                        usd_amount.clone().to_float()
-                    );
-                }
+
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
         }
+
+        let jared = Address::from_str("0x6b75d8af000000e20b7a7ddf000ba900b4009a80").unwrap();
+
+        println!("jared deltas {:?}", usd_deltas.get(&jared).unwrap_or(&Rational::ZERO));
 
         Some(usd_deltas)
     }
