@@ -6,7 +6,8 @@ use std::{
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{BundleData, MevType, Sandwich},
+    classified_mev::{BundleData, MevType, Sandwich, TokenProfit, TokenProfits},
+    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node},
     ToFloatNearest,
@@ -170,7 +171,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .collect_vec()
             })
             .collect_vec();
-
+        //TODO: Check later if this method correctly identifies an incorrect middle
+        // frontrun that is unrelated
         if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions) {
             // if we don't satisfy a sandwich but we have more than 1 possible front run
             // tx remaining, lets remove the false positive backrun tx and try again
@@ -215,11 +217,35 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .collect::<Vec<_>>();
 
         let deltas = self.inner.calculate_token_deltas(&all_actions);
+
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, deltas, metadata.clone(), false)?;
+                .usd_delta_by_address(idx, &deltas, metadata.clone(), false)?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
+
+        let token_profits = TokenProfits {
+            profits: mev_profit_collector
+                .iter()
+                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
+                .flat_map(|(address, delta)| {
+                    delta.iter().map(|(token, amount)| {
+                        let usd_value = metadata
+                            .dex_quotes
+                            .price_at_or_before(Pair(*token, self.inner.quote), idx)
+                            .unwrap_or(Rational::ZERO)
+                            .to_float()
+                            * amount.clone().to_float();
+                        TokenProfit {
+                            profit_collector: *address,
+                            token: *token,
+                            amount: amount.clone().to_float(),
+                            usd_value,
+                        }
+                    })
+                })
+                .collect(),
+        };
 
         let rev_usd = addr_usd_deltas
             .values()
@@ -241,8 +267,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             mev_contract: mev_executor_contract,
             block_number: metadata.block_num,
             mev_type: MevType::Sandwich,
-            finalized_profit_usd: (rev_usd - &gas_used).to_float(),
-            finalized_bribe_usd: gas_used.to_float(),
+            profit_usd: (rev_usd - &gas_used).to_float(),
+            token_profits,
+            bribe_usd: gas_used.to_float(),
         };
 
         let sandwich = Sandwich {
