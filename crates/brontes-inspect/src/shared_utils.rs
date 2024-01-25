@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedTransfer},
-    ToScaledRational,
+    ToFloatNearest, ToScaledRational,
 };
 use malachite::{
     num::basic::traits::{One, Zero},
@@ -115,9 +115,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     "Token: {} \n Is worth: {:?} USD \n The address gained a total of {}, worth \
                      {} USD",
                     token_addr,
-                    price.clone().to_f64(),
-                    amount.clone().to_f64(),
-                    usd_amount.clone().to_f64()
+                    price.clone().to_float(),
+                    amount.clone().to_float(),
+                    usd_amount.clone().to_float()
                 );
                 *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
             }
