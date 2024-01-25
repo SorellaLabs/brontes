@@ -121,6 +121,7 @@ impl PairSubGraph {
         edge_state: &HashMap<Address, T>,
     ) -> Option<Rational> {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
+            .map(|p| p.0)
     }
 
     pub fn get_all_pools(&self) -> impl Iterator<Item = &Vec<SubGraphEdge>> + '_ {
@@ -211,7 +212,7 @@ pub fn dijkstra_path<G, T>(
     start: G::NodeId,
     goal: G::NodeId,
     state: &HashMap<Address, T>,
-) -> Option<Rational>
+) -> Option<(Rational, Vec<Rational>)>
 where
     T: ProtocolState,
     G: IntoEdgeReferences<EdgeWeight = Vec<SubGraphEdge>>,
@@ -336,20 +337,32 @@ where
                     if next_score < *ent.get() {
                         *ent.into_mut() = next_score.clone();
                         visit_next.push(MinScored(next_score, (next, new_price.clone())));
-                        node_price.insert(next, new_price);
+                        node_price.insert(next, (node, new_price));
                     }
                 }
                 Vacant(ent) => {
                     ent.insert(next_score.clone());
                     visit_next.push(MinScored(next_score, (next, new_price.clone())));
-                    node_price.insert(next, new_price);
+                    node_price.insert(next, (node, new_price));
                 }
             }
         }
         visited.visit(node);
     }
+    let mut price_path = Vec::new();
+    let (mut prev, price) = node_price.remove(&goal)?;
+    price_path.push(price.clone());
 
-    node_price.remove(&goal)
+    while prev != start {
+        let (new_prev, price) = node_price.remove(&prev).unwrap();
+        price_path.push(price);
+        prev = new_prev;
+    }
+    let price_path = price_path.into_iter().rev().collect::<Vec<_>>();
+    #[cfg(test)]
+    tracing::info!("{:#?}", price_path);
+
+    Some((price, price_path))
 }
 
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in
@@ -406,8 +419,11 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
 #[cfg(test)]
 pub mod test {
     use alloy_primitives::Address;
+    use brontes_types::constants::USDC_ADDRESS;
+    use futures::StreamExt;
 
     use super::*;
+    use crate::{test::USDC_ADDRESS, test_utils::PricingTestUtils};
 
     #[derive(Debug)]
     struct MockPoolState {
@@ -505,5 +521,17 @@ pub mod test {
         let price = graph.fetch_price(&state_map).unwrap();
 
         assert_eq!(price, Rational::from_unsigneds(1usize, 390usize))
+    }
+
+    #[tokio::test]
+    async fn price_price_graph_for_shit() {
+        let utils = PricingTestUtils::new(USDC_ADDRESS);
+        let (pricer, _) = utils
+            .setup_dex_pricer_for_tx(
+                hex!("ebabf4a04fede867f7f681e30b4f5a79451e9d9e5bd1e50b4b455df8355571b6").into(),
+            )
+            .await
+            .unwrap();
+        pricer.next().await;
     }
 }
