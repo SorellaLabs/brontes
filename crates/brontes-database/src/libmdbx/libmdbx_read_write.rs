@@ -40,7 +40,7 @@ use crate::{
     AddressToProtocol, AddressToTokens, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
-pub struct LibmdbxReadWriter(pub(crate) Libmdbx);
+pub struct LibmdbxReadWriter(pub Libmdbx);
 
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {

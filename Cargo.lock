@@ -1465,6 +1465,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "strum",
  "thiserror",
  "tokio",
  "tracing",

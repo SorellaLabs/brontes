@@ -65,13 +65,13 @@ fn is_proper_address(possible_address: &Literal) -> syn::Result<()> {
         return Err(syn::Error::new(
             possible_address.span(),
             "given factory address is invalid. Needs to start with 0x",
-        ));
+        ))
     }
     if stred.len() != 42 {
         return Err(syn::Error::new(
             possible_address.span(),
             format!("given factory address length is incorrect got: {} wanted: 40", stred.len()),
-        ));
+        ))
     }
 
     Ok(())
@@ -137,6 +137,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
 
         impl crate::FactoryDecoderDispatch for #struct_name {
             fn dispatch<T: ::brontes_types::traits::TracingProvider>(
+                    &self,
                     tracer: ::std::sync::Arc<T>,
                     factory: ::alloy_primitives::Address,
                     deployed_address: ::alloy_primitives::Address,
@@ -153,7 +154,6 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                     let mut key = [0u8; 24];
                     key[0..20].copy_from_slice(&**factory);
                     key[20..].copy_from_slice(&parent_calldata[0..4]);
-                    let this = Self::default();
 
                     #(
                         const #var_name: [u8; 24] = #fn_name();
@@ -164,7 +164,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                             #var_name => {
                             return
                                 crate::FactoryDecoder::decode_new_pool(
-                                    &this.#i,
+                                    &self.#i,
                                     tracer,
                                     deployed_address,
                                     parent_calldata,
@@ -195,7 +195,7 @@ impl Parse for DiscoveryDispatch {
             return Err(syn::Error::new(
                 Span::call_site(),
                 "no discovery implementations to dispatch to",
-            ));
+            ))
         }
 
         Ok(Self { rest, struct_name })

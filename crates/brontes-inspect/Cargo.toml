@@ -3,7 +3,9 @@ name = "brontes-inspect"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bench]]
+name = "inspectors"
+harness = false
 
 [dependencies]
 # brontes
@@ -61,6 +63,10 @@ eyre.workspace = true
 brontes-core = { workspace = true, optional = true }
 brontes-classifier = { workspace = true, optional = true }
 brontes-pricing = { workspace = true, optional = true }
+criterion = { version = "0.5", features = [
+  "async",
+  "async_tokio",
+], optional = true }
 
 [dev-dependencies]
 dotenv.workspace = true
@@ -85,5 +91,10 @@ quote = "1.0.35"
 
 
 [features]
-tests = ["brontes-classifier/tests", "brontes-core/tests", "brontes-pricing"]
+tests = [
+  "brontes-classifier/tests",
+  "brontes-core/tests",
+  "brontes-pricing",
+  "criterion",
+]
 local = ["brontes-core/local", "tests"]

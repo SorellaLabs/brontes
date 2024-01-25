@@ -193,14 +193,17 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
-    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS};
+    use crate::{
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
+        Inspectors,
+    };
 
     #[tokio::test]
     #[serial]
     async fn test_aave_v3_liquidation() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
-        let config = InspectorTxRunConfig::new(MevType::Liquidation)
+        let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_block(19042179)
             .with_dex_prices()
             .with_gas_paid_usd(2792.487)
@@ -214,7 +217,7 @@ mod tests {
     async fn test_aave_v2_liquidation() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
-        let config = InspectorTxRunConfig::new(MevType::Liquidation)
+        let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_block(18979710)
             .with_dex_prices()
             .with_gas_paid_usd(636.54)
