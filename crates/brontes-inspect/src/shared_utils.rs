@@ -131,7 +131,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             return None
         };
         if token_address == self.quote {
-            return Some(Rational::ONE * amount.to_scaled_rational(decimals))
+            return Some(amount.to_scaled_rational(decimals))
         }
 
         let pair = Pair(token_address, self.quote);
