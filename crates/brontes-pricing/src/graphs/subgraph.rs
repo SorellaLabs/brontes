@@ -393,6 +393,7 @@ pub mod test {
 
     use super::*;
 
+    #[derive(Debug)]
     struct MockPoolState {
         // tvl scaled by tokens
         tvl:   (Rational, Rational),
