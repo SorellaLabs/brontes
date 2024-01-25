@@ -1,5 +1,8 @@
 use brontes_classifier::test_utils::ClassifierBenchUtils;
 use criterion::{criterion_group, criterion_main, Criterion};
+use tree_operations::tree_operations;
+
+mod tree_operations;
 
 fn bench_tree_building(c: &mut Criterion) {
     let utils = ClassifierBenchUtils::new();
@@ -9,4 +12,4 @@ fn bench_tree_building(c: &mut Criterion) {
 }
 
 criterion_group!(tree, bench_tree_building);
-criterion_main!(tree);
+criterion_main!(tree, tree_operations);
