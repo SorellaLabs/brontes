@@ -57,7 +57,10 @@ eyre.workspace = true
 reth-tracing-ext = { workspace = true, optional = true }
 brontes-core = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = true }
-criterion = { version = "0.5", features = ["async", "async_tokio"], optional = true}
+criterion = { version = "0.5", features = [
+  "async",
+  "async_tokio",
+], optional = true }
 
 [features]
 tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
