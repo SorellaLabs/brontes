@@ -59,6 +59,9 @@ rkyv.workspace = true
 redefined.workspace = true
 bytes.workspace = true
 
+# stats
+statrs = "0.16"
+
 [build-dependencies]
 strum = { workspace = true, features = ["derive"] }
 tokio.workspace = true

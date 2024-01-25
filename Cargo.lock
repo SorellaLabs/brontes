@@ -1794,6 +1794,7 @@ dependencies = [
  "serde_with",
  "serial_test",
  "sorella-db-databases",
+ "statrs",
  "strum",
  "tokio",
  "tracing",
