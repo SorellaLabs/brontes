@@ -182,4 +182,42 @@ impl InspectorBenchUtils {
 
         Ok(())
     }
+
+    pub fn bench_composer_block(
+        &self,
+        bench_name: &str,
+        block: u64,
+        iters: usize,
+        inspectors: Vec<Inspectors>,
+        c: &mut Criterion,
+    ) -> Result<(), InspectorTestUtilsError> {
+        let inspectors = inspectors
+            .into_iter()
+            .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
+            .collect::<Vec<_>>();
+
+        let (tree, prices) = self.rt.block_on(
+            self.classifier_inspector
+                .build_tree_block_with_pricing(block, self.quote_address),
+        )?;
+
+        let mut metadata = self
+            .rt
+            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
+        metadata.dex_quotes = prices;
+
+        let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
+        c.bench_function(bench_name, move |b| {
+            b.to_async(&self.rt).iter(|| async {
+                for _ in 0..=iters {
+                    black_box(
+                        compose_mev_results(inspectors.as_slice(), tree.clone(), metadata.clone())
+                            .await,
+                    );
+                }
+            });
+        });
+
+        Ok(())
+    }
 }
