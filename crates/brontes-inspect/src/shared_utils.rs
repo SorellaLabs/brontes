@@ -88,14 +88,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
         });
 
-        let jared = Address::from_str("0x6b75d8af000000e20b7a7ddf000ba900b4009a80").unwrap();
-
-        if let Some(jared_deltas) = deltas.get(&jared) {
-            for (token, amount) in jared_deltas {
-                println!("Token: {}, Amount: {}", token, amount.clone().to_float());
-            }
-        }
-
         deltas
     }
 
@@ -103,7 +95,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn usd_delta_by_address(
         &self,
         tx_position: usize,
-        deltas: SwapTokenDeltas,
+        deltas: &SwapTokenDeltas,
         metadata: Arc<MetadataCombined>,
         cex: bool,
     ) -> Option<HashMap<Address, Rational>> {
@@ -111,7 +103,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         for (address, inner_map) in deltas {
             for (token_addr, amount) in inner_map {
-                let pair = Pair(token_addr, self.quote);
+                let pair = Pair(*token_addr, self.quote);
                 let price = if cex {
                     // Fetch CEX price
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
@@ -121,25 +113,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                 let usd_amount = amount.clone() * price.clone();
 
-                *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
+                *usd_deltas.entry(*address).or_insert(Rational::ZERO) += usd_amount;
             }
-        }
-
-        // Define the address for Jared
-        let jared_address =
-            Address::from_str("0x6b75d8af000000e20b7a7ddf000ba900b4009a80").unwrap();
-
-        // Retrieve the USD deltas for Jared's address
-        let binding = Rational::ZERO;
-        let jared_usd_deltas = usd_deltas.get(&jared_address).unwrap_or(&binding);
-
-        // Print the USD deltas for Jared's address in a readable format
-        if *jared_usd_deltas != Rational::ZERO {
-            println!(
-                "USD Deltas for Jared's Address ({}): {:?}",
-                jared_address,
-                jared_usd_deltas.clone().to_float()
-            );
         }
 
         Some(usd_deltas)
