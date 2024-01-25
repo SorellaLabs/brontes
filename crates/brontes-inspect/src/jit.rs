@@ -409,6 +409,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 #[cfg(test)]
 mod tests {
     use serial_test::serial;
+    use alloy_primitives::hex;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
