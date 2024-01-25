@@ -208,9 +208,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         dex_price: &Rational,
         cex_price: &Rational,
     ) -> Option<Rational> {
-        tracing::info!(?dex_price, ?cex_price);
         // Calculate the price differences between DEX and CEX
-        let delta_price = cex_price - dex_price;
+        let delta_price = dex_price - cex_price;
 
         // Calculate the potential profit
         let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
@@ -328,7 +327,7 @@ mod tests {
                 ),
                 proposer_mev_reward: None,
                 cex_quotes,
-                eth_prices: eth_price,
+                eth_prices: eth_price.reciprocal(),
                 mempool_flow: HashSet::new(),
             },
         };
