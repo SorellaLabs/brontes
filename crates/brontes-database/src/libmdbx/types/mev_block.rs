@@ -1,8 +1,8 @@
 use brontes_types::{
     classified_mev::{
-        AtomicBackrun, BundleData, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich,
-        Liquidation, MevBlock, MevType, PossibleMev, PossibleMevTriggers, PriceKind, Sandwich,
-        TokenProfit, TokenProfits,
+        AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
+        JitLiquiditySandwich, Liquidation, MevBlock, MevType, PossibleMev, PossibleMevTriggers,
+        PriceKind, Sandwich, TokenProfit, TokenProfits,
     },
     db::{
         mev_block::MevBlockWithClassified,
@@ -47,7 +47,7 @@ impl LibmdbxData<MevBlocks> for MevBlocksData {
 #[redefined(MevBlockWithClassified)]
 pub struct LibmdbxMevBlockWithClassified {
     pub block: LibmdbxMevBlock,
-    pub mev:   Vec<(LibmdbxBundleHeader, LibmdbxBundleData)>,
+    pub mev:   Vec<LibmdbxBundle>,
 }
 
 #[derive(
@@ -67,7 +67,8 @@ pub struct LibmdbxMevBlock {
     pub mev_count: u64,
     pub eth_price: f64,
     pub cumulative_gas_used: u128,
-    pub cumulative_gas_paid: u128,
+    // Sum of all priority fees in the block
+    pub cumulative_priority_fee: u128,
     pub total_bribe: u128,
     pub cumulative_mev_priority_fee_paid: u128,
     pub builder_address: Redefined_Address,
@@ -159,6 +160,43 @@ pub struct LibmdbxBundleHeader {
     Clone,
     Redefined,
 )]
+#[redefined(BundleData)]
+pub enum LibmdbxBundleData {
+    Sandwich(LibmdbxSandwich),
+    AtomicBackrun(LibmdbxAtomicBackrun),
+    JitSandwich(LibmdbxJitLiquiditySandwich),
+    Jit(LibmdbxJitLiquidity),
+    CexDex(LibmdbxCexDex),
+    Liquidation(LibmdbxLiquidation),
+    Unknown,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(Bundle)]
+pub struct LibmdbxBundle {
+    pub header: LibmdbxBundleHeader,
+    pub data:   LibmdbxBundleData,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
 #[redefined(TokenProfit)]
 pub struct LibmdbxTokenProfit {
     pub profit_collector: Redefined_Address,
@@ -180,27 +218,6 @@ pub struct LibmdbxTokenProfit {
 #[redefined(TokenProfits)]
 pub struct LibmdbxTokenProfits {
     pub profits: Vec<LibmdbxTokenProfit>,
-}
-
-#[derive(
-    Debug,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
-    Clone,
-    Redefined,
-)]
-#[redefined(BundleData)]
-pub enum LibmdbxBundleData {
-    Sandwich(LibmdbxSandwich),
-    AtomicBackrun(LibmdbxAtomicBackrun),
-    JitSandwich(LibmdbxJitLiquiditySandwich),
-    Jit(LibmdbxJitLiquidity),
-    CexDex(LibmdbxCexDex),
-    Liquidation(LibmdbxLiquidation),
-    Unknown,
 }
 
 #[derive(
