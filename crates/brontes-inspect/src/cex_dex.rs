@@ -285,6 +285,7 @@ mod tests {
             B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
                 .unwrap();
 
+        // reciprocal because we store the prices as usdc / eth due to pair ordering
         let eth_price = Rational::try_from_float_simplest(1665.81)
             .unwrap()
             .reciprocal();
@@ -339,7 +340,7 @@ mod tests {
             .with_block(18264694)
             .with_mev_tx_hashes(vec![tx_hash])
             .with_gas_paid_usd(79836.4183)
-            .with_expected_profit_usd(22229.27);
+            .with_expected_profit_usd(21270.966);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
