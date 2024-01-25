@@ -1,13 +1,27 @@
-use itertools::Itertools;
+use itertools::{multizip, Itertools};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{Index, LitBool, Path};
+use syn::{Index, Path};
+
+pub struct LogConfig {
+    pub can_repeat:    bool,
+    pub ignore_before: bool,
+    pub log_ident:     Ident,
+}
+
+pub struct ParsedLogConfig {
+    check_indexes:   Vec<Index>,
+    is_repeatings:   Vec<bool>,
+    ignore_befores:  Vec<bool>,
+    log_field_names: Vec<Ident>,
+    log_names:       Vec<Ident>,
+}
 
 pub struct LogData<'a> {
     exchange_name: &'a Ident,
     action_type:   &'a Ident,
     mod_path:      Path,
-    log_config:    &'a [(bool, bool, Ident)],
+    log_config:    &'a [LogConfig],
 }
 
 impl<'a> LogData<'a> {
@@ -15,7 +29,7 @@ impl<'a> LogData<'a> {
         exchange_name: &'a Ident,
         action_type: &'a Ident,
         fn_call_path: &'a Path,
-        log_config: &'a [(bool, bool, Ident)],
+        log_config: &'a [LogConfig],
     ) -> Self {
         let mut mod_path = fn_call_path.clone();
         mod_path.segments.pop().unwrap();
@@ -24,45 +38,39 @@ impl<'a> LogData<'a> {
         Self { action_type, exchange_name, log_config, mod_path }
     }
 
-    fn parse_log_config(&self) -> (Vec<Vec<Index>>, Vec<LitBool>, Vec<Ident>, Vec<Ident>) {
-        let mut is_possible_count = 0usize;
-        self.log_config
+    fn parse_log_config(&self) -> ParsedLogConfig {
+        let (check_indexes, is_repeatings, ignore_befores, log_field_names, log_names): (
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+        ) = self
+            .log_config
             .into_iter()
             .enumerate()
-            .collect_vec()
-            .into_iter()
-            .filter_map(|(i, n)| {
+            .filter_map(|(i, LogConfig { can_repeat, log_ident, ignore_before })| {
                 // is possible, need to increment count
-                if n.0 {
-                    is_possible_count += 1;
-                }
-                if n.1 {
-                    return None
-                }
 
+                let idx = if *ignore_before { Index::from(0) } else { Index::from(i) };
                 Some((
-                    (0..=is_possible_count)
-                        .into_iter()
-                        .filter_map(|shift| {
-                            if i < shift {
-                                return None
-                            }
-                            Some(Index::from(i - shift))
-                        })
-                        .collect_vec(),
-                    LitBool::new(n.0, Span::call_site()),
-                    Ident::new(&(n.2.to_string() + "_field"), Span::call_site()),
-                    n.2.clone(),
+                    idx,
+                    *can_repeat,
+                    *ignore_before,
+                    Ident::new(&(log_ident.to_string() + "_field"), Span::call_site()),
+                    log_ident.clone(),
                 ))
             })
-            .multiunzip()
+            .multiunzip();
+
+        ParsedLogConfig { log_names, log_field_names, check_indexes, is_repeatings, ignore_befores }
     }
 
     fn generate_decoded_log_struct(
         &self,
         log_ident: &[Ident],
         log_field: &[Ident],
-        log_optional: &[LitBool],
+        log_repeating: &[bool],
     ) -> (TokenStream, Ident) {
         let mod_path = &self.mod_path;
 
@@ -74,40 +82,48 @@ impl<'a> LogData<'a> {
             Span::call_site(),
         );
 
-        let res_struct_fields = log_optional
+        let res_struct_fields = log_ident
             .iter()
-            .zip(log_ident.iter())
-            .filter_map(|(optional, res)| {
-                let field = Ident::new(&(res.to_string() + "_field"), Span::call_site());
+            .zip(log_repeating.iter())
+            .map(|(name, repeating)| {
+                let field = Ident::new(&(name.to_string() + "_field"), Span::call_site());
 
-                Some(if optional.value {
-                    quote!(#field : Option<#mod_path::#res>)
+                let data_type = if *repeating {
+                    quote!(Vec<#mod_path::#name>)
                 } else {
-                    quote!(#field : #mod_path::#res)
-                })
+                    quote!(#mod_path::#name)
+                };
+
+                quote!(#field : #data_type)
             })
             .collect_vec();
 
-        let return_struct_build_fields = log_optional
+        let return_struct_build_fields = log_ident
             .iter()
-            .zip(log_ident.iter())
-            .filter_map(|(optional, res)| {
-                let field = Ident::new(&(res.to_string() + "_field"), Span::call_site());
-
-                Some(if optional.value {
-                    // don't unwrap optional
-                    quote!(#field : self.#field)
-                } else {
-                    quote!(#field : self.#field.unwrap())
-                })
+            .map(|name| {
+                let field = Ident::new(&(name.to_string() + "_field"), Span::call_site());
+                quote!(#field : self.#field.unwrap())
             })
             .collect_vec();
+
+        let log_field_ty =
+            log_repeating
+                .iter()
+                .zip(log_ident.iter())
+                .map(|(repeating, name)| {
+                    if *repeating {
+                        quote!(Vec<#mod_path::#name>)
+                    } else {
+                        quote!(#mod_path::#name)
+                    }
+                })
+                .collect_vec();
 
         (
             quote!(
                 struct #log_return_builder_struct_name {
                     #(
-                        #log_field: Option<#mod_path::#log_ident>
+                        #log_field: Option<#log_field_ty>
                     ),*
                 }
 
@@ -136,33 +152,154 @@ impl<'a> LogData<'a> {
             log_return_builder_struct_name,
         )
     }
+
+    fn parse_ignore_before(
+        &self,
+        next_log: Option<&Ident>,
+        log_name: &Ident,
+        log_field_name: &Ident,
+        index: &Index,
+    ) -> TokenStream {
+        let mod_path = &self.mod_path;
+
+        let has_next_log = if let Some(next_log) = next_log {
+            quote!(
+             if <#mod_path::#next_log
+                as ::alloy_sol_types::SolEvent>
+                    ::decode_log_data(&log.data, false).ok().is_some()
+                    && started {
+                    break
+                }
+            )
+        } else {
+            quote!()
+        };
+
+        quote!(
+        let mut repeating_results = Vec::new();
+        let mut i = 0usize;
+            let mut started = false;
+            loop {
+                if let Some(log) = &logs.get(#index + repeating_modifier + i) {
+                    if let Some(decoded) = <#mod_path::#log_name
+                        as ::alloy_sol_types::SolEvent>
+                            ::decode_log_data(&log.data, false).ok() {
+                            started = true;
+                            repeating_results.push(decoded);
+                    };
+
+                    #has_next_log
+
+                } else {
+                    break
+                }
+
+                i += 1;
+            }
+            // move the index to where we finished
+            repeating_modifier += i - 1;
+
+            log_res.#log_field_name = Some(repeating_results);
+        )
+    }
+
+    fn parse_different_paths(&self, config: &ParsedLogConfig) -> TokenStream {
+        let ParsedLogConfig {
+            check_indexes,
+            log_field_names,
+            log_names,
+            is_repeatings,
+            ignore_befores,
+            ..
+        } = config;
+
+        let mod_path = &self.mod_path;
+        let mut stream = TokenStream::new();
+
+        for (enum_i, (indexes, log_field_name, log_name, repeating, ignore_before)) in
+            multizip((check_indexes, log_field_names, log_names, is_repeatings, ignore_befores))
+                .enumerate()
+        {
+            let res = if *repeating {
+                if *ignore_before {
+                    let next_log = log_names.get(enum_i + 1);
+                    self.parse_ignore_before(next_log, log_name, log_field_name, indexes)
+                // repeating not ignore before
+                } else {
+                    quote!(
+                        let mut repeating_results = Vec::new();
+                        let mut i = 0usize;
+                            let mut started = false;
+                            loop {
+                                if let Some(log) = &logs.get(#indexes + repeating_modifier + i) {
+                                    if let Some(decoded) =
+                                        <#mod_path::#log_name as
+                                        ::alloy_sol_types::SolEvent>
+                                        ::decode_log_data(&log.data, false).ok() {
+                                            started = true;
+                                            repeating_results.push(decoded);
+                                    } else if started  {
+                                        break
+                                    }
+                                } else {
+                                    break
+                                }
+
+                                i += 1;
+                            }
+
+                            repeating_modifier += repeating_results.len();
+                            log_res.#log_field_name = Some(repeating_results);
+                    )
+                }
+            } else {
+                quote!(
+                'possible: {
+                        if let Some(log) = &logs.get(#indexes + repeating_modifier) {
+                            if let Some(decoded) = <#mod_path::#log_name
+                                as ::alloy_sol_types::SolEvent>
+                                ::decode_log_data(&log.data, false).ok() {
+                                    log_res.#log_field_name = Some(decoded);
+                                    break 'possible
+                            }
+                            else {
+                                ::tracing::error!(?from_address,
+                                                  ?target_address,
+                                                  ?self,
+                                                  "decoding a default log failed, this should never occur,
+                                                  please make a issue if you come across this"
+                                );
+                            }
+                        }
+                    }
+                )
+            };
+
+            stream.extend(res);
+        }
+
+        stream
+    }
 }
 
 impl ToTokens for LogData<'_> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let (log_idx, log_optional, log_field, log_ident) = self.parse_log_config();
-        let (struct_parsing, log_builder_struct) =
-            self.generate_decoded_log_struct(&log_ident, &log_field, &log_optional);
+        let config = self.parse_log_config();
+        let parsed_paths = self.parse_different_paths(&config);
 
-        let mod_path = &self.mod_path;
+        let ParsedLogConfig { log_field_names, log_names, is_repeatings, .. } = config;
+
+        let (struct_parsing, log_builder_struct) =
+            self.generate_decoded_log_struct(&log_names, &log_field_names, &is_repeatings);
+
         let log_result = quote!(
             #struct_parsing
 
             let mut log_res = #log_builder_struct::new();
-            #(
-                'possible: {
-                #(
-                    if let Some(log) = &logs.get(#log_idx) {
-                        if let Some(decoded)= <#mod_path::#log_ident
-                            as ::alloy_sol_types::SolEvent>
-                            ::decode_log_data(&log.data, false).ok() {
-                                log_res.#log_field = Some(decoded);
-                                break 'possible
-                            }
-                    }
-                )*
-                }
-            )*
+            let mut repeating_modifier = 0usize;
+
+            #parsed_paths
+
             let log_data = log_res.build();
         );
 

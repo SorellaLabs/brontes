@@ -3,7 +3,10 @@ use quote::ToTokens;
 use syn::{ExprClosure, Path};
 
 use super::{
-    call_data::CallData, closure_dispatch::ClosureDispatch, logs::LogData, return_data::ReturnData,
+    call_data::CallData,
+    closure_dispatch::ClosureDispatch,
+    logs::{LogConfig, LogData},
+    return_data::ReturnData,
 };
 pub struct CallDataParsing<'a> {
     call_data:   Option<CallData<'a>>,
@@ -20,7 +23,7 @@ impl<'a> CallDataParsing<'a> {
         exchange_name: &'a Ident,
         action_type: &'a Ident,
         fn_call_path: &'a Path,
-        log_config: &'a [(bool, bool, Ident)],
+        log_config: &'a [LogConfig],
         closure: ExprClosure,
     ) -> Self {
         let closure = ClosureDispatch::new(logs, call_data, return_data, closure);
