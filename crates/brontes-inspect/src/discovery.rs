@@ -6,6 +6,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
+use statrs::statistics::Statistics;
 
 /// DiscoveryInspector classifies Possible transactions that we would want to be
 /// discovered. The discovery inspector is always ran
