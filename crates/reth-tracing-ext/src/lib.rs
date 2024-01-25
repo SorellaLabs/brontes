@@ -85,7 +85,11 @@ impl TracingClient {
         )
         .unwrap();
 
-        let state_cache = EthStateCache::spawn(provider.clone(), EthStateCacheConfig::default());
+        let state_cache = EthStateCache::spawn_with(
+            provider.clone(),
+            EthStateCacheConfig::default(),
+            task_executor.clone(),
+        );
 
         let transaction_validator = EthTransactionValidatorBuilder::new(chain.clone())
             .build_with_tasks(provider.clone(), task_executor.clone(), NoopBlobStore::default());
