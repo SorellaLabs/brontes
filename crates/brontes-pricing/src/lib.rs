@@ -21,7 +21,7 @@ use brontes_types::{
 };
 use ethers::core::k256::elliptic_curve::bigint::Zero;
 pub use graphs::{AllPairGraph, GraphManager};
-use malachite::Rational;
+use malachite::{num::basic::traits::One, Rational};
 pub use price_graph_types::{
     PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
 };
@@ -209,7 +209,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
         if pool_pair.0 == pool_pair.1 {
-            return None
+            return Some(Rational::ONE)
         }
         self.graph_manager.get_price(pool_pair)
     }
