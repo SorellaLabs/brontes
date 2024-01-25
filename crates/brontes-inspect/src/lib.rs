@@ -83,6 +83,7 @@
 pub mod atomic_backrun;
 pub mod cex_dex;
 pub mod composer;
+pub mod discovery;
 pub mod jit;
 #[allow(dead_code, unused_imports, unused_variables)]
 pub mod liquidations;
