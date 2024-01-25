@@ -32,7 +32,7 @@ use crate::action_classifier::{ActionDispatch, ActionMacro};
 ///     Protocol::UniswapV2,
 ///     crate::UniswapV2::swapCall,
 ///     Swap,
-///     [Swap],
+///     [..Swap],
 ///     logs: true,
 ///     |index,
 ///     from_address: Address,
@@ -44,7 +44,7 @@ use crate::action_classifier::{ActionDispatch, ActionMacro};
 ///     Protocol::UniswapV2,
 ///     crate::UniswapV2::mintCall,
 ///     Mint,
-///     [Mint],
+///     [..Mint],
 ///     logs: true,
 ///     call_data: true,
 ///     |index,
@@ -54,6 +54,17 @@ use crate::action_classifier::{ActionDispatch, ActionMacro};
 ///      call_data: mintCall,
 ///      log_data: UniswapV2mintCallLogs|  { <body> });
 /// ```
+///
+/// # Logs Config
+/// NOTE: all log modifiers are compatible with each_other
+/// ## Log Ignore Before
+/// if you want to ignore all logs that occurred before a certain log,
+/// prefix the log with .. ex `..Mint`.
+///
+/// ## Log Repeating
+/// if a log is repeating and a dynamic length, use `*` after the log
+/// to mark that there is a arbitrary amount of these logs emitted.
+/// ex `Transfer*` or `..Transfer*`
 ///
 /// the fields `call_data`, `return_data` and `log_data` are only put into the
 /// closure if specified they are always in this order, for example if you put
