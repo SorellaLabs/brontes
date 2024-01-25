@@ -56,13 +56,11 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:    EthApi<Provider, RethTxPool, NoopNetwork>,
-    pub filter: EthFilter<Provider, RethTxPool>,
-    pub trace:  TraceApi<Provider, RethApi>,
+    pub api:   EthApi<Provider, RethTxPool, NoopNetwork>,
+    pub trace: TraceApi<Provider, RethApi>,
 }
 
 impl TracingClient {
-    #[track_caller]
     pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
         let chain = MAINNET.clone();
         let db = Arc::new(init_db(db_path).unwrap());
@@ -124,20 +122,12 @@ impl TracingClient {
             blocking,
             fee_history,
         );
-        let filter_config = EthFilterConfig::default();
-        let filter = EthFilter::new(
-            provider.clone(),
-            tx_pool,
-            state_cache.clone(),
-            filter_config,
-            Box::new(task_executor),
-        );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        Self { api, trace, filter }
+        Self { api, trace }
     }
 
     /// Replays all transactions in a block
