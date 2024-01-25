@@ -15,7 +15,7 @@ use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::{Abs, Reciprocal, ReciprocalAssign},
-        basic::traits::{One, Zero},
+        basic::traits::{One, OneHalf, Zero},
     },
     Rational,
 };
@@ -285,7 +285,23 @@ where
                 }
             }
 
-            let set = if outliers.len() > not_outliers.len() { outliers } else { not_outliers };
+            if not_outliers.len() == 0 && outliers.len() == 0 {
+                continue
+            }
+
+            let set = if not_outliers.len() >= outliers.len() {
+                not_outliers
+            } else {
+                let out_price = outliers.iter().map(|(i, _)| i).collect::<Vec<_>>();
+                let min = out_price.iter().min().unwrap();
+                let max = out_price.iter().max().unwrap();
+                // more than 50% diff we take not outliers
+                if *max / *min > Rational::ONE_HALF {
+                    not_outliers
+                } else {
+                    outliers
+                }
+            };
 
             let mut pxw = Rational::ZERO;
             let mut weight = Rational::ZERO;
