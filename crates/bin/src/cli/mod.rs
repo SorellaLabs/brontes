@@ -5,8 +5,6 @@ mod db_query;
 mod init;
 mod range_with_dex_price;
 mod run;
-#[cfg(feature = "tests")]
-mod trace;
 mod utils;
 
 pub use utils::*;
@@ -33,7 +31,4 @@ pub enum Commands {
     QueryDb(db_query::DatabaseQuery),
     #[command(name = "db_add")]
     AddToDb(db_insert::AddToDb),
-    #[cfg(feature = "tests")]
-    #[command(name = "store_trace")]
-    Traces(trace::TraceArg),
 }

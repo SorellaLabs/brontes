@@ -1484,6 +1484,7 @@ dependencies = [
  "alloy-transport-http",
  "async-trait",
  "auto_impl",
+ "brontes-classifier",
  "brontes-core",
  "brontes-database",
  "brontes-metrics",
