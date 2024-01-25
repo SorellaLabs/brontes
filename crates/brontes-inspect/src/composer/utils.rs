@@ -12,6 +12,7 @@ use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 use reth_primitives::Address;
 
+//TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
     meta_data:           Arc<MetadataCombined>,
     cumulative_gas_used: u128,
@@ -35,11 +36,12 @@ pub(crate) fn pre_process(
         .iter()
         .map(|root| root.gas_details.gas_used)
         .sum::<u128>();
-
+    //TODO: This should only be priority fee as the base fee is burned (calculation
+    // to be confirmed)
     let cumulative_gas_paid = tree
         .tx_roots
         .iter()
-        .map(|root| root.gas_details.effective_gas_price * root.gas_details.gas_used)
+        .map(|root| root.gas_details.priority_fee)
         .sum::<u128>();
 
     BlockPreprocessing { meta_data, cumulative_gas_used, cumulative_gas_paid, builder_address }
