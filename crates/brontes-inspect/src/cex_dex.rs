@@ -235,7 +235,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let in_usd = metadata.dex_quotes.price_at_or_before(pair_in, tx_idx)?;
         let out_usd = metadata.dex_quotes.price_at_or_before(pair_out, tx_idx)?;
 
-        let dex_usd_price = out_usd / in_usd;
+        let dex_usd_price = in_usd / out_usd;
 
         let cex_best_ask = match (
             metadata.cex_quotes.get_quote(&pair_in),
@@ -248,7 +248,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     swap.token_out,
                     metadata.block_num
                 );
-                token_out_price.best_ask() / token_in_price.best_ask()
+                token_in_price.best_ask() / token_out_price.best_ask()
             }
             (..) => {
                 warn!(
