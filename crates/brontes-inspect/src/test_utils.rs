@@ -192,7 +192,7 @@ impl InspectorTestUtils {
 
         let inspector = self.get_inspector(config.expected_mev_type)?;
 
-        let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
+        let results = inspector.process_tree(tree.into(), metadata.into()).await;
         assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
 
         Ok(())
@@ -259,9 +259,9 @@ impl InspectorTestUtils {
 
         // check gas
         assert!(
-            (classified_mev.finalized_bribe_usd - gas_used_usd).abs() < self.max_result_difference,
+            (classified_mev.bribe_usd - gas_used_usd).abs() < self.max_result_difference,
             "Finalized Bribe != Expected Bribe, {} != {}",
-            classified_mev.finalized_bribe_usd,
+            classified_mev.bribe_usd,
             gas_used_usd
         );
         // check profit
@@ -354,9 +354,9 @@ impl InspectorTestUtils {
 
         // check gas
         assert!(
-            (classified_mev.finalized_bribe_usd - gas_used_usd).abs() < self.max_result_difference,
+            (classified_mev.bribe_usd - gas_used_usd).abs() < self.max_result_difference,
             "Finalized Bribe != Expected Bribe, {} != {}",
-            classified_mev.finalized_bribe_usd,
+            classified_mev.bribe_usd,
             gas_used_usd
         );
         // check profit
