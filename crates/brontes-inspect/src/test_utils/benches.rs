@@ -151,15 +151,17 @@ impl InspectorBenchUtils {
             .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
             .collect::<Vec<_>>();
 
-        let mut trees = self
-            .rt
-            .block_on(self.classifier_inspector.build_tree_txes(tx_hashes))?;
+        let mut trees = self.rt.block_on(
+            self.classifier_inspector
+                .build_tree_txes_with_pricing(tx_hashes, self.quote_address),
+        )?;
 
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
-                trees.into_iter().map(|t| t.header.number).collect(),
+                trees.into_iter().map(|(t, _)| t.header.number).collect(),
             ))
         }
+        let (tree, prices) = trees.remove(0);
 
         let mut metadata = self
             .rt
