@@ -102,6 +102,39 @@ impl InspectorBenchUtils {
         Ok(())
     }
 
+    pub fn bench_inspector_block(
+        &self,
+        bench_name: &str,
+        block: u64,
+        iters: usize,
+        inspector: Inspectors,
+        c: &mut Criterion,
+    ) -> Result<(), InspectorTestUtilsError> {
+        let inspector =
+            inspector.init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
+
+        let (tree, prices) = self.rt.block_on(
+            self.classifier_inspector
+                .build_tree_block_with_pricing(block, self.quote_address),
+        )?;
+
+        let mut metadata = self
+            .rt
+            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
+        metadata.dex_quotes = prices;
+
+        let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
+        c.bench_function(bench_name, move |b| {
+            b.to_async(&self.rt).iter(|| async {
+                for _ in 0..=iters {
+                    black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                }
+            });
+        });
+
+        Ok(())
+    }
+
     pub fn bench_inspector_txes_with_meta(
         &self,
         bench_name: &str,
