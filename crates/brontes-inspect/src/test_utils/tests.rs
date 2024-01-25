@@ -9,11 +9,7 @@ use brontes_types::{
 };
 use thiserror::Error;
 
-use crate::{
-    atomic_backrun::AtomicBackrunInspector, cex_dex::CexDexInspector,
-    composer::compose_mev_results, jit::JitInspector, liquidations::LiquidationInspector,
-    sandwich::SandwichInspector, Inspector,
-};
+use crate::{composer::compose_mev_results, Inspector, Inspectors};
 
 pub const USDC_ADDRESS: Address =
     Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
@@ -82,70 +78,6 @@ impl InspectorTestUtils {
             .map_err(Into::into)
     }
 
-    fn get_inspector(
-        &self,
-        mev_type: MevType,
-    ) -> Result<Box<dyn Inspector>, InspectorTestUtilsError> {
-        let inspector = match mev_type {
-            MevType::Jit => {
-                Box::new(JitInspector::new(self.quote_address, self.classifier_inspector.libmdbx))
-                    as Box<dyn Inspector>
-            }
-            MevType::CexDex => Box::new(CexDexInspector::new(
-                self.quote_address,
-                self.classifier_inspector.libmdbx,
-            )) as Box<dyn Inspector>,
-            MevType::Backrun => Box::new(AtomicBackrunInspector::new(
-                self.quote_address,
-                self.classifier_inspector.libmdbx,
-            )),
-            MevType::Sandwich => Box::new(SandwichInspector::new(
-                self.quote_address,
-                self.classifier_inspector.libmdbx,
-            )),
-            MevType::Liquidation => Box::new(LiquidationInspector::new(
-                self.quote_address,
-                self.classifier_inspector.libmdbx,
-            )),
-            missing => return Err(InspectorTestUtilsError::MissingInspector(missing)),
-        };
-        Ok(inspector)
-    }
-
-    fn get_inspectors(
-        &self,
-        mev_types: Vec<MevType>,
-    ) -> Result<Vec<Box<dyn Inspector>>, InspectorTestUtilsError> {
-        let mut res = Vec::new();
-        for mev_type in mev_types {
-            let inspector = match mev_type {
-                MevType::Jit => Box::new(JitInspector::new(
-                    self.quote_address,
-                    self.classifier_inspector.libmdbx,
-                )) as Box<dyn Inspector>,
-                MevType::CexDex => Box::new(CexDexInspector::new(
-                    self.quote_address,
-                    self.classifier_inspector.libmdbx,
-                )) as Box<dyn Inspector>,
-                MevType::Backrun => Box::new(AtomicBackrunInspector::new(
-                    self.quote_address,
-                    self.classifier_inspector.libmdbx,
-                )),
-                MevType::Sandwich => Box::new(SandwichInspector::new(
-                    self.quote_address,
-                    self.classifier_inspector.libmdbx,
-                )),
-                MevType::Liquidation => Box::new(LiquidationInspector::new(
-                    self.quote_address,
-                    self.classifier_inspector.libmdbx,
-                )),
-                missing => return Err(InspectorTestUtilsError::MissingInspector(missing)),
-            };
-            res.push(inspector);
-        }
-        Ok(res)
-    }
-
     pub async fn assert_no_mev(
         &self,
         config: InspectorTxRunConfig,
@@ -190,7 +122,9 @@ impl InspectorTestUtils {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = self.get_inspector(config.expected_mev_type)?;
+        let inspector = config
+            .expected_mev_type
+            .init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
 
         let results = inspector.process_tree(tree.into(), metadata.into()).await;
         assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
@@ -246,7 +180,9 @@ impl InspectorTestUtils {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = self.get_inspector(config.expected_mev_type)?;
+        let inspector = config
+            .expected_mev_type
+            .init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
 
         let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
         assert_eq!(results.len(), 1, "got a non zero amount of detected mev {:#?}", results);
@@ -323,11 +259,11 @@ impl InspectorTestUtils {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = self
-            .get_inspectors(config.inspectors)?
+        let inspector = config
+            .inspectors
             .into_iter()
-            .map(|i| &*Box::leak(Box::new(i)))
-            .collect::<Vec<&'static Box<dyn Inspector>>>();
+            .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
+            .collect::<Vec<_>>();
 
         let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into()).await;
 
@@ -380,12 +316,12 @@ pub struct InspectorTxRunConfig {
     pub mev_block:            Option<u64>,
     pub expected_profit_usd:  Option<f64>,
     pub expected_gas_usd:     Option<f64>,
-    pub expected_mev_type:    MevType,
+    pub expected_mev_type:    Inspectors,
     pub calculate_dex_prices: bool,
 }
 
 impl InspectorTxRunConfig {
-    pub fn new(mev: MevType) -> Self {
+    pub fn new(mev: Inspectors) -> Self {
         Self {
             expected_mev_type:    mev,
             mev_block:            None,
@@ -432,7 +368,7 @@ impl InspectorTxRunConfig {
 
 #[derive(Debug, Clone)]
 pub struct ComposerRunConfig {
-    pub inspectors:           Vec<MevType>,
+    pub inspectors:           Vec<Inspectors>,
     pub expected_mev_type:    MevType,
     pub metadata_override:    Option<MetadataCombined>,
     pub mev_tx_hashes:        Option<Vec<TxHash>>,
@@ -444,7 +380,7 @@ pub struct ComposerRunConfig {
 }
 
 impl ComposerRunConfig {
-    pub fn new(inspectors: Vec<MevType>, expected_mev_type: MevType) -> Self {
+    pub fn new(inspectors: Vec<Inspectors>, expected_mev_type: MevType) -> Self {
         Self {
             inspectors,
             metadata_override: None,
