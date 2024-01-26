@@ -220,6 +220,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
                 self.graph_manager.add_subgraph(pair, edges);
                 if !triggered {
+                    tracing::info!("not triggered");
                     let (is_bad, pair, remove) = self
                         .graph_manager
                         .verify_subgraph(vec![pair], self.quote_asset)

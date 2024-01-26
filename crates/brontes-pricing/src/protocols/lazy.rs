@@ -103,7 +103,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         let mut res = Vec::new();
 
         let Some(inner) = self.parent_pair_state_loading
-            .get_mut(&block) else { return  res };
+            .get_mut(&block) else { return res };
 
         inner.retain(|k, v| {
             if v.is_empty() {
