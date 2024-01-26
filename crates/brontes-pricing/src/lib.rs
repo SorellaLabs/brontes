@@ -188,6 +188,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     /// because we already have a state update for this pair in the buffer, we
     /// don't wanna create another one
     fn re_queue_bad_pair(&mut self, pair: Pair, block: u64) {
+        tracing::info!(?pair, "requerying");
+
         if pair.0 == pair.1 {
             return
         }
