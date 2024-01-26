@@ -105,7 +105,13 @@ async fn run_inspectors(
         })
         .collect::<Vec<_>>();
 
-    (PossibleMevCollection(possible_mev_txes.into_iter().map(|(_, v)| v).collect()), results)
+    let mut possible_mev_collection =
+        PossibleMevCollection(possible_mev_txes.into_iter().map(|(_, v)| v).collect());
+    possible_mev_collection
+        .0
+        .sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
+
+    (possible_mev_collection, results)
 }
 
 fn on_orchestra_resolution(
