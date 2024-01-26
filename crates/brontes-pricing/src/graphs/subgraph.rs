@@ -261,6 +261,7 @@ impl PairSubGraph {
             );
         }
 
+        let mut remove_nodes = HashSet::new();
         all_remove.iter().for_each(|(k, v)| {
             let Some(n0) = self.token_to_index.get(&k.0) else { return };
             let Some(n1) = self.token_to_index.get(&k.1) else { return };
@@ -283,12 +284,15 @@ impl PairSubGraph {
                     }
                 }
             } else {
-                if self.graph.edges(n0.into()).collect_vec().len() == 0 {
-                    let _ = self.token_to_index.remove(&k.0);
-                }
-                if self.graph.edges(n1.into()).collect_vec().len() == 0 {
-                    let _ = self.token_to_index.remove(&k.1);
-                }
+                remove_nodes.insert(k.0);
+                remove_nodes.insert(k.1);
+            }
+        });
+
+        remove_nodes.into_iter().for_each(|address| {
+            let node = self.token_to_index.remove(&address).unwrap();
+            if self.graph.edges(node.into()).collect_vec().is_empty() {
+                self.graph.remove_node(node.into());
             }
         });
 
