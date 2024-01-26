@@ -288,9 +288,8 @@ impl PairSubGraph {
         });
 
         let disjoint =
-            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), state)
+            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), pool_state)
                 .is_none();
-
         (disjoint, all_remove)
     }
 }
