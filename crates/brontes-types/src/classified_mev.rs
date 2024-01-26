@@ -59,7 +59,7 @@ impl fmt::Display for MevBlock {
         }
         // Mev section
         writeln!(f, "{}", "Mev:".bold().red().underline())?;
-        writeln!(f, "  - MEV Count: {}", self.mev_count.to_string().bold())?;
+        writeln!(f, "{}", self.mev_count.to_string().bold())?;
         writeln!(
             f,
             "  - Cumulative MEV Profit (USD): {}",
@@ -110,7 +110,7 @@ impl fmt::Display for MevBlock {
             )?;
         }
 
-        writeln!(f, "{}: {}", "Missed Mev".bold().red().underline(), self.possible_mev)?;
+        writeln!(f, "\n{}: {}", "Missed Mev".bold().red().underline(), self.possible_mev)?;
         // Footer
         writeln!(f, "{:-<72}", "")
     }
