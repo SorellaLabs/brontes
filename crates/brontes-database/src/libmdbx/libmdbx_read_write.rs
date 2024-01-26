@@ -12,6 +12,7 @@ use brontes_types::{
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
+        token_info::TokenInfo,
         traces::TxTracesInner,
     },
     extra_processing::Pair,
@@ -190,7 +191,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn try_get_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
         let tx = self.0.ro_tx()?;
-        Ok(tx.get::<TokenDecimals>(address)?)
+        Ok(tx.get::<TokenDecimals>(address)?.map(|v| v.decimals))
     }
 
     fn protocols_created_before(
@@ -331,7 +332,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
             .0
             .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
                 address,
-                decimals,
+                info: TokenInfo { decimals, symbol: "".to_string() },
             }])?)
     }
 
