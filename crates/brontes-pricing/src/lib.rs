@@ -173,8 +173,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                             pool_info.dex_type,
                         )
                     } else if lazy_loading {
-                        self.lazy_loader
-                            .add_protocol_parent(pool_info.pool_addr, pair);
+                        self.lazy_loader.add_protocol_parent(
+                            self.completed_block,
+                            pool_info.pool_addr,
+                            pair,
+                        );
                     }
                 }
 
@@ -202,7 +205,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 );
             } else if is_loading {
                 self.lazy_loader
-                    .add_protocol_parent(pool_info.pool_addr, pair)
+                    .add_protocol_parent(block, pool_info.pool_addr, pair)
             }
         }
     }
@@ -333,7 +336,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn can_progress(&self) -> bool {
-        self.lazy_loader.requests_for_block(&self.completed_block) == 0
+        self.lazy_loader.can_progress(&self.completed_block)
             && self.completed_block < self.current_block
     }
 
@@ -392,7 +395,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let LazyResult { block, state, load_result } = state;
 
         self.lazy_loader
-            .get_completed_pairs()
+            .get_completed_pairs(self.completed_block)
             .into_iter()
             .map(|pair| {
                 let (failed, cache_pairs) =
@@ -428,7 +431,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     fn on_state_load_error(&mut self, pool_pair: Pair, pool_address: Address, block: u64) {
         self.lazy_loader
-            .remove_protocol_parents(&pool_address)
+            .remove_protocol_parents(self.completed_block, &pool_address)
             .into_iter()
             .for_each(|parent_pair| {
                 let (re_query, bad_state) =

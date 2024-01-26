@@ -12,6 +12,7 @@ use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     Future, Stream, StreamExt,
 };
+use itertools::Itertools;
 use tokio::task::JoinHandle;
 use tracing::{error, info};
 
@@ -59,7 +60,7 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     pool_buf: HashSet<Address>,
     /// requests we are processing for a given block.
     req_per_block: HashMap<u64, u64>,
-    parent_pair_state_loading: HashMap<Pair, HashSet<Address>>,
+    parent_pair_state_loading: HashMap<u64, HashMap<Pair, HashSet<Address>>>,
     /// All current request addresses to subgraph pair that requested the
     /// loading. in the case that a pool fails to load, we need all subgraph
     /// pairs that are dependent on the node in order to remove it from the
@@ -79,36 +80,39 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         }
     }
 
-    pub fn requests_for_block(&self, block: &u64) -> u64 {
-        self.req_per_block.get(block).copied().unwrap_or(0)
+    pub fn can_progress(&self, block: &u64) -> bool {
+        self.req_per_block.get(block).copied().unwrap_or(0) == 0
+            && !self.parent_pair_state_loading.contains_key(block)
     }
 
-    pub fn add_protocol_parent(&mut self, address: Address, parent_pair: Pair) {
+    pub fn add_protocol_parent(&mut self, block: u64, address: Address, parent_pair: Pair) {
         self.protocol_address_to_parent_pairs
             .entry(address)
             .or_insert(vec![])
             .push(parent_pair);
 
         self.parent_pair_state_loading
+            .entry(block)
+            .or_default()
             .entry(parent_pair)
             .or_default()
             .insert(address);
     }
 
-    pub fn get_completed_pairs(&mut self) -> Vec<Pair> {
+    pub fn get_completed_pairs(&mut self, block: u64) -> Vec<Pair> {
         let mut res = Vec::new();
         self.parent_pair_state_loading.retain(|k, v| {
-            if v.is_empty() {
-                res.push(*k);
+            if v.values().collect_vec().is_empty() {
+                res.extend(v.drain().map(|(i, _)| i));
+                return false
             }
-
-            !v.is_empty()
+            true
         });
 
         res
     }
 
-    pub fn remove_protocol_parents(&mut self, address: &Address) -> Vec<Pair> {
+    pub fn remove_protocol_parents(&mut self, block: u64, address: &Address) -> Vec<Pair> {
         let removed = self
             .protocol_address_to_parent_pairs
             .remove(address)
@@ -116,6 +120,8 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
         removed.iter().for_each(|pair| {
             self.parent_pair_state_loading
+                .entry(block)
+                .or_default()
                 .entry(*pair)
                 .or_default()
                 .remove(address);
@@ -135,7 +141,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         let provider = self.provider.clone();
         *self.req_per_block.entry(block_number).or_default() += 1;
         self.pool_buf.insert(address);
-        self.add_protocol_parent(address, parent_pair);
+        self.add_protocol_parent(block_number, address, parent_pair);
 
         let fut = ex_type.try_load_state(address, provider, block_number, pool_pair);
         self.pool_load_futures.push_back(Box::pin(fut));
@@ -164,7 +170,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                         *(o.get_mut()) -= 1;
                     }
 
-                    self.remove_protocol_parents(&addr);
+                    self.remove_protocol_parents(block, &addr);
 
                     self.pool_buf.remove(&addr);
                     let res = LazyResult { block, state: Some(state), load_result: load };
