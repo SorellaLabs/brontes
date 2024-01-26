@@ -15,6 +15,7 @@ use sorella_db_databases::{
 };
 use strum::{Display, EnumIter};
 
+#[allow(unused_imports)]
 use crate::{
     display::utils::print_mev_type_header,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
@@ -104,7 +105,8 @@ impl fmt::Display for MevBlock {
             writeln!(
                 f,
                 "  - Proposer MEV Reward: {:.6} ETH",
-                format!("{:.6}", self.proposer_mev_reward.unwrap()).green()
+                format!("{:.6}", self.proposer_mev_reward.unwrap() as f64 / 10f64.powf(18.0))
+                    .green()
             )?;
             writeln!(
                 f,
