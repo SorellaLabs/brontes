@@ -217,12 +217,11 @@ impl SubGraphRegistry {
         let (kill, prune) = subgraph.bfs_verify(quote, &self.edge_state, all_graph);
         if !kill {
             self.sub_graphs.insert(pair.ordered(), subgraph);
-        } else {
-            self.token_to_sub_graph.retain(|k, v| {
-                v.remove(&pair.ordered());
-                !v.is_empty()
-            });
         }
+        self.token_to_sub_graph.retain(|k, v| {
+            v.remove(&pair.ordered());
+            !v.is_empty()
+        });
 
         (kill, prune)
     }
