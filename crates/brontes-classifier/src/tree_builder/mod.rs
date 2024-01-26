@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 mod tree_pruning;
 mod utils;
+use brontes_core::missing_decimals::load_missing_decimal;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
@@ -240,7 +241,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 .unwrap()
                 .is_none()
             {
-                missing_decimals.push(transfer.token);
+                load_missing_decimal(self.provider.clone(), self.libmdbx, block_number, transfer.token).await;
             }
         }
 
