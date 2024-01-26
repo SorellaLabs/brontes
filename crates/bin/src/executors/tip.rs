@@ -119,15 +119,8 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
             let block = header.number;
-            let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
+            let  tree = self.classifier.build_block_tree(traces, header).await;
 
-            load_missing_decimals(
-                self.parser.get_tracer(),
-                self.database,
-                block,
-                extra_data.tokens_decimal_fill,
-            )
-            .await;
 
             let meta = labeller_fut.await;
 
