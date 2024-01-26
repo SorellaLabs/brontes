@@ -190,7 +190,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if pairs.is_empty() {
             return
         }
-
         tracing::info!(pairs_rem=pairs.len(), %block, "requerying");
         par_state_query(&self.graph_manager, pairs, block)
             .into_iter()
@@ -431,7 +430,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let requery_pairs = self
             .graph_manager
             .verify_subgraph(
-                self.lazy_loader.get_completed_pairs(self.completed_block),
+                self.lazy_loader.get_completed_pairs(block),
                 self.quote_asset,
             )
             .into_iter()
@@ -449,13 +448,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             })
             .collect_vec();
 
-        self.requery_bad_state_par(requery_pairs, self.completed_block);
+        self.requery_bad_state_par(requery_pairs,block);
 
         if let Some(state) = state {
             let addr = state.address();
 
             self.graph_manager
-                .new_state(self.completed_block, addr, state);
+                .new_state(block, addr, state);
 
             // pool was initialized this block. lets set the override to avoid invalid state
             if !load_result.is_ok() {
@@ -470,7 +469,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let requery_pairs = self
             .graph_manager
             .verify_subgraph(
-                self.lazy_loader.get_completed_pairs(self.completed_block),
+                self.lazy_loader.get_completed_pairs(block),
                 self.quote_asset,
             )
             .into_iter()
@@ -488,7 +487,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             })
             .collect_vec();
 
-        self.requery_bad_state_par(requery_pairs, self.completed_block);
+        self.requery_bad_state_par(requery_pairs, block);
+
         self.lazy_loader
             .remove_protocol_parents(block, &pool_address)
             .into_iter()
