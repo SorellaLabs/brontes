@@ -270,12 +270,6 @@ impl PairSubGraph {
             let Some((e, dir)) = self
                 .graph
                 .find_edge_undirected(n0.into(), n1.into()) else {
-                    if self.graph.edges(n0.into()).collect_vec().is_empty() {
-                        let _ = self.graph.remove_node(n0.into());
-                    }
-                    if self.graph.edges(n1.into()).collect_vec().is_empty() {
-                        let _ = self.graph.remove_node(n1.into());
-                    }
                     return
                 };
 
@@ -289,13 +283,6 @@ impl PairSubGraph {
                     Direction::Outgoing => {
                         self.graph.add_edge(n0.into(), n1.into(), weights);
                     }
-                }
-            } else {
-                if self.graph.edges(n0.into()).collect_vec().is_empty() {
-                    let _ = self.graph.remove_node(n0.into());
-                }
-                if self.graph.edges(n1.into()).collect_vec().is_empty() {
-                    let _ = self.graph.remove_node(n1.into());
                 }
             }
         });
