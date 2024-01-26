@@ -260,7 +260,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let gas_used = metadata.get_gas_price_usd(gas_used);
 
         let header = BundleHeader {
-            mev_tx_index: idx as u64,
+            tx_index: idx as u64,
             eoa,
             mev_profit_collector,
             tx_hash: possible_front_runs[0],
