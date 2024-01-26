@@ -394,7 +394,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn on_pool_resolve(&mut self, state: LazyResult) {
         let LazyResult { block, state, load_result } = state;
 
-        tracing::info!("pool resolve");
+
+        let rem = &self.lazy_loader.parent_pair_state_loading;
+        tracing::info!("pool resolve: {:#?}", rem);
+
         self.lazy_loader
             .get_completed_pairs(self.current_block)
             .into_iter()
