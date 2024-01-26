@@ -194,75 +194,80 @@ impl PairSubGraph {
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
     ) -> (bool, HashMap<Pair, Vec<Address>>) {
-        let mut visited = HashSet::new();
-        let mut visit_next = VecDeque::new();
-        let mut all_remove: HashMap<Pair, Vec<Address>> = HashMap::new();
+        let removal_state = self.run_bfs_with_liquidity_params(start, state, all_pair_graph);
+        self.prune_subgraph(&removal_state);
 
-        let Some(start) = self.token_to_index.get(&start) else { return (false, HashMap::new()) };
+        let disjoint =
+            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), state)
+                .is_none();
 
-        let direction = *start == self.start_node;
-
-        visit_next.extend(
-            self.next_edges_directed(*start, direction)
-                .zip(vec![Rational::ONE].into_iter().cycle()),
-        );
-
-        while let Some((next_edge, prev_price)) = visit_next.pop_front() {
-            let id = next_edge.id();
-            if visited.contains(&id) {
-                continue
-            }
-            visited.insert(id);
-
-            let mut pxw = Rational::ZERO;
-            let mut weight = Rational::ZERO;
-            let mut token_0_am = Rational::ZERO;
-            let mut token_1_am = Rational::ZERO;
-
-            for info in next_edge.weight() {
-                let Some(pool_state) = state.get(&info.pool_addr) else {
-                    continue;
-                };
-                // returns is t1  / t0
-                let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
-                    continue;
-                };
-
-                let (t0, t1) = pool_state.tvl(info.get_base_token());
-                let liq = prev_price.clone() * &t0;
-
-                // check if below liquidity and that if we remove we don't make the graph
-                // disjoint.
-                if liq < Rational::from(MIN_LIQUIDITY_USDC)
-                    && !(all_pair_graph.is_only_edge(info.token_0)
-                        || all_pair_graph.is_only_edge(info.token_1))
-                {
-                    let pair = Pair(info.token_0, info.token_1).ordered();
-                    all_remove.entry(pair).or_default().push(info.pool_addr);
-                } else {
-                    let t0xt1 = &t0 * &t1;
-                    pxw += (pool_price * &t0xt1);
-                    weight += t0xt1;
-                }
-            }
-
-            if weight == Rational::ZERO {
-                // means no edges were over limit, return
-                continue
-            }
-
-            let local_weighted_price = pxw / weight;
-            let new_price = &prev_price * local_weighted_price;
-
-            let next_node = next_edge.target();
-            visit_next.extend(
-                self.next_edges_directed(next_node.index() as u16, direction)
-                    .zip(vec![new_price].into_iter().cycle()),
-            );
+        if !disjoint {
+            // if we aren't disjoint, verify that we still have a path that has
+            // over the liq threshold. Or that we have no other
+            // possible paths in our main pair graph.
         }
 
+        (disjoint, removal_state)
+    }
+
+    fn run_bfs_with_liquidity_params<T: ProtocolState>(
+        &self,
+        start: Address,
+        state: &HashMap<Address, T>,
+        all_pair_graph: &AllPairGraph,
+    ) -> HashMap<Pair, Vec<Address>> {
+        self.bfs_with_price(
+            start,
+            state,
+            all_pair_graph,
+            |node_weights, prev_price, removal_map: &mut HashMap<Pair, Vec<Address>>| {
+                let mut pxw = Rational::ZERO;
+                let mut weight = Rational::ZERO;
+                let mut token_0_am = Rational::ZERO;
+                let mut token_1_am = Rational::ZERO;
+
+                for info in node_weights {
+                    let Some(pool_state) = state.get(&info.pool_addr) else {
+                        continue;
+                    };
+                    // returns is t1  / t0
+                    let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
+                        continue;
+                    };
+
+                    let (t0, t1) = pool_state.tvl(info.get_base_token());
+                    let liq = prev_price.clone() * &t0;
+
+                    // check if below liquidity and that if we remove we don't make the graph
+                    // disjoint.
+                    if liq < Rational::from(MIN_LIQUIDITY_USDC)
+                        && !(all_pair_graph.is_only_edge(info.token_0)
+                            || all_pair_graph.is_only_edge(info.token_1))
+                    {
+                        let pair = Pair(info.token_0, info.token_1).ordered();
+                        removal_map.entry(pair).or_default().push(info.pool_addr);
+                    } else {
+                        let t0xt1 = &t0 * &t1;
+                        pxw += (pool_price * &t0xt1);
+                        weight += t0xt1;
+                    }
+                }
+
+                if weight == Rational::ZERO {
+                    // means no edges were over limit, return
+                    return None
+                }
+
+                let local_weighted_price = pxw / weight;
+
+                Some(local_weighted_price)
+            },
+        )
+    }
+
+    fn prune_subgraph(&mut self, removal_state: &HashMap<Pair, Vec<Address>>) {
         let mut remove_nodes = HashSet::new();
-        all_remove.iter().for_each(|(k, v)| {
+        removal_state.into_iter().for_each(|(k, v)| {
             let Some(n0) = self.token_to_index.get(&k.0) else { return };
             let Some(n1) = self.token_to_index.get(&k.1) else { return };
             let n0 = *n0;
@@ -295,12 +300,50 @@ impl PairSubGraph {
                 self.graph.remove_node(node.into());
             }
         });
+    }
 
-        let disjoint =
-            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), state)
-                .is_none();
+    fn bfs_with_price<T: ProtocolState, R: Default>(
+        &self,
+        start: Address,
+        state: &HashMap<Address, T>,
+        all_pair_graph: &AllPairGraph,
+        mut collect_data_fn: impl for<'a> FnMut(
+            &'a Vec<SubGraphEdge>,
+            &'a Rational,
+            &'a mut R,
+        ) -> Option<Rational>,
+    ) -> R {
+        let mut result = R::default();
+        let mut visited = HashSet::new();
+        let mut visit_next = VecDeque::new();
 
-        (disjoint, all_remove)
+        let Some(start) = self.token_to_index.get(&start) else { return R::default() };
+
+        let direction = *start == self.start_node;
+
+        visit_next.extend(
+            self.next_edges_directed(*start, direction)
+                .zip(vec![Rational::ONE].into_iter().cycle()),
+        );
+
+        while let Some((next_edge, prev_price)) = visit_next.pop_front() {
+            let id = next_edge.id();
+            if visited.contains(&id) {
+                continue
+            }
+            visited.insert(id);
+
+            if let Some(price) = collect_data_fn(next_edge.weight(), &prev_price, &mut result) {
+                let new_price = &prev_price * price;
+                let next_node = next_edge.target();
+                visit_next.extend(
+                    self.next_edges_directed(next_node.index() as u16, direction)
+                        .zip(vec![new_price].into_iter().cycle()),
+                );
+            }
+        }
+
+        result
     }
 }
 
