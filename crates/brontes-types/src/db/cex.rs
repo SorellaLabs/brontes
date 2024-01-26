@@ -27,7 +27,7 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
     where
         D: serde::Deserializer<'de>,
     {
-        let map: Vec<((String, String), Vec<(Option<String>, u64, (f64, f64), String)>)> =
+        let map: Vec<((String, String), Vec<(String, u64, (f64, f64), String)>)> =
             serde::Deserialize::deserialize(deserializer)?;
 
         let mut cex_price_map = HashMap::new();
@@ -36,7 +36,7 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
                 Pair(Address::from_str(&pair.0).unwrap(), Address::from_str(&pair.1).unwrap()),
                 meta.into_iter()
                     .map(|(exchange, timestamp, (price0, price1), token0)| CexQuote {
-                        exchange,
+                        exchange: Some(exchange),
                         timestamp,
                         price: (
                             Rational::try_from_float_simplest(price0).unwrap(),

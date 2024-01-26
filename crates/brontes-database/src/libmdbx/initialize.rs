@@ -99,7 +99,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             )
             .collect_vec();
 
-        // println!("NUM CHUNKS {}", pair_ranges.len());
+        println!("NUM CHUNKS {}", pair_ranges.len());
 
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
@@ -110,7 +110,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             async move {
                 iter(&(start..end).into_iter().chunks(INNER_CHUNK_SIZE)).map(|range| {
 
-                  //  println!("PRE VALS {} - {}", start, end);
+                    //println!("PRE VALS {} - {}", start, end);
 
                     let mut range = range.collect_vec();
                     let start = range.remove(0);
@@ -119,10 +119,11 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                     let libmdbx = self.libmdbx.clone();
 
 
-                   // println!("VALS POST {} - {}", start, end);
+                    //println!("VALS POST {} - {}", start, end);
 
               //   compression and decompression is expensive on a ton of data thus we give
               //   them there own threads 
+              //println!("INIT QUERY: {:?}", T::INIT_QUERY.expect("Should only be called on clickhouse tables"));
                 tokio::spawn(async move {
             let data =
                 clickhouse
