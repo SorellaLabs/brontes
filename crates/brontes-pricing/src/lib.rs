@@ -395,9 +395,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let LazyResult { block, state, load_result } = state;
 
         self.lazy_loader
-            .get_completed_pairs(self.completed_block)
+            .get_completed_pairs(self.current_block)
             .into_iter()
             .map(|pair| {
+
+                    tracing::info!("got completed pair");
                 let (failed, cache_pairs) =
                     self.graph_manager.verify_subgraph(pair, self.quote_asset);
                 cache_pairs.into_iter().for_each(|(pair, address)| {
