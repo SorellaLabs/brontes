@@ -186,87 +186,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             })
     }
 
-    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64)>) {
-        if pairs.is_empty() {
-            return
-        }
-
-        par_state_query(&self.graph_manager, pairs)
-            .into_iter()
-            .for_each(|(pair, block, state, edges)| {
-                if edges.is_empty() {
-                    return
-                }
-                let mut triggered = false;
-
-                for pool_info in state {
-                    let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
-                    // load exchange only if its not loaded already
-                    if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
-                        self.lazy_loader.lazy_load_exchange(
-                            pair,
-                            Pair(pool_info.token_0, pool_info.token_1),
-                            pool_info.pool_addr,
-                            block,
-                            pool_info.dex_type,
-                        );
-                        triggered = true;
-                    } else if lazy_loading {
-                        self.lazy_loader
-                            .add_protocol_parent(block, pool_info.pool_addr, pair);
-                        triggered = true;
-                    }
-                }
-                self.graph_manager.add_subgraph(pair, edges);
-                if !triggered {
-                    tracing::info!("not triggered");
-                    let (is_bad, block, pair, remove) = self
-                        .graph_manager
-                        .verify_subgraph(vec![(block, pair)], self.quote_asset)
-                        .remove(0);
-
-                    remove.into_iter().for_each(|(pair, address)| {
-                        for addr in address {
-                            if let Some((addr, protocol, pair)) =
-                                self.graph_manager.remove_pair_graph_address(pair, addr)
-                            {
-                                self.new_graph_pairs.insert(addr, (protocol, pair));
-                            }
-                        }
-                    });
-
-                    if is_bad {
-                        self.re_queue_bad_pair(pair, block)
-                    }
-                }
-            });
-    }
-
-    /// because we already have a state update for this pair in the buffer, we
-    /// don't wanna create another one
-    fn re_queue_bad_pair(&mut self, pair: Pair, block: u64) {
-        if pair.0 == pair.1 {
-            return
-        }
-
-        for pool_info in self.graph_manager.create_subpool(block, pair).into_iter() {
-            let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
-            // load exchange only if its not loaded already
-            if !(self.graph_manager.has_state(&pool_info.pool_addr) || is_loading) {
-                self.lazy_loader.lazy_load_exchange(
-                    pair,
-                    Pair(pool_info.token_0, pool_info.token_1),
-                    pool_info.pool_addr,
-                    block,
-                    pool_info.dex_type,
-                );
-            } else if is_loading {
-                self.lazy_loader
-                    .add_protocol_parent(block, pool_info.pool_addr, pair)
-            }
-        }
-    }
-
     fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
         // tracing::info!(?pool_pair, "getting pair");
         if pool_pair.0 == pool_pair.1 {
@@ -397,6 +316,147 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             && self.completed_block < self.current_block
     }
 
+    fn on_pool_resolve(&mut self, state: LazyResult) {
+        let LazyResult { block, state, load_result } = state;
+        self.try_verify_pool();
+
+        if let Some(state) = state {
+            let addr = state.address();
+
+            self.graph_manager.new_state(block, addr, state);
+
+            // pool was initialized this block. lets set the override to avoid invalid state
+            if !load_result.is_ok() {
+                self.buffer.overrides.entry(block).or_default().insert(addr);
+            }
+        } else if let LoadResult::Err { pool_address, pool_pair, block } = load_result {
+            self.on_state_load_error(pool_pair, pool_address, block);
+        }
+    }
+
+    fn on_state_load_error(&mut self, pool_pair: Pair, pool_address: Address, block: u64) {
+        self.try_verify_pool();
+
+        self.lazy_loader
+            .remove_protocol_parents(&pool_address)
+            .into_iter()
+            .for_each(|parent_pair| {
+                let (re_query, bad_state) =
+                    self.graph_manager
+                        .bad_pool_state(parent_pair, pool_pair, pool_address);
+
+                if re_query {
+                    self.re_queue_bad_pair(parent_pair, block);
+                }
+                if let Some((address, protocol, pair)) = bad_state {
+                    self.new_graph_pairs.insert(address, (protocol, pair));
+                }
+            });
+    }
+
+    fn try_verify_pool(&mut self) {
+        let requery_pairs = self
+            .graph_manager
+            .verify_subgraph(self.lazy_loader.get_completed_pairs(), self.quote_asset)
+            .into_iter()
+            .filter_map(|(failed, block, pair, cache_pairs)| {
+                cache_pairs.into_iter().for_each(|(pair, address)| {
+                    for addr in address {
+                        if let Some((addr, protocol, pair)) =
+                            self.graph_manager.remove_pair_graph_address(pair, addr)
+                        {
+                            self.new_graph_pairs.insert(addr, (protocol, pair));
+                        }
+                    }
+                });
+                failed.then_some((pair, block))
+            })
+            .collect_vec();
+
+        self.requery_bad_state_par(requery_pairs);
+    }
+
+    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64)>) {
+        if pairs.is_empty() {
+            return
+        }
+
+        par_state_query(&self.graph_manager, pairs)
+            .into_iter()
+            .for_each(|(pair, block, state, edges)| {
+                if edges.is_empty() {
+                    return
+                }
+                let mut triggered = false;
+
+                for pool_info in state {
+                    let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
+                    // load exchange only if its not loaded already
+                    if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
+                        self.lazy_loader.lazy_load_exchange(
+                            pair,
+                            Pair(pool_info.token_0, pool_info.token_1),
+                            pool_info.pool_addr,
+                            block,
+                            pool_info.dex_type,
+                        );
+                        triggered = true;
+                    } else if lazy_loading {
+                        self.lazy_loader
+                            .add_protocol_parent(block, pool_info.pool_addr, pair);
+                        triggered = true;
+                    }
+                }
+                self.graph_manager.add_subgraph(pair, edges);
+                if !triggered {
+                    tracing::info!("not triggered");
+                    let (is_bad, block, pair, remove) = self
+                        .graph_manager
+                        .verify_subgraph(vec![(block, pair)], self.quote_asset)
+                        .remove(0);
+
+                    remove.into_iter().for_each(|(pair, address)| {
+                        for addr in address {
+                            if let Some((addr, protocol, pair)) =
+                                self.graph_manager.remove_pair_graph_address(pair, addr)
+                            {
+                                self.new_graph_pairs.insert(addr, (protocol, pair));
+                            }
+                        }
+                    });
+
+                    if is_bad {
+                        self.re_queue_bad_pair(pair, block)
+                    }
+                }
+            });
+    }
+
+    /// because we already have a state update for this pair in the buffer, we
+    /// don't wanna create another one
+    fn re_queue_bad_pair(&mut self, pair: Pair, block: u64) {
+        if pair.0 == pair.1 {
+            return
+        }
+
+        for pool_info in self.graph_manager.create_subpool(block, pair).into_iter() {
+            let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
+            // load exchange only if its not loaded already
+            if !(self.graph_manager.has_state(&pool_info.pool_addr) || is_loading) {
+                self.lazy_loader.lazy_load_exchange(
+                    pair,
+                    Pair(pool_info.token_0, pool_info.token_1),
+                    pool_info.pool_addr,
+                    block,
+                    pool_info.dex_type,
+                );
+            } else if is_loading {
+                self.lazy_loader
+                    .add_protocol_parent(block, pool_info.pool_addr, pair)
+            }
+        }
+    }
+
     // called when we try to progress to the next block
     fn try_resolve_block(&mut self) -> Option<(u64, DexQuotes)> {
         // if there are still requests for the given block or the current block isn't
@@ -436,97 +496,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
 
-        debug!(
-            block_number = self.completed_block,
-            dex_quotes_length = res.0.len(),
-            "got dex quotes"
-        );
-
         self.completed_block += 1;
 
         // add new nodes to pair graph
         Some((block, res))
-    }
-
-    fn on_pool_resolve(&mut self, state: LazyResult) {
-        let LazyResult { block, state, load_result } = state;
-
-        let requery_pairs = self
-            .graph_manager
-            .verify_subgraph(
-                self.lazy_loader.get_completed_pairs(&self.completed_block),
-                self.quote_asset,
-            )
-            .into_iter()
-            .filter_map(|(failed, block, pair, cache_pairs)| {
-                cache_pairs.into_iter().for_each(|(pair, address)| {
-                    for addr in address {
-                        if let Some((addr, protocol, pair)) =
-                            self.graph_manager.remove_pair_graph_address(pair, addr)
-                        {
-                            self.new_graph_pairs.insert(addr, (protocol, pair));
-                        }
-                    }
-                });
-                failed.then_some((pair, block))
-            })
-            .collect_vec();
-
-        self.requery_bad_state_par(requery_pairs);
-
-        if let Some(state) = state {
-            let addr = state.address();
-
-            self.graph_manager.new_state(block, addr, state);
-
-            // pool was initialized this block. lets set the override to avoid invalid state
-            if !load_result.is_ok() {
-                self.buffer.overrides.entry(block).or_default().insert(addr);
-            }
-        } else if let LoadResult::Err { pool_address, pool_pair, block } = load_result {
-            self.on_state_load_error(pool_pair, pool_address, block);
-        }
-    }
-
-    fn on_state_load_error(&mut self, pool_pair: Pair, pool_address: Address, block: u64) {
-        // let requery_pairs = self
-        //     .graph_manager
-        //     .verify_subgraph(
-        //         self.lazy_loader.get_completed_pairs(self.completed_block),
-        //         self.quote_asset,
-        //     )
-        //     .into_iter()
-        //     .filter_map(|(failed, pair, cache_pairs)| {
-        //         cache_pairs.into_iter().for_each(|(pair, address)| {
-        //             for addr in address {
-        //                 if let Some((addr, protocol, pair)) =
-        //                     self.graph_manager.remove_pair_graph_address(pair, addr)
-        //                 {
-        //                     self.new_graph_pairs.insert(addr, (protocol, pair));
-        //                 }
-        //             }
-        //         });
-        //         failed.then_some(pair)
-        //     })
-        //     .collect_vec();
-        //
-        // self.requery_bad_state_par(requery_pairs, self.completed_block);
-
-        self.lazy_loader
-            .remove_protocol_parents(block, &pool_address)
-            .into_iter()
-            .for_each(|parent_pair| {
-                let (re_query, bad_state) =
-                    self.graph_manager
-                        .bad_pool_state(parent_pair, pool_pair, pool_address);
-
-                if re_query {
-                    self.re_queue_bad_pair(parent_pair, block);
-                }
-                if let Some((address, protocol, pair)) = bad_state {
-                    self.new_graph_pairs.insert(address, (protocol, pair));
-                }
-            });
     }
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
@@ -534,7 +507,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return None
         }
 
-        trace!(?self.completed_block,"getting ready to calc dex prices");
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing
         let (buffer, overrides) = (
@@ -562,8 +534,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .dex_quotes
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
-
-        debug!(dex_quotes = res.0.len(), "got dex quotes");
 
         self.completed_block += 1;
 

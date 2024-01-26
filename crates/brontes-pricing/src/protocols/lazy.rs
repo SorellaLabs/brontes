@@ -60,7 +60,9 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     pool_buf: HashSet<Address>,
     /// requests we are processing for a given block.
     req_per_block: HashMap<u64, u64>,
-    pub parent_pair_state_loading: HashMap<u64, HashMap<Pair, HashSet<Address>>>,
+    /// all current parent pairs with all the state that is required for there
+    /// subgraph to be loaded
+    parent_pair_state_loading: HashMap<Pair, (u64, HashSet<Address>)>,
     /// All current request addresses to subgraph pair that requested the
     /// loading. in the case that a pool fails to load, we need all subgraph
     /// pairs that are dependent on the node in order to remove it from the
@@ -82,7 +84,6 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
     pub fn can_progress(&self, block: &u64) -> bool {
         self.req_per_block.get(block).copied().unwrap_or(0) == 0
-            && !self.parent_pair_state_loading.contains_key(block)
     }
 
     pub fn add_protocol_parent(&mut self, block: u64, address: Address, parent_pair: Pair) {
@@ -91,49 +92,45 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             .or_insert(vec![])
             .push(parent_pair);
 
-        self.parent_pair_state_loading
-            .entry(block)
-            .or_default()
-            .entry(parent_pair)
-            .or_default()
-            .insert(address);
+        match self.parent_pair_state_loading.entry(parent_pair) {
+            Entry::Vacant(v) => {
+                let mut set = HashSet::new();
+                set.insert(address);
+                v.insert((block, set));
+            }
+            Entry::Occupied(mut o) => {
+                let (cur_block, entry) = o.get_mut();
+                assert_eq!(*cur_block, block, "trying to add a dep to a block that's not wanted");
+                entry.insert(address);
+            }
+        }
     }
 
-    pub fn get_completed_pairs(&mut self, get_block: &u64) -> Vec<(u64, Pair)> {
+    pub fn get_completed_pairs(&mut self) -> Vec<(u64, Pair)> {
         let mut res = Vec::new();
-        self.parent_pair_state_loading.retain(|block, inner| {
-            if block != get_block {
-                return true
-            }
-            inner.retain(|pair, deps| {
+        self.parent_pair_state_loading
+            .retain(|pair, (block, deps)| {
                 if deps.is_empty() {
                     res.push((*block, *pair));
                     return false
                 }
                 true
             });
-            inner.values().any(|inner| !inner.is_empty())
-        });
-        if !res.is_empty() {
-            tracing::info!("{:#?}", &self.parent_pair_state_loading);
-        }
-        // we batch bc this is slow part
+
         res
     }
 
-    pub fn remove_protocol_parents(&mut self, block: u64, address: &Address) -> Vec<Pair> {
+    pub fn remove_protocol_parents(&mut self, address: &Address) -> Vec<Pair> {
         let removed = self
             .protocol_address_to_parent_pairs
             .remove(address)
             .unwrap_or(vec![]);
 
         removed.iter().for_each(|pair| {
-            self.parent_pair_state_loading
-                .entry(block)
-                .or_default()
-                .entry(*pair)
-                .or_default()
-                .remove(address);
+            if let Entry::Occupied(mut o) = self.parent_pair_state_loading.entry(*pair) {
+                let (block, entry) = o.get_mut();
+                entry.remove(address);
+            }
         });
 
         removed
@@ -179,7 +176,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                         *(o.get_mut()) -= 1;
                     }
 
-                    self.remove_protocol_parents(block, &addr);
+                    self.remove_protocol_parents(&addr);
 
                     self.pool_buf.remove(&addr);
                     let res = LazyResult { block, state: Some(state), load_result: load };
@@ -190,7 +187,6 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
-
                     self.pool_buf.remove(&pool_address);
                     let res = LazyResult {
                         state: None,
