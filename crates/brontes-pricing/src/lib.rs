@@ -208,7 +208,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
-        tracing::info!(?pool_pair, "getting pair");
+        // tracing::info!(?pool_pair, "getting pair");
         if pool_pair.0 == pool_pair.1 {
             return Some(Rational::ONE)
         }
