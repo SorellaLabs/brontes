@@ -1,7 +1,9 @@
-use std::fmt::{Debug, Display};
+use std::fmt::{self, Debug};
 
 use alloy_primitives::Address;
+use colored::Colorize;
 use dyn_clone::DynClone;
+use indoc::indoc;
 use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::B256;
 use serde::{Deserialize, Serialize};
@@ -13,7 +15,9 @@ use sorella_db_databases::{
 };
 use strum::{Display, EnumIter};
 
+#[allow(unused_imports)]
 use crate::{
+    display::utils::print_mev_type_header,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     serde_utils::primitives::vec_fixed_string,
     tree::GasDetails,
@@ -24,10 +28,10 @@ use crate::{
 pub struct MevBlock {
     pub block_hash: B256,
     pub block_number: u64,
-    pub mev_count: u64,
+    pub mev_count: MevCount,
     pub eth_price: f64,
     pub cumulative_gas_used: u128,
-    pub cumulative_gas_paid: u128,
+    pub cumulative_priority_fee: u128,
     pub total_bribe: u128,
     pub cumulative_mev_priority_fee_paid: u128,
     pub builder_address: Address,
@@ -37,17 +41,103 @@ pub struct MevBlock {
     pub proposer_mev_reward: Option<u128>,
     pub proposer_profit_usd: Option<f64>,
     pub cumulative_mev_profit_usd: f64,
-    pub possible_mev: Vec<PossibleMev>,
+    pub possible_mev: PossibleMevCollection,
+}
+
+impl fmt::Display for MevBlock {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ascii_header = indoc! {r#"
+                     ___  ___            ______ _            _                         
+                     |  \/  |            | ___ \ |          | |                        
+ ______ ______ ______| .  . | _____   __ | |_/ / | ___   ___| | ________ ______ ______ 
+|______|______|______| |\/| |/ _ \ \ / / | ___ \ |/ _ \ / __| |/ /______|______|______|
+                     | |  | |  __/\ V /  | |_/ / | (_) | (__|   <                      
+                     \_|  |_/\___| \_/   \____/|_|\___/ \___|_|\_\                     
+        
+        "#};
+
+        for line in ascii_header.lines() {
+            writeln!(f, "{}", line.green())?;
+        }
+
+        writeln!(f, "Block Number: {}", self.block_number)?;
+        // Mev section
+        writeln!(f, "\n{}", "Mev:".bold().red().underline())?;
+        writeln!(f, "{}", self.mev_count.to_string().bold())?;
+        writeln!(
+            f,
+            "  - Cumulative MEV Profit (USD): {}",
+            format_profit(self.cumulative_mev_profit_usd)
+        )?;
+        writeln!(f, "  - Mev Gas:")?;
+        writeln!(f, "    - Total Bribe: {:.6} ETH", self.total_bribe as f64 * 1e-18)?;
+        writeln!(
+            f,
+            "    - Cumulative MEV Priority Fee Paid: {:.6} ETH",
+            self.cumulative_mev_priority_fee_paid as f64 * 1e-18
+        )?;
+
+        // Builder section
+        writeln!(f, "{}", "Builder:".bold().red().underline())?;
+        writeln!(f, "  - Builder Address: {:?}", self.builder_address)?;
+        let builder_profit_color = if self.builder_eth_profit < 0.0 { "red" } else { "green" };
+        writeln!(
+            f,
+            "  - Builder Profit (USD): {}",
+            format_profit(self.builder_profit_usd).color(builder_profit_color)
+        )?;
+        writeln!(
+            f,
+            "  - Builder ETH Profit: {:.6} ETH",
+            format!("{:.6}", self.builder_eth_profit).color(builder_profit_color)
+        )?;
+
+        // Proposer section
+        writeln!(f, "{}", "Proposer:".bold().red().underline())?;
+
+        if self.proposer_fee_recipient.is_none()
+            || self.proposer_mev_reward.is_none()
+            || self.proposer_profit_usd.is_none()
+        {
+            writeln!(f, "{}", "  - Isn't an MEV boost block".bold().red().underline())?;
+        } else {
+            writeln!(f, "  - Proposer Fee Recipient: {:?}", self.proposer_fee_recipient.unwrap())?;
+            writeln!(
+                f,
+                "  - Proposer MEV Reward: {:.6} ETH",
+                format!("{:.6}", self.proposer_mev_reward.unwrap() as f64 / 10f64.powf(18.0))
+                    .green()
+            )?;
+            writeln!(
+                f,
+                "  - Proposer Finalized Profit (USD): {}",
+                format_profit(self.proposer_profit_usd.unwrap()).green()
+            )?;
+        }
+
+        writeln!(f, "\n{}: {}", "Missed Mev".bold().red().underline(), self.possible_mev)?;
+        // Footer
+        writeln!(f, "{:-<72}", "")
+    }
+}
+
+// Helper function to format profit values
+fn format_profit(value: f64) -> String {
+    if value < 0.0 {
+        format!("-${:.2}", value.abs())
+    } else {
+        format!("${:.2}", value)
+    }
 }
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct BundleHeader {
-    // can be multiple for sandwich
     pub block_number:         u64,
-    pub mev_tx_index:         u64,
+    pub tx_index:             u64,
     #[serde_as(as = "FixedString")]
-    pub tx_hash:              B256,
+    // For a sandwich this is always the first frontrun tx hash
+    pub tx_hash: B256,
     #[serde_as(as = "FixedString")]
     pub eoa:                  Address,
     #[serde_as(as = "FixedString")]
@@ -58,6 +148,24 @@ pub struct BundleHeader {
     pub token_profits:        TokenProfits,
     pub bribe_usd:            f64,
     pub mev_type:             MevType,
+}
+
+/*
+impl fmt::Display for Bundle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        print_mev_type_header(self.header.mev_type, f)?;
+
+        writeln!(f, "  - Tx Hash: {:?}", self.)?;
+
+        Ok(())
+    }
+}*/
+
+#[serde_as]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+pub struct Bundle {
+    pub header: BundleHeader,
+    pub data:   BundleData,
 }
 
 #[serde_as]
@@ -110,6 +218,79 @@ impl TokenProfits {
 }
 
 #[serde_as]
+#[derive(Debug, Deserialize, Serialize, Row, Clone, Default)]
+pub struct MevCount {
+    pub mev_count:            u64,
+    pub sandwich_count:       Option<u64>,
+    pub cex_dex_count:        Option<u64>,
+    pub jit_count:            Option<u64>,
+    pub jit_sandwich_count:   Option<u64>,
+    pub atomic_backrun_count: Option<u64>,
+    pub liquidation_count:    Option<u64>,
+}
+
+impl fmt::Display for MevCount {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "  - MEV Count: {}", self.mev_count.to_string().bold())?;
+
+        if let Some(count) = self.sandwich_count {
+            writeln!(f, "    - Sandwich: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.cex_dex_count {
+            writeln!(f, "    - Cex-Dex: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.jit_count {
+            writeln!(f, "    - Jit: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.jit_sandwich_count {
+            writeln!(f, "    - Jit Sandwich: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.atomic_backrun_count {
+            writeln!(f, "    - Atomic Backrun: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.liquidation_count {
+            writeln!(f, "    - Liquidation: {}", count.to_string().bold())?;
+        }
+
+        Ok(())
+    }
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Row, Clone, Default)]
+pub struct PossibleMevCollection(pub Vec<PossibleMev>);
+
+impl fmt::Display for PossibleMevCollection {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
+            "{}",
+            format!("Found {} possible MEV Transactions that we did not classify", self.0.len())
+                .bright_yellow()
+        )?;
+        for possible_mev in self.0.iter() {
+            writeln!(
+                f,
+                "    {}",
+                format!("------ Transaction {} ------", possible_mev.tx_idx).purple()
+            )?;
+            writeln!(f, "    {}", possible_mev)?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for PossibleMev {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let eth_paid = self.gas_details.gas_paid() as f64 * 1e-18;
+        let tx_url = format!("https://etherscan.io/tx/{:?}", self.tx_hash);
+        writeln!(f, "        Paid {} Eth for inclusion", eth_paid.to_string().bold().green())?;
+        write!(f, "{}", self.triggers)?;
+        writeln!(f, "        Etherscan: {}", tx_url.underline())
+    }
+}
+
+#[serde_as]
 #[derive(Debug, Deserialize, Row, Clone, Default)]
 pub struct PossibleMev {
     pub tx_hash:     B256,
@@ -126,12 +307,20 @@ pub struct PossibleMevTriggers {
     pub high_priority_fee: bool,
 }
 
-impl Display for PossibleMevTriggers {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Possible Mev Triggers")?;
-        writeln!(f, "Is private: {}", self.is_private)?;
-        writeln!(f, "Transfer to builder: {}", self.coinbase_transfer)?;
-        writeln!(f, "High priority fee: {}", self.high_priority_fee)
+impl fmt::Display for PossibleMevTriggers {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "        {}", "Triggers:".cyan())?;
+        if self.is_private {
+            writeln!(f, "            - {}", "Private".cyan())?;
+        }
+        if self.coinbase_transfer {
+            writeln!(f, "            - {}", "Coinbase Transfer".cyan())?;
+        }
+        if self.high_priority_fee {
+            writeln!(f, "            - {}", "High Priority Fee".cyan())?;
+        }
+
+        Ok(())
     }
 }
 
@@ -345,21 +534,22 @@ pub struct Sandwich {
     /// Gas details for each backrunning transaction.
     pub backrun_gas_details:      GasDetails,
 }
-pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHeader, BundleData) {
+
+pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
     let mut sandwich: Option<Sandwich> = None;
     let mut jit: Option<JitLiquidity> = None;
     let mut classified_sandwich: Option<BundleHeader> = None;
     let mut jit_classified: Option<BundleHeader> = None;
 
-    for (classified, mev_data) in mev {
-        match mev_data {
+    for bundle in mev {
+        match bundle.data {
             BundleData::Sandwich(s) => {
                 sandwich = Some(s);
-                classified_sandwich = Some(classified);
+                classified_sandwich = Some(bundle.header);
             }
             BundleData::Jit(j) => {
                 jit = Some(j);
-                jit_classified = Some(classified);
+                jit_classified = Some(bundle.header);
             }
             _ => unreachable!(),
         }
@@ -421,7 +611,7 @@ pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHead
 
     // Create new classified MEV data
     let new_classified = BundleHeader {
-        mev_tx_index:         classified_sandwich.mev_tx_index,
+        tx_index:             classified_sandwich.tx_index,
         tx_hash:              *sandwich.frontrun_tx_hash.get(0).unwrap_or_default(),
         mev_type:             MevType::JitSandwich,
         block_number:         classified_sandwich.block_number,
@@ -433,7 +623,7 @@ pub fn compose_sandwich_jit(mev: Vec<(BundleHeader, BundleData)>) -> (BundleHead
         bribe_usd:            classified_sandwich.bribe_usd,
     };
 
-    (new_classified, BundleData::JitSandwich(jit_sand))
+    Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) }
 }
 
 impl Mev for Sandwich {

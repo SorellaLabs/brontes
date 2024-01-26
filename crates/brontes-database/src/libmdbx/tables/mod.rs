@@ -8,7 +8,7 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens, cex::CexPriceMap, dex::DexQuoteWithIndex,
         metadata::MetadataInner, mev_block::MevBlockWithClassified,
-        pool_creation_block::PoolsToAddresses, traces::TxTracesInner,
+        pool_creation_block::PoolsToAddresses, token_info::TokenInfo, traces::TxTracesInner,
     },
     extra_processing::Pair,
     traits::TracingProvider,
@@ -314,7 +314,7 @@ macro_rules! table {
 
 compressed_table!(
     /// token address -> decimals
-    ( TokenDecimals ) Address | Clickhouse | u8 = False
+    ( TokenDecimals ) Address | Clickhouse | TokenInfo = False
 );
 
 compressed_table!(

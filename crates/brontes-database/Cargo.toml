@@ -109,6 +109,7 @@ auto_impl.workspace = true
 [dev-dependencies]
 serial_test.workspace = true
 test-fuzz = "4"
+async-trait.workspace = true
 
 
 [features]

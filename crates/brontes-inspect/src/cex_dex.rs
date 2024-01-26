@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{BundleData, CexDex, MevType, PriceKind, TokenProfit, TokenProfits},
+    classified_mev::{Bundle, BundleData, CexDex, MevType, PriceKind, TokenProfit, TokenProfits},
     extra_processing::Pair,
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails},
@@ -39,7 +39,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(BundleHeader, BundleData)> {
+    ) -> Vec<Bundle> {
         // Get all normalized swaps
         let intersting_state = tree.collect_all(|node| {
             (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
@@ -79,7 +79,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: Arc<MetadataCombined>,
         gas_details: &GasDetails,
         swaps: Vec<Actions>,
-    ) -> Option<(BundleHeader, BundleData)> {
+    ) -> Option<Bundle> {
         let swap_sequences: Vec<(&Actions, _)> = swaps
             .iter()
             .filter_map(|action| {
@@ -126,8 +126,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 .collect(),
         };
 
-        let classified = BundleHeader {
-            mev_tx_index: idx as u64,
+        let header = BundleHeader {
+            tx_index: idx as u64,
             mev_profit_collector,
             tx_hash: hash,
             mev_contract,
@@ -169,7 +169,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 .collect(),
         };
 
-        Some((classified, BundleData::CexDex(cex_dex)))
+        Some(Bundle { header, data: BundleData::CexDex(cex_dex) })
     }
 
     fn arb_gas_accounting(
