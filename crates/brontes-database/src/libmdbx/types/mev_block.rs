@@ -1,8 +1,8 @@
 use brontes_types::{
     classified_mev::{
         AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
-        JitLiquiditySandwich, Liquidation, MevBlock, MevType, PossibleMev, PossibleMevCollection,
-        PossibleMevTriggers, PriceKind, Sandwich, TokenProfit, TokenProfits,
+        JitLiquiditySandwich, Liquidation, MevBlock, MevCount, MevType, PossibleMev,
+        PossibleMevCollection, PossibleMevTriggers, PriceKind, Sandwich, TokenProfit, TokenProfits,
     },
     db::{
         mev_block::MevBlockWithClassified,
@@ -64,7 +64,7 @@ pub struct LibmdbxMevBlockWithClassified {
 pub struct LibmdbxMevBlock {
     pub block_hash: Redefined_FixedBytes<32>,
     pub block_number: u64,
-    pub mev_count: u64,
+    pub mev_count: LibmdbxMevCount,
     pub eth_price: f64,
     pub cumulative_gas_used: u128,
     // Sum of all priority fees in the block
@@ -81,15 +81,27 @@ pub struct LibmdbxMevBlock {
     pub possible_mev: LibmdbxPossibleMevCollection,
 }
 
-// pub struct LibmdbxPossibleMev {
-//     pub tx_hash:     Redefined_FixedBytes<32>,
-//     pub tx_idx:      u64,
-//     pub gas_details: GasDetails,
-//     pub triggers:    PossibleMevTriggers,
-//
-//     pub position_in_block: usize,
-//     pub gas_paid:          u128,
-// }
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(MevCount)]
+pub struct LibmdbxMevCount {
+    pub mev_count:            u64,
+    pub sandwich_count:       Option<u64>,
+    pub cex_dex_count:        Option<u64>,
+    pub jit_count:            Option<u64>,
+    pub jit_sandwich_count:   Option<u64>,
+    pub atomic_backrun_count: Option<u64>,
+    pub liquidation_count:    Option<u64>,
+}
+
 #[derive(
     Debug,
     serde::Serialize,
