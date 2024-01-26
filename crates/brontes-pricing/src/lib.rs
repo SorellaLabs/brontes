@@ -453,7 +453,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let requery_pairs = self
             .graph_manager
-            .verify_subgraph(self.lazy_loader.get_completed_pairs(), self.quote_asset)
+            .verify_subgraph(
+                self.lazy_loader.get_completed_pairs(&self.completed_block),
+                self.quote_asset,
+            )
             .into_iter()
             .filter_map(|(failed, block, pair, cache_pairs)| {
                 cache_pairs.into_iter().for_each(|(pair, address)| {
