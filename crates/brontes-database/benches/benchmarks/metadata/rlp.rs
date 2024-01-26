@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use alloy_rlp::{Decodable, Encodable};
-use brontes_database::libmdbx::types::{utils::*, LibmdbxData};
+use brontes_database::libmdbx::types::{utils::*, LibmdbxData, ReturnKV};
 use bytes::BufMut;
 use reth_db::{
     table::{Compress, Decompress},
@@ -24,11 +24,8 @@ pub struct MetadataRLPData {
 }
 
 impl LibmdbxData<MetadataRLP> for MetadataRLPData {
-    fn into_key_val(
-        &self,
-    ) -> (<MetadataRLP as reth_db::table::Table>::Key, <MetadataRLP as reth_db::table::Table>::Value)
-    {
-        (self.block_number, self.inner.clone())
+    fn into_key_val(&self) -> ReturnKV<MetadataRlp> {
+        (self.block_number, self.inner.clone()).into()
     }
 }
 
