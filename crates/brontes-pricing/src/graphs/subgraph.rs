@@ -280,8 +280,12 @@ impl PairSubGraph {
                     }
                 }
             } else {
-                let _ = self.graph.remove_node(n0.into());
-                let _ = self.graph.remove_node(n1.into());
+                if self.graph.edges(n0.into()).collect_vec().is_empty() {
+                    let _ = self.graph.remove_node(n0.into());
+                }
+                if self.graph.edges(n1.into()).collect_vec().is_empty() {
+                    let _ = self.graph.remove_node(n1.into());
+                }
             }
         });
 
