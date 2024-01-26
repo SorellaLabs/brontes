@@ -43,9 +43,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         .collect::<eyre::Result<_>>()
     }
 
-    pub(crate) async fn initialize_table_from_clickhouse_no_args<'db, T, D>(
-        &'db self,
-    ) -> eyre::Result<()>
+    pub(crate) async fn clickhouse_init_no_args<'db, T, D>(&'db self) -> eyre::Result<()>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,

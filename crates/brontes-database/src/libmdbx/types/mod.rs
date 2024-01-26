@@ -15,11 +15,30 @@ use std::fmt::Debug;
 
 use reth_db::table::{DupSort, Table};
 
+pub struct ReturnKV<T>
+where
+    T: CompressedTable,
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+{
+    pub key:   T::Key,
+    pub value: T::DecompressedValue,
+}
+
+impl<T> From<(T::Key, T::DecompressedValue)> for ReturnKV<T>
+where
+    T: CompressedTable,
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+{
+    fn from(value: (T::Key, T::DecompressedValue)) -> Self {
+        Self { key: value.0, value: value.1 }
+    }
+}
+
 pub trait LibmdbxData<T: CompressedTable>: Sized + Send + Sync
 where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
-    fn into_key_val(&self) -> (T::Key, T::DecompressedValue);
+    fn into_key_val(&self) -> ReturnKV<T>;
 }
 
 pub trait LibmdbxDupData<T: DupSort + CompressedTable>: Sized

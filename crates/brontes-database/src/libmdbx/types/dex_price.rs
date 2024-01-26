@@ -7,7 +7,7 @@ use redefined::{Redefined, RedefinedConvert};
 use reth_db::DatabaseError;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{CompressedTable, LibmdbxData};
+use super::{CompressedTable, LibmdbxData, ReturnKV};
 use crate::libmdbx::DexPrice;
 
 wrap_fixed_bytes!(
@@ -42,10 +42,7 @@ impl DexPriceData {
 }
 
 impl LibmdbxData<DexPrice> for DexPriceData {
-    fn into_key_val(
-        &self,
-    ) -> (<DexPrice as reth_db::table::Table>::Key, <DexPrice as CompressedTable>::DecompressedValue)
-    {
+    fn into_key_val(&self) -> ReturnKV<DexPrice> {
         (
             self.key,
             DexQuoteWithIndex {
@@ -53,6 +50,7 @@ impl LibmdbxData<DexPrice> for DexPriceData {
                 quote:  self.quote.clone().into(),
             },
         )
+            .into()
     }
 }
 
