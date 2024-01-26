@@ -1,4 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    fmt::Display,
+};
 
 use rayon::{
     iter::IntoParallelIterator,
@@ -327,7 +331,17 @@ pub struct GasDetails {
     pub gas_used:            u128,
     pub effective_gas_price: u128,
 }
-
+//TODO: Fix this
+impl Display for GasDetails {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "GasDetails {{ coinbase_transfer: {:?}, priority_fee: {}, gas_used: {}, \
+             effective_gas_price: {} }}",
+            self.coinbase_transfer, self.priority_fee, self.gas_used, self.effective_gas_price
+        )
+    }
+}
 self_convert_redefined!(GasDetails);
 
 impl GasDetails {

@@ -62,7 +62,7 @@ use crate::action_classifier::{ActionDispatch, ActionMacro};
 /// prefix the log with .. ex `..Mint`.
 ///
 /// ## Log Repeating
-/// if a log is repeating and a dynamic length, use `*` after the log
+/// if a log is repeating and dynamic in length, use `*` after the log
 /// to mark that there is a arbitrary amount of these logs emitted.
 /// ex `Transfer*` or `..Transfer*`
 ///

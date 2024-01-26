@@ -17,7 +17,7 @@ use strum::{Display, EnumIter};
 
 #[allow(unused_imports)]
 use crate::{
-    display::utils::print_mev_type_header,
+    display::utils::{display_sandwich, print_mev_type_header},
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     serde_utils::primitives::vec_fixed_string,
     tree::GasDetails,
@@ -150,16 +150,16 @@ pub struct BundleHeader {
     pub mev_type:             MevType,
 }
 
-/*
 impl fmt::Display for Bundle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        print_mev_type_header(self.header.mev_type, f)?;
-
-        writeln!(f, "  - Tx Hash: {:?}", self.)?;
+        match self.header.mev_type {
+            MevType::Sandwich => display_sandwich(self, f)?,
+            _ => unimplemented!(),
+        }
 
         Ok(())
     }
-}*/
+}
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
@@ -522,8 +522,8 @@ pub struct Sandwich {
     /// index corresponds to a frontrun transaction, grouping victims targeted
     /// by that specific frontrun.
     pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
-    /// Swaps executed by victims, grouped to align with corresponding
-    /// frontrunning transactions.
+    /// Swaps executed by victims, each outer vector corresponds to a victim
+    /// transaction.
     pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
     /// Gas details for each victim transaction.
     pub victim_swaps_gas_details: Vec<GasDetails>,
