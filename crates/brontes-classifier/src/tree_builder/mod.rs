@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 mod tree_pruning;
 mod utils;
-use brontes_core::missing_decimals::load_missing_decimal;
+use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
@@ -219,17 +219,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         if let Actions::Transfer(transfer) = &classification {
             if self
                 .libmdbx
-                .try_get_token_decimals(transfer.token)
+                .try_get_token_info(transfer.token)
                 .unwrap()
                 .is_none()
             {
-                load_missing_decimal(
-                    self.provider.clone(),
-                    self.libmdbx,
-                    block_number,
-                    transfer.token,
-                )
-                .await;
+                load_missing_token_info(&self.provider, self.libmdbx, block_number, transfer.token)
+                    .await;
             }
         }
 

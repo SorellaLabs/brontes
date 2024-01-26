@@ -14,6 +14,11 @@ pub struct TokenInfo {
     pub decimals: u8,
     pub symbol:   String,
 }
+impl TokenInfo {
+    pub fn new(decimals: u8, symbol: String) -> Self {
+        Self { symbol, decimals }
+    }
+}
 
 impl<'de> serde::Deserialize<'de> for TokenInfo {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

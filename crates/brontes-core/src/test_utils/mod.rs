@@ -16,7 +16,6 @@ use brontes_types::{
     traits::TracingProvider,
 };
 use futures::future::join_all;
-use log::Level;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 use reth_tasks::TaskManager;
@@ -26,6 +25,7 @@ use tokio::{
     runtime::Handle,
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
 };
+use tracing::Level;
 use tracing_subscriber::filter::Directive;
 
 use crate::decoding::parser::TraceParser;
@@ -287,7 +287,7 @@ fn get_db_handle() -> &'static LibmdbxReadWriter {
 fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes
     // all, Debug includes all but Trace, ...)
-    let verbosity_level = Level::Info; // Error >= Warn >= Info >= Debug >= Trace
+    let verbosity_level = Level::INFO; // Error >= Warn >= Info >= Debug >= Trace
     let directive: Directive = format!("{verbosity_level}").parse().unwrap();
     let layers = vec![brontes_tracing::stdout(directive)];
 
