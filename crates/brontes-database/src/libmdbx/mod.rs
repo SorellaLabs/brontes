@@ -118,8 +118,8 @@ impl Libmdbx {
             entries
                 .par_iter()
                 .map(|entry| {
-                    let (key, val) = entry.into_key_val();
-                    tx.put::<T>(key, val)
+                    let entry = entry.into_key_val();
+                    tx.put::<T>(entry.key, entry.value)
                 })
                 .collect::<Result<Vec<_>, DatabaseError>>()?;
             Ok::<(), DatabaseError>(())

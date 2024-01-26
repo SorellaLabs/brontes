@@ -5,7 +5,7 @@ use redefined::{Redefined, RedefinedConvert};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{utils::pools_libmdbx, CompressedTable, LibmdbxData};
+use super::{utils::pools_libmdbx, CompressedTable, LibmdbxData, ReturnKV};
 use crate::libmdbx::PoolCreationBlocks;
 
 #[serde_as]
@@ -17,13 +17,8 @@ pub struct PoolCreationBlocksData {
 }
 
 impl LibmdbxData<PoolCreationBlocks> for PoolCreationBlocksData {
-    fn into_key_val(
-        &self,
-    ) -> (
-        <PoolCreationBlocks as reth_db::table::Table>::Key,
-        <PoolCreationBlocks as CompressedTable>::DecompressedValue,
-    ) {
-        (self.block_number, self.pools.clone().into())
+    fn into_key_val(&self) -> ReturnKV<PoolCreationBlocks> {
+        (self.block_number, self.pools.clone().into()).into()
     }
 }
 

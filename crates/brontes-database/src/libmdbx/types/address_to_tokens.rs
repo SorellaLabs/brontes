@@ -7,7 +7,7 @@ use reth_primitives::Address;
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{CompressedTable, LibmdbxData};
+use super::{CompressedTable, LibmdbxData, ReturnKV};
 use crate::libmdbx::{types::utils::pool_tokens, AddressToTokens};
 
 #[serde_as]
@@ -20,13 +20,8 @@ pub struct AddressToTokensData {
 }
 
 impl LibmdbxData<AddressToTokens> for AddressToTokensData {
-    fn into_key_val(
-        &self,
-    ) -> (
-        <AddressToTokens as reth_db::table::Table>::Key,
-        <AddressToTokens as CompressedTable>::DecompressedValue,
-    ) {
-        (self.address, self.tokens.clone())
+    fn into_key_val(&self) -> ReturnKV<AddressToTokens> {
+        (self.address, self.tokens.clone()).into()
     }
 }
 
