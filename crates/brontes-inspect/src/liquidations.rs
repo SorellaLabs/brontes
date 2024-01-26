@@ -162,7 +162,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let profit_usd = rev_usd - &gas_finalized;
 
         let header = BundleHeader {
-            mev_tx_index: idx as u64,
+            tx_index: idx as u64,
             block_number: metadata.block_num,
             eoa,
             tx_hash,

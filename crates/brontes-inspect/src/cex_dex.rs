@@ -127,7 +127,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         };
 
         let header = BundleHeader {
-            mev_tx_index: idx as u64,
+            tx_index: idx as u64,
             mev_profit_collector,
             tx_hash: hash,
             mev_contract,

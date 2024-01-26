@@ -16,6 +16,7 @@ use sorella_db_databases::{
 use strum::{Display, EnumIter};
 
 use crate::{
+    display::utils::print_mev_type_header,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     serde_utils::primitives::vec_fixed_string,
     tree::GasDetails,
@@ -57,8 +58,10 @@ impl fmt::Display for MevBlock {
         for line in ascii_header.lines() {
             writeln!(f, "{}", line.green())?;
         }
+
+        writeln!(f, "Block Number: {}", self.block_number)?;
         // Mev section
-        writeln!(f, "{}", "Mev:".bold().red().underline())?;
+        writeln!(f, "\n{}", "Mev:".bold().red().underline())?;
         writeln!(f, "{}", self.mev_count.to_string().bold())?;
         writeln!(
             f,
@@ -128,11 +131,11 @@ fn format_profit(value: f64) -> String {
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct BundleHeader {
-    // can be multiple for sandwich
     pub block_number:         u64,
-    pub mev_tx_index:         u64,
+    pub tx_index:             u64,
     #[serde_as(as = "FixedString")]
-    pub tx_hash:              B256,
+    // For a sandwich this is always the first frontrun tx hash
+    pub tx_hash: B256,
     #[serde_as(as = "FixedString")]
     pub eoa:                  Address,
     #[serde_as(as = "FixedString")]
@@ -144,6 +147,17 @@ pub struct BundleHeader {
     pub bribe_usd:            f64,
     pub mev_type:             MevType,
 }
+
+/*
+impl fmt::Display for Bundle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        print_mev_type_header(self.header.mev_type, f)?;
+
+        writeln!(f, "  - Tx Hash: {:?}", self.)?;
+
+        Ok(())
+    }
+}*/
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
@@ -518,6 +532,7 @@ pub struct Sandwich {
     /// Gas details for each backrunning transaction.
     pub backrun_gas_details:      GasDetails,
 }
+
 pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
     let mut sandwich: Option<Sandwich> = None;
     let mut jit: Option<JitLiquidity> = None;
@@ -594,7 +609,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
 
     // Create new classified MEV data
     let new_classified = BundleHeader {
-        mev_tx_index:         classified_sandwich.mev_tx_index,
+        tx_index:             classified_sandwich.tx_index,
         tx_hash:              *sandwich.frontrun_tx_hash.get(0).unwrap_or_default(),
         mev_type:             MevType::JitSandwich,
         block_number:         classified_sandwich.block_number,

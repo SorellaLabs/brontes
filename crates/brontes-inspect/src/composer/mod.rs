@@ -141,7 +141,7 @@ fn on_orchestra_resolution(
 
     header.mev_count = mev_count;
     // keep order
-    filtered_bundles.sort_by(|a, b| a.header.mev_tx_index.cmp(&b.header.mev_tx_index));
+    filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 
     (header, filtered_bundles)
 }

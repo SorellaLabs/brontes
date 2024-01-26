@@ -220,7 +220,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         };
 
         let header = BundleHeader {
-            mev_tx_index: back_jit_idx as u64,
+            tx_index: back_jit_idx as u64,
             block_number: metadata.block_num,
             tx_hash: txes[0],
             eoa,
