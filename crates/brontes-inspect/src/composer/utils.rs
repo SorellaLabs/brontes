@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::FixedBytes;
 use brontes_types::{
-    classified_mev::{Bundle, Mev, MevBlock, MevType, PossibleMevCollection},
+    classified_mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
@@ -55,15 +55,15 @@ pub(crate) fn build_mev_header(
     possible_mev: PossibleMevCollection,
     orchestra_data: &Vec<Bundle>,
 ) -> MevBlock {
-    let total_bribe = orchestra_data
-        .iter()
-        .map(|bundle| bundle.data.bribe())
-        .sum::<u128>();
-
-    let cum_mev_priority_fee_paid = orchestra_data
-        .iter()
-        .map(|bundle| bundle.data.priority_fee_paid())
-        .sum::<u128>();
+    let (total_bribe, cum_mev_priority_fee_paid) = orchestra_data.iter().fold(
+        (0u128, 0u128),
+        |(total_bribe, cum_mev_priority_fee_paid), bundle| {
+            (
+                total_bribe + bundle.data.bribe(),
+                cum_mev_priority_fee_paid + bundle.data.priority_fee_paid(),
+            )
+        },
+    );
 
     let builder_eth_profit = Rational::from_signeds(
         (total_bribe as i128 + pre_processing.cumulative_priority_fee as i128)
@@ -74,7 +74,7 @@ pub(crate) fn build_mev_header(
     MevBlock {
         block_hash: pre_processing.meta_data.block_hash.into(),
         block_number: pre_processing.meta_data.block_num,
-        mev_count: orchestra_data.len() as u64,
+        mev_count: MevCount::default(),
         eth_price: f64::rounding_from(&pre_processing.meta_data.eth_prices, RoundingMode::Nearest)
             .0,
         cumulative_gas_used: pre_processing.cumulative_gas_used,
@@ -144,4 +144,49 @@ pub(crate) fn find_mev_with_matching_tx_hashes(
             }
         })
         .collect_vec()
+}
+
+pub fn filter_and_count_bundles(
+    sorted_mev: HashMap<MevType, Vec<Bundle>>,
+) -> (MevCount, Vec<Bundle>) {
+    let mut mev_count = MevCount::default();
+    let mut all_filtered_bundles = Vec::new();
+
+    for (mev_type, bundles) in sorted_mev {
+        let filtered_bundles: Vec<Bundle> = bundles
+            .into_iter()
+            .filter(|bundle| {
+                if matches!(mev_type, MevType::Sandwich | MevType::Jit | MevType::Backrun) {
+                    bundle.header.profit_usd > 0.0
+                } else {
+                    true
+                }
+            })
+            .collect();
+
+        // Update count for this MEV type
+        let count = filtered_bundles.len() as u64;
+        mev_count.mev_count += count; // Increment total MEV count
+
+        if count != 0 {
+            update_mev_count(&mut mev_count, mev_type, count);
+        }
+
+        // Add the filtered bundles to the overall list
+        all_filtered_bundles.extend(filtered_bundles);
+    }
+
+    (mev_count, all_filtered_bundles)
+}
+
+fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
+    match mev_type {
+        MevType::Sandwich => mev_count.sandwich_count = Some(count),
+        MevType::CexDex => mev_count.cex_dex_count = Some(count),
+        MevType::Jit => mev_count.jit_count = Some(count),
+        MevType::JitSandwich => mev_count.jit_sandwich_count = Some(count),
+        MevType::Backrun => mev_count.atomic_backrun_count = Some(count),
+        MevType::Liquidation => mev_count.liquidation_count = Some(count),
+        MevType::Unknown => (),
+    }
 }
