@@ -41,7 +41,7 @@ use crate::{
     AllPairGraph, Pair, Protocol,
 };
 
-const MIN_LIQUIDITY_USDC: u128 = 50_000;
+const MIN_LIQUIDITY_USDC: u128 = 25_000;
 
 /// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
 /// given Pair. This allows for running more complex search algorithms on the
@@ -193,7 +193,6 @@ impl PairSubGraph {
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
     ) -> (bool, HashMap<Pair, Vec<Address>>) {
-        tracing::info!("verifying");
         let mut visited = HashSet::new();
         let mut visit_next = VecDeque::new();
         let mut all_remove: HashMap<Pair, Vec<Address>> = HashMap::new();
@@ -239,7 +238,6 @@ impl PairSubGraph {
                     && !(all_pair_graph.is_only_edge(info.token_0)
                     ||  all_pair_graph.is_only_edge(info.token_1))
                 {
-                    tracing::info!(pool=?info.pool_addr, ?prev_price,?t0, ?t1,"removing shit pool");
                     let pair = Pair(info.token_0, info.token_1).ordered();
                     all_remove.entry(pair).or_default().push(info.pool_addr);
                 } else {
