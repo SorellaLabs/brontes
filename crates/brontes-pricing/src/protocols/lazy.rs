@@ -102,11 +102,15 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn get_completed_pairs(&mut self, block: u64) -> Vec<Pair> {
         let mut res = Vec::new();
         self.parent_pair_state_loading.retain(|k, v| {
-            if v.values().all(|i| i.is_empty()) {
-                res.extend(v.keys().copied());
-                return false
-            }
-            true
+            v.retain(|k, v| {
+                if v.is_empty() {
+                    res.push(*k);
+                    return false
+                }
+                true
+            });
+
+            !v.values().all(|i| i.is_empty())
         });
 
         res
