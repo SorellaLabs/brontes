@@ -15,8 +15,8 @@ use crate::libmdbx::CexPrice;
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CexPriceData {
-    pub block_number:     u64,
-    pub data: CexPriceMap,
+    pub block_number: u64,
+    pub data:         CexPriceMap,
 }
 
 impl LibmdbxData<CexPrice> for CexPriceData {
@@ -58,4 +58,3 @@ impl PartialEq for LibmdbxCexQuote {
         self.clone().to_source().eq(&other.clone().to_source())
     }
 }
-
