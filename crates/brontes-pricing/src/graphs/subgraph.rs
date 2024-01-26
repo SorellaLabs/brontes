@@ -236,7 +236,8 @@ impl PairSubGraph {
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
                 if liq < Rational::from(MIN_LIQUIDITY_USDC)
-                    && !all_pair_graph.is_only_edge(info.get_base_token())
+                    && !(all_pair_graph.is_only_edge(info.token_0)
+                    ||  all_pair_graph.is_only_edge(info.token_1))
                 {
                     tracing::info!(pool=?info.pool_addr, ?prev_price,?t0, ?t1,"removing shit pool");
                     let pair = Pair(info.token_0, info.token_1).ordered();
