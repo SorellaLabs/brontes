@@ -1,3 +1,5 @@
+use std::fs::Metadata;
+
 use brontes_types::{
     classified_mev::{
         AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
@@ -14,7 +16,7 @@ use brontes_types::{
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{CompressedTable, LibmdbxData};
+use super::{CompressedTable, LibmdbxData, ReturnKV};
 use crate::libmdbx::MevBlocks;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Row)]
@@ -24,13 +26,8 @@ pub struct MevBlocksData {
 }
 
 impl LibmdbxData<MevBlocks> for MevBlocksData {
-    fn into_key_val(
-        &self,
-    ) -> (
-        <MevBlocks as reth_db::table::Table>::Key,
-        <MevBlocks as CompressedTable>::DecompressedValue,
-    ) {
-        (self.block_number, self.mev_blocks.clone())
+    fn into_key_val(&self) -> ReturnKV<MevBlocks> {
+        (self.block_number, self.mev_blocks.clone()).into()
     }
 }
 
