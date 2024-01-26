@@ -8,11 +8,11 @@ WITH
             argMinMerge(ask_price) AS ask_price,
             argMinMerge(bid_price) AS bid_price
         FROM brontes.cex_pricing
+        WHERE block_number >= ? AND block_number < ?
         GROUP BY
             block_number,
             exchange,
             pair
-        WHERE block_number >= ? AND block_number < ?
     ),
     all AS (
         SELECT 

@@ -1551,6 +1551,7 @@ dependencies = [
  "alloy-rlp",
  "arbitrary",
  "arrow",
+ "async-trait",
  "auto_impl",
  "bincode 2.0.0-rc.3",
  "brontes-pricing",
