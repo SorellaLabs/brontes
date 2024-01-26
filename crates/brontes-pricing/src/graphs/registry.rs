@@ -218,7 +218,8 @@ impl SubGraphRegistry {
         if !kill {
             self.sub_graphs.insert(pair.ordered(), subgraph);
         }
-        self.token_to_sub_graph.retain(|k, v| {
+
+        self.token_to_sub_graph.retain(|_, v| {
             v.remove(&pair.ordered());
             !v.is_empty()
         });
