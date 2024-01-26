@@ -1,10 +1,12 @@
 use std::{
     collections::HashMap,
-    fmt::Debug,
+    fmt,
+    fmt::{Debug, Display},
     ops::{Deref, DerefMut},
 };
 
 use alloy_primitives::{Bytes, Log};
+use colored::Colorize;
 use reth_primitives::{Address, U256};
 use reth_rpc_types::trace::parity::{Action, SelfdestructAction};
 use serde::{Deserialize, Serialize};
@@ -340,6 +342,21 @@ pub struct NormalizedSwap {
     pub token_out:   Address,
     pub amount_in:   U256,
     pub amount_out:  U256,
+}
+
+impl Display for NormalizedSwap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "   -{}: {} of {} for {} of {} on {}",
+            "Swapped".bold(),
+            self.amount_in.to_string(),
+            self.token_in.to_string(),
+            self.amount_out.to_string(),
+            self.token_out.to_string(),
+            self.pool.to_string()
+        )
+    }
 }
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
