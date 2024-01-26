@@ -14,6 +14,22 @@ use crate::decoding::TracingProvider;
 sol!(
     function decimals() public view returns (uint8);
 );
+pub async fn load_missing_decimal<T: TracingProvider, W: LibmdbxWriter>(
+    provider: Arc<T>,
+    db: &W,
+    block: u64,
+    missing_address: Address,
+) {
+    let call = decimalsCall::new(()).abi_encode();
+    let mut tx_req = CallRequest::default();
+    tx_req.to = Some(missing_address);
+    tx_req.input = CallInput::new(call.into());
+
+    let p = provider.clone();
+    let res = p.eth_call(tx_req, Some(block.into()), None, None).await;
+
+    on_decimal_query_resolution(db, missing_address, res);
+}
 
 pub async fn load_missing_decimals<T: TracingProvider, W: LibmdbxWriter>(
     provider: Arc<T>,
