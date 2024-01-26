@@ -472,9 +472,7 @@ where
         visited.visit(node);
     }
 
-    let res = node_price.remove(&goal);
-    assert!(res.is_some(), "disjoint graph");
-    res
+    node_price.remove(&goal)
 }
 
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in
