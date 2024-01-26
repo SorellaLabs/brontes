@@ -21,6 +21,7 @@ use brontes_types::{
 };
 use ethers::core::k256::elliptic_curve::bigint::Zero;
 pub use graphs::{AllPairGraph, GraphManager};
+use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
 pub use price_graph_types::{
     PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
@@ -185,11 +186,41 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             })
     }
 
+    fn requery_bad_state_par(&mut self, pairs: Vec<Pair>, block: u64) {
+        tracing::info!(?pairs, "requerying");
+        par_state_query(&self.graph_manager, pairs, block)
+            .into_iter()
+            .for_each(|(pair, state, edges)| {
+                if edges.is_empty() {
+                    return
+                }
+                for pool_info in state {
+                    let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
+                    // load exchange only if its not loaded already
+                    if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
+                        self.lazy_loader.lazy_load_exchange(
+                            pair,
+                            Pair(pool_info.token_0, pool_info.token_1),
+                            pool_info.pool_addr,
+                            self.current_block,
+                            pool_info.dex_type,
+                        )
+                    } else if lazy_loading {
+                        self.lazy_loader.add_protocol_parent(
+                            self.completed_block,
+                            pool_info.pool_addr,
+                            pair,
+                        );
+                    }
+                }
+
+                self.graph_manager.add_subgraph(pair, edges);
+            });
+    }
+
     /// because we already have a state update for this pair in the buffer, we
     /// don't wanna create another one
     fn re_queue_bad_pair(&mut self, pair: Pair, block: u64) {
-        tracing::info!(?pair, "requerying");
-
         if pair.0 == pair.1 {
             return
         }
@@ -398,12 +429,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let rem = &self.lazy_loader.parent_pair_state_loading;
 
-        self.lazy_loader
-            .get_completed_pairs(self.current_block)
+        let requery_pairs = self
+            .graph_manager
+            .verify_subgraph(
+                self.lazy_loader.get_completed_pairs(self.completed_block),
+                self.quote_asset,
+            )
             .into_iter()
-            .for_each(|pair| {
-                let (failed, cache_pairs) =
-                    self.graph_manager.verify_subgraph(pair, self.quote_asset);
+            .filter_map(|(failed, pair, cache_pairs)| {
                 cache_pairs.into_iter().for_each(|(pair, address)| {
                     for addr in address {
                         if let Some((addr, protocol, pair)) =
@@ -413,10 +446,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         }
                     }
                 });
-                if failed {
-                    self.re_queue_bad_pair(pair, block);
-                }
-            });
+                failed.then_some(pair)
+            })
+            .collect_vec();
+
+        self.requery_bad_state_par(requery_pairs, self.completed_block);
 
         if let Some(state) = state {
             let addr = state.address();
@@ -661,6 +695,21 @@ fn graph_search_par(
 
     (state, pools)
 }
+
+fn par_state_query(
+    graph: &GraphManager,
+    pairs: Vec<Pair>,
+    block: u64,
+) -> Vec<(Pair, Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>)> {
+    pairs
+        .into_par_iter()
+        .map(|pair| {
+            let (info, edge) = graph.crate_subpool_multithread(block, pair);
+            (pair, info, edge)
+        })
+        .collect::<Vec<_>>()
+}
+
 fn on_new_pool_pair(
     graph: &GraphManager,
     quote: Address,
