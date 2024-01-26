@@ -206,15 +206,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                             pair,
                             Pair(pool_info.token_0, pool_info.token_1),
                             pool_info.pool_addr,
-                            self.current_block,
+                            block,
                             pool_info.dex_type,
                         )
                     } else if lazy_loading {
-                        self.lazy_loader.add_protocol_parent(
-                            self.current_block,
-                            pool_info.pool_addr,
-                            pair,
-                        );
+                        self.lazy_loader
+                            .add_protocol_parent(block, pool_info.pool_addr, pair);
                     }
                 }
 
@@ -435,10 +432,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let requery_pairs = self
             .graph_manager
-            .verify_subgraph(
-                self.lazy_loader.get_completed_pairs(self.completed_block),
-                self.quote_asset,
-            )
+            .verify_subgraph(self.lazy_loader.get_completed_pairs(block), self.quote_asset)
             .into_iter()
             .filter_map(|(failed, pair, cache_pairs)| {
                 cache_pairs.into_iter().for_each(|(pair, address)| {
