@@ -13,6 +13,7 @@ brontes-types.workspace = true
 brontes-macros.workspace = true
 brontes-database.workspace = true
 brontes-pricing.workspace = true
+brontes-core.workspace = true
 alloy-primitives.workspace = true
 
 # async
@@ -55,7 +56,6 @@ eyre.workspace = true
 
 # tests feature (unique)
 reth-tracing-ext = { workspace = true, optional = true }
-brontes-core = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = true }
 criterion = { version = "0.5", features = [
   "async",
