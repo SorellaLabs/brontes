@@ -1,9 +1,8 @@
-use core::panic;
 use std::{
     cmp::{max, Ordering},
     collections::{
         hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, HashMap, HashSet,
+        BinaryHeap, HashMap, HashSet, VecDeque,
     },
     hash::Hash,
     ops::{Deref, DerefMut},
@@ -21,11 +20,13 @@ use malachite::{
 };
 use petgraph::{
     algo::connected_components,
-    data::{Build, DataMap},
-    graph::{self, DiGraph, UnGraph},
+    data::{Build, DataMap, FromElements},
+    graph::{self, DiGraph, Edges, UnGraph},
     prelude::*,
+    stable_graph::IndexType,
     visit::{
-        Bfs, Data, GraphBase, IntoEdgeReferences, IntoEdges, IntoNeighbors, VisitMap, Visitable,
+        Bfs, Data, GraphBase, IntoEdgeReferences, IntoEdges, IntoEdgesDirected, IntoNeighbors,
+        NodeRef, VisitMap, Visitable,
     },
     Graph,
 };
@@ -33,11 +34,14 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
+use super::all_pair_graph;
 use crate::{
     price_graph_types::*,
     types::{PoolState, ProtocolState},
-    Pair, Protocol,
+    AllPairGraph, Pair, Protocol,
 };
+
+const MIN_LIQUIDITY_USDC: u128 = 50_000;
 
 /// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
 /// given Pair. This allows for running more complex search algorithms on the
@@ -121,7 +125,6 @@ impl PairSubGraph {
         edge_state: &HashMap<Address, T>,
     ) -> Option<Rational> {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
-            .map(|p| p.0)
     }
 
     pub fn get_all_pools(&self) -> impl Iterator<Item = &Vec<SubGraphEdge>> + '_ {
@@ -171,6 +174,92 @@ impl PairSubGraph {
         }
         true
     }
+
+    fn next_edges_directed<'a>(
+        &'a self,
+        node: u16,
+        outgoing: bool,
+    ) -> Edges<'a, Vec<SubGraphEdge>, Directed, u16> {
+        if outgoing {
+            self.graph.edges_directed(node.into(), Direction::Outgoing)
+        } else {
+            self.graph.edges_directed(node.into(), Direction::Incoming)
+        }
+    }
+
+    pub fn bfs_verify<T: ProtocolState>(
+        &self,
+        start: Address,
+        state: &HashMap<Address, T>,
+        all_pair_graph: &AllPairGraph,
+    ) -> (bool, HashMap<Pair, Vec<Address>>) {
+        let mut visited = HashSet::new();
+        let mut visit_next = VecDeque::new();
+        let mut all_remove: HashMap<Pair, Vec<Address>> = HashMap::new();
+
+        let start = *self.token_to_index.get(&start).unwrap();
+        let direction = start == self.start_node;
+
+        visit_next.extend(
+            self.next_edges_directed(start, direction)
+                .zip(vec![Rational::ONE].into_iter().cycle()),
+        );
+
+        while let Some((next_edge, prev_price)) = visit_next.pop_front() {
+            let id = next_edge.id();
+            if visited.contains(&id) {
+                continue
+            }
+            visited.insert(id);
+
+            let mut pxw = Rational::ZERO;
+            let mut weight = Rational::ZERO;
+            let mut token_0_am = Rational::ZERO;
+            let mut token_1_am = Rational::ZERO;
+
+            for info in next_edge.weight() {
+                let Some(pool_state) = state.get(&info.pool_addr) else {
+                    continue;
+                };
+                // returns is t1  / t0
+                let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
+                    continue;
+                };
+
+                let (t0, t1) = pool_state.tvl(info.get_base_token());
+                let liq = prev_price.clone().reciprocal() * &t0;
+
+                // check if below liquidity and that if we remove we don't make the graph
+                // disjoint.
+                if liq < Rational::from(MIN_LIQUIDITY_USDC)
+                    && !all_pair_graph.is_only_edge(info.get_base_token())
+                {
+                    let pair = Pair(info.token_0, info.token_1).ordered();
+                    all_remove.entry(pair).or_default().push(info.pool_addr);
+                } else {
+                    let t0xt1 = &t0 * &t1;
+                    pxw += (pool_price * &t0xt1);
+                    weight += t0xt1;
+                }
+            }
+
+            if weight == Rational::ZERO {
+                // means no edges were over limit, return
+                return (true, all_remove)
+            }
+
+            let local_weighted_price = pxw / weight;
+            let new_price = &prev_price * local_weighted_price;
+
+            let next_node = next_edge.target();
+            visit_next.extend(
+                self.next_edges_directed(next_node.index() as u16, direction)
+                    .zip(vec![new_price].into_iter().cycle()),
+            );
+        }
+
+        (false, all_remove)
+    }
 }
 
 fn add_edge(
@@ -212,7 +301,7 @@ pub fn dijkstra_path<G, T>(
     start: G::NodeId,
     goal: G::NodeId,
     state: &HashMap<Address, T>,
-) -> Option<(Rational, Vec<Rational>)>
+) -> Option<Rational>
 where
     T: ProtocolState,
     G: IntoEdgeReferences<EdgeWeight = Vec<SubGraphEdge>>,
@@ -337,32 +426,20 @@ where
                     if next_score < *ent.get() {
                         *ent.into_mut() = next_score.clone();
                         visit_next.push(MinScored(next_score, (next, new_price.clone())));
-                        node_price.insert(next, (node, new_price));
+                        node_price.insert(next, new_price);
                     }
                 }
                 Vacant(ent) => {
                     ent.insert(next_score.clone());
                     visit_next.push(MinScored(next_score, (next, new_price.clone())));
-                    node_price.insert(next, (node, new_price));
+                    node_price.insert(next, new_price);
                 }
             }
         }
         visited.visit(node);
     }
-    let mut price_path = Vec::new();
-    let (mut prev, price) = node_price.remove(&goal)?;
-    price_path.push(price.clone());
 
-    while prev != start {
-        let (new_prev, price) = node_price.remove(&prev).unwrap();
-        price_path.push(price);
-        prev = new_prev;
-    }
-    let price_path = price_path.into_iter().rev().collect::<Vec<_>>();
-
-    tracing::info!("{:#?}", price_path);
-
-    Some((price, price_path))
+    node_price.remove(&goal)
 }
 
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in

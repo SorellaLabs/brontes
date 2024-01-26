@@ -134,6 +134,11 @@ impl AllPairGraph {
         }
     }
 
+    pub(super) fn is_only_edge(&self, node: Address) -> bool {
+        let node = *self.token_to_index.get(&node).unwrap();
+        self.graph.edges(node.into()).collect_vec().len() == 1
+    }
+
     pub fn get_paths(&self, pair: Pair) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");

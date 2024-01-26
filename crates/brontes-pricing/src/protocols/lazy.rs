@@ -59,6 +59,7 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     pool_buf: HashSet<Address>,
     /// requests we are processing for a given block.
     req_per_block: HashMap<u64, u64>,
+    parent_pair_state_loading: HashMap<Pair, HashSet<Address>>,
     /// All current request addresses to subgraph pair that requested the
     /// loading. in the case that a pool fails to load, we need all subgraph
     /// pairs that are dependent on the node in order to remove it from the
@@ -74,6 +75,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             provider,
             req_per_block: HashMap::default(),
             protocol_address_to_parent_pairs: HashMap::default(),
+            parent_pair_state_loading: HashMap::default(),
         }
     }
 
@@ -86,12 +88,40 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             .entry(address)
             .or_insert(vec![])
             .push(parent_pair);
+
+        self.parent_pair_state_loading
+            .entry(parent_pair)
+            .or_default()
+            .insert(address);
+    }
+
+    pub fn get_completed_pairs(&mut self) -> Vec<Pair> {
+        let mut res = Vec::new();
+        self.parent_pair_state_loading.retain(|k, v| {
+            if v.is_empty() {
+                res.push(*k);
+            }
+
+            !v.is_empty()
+        });
+
+        res
     }
 
     pub fn remove_protocol_parents(&mut self, address: &Address) -> Vec<Pair> {
-        self.protocol_address_to_parent_pairs
+        let removed = self
+            .protocol_address_to_parent_pairs
             .remove(address)
-            .unwrap_or(vec![])
+            .unwrap_or(vec![]);
+
+        removed.iter().for_each(|pair| {
+            self.parent_pair_state_loading
+                .entry(*pair)
+                .or_default()
+                .remove(address);
+        });
+
+        removed
     }
 
     pub fn lazy_load_exchange(
@@ -133,6 +163,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                         *(o.get_mut()) -= 1;
                     }
+
                     self.remove_protocol_parents(&addr);
 
                     self.pool_buf.remove(&addr);
