@@ -31,7 +31,7 @@ fn write_clickhouse_sql() {
             let const_name = path.file_stem().unwrap().to_str().unwrap().to_uppercase();
             writeln!(
                 f,
-                "#[allow(dead_code)]\npub const {}: &str = r#\"{}\"#;\n",
+                "#[allow(dead_code)]\n#[rustfmt::skip]\npub const {}: &str = r#\"{}\"#;\n",
                 const_name, sql_string
             )
             .unwrap();
@@ -42,6 +42,7 @@ fn write_clickhouse_sql() {
 fn write_libmdbx_sql() {
     let dest_path = Path::new("./src/libmdbx/tables/const_sql.rs");
     let mut f = File::create(dest_path).unwrap();
+    writeln!(f, "#![rustfmt::skip]\n").unwrap();
 
     for entry in fs::read_dir(LIBMDBX_SQL_FILE_DIRECTORY).unwrap() {
         let entry = entry.unwrap();
@@ -53,8 +54,8 @@ fn write_libmdbx_sql() {
             let const_name = path.file_stem().unwrap().to_str().unwrap();
             writeln!(
                 f,
-                "#[allow(dead_code)]\n#[allow(non_upper_case_globals)]\npub const {}: &str = \
-                 r#\"{}\"#;\n",
+                "#[allow(dead_code)]\n#[allow(non_upper_case_globals)]\n#[rustfmt::skip]\npub \
+                 const {}: &str = r#\"{}\"#;\n",
                 const_name, sql_string
             )
             .unwrap();
