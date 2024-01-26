@@ -286,10 +286,10 @@ impl PairSubGraph {
                 }
             } else {
                 if self.graph.edges(n0.into()).collect_vec().len() == 0 {
-                    let _ = self.token_to_index.remove(n0.into());
+                    let _ = self.token_to_index.remove(&k.0);
                 }
                 if self.graph.edges(n1.into()).collect_vec().len() == 0 {
-                    let _ = self.token_to_index.remove(n1.into());
+                    let _ = self.token_to_index.remove(&k.1);
                 }
             }
         });
