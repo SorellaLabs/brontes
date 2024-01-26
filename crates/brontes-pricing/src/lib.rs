@@ -428,8 +428,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn on_pool_resolve(&mut self, state: LazyResult) {
         let LazyResult { block, state, load_result } = state;
 
-        let rem = &self.lazy_loader.parent_pair_state_loading;
-
         let requery_pairs = self
             .graph_manager
             .verify_subgraph(
@@ -469,6 +467,28 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn on_state_load_error(&mut self, pool_pair: Pair, pool_address: Address, block: u64) {
+        let requery_pairs = self
+            .graph_manager
+            .verify_subgraph(
+                self.lazy_loader.get_completed_pairs(self.completed_block),
+                self.quote_asset,
+            )
+            .into_iter()
+            .filter_map(|(failed, pair, cache_pairs)| {
+                cache_pairs.into_iter().for_each(|(pair, address)| {
+                    for addr in address {
+                        if let Some((addr, protocol, pair)) =
+                            self.graph_manager.remove_pair_graph_address(pair, addr)
+                        {
+                            self.new_graph_pairs.insert(addr, (protocol, pair));
+                        }
+                    }
+                });
+                failed.then_some(pair)
+            })
+            .collect_vec();
+
+        self.requery_bad_state_par(requery_pairs, self.completed_block);
         self.lazy_loader
             .remove_protocol_parents(block, &pool_address)
             .into_iter()
@@ -480,7 +500,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 if re_query {
                     self.re_queue_bad_pair(parent_pair, block);
                 }
-
                 if let Some((address, protocol, pair)) = bad_state {
                     self.new_graph_pairs.insert(address, (protocol, pair));
                 }
