@@ -2,7 +2,7 @@ use alloy_primitives::{hex, Address, FixedBytes, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
 use brontes_core::TraceLoaderError;
 use brontes_types::{
-    classified_mev::{BundleData, MevType},
+    classified_mev::{Bundle, MevType},
     db::{dex::DexQuotes, metadata::MetadataCombined},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -135,7 +135,7 @@ impl InspectorTestUtils {
     pub async fn run_inspector(
         &self,
         config: InspectorTxRunConfig,
-        specific_state_tests: Option<Box<dyn Fn(BundleData)>>,
+        specific_state_tests: Option<Box<dyn for<'a> Fn(&'a Bundle)>>,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::InspectorConfig(copied.clone());
@@ -187,24 +187,24 @@ impl InspectorTestUtils {
         let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
         assert_eq!(results.len(), 1, "got a non zero amount of detected mev {:#?}", results);
 
-        let (classified_mev, specific) = results.remove(0);
+        let bundle = results.remove(0);
 
         if let Some(specific_state_tests) = specific_state_tests {
-            specific_state_tests(specific);
+            specific_state_tests(&bundle);
         }
 
         // check gas
         assert!(
-            (classified_mev.bribe_usd - gas_used_usd).abs() < self.max_result_difference,
+            (bundle.header.bribe_usd - gas_used_usd).abs() < self.max_result_difference,
             "Finalized Bribe != Expected Bribe, {} != {}",
-            classified_mev.bribe_usd,
+            bundle.header.bribe_usd,
             gas_used_usd
         );
         // check profit
         assert!(
-            (classified_mev.profit_usd - profit_usd).abs() < self.max_result_difference,
+            (bundle.header.profit_usd - profit_usd).abs() < self.max_result_difference,
             "Finalized Profit != Expected Profit, {} != {}",
-            classified_mev.profit_usd,
+            bundle.header.profit_usd,
             profit_usd
         );
 
@@ -214,7 +214,7 @@ impl InspectorTestUtils {
     pub async fn run_composer(
         &self,
         config: ComposerRunConfig,
-        specific_state_tests: Option<Box<dyn Fn(BundleData)>>,
+        specific_state_tests: Option<Box<dyn for<'a> Fn(&'a Bundle)>>,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
         let err = || InspectorTestUtilsError::ComposerConfig(copied.clone());
@@ -274,32 +274,32 @@ impl InspectorTestUtils {
                 config
                     .prune_opportunities
                     .as_ref()
-                    .map(|opp| !opp.contains(&mev.0.tx_hash))
+                    .map(|opp| !opp.contains(&mev.header.tx_hash))
                     .unwrap_or(true)
             })
             .collect::<Vec<_>>();
 
         assert_eq!(results.len(), 1, "got a non zero amount of detected mev");
 
-        let (classified_mev, specific) = results.remove(0);
-        assert!(classified_mev.mev_type == config.expected_mev_type, "got wrong composed type");
+        let bundle = results.remove(0);
+        assert!(bundle.header.mev_type == config.expected_mev_type, "got wrong composed type");
 
         if let Some(specific_state_tests) = specific_state_tests {
-            specific_state_tests(specific);
+            specific_state_tests(&bundle);
         }
 
         // check gas
         assert!(
-            (classified_mev.bribe_usd - gas_used_usd).abs() < self.max_result_difference,
+            (bundle.header.bribe_usd - gas_used_usd).abs() < self.max_result_difference,
             "Finalized Bribe != Expected Bribe, {} != {}",
-            classified_mev.bribe_usd,
+            bundle.header.bribe_usd,
             gas_used_usd
         );
         // check profit
         assert!(
-            (classified_mev.profit_usd - profit_usd).abs() < self.max_result_difference,
+            (bundle.header.profit_usd - profit_usd).abs() < self.max_result_difference,
             "Finalized Profit != Expected Profit, {} != {}",
-            classified_mev.profit_usd,
+            bundle.header.profit_usd,
             profit_usd
         );
 

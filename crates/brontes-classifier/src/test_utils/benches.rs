@@ -120,7 +120,7 @@ impl ClassifierBenchUtils {
             .rt
             .block_on(self.trace_loader.get_tx_trace_with_header(tx))?;
 
-        let (_, tree) = self
+        let tree = self
             .rt
             .block_on(self.classifier.build_block_tree(vec![trace], header));
         let tree = Arc::new(tree);
@@ -140,7 +140,7 @@ impl ClassifierBenchUtils {
         let BlockTracesWithHeaderAnd { traces, header, .. } = self
             .rt
             .block_on(self.trace_loader.get_block_traces_with_header(block))?;
-        let (_, tree) = self
+        let tree = self
             .rt
             .block_on(self.classifier.build_block_tree(traces, header));
         let tree = Arc::new(tree);
