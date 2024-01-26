@@ -207,28 +207,26 @@ impl SubGraphRegistry {
     // along with a bool if this pair needs to be recalculated.
     pub fn verify_subgraph(
         &mut self,
-        pair: Vec<Pair>,
+        pair: Vec<(u64, Pair)>,
         quote: Address,
         all_graph: &AllPairGraph,
-    ) -> Vec<(bool, Pair, HashMap<Pair, Vec<Address>>)> {
+    ) -> Vec<(bool, u64, Pair, HashMap<Pair, Vec<Address>>)> {
         let pairs = pair
             .into_iter()
-            .map(|pair| (pair, self.sub_graphs.remove(&pair.ordered())))
+            .map(|(block, pair)| (pair, block, self.sub_graphs.remove(&pair.ordered())))
             .collect_vec();
 
         let res = pairs
             .into_par_iter()
-            .filter_map(|(pair, subgraph)| {
-                let Some(mut subgraph) = subgraph else {
-                    return None
-                };
+            .filter_map(|(pair, block, subgraph)| {
+                let Some(mut subgraph) = subgraph else { return None };
                 let (bad, state) = subgraph.bfs_verify(quote, &self.edge_state, all_graph);
-                Some((pair, bad, state, subgraph))
+                Some((pair, bad, block, state, subgraph))
             })
             .collect::<Vec<_>>();
 
         res.into_iter()
-            .map(|(pair, kill, state, subgraph)| {
+            .map(|(pair, kill, block, state, subgraph)| {
                 if !kill {
                     self.sub_graphs.insert(pair.ordered(), subgraph);
                 }
@@ -237,7 +235,7 @@ impl SubGraphRegistry {
                     v.remove(&pair.ordered());
                     !v.is_empty()
                 });
-                (kill, pair, state)
+                (kill, block, pair, state)
             })
             .collect_vec()
     }

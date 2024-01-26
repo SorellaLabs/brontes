@@ -186,15 +186,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             })
     }
 
-    fn requery_bad_state_par(&mut self, pairs: Vec<Pair>, block: u64) {
+    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64)>) {
         if pairs.is_empty() {
             return
         }
-        tracing::info!(pairs_rem=pairs.len(), %block, "requerying");
 
-        par_state_query(&self.graph_manager, pairs, block)
+        par_state_query(&self.graph_manager, pairs)
             .into_iter()
-            .for_each(|(pair, state, edges)| {
+            .for_each(|(pair, block, state, edges)| {
                 if edges.is_empty() {
                     return
                 }
@@ -221,9 +220,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.graph_manager.add_subgraph(pair, edges);
                 if !triggered {
                     tracing::info!("not triggered");
-                    let (is_bad, pair, remove) = self
+                    let (is_bad, block, pair, remove) = self
                         .graph_manager
-                        .verify_subgraph(vec![pair], self.quote_asset)
+                        .verify_subgraph(vec![(block, pair)], self.quote_asset)
                         .remove(0);
 
                     remove.into_iter().for_each(|(pair, address)| {
@@ -454,9 +453,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let requery_pairs = self
             .graph_manager
-            .verify_subgraph(self.lazy_loader.get_completed_pairs(block), self.quote_asset)
+            .verify_subgraph(self.lazy_loader.get_completed_pairs(), self.quote_asset)
             .into_iter()
-            .filter_map(|(failed, pair, cache_pairs)| {
+            .filter_map(|(failed, block, pair, cache_pairs)| {
                 cache_pairs.into_iter().for_each(|(pair, address)| {
                     for addr in address {
                         if let Some((addr, protocol, pair)) =
@@ -466,11 +465,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         }
                     }
                 });
-                failed.then_some(pair)
+                failed.then_some((pair, block))
             })
             .collect_vec();
 
-        self.requery_bad_state_par(requery_pairs, block);
+        self.requery_bad_state_par(requery_pairs);
 
         if let Some(state) = state {
             let addr = state.address();
@@ -739,14 +738,13 @@ fn graph_search_par(
 
 fn par_state_query(
     graph: &GraphManager,
-    pairs: Vec<Pair>,
-    block: u64,
-) -> Vec<(Pair, Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>)> {
+    pairs: Vec<(Pair, u64)>,
+) -> Vec<(Pair, u64, Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>)> {
     pairs
         .into_par_iter()
-        .map(|pair| {
+        .map(|(pair, block)| {
             let (info, edge) = graph.crate_subpool_multithread(block, pair);
-            (pair, info, edge)
+            (pair, block, info, edge)
         })
         .collect::<Vec<_>>()
 }
