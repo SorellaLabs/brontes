@@ -25,9 +25,10 @@
 //!
 //! Please refer to the individual crate documentation for more details.
 
-pub mod banner;
 pub mod cli;
 pub mod executors;
+pub mod misc;
 pub use executors::*;
+pub use misc::banner;
 
 pub mod runner;

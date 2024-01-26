@@ -35,15 +35,15 @@ mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_types::{
-    classified_mev::{Bundle, MevBlock, MevType, PossibleMev},
+    classified_mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
 };
 use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
 use utils::{
-    build_mev_header, find_mev_with_matching_tx_hashes, pre_process, sort_mev_by_type,
-    BlockPreprocessing,
+    build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, pre_process,
+    sort_mev_by_type, BlockPreprocessing,
 };
 
 const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
@@ -55,7 +55,7 @@ pub struct ComposerResults {
     pub block_details:     MevBlock,
     pub mev_details:       Vec<Bundle>,
     /// all txes with coinbase.transfers that weren't classified
-    pub possible_mev_txes: Vec<PossibleMev>,
+    pub possible_mev_txes: PossibleMevCollection,
 }
 
 pub async fn compose_mev_results(
@@ -78,7 +78,7 @@ async fn run_inspectors(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
     meta_data: Arc<MetadataCombined>,
-) -> (Vec<PossibleMev>, Vec<Bundle>) {
+) -> (PossibleMevCollection, Vec<Bundle>) {
     let mut scope: TokioScope<'_, Vec<Bundle>> = unsafe { Scope::create() };
     orchestra
         .iter()
@@ -105,12 +105,18 @@ async fn run_inspectors(
         })
         .collect::<Vec<_>>();
 
-    (possible_mev_txes.into_iter().map(|(_, v)| v).collect(), results)
+    let mut possible_mev_collection =
+        PossibleMevCollection(possible_mev_txes.into_iter().map(|(_, v)| v).collect());
+    possible_mev_collection
+        .0
+        .sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
+
+    (possible_mev_collection, results)
 }
 
 fn on_orchestra_resolution(
     pre_processing: BlockPreprocessing,
-    possible_mev_txes: Vec<PossibleMev>,
+    possible_mev_txes: PossibleMevCollection,
     metadata: Arc<MetadataCombined>,
     orchestra_data: Vec<Bundle>,
 ) -> (MevBlock, Vec<Bundle>) {
@@ -131,28 +137,13 @@ fn on_orchestra_resolution(
             deduplicate_mev(dominant_mev_type, subordinate_mev_type, &mut sorted_mev);
         });
 
-    //TODO: (Will) Filter only specific unprofitable types of mev so we can capture
-    // bots that are subsidizing their bundles to dry out the competition
-    let mut flattened_mev = sorted_mev
-        .into_values()
-        .flatten()
-        .filter(|bundle| {
-            if matches!(bundle.header.mev_type, MevType::Sandwich | MevType::Jit | MevType::Backrun)
-            {
-                bundle.header.profit_usd > 0.0
-            } else {
-                true
-            }
-        })
-        .collect::<Vec<_>>();
+    let (mev_count, mut filtered_bundles) = filter_and_count_bundles(sorted_mev);
 
-    let mev_count = flattened_mev.len();
-    header.mev_count = mev_count as u64;
-
+    header.mev_count = mev_count;
     // keep order
-    flattened_mev.sort_by(|a, b| a.header.mev_tx_index.cmp(&b.header.mev_tx_index));
+    filtered_bundles.sort_by(|a, b| a.header.mev_tx_index.cmp(&b.header.mev_tx_index));
 
-    (header, flattened_mev)
+    (header, filtered_bundles)
 }
 
 fn deduplicate_mev(
