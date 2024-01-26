@@ -35,7 +35,7 @@ mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_types::{
-    classified_mev::{Bundle, MevBlock, MevType, PossibleMev},
+    classified_mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
@@ -55,7 +55,7 @@ pub struct ComposerResults {
     pub block_details:     MevBlock,
     pub mev_details:       Vec<Bundle>,
     /// all txes with coinbase.transfers that weren't classified
-    pub possible_mev_txes: Vec<PossibleMev>,
+    pub possible_mev_txes: PossibleMevCollection,
 }
 
 pub async fn compose_mev_results(
@@ -78,7 +78,7 @@ async fn run_inspectors(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
     meta_data: Arc<MetadataCombined>,
-) -> (Vec<PossibleMev>, Vec<Bundle>) {
+) -> (PossibleMevCollection, Vec<Bundle>) {
     let mut scope: TokioScope<'_, Vec<Bundle>> = unsafe { Scope::create() };
     orchestra
         .iter()
@@ -105,12 +105,12 @@ async fn run_inspectors(
         })
         .collect::<Vec<_>>();
 
-    (possible_mev_txes.into_iter().map(|(_, v)| v).collect(), results)
+    (PossibleMevCollection(possible_mev_txes.into_iter().map(|(_, v)| v).collect()), results)
 }
 
 fn on_orchestra_resolution(
     pre_processing: BlockPreprocessing,
-    possible_mev_txes: Vec<PossibleMev>,
+    possible_mev_txes: PossibleMevCollection,
     metadata: Arc<MetadataCombined>,
     orchestra_data: Vec<Bundle>,
 ) -> (MevBlock, Vec<Bundle>) {
