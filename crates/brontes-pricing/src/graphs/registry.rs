@@ -211,7 +211,7 @@ impl SubGraphRegistry {
         all_graph: &AllPairGraph,
     ) -> (bool, HashMap<Pair, Vec<Address>>) {
         tracing::info!("verifiying subgraph");
-        let Some(mut subgraph) = self.sub_graphs.remove(&pair) else {
+        let Some(mut subgraph) = self.sub_graphs.remove(&pair.ordered()) else {
             return (false, HashMap::default());
         };
 
