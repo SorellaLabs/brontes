@@ -1,38 +1,18 @@
-use std::{
-    error::Error,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-};
+use std::error::Error;
 
 use brontes::{
     banner,
     cli::{Args, Commands},
-    runner, PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT,
+    runner,
 };
-use brontes_metrics::prometheus_exporter::initialize;
 use clap::Parser;
-use metrics_process::Collector;
 use tracing::{error, info, Level};
 use tracing_subscriber::filter::Directive;
 
 fn main() {
     banner::print_banner();
     dotenv::dotenv().ok();
-
-    let brontes_directive: Directive = format!("brontes={}", Level::INFO).parse().unwrap();
-    let tracing_directive: Directive = format!("reth-tracing-ext={}", Level::INFO).parse().unwrap();
-
-    let layers = vec![
-        brontes_tracing::stdout(tracing_directive),
-        brontes_tracing::stdout(brontes_directive),
-    ];
-
-    //let subscriber =
-    // Registry::default().with(tracing_subscriber::fmt::layer().
-    // with_filter(filter));
-
-    //tracing::subscriber::set_global_default(subscriber)
-    //  .expect("Could not set global default subscriber");
-    brontes_tracing::init(layers);
+    init_tracing();
 
     match run() {
         Ok(()) => info!(target: "brontes", "SUCCESS!"),
@@ -61,17 +41,12 @@ fn run() -> eyre::Result<()> {
     }
 }
 
-#[allow(unused)]
-async fn initialize_prometheus() {
-    // initializes the prometheus endpoint
-    initialize(
-        SocketAddr::new(
-            IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
-            PROMETHEUS_ENDPOINT_PORT,
-        ),
-        Collector::default(),
-    )
-    .await
-    .unwrap();
-    info!("Initialized prometheus endpoint");
+fn init_tracing() {
+    // all lower level logging directives include higher level ones (Trace includes
+    // all, Debug includes all but Trace, ...)
+    let verbosity_level = Level::INFO; // Error >= Warn >= Info >= Debug >= Trace
+    let directive: Directive = format!("{verbosity_level}").parse().unwrap();
+    let layers = vec![brontes_tracing::stdout(directive)];
+
+    brontes_tracing::init(layers);
 }
