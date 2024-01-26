@@ -37,7 +37,7 @@ fn insert_mev_results<DB: LibmdbxWriter>(
 ) {
     info!(
         target: "brontes",
-        "\n {}",
+        "block details\n {}",
         block_details.to_string()
     );
 
