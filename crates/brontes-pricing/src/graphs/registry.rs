@@ -14,7 +14,7 @@ use malachite::{
 use tracing::info;
 
 use super::{subgraph::PairSubGraph, PoolState};
-use crate::{price_graph_types::*, types::PoolUpdate, Protocol};
+use crate::{price_graph_types::*, types::PoolUpdate, AllPairGraph, Protocol};
 
 /// stores all sub-graphs and supports the update mechanisms
 #[derive(Debug, Clone)]
@@ -197,5 +197,25 @@ impl SubGraphRegistry {
 
     pub fn has_state(&self, addr: &Address) -> bool {
         self.edge_state.contains_key(addr)
+    }
+
+    // goes through the subgraph verifying that we have more than
+    // the base amount of liquidity that we defined.
+    // If we don't have enough defined, the pool is removed.
+    // we return all bad nodes to be pruned from our all_pairs graph.
+    // along with a bool if this pair needs to be recalculated.
+    pub fn verify_subgraph(
+        &mut self,
+        pair: Pair,
+        quote: Address,
+        all_graph: &AllPairGraph,
+    ) -> (bool, HashMap<Pair, Vec<Address>>) {
+        let mut subgraph = self.sub_graphs.remove(&pair).unwrap();
+        let (kill, prune) = subgraph.bfs_verify(quote, &self.edge_state, all_graph);
+        if !kill {
+            self.sub_graphs.insert(pair.ordered(), subgraph);
+        }
+
+        (kill, prune)
     }
 }

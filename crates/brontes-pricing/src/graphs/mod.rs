@@ -146,6 +146,15 @@ impl GraphManager {
         )
     }
 
+    pub fn remove_pair_graph_address(
+        &mut self,
+        pool_pair: Pair,
+        pool_address: Address,
+    ) -> Option<(Address, Protocol, Pair)> {
+        self.all_pair_graph
+            .remove_empty_address(pool_pair, pool_address)
+    }
+
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
         self.sub_graph_registry.get_price(pair)
     }
@@ -169,5 +178,14 @@ impl GraphManager {
 
     pub fn has_subgraph(&self, pair: Pair) -> bool {
         self.sub_graph_registry.has_subpool(&pair.ordered())
+    }
+
+    pub fn verify_subgraph(
+        &mut self,
+        pair: Pair,
+        quote: Address,
+    ) -> (bool, HashMap<Pair, Vec<Address>>) {
+        self.sub_graph_registry
+            .verify_subgraph(pair, quote, &self.all_pair_graph)
     }
 }

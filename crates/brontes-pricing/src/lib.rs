@@ -306,7 +306,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             error!(?pair1, "no price for token");
             return
         };
-
         self.graph_manager.update_state(addr, msg);
 
         let Some(price0_post) = self.get_dex_price(pair0) else {
@@ -391,6 +390,26 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     fn on_pool_resolve(&mut self, state: LazyResult) {
         let LazyResult { block, state, load_result } = state;
+
+        self.lazy_loader
+            .get_completed_pairs()
+            .into_iter()
+            .map(|pair| {
+                let (failed, cache_pairs) =
+                    self.graph_manager.verify_subgraph(pair, self.quote_asset);
+                cache_pairs.into_iter().for_each(|(pair, address)| {
+                    for addr in address {
+                        if let Some((addr, protocol, pair)) =
+                            self.graph_manager.remove_pair_graph_address(pair, addr)
+                        {
+                            self.new_graph_pairs.insert(addr, (protocol, pair));
+                        }
+                    }
+                });
+                if failed {
+                    self.re_queue_bad_pair(pair, block);
+                }
+            });
 
         if let Some(state) = state {
             let addr = state.address();
