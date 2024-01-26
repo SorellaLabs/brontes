@@ -495,9 +495,10 @@ mod tests {
         let db = initialize_tables(&[
             /*
             Tables::TokenDecimals,
-            Tables::AddressToTokens,
+
             Tables::AddressToProtocol,
               */
+            Tables::AddressToTokens,
             Tables::CexPrice,
             /*
             Tables::Metadata,
@@ -513,10 +514,11 @@ mod tests {
         let db = db.unwrap();
         /*
         assert!(test_tokens_decimals_table(&db, false).await.is_ok());
-        assert!(test_address_to_tokens_table(&db, false).await.is_ok());
+
         assert!(test_address_to_protocols_table(&db, false).await.is_ok());
         */
-        assert!(test_cex_mapping_table(&db, false).await.is_ok());
+        assert!(test_address_to_tokens_table(&db, false).await.is_ok());
+        //assert!(test_cex_mapping_table(&db, false).await.is_ok());
         /*
         assert!(test_metadata_table(&db, false).await.is_ok());
         assert!(test_pool_state_table(&db, false).await.is_ok());

@@ -2,7 +2,7 @@ use std::{
     fmt::{Debug, Display},
     str::FromStr,
 };
-
+use brontes_types::db::token_info::TokenInfo;
 use brontes_pricing::{Protocol, SubGraphsEntry};
 use brontes_types::{
     db::{
@@ -314,7 +314,7 @@ macro_rules! table {
 
 compressed_table!(
     /// token address -> decimals
-    ( TokenDecimals ) Address | Clickhouse | u8 = False
+    ( TokenDecimals ) Address | Clickhouse | TokenInfo = False
 );
 
 compressed_table!(
