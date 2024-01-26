@@ -1,11 +1,10 @@
 mod const_sql;
 pub mod errors;
-
 use std::collections::HashMap;
 
 use alloy_json_abi::JsonAbi;
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, MevBlock, *},
+    classified_mev::{Bundle, BundleData, Mev, MevBlock},
     constants::{USDT_ADDRESS, WETH_ADDRESS},
     db::{cex::CexPriceMap, clickhouse::*, metadata::MetadataNoDex},
     extra_processing::Pair,
@@ -81,11 +80,7 @@ impl Clickhouse {
         }
     }
 
-    pub async fn insert_classified_data(
-        &self,
-        block_details: MevBlock,
-        mev_details: Vec<(BundleHeader, BundleData)>,
-    ) {
+    pub async fn insert_classified_data(&self, block_details: MevBlock, mev_details: Vec<Bundle>) {
         if let Err(e) = self
             .client
             .insert_one(&block_details, DatabaseTables::MevBlocks)
@@ -97,25 +92,21 @@ impl Clickhouse {
         info!("inserted block details");
 
         let db_client = &self.client;
-        join_all(
-            mev_details
-                .into_iter()
-                .map(|(classified, specific)| async move {
-                    if let Err(e) = self
-                        .client
-                        .insert_one(&classified, DatabaseTables::BundleHeader)
-                        .await
-                    {
-                        error!(?e, "failed to insert classified mev");
-                    }
-                    info!("inserted classified_mev");
+        join_all(mev_details.into_iter().map(|bundle| async move {
+            if let Err(e) = self
+                .client
+                .insert_one(&bundle.header, DatabaseTables::BundleHeader)
+                .await
+            {
+                error!(?e, "failed to insert classified mev");
+            }
+            info!("inserted classified_mev");
 
-                    let table = mev_table_type(&specific);
-                    Self::insert_singe_classified_data(db_client, specific, table).await;
+            let table = mev_table_type(&bundle.data);
+            Self::insert_singe_classified_data(db_client, bundle.data, table).await;
 
-                    info!("{:?}: inserted specific mev type", table);
-                }),
-        )
+            info!("{:?}: inserted specific mev type", table);
+        }))
         .await;
     }
 

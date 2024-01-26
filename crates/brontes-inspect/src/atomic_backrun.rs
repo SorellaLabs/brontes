@@ -32,7 +32,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicBackrunInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
-    ) -> Vec<(BundleHeader, BundleData)> {
+    ) -> Vec<Bundle> {
         let intersting_state = tree.collect_all(|node| {
             (
                 node.data.is_swap() || node.data.is_transfer() || node.data.is_flash_loan(),
@@ -73,7 +73,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         metadata: Arc<MetadataCombined>,
         gas_details: GasDetails,
         searcher_actions: Vec<Vec<Actions>>,
-    ) -> Option<(BundleHeader, BundleData)> {
+    ) -> Option<Bundle> {
         let swaps = searcher_actions
             .iter()
             .flatten()
@@ -135,9 +135,9 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             return None
         }
 
-        let classified = BundleHeader {
+        let header = BundleHeader {
             block_number: metadata.block_num,
-            mev_tx_index: idx as u64,
+            tx_index: idx as u64,
             tx_hash,
             eoa,
             mev_contract,
@@ -157,7 +157,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let backrun = AtomicBackrun { tx_hash, gas_details, swaps };
 
-        Some((classified, BundleData::AtomicBackrun(backrun)))
+        Some(Bundle { header, data: BundleData::AtomicBackrun(backrun) })
     }
 
     fn is_possible_arb(&self, swaps: Vec<NormalizedSwap>) -> Option<()> {

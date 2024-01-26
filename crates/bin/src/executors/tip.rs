@@ -6,10 +6,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
-use brontes_core::{
-    decoding::{Parser, TracingProvider},
-    missing_decimals::load_missing_decimals,
-};
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::Clickhouse,
     libmdbx::{LibmdbxReader, LibmdbxWriter},
@@ -118,17 +115,7 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await.unwrap().unwrap();
             info!("Got {} traces + header", traces.len());
-            let block = header.number;
-            let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
-
-            load_missing_decimals(
-                self.parser.get_tracer(),
-                self.database,
-                block,
-                extra_data.tokens_decimal_fill,
-            )
-            .await;
-
+            let tree = self.classifier.build_block_tree(traces, header).await;
             let meta = labeller_fut.await;
 
             (meta, tree)

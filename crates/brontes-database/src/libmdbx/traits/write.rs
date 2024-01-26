@@ -1,7 +1,7 @@
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader, MevBlock},
+    classified_mev::{Bundle, MevBlock},
     db::dex::DexQuotes,
     extra_processing::Pair,
     structured_trace::TxTrace,
@@ -10,13 +10,13 @@ use brontes_types::{
 #[auto_impl::auto_impl(&)]
 pub trait LibmdbxWriter: Send + Sync + 'static {
     fn write_dex_quotes(&self, block_number: u64, quotes: DexQuotes) -> eyre::Result<()>;
-    fn write_token_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()>;
+    fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()>;
     fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()>;
     fn save_mev_blocks(
         &self,
         block_number: u64,
         block: MevBlock,
-        mev: Vec<(BundleHeader, BundleData)>,
+        mev: Vec<Bundle>,
     ) -> eyre::Result<()>;
 
     fn insert_pool(
