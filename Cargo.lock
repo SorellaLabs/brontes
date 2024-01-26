@@ -1801,6 +1801,7 @@ dependencies = [
  "strum",
  "tokio",
  "tracing",
+ "zstd 0.13.0",
 ]
 
 [[package]]
