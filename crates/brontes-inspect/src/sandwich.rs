@@ -581,8 +581,8 @@ mod tests {
         inspector_util
             .run_inspector(
                 config,
-                Some(Box::new(|bundle: BundleData| {
-                    let BundleData::Sandwich(sando) = bundle else {
+                Some(Box::new(|bundle: &Bundle| {
+                    let BundleData::Sandwich(ref sando) = bundle.data else {
                         assert!(false, "given bundle wasn't a sandwich");
                         return
                     };
