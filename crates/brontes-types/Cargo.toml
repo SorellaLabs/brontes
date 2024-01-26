@@ -59,7 +59,7 @@ rkyv.workspace = true
 redefined.workspace = true
 bytes.workspace = true
 colored.workspace = true
-
+indoc = "2"
 
 # stats
 statrs = "0.16"
