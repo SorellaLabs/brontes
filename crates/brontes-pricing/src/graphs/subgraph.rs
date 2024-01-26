@@ -42,7 +42,7 @@ use crate::{
     AllPairGraph, Pair, Protocol,
 };
 
-const MIN_LIQUIDITY_USDC: u128 = 25_000;
+const MIN_LIQUIDITY_USDC: u128 = 33_000;
 
 /// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
 /// given Pair. This allows for running more complex search algorithms on the
