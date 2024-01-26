@@ -18,6 +18,7 @@ use malachite::{
     },
     Rational,
 };
+use pathfinding::undirected::connected_components;
 use petgraph::{
     algo::connected_components,
     data::{Build, DataMap, FromElements},
@@ -188,7 +189,7 @@ impl PairSubGraph {
     }
 
     pub fn bfs_verify<T: ProtocolState>(
-        &self,
+        &mut self,
         start: Address,
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
@@ -197,9 +198,7 @@ impl PairSubGraph {
         let mut visit_next = VecDeque::new();
         let mut all_remove: HashMap<Pair, Vec<Address>> = HashMap::new();
 
-        let Some(start) = self.token_to_index.get(&start) else {
-            return (false ,HashMap::new()) 
-        };
+        let Some(start) = self.token_to_index.get(&start) else { return (false, HashMap::new()) };
 
         let direction = *start == self.start_node;
 
@@ -236,7 +235,7 @@ impl PairSubGraph {
                 // disjoint.
                 if liq < Rational::from(MIN_LIQUIDITY_USDC)
                     && !(all_pair_graph.is_only_edge(info.token_0)
-                    ||  all_pair_graph.is_only_edge(info.token_1))
+                        || all_pair_graph.is_only_edge(info.token_1))
                 {
                     let pair = Pair(info.token_0, info.token_1).ordered();
                     all_remove.entry(pair).or_default().push(info.pool_addr);
@@ -249,7 +248,7 @@ impl PairSubGraph {
 
             if weight == Rational::ZERO {
                 // means no edges were over limit, return
-                return (true, all_remove)
+                continue;
             }
 
             let local_weighted_price = pxw / weight;
@@ -262,7 +261,28 @@ impl PairSubGraph {
             );
         }
 
-        (false, all_remove)
+        all_remove.iter().for_each(|(k, v)| {
+            let n0 = *self.token_to_index.get(&k.0).unwrap();
+            let n1 = *self.token_to_index.get(&k.1).unwrap();
+            let (e, dir) = self
+                .graph
+                .find_edge_undirected(n0.into(), n1.into())
+                .unwrap();
+            let mut weights = self.graph.remove_edge(e).unwrap();
+            weights.retain(|node| !v.contains(&node.pool_addr));
+            if !weights.is_empty() {
+                match dir {
+                    Direction::Incoming => {
+                        self.graph.add_edge(n1.into(), n0.into(), weights);
+                    }
+                    Direction::Outgoing => {
+                        self.graph.add_edge(n0.into(), n1.into(), weights);
+                    }
+                }
+            }
+        });
+
+        (connected_components(&self.graph) != 1, all_remove)
     }
 }
 
