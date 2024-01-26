@@ -42,8 +42,6 @@ fn write_clickhouse_sql() {
 fn write_libmdbx_sql() {
     let dest_path = Path::new("./src/libmdbx/tables/const_sql.rs");
     let mut f = File::create(dest_path).unwrap();
-    writeln!(f, "#![rustfmt::skip]\n").unwrap();
-
     for entry in fs::read_dir(LIBMDBX_SQL_FILE_DIRECTORY).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
