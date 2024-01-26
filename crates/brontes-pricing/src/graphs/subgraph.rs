@@ -198,11 +198,14 @@ impl PairSubGraph {
         let mut visit_next = VecDeque::new();
         let mut all_remove: HashMap<Pair, Vec<Address>> = HashMap::new();
 
-        let start = *self.token_to_index.get(&start).unwrap();
-        let direction = start == self.start_node;
+        let Some(start) = self.token_to_index.get(&start) else {
+            return (false ,HashMap::new()) 
+        };
+
+        let direction = *start == self.start_node;
 
         visit_next.extend(
-            self.next_edges_directed(start, direction)
+            self.next_edges_directed(*start, direction)
                 .zip(vec![Rational::ONE].into_iter().cycle()),
         );
 
