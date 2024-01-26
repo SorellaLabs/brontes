@@ -51,9 +51,6 @@ alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
 
-# logging
-log.workspace = true
-
 # tracing
 tracing.workspace = true
 tracing-subscriber.workspace = true
