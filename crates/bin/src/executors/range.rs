@@ -8,10 +8,7 @@ use std::{
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::{
-    decoding::{Parser, TracingProvider},
-    missing_decimals::load_missing_decimals,
-};
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
@@ -180,8 +177,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
     ) -> CollectionFut<'db> {
         Box::pin(async move {
             let number = header.number;
-            let (extra, tree) = classifier.build_block_tree(traces, header).await;
-            load_missing_decimals(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
+            let tree = classifier.build_block_tree(traces, header).await;
 
             (tree, meta)
         })
