@@ -182,9 +182,9 @@ impl GraphManager {
 
     pub fn verify_subgraph(
         &mut self,
-        pairs: Vec<Pair>,
+        pairs: Vec<(u64, Pair)>,
         quote: Address,
-    ) -> Vec<(bool, Pair, HashMap<Pair, Vec<Address>>)> {
+    ) -> Vec<(bool, u64, Pair, HashMap<Pair, Vec<Address>>)> {
         self.sub_graph_registry
             .verify_subgraph(pairs, quote, &self.all_pair_graph)
     }
