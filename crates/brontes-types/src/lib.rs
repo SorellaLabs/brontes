@@ -7,15 +7,15 @@ use reth_primitives::U256;
 pub mod classified_mev;
 pub mod constants;
 pub mod db;
+pub mod display;
 pub mod extra_processing;
 pub mod normalized_actions;
 pub mod serde_utils;
 pub mod structured_trace;
-pub mod traits;
-pub mod tree;
-
 #[cfg(feature = "tests")]
 pub mod test_utils;
+pub mod traits;
+pub mod tree;
 
 pub trait ToScaledRational {
     fn to_scaled_rational(self, decimals: u8) -> Rational;

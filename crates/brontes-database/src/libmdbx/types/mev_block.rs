@@ -163,7 +163,7 @@ pub struct LibmdbxPossibleMevTriggers {
 #[redefined(BundleHeader)]
 pub struct LibmdbxBundleHeader {
     pub block_number:         u64,
-    pub mev_tx_index:         u64,
+    pub tx_index:             u64,
     pub tx_hash:              Redefined_FixedBytes<32>,
     pub eoa:                  Redefined_Address,
     pub mev_contract:         Redefined_Address,

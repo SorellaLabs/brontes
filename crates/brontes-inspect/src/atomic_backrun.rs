@@ -139,7 +139,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let header = BundleHeader {
             block_number: metadata.block_num,
-            mev_tx_index: idx as u64,
+            tx_index: idx as u64,
             tx_hash,
             eoa,
             mev_contract,
