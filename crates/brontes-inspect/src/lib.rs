@@ -23,7 +23,7 @@
 //!         &self,
 //!         tree: Arc<BlockTree<Actions>>,
 //!         metadata: Arc<MetadataCombined>,
-//!     ) -> Vec<(BundleHeader, BundleData)>;
+//!     ) -> Vec<Bundle>;
 //! }
 //! ```
 //!
@@ -101,7 +101,7 @@ use alloy_primitives::Address;
 use atomic_backrun::AtomicBackrunInspector;
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    classified_mev::{BundleData, BundleHeader},
+    classified_mev::{Bundle, BundleData, BundleHeader},
     db::metadata::MetadataCombined,
     normalized_actions::Actions,
     tree::BlockTree,
@@ -118,7 +118,7 @@ pub trait Inspector: Send + Sync {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
-    ) -> Vec<(BundleHeader, BundleData)>;
+    ) -> Vec<Bundle>;
 }
 
 #[derive(

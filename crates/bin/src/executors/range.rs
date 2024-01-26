@@ -3,20 +3,16 @@ use std::{
     fs::File,
     io::Write,
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::{
-    decoding::{Parser, TracingProvider},
-    missing_decimals::load_missing_decimals,
-};
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    classified_mev::PossibleMev,
+    classified_mev::PossibleMevCollection,
     db::metadata::{MetadataCombined, MetadataNoDex},
     normalized_actions::Actions,
     structured_trace::TxTrace,
@@ -47,7 +43,7 @@ pub struct RangeExecutorWithPricing<
     pricer:            WaitingForPricerFuture<T>,
 
     processing_futures:
-        FuturesUnordered<Pin<Box<dyn Future<Output = Vec<PossibleMev>> + Send + 'db>>>,
+        FuturesUnordered<Pin<Box<dyn Future<Output = PossibleMevCollection> + Send + 'db>>>,
 
     current_block: u64,
     end_block:     u64,
@@ -56,7 +52,7 @@ pub struct RangeExecutorWithPricing<
     libmdbx:    &'static DB,
     inspectors: &'db [&'db Box<dyn Inspector>],
 
-    missed_mev_ops: Vec<PossibleMev>,
+    missed_mev_ops: PossibleMevCollection,
 }
 
 impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
@@ -121,7 +117,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
             batch_id,
             libmdbx,
             inspectors,
-            missed_mev_ops: vec![],
+            missed_mev_ops: PossibleMevCollection(vec![]),
         }
     }
 
@@ -149,6 +145,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         let mut file = File::create(path).unwrap();
 
         let data = missed_mev_ops
+            .0
             .iter()
             .map(|mev| {
                 format!(
@@ -174,14 +171,9 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         traces: Vec<TxTrace>,
         header: Header,
         classifier: &'db Classifier<'db, T, DB>,
-        tracer: Arc<T>,
-        libmdbx: &'db DB,
     ) -> CollectionFut<'db> {
         Box::pin(async move {
-            let number = header.number;
-            let (extra, tree) = classifier.build_block_tree(traces, header).await;
-            load_missing_decimals(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
-
+            let tree = classifier.build_block_tree(traces, header).await;
             (tree, meta)
         })
     }
@@ -195,14 +187,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
 
         let fut = Box::pin(parser.then(|x| {
             let (traces, header) = x.unwrap().unwrap();
-            Self::on_parser_resolve(
-                meta,
-                traces,
-                header,
-                self.classifier,
-                self.parser.get_tracer(),
-                self.libmdbx,
-            )
+            Self::on_parser_resolve(meta, traces, header, self.classifier)
         }));
 
         self.collection_future = Some(fut);
@@ -264,7 +249,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
             }
             // poll insertion
             while let Poll::Ready(Some(missed_arbs)) = self.processing_futures.poll_next_unpin(cx) {
-                self.missed_mev_ops.extend(missed_arbs);
+                self.missed_mev_ops.0.extend(missed_arbs.0);
             }
 
             // return condition

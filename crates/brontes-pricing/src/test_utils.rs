@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
-use brontes_core::{missing_decimals::load_missing_decimals, test_utils::*};
+use brontes_core::test_utils::*;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::BlockTree};
 use thiserror::Error;
@@ -78,15 +78,7 @@ impl PricingTestUtils {
         let pricer = self.init_dex_pricer(block, None, rx).await?;
 
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
-        let (decimals, tree) = classifier.build_block_tree(traces, header).await;
-        load_missing_decimals(
-            self.tracer.get_provider(),
-            self.tracer.libmdbx,
-            block,
-            decimals.tokens_decimal_fill,
-        )
-        .await;
-
+        let tree = classifier.build_block_tree(traces, header).await;
         Ok((pricer, tree))
     }
 
@@ -101,14 +93,7 @@ impl PricingTestUtils {
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
         let mut pricer = self.init_dex_pricer(block, None, rx).await?;
 
-        let (decimals, tree) = classifier.build_block_tree(vec![trace], header).await;
-        load_missing_decimals(
-            self.tracer.get_provider(),
-            self.tracer.libmdbx,
-            block,
-            decimals.tokens_decimal_fill,
-        )
-        .await;
+        let tree = classifier.build_block_tree(vec![trace], header).await;
 
         Ok(pricer)
     }
