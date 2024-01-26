@@ -191,12 +191,15 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return
         }
         tracing::info!(pairs_rem=pairs.len(), %block, "requerying");
+
         par_state_query(&self.graph_manager, pairs, block)
             .into_iter()
             .for_each(|(pair, state, edges)| {
                 if edges.is_empty() {
                     return
                 }
+                let mut triggered = false;
+
                 for pool_info in state {
                     let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
                     // load exchange only if its not loaded already
@@ -207,14 +210,35 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                             pool_info.pool_addr,
                             block,
                             pool_info.dex_type,
-                        )
+                        );
+                        triggered = true;
                     } else if lazy_loading {
                         self.lazy_loader
                             .add_protocol_parent(block, pool_info.pool_addr, pair);
+                        triggered = true;
                     }
                 }
-
                 self.graph_manager.add_subgraph(pair, edges);
+                if !triggered {
+                    let (is_bad, pair, remove) = self
+                        .graph_manager
+                        .verify_subgraph(vec![pair], self.quote_asset)
+                        .remove(0);
+
+                    remove.into_iter().for_each(|(pair, address)| {
+                        for addr in address {
+                            if let Some((addr, protocol, pair)) =
+                                self.graph_manager.remove_pair_graph_address(pair, addr)
+                            {
+                                self.new_graph_pairs.insert(addr, (protocol, pair));
+                            }
+                        }
+                    });
+
+                    if is_bad {
+                        self.re_queue_bad_pair(pair, block)
+                    }
+                }
             });
     }
 
@@ -429,10 +453,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let requery_pairs = self
             .graph_manager
-            .verify_subgraph(
-                self.lazy_loader.get_completed_pairs(block),
-                self.quote_asset,
-            )
+            .verify_subgraph(self.lazy_loader.get_completed_pairs(block), self.quote_asset)
             .into_iter()
             .filter_map(|(failed, pair, cache_pairs)| {
                 cache_pairs.into_iter().for_each(|(pair, address)| {
