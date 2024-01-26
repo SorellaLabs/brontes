@@ -285,7 +285,7 @@ impl fmt::Display for PossibleMev {
         let eth_paid = self.gas_details.gas_paid() as f64 * 1e-18;
         let tx_url = format!("https://etherscan.io/tx/{:?}", self.tx_hash);
         writeln!(f, "        Paid {} Eth for inclusion", eth_paid.to_string().bold().green())?;
-        write!(f, "        {}", self.triggers)?;
+        write!(f, "{}", self.triggers)?;
         writeln!(f, "        Etherscan: {}", tx_url.underline())
     }
 }
