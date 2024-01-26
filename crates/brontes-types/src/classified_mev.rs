@@ -3,6 +3,7 @@ use std::fmt::{self, Debug};
 use alloy_primitives::Address;
 use colored::Colorize;
 use dyn_clone::DynClone;
+use indoc::indoc;
 use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::B256;
 use serde::{Deserialize, Serialize};
@@ -40,11 +41,22 @@ pub struct MevBlock {
     pub cumulative_mev_profit_usd: f64,
     pub possible_mev: PossibleMevCollection,
 }
+
 impl fmt::Display for MevBlock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Header
-        writeln!(f, "{:-<30}Finished processing block: {}{:-<30}", "", self.block_number, "")?;
+        let ascii_header = indoc! {r#"
+                     ___  ___            ______ _            _                         
+                     |  \/  |            | ___ \ |          | |                        
+ ______ ______ ______| .  . | _____   __ | |_/ / | ___   ___| | ________ ______ ______ 
+|______|______|______| |\/| |/ _ \ \ / / | ___ \ |/ _ \ / __| |/ /______|______|______|
+                     | |  | |  __/\ V /  | |_/ / | (_) | (__|   <                      
+                     \_|  |_/\___| \_/   \____/|_|\___/ \___|_|\_\                     
+        
+        "#};
 
+        for line in ascii_header.lines() {
+            writeln!(f, "{}", line.green())?;
+        }
         // Mev section
         writeln!(f, "{}", "Mev:".bold().red().underline())?;
         writeln!(f, "  - MEV Count: {}", self.mev_count.to_string().bold())?;
@@ -60,7 +72,6 @@ impl fmt::Display for MevBlock {
             "    - Cumulative MEV Priority Fee Paid: {:.6} ETH",
             self.cumulative_mev_priority_fee_paid as f64 * 1e-18
         )?;
-        writeln!(f, "  - Possible MEV Transactions:\n{}", self.possible_mev)?;
 
         // Builder section
         writeln!(f, "{}", "Builder:".bold().red().underline())?;
@@ -83,11 +94,22 @@ impl fmt::Display for MevBlock {
             writeln!(f, "  - Proposer Fee Recipient: {:?}", address)?;
         }
         if let Some(reward) = self.proposer_mev_reward {
-            writeln!(f, "  - Proposer MEV Reward: {:.6} ETH", reward as f64 * 1e-18)?;
+            writeln!(
+                f,
+                "{}",
+                format!("  - Proposer MEV Reward: {:.6} ETH", reward as f64 * 1e-18).green()
+            )?;
         }
         if let Some(profit_usd) = self.proposer_profit_usd {
-            writeln!(f, "  - Proposer Finalized Profit (USD): {}", format_profit(profit_usd))?;
+            writeln!(
+                f,
+                "{}",
+                format!("  - Proposer Finalized Profit (USD): {}", format_profit(profit_usd))
+                    .green()
+            )?;
         }
+        writeln!(f, "{}", "Missed Mev:".bold().red().underline())?;
+        writeln!(f, "  - Possible MEV Transactions:\n{}", self.possible_mev)?;
 
         // Footer
         writeln!(f, "{:-<72}", "")
