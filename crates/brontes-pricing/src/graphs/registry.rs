@@ -210,7 +210,11 @@ impl SubGraphRegistry {
         quote: Address,
         all_graph: &AllPairGraph,
     ) -> (bool, HashMap<Pair, Vec<Address>>) {
-        let mut subgraph = self.sub_graphs.remove(&pair).unwrap();
+        tracing::info!("verifiying subgraph");
+        let Some(mut subgraph) = self.sub_graphs.remove(&pair) else {
+            return (false, HashMap::default());
+        };
+
         let (kill, prune) = subgraph.bfs_verify(quote, &self.edge_state, all_graph);
         if !kill {
             self.sub_graphs.insert(pair.ordered(), subgraph);
