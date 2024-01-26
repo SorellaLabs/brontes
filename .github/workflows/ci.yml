@@ -27,6 +27,9 @@ jobs:
         with:
           cache-on-failure: true
 
+      - name: cargo build
+        run: cargo +nightly build 
+
       - name: cargo fmt
         run: cargo +nightly fmt --all -- --check
 
