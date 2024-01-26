@@ -193,7 +193,7 @@ impl PairSubGraph {
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
     ) -> (bool, HashMap<Pair, Vec<Address>>) {
-        info!("verifying");
+        tracing::info!("verifying");
         let mut visited = HashSet::new();
         let mut visit_next = VecDeque::new();
         let mut all_remove: HashMap<Pair, Vec<Address>> = HashMap::new();
