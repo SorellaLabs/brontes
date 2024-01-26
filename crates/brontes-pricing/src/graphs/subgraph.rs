@@ -238,7 +238,7 @@ impl PairSubGraph {
                 if liq < Rational::from(MIN_LIQUIDITY_USDC)
                     && !all_pair_graph.is_only_edge(info.get_base_token())
                 {
-                    tracing::info!(pool=?info.pool_addr, ?prev_price,"removing shit pool");
+                    tracing::info!(pool=?info.pool_addr, ?prev_price,?t0, ?t1,"removing shit pool");
                     let pair = Pair(info.token_0, info.token_1).ordered();
                     all_remove.entry(pair).or_default().push(info.pool_addr);
                 } else {
