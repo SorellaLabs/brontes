@@ -8,6 +8,8 @@ use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
+type PricingResult<T> = Result<T, PricingTestError>;
+
 pub struct PricingTestUtils {
     tracer:        TraceLoader,
     quote_address: Address,
@@ -69,8 +71,7 @@ impl PricingTestUtils {
     pub async fn setup_dex_pricer_for_block(
         &self,
         block: u64,
-    ) -> Result<(BrontesBatchPricer<Box<dyn TracingProvider>>, BlockTree<Actions>), PricingTestError>
-    {
+    ) -> PricingResult<(BrontesBatchPricer<Box<dyn TracingProvider>>, BlockTree<Actions>)> {
         let BlockTracesWithHeaderAnd { traces, header, .. } =
             self.tracer.get_block_traces_with_header(block).await?;
 
