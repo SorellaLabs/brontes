@@ -230,7 +230,7 @@ impl PairSubGraph {
                     continue;
                 };
 
-                let (t1, t0) = pool_state.tvl(info.get_base_token());
+                let (t0, t1) = pool_state.tvl(info.get_base_token());
                 let liq = prev_price.clone() * &t0;
 
                 // check if below liquidity and that if we remove we don't make the graph
