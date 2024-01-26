@@ -1,4 +1,4 @@
-use std::{
+se std::{
     cmp::{max, Ordering},
     collections::{
         hash_map::Entry::{Occupied, Vacant},
@@ -283,6 +283,13 @@ impl PairSubGraph {
                     Direction::Outgoing => {
                         self.graph.add_edge(n0.into(), n1.into(), weights);
                     }
+                }
+            } else {
+                if self.graph.edges(n0.into()).collect_vec().len() == 0 {
+                    let _ = self.token_to_index.remove(n0.into());
+                }
+                if self.graph.edges(n1.into()).collect_vec().len() == 0 {
+                    let _ = self.token_to_index.remove(n1.into());
                 }
             }
         });
