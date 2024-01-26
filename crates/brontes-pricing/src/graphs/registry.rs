@@ -220,7 +220,7 @@ impl SubGraphRegistry {
             .into_par_iter()
             .filter_map(|(pair, block, subgraph)| {
                 let Some(mut subgraph) = subgraph else { return None };
-                let (bad, state) = subgraph.bfs_verify(quote, &self.edge_state, all_graph);
+                let (bad, state) = subgraph.verify_subgraph(quote, &self.edge_state, all_graph);
                 Some((pair, bad, block, state, subgraph))
             })
             .collect::<Vec<_>>();
@@ -235,6 +235,7 @@ impl SubGraphRegistry {
                     v.remove(&pair.ordered());
                     !v.is_empty()
                 });
+
                 (kill, block, pair, state)
             })
             .collect_vec()
