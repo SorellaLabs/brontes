@@ -112,7 +112,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             inner.values().any(|inner| !inner.is_empty())
         });
         if !res.is_empty() {
-            tracing::info!("{:#?}", res);
+            tracing::info!("{:#?}", &self.parent_pair_state_loading);
         }
         // we batch bc this is slow part
         res
