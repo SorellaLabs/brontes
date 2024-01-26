@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
-use brontes_core::{missing_decimals::load_missing_decimals, test_utils::*};
+use brontes_core::test_utils::*;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::BlockTree};
 use thiserror::Error;

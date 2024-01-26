@@ -6,6 +6,7 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens,
         metadata::{MetadataCombined, MetadataNoDex},
+        token_info::TokenInfo,
     },
     extra_processing::Pair,
     structured_trace::TxTrace,
@@ -16,7 +17,12 @@ pub trait LibmdbxReader: Send + Sync + 'static {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<MetadataNoDex>;
     fn get_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined>;
 
-    fn try_get_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>>;
+    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfo>>;
+
+    fn try_get_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
+        Ok(self.try_get_token_info(address)?.map(|info| info.decimals))
+    }
+
     fn protocols_created_before(
         &self,
         start_block: u64,
@@ -35,8 +41,6 @@ pub trait LibmdbxReader: Send + Sync + 'static {
     ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)>;
 
     fn get_protocol_tokens(&self, address: Address) -> eyre::Result<Option<PoolTokens>>;
-
     fn get_protocol(&self, address: Address) -> eyre::Result<Option<Protocol>>;
-
     fn load_trace(&self, block_num: u64) -> eyre::Result<Option<Vec<TxTrace>>>;
 }
