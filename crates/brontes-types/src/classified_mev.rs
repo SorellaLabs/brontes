@@ -26,7 +26,7 @@ use crate::{
 pub struct MevBlock {
     pub block_hash: B256,
     pub block_number: u64,
-    pub mev_count: u64,
+    pub mev_count: MevCount,
     pub eth_price: f64,
     pub cumulative_gas_used: u128,
     pub cumulative_priority_fee: u128,
@@ -89,13 +89,14 @@ impl fmt::Display for MevBlock {
         )?;
 
         // Proposer section
+        writeln!(f, "{}", "Proposer:".bold().red().underline())?;
+
         if self.proposer_fee_recipient.is_none()
             || self.proposer_mev_reward.is_none()
             || self.proposer_profit_usd.is_none()
         {
-            writeln!(f, "{}", "Isn't an MEV boost block".bold().red().underline())?;
+            writeln!(f, "{}", "  - Isn't an MEV boost block".bold().red().underline())?;
         } else {
-            writeln!(f, "{}", "Proposer:".bold().red().underline())?;
             writeln!(f, "  - Proposer Fee Recipient: {:?}", self.proposer_fee_recipient.unwrap())?;
             writeln!(
                 f,
@@ -108,6 +109,7 @@ impl fmt::Display for MevBlock {
                 format_profit(self.proposer_profit_usd.unwrap()).green()
             )?;
         }
+
         writeln!(f, "{}: {}", "Missed Mev".bold().red().underline(), self.possible_mev)?;
         // Footer
         writeln!(f, "{:-<72}", "")
@@ -200,6 +202,45 @@ impl TokenProfits {
 }
 
 #[serde_as]
+#[derive(Debug, Deserialize, Serialize, Row, Clone, Default)]
+pub struct MevCount {
+    pub mev_count:            u64,
+    pub sandwich_count:       Option<u64>,
+    pub cex_dex_count:        Option<u64>,
+    pub jit_count:            Option<u64>,
+    pub jit_sandwich_count:   Option<u64>,
+    pub atomic_backrun_count: Option<u64>,
+    pub liquidation_count:    Option<u64>,
+}
+
+impl fmt::Display for MevCount {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "  - MEV Count: {}", self.mev_count.to_string().bold())?;
+
+        if let Some(count) = self.sandwich_count {
+            writeln!(f, "    - Sandwich: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.cex_dex_count {
+            writeln!(f, "    - Cex-Dex: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.jit_count {
+            writeln!(f, "    - Jit: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.jit_sandwich_count {
+            writeln!(f, "    - Jit Sandwich: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.atomic_backrun_count {
+            writeln!(f, "    - Atomic Backrun: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.liquidation_count {
+            writeln!(f, "    - Liquidation: {}", count.to_string().bold())?;
+        }
+
+        Ok(())
+    }
+}
+
+#[serde_as]
 #[derive(Debug, Deserialize, Row, Clone, Default)]
 pub struct PossibleMevCollection(pub Vec<PossibleMev>);
 
@@ -208,7 +249,7 @@ impl fmt::Display for PossibleMevCollection {
         writeln!(
             f,
             "{}",
-            format!("Found {} possible MEV Transactions that we did not classify:", self.0.len())
+            format!("Found {} possible MEV Transactions that we did not classify", self.0.len())
                 .bright_yellow()
         )?;
         for possible_mev in self.0.iter() {
