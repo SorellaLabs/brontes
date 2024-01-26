@@ -40,77 +40,66 @@ pub struct MevBlock {
     pub cumulative_mev_profit_usd: f64,
     pub possible_mev: PossibleMevCollection,
 }
-
 impl fmt::Display for MevBlock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Header
-        writeln!(
-            f,
-            "{}",
-            "////////////////////////////////////////////////////////////////////////////////"
-                .bold()
-        )?;
-        writeln!(f, "{}", format!("--Finished processing block: {}--", self.block_number).bold())?;
-        writeln!(
-            f,
-            "{}",
-            "////////////////////////////////////////////////////////////////////////////////"
-                .bold()
-        )?;
+        writeln!(f, "{:-<30}Finished processing block: {}{:-<30}", "", self.block_number, "")?;
 
         // Mev section
-        writeln!(f, "\n{}", "Mev:".bold())?;
-        writeln!(f, "    - MEV Count: {}", self.mev_count.to_string().bold())?;
+        writeln!(f, "{}", "Mev:".bold().red().underline())?;
+        writeln!(f, "  - MEV Count: {}", self.mev_count.to_string().bold())?;
         writeln!(
             f,
-            "    - Cumulative MEV Profit (USD): ${:.2}",
-            self.cumulative_mev_profit_usd.to_string().green()
+            "  - Cumulative MEV Profit (USD): {}",
+            format_profit(self.cumulative_mev_profit_usd)
         )?;
-        writeln!(f, "    - Mev Gas:")?;
-        writeln!(f, "        - Total Bribe: {:.6} ETH", self.total_bribe as f64 * 1e-18)?;
+        writeln!(f, "  - Mev Gas:")?;
+        writeln!(f, "    - Total Bribe: {:.6} ETH", self.total_bribe as f64 * 1e-18)?;
         writeln!(
             f,
-            "        - Cumulative MEV Priority Fee Paid: {:.6} ETH",
+            "    - Cumulative MEV Priority Fee Paid: {:.6} ETH",
             self.cumulative_mev_priority_fee_paid as f64 * 1e-18
         )?;
-        writeln!(f, "\n    - Possible MEV Transactions:\n{}", self.possible_mev)?;
+        writeln!(f, "  - Possible MEV Transactions:\n{}", self.possible_mev)?;
 
         // Builder section
-        writeln!(f, "\n{}", "Builder:".bold())?;
-        writeln!(f, "    - Builder Address: {:?}", self.builder_address)?;
+        writeln!(f, "{}", "Builder:".bold().red().underline())?;
+        writeln!(f, "  - Builder Address: {:?}", self.builder_address)?;
         let builder_profit_color = if self.builder_eth_profit < 0.0 { "red" } else { "green" };
         writeln!(
             f,
-            "    - Builder Profit (USD): ${:.2}",
-            self.builder_profit_usd
-                .to_string()
-                .color(builder_profit_color)
+            "  - Builder Profit (USD): {}",
+            format_profit(self.builder_profit_usd).color(builder_profit_color)
         )?;
         writeln!(
             f,
-            "    - Builder ETH Profit: {:.6} ETH",
-            self.builder_eth_profit
-                .to_string()
-                .color(builder_profit_color)
+            "  - Builder ETH Profit: {:.6} ETH",
+            format!("{:.6}", self.builder_eth_profit).color(builder_profit_color)
         )?;
 
         // Proposer section
-        writeln!(f, "\n{}", "Proposer:".bold())?;
+        writeln!(f, "{}", "Proposer:".bold().red().underline())?;
         if let Some(address) = self.proposer_fee_recipient {
-            writeln!(f, "    - Proposer Fee Recipient: {:?}", address)?;
+            writeln!(f, "  - Proposer Fee Recipient: {:?}", address)?;
         }
         if let Some(reward) = self.proposer_mev_reward {
-            writeln!(f, "    - Proposer MEV Reward: {:.6} ETH", reward as f64 * 1e-18)?;
+            writeln!(f, "  - Proposer MEV Reward: {:.6} ETH", reward as f64 * 1e-18)?;
         }
         if let Some(profit_usd) = self.proposer_profit_usd {
-            writeln!(f, "    - Proposer Finalized Profit (USD): ${:.2}", profit_usd)?;
+            writeln!(f, "  - Proposer Finalized Profit (USD): {}", format_profit(profit_usd))?;
         }
 
         // Footer
-        writeln!(
-            f,
-            "////////////////////////////////////////////////////////////////////////////////"
-        )
+        writeln!(f, "{:-<72}", "")
+    }
+}
+
+// Helper function to format profit values
+fn format_profit(value: f64) -> String {
+    if value < 0.0 {
+        format!("-${:.2}", value.abs())
+    } else {
+        format!("${:.2}", value)
     }
 }
 
@@ -231,7 +220,7 @@ impl fmt::Display for PossibleMev {
             eth_paid.to_string().bold()
         )?;
         write!(f, "{}", self.triggers)?;
-        writeln!(f, "\nEtherscan link: \n    - {}", tx_url.underline())
+        writeln!(f, "Etherscan link: {}", tx_url.underline())
     }
 }
 
