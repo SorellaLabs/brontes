@@ -2,13 +2,13 @@ use std::{
     fmt::{Debug, Display},
     str::FromStr,
 };
-use brontes_types::db::token_info::TokenInfo;
+
 use brontes_pricing::{Protocol, SubGraphsEntry};
 use brontes_types::{
     db::{
         address_to_tokens::PoolTokens, cex::CexPriceMap, dex::DexQuoteWithIndex,
         metadata::MetadataInner, mev_block::MevBlockWithClassified,
-        pool_creation_block::PoolsToAddresses, traces::TxTracesInner,
+        pool_creation_block::PoolsToAddresses, token_info::TokenInfo, traces::TxTracesInner,
     },
     extra_processing::Pair,
     traits::TracingProvider,

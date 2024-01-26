@@ -189,9 +189,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    fn try_get_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
+    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfo>> {
         let tx = self.0.ro_tx()?;
-        Ok(tx.get::<TokenDecimals>(address)?.map(|v| v.decimals))
+        Ok(tx.get::<TokenDecimals>(address)?)
     }
 
     fn protocols_created_before(
@@ -327,12 +327,12 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn write_token_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
+    fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()> {
         Ok(self
             .0
             .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
                 address,
-                info: TokenInfo { decimals, symbol: "".to_string() },
+                info: TokenInfo::new(decimals, symbol),
             }])?)
     }
 
