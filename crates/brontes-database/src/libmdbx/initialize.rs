@@ -104,7 +104,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
-        join_all(pair_ranges.into_iter().map(|(start, end)| {
+        iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
        //  we spawn as the 
             async move {
@@ -141,7 +141,8 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                 }
             }
             Ok::<(), DatabaseError>(())
-                })}).buffer_unordered(5).collect::<Vec<_>>().await;
+
+            })}).buffer_unordered(5).collect::<Vec<_>>().await;
 
 
             let num = {
@@ -153,7 +154,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
 
             Ok::<(), DatabaseError>(())
-        }})).await.into_iter()
+        }})).buffer_unordered(15).collect::<Vec<_>>().await.into_iter()
         .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
