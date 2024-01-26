@@ -111,6 +111,9 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             });
             inner.values().any(|inner| !inner.is_empty())
         });
+        if !res.is_empty() {
+            tracing::info!("{:#?}", res);
+        }
         // we batch bc this is slow part
         res
     }
