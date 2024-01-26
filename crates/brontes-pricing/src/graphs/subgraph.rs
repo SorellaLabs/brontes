@@ -262,12 +262,16 @@ impl PairSubGraph {
         }
 
         all_remove.iter().for_each(|(k, v)| {
-            let n0 = *self.token_to_index.get(&k.0).unwrap();
-            let n1 = *self.token_to_index.get(&k.1).unwrap();
+            let Some(n0) = self.token_to_index.get(&k.0) else { return };
+            let Some(n1) = self.token_to_index.get(&k.1) else { return };
+            let n0 = *n0;
+            let n1 = *n1;
+
             let (e, dir) = self
                 .graph
                 .find_edge_undirected(n0.into(), n1.into())
                 .unwrap();
+
             let mut weights = self.graph.remove_edge(e).unwrap();
             weights.retain(|node| !v.contains(&node.pool_addr));
             if !weights.is_empty() {
