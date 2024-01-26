@@ -227,14 +227,14 @@ impl PairSubGraph {
                 };
 
                 let (t0, t1) = pool_state.tvl(info.get_base_token());
-                let liq = prev_price.clone().reciprocal() * &t0;
+                let liq = prev_price.clone() * &t0;
 
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
                 if liq < Rational::from(MIN_LIQUIDITY_USDC)
                     && !all_pair_graph.is_only_edge(info.get_base_token())
                 {
-                    tracing::info!(pool=?info.pool_addr,"removing shit pool");
+                    tracing::info!(pool=?info.pool_addr, ?prev_price,"removing shit pool");
                     let pair = Pair(info.token_0, info.token_1).ordered();
                     all_remove.entry(pair).or_default().push(info.pool_addr);
                 } else {
