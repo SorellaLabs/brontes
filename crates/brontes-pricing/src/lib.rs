@@ -187,7 +187,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn requery_bad_state_par(&mut self, pairs: Vec<Pair>, block: u64) {
-        tracing::info!(?pairs, "requerying");
+        tracing::info!(pairs_rem=pairs.len(), %block, "requerying");
         par_state_query(&self.graph_manager, pairs, block)
             .into_iter()
             .for_each(|(pair, state, edges)| {
