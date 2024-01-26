@@ -11,6 +11,7 @@ use malachite::{
     },
     Rational,
 };
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::info;
 
 use super::{subgraph::PairSubGraph, PoolState};
@@ -206,24 +207,38 @@ impl SubGraphRegistry {
     // along with a bool if this pair needs to be recalculated.
     pub fn verify_subgraph(
         &mut self,
-        pair: Pair,
+        pair: Vec<Pair>,
         quote: Address,
         all_graph: &AllPairGraph,
-    ) -> (bool, HashMap<Pair, Vec<Address>>) {
-        let Some(mut subgraph) = self.sub_graphs.remove(&pair.ordered()) else {
-            return (false, HashMap::default());
-        };
+    ) -> Vec<(bool, Pair, HashMap<Pair, Vec<Address>>)> {
+        let pairs = pair
+            .into_iter()
+            .map(|pair| (pair, self.sub_graphs.remove(&pair.ordered())))
+            .collect_vec();
 
-        let (kill, prune) = subgraph.bfs_verify(quote, &self.edge_state, all_graph);
-        if !kill {
-            self.sub_graphs.insert(pair.ordered(), subgraph);
-        }
+        let res = pairs
+            .into_par_iter()
+            .filter_map(|(pair, subgraph)| {
+                let Some(mut subgraph) = subgraph else {
+                    return None
+                };
+                let (bad, state) = subgraph.bfs_verify(quote, &self.edge_state, all_graph);
+                Some((pair, bad, state, subgraph))
+            })
+            .collect::<Vec<_>>();
 
-        self.token_to_sub_graph.retain(|_, v| {
-            v.remove(&pair.ordered());
-            !v.is_empty()
-        });
+        res.into_iter()
+            .map(|(pair, kill, state, subgraph)| {
+                if !kill {
+                    self.sub_graphs.insert(pair.ordered(), subgraph);
+                }
 
-        (kill, prune)
+                self.token_to_sub_graph.retain(|_, v| {
+                    v.remove(&pair.ordered());
+                    !v.is_empty()
+                });
+                (kill, pair, state)
+            })
+            .collect_vec()
     }
 }
