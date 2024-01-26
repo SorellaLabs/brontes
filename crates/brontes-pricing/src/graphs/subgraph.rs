@@ -248,7 +248,7 @@ impl PairSubGraph {
 
             if weight == Rational::ZERO {
                 // means no edges were over limit, return
-                continue;
+                continue
             }
 
             let local_weighted_price = pxw / weight;
@@ -279,6 +279,9 @@ impl PairSubGraph {
                         self.graph.add_edge(n0.into(), n1.into(), weights);
                     }
                 }
+            } else {
+                let _ = self.graph.remove_node(n0.into());
+                let _ = self.graph.remove_node(n1.into());
             }
         });
 
