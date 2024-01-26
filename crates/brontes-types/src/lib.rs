@@ -10,6 +10,8 @@ pub mod db;
 pub mod display;
 pub mod extra_processing;
 pub mod normalized_actions;
+pub mod queries;
+pub use queries::make_call_request;
 pub mod serde_utils;
 pub mod structured_trace;
 #[cfg(feature = "tests")]
