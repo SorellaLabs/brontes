@@ -17,7 +17,7 @@ use reth_rpc_types::trace::parity::{
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use super::LibmdbxData;
+use super::{LibmdbxData, ReturnKV};
 use crate::libmdbx::{types::CompressedTable, TxTraces};
 
 #[serde_as]
@@ -28,11 +28,8 @@ pub struct TxTracesData {
 }
 
 impl LibmdbxData<TxTraces> for TxTracesData {
-    fn into_key_val(
-        &self,
-    ) -> (<TxTraces as reth_db::table::Table>::Key, <TxTraces as CompressedTable>::DecompressedValue)
-    {
-        (self.block_number, self.inner.clone())
+    fn into_key_val(&self) -> ReturnKV<TxTraces> {
+        (self.block_number, self.inner.clone()).into()
     }
 }
 

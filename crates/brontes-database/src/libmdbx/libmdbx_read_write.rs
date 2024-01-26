@@ -317,8 +317,8 @@ impl LibmdbxWriter for LibmdbxReadWriter {
 
             data.into_iter()
                 .map(|entry| {
-                    let (key, val) = entry.into_key_val();
-                    cursor.upsert(key, val)?;
+                    let entry = entry.into_key_val();
+                    cursor.upsert(entry.key, entry.value)?;
                     Ok(())
                 })
                 .collect::<Result<Vec<_>, DatabaseError>>()

@@ -113,20 +113,17 @@ impl Tables {
         match self {
             Tables::TokenDecimals => {
                 initializer
-                    .initialize_table_from_clickhouse_no_args::<TokenDecimals, TokenDecimalsData>(
-                    )
+                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>()
                     .await
             }
             Tables::AddressToTokens => {
                 initializer
-                    .initialize_table_from_clickhouse_no_args::<AddressToTokens, AddressToTokensData>(
-                    )
+                    .clickhouse_init_no_args::<AddressToTokens, AddressToTokensData>()
                     .await
             }
             Tables::AddressToProtocol => {
                 initializer
-                    .initialize_table_from_clickhouse_no_args::<AddressToProtocol, AddressToProtocolData>(
-                    )
+                    .clickhouse_init_no_args::<AddressToProtocol, AddressToProtocolData>()
                     .await
             }
             Tables::CexPrice => {
