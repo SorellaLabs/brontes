@@ -13,7 +13,8 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{Address, B256};
 
 use crate::{
-    shared_utils::SharedInspectorUtils, BundleData, BundleHeader, Inspector, MetadataCombined,
+    shared_utils::SharedInspectorUtils, Bundle, BundleData, BundleHeader, Inspector,
+    MetadataCombined,
 };
 
 pub struct AtomicBackrunInspector<'db, DB: LibmdbxReader> {
