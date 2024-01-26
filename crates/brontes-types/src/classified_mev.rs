@@ -99,26 +99,16 @@ impl fmt::Display for MevBlock {
             writeln!(f, "  - Proposer Fee Recipient: {:?}", self.proposer_fee_recipient.unwrap())?;
             writeln!(
                 f,
-                "{}",
-                format!(
-                    "  - Proposer MEV Reward: {:.6} ETH",
-                    self.proposer_mev_reward.unwrap() as f64 * 1e-18
-                )
-                .green()
+                "  - Proposer MEV Reward: {:.6} ETH",
+                format!("{:.6}", self.proposer_mev_reward.unwrap()).green()
             )?;
             writeln!(
                 f,
-                "{}",
-                format!(
-                    "  - Proposer Finalized Profit (USD): {}",
-                    format_profit(self.proposer_profit_usd.unwrap())
-                )
-                .green()
+                "  - Proposer Finalized Profit (USD): {}",
+                format_profit(self.proposer_profit_usd.unwrap()).green()
             )?;
         }
-        writeln!(f, "{}", "Missed Mev:".bold().red().underline())?;
-        writeln!(f, "{}", self.possible_mev)?;
-
+        writeln!(f, "{}: {}", "Missed Mev".bold().red().underline(), self.possible_mev)?;
         // Footer
         writeln!(f, "{:-<72}", "")
     }
@@ -219,18 +209,27 @@ impl fmt::Display for PossibleMevCollection {
             f,
             "{}",
             format!("Found {} possible MEV Transactions that we did not classify:", self.0.len())
-                .bold()
                 .bright_yellow()
         )?;
         for possible_mev in self.0.iter() {
             writeln!(
                 f,
-                "{}",
+                "    {}",
                 format!("------ Transaction {} ------", possible_mev.tx_idx).purple()
             )?;
-            writeln!(f, "{}", possible_mev)?;
+            writeln!(f, "    {}", possible_mev)?;
         }
         Ok(())
+    }
+}
+
+impl fmt::Display for PossibleMev {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let eth_paid = self.gas_details.gas_paid() as f64 * 1e-18;
+        let tx_url = format!("https://etherscan.io/tx/{:?}", self.tx_hash);
+        writeln!(f, "        Paid {} Eth for inclusion", eth_paid.to_string().bold().green())?;
+        write!(f, "        {}", self.triggers)?;
+        writeln!(f, "        Etherscan: {}", tx_url.underline())
     }
 }
 
@@ -243,16 +242,6 @@ pub struct PossibleMev {
     pub triggers:    PossibleMevTriggers,
 }
 
-impl fmt::Display for PossibleMev {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let eth_paid = self.gas_details.gas_paid() as f64 * 1e-18;
-        let tx_url = format!("https://etherscan.io/tx/{:?}", self.tx_hash);
-        writeln!(f, "Paid {} Eth for inclusion", eth_paid.to_string().bold().green())?;
-        write!(f, "{}", self.triggers)?;
-        writeln!(f, "Etherscan: {}", tx_url.underline())
-    }
-}
-
 #[serde_as]
 #[derive(Debug, Deserialize, Row, Clone, Default)]
 pub struct PossibleMevTriggers {
@@ -263,15 +252,15 @@ pub struct PossibleMevTriggers {
 
 impl fmt::Display for PossibleMevTriggers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", "Triggers:".cyan())?;
+        writeln!(f, "        {}", "Triggers:".cyan())?;
         if self.is_private {
-            writeln!(f, "{}", "    - Private".cyan())?;
+            writeln!(f, "            - {}", "Private".cyan())?;
         }
         if self.coinbase_transfer {
-            writeln!(f, "{}", "    - Coinbase Transfer".cyan())?;
+            writeln!(f, "            - {}", "Coinbase Transfer".cyan())?;
         }
         if self.high_priority_fee {
-            writeln!(f, "{}", "    - High Priority Fee".cyan())?;
+            writeln!(f, "            - {}", "High Priority Fee".cyan())?;
         }
 
         Ok(())
