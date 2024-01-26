@@ -125,7 +125,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.current_block = msg.block;
             }
         }
-
         // only add a new pool to the graph when we have a update for it. this will help
         // us avoid dead pools in the graph;
         let new_pools = updates
@@ -187,7 +186,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
-        // tracing::info!(?pool_pair, "getting pair");
         if pool_pair.0 == pool_pair.1 {
             return Some(Rational::ONE)
         }
@@ -329,35 +327,40 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-        } else if let LoadResult::Err { pool_address, pool_pair, block } = load_result {
-            self.on_state_load_error(pool_pair, pool_address, block);
+        } else if let LoadResult::Err { pool_address, pool_pair, block, dependent_pairs } =
+            load_result
+        {
+            self.on_state_load_error(pool_pair, pool_address, block, dependent_pairs);
         }
     }
 
-    fn on_state_load_error(&mut self, pool_pair: Pair, pool_address: Address, block: u64) {
+    fn on_state_load_error(
+        &mut self,
+        pool_pair: Pair,
+        pool_address: Address,
+        block: u64,
+        dependent_pairs: Vec<Pair>,
+    ) {
         self.try_verify_pool();
 
-        self.lazy_loader
-            .remove_protocol_parents(&pool_address)
-            .into_iter()
-            .for_each(|parent_pair| {
-                let (re_query, bad_state) =
-                    self.graph_manager
-                        .bad_pool_state(parent_pair, pool_pair, pool_address);
+        dependent_pairs.into_iter().for_each(|parent_pair| {
+            let (re_query, bad_state) =
+                self.graph_manager
+                    .bad_pool_state(parent_pair, pool_pair, pool_address);
 
-                if re_query {
-                    self.re_queue_bad_pair(parent_pair, block);
-                }
-                if let Some((address, protocol, pair)) = bad_state {
-                    self.new_graph_pairs.insert(address, (protocol, pair));
-                }
-            });
+            if re_query {
+                self.re_queue_bad_pair(parent_pair, block);
+            }
+            if let Some((address, protocol, pair)) = bad_state {
+                self.new_graph_pairs.insert(address, (protocol, pair));
+            }
+        });
     }
 
     fn try_verify_pool(&mut self) {
         let requery_pairs = self
             .graph_manager
-            .verify_subgraph(self.lazy_loader.get_completed_pairs(), self.quote_asset)
+            .verify_subgraph(self.lazy_loader.pairs_to_verify(), self.quote_asset)
             .into_iter()
             .filter_map(|(failed, block, pair, cache_pairs)| {
                 cache_pairs.into_iter().for_each(|(pair, address)| {
@@ -408,6 +411,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     }
                 }
                 self.graph_manager.add_subgraph(pair, edges);
+
                 if !triggered {
                     tracing::info!("not triggered");
                     let (is_bad, block, pair, remove) = self

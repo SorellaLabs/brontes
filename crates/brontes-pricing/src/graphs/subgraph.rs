@@ -188,7 +188,7 @@ impl PairSubGraph {
         }
     }
 
-    pub fn bfs_verify<T: ProtocolState>(
+    pub fn verify_subgraph<T: ProtocolState>(
         &mut self,
         start: Address,
         state: &HashMap<Address, T>,
