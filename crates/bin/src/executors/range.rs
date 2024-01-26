@@ -3,15 +3,11 @@ use std::{
     fs::File,
     io::Write,
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::{
-    decoding::{Parser, TracingProvider},
-    missing_decimals::load_missing_decimals,
-};
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
@@ -175,14 +171,9 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         traces: Vec<TxTrace>,
         header: Header,
         classifier: &'db Classifier<'db, T, DB>,
-        tracer: Arc<T>,
-        libmdbx: &'db DB,
     ) -> CollectionFut<'db> {
         Box::pin(async move {
-            let number = header.number;
-            let (extra, tree) = classifier.build_block_tree(traces, header).await;
-            load_missing_decimals(tracer, libmdbx, number, extra.tokens_decimal_fill).await;
-
+            let tree = classifier.build_block_tree(traces, header).await;
             (tree, meta)
         })
     }
@@ -196,14 +187,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
 
         let fut = Box::pin(parser.then(|x| {
             let (traces, header) = x.unwrap().unwrap();
-            Self::on_parser_resolve(
-                meta,
-                traces,
-                header,
-                self.classifier,
-                self.parser.get_tracer(),
-                self.libmdbx,
-            )
+            Self::on_parser_resolve(meta, traces, header, self.classifier)
         }));
 
         self.collection_future = Some(fut);

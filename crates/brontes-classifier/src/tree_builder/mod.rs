@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 mod tree_pruning;
 mod utils;
+use brontes_core::missing_decimals::load_missing_decimal;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
-    extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer, SelfdestructWithIndex},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     traits::TracingProvider,
@@ -48,50 +48,38 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         &self,
         traces: Vec<TxTrace>,
         header: Header,
-    ) -> (ExtraProcessing, BlockTree<Actions>) {
+    ) -> BlockTree<Actions> {
         let tx_roots = self.build_all_tx_trees(traces, &header).await;
         let mut tree = BlockTree::new(header, tx_roots.len());
 
         // send out all updates
-        let (further_classification_requests, missing_data_requests) =
-            self.process_tx_roots(tx_roots, &mut tree);
+        let further_classification_requests = self.process_tx_roots(tx_roots, &mut tree);
 
         Self::prune_tree(&mut tree);
         finish_classification(&mut tree, further_classification_requests);
 
         tree.finalize_tree();
 
-        let mut addresses_missing_decimals = missing_data_requests
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
-
-        // need to sort before we can dedup
-        addresses_missing_decimals.sort();
-        addresses_missing_decimals.dedup();
-
-        let processing = ExtraProcessing { tokens_decimal_fill: addresses_missing_decimals };
-
-        (processing, tree)
+        tree
     }
 
     fn process_tx_roots(
         &self,
         tx_roots: Vec<TxTreeResult>,
         tree: &mut BlockTree<Actions>,
-    ) -> (Vec<Option<(usize, Vec<u64>)>>, Vec<Vec<Address>>) {
-        let (further_classification_requests, missing_data_requests): (Vec<_>, Vec<_>) = tx_roots
+    ) -> Vec<Option<(usize, Vec<u64>)>> {
+        let further_classification_requests = tx_roots
             .into_iter()
             .map(|root_data| {
                 tree.insert_root(root_data.root);
                 root_data.pool_updates.into_iter().for_each(|update| {
                     self.pricing_update_sender.send(update).unwrap();
                 });
-                (root_data.further_classification_requests, root_data.missing_data_requests)
+                root_data.further_classification_requests
             })
-            .unzip();
+            .collect_vec();
 
-        (further_classification_requests, missing_data_requests)
+        further_classification_requests
     }
 
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
@@ -116,7 +104,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         return None
                     }
                     // post classification processing collectors
-                    let mut missing_decimals = Vec::new();
                     let mut further_classification_requests = Vec::new();
                     let mut pool_updates: Vec<DexPriceMsg> = Vec::new();
 
@@ -129,7 +116,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                             tx_idx as u64,
                             0,
                             root_trace,
-                            &mut missing_decimals,
                             &mut further_classification_requests,
                             &mut pool_updates,
                         )
@@ -168,7 +154,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                                 tx_idx as u64,
                                 (index + 1) as u64,
                                 trace.clone(),
-                                &mut missing_decimals,
                                 &mut further_classification_requests,
                                 &mut pool_updates,
                             )
@@ -201,7 +186,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         root: tx_root,
                         further_classification_requests: tx_classification_requests,
                         pool_updates,
-                        missing_data_requests: missing_decimals,
                     })
                 }),
         )
@@ -218,7 +202,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         tx_index: u64,
         trace_index: u64,
         trace: TransactionTraceWithLogs,
-        missing_decimals: &mut Vec<Address>,
         further_classification_requests: &mut Vec<u64>,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
@@ -240,7 +223,13 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 .unwrap()
                 .is_none()
             {
-                missing_decimals.push(transfer.token);
+                load_missing_decimal(
+                    self.provider.clone(),
+                    self.libmdbx,
+                    block_number,
+                    transfer.token,
+                )
+                .await;
             }
         }
 
@@ -421,7 +410,6 @@ fn finish_classification(
 }
 
 pub struct TxTreeResult {
-    pub missing_data_requests: Vec<Address>,
     pub pool_updates: Vec<DexPriceMsg>,
     pub further_classification_requests: Option<(usize, Vec<u64>)>,
     pub root: Root<Actions>,
