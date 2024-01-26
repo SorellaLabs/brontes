@@ -8,20 +8,27 @@ use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, Row};
+use statrs::statistics::Statistics;
 use tracing::error;
 
 use crate::normalized_actions::NormalizedAction;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots:         Vec<Root<V>>,
-    pub header:           Header,
-    pub avg_priority_fee: u128,
+    pub tx_roots:             Vec<Root<V>>,
+    pub header:               Header,
+    pub priority_fee_std_dev: f64,
+    pub avg_priority_fee:     f64,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
     pub fn new(header: Header, tx_num: usize) -> Self {
-        Self { tx_roots: Vec::with_capacity(tx_num), header, avg_priority_fee: 0 }
+        Self {
+            tx_roots: Vec::with_capacity(tx_num),
+            header,
+            priority_fee_std_dev: 0.0,
+            avg_priority_fee: 0.0,
+        }
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
@@ -51,24 +58,30 @@ impl<V: NormalizedAction> BlockTree<V> {
     }
 
     pub fn finalize_tree(&mut self) {
-        // because of this bad boy: https://etherscan.io/block/18500239
-        // we need this
+        // in case the block is empty
         if self.tx_roots.is_empty() {
-            error!(block = self.header.number, "have empty tree");
+            error!(block = self.header.number, "The block tree is empty");
             self.tx_roots.iter_mut().for_each(|root| root.finalize());
-            return
+            return;
         }
 
-        self.avg_priority_fee = self
-            .tx_roots
-            .iter()
-            .map(|tx| {
-                tx.gas_details.effective_gas_price - self.header.base_fee_per_gas.unwrap() as u128
-            })
-            .sum::<u128>()
-            / self.tx_roots.len() as u128;
+        // Initialize accumulator for total priority fee and vector of priority fees
+        let mut total_priority_fee: f64 = 0.0;
+        let mut priority_fees: Vec<f64> = Vec::new();
 
-        self.tx_roots.iter_mut().for_each(|root| root.finalize());
+        for tx in &mut self.tx_roots {
+            let priority_fee = (tx.gas_details.effective_gas_price
+                - self.header.base_fee_per_gas.unwrap() as u128)
+                as f64;
+            priority_fees.push(priority_fee);
+            total_priority_fee += priority_fee;
+
+            tx.finalize();
+        }
+
+        self.avg_priority_fee = total_priority_fee / self.tx_roots.len() as f64;
+        let std_dev = priority_fees.population_std_dev();
+        self.priority_fee_std_dev = std_dev;
     }
 
     pub fn insert_node(&mut self, node: Node<V>) {

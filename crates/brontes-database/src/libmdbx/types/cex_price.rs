@@ -15,8 +15,8 @@ use crate::libmdbx::CexPrice;
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CexPriceData {
-    pub block_num:     u64,
-    pub cex_price_map: CexPriceMap,
+    pub block_number: u64,
+    pub data:         CexPriceMap,
 }
 
 impl LibmdbxData<CexPrice> for CexPriceData {
@@ -24,7 +24,7 @@ impl LibmdbxData<CexPrice> for CexPriceData {
         &self,
     ) -> (<CexPrice as reth_db::table::Table>::Key, <CexPrice as CompressedTable>::DecompressedValue)
     {
-        (self.block_num, self.cex_price_map.clone())
+        (self.block_number, self.data.clone())
     }
 }
 
