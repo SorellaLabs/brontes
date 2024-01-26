@@ -46,6 +46,7 @@ pub mod ser_mev_block {
 
             let possible_mev = self
                 .possible_mev
+                .0
                 .iter()
                 .map(|tx| format!("{:?}", tx).into())
                 .collect::<Vec<FixedString>>();
