@@ -267,10 +267,17 @@ impl PairSubGraph {
             let n0 = *n0;
             let n1 = *n1;
 
-            let (e, dir) = self
+            let Some((e, dir)) = self
                 .graph
-                .find_edge_undirected(n0.into(), n1.into())
-                .unwrap();
+                .find_edge_undirected(n0.into(), n1.into()) else {
+                    if self.graph.edges(n0.into()).collect_vec().is_empty() {
+                        let _ = self.graph.remove_node(n0.into());
+                    }
+                    if self.graph.edges(n1.into()).collect_vec().is_empty() {
+                        let _ = self.graph.remove_node(n1.into());
+                    }
+                    return
+                };
 
             let mut weights = self.graph.remove_edge(e).unwrap();
             weights.retain(|node| !v.contains(&node.pool_addr));
