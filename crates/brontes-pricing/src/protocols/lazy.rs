@@ -103,8 +103,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         let mut res = Vec::new();
         self.parent_pair_state_loading.retain(|k, v| {
             if v.values().all(|i| i.is_empty()) {
-
-                res.extend(v.drain().map(|(i, _)| i).collect_vec());
+                res.extend(v.keys().copied());
                 return false
             }
             true
