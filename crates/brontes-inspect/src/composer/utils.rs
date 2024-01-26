@@ -71,11 +71,6 @@ pub(crate) fn build_mev_header(
         10i128.pow(18),
     );
 
-    let proposer_mev_reward: Option<u128> = pre_processing
-        .meta_data
-        .proposer_mev_reward
-        .map(|mev_reward| mev_reward / 10u128.pow(18));
-
     MevBlock {
         block_hash: pre_processing.meta_data.block_hash.into(),
         block_number: pre_processing.meta_data.block_num,
@@ -94,7 +89,7 @@ pub(crate) fn build_mev_header(
         )
         .0,
         proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
-        proposer_mev_reward,
+        proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
         proposer_profit_usd: pre_processing
             .meta_data
             .proposer_mev_reward
