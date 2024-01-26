@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::LibmdbxData;
+use super::{LibmdbxData, ReturnKV};
 use crate::libmdbx::TokenDecimals;
 
 #[serde_as]
@@ -16,12 +16,7 @@ pub struct TokenDecimalsData {
 }
 
 impl LibmdbxData<TokenDecimals> for TokenDecimalsData {
-    fn into_key_val(
-        &self,
-    ) -> (
-        <TokenDecimals as reth_db::table::Table>::Key,
-        <TokenDecimals as reth_db::table::Table>::Value,
-    ) {
-        (self.address, self.info.clone())
+    fn into_key_val(&self) -> ReturnKV<TokenDecimals> {
+        (self.address, self.info.clone()).into()
     }
 }
