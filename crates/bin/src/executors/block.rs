@@ -60,7 +60,6 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await?.ok_or_else(|| eyre!("parser failed"))?;
             debug!("Got {} traces + header", traces.len());
-            let block_number = header.number;
             let tree = self.classifier.build_block_tree(traces, header).await;
 
             let meta = labeller_fut?;
