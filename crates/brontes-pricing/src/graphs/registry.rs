@@ -229,9 +229,9 @@ impl SubGraphRegistry {
 
         let res = pairs
             .into_par_iter()
-            .filter_map(|(pair, block, mut subgraph)| {
+            .map(|(pair, block, mut subgraph)| {
                 let (bad, state) = subgraph.verify_subgraph(quote, &self.edge_state, all_graph);
-                Some((pair, bad, block, state, subgraph))
+                (pair, bad, block, state, subgraph)
             })
             .collect::<Vec<_>>();
 

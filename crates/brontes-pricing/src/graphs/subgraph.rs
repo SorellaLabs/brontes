@@ -136,8 +136,11 @@ impl PairSubGraph {
         let t1 = edge_info.token_1;
 
         // tokens have to already be in the graph for this edge to be added
-        let node0 = (*self.token_to_index.get(&t0).unwrap()).into();
-        let node1 = (*self.token_to_index.get(&t1).unwrap()).into();
+        let Some(n0) = self.token_to_index.get(&t0) else { return false };
+        let Some(n1) = self.token_to_index.get(&t1) else { return false };
+
+        let node0 = (*n0).into();
+        let node1 = (*n1).into();
 
         if let Some(edge) = self.graph.find_edge(node0, node1) {
             return add_edge(&mut self.graph, edge, edge_info, true)
