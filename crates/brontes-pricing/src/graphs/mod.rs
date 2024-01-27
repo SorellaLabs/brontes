@@ -73,7 +73,7 @@ impl GraphManager {
     ) -> (Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>) {
         let pair = pair.ordered();
         if self.sub_graph_registry.has_subpool(&pair) {
-            /// fetch all state to be loaded
+            // fetch all state to be loaded
             return (self.sub_graph_registry.fetch_unloaded_state(&pair), vec![])
         } else if let Some((pair, edges)) = (&self.db_load)(block, pair) {
             info!("db load");
