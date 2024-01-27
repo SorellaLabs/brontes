@@ -415,6 +415,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
                     if need_lazy_load {
                         if self.lazy_loader.is_loading(&pool_info.pool_addr) {
+
+                            tracing::info!(?pair, block,"requerying");
                             self.lazy_loader.requery(
                                 pair,
                                 Pair(pool_info.token_0, pool_info.token_1),
