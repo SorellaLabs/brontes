@@ -2,9 +2,7 @@ use std::fmt::{self, Debug};
 
 use alloy_primitives::Address;
 use colored::Colorize;
-
 use indoc::indoc;
-
 use reth_primitives::B256;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -12,7 +10,6 @@ use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
 };
-
 
 #[allow(unused_imports)]
 use crate::{

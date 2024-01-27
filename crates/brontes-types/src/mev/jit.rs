@@ -1,19 +1,10 @@
-use std::fmt::{Debug};
+use std::fmt::Debug;
 
 use ::serde::ser::{Serialize, SerializeStruct, Serializer};
-
-
-
-
-
 use reth_primitives::B256;
 use serde::Deserialize;
-
 use serde_with::serde_as;
-use sorella_db_databases::{
-    clickhouse::{fixed_string::FixedString, DbRow},
-};
-
+use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
 #[allow(unused_imports)]

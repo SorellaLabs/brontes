@@ -3,13 +3,9 @@ pub mod header;
 
 use std::fmt::{self, Debug};
 
-
-
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
-
-
 use reth_primitives::B256;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};

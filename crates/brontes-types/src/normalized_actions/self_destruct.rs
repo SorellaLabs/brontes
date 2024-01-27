@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-
 use reth_primitives::{Address, U256};
 use reth_rpc_types::trace::parity::SelfdestructAction;
 use serde::{Deserialize, Serialize};
