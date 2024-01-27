@@ -35,7 +35,6 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
-use super::all_pair_graph;
 use crate::{
     price_graph_types::*,
     types::{PoolState, ProtocolState},
@@ -205,8 +204,6 @@ impl PairSubGraph {
             |node_weights, prev_price, removal_map: &mut HashMap<Pair, Vec<Address>>| {
                 let mut pxw = Rational::ZERO;
                 let mut weight = Rational::ZERO;
-                let mut token_0_am = Rational::ZERO;
-                let mut token_1_am = Rational::ZERO;
 
                 let mut possible_remove_pool_addr = Vec::new();
 
@@ -231,7 +228,7 @@ impl PairSubGraph {
                         removal_map.entry(pair).or_default().push(info.pool_addr);
                     } else {
                         let t0xt1 = &t0 * &t1;
-                        pxw += (pool_price * &t0xt1);
+                        pxw += pool_price * &t0xt1;
                         weight += t0xt1;
                     }
 
@@ -252,8 +249,6 @@ impl PairSubGraph {
 
                     pxw = Rational::ZERO;
                     weight = Rational::ZERO;
-                    token_0_am = Rational::ZERO;
-                    token_1_am = Rational::ZERO;
 
                     // recalc price with weights
                     for info in node_weights {
@@ -266,12 +261,10 @@ impl PairSubGraph {
                         };
 
                         let (t0, t1) = pool_state.tvl(info.get_base_token());
-                        let liq = prev_price.clone() * &t0;
-
                         // check if below liquidity and that if we remove we don't make the
                         // graph disjoint.
                         let t0xt1 = &t0 * &t1;
-                        pxw += (pool_price * &t0xt1);
+                        pxw += pool_price * &t0xt1;
                         weight += t0xt1;
                     }
                 }

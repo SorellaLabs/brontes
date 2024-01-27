@@ -157,7 +157,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
         removed.iter().for_each(|pair| {
             if let Entry::Occupied(mut o) = self.parent_pair_state_loading.entry(*pair) {
-                let (block, entry) = o.get_mut();
+                let (_, entry) = o.get_mut();
                 entry.remove(address);
             }
         });
