@@ -229,6 +229,7 @@ impl PairSubGraph {
                         && !(all_pair_graph.is_only_edge(&info.token_0)
                             || all_pair_graph.is_only_edge(&info.token_1))
                     {
+                        tracing::info!(pool=?info.pool_addr,"low liq");
                         let pair = Pair(info.token_0, info.token_1).ordered();
                         removal_map.entry(pair).or_default().push(info.pool_addr);
                     } else {
@@ -245,11 +246,11 @@ impl PairSubGraph {
 
                 // check if we can remove some bad addresses in a edge. if we can,
                 // then we do. and recalculate the price
-                if possible_remove_pool_addr.len() < i {
-                    possible_remove_pool_addr.iter().for_each(|(pair, addr)| {
-                        removal_map.entry(pair.ordered()).or_default().push(*addr);
-                    });
-                }
+                // if possible_remove_pool_addr.len() < i {
+                //     possible_remove_pool_addr.iter().for_each(|(pair, addr)| {
+                //         removal_map.entry(pair.ordered()).or_default().push(*addr);
+                //     });
+                // }
 
                 if weight == Rational::ZERO {
                     // means no edges were over limit, return

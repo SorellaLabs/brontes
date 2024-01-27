@@ -128,7 +128,7 @@ impl AllPairGraph {
             pools.push(pool_pair);
             self.graph.update_edge(node_0.into(), node_1.into(), pools);
         } else {
-            let mut pair = vec![pool_pair];
+            let pair = vec![pool_pair];
 
             self.graph.add_edge(node_0.into(), node_1.into(), pair);
         }
