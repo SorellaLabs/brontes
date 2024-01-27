@@ -12,8 +12,8 @@ use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    classified_mev::PossibleMevCollection,
     db::metadata::{MetadataCombined, MetadataNoDex},
+    mev::PossibleMevCollection,
     normalized_actions::Actions,
     structured_trace::TxTrace,
     tree::BlockTree,

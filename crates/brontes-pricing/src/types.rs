@@ -2,9 +2,7 @@ use std::{collections::HashMap, fmt::Debug, str::FromStr, sync::Arc};
 
 use alloy_primitives::{Address, Log, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
-use brontes_types::{
-    extra_processing::Pair, normalized_actions::Actions, serde_utils::primitives::address_string,
-};
+use brontes_types::{normalized_actions::Actions, pair::Pair, serde_primitives::address_string};
 use bytes::BufMut;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_codecs::derive_arbitrary;

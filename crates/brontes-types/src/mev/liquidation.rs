@@ -1,10 +1,48 @@
+use std::fmt::Debug;
+
 use ::serde::ser::{Serialize, SerializeStruct, Serializer};
+use reth_primitives::B256;
+use serde::Deserialize;
+use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
-use super::normalized_actions::ClickhouseVecNormalizedLiquidation;
+use super::{Mev, MevType};
+use crate::normalized_actions::{ClickhouseVecNormalizedLiquidation, ClickhouseVecNormalizedSwap};
+#[allow(unused_imports)]
 use crate::{
-    classified_mev::Liquidation, serde_utils::normalized_actions::ClickhouseVecNormalizedSwap,
+    display::utils::{display_sandwich, print_mev_type_header},
+    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
+    serde_primitives::vec_fixed_string,
+    GasDetails,
 };
+
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct Liquidation {
+    pub liquidation_tx_hash: B256,
+    pub trigger:             B256,
+    pub liquidation_swaps:   Vec<NormalizedSwap>,
+    pub liquidations:        Vec<NormalizedLiquidation>,
+    pub gas_details:         GasDetails,
+}
+
+impl Mev for Liquidation {
+    fn mev_type(&self) -> MevType {
+        MevType::Liquidation
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
+        vec![self.liquidation_tx_hash]
+    }
+
+    fn priority_fee_paid(&self) -> u128 {
+        self.gas_details.gas_paid()
+    }
+
+    fn bribe(&self) -> u128 {
+        self.gas_details.coinbase_transfer.unwrap_or(0)
+    }
+}
 
 impl Serialize for Liquidation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

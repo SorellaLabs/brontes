@@ -4,7 +4,7 @@ use malachite::{num::basic::traits::One, Rational};
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
-use crate::extra_processing::Pair;
+use crate::pair::Pair;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexPrices {

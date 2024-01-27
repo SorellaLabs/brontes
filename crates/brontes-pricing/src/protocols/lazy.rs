@@ -6,7 +6,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{extra_processing::Pair, traits::TracingProvider};
+use brontes_types::{pair::Pair, traits::TracingProvider};
 use futures::{
     future::BoxFuture,
     stream::{FuturesOrdered, FuturesUnordered},

@@ -6,8 +6,8 @@ use brontes_inspect::{
     Inspector,
 };
 use brontes_types::{
-    classified_mev::{Bundle, MevBlock, PossibleMevCollection},
     db::metadata::MetadataCombined,
+    mev::{Bundle, MevBlock, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -41,7 +41,7 @@ fn insert_mev_results<DB: LibmdbxWriter>(
         block_details.to_string()
     );
 
-    //info!("{:#?}", mev_details);
+    info!("{:#?}", mev_details);
 
     if database
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
