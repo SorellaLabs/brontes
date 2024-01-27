@@ -6,11 +6,10 @@ use std::{
 use async_trait::async_trait;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{Bundle, JitLiquidity, MevType, TokenProfit, TokenProfits},
-    extra_processing::Pair,
+    mev::{Bundle, JitLiquidity, MevType, TokenProfit, TokenProfits},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    tree::GasDetails,
-    ToFloatNearest, ToScaledRational,
+    pair::Pair,
+    GasDetails, ToFloatNearest, ToScaledRational,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};

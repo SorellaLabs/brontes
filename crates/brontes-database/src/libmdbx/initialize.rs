@@ -154,22 +154,16 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, path::Path, sync::Arc};
+    use std::{env, sync::Arc};
 
     use alloy_primitives::TxHash;
-    use brontes_pricing::types::PoolState;
-    use brontes_types::{
-        classified_mev::{BundleHeader, MevBlock, Sandwich},
-        structured_trace::TxTrace,
-    };
+    use brontes_types::structured_trace::TxTrace;
     use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
     use reth_interfaces::provider::ProviderResult;
     use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
     use reth_rpc::eth::error::EthResult;
     use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
-    use reth_tracing_ext::TracingClient;
     use serial_test::serial;
-    use tokio::sync::mpsc::unbounded_channel;
 
     use super::LibmdbxInitializer;
     use crate::{clickhouse::Clickhouse, libmdbx::*};
@@ -181,15 +175,15 @@ mod tests {
     impl TracingProvider for NoopTP {
         async fn eth_call(
             &self,
-            request: CallRequest,
-            block_number: Option<BlockId>,
-            state_overrides: Option<StateOverride>,
-            block_overrides: Option<Box<BlockOverrides>>,
+            _request: CallRequest,
+            _block_number: Option<BlockId>,
+            _state_overrides: Option<StateOverride>,
+            _block_overrides: Option<Box<BlockOverrides>>,
         ) -> ProviderResult<Bytes> {
             Ok(Default::default())
         }
 
-        async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>> {
+        async fn block_hash_for_id(&self, _block_num: u64) -> ProviderResult<Option<B256>> {
             Ok(None)
         }
 
@@ -203,23 +197,23 @@ mod tests {
 
         async fn replay_block_transactions(
             &self,
-            block_id: BlockId,
+            _block_id: BlockId,
         ) -> EthResult<Option<Vec<TxTrace>>> {
             Ok(None)
         }
 
         async fn block_receipts(
             &self,
-            number: BlockNumberOrTag,
+            _number: BlockNumberOrTag,
         ) -> ProviderResult<Option<Vec<TransactionReceipt>>> {
             Ok(None)
         }
 
-        async fn header_by_number(&self, number: BlockNumber) -> ProviderResult<Option<Header>> {
+        async fn header_by_number(&self, _number: BlockNumber) -> ProviderResult<Option<Header>> {
             Ok(None)
         }
 
-        async fn block_and_tx_index(&self, hash: TxHash) -> ProviderResult<(u64, usize)> {
+        async fn block_and_tx_index(&self, _hash: TxHash) -> ProviderResult<(u64, usize)> {
             Ok((0, 0))
         }
     }

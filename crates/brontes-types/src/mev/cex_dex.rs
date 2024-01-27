@@ -1,8 +1,50 @@
+use std::fmt::Debug;
+
 use ::serde::ser::{Serialize, SerializeStruct, Serializer};
+use alloy_primitives::Address;
 use itertools::Itertools;
+use reth_primitives::B256;
+use serde::Deserialize;
+use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
-use crate::{classified_mev::CexDex, serde_utils::normalized_actions::ClickhouseVecNormalizedSwap};
+use super::{Mev, MevType};
+#[allow(unused_imports)]
+use crate::{
+    display::utils::{display_sandwich, print_mev_type_header},
+    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
+    serde_primitives::vec_fixed_string,
+    GasDetails,
+};
+use crate::{normalized_actions::ClickhouseVecNormalizedSwap, utils::PriceKind};
+
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CexDex {
+    pub tx_hash:        B256,
+    pub swaps:          Vec<NormalizedSwap>,
+    pub gas_details:    GasDetails,
+    pub prices_kind:    Vec<PriceKind>,
+    pub prices_address: Vec<Address>,
+    pub prices_price:   Vec<f64>,
+}
+impl Mev for CexDex {
+    fn mev_type(&self) -> MevType {
+        MevType::CexDex
+    }
+
+    fn priority_fee_paid(&self) -> u128 {
+        self.gas_details.gas_paid()
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
+        vec![self.tx_hash]
+    }
+
+    fn bribe(&self) -> u128 {
+        self.gas_details.coinbase_transfer.unwrap_or(0)
+    }
+}
 
 impl Serialize for CexDex {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

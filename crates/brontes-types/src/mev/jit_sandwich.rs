@@ -1,16 +1,169 @@
-use ::serde::ser::{Serialize, SerializeStruct, Serializer};
+use std::fmt::Debug;
+
+use ::serde::ser::{SerializeStruct, Serializer};
+use reth_primitives::B256;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
-use super::normalized_actions::{
-    ClickhouseVecNormalizedMintOrBurn, ClickhouseVecNormalizedMintOrBurnWithTxHash,
-    ClickhouseVecNormalizedSwap,
+use super::{Bundle, BundleData, BundleHeader, JitLiquidity, Mev, MevType, Sandwich};
+#[allow(unused_imports)]
+use crate::{
+    display::utils::{display_sandwich, print_mev_type_header},
+    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
+    serde_primitives::vec_fixed_string,
+    GasDetails,
 };
 use crate::{
-    classified_mev::JitLiquiditySandwich,
-    serde_utils::{
-        gas_details::ClickhouseVecGasDetails, normalized_actions::ClickhouseDoubleVecNormalizedSwap,
+    normalized_actions::{
+        ClickhouseDoubleVecNormalizedSwap, ClickhouseVecNormalizedMintOrBurn,
+        ClickhouseVecNormalizedMintOrBurnWithTxHash, ClickhouseVecNormalizedSwap,
     },
+    tree::ClickhouseVecGasDetails,
 };
+
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct JitLiquiditySandwich {
+    pub frontrun_tx_hash:     Vec<B256>,
+    pub frontrun_swaps:       Vec<Vec<NormalizedSwap>>,
+    pub frontrun_mints:       Vec<Option<Vec<NormalizedMint>>>,
+    pub frontrun_gas_details: Vec<GasDetails>,
+
+    pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
+    pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
+    pub victim_swaps_gas_details: Vec<GasDetails>,
+
+    // Similar to frontrun fields, backrun fields are also vectors to handle multiple transactions.
+    pub backrun_tx_hash:     B256,
+    pub backrun_swaps:       Vec<NormalizedSwap>,
+    pub backrun_burns:       Vec<NormalizedBurn>,
+    pub backrun_gas_details: GasDetails,
+}
+
+impl Mev for JitLiquiditySandwich {
+    fn mev_type(&self) -> MevType {
+        MevType::JitSandwich
+    }
+
+    fn priority_fee_paid(&self) -> u128 {
+        self.frontrun_gas_details
+            .iter()
+            .map(|gd| gd.gas_paid())
+            .sum::<u128>()
+            + self.backrun_gas_details.gas_paid()
+    }
+
+    // Should always be on the backrun, but you never know
+    fn bribe(&self) -> u128 {
+        self.frontrun_gas_details
+            .iter()
+            .filter_map(|gd| gd.coinbase_transfer)
+            .sum::<u128>()
+            + self
+                .backrun_gas_details
+                .coinbase_transfer
+                .unwrap_or_default()
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
+        let mut txs = self.frontrun_tx_hash.clone();
+        txs.extend(self.victim_swaps_tx_hashes.iter().flatten().copied());
+        txs.push(self.backrun_tx_hash);
+        txs
+    }
+}
+
+pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
+    let mut sandwich: Option<Sandwich> = None;
+    let mut jit: Option<JitLiquidity> = None;
+    let mut classified_sandwich: Option<BundleHeader> = None;
+    let mut jit_classified: Option<BundleHeader> = None;
+
+    for bundle in mev {
+        match bundle.data {
+            BundleData::Sandwich(s) => {
+                sandwich = Some(s);
+                classified_sandwich = Some(bundle.header);
+            }
+            BundleData::Jit(j) => {
+                jit = Some(j);
+                jit_classified = Some(bundle.header);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    let sandwich = sandwich.expect("Expected Sandwich MEV data");
+    let jit = jit.expect("Expected JIT MEV data");
+    let mut classified_sandwich =
+        classified_sandwich.expect("Expected Classified MEV data for Sandwich");
+    let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
+
+    let mut frontrun_mints: Vec<Option<Vec<NormalizedMint>>> =
+        vec![None; sandwich.frontrun_tx_hash.len()];
+    frontrun_mints
+        .iter_mut()
+        .enumerate()
+        .for_each(|(idx, mint)| {
+            if &sandwich.frontrun_tx_hash[idx] == &jit.frontrun_mint_tx_hash {
+                *mint = Some(jit.frontrun_mints.clone())
+            }
+        });
+
+    let mut backrun_burns: Vec<Option<Vec<NormalizedBurn>>> =
+        vec![None; sandwich.frontrun_tx_hash.len()];
+    backrun_burns
+        .iter_mut()
+        .enumerate()
+        .for_each(|(idx, mint)| {
+            if &sandwich.frontrun_tx_hash[idx] == &jit.backrun_burn_tx_hash {
+                *mint = Some(jit.backrun_burns.clone())
+            }
+        });
+
+    // sandwich.frontrun_swaps
+
+    // Combine data from Sandwich and JitLiquidity into JitLiquiditySandwich
+    let jit_sand = JitLiquiditySandwich {
+        frontrun_tx_hash: sandwich.frontrun_tx_hash.clone(),
+        frontrun_swaps: sandwich.frontrun_swaps,
+        frontrun_mints,
+        frontrun_gas_details: sandwich.frontrun_gas_details,
+        victim_swaps_tx_hashes: sandwich.victim_swaps_tx_hashes,
+        victim_swaps: sandwich.victim_swaps,
+        victim_swaps_gas_details: sandwich.victim_swaps_gas_details,
+        backrun_tx_hash: sandwich.backrun_tx_hash,
+        backrun_swaps: sandwich.backrun_swaps,
+        backrun_burns: jit.backrun_burns,
+        backrun_gas_details: sandwich.backrun_gas_details,
+    };
+
+    let sandwich_rev = classified_sandwich.bribe_usd + classified_sandwich.profit_usd;
+    let jit_rev = jit_classified.bribe_usd + jit_classified.profit_usd;
+    let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.bribe_usd;
+
+    // Compose token profits
+    classified_sandwich
+        .token_profits
+        .compose(&jit_classified.token_profits);
+
+    // Create new classified MEV data
+    let new_classified = BundleHeader {
+        tx_index:             classified_sandwich.tx_index,
+        tx_hash:              *sandwich.frontrun_tx_hash.get(0).unwrap_or_default(),
+        mev_type:             MevType::JitSandwich,
+        block_number:         classified_sandwich.block_number,
+        eoa:                  jit_classified.eoa,
+        mev_contract:         classified_sandwich.mev_contract,
+        mev_profit_collector: classified_sandwich.mev_profit_collector,
+        profit_usd:           jit_liq_profit,
+        token_profits:        classified_sandwich.token_profits,
+        bribe_usd:            classified_sandwich.bribe_usd,
+    };
+
+    Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) }
+}
 
 impl Serialize for JitLiquiditySandwich {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

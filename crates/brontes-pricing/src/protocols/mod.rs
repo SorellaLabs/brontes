@@ -11,7 +11,7 @@ use alloy_primitives::{Address, Log, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
-use brontes_types::{extra_processing::Pair, normalized_actions::Actions, traits::TracingProvider};
+use brontes_types::{normalized_actions::Actions, pair::Pair, traits::TracingProvider};
 use malachite::Rational;
 use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_codecs::{impl_compact_for_bytes, Compact};
