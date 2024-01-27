@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use reth_primitives::Address;
+use alloy_primitives::Address;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 

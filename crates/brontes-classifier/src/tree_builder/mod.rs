@@ -415,9 +415,8 @@ pub struct TxTreeResult {
 pub mod test {
     use std::collections::{HashMap, HashSet};
 
-    use alloy_primitives::{hex, B256, U256};
+    use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::normalized_actions::{Actions, NormalizedLiquidation};
-    use reth_primitives::Address;
     use serial_test::serial;
 
     use crate::test_utils::ClassifierTestUtils;

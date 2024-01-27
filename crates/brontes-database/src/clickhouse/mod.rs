@@ -3,6 +3,7 @@ pub mod errors;
 use std::collections::HashMap;
 
 use alloy_json_abi::JsonAbi;
+use alloy_primitives::Address;
 use brontes_types::{
     constants::{USDT_ADDRESS, WETH_ADDRESS},
     db::{cex::CexPriceMap, clickhouse::*, metadata::MetadataNoDex},
@@ -10,7 +11,6 @@ use brontes_types::{
     pair::Pair,
 };
 use futures::future::join_all;
-use reth_primitives::Address;
 use sorella_db_databases::{
     clickhouse::{
         config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
