@@ -81,9 +81,9 @@ impl SubGraphRegistry {
     }
 
     pub fn fetch_unloaded_state(&self, pair: &Pair) -> Vec<PoolPairInfoDirection> {
-        self.sub_graphs
-            .get(&pair.ordered())
-            .unwrap()
+        let Some(graph) = self.sub_graphs
+            .get(&pair.ordered()) else { return vec![] };
+        graph
             .get_all_pools()
             .flatten()
             .filter(|pool| !self.edge_state.contains_key(&pool.pool_addr))
