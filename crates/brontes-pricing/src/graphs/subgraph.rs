@@ -226,7 +226,8 @@ impl PairSubGraph {
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
                     if liq < Rational::from(MIN_LIQUIDITY_USDC)
-                        && !all_pair_graph.is_only_edge(&info.token_0)
+                        && !(all_pair_graph.is_only_edge(&info.token_0)
+                            || all_pair_graph.is_only_edge(&info.token_1))
                     {
                         let pair = Pair(info.token_0, info.token_1).ordered();
                         removal_map.entry(pair).or_default().push(info.pool_addr);
