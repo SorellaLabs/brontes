@@ -147,19 +147,21 @@ impl PairSubGraph {
             return add_edge(&mut self.graph, edge, edge_info, false)
         } else {
             // find the edge with shortest path
-            let to_start = self
+            let Some(to_start)= self
                 .graph
                 .edges(node0)
                 .map(|e| e.weight().first().unwrap().distance_to_start_node)
-                .min_by(|e0, e1| e0.cmp(e1))
-                .unwrap();
+                .min_by(|e0, e1| e0.cmp(e1)) else {
+                    return false
+                };
 
-            let to_end = self
+            let Some(to_end)= self
                 .graph
                 .edges(node1)
                 .map(|e| e.weight().first().unwrap().distance_to_end_node)
-                .min_by(|e0, e1| e0.cmp(e1))
-                .unwrap();
+                .min_by(|e0, e1| e0.cmp(e1)) else {
+                    return false
+                };
 
             if !(to_start <= 1 && to_end <= 1) {
                 return false
@@ -305,7 +307,7 @@ impl PairSubGraph {
                         self.graph.add_edge(n0.into(), n1.into(), weights);
                     }
                 }
-            } 
+            }
         });
     }
 
