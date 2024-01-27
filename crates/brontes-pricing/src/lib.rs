@@ -382,6 +382,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if pairs.is_empty() {
             return
         }
+
+        tracing::info!("requerying {:#?}", pairs);
         par_state_query(&self.graph_manager, pairs)
             .into_iter()
             .for_each(|(pair, block, state, edges)| {
@@ -412,8 +414,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         };
 
                     if need_lazy_load {
-                        if self.lazy_loader.is_loading(&pool_info.pool_addr)  {
-
+                        if self.lazy_loader.is_loading(&pool_info.pool_addr) {
                             self.lazy_loader.requery(
                                 pair,
                                 Pair(pool_info.token_0, pool_info.token_1),
