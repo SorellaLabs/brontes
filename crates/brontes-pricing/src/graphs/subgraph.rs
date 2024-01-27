@@ -203,8 +203,6 @@ impl PairSubGraph {
     ) -> HashMap<Pair, Vec<Address>> {
         self.bfs_with_price(
             start,
-            state,
-            all_pair_graph,
             |node_weights, prev_price, removal_map: &mut HashMap<Pair, Vec<Address>>| {
                 let mut pxw = Rational::ZERO;
                 let mut weight = Rational::ZERO;
@@ -304,11 +302,9 @@ impl PairSubGraph {
         }
     }
 
-    fn bfs_with_price<T: ProtocolState, R: Default>(
+    fn bfs_with_price< R: Default>(
         &self,
         start: Address,
-        state: &HashMap<Address, T>,
-        all_pair_graph: &AllPairGraph,
         mut collect_data_fn: impl for<'a> FnMut(
             &'a Vec<SubGraphEdge>,
             &'a Rational,
