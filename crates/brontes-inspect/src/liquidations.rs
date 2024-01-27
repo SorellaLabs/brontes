@@ -190,7 +190,7 @@ mod tests {
 
     use alloy_primitives::hex;
     use brontes_classifier::Classifier;
-    use reth_primitives::U256;
+    use alloy_primitives::U256;;
     use serial_test::serial;
 
     use super::*;

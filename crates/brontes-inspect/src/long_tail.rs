@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
+use alloy_primitives::Address;
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
     mev::{Bundle, BundleData, BundleHeader},
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
 

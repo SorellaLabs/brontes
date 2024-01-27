@@ -1,9 +1,9 @@
+use alloy_primitives::Address;
 use brontes_types::{
     db::{address_to_tokens::PoolTokens, redefined_types::primitives::Redefined_Address},
     serde_primitives::address_string,
 };
 use redefined::{Redefined, RedefinedConvert};
-use reth_primitives::Address;
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
