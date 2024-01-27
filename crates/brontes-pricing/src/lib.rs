@@ -412,7 +412,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         };
 
                     if need_lazy_load {
-                        if self.lazy_loader.is_loading(&pool_info.pool_addr) {
+                        if self.lazy_loader.is_loading(&pool_info.pool_addr)  {
+
                             self.lazy_loader.requery(
                                 pair,
                                 Pair(pool_info.token_0, pool_info.token_1),
@@ -441,6 +442,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         triggered = true;
                     }
                 }
+
                 self.graph_manager.add_subgraph(pair, edges);
 
                 // means we have loaded all the needed state
