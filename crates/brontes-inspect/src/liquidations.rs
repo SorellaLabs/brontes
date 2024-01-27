@@ -2,11 +2,9 @@ use std::{collections::HashSet, sync::Arc};
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
-    classified_mev::{
-        Bundle, BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits,
-    },
-    extra_processing::Pair,
+    mev::{Bundle, BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits},
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
+    pair::Pair,
     tree::{BlockTree, GasDetails, Node, Root},
     ToFloatNearest,
 };

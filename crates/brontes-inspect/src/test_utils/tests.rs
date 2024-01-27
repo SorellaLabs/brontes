@@ -2,8 +2,8 @@ use alloy_primitives::{hex, Address, FixedBytes, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
 use brontes_core::TraceLoaderError;
 use brontes_types::{
-    classified_mev::{BundleData, MevType},
     db::{dex::DexQuotes, metadata::MetadataCombined},
+    mev::{BundleData, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
 };

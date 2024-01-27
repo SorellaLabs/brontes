@@ -7,7 +7,7 @@ use brontes_types::{
         address_to_tokens::PoolTokens,
         metadata::{MetadataCombined, MetadataNoDex},
     },
-    extra_processing::Pair,
+    pair::Pair,
     structured_trace::TxTrace,
 };
 

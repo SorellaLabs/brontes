@@ -2,9 +2,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{AtomicBackrun, Bundle, MevType, TokenProfit, TokenProfits},
-    extra_processing::Pair,
+    mev::{AtomicBackrun, Bundle, MevType, TokenProfit, TokenProfits},
     normalized_actions::{Actions, NormalizedSwap},
+    pair::Pair,
     tree::{BlockTree, GasDetails},
     ToFloatNearest,
 };
