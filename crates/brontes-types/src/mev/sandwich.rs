@@ -83,6 +83,7 @@ impl Mev for Sandwich {
         MevType::Sandwich
     }
 
+    //TODO: Wrong fix this
     fn priority_fee_paid(&self) -> u128 {
         self.frontrun_gas_details
             .iter()
