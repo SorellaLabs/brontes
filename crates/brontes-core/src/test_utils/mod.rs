@@ -1,7 +1,7 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
-    path::{Path, PathBuf},
+    path::Path,
     sync::{Arc, OnceLock},
 };
 
@@ -16,7 +16,6 @@ use brontes_types::{
     traits::TracingProvider,
 };
 use futures::future::join_all;
-use log::Level;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 use reth_tasks::TaskManager;
@@ -26,6 +25,7 @@ use tokio::{
     runtime::Handle,
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
 };
+use tracing::Level;
 use tracing_subscriber::filter::Directive;
 
 use crate::decoding::parser::TraceParser;
@@ -287,25 +287,9 @@ fn get_db_handle() -> &'static LibmdbxReadWriter {
 fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes
     // all, Debug includes all but Trace, ...)
-    let verbosity_level = Level::Info; // Error >= Warn >= Info >= Debug >= Trace
+    let verbosity_level = Level::INFO; // Error >= Warn >= Info >= Debug >= Trace
     let directive: Directive = format!("{verbosity_level}").parse().unwrap();
     let layers = vec![brontes_tracing::stdout(directive)];
-
-    /*
-        make sure the first field of the macro is: 'target: "brontes"',
-        otherwise you will get logs from other crates (it's OD annoying trust).
-
-        if you really want tracing from other external crates:
-            replace -> let directive: Directive = format!("brontes={verbosity_level}").parse().unwrap();
-            with -> let directive: Directive = format!("{verbosity_level}").parse().unwrap();
-
-        to use the logging in a test:
-        error!(target: "brontes", ...)
-        warn!(target: "brontes", ...)
-        info!(target: "brontes", ...)
-        debug!(target: "brontes", ...)
-        trace!(target: "brontes", ...)
-    */
 
     brontes_tracing::init(layers);
 }
@@ -336,30 +320,4 @@ fn init_trace_parser<'a>(
     let call = Box::new(|_: &_, _: &_| true);
 
     TraceParser::new(libmdbx, call, Arc::new(tracer), Arc::new(metrics_tx))
-}
-
-pub async fn store_traces_for_block(block_number: u64) {
-    let tracer = TraceLoader::new();
-
-    let BlockTracesWithHeaderAnd { traces, header, .. } = tracer
-        .get_block_traces_with_header(block_number)
-        .await
-        .unwrap();
-
-    let file = PathBuf::from(format!(
-        "./crates/brontes-core/src/test_utils/liquidation_traces/{}.json",
-        block_number
-    ));
-    let stringified = serde_json::to_string(&(traces, header)).unwrap();
-    std::fs::write(&file, stringified).unwrap();
-}
-
-#[allow(unused)]
-fn load_traces_for_block(block_number: u64) -> (Vec<TxTrace>, Header) {
-    let file = PathBuf::from(format!(
-        "./crates/brontes-core/src/test_utils/liquidation_traces/{}.json",
-        block_number
-    ));
-
-    serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap()
 }

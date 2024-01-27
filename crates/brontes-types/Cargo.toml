@@ -60,23 +60,13 @@ redefined.workspace = true
 bytes.workspace = true
 colored.workspace = true
 indoc = "2"
+zstd = "0.13"
 
 # stats
 statrs = "0.16"
 
-[build-dependencies]
-strum = { workspace = true, features = ["derive"] }
-tokio.workspace = true
-hyper.workspace = true
-hyper-tls.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-reth-primitives.workspace = true
-phf.workspace = true
-phf_codegen.workspace = true
-dotenv.workspace = true
-sorella-db-databases.workspace = true
-
+# errors
+eyre.workspace = true
 
 [dev-dependencies]
 dotenv.workspace = true

@@ -7,7 +7,7 @@ use brontes_types::{db::redefined_types::primitives::Redefined_Address, pair::Pa
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{CompressedTable, LibmdbxData};
+use super::{CompressedTable, LibmdbxData, ReturnKV};
 use crate::libmdbx::SubGraphs;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Row)]
@@ -17,13 +17,8 @@ pub struct SubGraphsData {
 }
 
 impl LibmdbxData<SubGraphs> for SubGraphsData {
-    fn into_key_val(
-        &self,
-    ) -> (
-        <SubGraphs as reth_db::table::Table>::Key,
-        <SubGraphs as CompressedTable>::DecompressedValue,
-    ) {
-        (self.pair, self.data.clone())
+    fn into_key_val(&self) -> ReturnKV<SubGraphs> {
+        (self.pair, self.data.clone()).into()
     }
 }
 

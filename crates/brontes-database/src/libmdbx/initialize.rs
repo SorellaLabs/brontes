@@ -43,9 +43,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         .collect::<eyre::Result<_>>()
     }
 
-    pub(crate) async fn initialize_table_from_clickhouse_no_args<'db, T, D>(
-        &'db self,
-    ) -> eyre::Result<()>
+    pub(crate) async fn clickhouse_init_no_args<'db, T, D>(&'db self) -> eyre::Result<()>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -104,7 +102,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
-        join_all(pair_ranges.into_iter().map(|(start, end)| {
+        iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
        //  we spawn as the 
             async move {
@@ -141,7 +139,8 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                 }
             }
             Ok::<(), DatabaseError>(())
-                })}).buffer_unordered(5).collect::<Vec<_>>().await;
+
+            })}).buffer_unordered(5).collect::<Vec<_>>().await;
 
 
             let num = {
@@ -153,7 +152,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
 
             Ok::<(), DatabaseError>(())
-        }})).await.into_iter()
+        }})).buffer_unordered(15).collect::<Vec<_>>().await.into_iter()
         .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
@@ -494,9 +493,10 @@ mod tests {
         let db = initialize_tables(&[
             /*
             Tables::TokenDecimals,
-            Tables::AddressToTokens,
+
             Tables::AddressToProtocol,
               */
+            Tables::AddressToTokens,
             Tables::CexPrice,
             /*
             Tables::Metadata,
@@ -512,10 +512,11 @@ mod tests {
         let db = db.unwrap();
         /*
         assert!(test_tokens_decimals_table(&db, false).await.is_ok());
-        assert!(test_address_to_tokens_table(&db, false).await.is_ok());
+
         assert!(test_address_to_protocols_table(&db, false).await.is_ok());
         */
-        assert!(test_cex_mapping_table(&db, false).await.is_ok());
+        assert!(test_address_to_tokens_table(&db, false).await.is_ok());
+        //assert!(test_cex_mapping_table(&db, false).await.is_ok());
         /*
         assert!(test_metadata_table(&db, false).await.is_ok());
         assert!(test_pool_state_table(&db, false).await.is_ok());
