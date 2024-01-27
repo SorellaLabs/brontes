@@ -16,6 +16,7 @@ futures.workspace = true
 # tracing
 tracing.workspace = true
 reth-metrics.workspace = true
+alloy-primitives.workspace = true
 reth-primitives.workspace = true
 colored.workspace = true
 

@@ -7,7 +7,7 @@ use redefined::{Redefined, RedefinedConvert};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{CompressedTable, LibmdbxData, ReturnKV};
+use super::{LibmdbxData, ReturnKV};
 use crate::libmdbx::{types::utils::pool_tokens, AddressToTokens};
 
 #[serde_as]
