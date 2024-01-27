@@ -8,13 +8,12 @@ pub mod swaps;
 pub mod transfer;
 use std::fmt::Debug;
 
-use alloy_primitives::{Bytes, Log};
+use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
 pub use flashloan::*;
 pub use lending::*;
 pub use liquidation::*;
 pub use liquidity::*;
-use reth_primitives::Address;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
 use serde::{Deserialize, Serialize};

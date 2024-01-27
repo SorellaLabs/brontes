@@ -1,5 +1,5 @@
+use alloy_primitives::Address;
 use colored::Colorize;
-use reth_primitives::Address;
 use tracing::info;
 
 use crate::PoirotMetricEvents;
