@@ -32,7 +32,8 @@ impl ProtocolState for PoolState {
 
 #[derive(Clone)]
 pub struct PoolState {
-    variant: PoolVariants,
+    variant:         PoolVariants,
+    pub last_update: u64,
 }
 impl Debug for PoolState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -46,8 +47,8 @@ impl Debug for PoolState {
 }
 
 impl PoolState {
-    pub fn new(variant: PoolVariants) -> Self {
-        Self { variant }
+    pub fn new(variant: PoolVariants, last_update: u64) -> Self {
+        Self { variant, last_update }
     }
 
     pub fn pair(&self) -> Pair {
@@ -65,6 +66,7 @@ impl PoolState {
     }
 
     pub fn increment_state(&mut self, state: PoolUpdate) {
+        self.last_update = state.block;
         self.variant.increment_state(state.logs);
     }
 
