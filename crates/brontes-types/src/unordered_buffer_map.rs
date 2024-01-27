@@ -8,6 +8,8 @@ use futures::{
     Future,
 };
 
+impl<T: ?Sized> BrontesStreamExt for T where T: StreamExt {}
+
 pub trait BrontesStreamExt: StreamExt {
     fn unordered_buffer_map<F, R>(self, size: usize, map: F) -> UnorderedBufferMap<Self, F, R>
     where
