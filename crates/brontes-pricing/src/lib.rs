@@ -413,14 +413,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
                     if need_lazy_load {
                         if self.lazy_loader.is_loading(&pool_info.pool_addr) {
-                            self.lazy_loader.lazy_load_exchange(
-                                pair,
-                                Pair(pool_info.token_0, pool_info.token_1),
-                                pool_info.pool_addr,
-                                block,
-                                pool_info.dex_type,
-                            );
-                        } else {
                             self.lazy_loader.requery(
                                 pair,
                                 Pair(pool_info.token_0, pool_info.token_1),
@@ -428,6 +420,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                                 block,
                                 pool_info.dex_type,
                             )
+                        } else {
+                            self.lazy_loader.lazy_load_exchange(
+                                pair,
+                                Pair(pool_info.token_0, pool_info.token_1),
+                                pool_info.pool_addr,
+                                block,
+                                pool_info.dex_type,
+                            );
                         }
                         triggered = true;
                     } else if need_graph_load {
