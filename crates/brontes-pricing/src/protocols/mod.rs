@@ -102,10 +102,6 @@ impl Decompress for Protocol {
     }
 }
 
-fn test() {
-    let c = Protocol::UniswapV2.to_byte();
-}
-
 impl Protocol {
     pub(crate) async fn try_load_state<T: TracingProvider>(
         self,
@@ -135,7 +131,7 @@ impl Protocol {
                 Ok((
                     block_number,
                     address,
-                    PoolState::new(crate::types::PoolVariants::UniswapV2(pool)),
+                    PoolState::new(crate::types::PoolVariants::UniswapV2(pool), block_number),
                     res,
                 ))
             }
@@ -159,7 +155,7 @@ impl Protocol {
                 Ok((
                     block_number,
                     address,
-                    PoolState::new(crate::types::PoolVariants::UniswapV3(pool)),
+                    PoolState::new(crate::types::PoolVariants::UniswapV3(pool), block_number),
                     res,
                 ))
             }

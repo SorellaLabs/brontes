@@ -103,7 +103,7 @@ impl GraphManager {
     pub fn create_subpool(&mut self, block: u64, pair: Pair) -> Vec<PoolPairInfoDirection> {
         let pair = pair.ordered();
         if self.sub_graph_registry.has_subpool(&pair) {
-            /// fetch all state to be loaded
+            // fetch all state to be loaded
             return self.sub_graph_registry.fetch_unloaded_state(&pair)
         } else if let Some((pair, edges)) = (&mut self.db_load)(block, pair) {
             return self.sub_graph_registry.create_new_subgraph(pair, edges)
@@ -172,7 +172,7 @@ impl GraphManager {
         self.sub_graph_registry.update_pool_state(address, update);
     }
 
-    pub fn has_state(&self, addr: &Address) -> bool {
+    pub fn has_state(&self, addr: &Address) -> Option<u64> {
         self.sub_graph_registry.has_state(addr)
     }
 
