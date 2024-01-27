@@ -15,8 +15,8 @@ use std::{
 use alloy_primitives::{Address, U256};
 use brontes_types::{
     db::dex::DexPrices,
-    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedAction, NormalizedSwap},
+    pair::Pair,
     traits::TracingProvider,
 };
 use ethers::core::k256::elliptic_curve::bigint::Zero;

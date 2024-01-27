@@ -2,11 +2,9 @@ use std::{collections::HashSet, sync::Arc};
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
-    classified_mev::{
-        Bundle, BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits,
-    },
-    extra_processing::Pair,
+    mev::{Bundle, BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits},
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
+    pair::Pair,
     tree::{BlockTree, GasDetails, Node, Root},
     ToFloatNearest,
 };
@@ -192,9 +190,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 mod tests {
     use std::{collections::HashSet, str::FromStr, time::SystemTime};
 
-    use alloy_primitives::hex;
+    use alloy_primitives::{hex, U256};
     use brontes_classifier::Classifier;
-    use reth_primitives::U256;
     use serial_test::serial;
 
     use super::*;

@@ -10,7 +10,7 @@ use brontes_types::{
         metadata::MetadataInner, mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses, token_info::TokenInfo, traces::TxTracesInner,
     },
-    extra_processing::Pair,
+    pair::Pair,
     traits::TracingProvider,
 };
 

@@ -7,7 +7,7 @@ use redefined::{Redefined, RedefinedConvert};
 use reth_db::DatabaseError;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{CompressedTable, LibmdbxData, ReturnKV};
+use super::{LibmdbxData, ReturnKV};
 use crate::libmdbx::DexPrice;
 
 wrap_fixed_bytes!(

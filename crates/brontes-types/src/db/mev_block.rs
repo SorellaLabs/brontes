@@ -1,4 +1,4 @@
-use crate::classified_mev::{Bundle, MevBlock};
+use crate::mev::{Bundle, MevBlock};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct MevBlockWithClassified {

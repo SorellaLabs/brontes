@@ -1,0 +1,156 @@
+use std::fmt::Debug;
+
+use redefined::{self_convert_redefined, RedefinedConvert};
+use reth_primitives::B256;
+use serde::{Deserialize, Serialize, Serializer};
+use sorella_db_databases::clickhouse::InsertRow;
+use strum::{Display, EnumIter};
+
+use super::Mev;
+use crate::mev::{
+    AtomicBackrun, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation, MevType, Sandwich,
+};
+#[allow(unused_imports)]
+use crate::{
+    display::utils::{display_sandwich, print_mev_type_header},
+    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
+    serde_primitives::vec_fixed_string,
+    GasDetails,
+};
+
+self_convert_redefined!(MevType);
+
+#[derive(Debug, Deserialize, EnumIter, Clone, Default, Display)]
+pub enum BundleData {
+    Sandwich(Sandwich),
+    AtomicBackrun(AtomicBackrun),
+    JitSandwich(JitLiquiditySandwich),
+    Jit(JitLiquidity),
+    CexDex(CexDex),
+    Liquidation(Liquidation),
+    #[default]
+    Unknown,
+}
+
+impl Mev for BundleData {
+    fn mev_type(&self) -> MevType {
+        match self {
+            BundleData::Sandwich(m) => m.mev_type(),
+            BundleData::AtomicBackrun(m) => m.mev_type(),
+            BundleData::JitSandwich(m) => m.mev_type(),
+            BundleData::Jit(m) => m.mev_type(),
+            BundleData::CexDex(m) => m.mev_type(),
+            BundleData::Liquidation(m) => m.mev_type(),
+            BundleData::Unknown => MevType::Unknown,
+        }
+    }
+
+    fn priority_fee_paid(&self) -> u128 {
+        match self {
+            BundleData::Sandwich(m) => m.priority_fee_paid(),
+            BundleData::AtomicBackrun(m) => m.priority_fee_paid(),
+            BundleData::JitSandwich(m) => m.priority_fee_paid(),
+            BundleData::Jit(m) => m.priority_fee_paid(),
+            BundleData::CexDex(m) => m.priority_fee_paid(),
+            BundleData::Liquidation(m) => m.priority_fee_paid(),
+            BundleData::Unknown => unimplemented!("calling priority_fee_paid() on unknown mev"),
+        }
+    }
+
+    fn bribe(&self) -> u128 {
+        match self {
+            BundleData::Sandwich(m) => m.bribe(),
+            BundleData::AtomicBackrun(m) => m.bribe(),
+            BundleData::JitSandwich(m) => m.bribe(),
+            BundleData::Jit(m) => m.bribe(),
+            BundleData::CexDex(m) => m.bribe(),
+            BundleData::Liquidation(m) => m.bribe(),
+            BundleData::Unknown => unimplemented!("calling bribe() on unknown mev"),
+        }
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
+        match self {
+            BundleData::Sandwich(m) => m.mev_transaction_hashes(),
+            BundleData::AtomicBackrun(m) => m.mev_transaction_hashes(),
+            BundleData::JitSandwich(m) => m.mev_transaction_hashes(),
+            BundleData::Jit(m) => m.mev_transaction_hashes(),
+            BundleData::CexDex(m) => m.mev_transaction_hashes(),
+            BundleData::Liquidation(m) => m.mev_transaction_hashes(),
+            BundleData::Unknown => {
+                unimplemented!("calling mev_transaction_hashes() on unknown mev")
+            }
+        }
+    }
+}
+
+impl From<Sandwich> for BundleData {
+    fn from(value: Sandwich) -> Self {
+        Self::Sandwich(value)
+    }
+}
+
+impl From<AtomicBackrun> for BundleData {
+    fn from(value: AtomicBackrun) -> Self {
+        Self::AtomicBackrun(value)
+    }
+}
+
+impl From<JitLiquiditySandwich> for BundleData {
+    fn from(value: JitLiquiditySandwich) -> Self {
+        Self::JitSandwich(value)
+    }
+}
+
+impl From<JitLiquidity> for BundleData {
+    fn from(value: JitLiquidity) -> Self {
+        Self::Jit(value)
+    }
+}
+
+impl From<CexDex> for BundleData {
+    fn from(value: CexDex) -> Self {
+        Self::CexDex(value)
+    }
+}
+
+impl From<Liquidation> for BundleData {
+    fn from(value: Liquidation) -> Self {
+        Self::Liquidation(value)
+    }
+}
+
+impl Serialize for BundleData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            BundleData::Sandwich(sandwich) => sandwich.serialize(serializer),
+            BundleData::AtomicBackrun(backrun) => backrun.serialize(serializer),
+            BundleData::JitSandwich(jit_sandwich) => jit_sandwich.serialize(serializer),
+            BundleData::Jit(jit) => jit.serialize(serializer),
+            BundleData::CexDex(cex_dex) => cex_dex.serialize(serializer),
+            BundleData::Liquidation(liquidation) => liquidation.serialize(serializer),
+            BundleData::Unknown => {
+                unimplemented!("attempted to serialize unknown mev: UNIMPLEMENTED")
+            }
+        }
+    }
+}
+
+impl InsertRow for BundleData {
+    fn get_column_names(&self) -> &'static [&'static str] {
+        match self {
+            BundleData::Sandwich(sandwich) => sandwich.get_column_names(),
+            BundleData::AtomicBackrun(backrun) => backrun.get_column_names(),
+            BundleData::JitSandwich(jit_sandwich) => jit_sandwich.get_column_names(),
+            BundleData::Jit(jit) => jit.get_column_names(),
+            BundleData::CexDex(cex_dex) => cex_dex.get_column_names(),
+            BundleData::Liquidation(liquidation) => liquidation.get_column_names(),
+            BundleData::Unknown => {
+                unimplemented!("attempted to inserted unknown mev into clickhouse: UNIMPLEMENTED")
+            }
+        }
+    }
+}

@@ -9,7 +9,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::B256;
 use brontes_types::{
-    classified_mev::{PossibleMev, PossibleMevTriggers},
+    mev::{PossibleMev, PossibleMevTriggers},
     normalized_actions::Actions,
     tree::BlockTree,
 };
