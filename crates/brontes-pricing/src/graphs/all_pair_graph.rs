@@ -134,8 +134,8 @@ impl AllPairGraph {
         }
     }
 
-    pub(super) fn is_only_edge(&self, node: Address) -> bool {
-        let node = *self.token_to_index.get(&node).unwrap();
+    pub(super) fn is_only_edge(&self, node: &Address) -> bool {
+        let node = *self.token_to_index.get(node).unwrap();
         self.graph.edges(node.into()).collect_vec().len() == 1
     }
 
