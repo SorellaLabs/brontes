@@ -249,32 +249,9 @@ impl PairSubGraph {
                 // then we do. and recalculate the price
                 if possible_remove_pool_addr.len() < i {
                     tracing::info!("can remove dead bc we got a good one");
-                    possible_remove_pool_addr
-                        .into_iter()
-                        .for_each(|(pair, addr)| {
-                            removal_map.entry(pair.ordered()).or_default().push(addr);
-                        });
-
-                    pxw = Rational::ZERO;
-                    weight = Rational::ZERO;
-
-                    // recalc price with weights
-                    for info in node_weights {
-                        let Some(pool_state) = state.get(&info.pool_addr) else {
-                            continue;
-                        };
-                        // returns is t1  / t0
-                        let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
-                            continue;
-                        };
-
-                        let (t0, t1) = pool_state.tvl(info.get_base_token());
-                        // check if below liquidity and that if we remove we don't make the
-                        // graph disjoint.
-                        let t0xt1 = &t0 * &t1;
-                        pxw += pool_price * &t0xt1;
-                        weight += t0xt1;
-                    }
+                    possible_remove_pool_addr.iter().for_each(|(pair, addr)| {
+                        removal_map.entry(pair.ordered()).or_default().push(*addr);
+                    });
                 }
 
                 if weight == Rational::ZERO {
