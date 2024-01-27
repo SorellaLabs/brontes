@@ -43,7 +43,7 @@ pub(crate) fn pre_process(
 
             (
                 cumulative_gas_used + gas_used,
-                cumulative_priority_fee + priority_fee,
+                cumulative_priority_fee + priority_fee * gas_used,
                 total_bribe + bribe,
             )
         },
