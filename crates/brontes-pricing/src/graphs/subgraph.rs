@@ -42,7 +42,7 @@ use crate::{
     AllPairGraph, Pair, Protocol,
 };
 
-const MIN_LIQUIDITY_USDC: u128 = 33_000;
+const MIN_LIQUIDITY_USDC: u128 = 25_000;
 
 /// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
 /// given Pair. This allows for running more complex search algorithms on the
@@ -176,18 +176,6 @@ impl PairSubGraph {
         true
     }
 
-    fn next_edges_directed<'a>(
-        &'a self,
-        node: u16,
-        outgoing: bool,
-    ) -> Edges<'a, Vec<SubGraphEdge>, Directed, u16> {
-        if outgoing {
-            self.graph.edges_directed(node.into(), Direction::Outgoing)
-        } else {
-            self.graph.edges_directed(node.into(), Direction::Incoming)
-        }
-    }
-
     pub fn verify_subgraph<T: ProtocolState>(
         &mut self,
         start: Address,
@@ -200,12 +188,6 @@ impl PairSubGraph {
         let disjoint =
             dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), state)
                 .is_none();
-
-        if !disjoint {
-            // if we aren't disjoint, verify that we still have a path that has
-            // over the liq threshold. Or that we have no other
-            // possible paths in our main pair graph.
-        }
 
         (disjoint, removal_state)
     }
@@ -226,6 +208,8 @@ impl PairSubGraph {
                 let mut token_0_am = Rational::ZERO;
                 let mut token_1_am = Rational::ZERO;
 
+                let mut possible_remove_pool_addr = Vec::new();
+
                 for info in node_weights {
                     let Some(pool_state) = state.get(&info.pool_addr) else {
                         continue;
@@ -241,12 +225,51 @@ impl PairSubGraph {
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
                     if liq < Rational::from(MIN_LIQUIDITY_USDC)
-                        && !(all_pair_graph.is_only_edge(info.token_0)
-                            || all_pair_graph.is_only_edge(info.token_1))
+                        && !all_pair_graph.is_only_edge(&info.token_0)
                     {
                         let pair = Pair(info.token_0, info.token_1).ordered();
                         removal_map.entry(pair).or_default().push(info.pool_addr);
                     } else {
+                        let t0xt1 = &t0 * &t1;
+                        pxw += (pool_price * &t0xt1);
+                        weight += t0xt1;
+                    }
+
+                    if liq < Rational::from(MIN_LIQUIDITY_USDC) {
+                        possible_remove_pool_addr
+                            .push((Pair(info.token_0, info.token_1).ordered(), info.pool_addr));
+                    }
+                }
+
+                // check if we can remove some bad addresses in a edge. if we can,
+                // then we do. and recalculate the price
+                if possible_remove_pool_addr.len() < node_weights.len() {
+                    possible_remove_pool_addr
+                        .into_iter()
+                        .for_each(|(pair, addr)| {
+                            removal_map.entry(pair.ordered()).or_default().push(addr);
+                        });
+
+                    pxw = Rational::ZERO;
+                    weight = Rational::ZERO;
+                    token_0_am = Rational::ZERO;
+                    token_1_am = Rational::ZERO;
+
+                    // recalc price with weights
+                    for info in node_weights {
+                        let Some(pool_state) = state.get(&info.pool_addr) else {
+                            continue;
+                        };
+                        // returns is t1  / t0
+                        let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
+                            continue;
+                        };
+
+                        let (t0, t1) = pool_state.tvl(info.get_base_token());
+                        let liq = prev_price.clone() * &t0;
+
+                        // check if below liquidity and that if we remove we don't make the
+                        // graph disjoint.
                         let t0xt1 = &t0 * &t1;
                         pxw += (pool_price * &t0xt1);
                         weight += t0xt1;
@@ -300,6 +323,18 @@ impl PairSubGraph {
                 self.graph.remove_node(node.into());
             }
         });
+    }
+
+    fn next_edges_directed<'a>(
+        &'a self,
+        node: u16,
+        outgoing: bool,
+    ) -> Edges<'a, Vec<SubGraphEdge>, Directed, u16> {
+        if outgoing {
+            self.graph.edges_directed(node.into(), Direction::Outgoing)
+        } else {
+            self.graph.edges_directed(node.into(), Direction::Incoming)
+        }
     }
 
     fn bfs_with_price<T: ProtocolState, R: Default>(
