@@ -11,6 +11,7 @@ use brontes_types::{
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
+        token_info::TokenInfo,
         traces::TxTracesInner,
     },
     mev::{Bundle, MevBlock},
@@ -188,7 +189,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    fn try_get_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
+    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfo>> {
         let tx = self.0.ro_tx()?;
         Ok(tx.get::<TokenDecimals>(address)?)
     }
@@ -316,8 +317,8 @@ impl LibmdbxWriter for LibmdbxReadWriter {
 
             data.into_iter()
                 .map(|entry| {
-                    let (key, val) = entry.into_key_val();
-                    cursor.upsert(key, val)?;
+                    let entry = entry.into_key_val();
+                    cursor.upsert(entry.key, entry.value)?;
                     Ok(())
                 })
                 .collect::<Result<Vec<_>, DatabaseError>>()
@@ -326,12 +327,12 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn write_token_decimals(&self, address: Address, decimals: u8) -> eyre::Result<()> {
+    fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()> {
         Ok(self
             .0
             .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
                 address,
-                decimals,
+                info: TokenInfo::new(decimals, symbol),
             }])?)
     }
 

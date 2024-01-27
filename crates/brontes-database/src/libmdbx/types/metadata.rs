@@ -6,7 +6,7 @@ use redefined::{Redefined, RedefinedConvert};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use super::{CompressedTable, LibmdbxData};
+use super::{CompressedTable, LibmdbxData, ReturnKV};
 use crate::libmdbx::Metadata;
 
 #[serde_as]
@@ -17,11 +17,8 @@ pub struct MetadataData {
 }
 
 impl LibmdbxData<Metadata> for MetadataData {
-    fn into_key_val(
-        &self,
-    ) -> (<Metadata as reth_db::table::Table>::Key, <Metadata as CompressedTable>::DecompressedValue)
-    {
-        (self.block_number, self.inner.clone())
+    fn into_key_val(&self) -> ReturnKV<Metadata> {
+        (self.block_number, self.inner.clone()).into()
     }
 }
 

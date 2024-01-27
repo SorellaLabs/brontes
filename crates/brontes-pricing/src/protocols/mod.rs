@@ -173,7 +173,7 @@ impl Protocol {
 
 self_convert_redefined!(Protocol);
 
-async fn make_call_request<C: SolCall, T: TracingProvider>(
+pub async fn make_call_request<C: SolCall, T: TracingProvider>(
     call: C,
     provider: Arc<T>,
     to: Address,
