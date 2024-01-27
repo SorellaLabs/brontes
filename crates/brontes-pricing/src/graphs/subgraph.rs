@@ -212,6 +212,7 @@ impl PairSubGraph {
 
                 for info in node_weights {
                     let Some(pool_state) = state.get(&info.pool_addr) else {
+                        tracing::error!("no state");
                         continue;
                     };
                     // returns is t1  / t0
@@ -252,6 +253,7 @@ impl PairSubGraph {
                 }
 
                 if weight == Rational::ZERO {
+                    tracing::error!("no weight");
                     // means no edges were over limit, return
                     return None
                 }
