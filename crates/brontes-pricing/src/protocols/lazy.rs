@@ -71,7 +71,7 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     protocol_address_to_parent_pairs: HashMap<Address, Vec<Pair>>,
     /// addresses that are being re-queried as there state is required for
     /// a newer block
-    requered_address: HashSet<Address>,
+    requered_address: HashMap<Address, u64>,
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
@@ -83,7 +83,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             req_per_block: HashMap::default(),
             protocol_address_to_parent_pairs: HashMap::default(),
             parent_pair_state_loading: HashMap::default(),
-            requered_address: HashSet::new(),
+            requered_address: HashMap::new(),
         }
     }
 
@@ -174,9 +174,8 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         ex_type: Protocol,
     ) {
         assert!(self.pool_buf.contains_key(&address), "requery used inccorectly");
-        assert!(!self.requered_address.contains(&address), "requery used inccorectly");
 
-        self.requered_address.insert(address);
+        *self.requered_address.entry(address).or_default() += 1;
         // add state trackers manually
         self.add_state_trackers(block_number, address, parent_pair);
 
@@ -211,7 +210,9 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
         if let Poll::Ready(Some(result)) = self.pool_load_futures.poll_next_unpin(cx) {
             match result {
                 Ok((block, addr, state, load)) => {
-                    if self.requered_address.remove(&addr) {
+                    let e = self.requered_address.entry(addr).or_default();
+                    if *e != 0 {
+                        (*e) -= 1;
                         if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                             *(o.get_mut()) -= 1;
                         }
@@ -225,7 +226,9 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                 }
                 Err((pool_address, dex, block, pool_pair, err)) => {
                     error!(%err, ?pool_address,"lazy load failed");
-                    if self.requered_address.remove(&pool_address) {
+                    let e = self.requered_address.entry(pool_address).or_default();
+                    if *e != 0 {
+                        (*e) -= 1;
                         if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
                             *(o.get_mut()) -= 1;
                         }
