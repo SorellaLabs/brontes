@@ -41,7 +41,7 @@ fn insert_mev_results<DB: LibmdbxWriter>(
         block_details.to_string()
     );
 
-    //info!("{:#?}", mev_details);
+    info!("{:#?}", mev_details);
 
     if database
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
