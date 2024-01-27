@@ -10,21 +10,18 @@ use brontes_types::db::{
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{CompressedTable, LibmdbxData};
+use super::{CompressedTable, LibmdbxData, ReturnKV};
 use crate::libmdbx::CexPrice;
 
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CexPriceData {
-    pub block_number:     u64,
-    pub data: CexPriceMap,
+    pub block_number: u64,
+    pub data:         CexPriceMap,
 }
 
 impl LibmdbxData<CexPrice> for CexPriceData {
-    fn into_key_val(
-        &self,
-    ) -> (<CexPrice as reth_db::table::Table>::Key, <CexPrice as CompressedTable>::DecompressedValue)
-    {
-        (self.block_number, self.data.clone())
+    fn into_key_val(&self) -> ReturnKV<CexPrice> {
+        (self.block_number, self.data.clone()).into()
     }
 }
 
@@ -58,4 +55,3 @@ impl PartialEq for LibmdbxCexQuote {
         self.clone().to_source().eq(&other.clone().to_source())
     }
 }
-
