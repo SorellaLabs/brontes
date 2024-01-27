@@ -83,6 +83,7 @@ impl SubGraphRegistry {
     pub fn fetch_unloaded_state(&self, pair: &Pair) -> Vec<PoolPairInfoDirection> {
         let Some(graph) = self.sub_graphs
             .get(&pair.ordered()) else { return vec![] };
+
         graph
             .get_all_pools()
             .flatten()
@@ -214,12 +215,22 @@ impl SubGraphRegistry {
         let pairs = pair
             .into_iter()
             .map(|(block, pair)| (pair, block, self.sub_graphs.remove(&pair.ordered())))
+            .filter_map(|(pair, block, subgraph)| {
+                let Some(subgraph) = subgraph else { 
+                    self.token_to_sub_graph.retain(|_, v| {
+                        v.remove(&pair);
+                        !v.is_empty()
+                });
+
+                    return None 
+                };
+                Some((pair, block, subgraph))
+            })
             .collect_vec();
 
         let res = pairs
             .into_par_iter()
-            .filter_map(|(pair, block, subgraph)| {
-                let Some(mut subgraph) = subgraph else { return None };
+            .filter_map(|(pair, block, mut subgraph)| {
                 let (bad, state) = subgraph.verify_subgraph(quote, &self.edge_state, all_graph);
                 Some((pair, bad, block, state, subgraph))
             })
