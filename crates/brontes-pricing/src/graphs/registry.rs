@@ -24,6 +24,8 @@ pub struct SubGraphRegistry {
     /// when the tvl of a pool changes.
     /// pool address -> pool tvl
     edge_state:         HashMap<Address, PoolState>,
+    /// subgraphs that needed to be requeried. we keep track of these
+    requeried_graphs:   HashSet<Pair>,
 }
 
 impl SubGraphRegistry {
@@ -44,11 +46,16 @@ impl SubGraphRegistry {
                 (pair, PairSubGraph::init(pair, edges))
             })
             .collect();
-        Self { token_to_sub_graph, sub_graphs, edge_state: HashMap::default() }
+        Self {
+            token_to_sub_graph,
+            sub_graphs,
+            edge_state: HashMap::default(),
+            requeried_graphs: HashSet::new(),
+        }
     }
 
     pub fn has_subpool(&self, pair: &Pair) -> bool {
-        self.sub_graphs.contains_key(&pair)
+        self.sub_graphs.contains_key(&pair) || self.requeried_graphs.contains(&pair)
     }
 
     pub fn bad_pool_state(
@@ -64,7 +71,7 @@ impl SubGraphRegistry {
             self.sub_graphs.insert(subgraph, graph);
         } else {
             // remove pair from token lookup
-            self.token_to_sub_graph.retain(|k, v| {
+            self.token_to_sub_graph.retain(|_, v| {
                 v.remove(&subgraph);
                 !v.is_empty()
             });
@@ -136,6 +143,7 @@ impl SubGraphRegistry {
         pair: Pair,
         path: Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
+        self.requeried_graphs.remove(&pair.ordered());
         // all edges
         let unloaded_state = path
             .iter()
@@ -221,6 +229,8 @@ impl SubGraphRegistry {
             .map(|(pair, kill, block, state, subgraph)| {
                 if !kill {
                     self.sub_graphs.insert(pair.ordered(), subgraph);
+                } else {
+                    self.requeried_graphs.insert(pair.ordered());
                 }
 
                 self.token_to_sub_graph.retain(|_, v| {
