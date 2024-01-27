@@ -3,7 +3,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use brontes_types::traits::TracingProvider;
+use brontes_types::{
+    traits::TracingProvider,
+    unordered_buffer_map::{BrontesStreamExt, UnorderedBufferMap},
+};
 use futures::{future::join_all, stream::iter, StreamExt};
 use itertools::Itertools;
 use reth_db::DatabaseError;
@@ -104,11 +107,8 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
-       //  we spawn as the 
             async move {
-                iter(&(start..end).into_iter().chunks(INNER_CHUNK_SIZE)).map(|range| {
-
-                    //println!("PRE VALS {} - {}", start, end);
+                iter(&(start..end).into_iter().chunks(INNER_CHUNK_SIZE)).map(|range| async {
 
                     let mut range = range.collect_vec();
                     let start = range.remove(0);
@@ -116,31 +116,23 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                     let clickhouse = self.clickhouse.clone();
                     let libmdbx = self.libmdbx.clone();
 
+                    let data =
+                        clickhouse
+                        .inner()
+                        .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
+                        .await;
 
-                    //println!("VALS POST {} - {}", start, end);
+                    match data {
+                        Ok(d) => libmdbx.write_table(&d)?,
+                        Err(e) => {
+                            info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
+                        }
+                    }
+                    Ok::<(), DatabaseError>(())
 
-              //   compression and decompression is expensive on a ton of data thus we give
-              //   them there own threads 
-              //println!("INIT QUERY: {:?}", T::INIT_QUERY.expect("Should only be called on clickhouse tables"));
-                tokio::spawn(async move {
-            let data =
-                clickhouse
-                .inner()
-                .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
-                .await;
+                }).map(|e| {}).unordered_buffer_map(5, |item| {})
 
-               // println!("DATA {:?}", data);
-
-
-            match data {
-                Ok(d) => libmdbx.write_table(&d)?,
-                Err(e) => {
-                    info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
-                }
-            }
-            Ok::<(), DatabaseError>(())
-
-            })}).buffer_unordered(5).collect::<Vec<_>>().await;
+                .collect::<Vec<_>>().await;
 
 
             let num = {
@@ -152,7 +144,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
 
             Ok::<(), DatabaseError>(())
-        }})).buffer_unordered(15).collect::<Vec<_>>().await.into_iter()
+        }})).buffer_unordered(5).collect::<Vec<_>>().await.into_iter()
         .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
