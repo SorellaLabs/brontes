@@ -1,4 +1,4 @@
-use std::fmt::{Debug};
+use std::fmt::Debug;
 
 use alloy_primitives::U256;
 use malachite::{
@@ -8,9 +8,7 @@ use malachite::{
 };
 use redefined::{self_convert_redefined, RedefinedConvert};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-
-
-use strum::{EnumIter};
+use strum::EnumIter;
 
 #[allow(unused_imports)]
 use crate::{

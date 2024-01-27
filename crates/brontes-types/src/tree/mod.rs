@@ -1,14 +1,8 @@
-use std::{
-    collections::{HashMap},
-};
+use std::collections::HashMap;
 
-use rayon::{
-    prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
-};
-
+use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
-
 use statrs::statistics::Statistics;
 use tracing::error;
 pub mod node;
