@@ -178,8 +178,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
         self.requered_address.insert(address);
         // add state trackers manually
-        self.pool_buf.insert(address, block_number);
-        self.add_protocol_parent(block_number, address, parent_pair);
+        self.add_state_trackers(block_number, address, parent_pair);
 
         let provider = self.provider.clone();
         let fut = ex_type.try_load_state(address, provider, block_number, pool_pair);
@@ -213,6 +212,9 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
             match result {
                 Ok((block, addr, state, load)) => {
                     if self.requered_address.remove(&addr) {
+                        if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
+                            *(o.get_mut()) -= 1;
+                        }
                         return Poll::Pending
                     }
 
@@ -224,6 +226,9 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                 Err((pool_address, dex, block, pool_pair, err)) => {
                     error!(%err, ?pool_address,"lazy load failed");
                     if self.requered_address.remove(&pool_address) {
+                        if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
+                            *(o.get_mut()) -= 1;
+                        }
                         return Poll::Pending
                     }
 
