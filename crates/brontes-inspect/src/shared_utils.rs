@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::U256;
+use alloy_primitives::{Address, U256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedTransfer},
@@ -15,7 +15,6 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use reth_primitives::Address;
 use tracing::error;
 
 use crate::MetadataCombined;

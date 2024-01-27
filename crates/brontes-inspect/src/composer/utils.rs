@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use alloy_primitives::FixedBytes;
+use alloy_primitives::{Address, FixedBytes};
 use brontes_types::{
     db::metadata::MetadataCombined,
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
@@ -10,7 +10,6 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
-use reth_primitives::Address;
 
 //TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
