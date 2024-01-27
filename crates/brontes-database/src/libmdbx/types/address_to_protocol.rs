@@ -1,5 +1,5 @@
 use brontes_pricing::Protocol;
-use brontes_types::serde_utils::primitives::address_string;
+use brontes_types::serde_primitives::address_string;
 use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

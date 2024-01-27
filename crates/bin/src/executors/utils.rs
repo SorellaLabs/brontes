@@ -6,8 +6,8 @@ use brontes_inspect::{
     Inspector,
 };
 use brontes_types::{
-    classified_mev::{Bundle, MevBlock, PossibleMevCollection},
     db::metadata::MetadataCombined,
+    mev::{Bundle, MevBlock, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
 };

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
-use brontes_types::extra_processing::Pair;
+use brontes_types::pair::Pair;
 use indexmap::set::Intersection;
 use itertools::Itertools;
 use malachite::{
