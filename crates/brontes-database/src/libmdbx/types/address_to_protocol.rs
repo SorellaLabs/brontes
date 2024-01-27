@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{utils::static_bindings, LibmdbxData};
+use super::{utils::static_bindings, LibmdbxData, ReturnKV};
 use crate::libmdbx::AddressToProtocol;
 
 /// rlp encoding for libmdbx here is fine since it is just an enum
@@ -26,12 +26,7 @@ impl AddressToProtocolData {
 }
 
 impl LibmdbxData<AddressToProtocol> for AddressToProtocolData {
-    fn into_key_val(
-        &self,
-    ) -> (
-        <AddressToProtocol as reth_db::table::Table>::Key,
-        <AddressToProtocol as reth_db::table::Table>::Value,
-    ) {
-        (self.address, self.classifier_name)
+    fn into_key_val(&self) -> ReturnKV<AddressToProtocol> {
+        (self.address, self.classifier_name).into()
     }
 }

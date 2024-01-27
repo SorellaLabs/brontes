@@ -1,8 +1,15 @@
-use std::future::Future;
+use std::{
+    future::Future,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+};
 
+use brontes_metrics::prometheus_exporter::initialize;
 use futures::pin_mut;
+use metrics_process::Collector;
 use reth_tasks::{TaskExecutor, TaskManager};
-use tracing::trace;
+use tracing::{error, info, trace};
+
+use crate::{PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 
 pub fn run_command_until_exit<F, E>(command: impl FnOnce(CliContext) -> F) -> Result<(), E>
 where
@@ -10,6 +17,8 @@ where
     E: Send + Sync + From<std::io::Error> + From<reth_tasks::PanickedTaskError> + 'static,
 {
     let AsyncCliRunner { context, task_manager, tokio_runtime } = AsyncCliRunner::new()?;
+    // initalize prometheus if we don't already have a endpoint
+    tokio_runtime.block_on(try_initialize_prometheus());
 
     // Executes the command until it finished or ctrl-c was fired
     let task_manager = tokio_runtime
@@ -34,6 +43,25 @@ pub fn tokio_runtime() -> Result<tokio::runtime::Runtime, std::io::Error> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
+}
+
+/// tries to start prometheus. will fail if prometheus is
+/// already running
+async fn try_initialize_prometheus() {
+    // initializes the prometheus endpoint
+    if let Err(e) = initialize(
+        SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
+            PROMETHEUS_ENDPOINT_PORT,
+        ),
+        Collector::default(),
+    )
+    .await
+    {
+        error!(error=%e, "failed to initialize prometheus");
+    } else {
+        info!("Initialized prometheus endpoint");
+    }
 }
 
 async fn run_to_completion_or_panic<F, E>(mut tasks: TaskManager, fut: F) -> Result<TaskManager, E>

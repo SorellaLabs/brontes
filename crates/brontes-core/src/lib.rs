@@ -6,7 +6,7 @@ pub mod errors;
 pub mod executor;
 #[cfg(feature = "local")]
 pub mod local_provider;
-pub mod missing_decimals;
+pub mod missing_token_info;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;

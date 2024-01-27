@@ -4,10 +4,7 @@ use std::{
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::{
-    decoding::{Parser, TracingProvider},
-    missing_decimals::load_missing_decimals,
-};
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
 use brontes_types::{db::metadata::MetadataCombined, normalized_actions::Actions, tree::BlockTree};
@@ -63,16 +60,7 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
         let classifier_fut = Box::pin(async {
             let (traces, header) = parser_fut.await?.ok_or_else(|| eyre!("parser failed"))?;
             debug!("Got {} traces + header", traces.len());
-            let block_number = header.number;
-            let (extra_data, tree) = self.classifier.build_block_tree(traces, header).await;
-
-            load_missing_decimals(
-                self.parser.get_tracer(),
-                self.database,
-                block_number,
-                extra_data.tokens_decimal_fill,
-            )
-            .await;
+            let tree = self.classifier.build_block_tree(traces, header).await;
 
             let meta = labeller_fut?;
 

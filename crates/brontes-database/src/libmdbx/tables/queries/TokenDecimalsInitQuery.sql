@@ -1,4 +1,4 @@
 SELECT 
     toString(address) AS address, 
-    decimals 
+    (decimals, name) AS info
 FROM ethereum.dex_tokens

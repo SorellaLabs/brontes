@@ -8,7 +8,7 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens, cex::CexPriceMap, dex::DexQuoteWithIndex,
         metadata::MetadataInner, mev_block::MevBlockWithClassified,
-        pool_creation_block::PoolsToAddresses, traces::TxTracesInner,
+        pool_creation_block::PoolsToAddresses, token_info::TokenInfo, traces::TxTracesInner,
     },
     pair::Pair,
     traits::TracingProvider,
@@ -113,20 +113,17 @@ impl Tables {
         match self {
             Tables::TokenDecimals => {
                 initializer
-                    .initialize_table_from_clickhouse_no_args::<TokenDecimals, TokenDecimalsData>(
-                    )
+                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>()
                     .await
             }
             Tables::AddressToTokens => {
                 initializer
-                    .initialize_table_from_clickhouse_no_args::<AddressToTokens, AddressToTokensData>(
-                    )
+                    .clickhouse_init_no_args::<AddressToTokens, AddressToTokensData>()
                     .await
             }
             Tables::AddressToProtocol => {
                 initializer
-                    .initialize_table_from_clickhouse_no_args::<AddressToProtocol, AddressToProtocolData>(
-                    )
+                    .clickhouse_init_no_args::<AddressToProtocol, AddressToProtocolData>()
                     .await
             }
             Tables::CexPrice => {
@@ -314,7 +311,7 @@ macro_rules! table {
 
 compressed_table!(
     /// token address -> decimals
-    ( TokenDecimals ) Address | Clickhouse | u8 = False
+    ( TokenDecimals ) Address | Clickhouse | TokenInfo = False
 );
 
 compressed_table!(
