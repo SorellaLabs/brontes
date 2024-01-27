@@ -2,17 +2,9 @@ use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
 use brontes_types::pair::Pair;
-use indexmap::set::Intersection;
 use itertools::Itertools;
-use malachite::{
-    num::{
-        arithmetic::traits::Reciprocal,
-        conversion::{string::options::ToSciOptions, traits::ToSci},
-    },
-    Rational,
-};
+use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use tracing::info;
 
 use super::{subgraph::PairSubGraph, PoolState};
 use crate::{price_graph_types::*, types::PoolUpdate, AllPairGraph, Protocol};
@@ -196,8 +188,8 @@ impl SubGraphRegistry {
             .map(|res| if swapped { res.reciprocal() } else { res })
     }
 
-    pub fn has_state(&self, addr: &Address) -> bool {
-        self.edge_state.contains_key(addr)
+    pub fn has_state(&self, addr: &Address) -> Option<u64> {
+        self.edge_state.get(addr).map(|state| state.last_update)
     }
 
     // goes through the subgraph verifying that we have more than

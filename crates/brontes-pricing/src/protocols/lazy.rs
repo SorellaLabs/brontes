@@ -58,7 +58,7 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     provider: Arc<T>,
     pool_load_futures: FuturesOrdered<BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>>,
     /// addresses currently being processed.
-    pool_buf: HashSet<Address>,
+    pool_buf: HashMap<Address, u64>,
     /// requests we are processing for a given block.
     req_per_block: HashMap<u64, u64>,
     /// all current parent pairs with all the state that is required for there
@@ -69,22 +69,26 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     /// pairs that are dependent on the node in order to remove it from the
     /// subgraph and possibly reconstruct it.
     protocol_address_to_parent_pairs: HashMap<Address, Vec<Pair>>,
+    /// addresses that are being re-queried as there state is required for
+    /// a newer block
+    requered_address: HashSet<Address>,
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
-            pool_buf: HashSet::default(),
+            pool_buf: HashMap::default(),
             pool_load_futures: FuturesOrdered::default(),
             provider,
             req_per_block: HashMap::default(),
             protocol_address_to_parent_pairs: HashMap::default(),
             parent_pair_state_loading: HashMap::default(),
+            requered_address: HashSet::new(),
         }
     }
 
     pub fn is_loading(&self, k: &Address) -> bool {
-        self.pool_buf.contains(k)
+        self.pool_buf.contains_key(k)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -93,6 +97,10 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
     pub fn can_progress(&self, block: &u64) -> bool {
         self.req_per_block.get(block).copied().unwrap_or(0) == 0
+    }
+
+    pub fn is_loading_block(&self, k: &Address) -> Option<u64> {
+        self.pool_buf.get(k).copied()
     }
 
     pub fn pairs_to_verify(&mut self) -> Vec<(u64, Pair)> {
@@ -111,7 +119,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
     pub fn add_state_trackers(&mut self, block: u64, address: Address, parent_pair: Pair) {
         *self.req_per_block.entry(block).or_default() += 1;
-        self.pool_buf.insert(address);
+        self.pool_buf.insert(address, block);
         self.add_protocol_parent(block, address, parent_pair);
     }
 
@@ -129,7 +137,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             }
             Entry::Occupied(mut o) => {
                 let (cur_block, entry) = o.get_mut();
-                assert_eq!(*cur_block, block, "trying to add a dep to a block that's not wanted");
+                *cur_block = block;
                 entry.insert(address);
             }
         }
@@ -157,6 +165,26 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         removed
     }
 
+    pub fn requery(
+        &mut self,
+        parent_pair: Pair,
+        pool_pair: Pair,
+        address: Address,
+        block_number: u64,
+        ex_type: Protocol,
+    ) {
+        assert!(self.pool_buf.contains_key(&address), "requery used inccorectly");
+
+        self.requered_address.insert(address);
+        // add state trackers manually
+        self.pool_buf.insert(address, block_number);
+        self.add_protocol_parent(block_number, address, parent_pair);
+
+        let provider = self.provider.clone();
+        let fut = ex_type.try_load_state(address, provider, block_number, pool_pair);
+        self.pool_load_futures.push_back(Box::pin(fut));
+    }
+
     pub fn lazy_load_exchange(
         &mut self,
         parent_pair: Pair,
@@ -180,9 +208,13 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if let Poll::Ready(Some((result))) = self.pool_load_futures.poll_next_unpin(cx) {
+        if let Poll::Ready(Some(result)) = self.pool_load_futures.poll_next_unpin(cx) {
             match result {
                 Ok((block, addr, state, load)) => {
+                    if self.requered_address.remove(&addr) {
+                        return Poll::Pending
+                    }
+
                     self.remove_state_trackers(block, &addr);
 
                     let res = LazyResult { block, state: Some(state), load_result: load };
@@ -190,6 +222,9 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                 }
                 Err((pool_address, dex, block, pool_pair, err)) => {
                     error!(%err, ?pool_address,"lazy load failed");
+                    if self.requered_address.remove(&pool_address) {
+                        return Poll::Pending
+                    }
 
                     let dependent_pairs = self.remove_state_trackers(block, &pool_address);
                     let res = LazyResult {
