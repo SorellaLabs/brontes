@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
-    classified_mev::{Bundle, BundleData, BundleHeader},
+    mev::{Bundle, BundleData, BundleHeader},
     normalized_actions::Actions,
     tree::BlockTree,
 };

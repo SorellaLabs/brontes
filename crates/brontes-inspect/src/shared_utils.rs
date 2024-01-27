@@ -7,8 +7,8 @@ use std::{
 use alloy_primitives::U256;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    extra_processing::Pair,
     normalized_actions::{Actions, NormalizedTransfer},
+    pair::Pair,
     ToScaledRational,
 };
 use malachite::{

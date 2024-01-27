@@ -1,4 +1,4 @@
-use brontes_types::classified_mev::{compose_sandwich_jit, Bundle, MevType};
+use brontes_types::mev::{compose_sandwich_jit, Bundle, MevType};
 use lazy_static::lazy_static;
 /// Defines rules for composing multiple child MEV types into a single, complex
 /// parent MEV type.

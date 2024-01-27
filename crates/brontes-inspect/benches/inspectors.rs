@@ -13,7 +13,7 @@ use brontes_types::{
         cex::{CexPriceMap, CexQuote},
         metadata::MetadataCombined,
     },
-    extra_processing::Pair,
+    pair::Pair,
 };
 use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
