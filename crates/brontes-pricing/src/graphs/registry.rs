@@ -218,11 +218,10 @@ impl SubGraphRegistry {
             .filter_map(|(pair, block, subgraph)| {
                 let Some(subgraph) = subgraph else { 
                     self.token_to_sub_graph.retain(|_, v| {
-                        v.remove(&pair);
+                        v.remove(&pair.ordered());
                         !v.is_empty()
                 });
-
-                    return None 
+                return None 
                 };
                 Some((pair, block, subgraph))
             })
