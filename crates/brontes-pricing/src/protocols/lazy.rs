@@ -248,7 +248,6 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     };
                     Poll::Ready(Some(res))
                 }
-                _ => Poll::Pending,
             }
         } else {
             Poll::Pending

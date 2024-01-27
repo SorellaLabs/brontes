@@ -102,11 +102,6 @@ impl GraphManager {
             return self.sub_graph_registry.create_new_subgraph(pair, edges)
         }
 
-        if self.sub_graph_registry.has_subpool(&pair) {
-            // fetch all state to be loaded
-            return self.sub_graph_registry.fetch_unloaded_state(&pair)
-        }
-
         let paths = self
             .all_pair_graph
             .get_paths(pair)
