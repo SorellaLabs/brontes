@@ -607,6 +607,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             if let Some(new_prices) = self.poll_state_processing(cx) {
                 return new_prices
             }
+            self.try_verify_pool();
 
             let mut block_updates = Vec::new();
             loop {
