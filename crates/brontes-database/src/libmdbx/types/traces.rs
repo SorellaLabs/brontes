@@ -18,7 +18,7 @@ use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use super::{LibmdbxData, ReturnKV};
-use crate::libmdbx::{types::CompressedTable, TxTraces};
+use crate::libmdbx::TxTraces;
 
 #[serde_as]
 #[derive(Debug, Clone, Row, serde::Serialize, serde::Deserialize)]
