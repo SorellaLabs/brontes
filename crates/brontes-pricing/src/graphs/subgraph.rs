@@ -210,6 +210,7 @@ impl PairSubGraph {
                 let mut weight = Rational::ZERO;
 
                 let mut possible_remove_pool_addr = Vec::new();
+                let mut i = 0;
 
                 for info in node_weights {
                     let Some(pool_state) = state.get(&info.pool_addr) else {
@@ -219,6 +220,7 @@ impl PairSubGraph {
                     let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
                         continue;
                     };
+                    i += 1;
 
                     let (t0, t1) = pool_state.tvl(info.get_base_token());
                     let liq = prev_price.clone() * &t0;
@@ -245,7 +247,8 @@ impl PairSubGraph {
 
                 // check if we can remove some bad addresses in a edge. if we can,
                 // then we do. and recalculate the price
-                if possible_remove_pool_addr.len() < node_weights.len() {
+                if possible_remove_pool_addr.len() < i {
+                    tracing::info!("can remove dead bc we got a good one");
                     possible_remove_pool_addr
                         .into_iter()
                         .for_each(|(pair, addr)| {
