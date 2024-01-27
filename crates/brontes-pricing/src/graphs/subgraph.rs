@@ -18,7 +18,6 @@ use malachite::{
     },
     Rational,
 };
-use pathfinding::undirected::connected_components;
 use petgraph::{
     algo::connected_components,
     data::{Build, DataMap, FromElements},
@@ -285,7 +284,6 @@ impl PairSubGraph {
     }
 
     fn prune_subgraph(&mut self, removal_state: &HashMap<Pair, Vec<Address>>) {
-        let mut remove_nodes = HashSet::new();
         removal_state.into_iter().for_each(|(k, v)| {
             let Some(n0) = self.token_to_index.get(&k.0) else { return };
             let Some(n1) = self.token_to_index.get(&k.1) else { return };
@@ -307,17 +305,7 @@ impl PairSubGraph {
                         self.graph.add_edge(n0.into(), n1.into(), weights);
                     }
                 }
-            } else {
-                remove_nodes.insert(k.0);
-                remove_nodes.insert(k.1);
-            }
-        });
-
-        remove_nodes.into_iter().for_each(|address| {
-            let node = self.token_to_index.remove(&address).unwrap();
-            if self.graph.edges(node.into()).collect_vec().is_empty() {
-                self.graph.remove_node(node.into());
-            }
+            } 
         });
     }
 
@@ -517,7 +505,7 @@ where
             for (pool_price, (t0, t1)) in set {
                 // we only weight by the first token
                 let t0xt1 = &t0 * &t1;
-                pxw += (pool_price * &t0xt1);
+                pxw += pool_price * &t0xt1;
                 weight += t0xt1;
 
                 token_0_am += t0;
