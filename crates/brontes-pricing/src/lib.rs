@@ -124,7 +124,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
         // only add a new pool to the graph when we have a update for it. this will help
         // us avoid dead pools in the graph;
-        let new_pools = updates
+        updates
             .iter()
             .filter_map(|update| {
                 let (protocol, pair) = self.new_graph_pairs.remove(&update.get_pool_address())?;
@@ -161,7 +161,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 for pool_info in pool_infos {
                     let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
                     // load exchange only if its not loaded already
-                    if !(self.graph_manager.has_state(&pool_info.pool_addr).is_none()
+                    if !(self.graph_manager.has_state(&pool_info.pool_addr).is_some()
                         || lazy_loading)
                     {
                         self.lazy_loader.lazy_load_exchange(
