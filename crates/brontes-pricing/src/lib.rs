@@ -445,6 +445,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
                 // means we have loaded all the needed state
                 if !triggered {
+                    tracing::info!("not triggered");
                     let (is_bad, block, pair, remove) = self
                         .graph_manager
                         .verify_subgraph(vec![(block, pair)], self.quote_asset)

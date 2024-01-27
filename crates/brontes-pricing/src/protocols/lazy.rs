@@ -174,6 +174,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         ex_type: Protocol,
     ) {
         assert!(self.pool_buf.contains_key(&address), "requery used inccorectly");
+        assert!(!self.requered_address.contains(&address), "requery used inccorectly");
 
         self.requered_address.insert(address);
         // add state trackers manually
