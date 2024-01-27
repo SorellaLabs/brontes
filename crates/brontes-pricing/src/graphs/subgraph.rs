@@ -246,7 +246,6 @@ impl PairSubGraph {
                 // check if we can remove some bad addresses in a edge. if we can,
                 // then we do. and recalculate the price
                 if possible_remove_pool_addr.len() < i {
-                    tracing::info!("can remove dead bc we got a good one");
                     possible_remove_pool_addr.iter().for_each(|(pair, addr)| {
                         removal_map.entry(pair.ordered()).or_default().push(*addr);
                     });
@@ -302,7 +301,7 @@ impl PairSubGraph {
         }
     }
 
-    fn bfs_with_price< R: Default>(
+    fn bfs_with_price<R: Default>(
         &self,
         start: Address,
         mut collect_data_fn: impl for<'a> FnMut(
