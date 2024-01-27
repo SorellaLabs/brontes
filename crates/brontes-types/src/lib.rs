@@ -11,6 +11,7 @@ pub mod display;
 pub mod extra_processing;
 pub mod normalized_actions;
 pub mod queries;
+pub mod unordered_buffer_map;
 pub use queries::make_call_request;
 pub mod serde_utils;
 pub mod structured_trace;
