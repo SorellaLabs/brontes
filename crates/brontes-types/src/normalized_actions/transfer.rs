@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{clickhouse, clickhouse::Row};
