@@ -1,5 +1,3 @@
-#![allow(unused)]
-#![feature(noop_waker)]
 pub mod protocols;
 pub mod types;
 
@@ -15,11 +13,10 @@ use std::{
 use alloy_primitives::{Address, U256};
 use brontes_types::{
     db::dex::DexPrices,
-    normalized_actions::{Actions, NormalizedAction, NormalizedSwap},
+    normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     traits::TracingProvider,
 };
-use ethers::core::k256::elliptic_curve::bigint::Zero;
 pub use graphs::{AllPairGraph, GraphManager};
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
@@ -164,7 +161,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 for pool_info in pool_infos {
                     let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
                     // load exchange only if its not loaded already
-                    if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
+                    if !(self.graph_manager.has_state(&pool_info.pool_addr).is_none()
+                        || lazy_loading)
+                    {
                         self.lazy_loader.lazy_load_exchange(
                             pair,
                             Pair(pool_info.token_0, pool_info.token_1),
@@ -383,7 +382,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if pairs.is_empty() {
             return
         }
-
         par_state_query(&self.graph_manager, pairs)
             .into_iter()
             .for_each(|(pair, block, state, edges)| {
@@ -392,10 +390,47 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
                 let mut triggered = false;
 
+                // because we run these state fetches in parallel, we come across the issue
+                // where in block N we have a path, it however doesn't get verified so we go to
+                // query more state. however the new path it takes goes through a pool that is
+                // being inited with state from block N + I, when we go to calculate the price
+                // the state will be off thus giving us a incorrect price
                 for pool_info in state {
-                    let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
-                    // load exchange only if its not loaded already
-                    if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
+                    let need_lazy_load = if let Some(lazy_block) =
+                        self.lazy_loader.is_loading_block(&pool_info.pool_addr)
+                    {
+                        lazy_block > block
+                    } else {
+                        true
+                    };
+
+                    let need_graph_load =
+                        if let Some(g_block) = self.graph_manager.has_state(&pool_info.pool_addr) {
+                            g_block > block
+                        } else {
+                            true
+                        };
+
+                    if need_lazy_load {
+                        if self.lazy_loader.is_loading(&pool_info.pool_addr) {
+                            self.lazy_loader.lazy_load_exchange(
+                                pair,
+                                Pair(pool_info.token_0, pool_info.token_1),
+                                pool_info.pool_addr,
+                                block,
+                                pool_info.dex_type,
+                            );
+                        } else {
+                            self.lazy_loader.requery(
+                                pair,
+                                Pair(pool_info.token_0, pool_info.token_1),
+                                pool_info.pool_addr,
+                                block,
+                                pool_info.dex_type,
+                            )
+                        }
+                        triggered = true;
+                    } else if need_graph_load {
                         self.lazy_loader.lazy_load_exchange(
                             pair,
                             Pair(pool_info.token_0, pool_info.token_1),
@@ -404,16 +439,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                             pool_info.dex_type,
                         );
                         triggered = true;
-                    } else if lazy_loading {
-                        self.lazy_loader
-                            .add_protocol_parent(block, pool_info.pool_addr, pair);
-                        triggered = true;
                     }
                 }
                 self.graph_manager.add_subgraph(pair, edges);
 
+                // means we have loaded all the needed state
                 if !triggered {
-                    tracing::info!("not triggered");
                     let (is_bad, block, pair, remove) = self
                         .graph_manager
                         .verify_subgraph(vec![(block, pair)], self.quote_asset)
@@ -446,7 +477,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         for pool_info in self.graph_manager.create_subpool(block, pair).into_iter() {
             let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
             // load exchange only if its not loaded already
-            if !(self.graph_manager.has_state(&pool_info.pool_addr) || is_loading) {
+            if !(self.graph_manager.has_state(&pool_info.pool_addr).is_some() || is_loading) {
                 self.lazy_loader.lazy_load_exchange(
                     pair,
                     Pair(pool_info.token_0, pool_info.token_1),
@@ -570,7 +601,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        /// loop is very heavy, low amount of work needed
+        // loop is very heavy, low amount of work needed
         let mut work = 128;
         loop {
             if let Some(new_prices) = self.poll_state_processing(cx) {
