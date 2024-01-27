@@ -4,10 +4,10 @@ use std::collections::HashMap;
 
 use alloy_json_abi::JsonAbi;
 use brontes_types::{
-    classified_mev::{Bundle, BundleData, Mev, MevBlock},
     constants::{USDT_ADDRESS, WETH_ADDRESS},
     db::{cex::CexPriceMap, clickhouse::*, metadata::MetadataNoDex},
-    extra_processing::Pair,
+    mev::{Bundle, BundleData, Mev, MevBlock},
+    pair::Pair,
 };
 use futures::future::join_all;
 use reth_primitives::Address;
@@ -155,13 +155,13 @@ impl Clickhouse {
 
 fn mev_table_type(mev: &BundleData) -> DatabaseTables {
     match mev.mev_type() {
-        brontes_types::classified_mev::MevType::Sandwich => DatabaseTables::Sandwich,
-        brontes_types::classified_mev::MevType::Backrun => DatabaseTables::AtomicBackrun,
-        brontes_types::classified_mev::MevType::JitSandwich => DatabaseTables::JitSandwich,
-        brontes_types::classified_mev::MevType::Jit => DatabaseTables::Jit,
-        brontes_types::classified_mev::MevType::CexDex => DatabaseTables::CexDex,
-        brontes_types::classified_mev::MevType::Liquidation => DatabaseTables::Liquidations,
-        brontes_types::classified_mev::MevType::Unknown => panic!("Unknown Table"),
+        brontes_types::mev::MevType::Sandwich => DatabaseTables::Sandwich,
+        brontes_types::mev::MevType::Backrun => DatabaseTables::AtomicBackrun,
+        brontes_types::mev::MevType::JitSandwich => DatabaseTables::JitSandwich,
+        brontes_types::mev::MevType::Jit => DatabaseTables::Jit,
+        brontes_types::mev::MevType::CexDex => DatabaseTables::CexDex,
+        brontes_types::mev::MevType::Liquidation => DatabaseTables::Liquidations,
+        brontes_types::mev::MevType::Unknown => panic!("Unknown Table"),
     }
 }
 

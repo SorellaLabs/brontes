@@ -8,8 +8,8 @@ use sorella_db_databases::{clickhouse, clickhouse::Row};
 use super::{cex::CexPriceMap, dex::DexQuotes};
 use crate::{
     constants::{USDC_ADDRESS, WETH_ADDRESS},
-    extra_processing::Pair,
-    serde_utils::primitives::{option_address, u256},
+    pair::Pair,
+    serde_primitives::{option_address, u256},
 };
 
 /// libmdbx type

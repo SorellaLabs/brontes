@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use brontes_pricing::{
     PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge, SubGraphsEntry,
 };
-use brontes_types::{db::redefined_types::primitives::Redefined_Address, extra_processing::Pair};
+use brontes_types::{db::redefined_types::primitives::Redefined_Address, pair::Pair};
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
 

@@ -3,7 +3,7 @@ use std::fmt;
 use colored::Colorize;
 use indoc::indoc;
 
-use crate::classified_mev::{Bundle, BundleData, MevType};
+use crate::mev::{Bundle, BundleData, MevType};
 
 pub fn print_mev_type_header(mev_type: MevType, f: &mut fmt::Formatter) -> fmt::Result {
     match mev_type {

@@ -3,7 +3,6 @@ use std::{cmp::max, collections::HashMap, path::Path};
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
-    classified_mev::{Bundle, MevBlock},
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_to_tokens::PoolTokens,
@@ -14,7 +13,8 @@ use brontes_types::{
         pool_creation_block::PoolsToAddresses,
         traces::TxTracesInner,
     },
-    extra_processing::Pair,
+    mev::{Bundle, MevBlock},
+    pair::Pair,
     structured_trace::TxTrace,
 };
 use reth_db::DatabaseError;
