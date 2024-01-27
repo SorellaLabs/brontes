@@ -1,4 +1,4 @@
-use brontes_types::classified_mev::{compose_sandwich_jit, BundleData, BundleHeader, MevType};
+use brontes_types::mev::{compose_sandwich_jit, BundleData, BundleHeader, MevType};
 use lazy_static::lazy_static;
 
 /// Defines rules for composing multiple MEV types

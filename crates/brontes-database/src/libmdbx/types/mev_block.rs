@@ -1,17 +1,17 @@
 use std::fs::Metadata;
 
 use brontes_types::{
-    classified_mev::{
-        AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
-        JitLiquiditySandwich, Liquidation, MevBlock, MevCount, MevType, PossibleMev,
-        PossibleMevCollection, PossibleMevTriggers, PriceKind, Sandwich, TokenProfit, TokenProfits,
-    },
     db::{
         mev_block::MevBlockWithClassified,
         redefined_types::primitives::{Redefined_Address, Redefined_FixedBytes, Redefined_Uint},
     },
+    mev::{
+        AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
+        JitLiquiditySandwich, Liquidation, MevBlock, MevCount, MevType, PossibleMev,
+        PossibleMevCollection, PossibleMevTriggers, Sandwich, TokenProfit, TokenProfits,
+    },
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    tree::GasDetails,
+    GasDetails, PriceKind,
 };
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};

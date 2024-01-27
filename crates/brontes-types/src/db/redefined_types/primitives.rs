@@ -4,7 +4,7 @@ use alloy_primitives::{hex, Address, Bytes as Alloy_Bytes, FixedBytes, Uint};
 use derive_more::{Deref, DerefMut, From, Index, IndexMut, IntoIterator};
 use redefined::{Redefined, RedefinedConvert};
 
-use crate::extra_processing::Pair;
+use crate::pair::Pair;
 /*
 --------------
 

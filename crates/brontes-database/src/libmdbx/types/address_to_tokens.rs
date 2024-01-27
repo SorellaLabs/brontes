@@ -1,6 +1,6 @@
 use brontes_types::{
     db::{address_to_tokens::PoolTokens, redefined_types::primitives::Redefined_Address},
-    serde_utils::primitives::address_string,
+    serde_primitives::address_string,
 };
 use redefined::{Redefined, RedefinedConvert};
 use reth_primitives::Address;

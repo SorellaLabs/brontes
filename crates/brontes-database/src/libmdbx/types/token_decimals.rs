@@ -1,5 +1,8 @@
 use alloy_primitives::Address;
-use brontes_types::{db::token_info::TokenInfo, serde_utils::primitives::address_string};
+use brontes_types::{
+    db::token_info::TokenInfo, serde_primitives::address_string,
+    serde_utils::primitives::address_string,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{self, Row};

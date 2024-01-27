@@ -2,8 +2,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::FixedBytes;
 use brontes_types::{
-    classified_mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     db::metadata::MetadataCombined,
+    mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
     ToScaledRational,
@@ -17,6 +17,7 @@ pub struct BlockPreprocessing {
     meta_data:               Arc<MetadataCombined>,
     cumulative_gas_used:     u128,
     cumulative_priority_fee: u128,
+    total_bribe:             u128,
     builder_address:         Address,
 }
 
@@ -31,42 +32,47 @@ pub(crate) fn pre_process(
     meta_data: Arc<MetadataCombined>,
 ) -> BlockPreprocessing {
     let builder_address = tree.header.beneficiary;
-    let cumulative_gas_used = tree
-        .tx_roots
-        .iter()
-        .map(|root| root.gas_details.gas_used)
-        .sum::<u128>();
 
-    // Sum the priority fee because the base fee is burnt
-    let cumulative_priority_fee = tree
-        .tx_roots
-        .iter()
-        .map(|root| root.gas_details.priority_fee)
-        .sum::<u128>();
+    let (cumulative_gas_used, cumulative_priority_fee, total_bribe) = tree.tx_roots.iter().fold(
+        (0u128, 0u128, 0u128),
+        |(cumulative_gas_used, cumulative_priority_fee, total_bribe), root| {
+            let gas_details = &root.gas_details;
 
-    BlockPreprocessing { meta_data, cumulative_gas_used, cumulative_priority_fee, builder_address }
+            let gas_used = gas_details.gas_used;
+            let priority_fee = gas_details.priority_fee;
+            let bribe = gas_details.coinbase_transfer();
+
+            (
+                cumulative_gas_used + gas_used,
+                cumulative_priority_fee + priority_fee,
+                total_bribe + bribe,
+            )
+        },
+    );
+
+    BlockPreprocessing {
+        meta_data,
+        cumulative_gas_used,
+        cumulative_priority_fee,
+        total_bribe,
+        builder_address,
+    }
 }
 
-//TODO: Look into calculating the delta of priority fee + coinbase reward vs
-// proposer fee paid. This would act as a great proxy for how much mev we missed
+//TODO: Clean up & fix
 pub(crate) fn build_mev_header(
     metadata: Arc<MetadataCombined>,
     pre_processing: &BlockPreprocessing,
     possible_mev: PossibleMevCollection,
     orchestra_data: &Vec<Bundle>,
 ) -> MevBlock {
-    let (total_bribe, cum_mev_priority_fee_paid) = orchestra_data.iter().fold(
-        (0u128, 0u128),
-        |(total_bribe, cum_mev_priority_fee_paid), bundle| {
-            (
-                total_bribe + bundle.data.bribe(),
-                cum_mev_priority_fee_paid + bundle.data.priority_fee_paid(),
-            )
-        },
-    );
+    let cum_mev_priority_fee_paid = orchestra_data
+        .iter()
+        .map(|bundle| bundle.data.priority_fee_paid())
+        .sum();
 
     let builder_eth_profit = Rational::from_signeds(
-        (total_bribe as i128 + pre_processing.cumulative_priority_fee as i128)
+        (pre_processing.total_bribe as i128 + pre_processing.cumulative_priority_fee as i128)
             - (metadata.proposer_mev_reward.unwrap_or_default() as i128),
         10i128.pow(18),
     );
@@ -79,7 +85,7 @@ pub(crate) fn build_mev_header(
             .0,
         cumulative_gas_used: pre_processing.cumulative_gas_used,
         cumulative_priority_fee: pre_processing.cumulative_priority_fee,
-        total_bribe,
+        total_bribe: pre_processing.total_bribe,
         cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
         builder_address: pre_processing.builder_address,
         builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
@@ -100,8 +106,9 @@ pub(crate) fn build_mev_header(
                 )
                 .0
             }),
+        //TODO: This is wron need to fix
         cumulative_mev_profit_usd: f64::rounding_from(
-            (cum_mev_priority_fee_paid + total_bribe).to_scaled_rational(18)
+            (cum_mev_priority_fee_paid + pre_processing.total_bribe).to_scaled_rational(18)
                 * &pre_processing.meta_data.eth_prices,
             RoundingMode::Nearest,
         )

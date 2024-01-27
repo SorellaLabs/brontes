@@ -4,7 +4,7 @@ use reth_primitives::Address;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use crate::serde_utils::primitives::{address, option_address};
+use crate::serde_primitives::{address, option_address};
 
 #[serde_as]
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, serde::Serialize, serde::Deserialize)]

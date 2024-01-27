@@ -11,7 +11,7 @@ use malachite::{
 use sorella_db_databases::clickhouse::{self, Row};
 
 use super::clickhouse::ClickhouseTokenPrices;
-use crate::extra_processing::Pair;
+use crate::pair::Pair;
 
 /// Each pair is entered into the map with the addresses in order by value:
 /// Ergo if token0 < token1, then the pair is (token0, token1)
