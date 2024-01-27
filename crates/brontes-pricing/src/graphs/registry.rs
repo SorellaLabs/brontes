@@ -223,6 +223,7 @@ impl SubGraphRegistry {
                 });
                 return None 
                 };
+
                 Some((pair, block, subgraph))
             })
             .collect_vec();
@@ -242,6 +243,9 @@ impl SubGraphRegistry {
                 } else {
                     self.requeried_graphs.insert(pair.ordered());
                 }
+                state.values().flatten().for_each(|bad_state| {
+                    self.edge_state.remove(bad_state);
+                });
 
                 self.token_to_sub_graph.retain(|_, v| {
                     v.remove(&pair.ordered());
