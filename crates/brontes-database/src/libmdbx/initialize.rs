@@ -76,7 +76,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
-        self.libmdbx.clear_table::<T>()?;
+        // self.libmdbx.clear_table::<T>()?;
 
         let block_range_chunks = if let Some((s, e)) = block_range {
             (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
