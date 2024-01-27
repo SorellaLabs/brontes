@@ -4,7 +4,7 @@ use malachite::Rational;
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
-use crate::extra_processing::Pair;
+use crate::pair::Pair;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, Rational>>>);
