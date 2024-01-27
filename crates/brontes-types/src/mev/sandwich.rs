@@ -1,13 +1,116 @@
-use ::serde::ser::{Serialize, SerializeStruct, Serializer};
+use std::fmt::Debug;
+
+use ::serde::ser::{SerializeStruct, Serializer};
+use reth_primitives::B256;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
-use super::normalized_actions::ClickhouseVecNormalizedSwap;
+use super::{Mev, MevType};
+use crate::ClickhouseVecGasDetails;
+#[allow(unused_imports)]
 use crate::{
-    classified_mev::Sandwich,
-    serde_utils::{
-        gas_details::ClickhouseVecGasDetails, normalized_actions::ClickhouseDoubleVecNormalizedSwap,
+    display::utils::{display_sandwich, print_mev_type_header},
+    normalized_actions::{
+        ClickhouseDoubleVecNormalizedSwap, ClickhouseVecNormalizedSwap, NormalizedBurn,
+        NormalizedLiquidation, NormalizedMint, NormalizedSwap,
     },
+    serde_primitives::vec_fixed_string,
+    GasDetails,
 };
+
+/// Represents various MEV sandwich attack strategies, including standard
+/// sandwiches and more complex variations like the "Big Mac Sandwich."
+///
+/// The `Sandwich` struct is designed to be versatile, accommodating a range of
+/// sandwich attack scenarios. While a standard sandwich attack typically
+/// involves a single frontrunning and backrunning transaction around a victim's
+/// trade, more complex variations can involve multiple frontrunning and
+/// backrunning transactions targeting several victims with different slippage
+/// tolerances.
+///
+/// The structure of this struct is generalized to support these variations. For
+/// example, the "Big Mac Sandwich" is one such complex scenario where a bot
+/// exploits multiple victims in a sequence of transactions, each with different
+/// slippage tolerances. This struct can capture the details of both simple and
+/// complex sandwich strategies, making it a comprehensive tool for MEV
+/// analysis.
+///
+/// Example of a Complex Sandwich Attack ("Big Mac Sandwich") Transaction
+/// Sequence:
+/// Represents various MEV sandwich attack strategies, including standard
+/// sandwiches and more complex variations like the "Big Mac Sandwich."
+
+///
+/// Example of a Complex Sandwich Attack ("Big Mac Sandwich") Transaction
+/// Sequence:
+/// - Frontrun Tx 1: [Etherscan Link](https://etherscan.io/tx/0x2a187ed5ba38cc3b857726df51ce99ee6e29c9bcaa02be1a328f99c3783b3303)
+/// - Victim 1: [Etherscan Link](https://etherscan.io/tx/0x7325392f41338440f045cb1dba75b6099f01f8b00983e33cc926eb27aacd7e2d)
+/// - Frontrun 2: [Etherscan Link](https://etherscan.io/tx/0xbcb8115fb54b7d6b0a0b0faf6e65fae02066705bd4afde70c780d4251a771428)
+/// - Victim 2: [Etherscan Link](https://etherscan.io/tx/0x0b428553bc2ccc8047b0da46e6c1c1e8a338d9a461850fcd67ddb233f6984677)
+/// - Backrun: [Etherscan Link](https://etherscan.io/tx/0xfb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d)
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct Sandwich {
+    /// Transaction hashes of the frontrunning transactions.
+    /// Supports multiple transactions for complex sandwich scenarios.
+    pub frontrun_tx_hash:         Vec<B256>,
+    /// Swaps executed in each frontrunning transaction.
+    /// Nested vectors represent multiple swaps within each transaction.
+    pub frontrun_swaps:           Vec<Vec<NormalizedSwap>>,
+    /// Gas details for each frontrunning transaction.
+    pub frontrun_gas_details:     Vec<GasDetails>,
+    /// Transaction hashes of the victim transactions, logically grouped by
+    /// their corresponding frontrunning transaction. Each outer vector
+    /// index corresponds to a frontrun transaction, grouping victims targeted
+    /// by that specific frontrun.
+    pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
+    /// Swaps executed by victims, each outer vector corresponds to a victim
+    /// transaction.
+    pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
+    /// Gas details for each victim transaction.
+    pub victim_swaps_gas_details: Vec<GasDetails>,
+    /// Transaction hashes of the backrunning transactions.
+    pub backrun_tx_hash:          B256,
+    /// Swaps executed in each backrunning transaction.
+    pub backrun_swaps:            Vec<NormalizedSwap>,
+    /// Gas details for each backrunning transaction.
+    pub backrun_gas_details:      GasDetails,
+}
+
+impl Mev for Sandwich {
+    fn mev_type(&self) -> MevType {
+        MevType::Sandwich
+    }
+
+    //TODO: Wrong fix this
+    fn priority_fee_paid(&self) -> u128 {
+        self.frontrun_gas_details
+            .iter()
+            .map(|gd| gd.gas_paid())
+            .sum::<u128>()
+            + self.backrun_gas_details.gas_paid()
+    }
+
+    // Should always be on the backrun, but you never know
+    fn bribe(&self) -> u128 {
+        self.frontrun_gas_details
+            .iter()
+            .filter_map(|gd| gd.coinbase_transfer)
+            .sum::<u128>()
+            + self
+                .backrun_gas_details
+                .coinbase_transfer
+                .unwrap_or_default()
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
+        let mut txs = self.frontrun_tx_hash.clone();
+        txs.extend(self.victim_swaps_tx_hashes.iter().flatten().copied());
+        txs.push(self.backrun_tx_hash);
+        txs
+    }
+}
 
 impl Serialize for Sandwich {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

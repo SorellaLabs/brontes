@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    classified_mev::{Bundle, BundleData, CexDex, MevType, PriceKind, TokenProfit, TokenProfits},
-    extra_processing::Pair,
+    mev::{Bundle, BundleData, CexDex, MevType, TokenProfit, TokenProfits},
     normalized_actions::{Actions, NormalizedSwap},
+    pair::Pair,
     tree::{BlockTree, GasDetails},
-    ToFloatNearest, ToScaledRational,
+    PriceKind, ToFloatNearest, ToScaledRational,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::{

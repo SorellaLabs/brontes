@@ -1,9 +1,46 @@
-use ::serde::ser::{Serialize, SerializeStruct, Serializer};
+use std::fmt::Debug;
+
+use ::serde::ser::{SerializeStruct, Serializer};
+use reth_primitives::B256;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
+use super::{Mev, MevType};
+use crate::normalized_actions::ClickhouseVecNormalizedSwap;
+#[allow(unused_imports)]
 use crate::{
-    classified_mev::AtomicBackrun, serde_utils::normalized_actions::ClickhouseVecNormalizedSwap,
+    display::utils::{display_sandwich, print_mev_type_header},
+    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
+    serde_primitives::vec_fixed_string,
+    GasDetails,
 };
+
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct AtomicBackrun {
+    pub tx_hash:     B256,
+    pub swaps:       Vec<NormalizedSwap>,
+    pub gas_details: GasDetails,
+}
+
+impl Mev for AtomicBackrun {
+    fn priority_fee_paid(&self) -> u128 {
+        self.gas_details.gas_paid()
+    }
+
+    fn bribe(&self) -> u128 {
+        self.gas_details.coinbase_transfer.unwrap_or(0)
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
+        vec![self.tx_hash]
+    }
+
+    fn mev_type(&self) -> MevType {
+        MevType::Backrun
+    }
+}
 
 impl Serialize for AtomicBackrun {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

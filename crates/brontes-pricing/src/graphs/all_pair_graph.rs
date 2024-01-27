@@ -9,7 +9,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{extra_processing::Pair, tree::Node};
+use brontes_types::{pair::Pair, tree::Node};
 use itertools::Itertools;
 use petgraph::{
     data::DataMap,

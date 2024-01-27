@@ -16,7 +16,7 @@ use std::{
 
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
-use brontes_types::{extra_processing::Pair, tree::Node};
+use brontes_types::{pair::Pair, tree::Node};
 use ethers::core::k256::sha2::digest::HashMarker;
 use itertools::Itertools;
 use malachite::Rational;

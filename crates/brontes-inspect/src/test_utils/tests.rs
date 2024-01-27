@@ -4,6 +4,7 @@ use brontes_core::TraceLoaderError;
 use brontes_types::{
     classified_mev::{Bundle, MevType},
     db::{dex::DexQuotes, metadata::MetadataCombined},
+    mev::{BundleData, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
 };

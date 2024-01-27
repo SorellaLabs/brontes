@@ -8,7 +8,7 @@ use brontes_types::{
         metadata::{MetadataCombined, MetadataNoDex},
         token_info::TokenInfo,
     },
-    extra_processing::Pair,
+    pair::Pair,
     structured_trace::TxTrace,
 };
 
