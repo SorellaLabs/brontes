@@ -101,8 +101,8 @@ use alloy_primitives::Address;
 use atomic_backrun::AtomicBackrunInspector;
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    classified_mev::{Bundle, BundleData, BundleHeader},
     db::metadata::MetadataCombined,
+    mev::{Bundle, BundleData, BundleHeader},
     normalized_actions::Actions,
     tree::BlockTree,
 };

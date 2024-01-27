@@ -1,9 +1,9 @@
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
-    classified_mev::{Bundle, MevBlock},
     db::dex::DexQuotes,
-    extra_processing::Pair,
+    mev::{Bundle, MevBlock},
+    pair::Pair,
     structured_trace::TxTrace,
 };
 

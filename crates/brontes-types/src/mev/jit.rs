@@ -1,13 +1,67 @@
-use ::serde::ser::{Serialize, SerializeStruct, Serializer};
-use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
+use std::fmt::{Debug};
 
-use super::normalized_actions::ClickhouseVecNormalizedMintOrBurn;
-use crate::{
-    classified_mev::JitLiquidity,
-    serde_utils::{
-        gas_details::ClickhouseVecGasDetails, normalized_actions::ClickhouseDoubleVecNormalizedSwap,
-    },
+use ::serde::ser::{Serialize, SerializeStruct, Serializer};
+
+
+
+
+
+use reth_primitives::B256;
+use serde::Deserialize;
+
+use serde_with::serde_as;
+use sorella_db_databases::{
+    clickhouse::{fixed_string::FixedString, DbRow},
 };
+
+
+use super::{Mev, MevType};
+#[allow(unused_imports)]
+use crate::{
+    display::utils::{display_sandwich, print_mev_type_header},
+    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
+    serde_primitives::vec_fixed_string,
+    tree::GasDetails,
+};
+use crate::{
+    normalized_actions::{ClickhouseDoubleVecNormalizedSwap, ClickhouseVecNormalizedMintOrBurn},
+    tree::ClickhouseVecGasDetails,
+};
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct JitLiquidity {
+    pub frontrun_mint_tx_hash: B256,
+    pub frontrun_mints: Vec<NormalizedMint>,
+    pub frontrun_mint_gas_details: GasDetails,
+    pub victim_swaps_tx_hashes: Vec<B256>,
+    pub victim_swaps: Vec<Vec<NormalizedSwap>>,
+    pub victim_swaps_gas_details_tx_hashes: Vec<B256>,
+    pub victim_swaps_gas_details: Vec<GasDetails>,
+    pub backrun_burn_tx_hash: B256,
+    pub backrun_burns: Vec<NormalizedBurn>,
+    pub backrun_burn_gas_details: GasDetails,
+}
+
+impl Mev for JitLiquidity {
+    fn mev_type(&self) -> MevType {
+        MevType::Jit
+    }
+
+    fn mev_transaction_hashes(&self) -> Vec<B256> {
+        vec![self.frontrun_mint_tx_hash, self.backrun_burn_tx_hash]
+    }
+
+    fn bribe(&self) -> u128 {
+        self.frontrun_mint_gas_details
+            .coinbase_transfer
+            .unwrap_or(0)
+            + self.backrun_burn_gas_details.coinbase_transfer.unwrap_or(0)
+    }
+
+    fn priority_fee_paid(&self) -> u128 {
+        self.frontrun_mint_gas_details.gas_paid() + self.backrun_burn_gas_details.gas_paid()
+    }
+}
 
 impl Serialize for JitLiquidity {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

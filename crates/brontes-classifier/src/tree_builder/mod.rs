@@ -5,8 +5,8 @@ mod utils;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
-    extra_processing::ExtraProcessing,
     normalized_actions::{Actions, NormalizedAction, NormalizedTransfer, SelfdestructWithIndex},
+    pair::ExtraProcessing,
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     traits::TracingProvider,
     tree::{BlockTree, GasDetails, Node, Root},

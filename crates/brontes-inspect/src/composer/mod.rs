@@ -30,13 +30,13 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use brontes_types::classified_mev::Mev;
+use brontes_types::mev::Mev;
 mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_types::{
-    classified_mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
     db::metadata::MetadataCombined,
+    mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
 };
