@@ -1,19 +1,13 @@
-use std::fmt::{Debug};
+use std::fmt::Debug;
 
 use alloy_primitives::Address;
-
-
-
-
 use reth_primitives::B256;
 use serde::{Deserialize, Serialize};
-
 use serde_with::serde_as;
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
 };
-
 
 use super::MevType;
 #[allow(unused_imports)]

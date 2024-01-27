@@ -1,18 +1,10 @@
-use std::{
-    fmt::{Debug},
-};
+use std::fmt::Debug;
 
-
-use reth_primitives::{Address};
-
+use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{Row},
-};
+use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 pub use super::{Actions, NormalizedSwap};
-
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBatch {
