@@ -7,7 +7,7 @@ use brontes_types::{db::redefined_types::primitives::Redefined_Address, pair::Pa
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{CompressedTable, LibmdbxData, ReturnKV};
+use super::{LibmdbxData, ReturnKV};
 use crate::libmdbx::SubGraphs;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Row)]

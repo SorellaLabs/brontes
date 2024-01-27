@@ -1,5 +1,3 @@
-use std::fs::Metadata;
-
 use brontes_types::{
     db::{
         mev_block::MevBlockWithClassified,
@@ -16,7 +14,7 @@ use brontes_types::{
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{CompressedTable, LibmdbxData, ReturnKV};
+use super::{LibmdbxData, ReturnKV};
 use crate::libmdbx::MevBlocks;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Row)]

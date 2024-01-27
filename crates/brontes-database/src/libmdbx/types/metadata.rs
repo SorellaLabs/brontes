@@ -6,7 +6,7 @@ use redefined::{Redefined, RedefinedConvert};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use super::{CompressedTable, LibmdbxData, ReturnKV};
+use super::{LibmdbxData, ReturnKV};
 use crate::libmdbx::Metadata;
 
 #[serde_as]
