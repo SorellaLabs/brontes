@@ -16,7 +16,6 @@ use malachite::{
 use redefined::{self_convert_redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
 
-use super::clickhouse::ClickhouseTokenPrices;
 use crate::{constants::*, pair::Pair};
 
 /// Each pair is entered into the map with the addresses in order by value:
@@ -143,6 +142,49 @@ impl CexPriceMap {
             None
         }
     }
+
+    pub fn get_quote_or_via_intermediaries(
+        &self,
+        pair: &Pair,
+        exchange: &CexExchange,
+    ) -> Option<CexQuote> {
+        let intermediaries = [USDT_ADDRESS, USDC_ADDRESS, WETH_ADDRESS];
+
+        // Try to get a direct quote first
+        if let Some(direct_quote) = self.get_quote(pair, exchange) {
+            return Some(direct_quote);
+        }
+
+        // If no direct quote, try via intermediaries and select the lowest ask
+        let mut lowest_ask_quote: Option<CexQuote> = None;
+
+        for &intermediary in &intermediaries {
+            let pair1 = Pair(pair.0, intermediary);
+            let pair2 = Pair(intermediary, pair.1);
+
+            if let (Some(quote1), Some(quote2)) =
+                (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
+            {
+                let combined_price =
+                    (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
+                let combined_quote = CexQuote {
+                    exchange:  exchange.clone(),
+                    timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
+                    price:     combined_price,
+                    token0:    pair.0,
+                };
+
+                lowest_ask_quote = match &lowest_ask_quote {
+                    Some(current_best) if combined_quote.price.0 >= current_best.price.0 => {
+                        lowest_ask_quote
+                    }
+                    _ => Some(combined_quote),
+                };
+            }
+        }
+
+        lowest_ask_quote
+    }
 }
 
 /*
@@ -175,7 +217,8 @@ impl From<Vec<ClickhouseTokenPrices>> for CexPriceMap {
 
         CexPriceMap(map)
     }
-}*/
+}
+*/
 
 #[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CexQuote {
