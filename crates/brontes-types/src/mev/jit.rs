@@ -42,15 +42,20 @@ impl Mev for JitLiquidity {
         vec![self.frontrun_mint_tx_hash, self.backrun_burn_tx_hash]
     }
 
+    fn total_gas_paid(&self) -> u128 {
+        self.frontrun_mint_gas_details.gas_paid() + self.backrun_burn_gas_details.gas_paid()
+    }
+
+    fn total_priority_fee_paid(&self, base_fee: u128) -> u128 {
+        self.frontrun_mint_gas_details.priority_fee_paid(base_fee)
+            + self.backrun_burn_gas_details.priority_fee_paid(base_fee)
+    }
+
     fn bribe(&self) -> u128 {
         self.frontrun_mint_gas_details
             .coinbase_transfer
             .unwrap_or(0)
             + self.backrun_burn_gas_details.coinbase_transfer.unwrap_or(0)
-    }
-
-    fn priority_fee_paid(&self) -> u128 {
-        self.frontrun_mint_gas_details.gas_paid() + self.backrun_burn_gas_details.gas_paid()
     }
 }
 

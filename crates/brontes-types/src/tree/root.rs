@@ -161,6 +161,10 @@ impl GasDetails {
         self.effective_gas_price - base_fee
     }
 
+    pub fn priority_fee_paid(&self, base_fee: u128) -> u128 {
+        self.priority_fee(base_fee) * self.gas_used
+    }
+
     pub fn coinbase_transfer(&self) -> u128 {
         self.coinbase_transfer.unwrap_or_default()
     }
