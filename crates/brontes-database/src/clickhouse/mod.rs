@@ -145,11 +145,14 @@ impl Clickhouse {
     }
 
     async fn get_cex_token_prices(&self, p2p_time: u64) -> CexPriceMap {
-        self.client
-            .query_many::<ClickhouseTokenPrices>(PRICES, &(p2p_time))
-            .await
-            .unwrap()
-            .into()
+        CexPriceMap::default()
+
+        /*self.client
+        .query_many::<ClickhouseTokenPrices>(PRICES, &(p2p_time))
+        .await
+        .unwrap()
+        .into()
+        */
     }
 }
 
