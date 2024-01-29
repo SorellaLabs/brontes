@@ -266,3 +266,40 @@ impl MulAssign for CexQuote {
         self.price.1 *= rhs.price.1;
     }
 }
+
+#[derive(Debug, Clone, Eq, serde::Serialize, serde::Deserialize)]
+pub enum CexExchange {
+    Binance,
+    Bitmex,
+    Deribit,
+    Okex,
+    Coinbase,
+    Kraken,
+    BybitSpot,
+    Kucoin,
+    Upbit,
+    Huobi,
+    GateIo,
+    Bitstamp,
+    Gemini,
+}
+
+impl From<String> for CexExchange {
+    fn from(value: String) -> Self {
+        match &value {
+            "binance" | "Binance" => CexExchange::Binance,
+            "bitmex" | "Bitmex" => CexExchange::Bitmex,
+            "deribit" | "Deribit" => CexExchange::Deribit,
+            "okex" | "Okex" => CexExchange::Okex,
+            "coinbase" | "Coinbase" => CexExchange::Coinbase,
+            "kraken" | "Kraken" => CexExchange::Kraken,
+            "bybit-spot" | "bybitspot" | "BybitSpot" => CexExchange::BybitSpot,
+            "kucoin" | "Kucoin" => CexExchange::Kucoin,
+            "upbit" | "Upbit" => CexExchange::Upbit,
+            "huobi" | "Huobi" => CexExchange::Huobi,
+            "gate-io" | "gateio" | "GateIo" => CexExchange::GateIo,
+            "bitstamp" | "Bitstamp" => CexExchange::Bitstamp,
+            "gemini" | "Gemini" => CexExchange::Gemini,
+        }
+    }
+}
