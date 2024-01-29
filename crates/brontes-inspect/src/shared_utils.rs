@@ -199,17 +199,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         // inner);     }
         // }
     }
-
-    /// Returns the Cex quotes for the given pair.
-    /// If the exact pair is not found, it will try & query pair paths to find a
-    /// quote.
-    pub fn get_cex_quotes(
-        &self,
-        pair: Pair,
-        meta_data: Arc<MetadataCombined>,
-    ) -> Vec<Option<CexQuote>> {
-        todo!();
-    }
 }
 
 fn apply_entry<K: PartialEq + Hash + Eq>(
