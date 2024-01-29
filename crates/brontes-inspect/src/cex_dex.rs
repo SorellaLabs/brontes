@@ -219,6 +219,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
     }
 
+    //TODO: Fix this using the new CEX quotes by exchange
     pub fn rational_prices(
         &self,
         tx_idx: usize,
