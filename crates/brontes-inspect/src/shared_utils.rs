@@ -7,7 +7,6 @@ use std::{
 use alloy_primitives::{Address, U256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    db::cex::CexQuote,
     normalized_actions::{Actions, NormalizedTransfer},
     pair::Pair,
     ToScaledRational,

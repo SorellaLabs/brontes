@@ -9,7 +9,10 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     PriceKind, ToFloatNearest, ToScaledRational,
 };
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::{arithmetic::traits::Abs, basic::traits::Zero},
+    Rational,
+};
 use rayon::{
     iter::{IntoParallelIterator, ParallelIterator},
     prelude::IntoParallelRefIterator,
@@ -203,6 +206,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .and_then(|(dex_price, best_ask)| self.profit_classifier(swap, &dex_price, &best_ask))
     }
 
+    //TODO: Restructure this to do it in on a per exchange basis
     fn profit_classifier(
         &self,
         swap: &NormalizedSwap,
@@ -242,23 +246,22 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
         let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
-        let dex_usd_price = adjusted_in / adjusted_out;
+        let dex_price = adjusted_out / adjusted_in;
 
-        let pair_in = Pair(swap.token_in, self.inner.quote);
-        let pair_out = Pair(swap.token_out, self.inner.quote);
 
-        let cex_best_ask = match (
-            metadata.cex_quotes.get_quote(&pair_in),
-            metadata.cex_quotes.get_quote(&pair_out),
-        ) {
-            (Some(token_in_price), Some(token_out_price)) => {
+        let cex_best_ask = metadata.db.cex_quotes.get_quotes_or_via_intermediaries(
+            &Pair(swap.token_in, swap.token_out),
+            self.cex_exchanges.to_slice(),
+        )?;
+         {
+            (Some) => {
                 trace!(
                     "CEX quote found for pair: {}, {} at block: {}",
                     swap.token_in,
                     swap.token_out,
                     metadata.block_num
                 );
-                token_out_price.best_ask() / token_in_price.best_ask()
+
             }
             (..) => {
                 debug!(
@@ -269,11 +272,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             }
         };
 
-        Some((dex_usd_price, cex_best_ask))
+        Some((dex_price, cex_best_ask))
     }
-
-    //TODO: Take into account exchange fees
-    // Binance VIP 9 fees: 	0.0090% / 0.0180% Maker / Taker fees
 }
 
 #[cfg(test)]
