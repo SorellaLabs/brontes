@@ -29,7 +29,7 @@ impl LibmdbxData<CexPrice> for CexPriceData {
     Debug, Clone, serde::Serialize, rkyv::Serialize, rkyv::Deserialize, rkyv::Archive, Redefined,
 )]
 #[redefined(CexPriceMap)]
-pub struct LibmdbxCexPriceMap(pub HashMap<Redefined_Pair, Vec<LibmdbxCexQuote>>);
+pub struct LibmdbxCexPriceMap(pub HashMap<CexExchange, HashMap<Redefined_Pair, LibmdbxCexQuote>>);
 
 #[derive(
     Debug,

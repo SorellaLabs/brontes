@@ -1,4 +1,9 @@
-use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
+use std::{
+    collections::HashMap,
+    default::{self, Default},
+    ops::MulAssign,
+    str::FromStr,
+};
 
 use alloy_primitives::Address;
 use malachite::{
@@ -26,24 +31,35 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
     where
         D: serde::Deserializer<'de>,
     {
-        let map: Vec<((String, String), Vec<(String, u64, (f64, f64), String)>)> =
+        let map: Vec<(String, Vec<((String, String), (u64, (f64, f64), String))>)> =
             serde::Deserialize::deserialize(deserializer)?;
 
         let mut cex_price_map = HashMap::new();
-        map.into_iter().for_each(|(pair, meta)| {
-            cex_price_map.insert(
-                Pair(Address::from_str(&pair.0).unwrap(), Address::from_str(&pair.1).unwrap()),
-                meta.into_iter()
-                    .map(|(exchange, timestamp, (price0, price1), token0)| CexQuote {
-                        exchange,
-                        timestamp,
-                        price: (
-                            Rational::try_from_float_simplest(price0).unwrap(),
-                            Rational::try_from_float_simplest(price1).unwrap(),
+        map.into_iter().for_each(|(exchange, meta)| {
+            let mut exchange_map = cex_price_map
+                .entry(CexExchange::from(exchange))
+                .or_insert(HashMap::new());
+            meta.into_iter().for_each(
+                |(
+                    (base_token_addr, quote_token_addr),
+                    (timestamp, (price0, price1), token0_addr),
+                )| {
+                    exchange_map.insert(
+                        Pair(
+                            Address::from_str(&base_token_addr).unwrap(),
+                            Address::from_str(&quote_token_addr).unwrap(),
                         ),
-                        token0: Address::from_str(&token0).unwrap(),
-                    })
-                    .collect::<Vec<_>>(),
+                        CexQuote {
+                            exchange: CexExchange::from(exchange),
+                            timestamp,
+                            price: (
+                                Rational::try_from_float_simplest(price0).unwrap(),
+                                Rational::try_from_float_simplest(price1).unwrap(),
+                            ),
+                            token0: Address::from_str(&token0_addr).unwrap(),
+                        },
+                    );
+                },
             );
         });
 
@@ -133,7 +149,7 @@ impl CexPriceMap {
                 );
                 let count = Rational::from(count);
                 Some(CexQuote {
-                    exchange:  "avg".to_string(),
+                    exchange:  Default::default(),
                     timestamp: quotes.last().unwrap().timestamp,
                     price:     (sum_price.0 / count.clone(), sum_price.1 / count),
                     token0:    pair.0,
@@ -189,6 +205,7 @@ impl CexPriceMap {
     }
 }
 
+/*
 impl From<Vec<ClickhouseTokenPrices>> for CexPriceMap {
     fn from(value: Vec<ClickhouseTokenPrices>) -> Self {
         let mut map: HashMap<Pair, Vec<CexQuote>> = HashMap::new();
@@ -203,7 +220,7 @@ impl From<Vec<ClickhouseTokenPrices>> for CexPriceMap {
                 .val
                 .into_iter()
                 .map(|exchange_price| CexQuote {
-                    exchange:  exchange_price.exchange,
+                    exchange:  exchange_price.exchange.into(),
                     timestamp: exchange_price.val.0,
                     price:     (
                         Rational::try_from(exchange_price.val.1).unwrap(),
@@ -218,11 +235,11 @@ impl From<Vec<ClickhouseTokenPrices>> for CexPriceMap {
 
         CexPriceMap(map)
     }
-}
+}*/
 
 #[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CexQuote {
-    pub exchange:  String,
+    pub exchange:  CexExchange,
     pub timestamp: u64,
     /// Best Ask & Bid price at p2p timestamp (which is when the block is first
     /// propagated by the relay / proposer)
@@ -267,7 +284,7 @@ impl MulAssign for CexQuote {
     }
 }
 
-#[derive(Debug, Clone, Eq, serde::Serialize, serde::Deserialize, PartialEq, Hash)]
+#[derive(Debug, Clone, Default, Eq, serde::Serialize, serde::Deserialize, PartialEq, Hash)]
 pub enum CexExchange {
     Binance,
     Bitmex,
@@ -282,6 +299,8 @@ pub enum CexExchange {
     GateIo,
     Bitstamp,
     Gemini,
+    #[default]
+    Unknown,
 }
 
 impl From<&str> for CexExchange {
@@ -301,5 +320,11 @@ impl From<&str> for CexExchange {
             "bitstamp" | "Bitstamp" => CexExchange::Bitstamp,
             "gemini" | "Gemini" => CexExchange::Gemini,
         }
+    }
+}
+
+impl From<String> for CexExchange {
+    fn from(value: String) -> Self {
+        value.as_str().into()
     }
 }
