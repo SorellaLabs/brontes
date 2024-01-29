@@ -36,8 +36,8 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
 
         let mut cex_price_map = HashMap::new();
         map.into_iter().for_each(|(exchange, meta)| {
-            let mut exchange_map = cex_price_map
-                .entry(CexExchange::from(exchange))
+            let exchange_map = cex_price_map
+                .entry(CexExchange::from(exchange.clone()))
                 .or_insert(HashMap::new());
             meta.into_iter().for_each(
                 |(
@@ -50,7 +50,7 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
                             Address::from_str(&quote_token_addr).unwrap(),
                         ),
                         CexQuote {
-                            exchange: CexExchange::from(exchange),
+                            exchange: CexExchange::from(exchange.clone()),
                             timestamp,
                             price: (
                                 Rational::try_from_float_simplest(price0).unwrap(),
@@ -78,130 +78,69 @@ impl CexPriceMap {
         Self(HashMap::new())
     }
 
-    pub fn wrap(map: HashMap<Pair, CexQuote>) -> Self {
-        Self(map.into_iter().map(|(k, v)| (k, vec![v])).collect())
+    pub fn wrap(map: HashMap<CexExchange, HashMap<Pair, CexQuote>>) -> Self {
+        Self(map)
     }
 
-    pub fn get_quotes(&self, pair: &Pair) -> Vec<Option<CexQuote>> {
-        if pair.0 == pair.1 {
-            return vec![Some(CexQuote {
-                price: (Rational::ONE, Rational::ONE),
-                ..Default::default()
-            })];
-        }
-
-        self.0.get(&pair.ordered()).map_or_else(Vec::new, |quotes| {
-            quotes
-                .iter()
-                .map(|quote| {
-                    if quote.token0 == pair.0 {
-                        Some(quote.clone())
-                    } else {
-                        let mut reciprocal_quote = quote.clone();
-                        reciprocal_quote.inverse_price();
-                        Some(reciprocal_quote)
-                    }
-                })
-                .collect()
-        })
-    }
-
-    pub fn get_binance_quote(&self, pair: &Pair) -> Option<CexQuote> {
+    pub fn get_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<CexQuote> {
         if pair.0 == pair.1 {
             return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() });
         }
 
-        self.0.get(&pair.ordered()).and_then(|quotes| {
-            quotes
-                .iter()
-                .filter(|quote| quote.exchange == "binance")
-                .find_map(|quote| {
-                    if quote.token0 == pair.0 {
-                        Some(quote.clone())
-                    } else {
-                        let mut reciprocal_quote = quote.clone();
-                        reciprocal_quote.inverse_price();
-                        Some(reciprocal_quote)
-                    }
-                })
-        })
+        self.0
+            .get(exchange)
+            .and_then(|quotes| quotes.get(&pair.ordered()))
+            .map(|quote| {
+                if quote.token0 == pair.0 {
+                    quote.clone()
+                } else {
+                    let mut reciprocal_quote = quote.clone();
+                    reciprocal_quote.inverse_price();
+                    reciprocal_quote
+                }
+            })
     }
 
-    pub fn get_avg_quote(&self, pair: &Pair) -> Option<CexQuote> {
+    pub fn get_binance_quote(&self, pair: &Pair) -> Option<CexQuote> {
+        self.get_quote(pair, &CexExchange::Binance)
+    }
+
+    pub fn get_avg_quote(&self, pair: &Pair, exchanges: &[CexExchange]) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() });
         }
 
         let ordered_pair = pair.ordered();
-        self.0.get(&ordered_pair).and_then(|quotes| {
-            if quotes.is_empty() {
-                None
-            } else {
-                let (sum_price, count) = quotes.iter().fold(
-                    ((Rational::default(), Rational::default()), 0),
-                    |(acc, cnt), q| {
-                        let mut quote = q.clone();
-                        if quote.token0 != pair.0 {
-                            quote.inverse_price();
-                        }
-                        ((acc.0 + quote.price.0, acc.1 + quote.price.1), cnt + 1)
-                    },
-                );
-                let count = Rational::from(count);
-                Some(CexQuote {
-                    exchange:  Default::default(),
-                    timestamp: quotes.last().unwrap().timestamp,
-                    price:     (sum_price.0 / count.clone(), sum_price.1 / count),
-                    token0:    pair.0,
-                })
-            }
-        })
-    }
+        let mut sum_price = (Rational::default(), Rational::default());
+        let mut count = 0;
 
-    pub fn get_price_or_via_intermediaries(&self, pair: Pair) -> Vec<Option<CexQuote>> {
-        let direct_quotes = self.get_quotes(&pair);
-
-        if !direct_quotes.is_empty() {
-            return direct_quotes;
-        }
-
-        let intermediaries = vec![USDT_ADDRESS, WETH_ADDRESS, USDC_ADDRESS];
-
-        for intermediary in intermediaries {
-            let quotes = self.get_price_via_intermediaries(pair.0, pair.1, intermediary);
-            if !quotes.is_empty() {
-                return quotes;
-            }
-        }
-
-        Vec::new()
-    }
-
-    fn get_price_via_intermediaries(
-        &self,
-        token0: Address,
-        token1: Address,
-        intermediary: Address,
-    ) -> Vec<Option<CexQuote>> {
-        let pair1 = Pair::map_key(token0, intermediary);
-        let pair2 = Pair::map_key(intermediary, token1);
-
-        let quotes1 = self.get_quotes(&pair1);
-        let quotes2 = self.get_quotes(&pair2);
-
-        let mut combined_quotes = Vec::new();
-
-        for quote1 in quotes1.iter().flatten() {
-            for quote2 in quotes2.iter().flatten() {
-                if quote1.exchange == quote2.exchange {
-                    let mut combined_quote = quote1.clone();
-                    combined_quote.mul_assign(quote2.clone());
-                    combined_quotes.push(Some(combined_quote));
+        for exchange in exchanges {
+            if let Some(quotes) = self.0.get(exchange) {
+                if let Some(quote) = quotes.get(&ordered_pair) {
+                    let adjusted_quote = if quote.token0 == pair.0 {
+                        quote.price.clone()
+                    } else {
+                        let (num, denom) = quote.price.clone();
+                        (denom, num) // Invert price
+                    };
+                    sum_price.0 += adjusted_quote.0;
+                    sum_price.1 += adjusted_quote.1;
+                    count += 1;
                 }
             }
         }
 
-        combined_quotes
+        if count > 0 {
+            let count_rational = Rational::from(count);
+            Some(CexQuote {
+                exchange:  CexExchange::default(),
+                timestamp: 0,
+                price:     (sum_price.0 / count_rational.clone(), sum_price.1 / count_rational),
+                token0:    pair.0,
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -319,6 +258,7 @@ impl From<&str> for CexExchange {
             "gate-io" | "gateio" | "GateIo" => CexExchange::GateIo,
             "bitstamp" | "Bitstamp" => CexExchange::Bitstamp,
             "gemini" | "Gemini" => CexExchange::Gemini,
+            _ => CexExchange::Unknown,
         }
     }
 }
@@ -326,5 +266,55 @@ impl From<&str> for CexExchange {
 impl From<String> for CexExchange {
     fn from(value: String) -> Self {
         value.as_str().into()
+    }
+}
+
+impl CexExchange {
+    /// Returns the maker & taker fees by exchange
+    /// Assumes best possible fee structure e.g Binanace VIP 9 for example
+    /// Does not account for special market maker rebate programs
+    pub fn fees(&self) -> (Rational, Rational) {
+        match self {
+            CexExchange::Binance => {
+                (Rational::from_str("0.00012").unwrap(), Rational::from_str("0.00024").unwrap())
+            }
+            CexExchange::Bitmex => {
+                (Rational::from_str("-0.00025").unwrap(), Rational::from_str("0.00075").unwrap())
+            }
+            CexExchange::Deribit => {
+                (Rational::from_str("0").unwrap(), Rational::from_str("0").unwrap())
+            }
+            CexExchange::Okex => {
+                (Rational::from_str("-0.00005").unwrap(), Rational::from_str("0.00015").unwrap())
+            }
+            CexExchange::Coinbase => {
+                (Rational::from_str("0").unwrap(), Rational::from_str("0.0005").unwrap())
+            }
+            CexExchange::Kraken => {
+                (Rational::from_str("0").unwrap(), Rational::from_str("0.001").unwrap())
+            }
+            CexExchange::BybitSpot => {
+                (Rational::from_str("0.00005").unwrap(), Rational::from_str("0.00015").unwrap())
+            }
+            CexExchange::Kucoin => {
+                (Rational::from_str("-0.00005").unwrap(), Rational::from_str("0.00025").unwrap())
+            }
+            CexExchange::Upbit => {
+                (Rational::from_str("0.0002").unwrap(), Rational::from_str("0.0002").unwrap())
+            }
+            CexExchange::Huobi => {
+                (Rational::from_str("0.000097").unwrap(), Rational::from_str("0.000193").unwrap())
+            }
+            CexExchange::GateIo => {
+                (Rational::from_str("0").unwrap(), Rational::from_str("0.0002").unwrap())
+            }
+            CexExchange::Bitstamp => {
+                (Rational::from_str("0").unwrap(), Rational::from_str("0.0003").unwrap())
+            }
+            CexExchange::Gemini => {
+                (Rational::from_str("0").unwrap(), Rational::from_str("0.0003").unwrap())
+            }
+            CexExchange::Unknown => unreachable!(),
+        }
     }
 }

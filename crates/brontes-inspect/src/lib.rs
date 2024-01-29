@@ -101,7 +101,7 @@ use alloy_primitives::Address;
 use atomic_backrun::AtomicBackrunInspector;
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    db::metadata::MetadataCombined,
+    db::{cex::CexExchange, metadata::MetadataCombined},
     mev::{Bundle, BundleData, BundleHeader},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -138,6 +138,7 @@ impl Inspectors {
         &self,
         quote_token: Address,
         db: &'static LibmdbxReadWriter,
+        cex_exchanges: Vec<CexExchange>,
     ) -> &'static Box<dyn Inspector> {
         match &self {
             Self::AtomicBackrun => {
@@ -151,9 +152,10 @@ impl Inspectors {
                 static_object(Box::new(LongTailInspector::new(quote_token, db))
                     as Box<dyn Inspector + 'static>)
             }
-            Self::CexDex => static_object(
-                Box::new(CexDexInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
-            ),
+            Self::CexDex => {
+                static_object(Box::new(CexDexInspector::new(quote_token, db, cex_exchanges))
+                    as Box<dyn Inspector + 'static>)
+            }
             Self::Sandwich => {
                 static_object(Box::new(SandwichInspector::new(quote_token, db))
                     as Box<dyn Inspector + 'static>)
