@@ -244,7 +244,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
         let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
-        let dex_price = adjusted_out / adjusted_in;
+        let dex_price = token_in / token_out;
 
         let mut cex_prices = Vec::new();
 
