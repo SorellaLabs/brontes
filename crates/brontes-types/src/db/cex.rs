@@ -13,6 +13,7 @@ use malachite::{
     },
     Rational,
 };
+use redefined::{self_convert_redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
 
 use super::clickhouse::ClickhouseTokenPrices;
@@ -223,7 +224,20 @@ impl MulAssign for CexQuote {
     }
 }
 
-#[derive(Debug, Clone, Default, Eq, serde::Serialize, serde::Deserialize, PartialEq, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    Eq,
+    PartialEq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+)]
+#[archive_attr(derive(Eq, PartialEq, Hash))]
 pub enum CexExchange {
     Binance,
     Bitmex,
@@ -318,3 +332,5 @@ impl CexExchange {
         }
     }
 }
+
+self_convert_redefined!(CexExchange);
