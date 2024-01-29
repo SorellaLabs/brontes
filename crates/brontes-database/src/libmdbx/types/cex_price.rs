@@ -44,7 +44,7 @@ pub struct LibmdbxCexPriceMap(pub HashMap<Redefined_Pair, Vec<LibmdbxCexQuote>>)
 )]
 #[redefined(CexQuote)]
 pub struct LibmdbxCexQuote {
-    pub exchange:  Option<String>,
+    pub exchange:  String,
     pub timestamp: u64,
     pub price:     (Redefined_Rational, Redefined_Rational),
     pub token0:    Redefined_Address,

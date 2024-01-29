@@ -11,16 +11,15 @@ use malachite::{
 use sorella_db_databases::clickhouse::{self, Row};
 
 use super::clickhouse::ClickhouseTokenPrices;
-use crate::pair::Pair;
+use crate::{constants::*, pair::Pair};
 
 /// Each pair is entered into the map with the addresses in order by value:
 /// Ergo if token0 < token1, then the pair is (token0, token1)
 /// So when we query the map we order the addresses in the pair and then query
 /// the quote provides us with the actual token0 so we can interpret the price
 /// in any direction
-
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize)]
-pub struct CexPriceMap(pub HashMap<Pair, Vec<CexQuote>>);
+pub struct CexPriceMap(pub HashMap<String, HashMap<Pair, Vec<CexQuote>>>);
 
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -36,7 +35,7 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
                 Pair(Address::from_str(&pair.0).unwrap(), Address::from_str(&pair.1).unwrap()),
                 meta.into_iter()
                     .map(|(exchange, timestamp, (price0, price1), token0)| CexQuote {
-                        exchange: Some(exchange),
+                        exchange,
                         timestamp,
                         price: (
                             Rational::try_from_float_simplest(price0).unwrap(),
@@ -67,42 +66,48 @@ impl CexPriceMap {
         Self(map.into_iter().map(|(k, v)| (k, vec![v])).collect())
     }
 
-    /// Assumes binance quote, for retro compatibility
-    pub fn get_quote(&self, pair: &Pair) -> Option<CexQuote> {
+    pub fn get_quotes(&self, pair: &Pair) -> Vec<Option<CexQuote>> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+            return vec![Some(CexQuote {
+                price: (Rational::ONE, Rational::ONE),
+                ..Default::default()
+            })];
         }
 
-        let ordered_pair = pair.ordered();
-        self.0.get(&ordered_pair).and_then(|quotes| {
-            quotes.first().map(|quote| {
-                if quote.token0 == pair.0 {
-                    quote.clone()
-                } else {
-                    let mut reciprocal_quote = quote.clone();
-                    reciprocal_quote.inverse_price(); // Modify the price to its reciprocal
-                    reciprocal_quote
-                }
-            })
+        self.0.get(&pair.ordered()).map_or_else(Vec::new, |quotes| {
+            quotes
+                .iter()
+                .map(|quote| {
+                    if quote.token0 == pair.0 {
+                        Some(quote.clone())
+                    } else {
+                        let mut reciprocal_quote = quote.clone();
+                        reciprocal_quote.inverse_price();
+                        Some(reciprocal_quote)
+                    }
+                })
+                .collect()
         })
     }
 
     pub fn get_binance_quote(&self, pair: &Pair) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() });
         }
 
-        let ordered_pair = pair.ordered();
-        self.0.get(&ordered_pair).and_then(|quotes| {
-            quotes.first().map(|quote| {
-                if quote.token0 == pair.0 {
-                    quote.clone()
-                } else {
-                    let mut reciprocal_quote = quote.clone();
-                    reciprocal_quote.inverse_price(); // Modify the price to its reciprocal
-                    reciprocal_quote
-                }
-            })
+        self.0.get(&pair.ordered()).and_then(|quotes| {
+            quotes
+                .iter()
+                .filter(|quote| quote.exchange == "binance")
+                .find_map(|quote| {
+                    if quote.token0 == pair.0 {
+                        Some(quote.clone())
+                    } else {
+                        let mut reciprocal_quote = quote.clone();
+                        reciprocal_quote.inverse_price();
+                        Some(reciprocal_quote)
+                    }
+                })
         })
     }
 
@@ -128,13 +133,59 @@ impl CexPriceMap {
                 );
                 let count = Rational::from(count);
                 Some(CexQuote {
-                    exchange:  None,
+                    exchange:  "avg".to_string(),
                     timestamp: quotes.last().unwrap().timestamp,
                     price:     (sum_price.0 / count.clone(), sum_price.1 / count),
                     token0:    pair.0,
                 })
             }
         })
+    }
+
+    pub fn get_price_or_via_intermediaries(&self, pair: Pair) -> Vec<Option<CexQuote>> {
+        let direct_quotes = self.get_quotes(&pair);
+
+        if !direct_quotes.is_empty() {
+            return direct_quotes;
+        }
+
+        let intermediaries = vec![USDT_ADDRESS, WETH_ADDRESS, USDC_ADDRESS];
+
+        for intermediary in intermediaries {
+            let quotes = self.get_price_via_intermediaries(pair.0, pair.1, intermediary);
+            if !quotes.is_empty() {
+                return quotes;
+            }
+        }
+
+        Vec::new()
+    }
+
+    fn get_price_via_intermediaries(
+        &self,
+        token0: Address,
+        token1: Address,
+        intermediary: Address,
+    ) -> Vec<Option<CexQuote>> {
+        let pair1 = Pair::map_key(token0, intermediary);
+        let pair2 = Pair::map_key(intermediary, token1);
+
+        let quotes1 = self.get_quotes(&pair1);
+        let quotes2 = self.get_quotes(&pair2);
+
+        let mut combined_quotes = Vec::new();
+
+        for quote1 in quotes1.iter().flatten() {
+            for quote2 in quotes2.iter().flatten() {
+                if quote1.exchange == quote2.exchange {
+                    let mut combined_quote = quote1.clone();
+                    combined_quote.mul_assign(quote2.clone());
+                    combined_quotes.push(Some(combined_quote));
+                }
+            }
+        }
+
+        combined_quotes
     }
 }
 
@@ -151,17 +202,14 @@ impl From<Vec<ClickhouseTokenPrices>> for CexPriceMap {
             let quotes: Vec<CexQuote> = token_info
                 .val
                 .into_iter()
-                .map(|exchange_price| {
-                    CexQuote {
-                        exchange:  Some(exchange_price.exchange),
-                        timestamp: exchange_price.val.0,
-                        price:     (
-                            Rational::try_from(exchange_price.val.1).unwrap(), /* Conversion to
-                                                                                * Rational */
-                            Rational::try_from(exchange_price.val.2).unwrap(),
-                        ),
-                        token0:    Address::from_str(&token_info.key.0).unwrap(),
-                    }
+                .map(|exchange_price| CexQuote {
+                    exchange:  exchange_price.exchange,
+                    timestamp: exchange_price.val.0,
+                    price:     (
+                        Rational::try_from(exchange_price.val.1).unwrap(),
+                        Rational::try_from(exchange_price.val.2).unwrap(),
+                    ),
+                    token0:    Address::from_str(&token_info.key.0).unwrap(),
                 })
                 .collect();
 
@@ -174,7 +222,7 @@ impl From<Vec<ClickhouseTokenPrices>> for CexPriceMap {
 
 #[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CexQuote {
-    pub exchange:  Option<String>,
+    pub exchange:  String,
     pub timestamp: u64,
     /// Best Ask & Bid price at p2p timestamp (which is when the block is first
     /// propagated by the relay / proposer)

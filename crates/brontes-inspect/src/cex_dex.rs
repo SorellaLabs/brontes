@@ -28,7 +28,6 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
     }
 }
 //TODO: Support for multiple CEXs
-//TODO: Filtering by coinbase.transfer() to builder or directly to the proposer
 //TODO: Start adding filtering by function sig in the tree. Like executeFFsYo
 //TODO: If single swap with coinbase.transfer then flag token as missing cex
 // price (addr + symbol + name) in a db table so we can fill in what is missing
@@ -228,13 +227,22 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     ) -> Option<(Rational, Rational)> {
         let Actions::Swap(swap) = swap else { return None };
 
+        let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
+            error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            return None
+        };
+        let Ok(Some(decimals_out)) = self.inner.db.try_get_token_decimals(swap.token_out) else {
+            debug!(missing_token=?swap.token_out, "missing token out token to decimal map");
+            return None
+        };
+
+        let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
+        let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
+
+        let dex_usd_price = adjusted_in / adjusted_out;
+
         let pair_in = Pair(swap.token_in, self.inner.quote);
         let pair_out = Pair(swap.token_out, self.inner.quote);
-
-        let in_usd = metadata.dex_quotes.price_at_or_before(pair_in, tx_idx)?;
-        let out_usd = metadata.dex_quotes.price_at_or_before(pair_out, tx_idx)?;
-
-        let dex_usd_price = out_usd / in_usd;
 
         let cex_best_ask = match (
             metadata.cex_quotes.get_quote(&pair_in),
@@ -260,6 +268,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         Some((dex_usd_price, cex_best_ask))
     }
+
+    //TODO: Take into account exchange fees
+    // Binance VIP 9 fees: 	0.0090% / 0.0180% Maker / Taker fees
 }
 
 #[cfg(test)]
