@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, fixed_string::FixedString, Row};
 
 use super::Node;
-use crate::normalized_actions::NormalizedAction;
+use crate::{normalized_actions::NormalizedAction, tree::MetadataNoDex};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
@@ -112,6 +112,12 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn is_private(&self) -> bool {
         self.private
+    }
+
+    pub fn label_private_tx(&mut self, metadata: &MetadataNoDex) {
+        if metadata.private_flow.contains(&self.tx_hash) {
+            self.private = true;
+        }
     }
 }
 

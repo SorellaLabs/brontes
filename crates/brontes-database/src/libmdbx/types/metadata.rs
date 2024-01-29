@@ -40,5 +40,5 @@ pub struct LibmdbxMetadataInner {
     pub p2p_timestamp:          Option<u64>,
     pub proposer_fee_recipient: Option<Redefined_Address>,
     pub proposer_mev_reward:    Option<u128>,
-    pub mempool_flow:           Vec<Redefined_TxHash>,
+    pub private_flow:           Vec<Redefined_TxHash>,
 }
