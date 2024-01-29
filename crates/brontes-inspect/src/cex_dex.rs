@@ -145,7 +145,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         let prices = swaps
             .par_iter()
-            .filter_map(|swap| self.rational_prices(idx, swap, &metadata))
+            .filter_map(|swap| self.rational_prices(swap, &metadata))
             .map(|(dex_price, cex1)| (dex_price.to_float(), cex1.to_float()))
             .collect::<Vec<_>>();
 
@@ -202,7 +202,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         swap: &NormalizedSwap,
         metadata: &MetadataCombined,
     ) -> Option<Rational> {
-        self.rational_prices(tx_idx, &Actions::Swap(swap.clone()), metadata)
+        self.rational_prices(tx_idx, &Actions::Swap(swap.clone()))
             .and_then(|(dex_price, best_ask)| self.profit_classifier(swap, &dex_price, &best_ask))
     }
 
@@ -225,13 +225,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
     }
 
-    //TODO: Fix this using the new CEX quotes by exchange
     pub fn rational_prices(
         &self,
-        tx_idx: usize,
         swap: &Actions,
         metadata: &MetadataCombined,
-    ) -> Option<(Rational, Rational)> {
+    ) -> Option<Vec<(CexExchange, Rational)>> {
         let Actions::Swap(swap) = swap else { return None };
 
         let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
@@ -248,31 +246,28 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         let dex_price = adjusted_out / adjusted_in;
 
+        let mut cex_prices = Vec::new();
 
-        let cex_best_ask = metadata.db.cex_quotes.get_quotes_or_via_intermediaries(
-            &Pair(swap.token_in, swap.token_out),
-            self.cex_exchanges.to_slice(),
-        )?;
-         {
-            (Some) => {
-                trace!(
-                    "CEX quote found for pair: {}, {} at block: {}",
-                    swap.token_in,
-                    swap.token_out,
-                    metadata.block_num
-                );
-
-            }
-            (..) => {
+        for exchange in &self.cex_exchanges {
+            if let Some(cex_quote) = metadata
+                .db
+                .cex_quotes
+                .get_quote_or_via_intermediaries(&Pair(swap.token_in, swap.token_out), exchange)
+            {
+                cex_prices.push((*exchange, cex_quote.price.0));
+            } else {
                 debug!(
-                    "No CEX quote found for pair: {}, {} at block: {}",
-                    swap.token_in, swap.token_out, metadata.block_num
+                    "No CEX quote found for pair: {}, {} at exchange: {:?}",
+                    swap.token_in, swap.token_out, exchange
                 );
-                return None
             }
-        };
+        }
 
-        Some((dex_price, cex_best_ask))
+        if cex_prices.is_empty() {
+            None
+        } else {
+            Some(cex_prices)
+        }
     }
 }
 
