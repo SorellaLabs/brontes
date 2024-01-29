@@ -7,6 +7,7 @@ use std::{
 use alloy_primitives::{Address, U256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
+    db::cex::CexQuote,
     normalized_actions::{Actions, NormalizedTransfer},
     pair::Pair,
     ToScaledRational,
@@ -197,6 +198,17 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         //         apply_entry(transfer.token, adjusted_amount.clone(), &mut
         // inner);     }
         // }
+    }
+
+    /// Returns the Cex quotes for the given pair.
+    /// If the exact pair is not found, it will try & query pair paths to find a
+    /// quote.
+    pub fn get_cex_quotes(
+        &self,
+        pair: Pair,
+        meta_data: Arc<MetadataCombined>,
+    ) -> Vec<Option<CexQuote>> {
+        todo!();
     }
 }
 

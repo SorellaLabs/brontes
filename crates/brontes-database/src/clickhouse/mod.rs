@@ -47,7 +47,7 @@ impl Clickhouse {
 
         // eth price is in cex_prices
         let _eth_prices = cex_prices
-            .get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
+            .get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
             .unwrap()
             .clone();
 
