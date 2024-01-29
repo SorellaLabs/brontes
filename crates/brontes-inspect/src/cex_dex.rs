@@ -332,7 +332,7 @@ mod tests {
                 proposer_mev_reward: None,
                 cex_quotes,
                 eth_prices: eth_price.reciprocal(),
-                mempool_flow: HashSet::new(),
+                private_flow: HashSet::new(),
             },
         };
 
