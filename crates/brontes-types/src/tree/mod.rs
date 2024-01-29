@@ -10,7 +10,7 @@ pub mod root;
 pub use node::*;
 pub use root::*;
 
-use crate::normalized_actions::NormalizedAction;
+use crate::{db::metadata::MetadataNoDex, normalized_actions::NormalizedAction};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlockTree<V: NormalizedAction> {
@@ -201,5 +201,11 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.tx_roots
             .par_iter_mut()
             .for_each(|root| root.remove_duplicate_data(&find, &classify, &info, &find_removal));
+    }
+
+    pub fn label_private_txes(&mut self, metadata: &MetadataNoDex) {
+        self.tx_roots
+            .par_iter_mut()
+            .for_each(|root| root.label_private_tx(metadata));
     }
 }
