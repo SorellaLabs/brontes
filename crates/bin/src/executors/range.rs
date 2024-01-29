@@ -173,7 +173,9 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         classifier: &'db Classifier<'db, T, DB>,
     ) -> CollectionFut<'db> {
         Box::pin(async move {
-            let tree = classifier.build_block_tree(traces, header).await;
+            let mut tree = classifier.build_block_tree(traces, header).await;
+            tree.label_private_txes(&meta);
+
             (tree, meta)
         })
     }
