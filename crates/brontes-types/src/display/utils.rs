@@ -112,7 +112,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
          `--. \/ _` | '_ \ / _` \ \ /\ / / |/ __| '_ \ 
         /\__/ / (_| | | | | (_| |\ V  V /| | (__| | | |
         \____/ \__,_|_| |_|\__,_| \_/\_/ |_|\___|_| |_|
-        ""#};
+        "#};
 
     for line in ascii_header.lines() {
         writeln!(f, "{}", line.bright_red())?;
