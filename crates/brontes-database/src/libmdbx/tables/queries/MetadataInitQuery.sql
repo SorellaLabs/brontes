@@ -6,7 +6,7 @@ SELECT
     CAST(p2p_timestamp, ' Nullable(UInt64)') AS p2p_timestamp,
     CAST(proposer_fee_recipient, ' Nullable(String)') AS proposer_fee_recipient,
     CAST(proposer_mev_reward, ' Nullable(UInt128)') AS proposer_mev_reward,
-    CAST(private_flow, 'Array(String)') AS mempool_flow
+    CAST(private_flow, 'Array(String)') AS private_flow
 FROM brontes.metadata_util
 WHERE block_hash IS NOT NULL AND block_number >= ? AND block_number < ? 
 

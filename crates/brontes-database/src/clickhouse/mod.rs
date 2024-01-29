@@ -269,7 +269,7 @@ mod tests {
             proposer_mev_reward:    113949354337187568,
             cex_quotes:             PriceGraph::from_quotes(cex_prices),
             eth_prices:             eth_prices.avg().clone(),
-            mempool_flow:           expected_private_flow(),
+            private_flow:           expected_private_flow(),
         }
     }
 
@@ -360,7 +360,7 @@ mod tests {
         assert_eq!(metadata.p2p_timestamp, expected_metadata.p2p_timestamp);
         assert_eq!(metadata.proposer_fee_recipient, expected_metadata.proposer_fee_recipient);
         assert_eq!(metadata.proposer_mev_reward, expected_metadata.proposer_mev_reward);
-        assert_eq!(metadata.mempool_flow, expected_metadata.mempool_flow);
+        assert_eq!(metadata.private_flow, expected_metadata.private_flow);
     }
 }
 
