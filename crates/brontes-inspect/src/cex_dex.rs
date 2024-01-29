@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
+    db::cex::CexExchange,
     mev::{Bundle, BundleData, CexDex, MevType, TokenProfit, TokenProfits},
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
@@ -19,12 +20,13 @@ use tracing::{debug, error, trace};
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
-    inner: SharedInspectorUtils<'db, DB>,
+    inner:         SharedInspectorUtils<'db, DB>,
+    cex_exchanges: Vec<CexExchange>,
 }
 
 impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote, db) }
+    pub fn new(quote: Address, db: &'db DB, cex_exchanges: Vec<CexExchange>) -> Self {
+        Self { inner: SharedInspectorUtils::new(quote, db), cex_exchanges }
     }
 }
 //TODO: Support for multiple CEXs
