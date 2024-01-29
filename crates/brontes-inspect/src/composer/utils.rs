@@ -167,7 +167,10 @@ pub fn filter_and_count_bundles(
         let filtered_bundles: Vec<Bundle> = bundles
             .into_iter()
             .filter(|bundle| {
-                if matches!(mev_type, MevType::Sandwich | MevType::Jit | MevType::Backrun) {
+                if matches!(
+                    mev_type,
+                    MevType::Sandwich | MevType::Jit | MevType::Backrun | MevType::CexDex
+                ) {
                     bundle.header.profit_usd > 0.0
                 } else {
                     true
