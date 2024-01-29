@@ -41,7 +41,13 @@ fn insert_mev_results<DB: LibmdbxWriter>(
         block_details.to_string()
     );
 
-    info!("{:#?}", mev_details);
+    for mev in &mev_details {
+        info!(
+            target: "brontes",
+            "mev details\n {}",
+            mev.to_string()
+        );
+    }
 
     if database
         .save_mev_blocks(block_details.block_number, block_details, mev_details)

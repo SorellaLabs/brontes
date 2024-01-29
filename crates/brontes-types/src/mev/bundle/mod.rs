@@ -18,7 +18,7 @@ use strum::{Display, EnumIter};
 
 #[allow(unused_imports)]
 use crate::{
-    display::utils::{display_sandwich, print_mev_type_header},
+    display::utils::{display_cex_dex, display_sandwich, print_mev_type_header},
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     serde_primitives::vec_fixed_string,
     GasDetails,
@@ -35,6 +35,7 @@ impl fmt::Display for Bundle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.header.mev_type {
             MevType::Sandwich => display_sandwich(self, f)?,
+            MevType::CexDex => display_cex_dex(self, f)?,
             _ => unimplemented!(),
         }
 
