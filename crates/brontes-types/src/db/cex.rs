@@ -19,7 +19,7 @@ use crate::{constants::*, pair::Pair};
 /// the quote provides us with the actual token0 so we can interpret the price
 /// in any direction
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize)]
-pub struct CexPriceMap(pub HashMap<CexExchange, HashMap<Pair, Vec<CexQuote>>>);
+pub struct CexPriceMap(pub HashMap<CexExchange, HashMap<Pair, CexQuote>>);
 
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
