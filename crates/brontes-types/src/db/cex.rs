@@ -19,7 +19,7 @@ use crate::{constants::*, pair::Pair};
 /// the quote provides us with the actual token0 so we can interpret the price
 /// in any direction
 #[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize)]
-pub struct CexPriceMap(pub HashMap<String, HashMap<Pair, Vec<CexQuote>>>);
+pub struct CexPriceMap(pub HashMap<CexExchange, HashMap<Pair, Vec<CexQuote>>>);
 
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -267,7 +267,7 @@ impl MulAssign for CexQuote {
     }
 }
 
-#[derive(Debug, Clone, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Eq, serde::Serialize, serde::Deserialize, PartialEq, Hash)]
 pub enum CexExchange {
     Binance,
     Bitmex,
@@ -284,9 +284,9 @@ pub enum CexExchange {
     Gemini,
 }
 
-impl From<String> for CexExchange {
-    fn from(value: String) -> Self {
-        match &value {
+impl From<&str> for CexExchange {
+    fn from(value: &str) -> Self {
+        match value {
             "binance" | "Binance" => CexExchange::Binance,
             "bitmex" | "Bitmex" => CexExchange::Bitmex,
             "deribit" | "Deribit" => CexExchange::Deribit,
