@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use brontes_types::db::{
-    cex::{CexPriceMap, CexQuote},
+    cex::{CexExchange, CexPriceMap, CexQuote},
     redefined_types::{
         malachite::Redefined_Rational,
         primitives::{Redefined_Address, Redefined_Pair},
@@ -44,7 +44,7 @@ pub struct LibmdbxCexPriceMap(pub HashMap<CexExchange, HashMap<Redefined_Pair, L
 )]
 #[redefined(CexQuote)]
 pub struct LibmdbxCexQuote {
-    pub exchange:  String,
+    pub exchange:  CexExchange,
     pub timestamp: u64,
     pub price:     (Redefined_Rational, Redefined_Rational),
     pub token0:    Redefined_Address,

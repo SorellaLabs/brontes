@@ -3,7 +3,7 @@ use std::{env, path::Path};
 use alloy_primitives::Address;
 #[cfg(feature = "local")]
 use brontes_core::local_provider::LocalProvider;
-use brontes_database::libmdbx::LibmdbxReadWriter;
+use brontes_database::{cex::CexExchange, libmdbx::LibmdbxReadWriter};
 use brontes_inspect::{Inspector, Inspectors};
 use itertools::Itertools;
 use reth_tasks::TaskExecutor;
@@ -29,13 +29,18 @@ pub fn init_inspectors(
     quote_token: Address,
     db: &'static LibmdbxReadWriter,
     inspectors: Option<Vec<Inspectors>>,
+    cex_exchanges: Option<Vec<String>>,
 ) -> &'static [&'static Box<dyn Inspector>] {
+    if let Some(cex_exchanges) = cex_exchanges {
+        let cex_exchanges: Vec<CexExchange> = cex_exchanges.into_iter().map(|s| s.into()).collect();
+    }
+
     let mut res = Vec::new();
     for inspector in inspectors
         .map(|i| i.into_iter())
         .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())
     {
-        res.push(inspector.init_inspector(quote_token, db));
+        res.push(inspector.init_inspector(quote_token, db, cex_exchanges.clone()));
     }
 
     &*Box::leak(res.into_boxed_slice())

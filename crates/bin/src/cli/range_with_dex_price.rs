@@ -40,6 +40,9 @@ pub struct RangeWithDexPrice {
     /// inspectors wanted for the run. If empty will run all inspectors
     #[arg(long, short, value_delimiter = ',')]
     pub inspectors_to_run: Option<Vec<Inspectors>>,
+    /// Centralized exchanges to consider for cex-dex inspector
+    #[arg(long, short, default_values = &["Binance", "Coinbase", "Kraken", "Bybit", "Kucoin"], value_delimiter = ',')]
+    pub cex_exchanges:     Option<Vec<String>>,
 }
 impl RangeWithDexPrice {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
@@ -61,7 +64,8 @@ impl RangeWithDexPrice {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
 
-        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors_to_run);
+        let inspectors =
+            init_inspectors(quote_asset, libmdbx, self.inspectors_to_run, self.cex_exchanges);
         let tracer =
             get_tracing_provider(&Path::new(&db_path), tracing_max_tasks, task_executor.clone());
 
