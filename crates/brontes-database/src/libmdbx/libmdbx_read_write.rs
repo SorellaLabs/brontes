@@ -67,7 +67,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
-        let db_cex_quotes: CexPriceMap = match tx
+        let cex_quotes: CexPriceMap = match tx
             .get::<CexPrice>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))
         {
@@ -79,30 +79,14 @@ impl LibmdbxReader for LibmdbxReadWriter {
         };
 
         let eth_prices = if let Some(eth_usdt) =
-            db_cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
+            cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
         {
             eth_usdt
         } else {
-            db_cex_quotes
+            cex_quotes
                 .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
                 .unwrap_or_default()
         };
-
-        let mut cex_quotes = CexPriceMap::new();
-        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
-            cex_quotes.0.insert(
-                pair,
-                quote
-                    .into_iter()
-                    .map(|q| CexQuote {
-                        exchange:  q.exchange,
-                        timestamp: q.timestamp,
-                        price:     q.price,
-                        token0:    q.token0,
-                    })
-                    .collect::<Vec<_>>(),
-            );
-        });
 
         Ok(MetadataNoDex {
             block_num,
@@ -113,7 +97,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
             proposer_mev_reward: block_meta.proposer_mev_reward,
             cex_quotes,
             eth_prices: max(eth_prices.price.0, eth_prices.price.1),
-
             private_flow: block_meta.private_flow.into_iter().collect(),
             block_timestamp: block_meta.block_timestamp,
         })
@@ -125,37 +108,21 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
-        let db_cex_quotes = CexPriceMap(
+        let cex_quotes = CexPriceMap(
             tx.get::<CexPrice>(block_num)?
                 .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
                 .0,
         );
 
         let eth_prices = if let Some(eth_usdt) =
-            db_cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
+            cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
         {
             eth_usdt
         } else {
-            db_cex_quotes
+            cex_quotes
                 .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
                 .unwrap_or_default()
         };
-
-        let mut cex_quotes = CexPriceMap::new();
-        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
-            cex_quotes.0.insert(
-                pair,
-                quote
-                    .into_iter()
-                    .map(|q| CexQuote {
-                        exchange:  q.exchange,
-                        timestamp: q.timestamp,
-                        price:     q.price,
-                        token0:    q.token0,
-                    })
-                    .collect::<Vec<_>>(),
-            );
-        });
 
         let dex_quotes = Vec::new();
         let key_range = make_filter_key_range(block_num);
