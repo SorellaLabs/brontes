@@ -25,8 +25,12 @@ pub struct AtomicBackrun {
 }
 
 impl Mev for AtomicBackrun {
-    fn priority_fee_paid(&self) -> u128 {
+    fn total_gas_paid(&self) -> u128 {
         self.gas_details.gas_paid()
+    }
+
+    fn total_priority_fee_paid(&self, base_fee: u128) -> u128 {
+        self.gas_details.priority_fee(base_fee) * self.gas_details.gas_used
     }
 
     fn bribe(&self) -> u128 {
