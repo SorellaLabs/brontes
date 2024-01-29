@@ -113,7 +113,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             cex_quotes,
             eth_prices: max(eth_prices.price.0, eth_prices.price.1),
 
-            mempool_flow: block_meta.mempool_flow.into_iter().collect(),
+            private_flow: block_meta.private_flow.into_iter().collect(),
             block_timestamp: block_meta.block_timestamp,
         })
     }
@@ -183,7 +183,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 cex_quotes,
                 eth_prices: max(eth_prices.price.0, eth_prices.price.1),
                 block_timestamp: block_meta.block_timestamp,
-                mempool_flow: block_meta.mempool_flow.into_iter().collect(),
+                private_flow: block_meta.private_flow.into_iter().collect(),
             },
             dex_quotes: DexQuotes(dex_quotes),
         })
