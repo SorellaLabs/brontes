@@ -96,4 +96,5 @@ define_mev_precedence!(
     Backrun => JitSandwich;
     Sandwich => JitSandwich;
     Backrun => CexDex;
+    CexDex => Sandwich;
 );

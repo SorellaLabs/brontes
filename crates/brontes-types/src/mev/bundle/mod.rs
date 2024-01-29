@@ -78,8 +78,15 @@ pub trait Mev:
     InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
 {
     fn mev_type(&self) -> MevType;
-    // the amount of gas they paid in wei
-    fn priority_fee_paid(&self) -> u128;
+
+    /// The total amount of gas paid by the bundle in wei
+    /// This includes the coinbase transfer, if any
+    fn total_gas_paid(&self) -> u128;
+
+    /// The priority fee paid by the bundle in wei
+    /// Effective gas - base fee * gas used
+    fn total_priority_fee_paid(&self, base_fee: u128) -> u128;
+
     fn bribe(&self) -> u128;
     fn mev_transaction_hashes(&self) -> Vec<B256>;
 }
