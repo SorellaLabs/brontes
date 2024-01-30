@@ -85,6 +85,12 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
     pub fn can_progress(&self, block: &u64) -> bool {
         self.req_per_block.get(block).copied().unwrap_or(0) == 0
+            && self
+                .parent_pair_state_loading
+                .values()
+                .filter(|(state_block, _)| block == state_block)
+                .count()
+                == 0
     }
 
     pub fn is_loading_block(&self, k: &Address) -> Option<Vec<u64>> {
