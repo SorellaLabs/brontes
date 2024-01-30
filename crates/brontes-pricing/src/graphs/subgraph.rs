@@ -6,6 +6,7 @@ use std::{
     },
     hash::Hash,
 };
+use tracing::error;
 
 use alloy_primitives::Address;
 use itertools::Itertools;
@@ -199,8 +200,12 @@ impl PairSubGraph {
         allowed_low_liq_nodes: &HashMap<Pair, Address>,
         ignore_list: &HashSet<Pair>,
     ) -> VerificationOutcome {
-        let mut result =
-            self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
+        let mut result = self.run_bfs_with_liquidity_params(
+            start,
+            &state,
+            all_pair_graph,
+            ignore_list,
+        );
 
         self.prune_subgraph(&result.removal_state);
 
@@ -489,7 +494,10 @@ impl PairSubGraph {
         let mut visited = HashSet::new();
         let mut visit_next = VecDeque::new();
 
-        let Some(start) = self.token_to_index.get(&start) else { return R::default() };
+        let Some(start) = self.token_to_index.get(&start) else {
+            error!(?start, "no start node for bfs with price");
+            return R::default() 
+        };
 
         let direction = *start == self.start_node;
 
