@@ -3,11 +3,8 @@ use brontes_types::db::{
     redefined_types::primitives::{Redefined_Address, Redefined_TxHash, Redefined_U256},
 };
 use redefined::{Redefined, RedefinedConvert};
-use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use super::{LibmdbxData, ReturnKV};
-use crate::libmdbx::Metadata;
+use super::LibmdbxData;
 
 #[derive(
     Debug,
