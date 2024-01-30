@@ -22,6 +22,7 @@ use malachite::{
 };
 use redefined::{self_convert_redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
+use strum::Display;
 
 use crate::{constants::*, pair::Pair};
 

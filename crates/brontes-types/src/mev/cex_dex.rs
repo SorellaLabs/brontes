@@ -9,7 +9,11 @@ use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
-use crate::{db::cex::CexExchange, normalized_actions::ClickhouseVecNormalizedSwap, Protocol};
+use crate::{
+    db::cex::CexExchange,
+    normalized_actions::{ClickhouseVecNormalizedSwap, ClickhouseVecStatArbDetails},
+    Protocol,
+};
 #[allow(unused_imports)]
 use crate::{
     display::utils::{display_sandwich, print_mev_type_header},
@@ -69,6 +73,17 @@ impl Serialize for CexDex {
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
 
+        let stat_arb_details: ClickhouseVecStatArbDetails = self.prices.clone().into();
+
+        ser_struct
+            .serialize_field("stat_arb_details.cex_exchange", &stat_arb_details.cex_exchange)?;
+        ser_struct.serialize_field("stat_arb_details.cex_price", &stat_arb_details.cex_price)?;
+        ser_struct
+            .serialize_field("stat_arb_details.dex_exchange", &stat_arb_details.dex_exchange)?;
+        ser_struct.serialize_field("stat_arb_details.dex_price", &stat_arb_details.dex_price)?;
+        ser_struct
+            .serialize_field("stat_arb_details.profit_pre_gas", &stat_arb_details.profit_pre_gas)?;
+
         let gas_details = (
             self.gas_details.coinbase_transfer,
             self.gas_details.priority_fee,
@@ -77,16 +92,6 @@ impl Serialize for CexDex {
         );
 
         ser_struct.serialize_field("gas_details", &(gas_details))?;
-
-        ser_struct.serialize_field(
-            "prices.address",
-            &(self
-                .prices_address
-                .iter()
-                .map(|addr| FixedString::from(format!("{:?}", addr)))
-                .collect_vec()),
-        )?;
-        ser_struct.serialize_field("prices.price", &(self.prices_price))?;
 
         ser_struct.end()
     }
@@ -103,6 +108,11 @@ impl DbRow for CexDex {
         "swaps.token_out",
         "swaps.amount_in",
         "swaps.amount_out",
+        "stat_arb_details.cex_exchange",
+        "stat_arb_details.cex_price",
+        "stat_arb_details.dex_exchange",
+        "stat_arb_details.dex_price",
+        "stat_arb_details.profit_pre_gas",
         "gas_details",
     ];
 }
