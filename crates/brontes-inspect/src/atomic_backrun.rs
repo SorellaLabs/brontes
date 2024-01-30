@@ -4,7 +4,6 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     mev::{AtomicBackrun, Bundle, MevType, TokenProfit, TokenProfits},
     normalized_actions::{Actions, NormalizedSwap},
-    pair::Pair,
     tree::{BlockTree, GasDetails},
     ToFloatNearest,
 };
