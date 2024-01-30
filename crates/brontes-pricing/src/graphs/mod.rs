@@ -169,7 +169,7 @@ impl GraphManager {
 
     pub fn verify_subgraph_on_new_path_failure(&mut self, pair: Pair) -> Option<Vec<Pair>> {
         self.subgraph_verifier
-            .verify_subgraph_on_new_path_failure(pair)
+            .verify_subgraph_on_new_path_failure(pair.ordered())
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
