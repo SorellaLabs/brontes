@@ -23,6 +23,7 @@ pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
         },
         |node| (node.index, node.data.clone()),
         |other_nodes, node| {
+            // calcuate the
             let Actions::Swap(swap_data) = &node.data else { unreachable!() };
             other_nodes
                 .into_iter()
@@ -206,10 +207,10 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     // tokens than the swap says
                     if swap.token_out == transfer.token
                         && swap.pool == transfer.from
-                        && swap.recipient == transfer.token
+                        && swap.recipient == transfer.token.address
                         && swap.amount_out > transfer.amount
                     {
-                        let fee_amount = swap.amount_out - transfer.amount;
+                        let fee_amount = swap.amount_out - &transfer.amount;
                         swap.amount_out = transfer.amount;
 
                         let swap = Actions::SwapWithFee(NormalizedSwapWithFee {

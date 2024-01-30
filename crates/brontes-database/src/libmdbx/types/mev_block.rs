@@ -1,7 +1,11 @@
 use brontes_types::{
     db::{
         mev_block::MevBlockWithClassified,
-        redefined_types::primitives::{Redefined_Address, Redefined_FixedBytes, Redefined_Uint},
+        redefined_types::{
+            malachite::Redefined_Rational,
+            primitives::{Redefined_Address, Redefined_FixedBytes},
+        },
+        token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{
         AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
@@ -9,7 +13,7 @@ use brontes_types::{
         PossibleMevCollection, PossibleMevTriggers, Sandwich, TokenProfit, TokenProfits,
     },
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    GasDetails, PriceKind,
+    GasDetails, PriceKind, Protocol,
 };
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
@@ -377,16 +381,33 @@ pub struct LibmdbxLiquidation {
     Clone,
     Redefined,
 )]
+#[redefined(TokenInfoWithAddress)]
+pub struct LibmdbxTokenInfoWithAddress {
+    pub inner:   TokenInfo,
+    pub address: Redefined_Address,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
 #[redefined(NormalizedSwap)]
 pub struct LibmdbxNormalizedSwap {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Redefined_Address,
     pub recipient:   Redefined_Address,
     pub pool:        Redefined_Address,
-    pub token_in:    Redefined_Address,
-    pub token_out:   Redefined_Address,
-    pub amount_in:   Redefined_Uint<256, 4>,
-    pub amount_out:  Redefined_Uint<256, 4>,
+    pub token_in:    LibmdbxTokenInfoWithAddress,
+    pub token_out:   LibmdbxTokenInfoWithAddress,
+    pub amount_in:   Redefined_Rational,
+    pub amount_out:  Redefined_Rational,
 }
 
 #[derive(
@@ -401,14 +422,15 @@ pub struct LibmdbxNormalizedSwap {
 )]
 #[redefined(NormalizedLiquidation)]
 pub struct LibmdbxNormalizedLiquidation {
+    pub protocol:              Protocol,
     pub trace_index:           u64,
     pub pool:                  Redefined_Address,
     pub liquidator:            Redefined_Address,
     pub debtor:                Redefined_Address,
-    pub collateral_asset:      Redefined_Address,
-    pub debt_asset:            Redefined_Address,
-    pub covered_debt:          Redefined_Uint<256, 4>,
-    pub liquidated_collateral: Redefined_Uint<256, 4>,
+    pub collateral_asset:      LibmdbxTokenInfoWithAddress,
+    pub debt_asset:            LibmdbxTokenInfoWithAddress,
+    pub covered_debt:          Redefined_Rational,
+    pub liquidated_collateral: Redefined_Rational,
 }
 
 #[derive(
@@ -423,12 +445,13 @@ pub struct LibmdbxNormalizedLiquidation {
 )]
 #[redefined(NormalizedBurn)]
 pub struct LibmdbxNormalizedBurn {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Redefined_Address,
     pub to:          Redefined_Address,
     pub recipient:   Redefined_Address,
-    pub token:       Vec<Redefined_Address>,
-    pub amount:      Vec<Redefined_Uint<256, 4>>,
+    pub token:       Vec<LibmdbxTokenInfoWithAddress>,
+    pub amount:      Vec<Redefined_Rational>,
 }
 
 #[derive(
@@ -443,10 +466,11 @@ pub struct LibmdbxNormalizedBurn {
 )]
 #[redefined(NormalizedMint)]
 pub struct LibmdbxNormalizedMint {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Redefined_Address,
     pub to:          Redefined_Address,
     pub recipient:   Redefined_Address,
-    pub token:       Vec<Redefined_Address>,
-    pub amount:      Vec<Redefined_Uint<256, 4>>,
+    pub token:       Vec<LibmdbxTokenInfoWithAddress>,
+    pub amount:      Vec<Redefined_Rational>,
 }

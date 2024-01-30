@@ -23,6 +23,7 @@ action_impl!(
         let fill_event = logs_data.Fill_field;
 
         Some(NormalizedBatch {
+            protocol: Protocol::UniswapX,
             trace_index,
             solver: fill_event.filler,
             settlement_contract: target_address,
@@ -45,6 +46,7 @@ action_impl!(
     _call_data: executeBatchCall,
     _db_tx: &DB| {
         Some(NormalizedBatch {
+            protocol: Protocol::UniswapX,
             trace_index,
             solver: from_address,
             settlement_contract: target_address,
@@ -69,6 +71,7 @@ action_impl!(
     _log_data: UniswapXexecuteBatchWithCallbackCallLogs,
     _db_tx: &DB| {
         Some(NormalizedBatch {
+            protocol: Protocol::UniswapX,
             trace_index,
             solver: from_address,
             settlement_contract: target_address,
@@ -91,6 +94,7 @@ action_impl!(
     _call_data: executeWithCallbackCall,
     _db_tx: &DB| {
         Some(NormalizedBatch {
+            protocol: Protocol::UniswapX,
             trace_index,
             solver: from_address,
             settlement_contract: target_address,
