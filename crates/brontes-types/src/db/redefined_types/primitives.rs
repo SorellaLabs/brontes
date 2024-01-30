@@ -26,6 +26,7 @@ UInt
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 #[redefined(Uint)]
 #[redefined_attr(to_source = "Uint::from_limbs(self.limbs)")]
 pub struct Redefined_Uint<const BITS: usize, const LIMBS: usize> {
@@ -93,6 +94,7 @@ FixedBytes
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 #[archive(compare(PartialEq))]
 #[redefined(FixedBytes)]
 #[redefined_attr(to_source = "FixedBytes::from_slice(&self.0)")]
@@ -167,6 +169,7 @@ Address
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 #[archive(compare(PartialEq))]
 //#[archive_attr(derive(PartialEq, Eq))]
 #[redefined(Address)]
@@ -204,6 +207,7 @@ Pair
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(Pair)]
 pub struct Redefined_Pair(Redefined_Address, Redefined_Address);
 
@@ -257,6 +261,7 @@ alloy_primitives::Bytes
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(Alloy_Bytes)]
 #[redefined_attr(to_source = "self.0.into()", from_source = "Self(src.to_vec())")]
 pub struct Redefined_Alloy_Bytes(pub Vec<u8>);

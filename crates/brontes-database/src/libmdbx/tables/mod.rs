@@ -178,7 +178,8 @@ macro_rules! implement_table_value_codecs_with_zc {
         impl alloy_rlp::Decodable for $table_value {
             fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
                 let archived: &paste!([<Archived $table_value>]) =
-                    unsafe { rkyv::archived_root::<Self>(buf) };
+                    rkyv::check_archived_root::<Self>(&buf[..]).unwrap();
+
 
                 let this = rkyv::Deserialize::deserialize(archived, &mut rkyv::Infallible).unwrap();
 

@@ -35,6 +35,7 @@ impl LibmdbxData<AddressToTokens> for AddressToTokensData {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PoolTokens)]
 pub struct LibmdbxPoolTokens {
     pub token0:     Redefined_Address,
