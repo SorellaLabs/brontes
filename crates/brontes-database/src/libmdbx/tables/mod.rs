@@ -225,7 +225,11 @@ macro_rules! compressed_table {
     (Table $(#[$attrs:meta])* $table_name:ident { $($head:tt)* }) => {
         compressed_table!($(#[$attrs:meta])* $table_name {} $($head)*);
     };
-    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident { $($acc:tt)* } $(,)* ) => {
+    (
+        $(#[$attrs:meta])* $table_name:ident,
+        $c_val:ident, $decompressed_value:ident, $key:ident
+        { $($acc:tt)* } $(,)*
+    ) => {
         $(#[$attrs])*
         #[doc = concat!("Takes [`", stringify!($key), "`] as a key and returns [`", stringify!($value), "`].")]
         #[derive(Clone, Copy, Debug, Default)]
@@ -245,13 +249,31 @@ macro_rules! compressed_table {
 
         $($acc)*
     };
-    ($(#[$attrs:meta])* $table_name:ident { $($acc:tt)* } $(#[$dattrs:meta])* Data { $(#[$kattrs:meta])* key: $key:ident, $(#[$vattrs:meta])* value: $val:ident, $(#[$vcattrs:meta])* compressed_value: $c_val:ident },  $($tail:tt)*) => {
+    (
+        $(#[$attrs:meta])* $table_name:ident
+        { $($acc:tt)* } $(#[$dattrs:meta])*
+        Data {
+            $(#[$kattrs:meta])* key: $key:ident,
+            $(#[$vattrs:meta])* value: $val:ident,
+            $(#[$vcattrs:meta])* compressed_value: $c_val:ident
+        },  $($tail:tt)*) => {
         implement_table_value_codecs_with_zc!($c_val);
-        compressed_table!($(#[$attrs])* $table_name { $($acc)* } Data  { $(#[$kattrs])* key: $key, $(#[$vattrs])* value: $val, $(#[$vcattrs])* compressed_value: $c_val false }, $($tail)*);
+        compressed_table!($(#[$attrs])* $table_name { $($acc)* }
+                          Data  {
+                              $(#[$kattrs])* key: $key,
+                              $(#[$vattrs])* value: $val,
+                              $(#[$vcattrs])* compressed_value: $c_val false
+                          }, $($tail)*);
 
     };
     // parse key value compressed
-    ($(#[$attrs:meta])* $table_name:ident { $($acc:tt)* } $(#[$dattrs:meta])* Data { $(#[$kattrs:meta])* key: $key:ident, $(#[$vattrs:meta])* value: $val:ident, $(#[$vcattrs:meta])* compressed_value: $c_val:ident false},  $($tail:tt)*) => {
+    ($(#[$attrs:meta])* $table_name:ident
+     { $($acc:tt)* } $(#[$dattrs:meta])*
+        Data {
+            $(#[$kattrs:meta])* key: $key:ident,
+            $(#[$vattrs:meta])* value: $val:ident,
+            $(#[$vcattrs:meta])* compressed_value: $c_val:ident false
+        },  $($tail:tt)*) => {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $val, $key {
         $($acc)*
         paste!(
@@ -291,11 +313,22 @@ macro_rules! compressed_table {
         );
     } $($tail)*);
     };
-    ($(#[$attrs:meta])* $table_name:ident { $($acc:tt)* } $(#[$dattrs:meta])* Data { $(#[$kattrs:meta])* key: $key:ident, $(#[$vattrs:meta])* value: $val:ident },  $($tail:tt)*) => {
-        compressed_table!($(#[$attrs])* $table_name { $($acc)* } $(#[$dattrs])*  Data  { $(#[$kattrs])* key: $key, $(#[$vattrs])* value: $val, $(#[$vattrs])* compressed_value: $val false }, $($tail)*);
+    ($(#[$attrs:meta])* $table_name:ident { $($acc:tt)* } $(#[$dattrs:meta])*
+     Data {
+         $(#[$kattrs:meta])* key: $key:ident,
+         $(#[$vattrs:meta])* value: $val:ident
+     },  $($tail:tt)*) => {
+        compressed_table!($(#[$attrs])* $table_name { $($acc)* } $(#[$dattrs])*
+                          Data  {
+                              $(#[$kattrs])* key: $key,
+                              $(#[$vattrs])* value: $val,
+                              $(#[$vattrs])* compressed_value: $val false
+                          }, $($tail)*);
 
     };
-    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Clickhouse },  $($tail:tt)*) => {
+    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
+     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Clickhouse },
+     $($tail:tt)*) => {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
             $($acc)*
         impl CompressedTable for $table_name {
@@ -305,7 +338,9 @@ macro_rules! compressed_table {
         }
         } $($tail)*);
     };
-    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Other },  $($tail:tt)*) => {
+    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
+     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Other },
+     $($tail:tt)*) => {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
             $($acc)*
         impl CompressedTable for $table_name {
@@ -315,7 +350,8 @@ macro_rules! compressed_table {
         }
         } $($tail)*);
     };
-    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident { $($acc:tt)* } CLI { can_insert: False }  $($tail:tt)*) => {
+    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
+     { $($acc:tt)* } CLI { can_insert: False }  $($tail:tt)*) => {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
             $($acc)*
         impl IntoTableKey<&str, $key, paste!([<$table_name Data>])> for $table_name {
@@ -330,7 +366,8 @@ macro_rules! compressed_table {
         }
         } $($tail)*);
     };
-    ($(#[$attrs:meta])* $table_name:ident,$c_val:ident, $decompressed_value:ident, $key:ident { $($acc:tt)* } CLI { can_insert: True }  $($tail:tt)*) => {
+    ($(#[$attrs:meta])* $table_name:ident,$c_val:ident, $decompressed_value:ident, $key:ident
+     { $($acc:tt)* } CLI { can_insert: True }  $($tail:tt)*) => {
 
         compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
             $($acc)*

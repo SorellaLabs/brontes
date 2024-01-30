@@ -15,10 +15,6 @@ use reth_rpc_types::trace::parity::{
     SelfdestructAction, TraceOutput, TransactionTrace,
 };
 use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, clickhouse::Row};
-
-use super::{LibmdbxData, ReturnKV};
-use crate::libmdbx::TxTraces;
 
 #[serde_as]
 #[derive(
