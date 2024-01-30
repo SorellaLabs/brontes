@@ -128,6 +128,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             metadata
                 .dex_quotes
                 .price_at_or_before(pair, block_position)?
+                .get_price(post_state)
                 * amount,
         )
     }

@@ -405,7 +405,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         token
             .zip(amount)
             .filter_map(|(token, amount)| {
-                Some(self.inner.get_dex_usd_price(idx, token, metadata.clone())? * amount)
+                Some(
+                    self.inner
+                        .get_dex_usd_price(idx, true, token, metadata.clone())?
+                        * amount,
+                )
             })
             .sum::<Rational>()
     }
