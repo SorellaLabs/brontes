@@ -18,7 +18,7 @@ WITH
         SELECT 
             aggr.block_number AS block_number,
             aggr.pair AS pair,
-            groupArray((aggr.exchange, aggr.cex_timestamp, (aggr.ask_price, aggr.bid_price), aggr.pair.1)) AS metadata
+            groupArray((aggr.exchange, aggr.cex_timestamp, (aggr.ask_price, aggr.bid_price), aggr.pair.0)) AS metadata
         FROM aggr
         GROUP BY block_number, pair
     )
