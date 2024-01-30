@@ -10,13 +10,10 @@ reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 reth-codecs.workspace = true
 reth-tasks.workspace = true
-
-
 reth-db.workspace = true
 async-trait.workspace = true
 reth-interfaces.workspace = true
 reth-rpc.workspace = true
-
 
 # alloy
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
@@ -28,6 +25,7 @@ tracing.workspace = true
 rayon.workspace = true
 tokio = { workspace = true, features = ["full"] }
 paste = "1.0.14"
+futures.workspace = true
 
 # numbers
 malachite = { workspace = true, features = ["enable_serde"] }
@@ -61,6 +59,7 @@ bytes.workspace = true
 colored.workspace = true
 indoc = "2"
 zstd = "0.13"
+pin-project = "1.1.4"
 
 # stats
 statrs = "0.16"

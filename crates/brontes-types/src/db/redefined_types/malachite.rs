@@ -6,8 +6,6 @@ use redefined::{Redefined, RedefinedConvert};
 
 Rational
 
-
-
 */
 #[derive(
     Debug,
