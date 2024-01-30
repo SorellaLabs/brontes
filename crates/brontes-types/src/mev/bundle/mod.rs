@@ -76,6 +76,20 @@ pub enum MevType {
     Unknown     = 6,
 }
 
+impl MevType {
+    pub fn use_cex_pricing_for_deltas(&self) -> bool {
+        match self {
+            MevType::Sandwich
+            | MevType::JitSandwich
+            | MevType::Jit
+            | MevType::Backrun
+            | MevType::Liquidation
+            | MevType::Unknown => false,
+            MevType::CexDex => true,
+        }
+    }
+}
+
 pub trait Mev:
     InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
 {

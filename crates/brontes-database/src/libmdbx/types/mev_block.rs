@@ -170,16 +170,15 @@ pub struct LibmdbxPossibleMevTriggers {
 #[archive(check_bytes)]
 #[redefined(BundleHeader)]
 pub struct LibmdbxBundleHeader {
-    pub block_number:         u64,
-    pub tx_index:             u64,
-    pub tx_hash:              Redefined_FixedBytes<32>,
-    pub eoa:                  Redefined_Address,
-    pub mev_contract:         Redefined_Address,
-    pub mev_profit_collector: Vec<Redefined_Address>,
-    pub profit_usd:           f64,
-    pub token_profits:        LibmdbxTokenProfits,
-    pub bribe_usd:            f64,
-    pub mev_type:             MevType,
+    pub block_number:  u64,
+    pub tx_index:      u64,
+    pub tx_hash:       Redefined_FixedBytes<32>,
+    pub eoa:           Redefined_Address,
+    pub mev_contract:  Redefined_Address,
+    pub profit_usd:    f64,
+    pub token_profits: LibmdbxTokenProfits,
+    pub bribe_usd:     f64,
+    pub mev_type:      MevType,
 }
 
 #[derive(
