@@ -235,7 +235,7 @@ impl AllPairGraph {
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
             5,
-            5_000,
+            25_000,
         )
         .into_iter()
         .map(|(nodes, _)| {
