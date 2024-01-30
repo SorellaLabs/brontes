@@ -1,14 +1,12 @@
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use brontes_types::db::{
-    dex::{DexQuote, DexQuoteWithIndex},
+    dex::DexQuoteWithIndex,
     redefined_types::{malachite::Redefined_Rational, primitives::Redefined_Pair},
 };
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::DatabaseError;
-use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{LibmdbxData, ReturnKV};
-use crate::libmdbx::DexPrice;
+use super::LibmdbxData;
 
 wrap_fixed_bytes!(
     extra_derives: [],
@@ -26,31 +24,6 @@ impl reth_db::table::Encode for DexKey {
 impl reth_db::table::Decode for DexKey {
     fn decode<B: AsRef<[u8]>>(value: B) -> Result<Self, DatabaseError> {
         Ok(DexKey::from_slice(value.as_ref()))
-    }
-}
-
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct DexPriceData {
-    key:   DexKey,
-    quote: DexQuote,
-}
-
-impl DexPriceData {
-    pub fn new(block: u64, tx_idx: u16, quote: DexQuote) -> Self {
-        Self { key: make_key(block, tx_idx), quote }
-    }
-}
-
-impl LibmdbxData<DexPrice> for DexPriceData {
-    fn into_key_val(&self) -> ReturnKV<DexPrice> {
-        (
-            self.key,
-            DexQuoteWithIndex {
-                tx_idx: u16::from_be_bytes(FixedBytes::<2>::from_slice(&self.key[8..]).0),
-                quote:  self.quote.clone().into(),
-            },
-        )
-            .into()
     }
 }
 
