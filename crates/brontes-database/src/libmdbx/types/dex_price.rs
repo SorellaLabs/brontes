@@ -79,6 +79,7 @@ pub fn make_filter_key_range(block_number: u64) -> (DexKey, DexKey) {
     rkyv::Serialize,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(DexQuoteWithIndex)]
 pub struct LibmdbxDexQuoteWithIndex {
     pub tx_idx: u16,

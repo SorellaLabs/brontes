@@ -40,7 +40,7 @@ impl Pair {
         }
     }
 
-    /// returns ordered version aswell as if the order changed
+    /// returns ordered version as well as if the order changed
     pub fn ordered_changed(&self) -> (bool, Self) {
         if self.0 <= self.1 {
             (false, Pair(self.0, self.1))

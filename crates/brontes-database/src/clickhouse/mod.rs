@@ -47,7 +47,7 @@ impl Clickhouse {
 
         // eth price is in cex_prices
         let _eth_prices = cex_prices
-            .get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
+            .get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
             .unwrap()
             .clone();
 
@@ -144,12 +144,15 @@ impl Clickhouse {
             .into()
     }
 
-    async fn get_cex_token_prices(&self, p2p_time: u64) -> CexPriceMap {
-        self.client
-            .query_many::<ClickhouseTokenPrices>(PRICES, &(p2p_time))
-            .await
-            .unwrap()
-            .into()
+    async fn get_cex_token_prices(&self, _p2p_time: u64) -> CexPriceMap {
+        CexPriceMap::default()
+
+        /*self.client
+        .query_many::<ClickhouseTokenPrices>(PRICES, &(p2p_time))
+        .await
+        .unwrap()
+        .into()
+        */
     }
 }
 

@@ -903,7 +903,7 @@ impl UniswapV3Pool {
         middleware: Arc<M>,
     ) -> Result<i32, AmmError> {
         let call = IUniswapV3Pool::tickSpacingCall::new(());
-        let res = make_call_request(call, middleware, self.address, None).await?;
+        let res = make_call_request(call, &middleware, self.address, None).await?;
         Ok(res._0)
     }
 
@@ -961,7 +961,7 @@ impl UniswapV3Pool {
     ) -> Result<IUniswapV3Pool::slot0Return, AmmError> {
         Ok(make_call_request(
             IUniswapV3Pool::slot0Call::new(()),
-            middleware,
+            &middleware,
             self.address,
             Some(block),
         )

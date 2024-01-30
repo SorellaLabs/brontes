@@ -36,6 +36,9 @@ pub struct RunArgs {
     /// inspectors wanted for the run. If empty will run all inspectors
     #[arg(long, short, value_delimiter = ',')]
     pub inspectors_to_run: Option<Vec<Inspectors>>,
+    /// Centralized exchanges to consider for cex-dex inspector
+    #[arg(long, short, default_values = &["Binance", "Coinbase", "Kraken", "Bybit", "Kucoin"], value_delimiter = ',')]
+    pub cex_exchanges:     Option<Vec<String>>,
 }
 impl RunArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
@@ -59,7 +62,8 @@ impl RunArgs {
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
         let clickhouse = static_object(Clickhouse::default());
 
-        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors_to_run);
+        let inspectors =
+            init_inspectors(quote_asset, libmdbx, self.inspectors_to_run, self.cex_exchanges);
 
         let tracer = get_tracing_provider(&Path::new(&db_path), max_tasks, task_executor.clone());
 
