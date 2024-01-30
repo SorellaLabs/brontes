@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
 use brontes_types::pair::Pair;
@@ -6,7 +6,7 @@ use itertools::Itertools;
 use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 
 use super::{subgraph::PairSubGraph, PoolState};
-use crate::{price_graph_types::*, types::PoolUpdate, Protocol};
+use crate::{price_graph_types::*, Protocol};
 
 /// stores all sub-graphs and supports the update mechanisms
 #[derive(Debug)]
@@ -17,12 +17,6 @@ pub struct SubGraphRegistry {
     token_to_sub_graph: HashMap<Address, HashSet<Pair>>,
     /// all currently known sub-graphs
     sub_graphs:         HashMap<Pair, PairSubGraph>,
-    /// This is used to store a given pools tvl.
-    /// we do this here so that all subpools just have a pointer
-    /// to this data which allows us to not worry about updating all subgraphs
-    /// when the tvl of a pool changes.
-    /// pool address -> pool tvl
-    edge_state:         HashMap<Address, PoolState>,
 }
 
 impl SubGraphRegistry {
@@ -41,15 +35,10 @@ impl SubGraphRegistry {
                 (pair, PairSubGraph::init(pair, edges))
             })
             .collect();
-        Self { token_to_sub_graph, sub_graphs, edge_state: HashMap::default() }
+        Self { token_to_sub_graph, sub_graphs }
     }
 
-    pub fn add_verified_subgraph(
-        &mut self,
-        state: HashMap<Address, PoolState>,
-        pair: Pair,
-        subgraph: PairSubGraph,
-    ) {
+    pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph) {
         // add all tokens
         subgraph
             .get_all_pools()
@@ -66,20 +55,6 @@ impl SubGraphRegistry {
                     .insert(pair);
             });
 
-        state.into_iter().for_each(|(pool_addr, pool_state)| {
-            // if new new subgraph edge state is from a older block, we replace it.
-            match self.edge_state.entry(pool_addr) {
-                Entry::Occupied(mut o) => {
-                    if o.get().last_update > pool_state.last_update {
-                        *o.get_mut() = pool_state;
-                    }
-                }
-                Entry::Vacant(v) => {
-                    v.insert(pool_state);
-                }
-            }
-        });
-
         if self.sub_graphs.insert(pair.ordered(), subgraph).is_some() {
             tracing::error!(?pair, "already had a verified sub-graph for pair");
         }
@@ -87,10 +62,6 @@ impl SubGraphRegistry {
 
     pub fn has_subpool(&self, pair: &Pair) -> bool {
         self.sub_graphs.contains_key(&pair)
-    }
-
-    pub fn get_edge_state(&self) -> &HashMap<Address, PoolState> {
-        &self.edge_state
     }
 
     pub fn bad_pool_state(
@@ -154,41 +125,16 @@ impl SubGraphRegistry {
             .collect_vec()
     }
 
-    pub fn all_unloaded_state(&self, edges: &Vec<SubGraphEdge>) -> Vec<PoolPairInfoDirection> {
-        edges
-            .into_iter()
-            .filter(|e| !self.edge_state.contains_key(&e.pool_addr))
-            .map(|f| f.info)
-            .collect_vec()
-    }
-
-    pub fn update_pool_state(&mut self, pool_address: Address, update: PoolUpdate) {
-        self.edge_state
-            .get_mut(&pool_address)
-            .map(|state| state.increment_state(update));
-    }
-
-    pub fn new_pool_state(
-        &mut self,
-        address: Address,
-        state: PoolState,
-    ) -> Vec<(Pair, Vec<SubGraphEdge>)> {
-        let dex = state.dex();
-        let pair = state.pair();
-        self.edge_state.insert(address, state);
-        self.try_extend_subgraphs(address, dex, pair)
-    }
-
-    pub fn get_price(&self, unordered_pair: Pair) -> Option<Rational> {
+    pub fn get_price(
+        &self,
+        unordered_pair: Pair,
+        edge_state: &HashMap<Address, PoolState>,
+    ) -> Option<Rational> {
         let (swapped, pair) = unordered_pair.ordered_changed();
 
         self.sub_graphs
             .get(&pair)
-            .and_then(|graph| graph.fetch_price(&self.edge_state))
+            .and_then(|graph| graph.fetch_price(edge_state))
             .map(|res| if swapped { res.reciprocal() } else { res })
-    }
-
-    pub fn has_state(&self, addr: &Address) -> bool {
-        self.edge_state.contains_key(addr)
     }
 }
