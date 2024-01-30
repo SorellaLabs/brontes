@@ -16,8 +16,9 @@ use tokio::task::JoinHandle;
 use tracing::{error, info};
 
 use crate::{
-    errors::AmmError, types::PoolState, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
-    PoolPairInfoDirection, PoolPairInformation, PoolUpdate, Protocol, SubGraphEdge,
+    errors::AmmError, protocols::LoadState, types::PoolState, uniswap_v2::UniswapV2Pool,
+    uniswap_v3::UniswapV3Pool, PoolPairInfoDirection, PoolPairInformation, PoolUpdate, Protocol,
+    SubGraphEdge,
 };
 
 pub(crate) type PoolFetchError = (Address, Protocol, u64, Pair, AmmError);
