@@ -202,6 +202,11 @@ impl PairSubGraph {
     ) -> VerificationOutcome {
         let mut result =
             self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
+        if self.graph.edges(self.end_node.into()).collect_vec().len() == 0
+            || self.graph.edges(self.start_node.into()).collect_vec().len() == 0
+        {
+            error!("subgraph tryied verificiation no start or end node lmao");
+        }
 
         self.prune_subgraph(&result.removal_state);
 
