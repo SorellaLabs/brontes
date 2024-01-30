@@ -106,9 +106,7 @@ impl StateTracker {
     }
 
     pub fn update_pool_state(&mut self, address: Address, update: PoolUpdate) {
-        let Some(state) = self.finalized_edge_state.get_mut(&address) else {
-            return
-        };
+        let Some(state) = self.finalized_edge_state.get_mut(&address) else { return };
 
         state.increment_state(update);
     }

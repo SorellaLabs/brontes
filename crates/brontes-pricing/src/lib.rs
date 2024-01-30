@@ -122,19 +122,19 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.current_block = msg.block;
             }
         }
+        // insert new pools accessed on this block.
         updates
             .iter()
             .filter_map(|update| {
                 let (protocol, pair) = self.new_graph_pairs.remove(&update.get_pool_address())?;
-                Some((update.get_pool_address(), protocol, pair))
+                Some((update.get_pool_address(), protocol, pair, update.block))
             })
-            .for_each(|(pool_addr, protocol, pair)| {
+            .for_each(|(pool_addr, protocol, pair, block)| {
                 self.graph_manager
-                    .add_pool(pair, pool_addr, protocol, self.current_block);
+                    .add_pool(pair, pool_addr, protocol, block);
             });
 
-        let (state, pools) =
-            graph_search_par(&self.graph_manager, self.quote_asset, self.current_block, updates);
+        let (state, pools) = graph_search_par(&self.graph_manager, self.quote_asset, updates);
 
         state.into_iter().flatten().for_each(|(addr, update)| {
             let block = update.block;
@@ -145,18 +145,21 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .push_back((addr, update));
         });
 
-        pools.into_iter().flatten().for_each(|(graph_edges, pair)| {
-            if graph_edges.is_empty() {
-                error!(?pair, "new pool has no graph edges");
-                return
-            }
+        pools
+            .into_iter()
+            .flatten()
+            .for_each(|(graph_edges, pair, block)| {
+                if graph_edges.is_empty() {
+                    error!(?pair, "new pool has no graph edges");
+                    return
+                }
 
-            if self.graph_manager.has_subgraph(pair) {
-                return
-            }
+                if self.graph_manager.has_subgraph(pair) {
+                    return
+                }
 
-            self.add_subgraph(pair, self.current_block, graph_edges);
-        });
+                self.add_subgraph(pair, block, graph_edges);
+            });
     }
 
     fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
@@ -300,14 +303,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
+
+            let pairs = self.lazy_loader.pairs_to_verify();
+            self.try_verify_subgraph(pairs);
         } else if let LoadResult::Err { pool_address, pool_pair, block, dependent_pairs } =
             load_result
         {
             self.on_state_load_error(pool_pair, pool_address, block, dependent_pairs);
         }
-
-        let pairs = self.lazy_loader.pairs_to_verify();
-        self.try_verify_subgraph(pairs);
     }
 
     fn on_state_load_error(
@@ -720,9 +723,8 @@ const fn make_fake_swap(pair: Pair) -> Actions {
 fn graph_search_par(
     graph: &GraphManager,
     quote: Address,
-    block: u64,
     updates: Vec<PoolUpdate>,
-) -> (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair)>>) {
+) -> (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64)>>) {
     let (state, pools): (Vec<_>, Vec<_>) = updates
         .into_par_iter()
         .map(|msg| {
@@ -732,7 +734,6 @@ fn graph_search_par(
 
             let (state, path) = on_new_pool_pair(
                 graph,
-                block,
                 msg,
                 (!graph.has_subgraph(pair0)).then_some(pair0),
                 (!graph.has_subgraph(pair1)).then_some(pair1),
@@ -759,11 +760,12 @@ fn par_state_query(
 
 fn on_new_pool_pair(
     graph: &GraphManager,
-    block: u64,
     msg: PoolUpdate,
     pair0: Option<Pair>,
     pair1: Option<Pair>,
-) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair)>) {
+) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64)>) {
+    let block = msg.block;
+
     let mut buf_pending = Vec::new();
     let mut path_pending = Vec::new();
 
@@ -809,14 +811,14 @@ fn queue_loading_returns(
     block: u64,
     pair: Pair,
     trigger_update: PoolUpdate,
-) -> Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair))> {
+) -> Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair, u64))> {
     if pair.0 == pair.1 {
         return None
     }
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
         let subgraph = graph.create_subgraph(block, pair, HashSet::new());
-        (subgraph, pair)
+        (subgraph, pair, trigger_update.block)
     }))
 }
 
