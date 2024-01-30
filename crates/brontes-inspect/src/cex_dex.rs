@@ -6,7 +6,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    PriceKind, ToFloatNearest, ToScaledRational,
+    PriceKind, ToFloatNearest,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::{
@@ -14,7 +14,7 @@ use rayon::{
     prelude::IntoParallelRefIterator,
 };
 use reth_primitives::{Address, B256};
-use tracing::{debug, error, trace};
+use tracing::{debug, trace};
 
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
