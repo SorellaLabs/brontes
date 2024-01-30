@@ -392,7 +392,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             // add regularly
             if !edges.is_empty() {
                 if !self.add_subgraph(pair, block, edges) {
-                    info!(?pair, "recusing");
+                    info!(?pair, "recusing has edges");
                     self.try_verify_subgraph(vec![(block, pair)]);
                 }
                 return
@@ -419,7 +419,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     continue
                 } else {
                     if !self.add_subgraph(pair, block, edges) {
-                        info!(?pair, "recusing");
+                        info!(?pair, "recusing on new path failures");
                         self.try_verify_subgraph(vec![(block, pair)]);
                     }
 
