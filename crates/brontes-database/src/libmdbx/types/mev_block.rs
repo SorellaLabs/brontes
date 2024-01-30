@@ -11,8 +11,8 @@ use brontes_types::{
     mev::{
         AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
         JitLiquiditySandwich, Liquidation, MevBlock, MevCount, MevType, PossibleMev,
-        PossibleMevCollection, PossibleMevTriggers, Sandwich, StatArbDetails, TokenProfit,
-        TokenProfits,
+        PossibleMevCollection, PossibleMevTriggers, Sandwich, StatArbDetails, StatArbPnl,
+        TokenProfit, TokenProfits,
     },
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails, Protocol,
@@ -349,6 +349,7 @@ pub struct LibmdbxCexDex {
     pub tx_hash:     Redefined_FixedBytes<32>,
     pub swaps:       Vec<LibmdbxNormalizedSwap>,
     pub prices:      Vec<LibmdbxStatArbDetails>,
+    pub pnl:         LibmdbxStatArbPnl,
     pub gas_details: GasDetails,
 }
 
@@ -487,9 +488,25 @@ pub struct LibmdbxNormalizedMint {
 )]
 #[redefined(StatArbDetails)]
 pub struct LibmdbxStatArbDetails {
-    pub cex_exchange:   CexExchange,
-    pub cex_price:      Redefined_Rational,
-    pub dex_exchange:   Protocol,
-    pub dex_price:      Redefined_Rational,
-    pub profit_pre_gas: Redefined_Rational,
+    pub cex_exchange: CexExchange,
+    pub cex_price:    Redefined_Rational,
+    pub dex_exchange: Protocol,
+    pub dex_price:    Redefined_Rational,
+    pub pnl_pre_gas:  LibmdbxStatArbPnl,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(StatArbPnl)]
+pub struct LibmdbxStatArbPnl {
+    pub taker_profit: Redefined_Rational,
+    pub maker_profit: Redefined_Rational,
 }
