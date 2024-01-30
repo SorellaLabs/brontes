@@ -44,32 +44,22 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             // If the action is a swap, get the decimals to scale the amount in and out
             // properly.
             if let Actions::Swap(swap) = action {
-                let Ok(Some(decimals_in)) = self.db.try_get_token_decimals(swap.token_in) else {
-                    error!(?swap.token_in, "token decimals not found");
-                    continue;
-                };
-                let Ok(Some(decimals_out)) = self.db.try_get_token_decimals(swap.token_out) else {
-                    error!(?swap.token_out, "token decimals not found");
-                    continue;
-                };
-
-                let adjusted_in = -swap.amount_in.to_scaled_rational(decimals_in);
-                let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
-
+                let adjusted_in = -(swap.amount_in.clone());
+                let adjusted_out = swap.amount_out.clone();
                 // we track the address deltas so we can apply transfers later on the profit
                 // collector
                 if swap.from == swap.recipient {
                     let entry = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out, adjusted_out, entry);
-                    apply_entry(swap.token_in, adjusted_in, entry);
+                    apply_entry(swap.token_out.address, adjusted_out, entry);
+                    apply_entry(swap.token_in.address, adjusted_in, entry);
                 } else {
                     let entry_recipient = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_in, adjusted_in, entry_recipient);
+                    apply_entry(swap.token_in.address, adjusted_in, entry_recipient);
 
                     let entry_from = deltas
                         .entry(swap.recipient)
                         .or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out, adjusted_out, entry_from);
+                    apply_entry(swap.token_out.address, adjusted_out, entry_from);
                 }
 
             // If there is a transfer, push to the given transfer addresses.
@@ -122,15 +112,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         block_position: usize,
         token_address: Address,
-        amount: U256,
+        amount: &Rational,
         metadata: &Arc<MetadataCombined>,
     ) -> Option<Rational> {
-        let Ok(Some(decimals)) = self.db.try_get_token_decimals(token_address) else {
-            error!("token decimals not found for calcuate dex usd amount");
-            return None
-        };
         if token_address == self.quote {
-            return Some(amount.to_scaled_rational(decimals))
+            return Some(amount.clone())
         }
 
         let pair = Pair(token_address, self.quote);
@@ -138,7 +124,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             metadata
                 .dex_quotes
                 .price_at_or_before(pair, block_position)?
-                * amount.to_scaled_rational(decimals),
+                * amount,
         )
     }
 
