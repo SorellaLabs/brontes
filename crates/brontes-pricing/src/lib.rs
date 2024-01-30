@@ -17,7 +17,7 @@ use brontes_types::{
     pair::Pair,
     traits::TracingProvider,
 };
-pub use graphs::{AllPairGraph, GraphManager};
+pub use graphs::{AllPairGraph, GraphManager, VerificationResults};
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
 pub use price_graph_types::{
@@ -25,15 +25,15 @@ pub use price_graph_types::{
 };
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 mod graphs;
 mod price_graph_types;
 
 use brontes_types::db::dex::DexQuotes;
-use futures::{Future, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, error, trace};
+use tracing::error;
 use types::{DexPriceMsg, DiscoveredPool, PoolUpdate};
 
 use crate::types::PoolState;
@@ -122,8 +122,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.current_block = msg.block;
             }
         }
-        // only add a new pool to the graph when we have a update for it. this will help
-        // us avoid dead pools in the graph;
         updates
             .iter()
             .filter_map(|update| {
@@ -131,57 +129,62 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 Some((update.get_pool_address(), protocol, pair))
             })
             .for_each(|(pool_addr, protocol, pair)| {
-                self.graph_manager.add_pool(pair, pool_addr, protocol);
+                self.graph_manager
+                    .add_pool(pair, pool_addr, protocol, self.current_block);
             });
 
         let (state, pools) =
             graph_search_par(&self.graph_manager, self.quote_asset, self.current_block, updates);
 
-        state
-            .into_iter()
-            .filter_map(|s| s)
-            .flatten()
-            .for_each(|(addr, update)| {
-                let block = update.block;
-                self.buffer
-                    .updates
-                    .entry(block)
-                    .or_default()
-                    .push_back((addr, update));
-            });
+        state.into_iter().flatten().for_each(|(addr, update)| {
+            let block = update.block;
+            self.buffer
+                .updates
+                .entry(block)
+                .or_default()
+                .push_back((addr, update));
+        });
 
-        pools
-            .into_iter()
-            .filter_map(|s| s)
-            .flatten()
-            .for_each(|(pool_infos, graph_edges, pair)| {
-                if graph_edges.is_empty() {
-                    return
-                }
-                for pool_info in pool_infos {
-                    let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
-                    // load exchange only if its not loaded already
-                    if !(self.graph_manager.has_state(&pool_info.pool_addr).is_some()
-                        || lazy_loading)
-                    {
-                        self.lazy_loader.lazy_load_exchange(
-                            pair,
-                            Pair(pool_info.token_0, pool_info.token_1),
-                            pool_info.pool_addr,
-                            self.current_block,
-                            pool_info.dex_type,
-                        )
-                    } else if lazy_loading {
-                        self.lazy_loader.add_protocol_parent(
-                            self.current_block,
-                            pool_info.pool_addr,
-                            pair,
-                        );
-                    }
-                }
+        pools.into_iter().flatten().for_each(|(graph_edges, pair)| {
+            if graph_edges.is_empty() {
+                return
+            }
 
-                self.graph_manager.add_subgraph(pair, graph_edges);
-            })
+            if self.graph_manager.has_subgraph(pair) {
+                return
+            }
+
+            let needed_state = self.graph_manager.add_subgraph_for_verification(
+                pair,
+                self.current_block,
+                graph_edges,
+            );
+
+            for pool_info in needed_state {
+                let is_lazy_loading =
+                    if let Some(blocks) = self.lazy_loader.is_loading_block(&pool_info.pool_addr) {
+                        blocks.contains(&self.current_block)
+                    } else {
+                        false
+                    };
+
+                if !is_lazy_loading {
+                    self.lazy_loader.lazy_load_exchange(
+                        pair,
+                        Pair(pool_info.token_0, pool_info.token_1),
+                        pool_info.pool_addr,
+                        self.current_block,
+                        pool_info.dex_type,
+                    )
+                } else {
+                    self.lazy_loader.add_protocol_parent(
+                        self.current_block,
+                        pool_info.pool_addr,
+                        pair,
+                    );
+                }
+            }
+        });
     }
 
     fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
@@ -315,12 +318,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     fn on_pool_resolve(&mut self, state: LazyResult) {
         let LazyResult { block, state, load_result } = state;
-        self.try_verify_pool();
 
         if let Some(state) = state {
             let addr = state.address();
 
-            self.graph_manager.new_state(block, addr, state);
+            self.graph_manager.new_state(addr, state);
 
             // pool was initialized this block. lets set the override to avoid invalid state
             if !load_result.is_ok() {
@@ -331,6 +333,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         {
             self.on_state_load_error(pool_pair, pool_address, block, dependent_pairs);
         }
+
+        let pairs = self.lazy_loader.pairs_to_verify();
+        self.try_verify_subgraph(pairs);
     }
 
     fn on_state_load_error(
@@ -340,8 +345,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         block: u64,
         dependent_pairs: Vec<Pair>,
     ) {
-        self.try_verify_pool();
-
         dependent_pairs.into_iter().for_each(|parent_pair| {
             let (re_query, bad_state) =
                 self.graph_manager
@@ -356,119 +359,171 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         });
     }
 
-    fn try_verify_pool(&mut self) {
-        let requery_pairs = self
+    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Pair)>) {
+        let requery = self
             .graph_manager
-            .verify_subgraph(self.lazy_loader.pairs_to_verify(), self.quote_asset)
+            .verify_subgraph(pairs, self.quote_asset)
             .into_iter()
-            .filter_map(|(failed, block, pair, cache_pairs)| {
-                cache_pairs.into_iter().for_each(|(pair, address)| {
-                    for addr in address {
-                        if let Some((addr, protocol, pair)) =
-                            self.graph_manager.remove_pair_graph_address(pair, addr)
-                        {
-                            self.new_graph_pairs.insert(addr, (protocol, pair));
+            .filter_map(|result| match result {
+                VerificationResults::Passed(passed) => {
+                    passed.prune_state.into_iter().for_each(|(_, bad_edges)| {
+                        for bad_edge in bad_edges {
+                            if let Some((addr, protocol, pair)) = self
+                                .graph_manager
+                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
+                            {
+                                self.new_graph_pairs.insert(addr, (protocol, pair));
+                            }
                         }
-                    }
-                });
-                failed.then_some((pair, block))
-            })
-            .collect_vec();
+                    });
+                    self.graph_manager.add_verified_subgraph(
+                        passed.state,
+                        passed.pair,
+                        passed.subgraph,
+                    );
 
-        self.requery_bad_state_par(requery_pairs);
-    }
-
-    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64)>) {
-        if pairs.is_empty() {
-            return
-        }
-
-        par_state_query(&self.graph_manager, pairs)
-            .into_iter()
-            .for_each(|(pair, block, state, edges)| {
-                if edges.is_empty() {
-                    return
+                    None
                 }
-                let mut triggered = false;
-
-                // because we run these state fetches in parallel, we come across the issue
-                // where in block N we have a path, it however doesn't get verified so we go to
-                // query more state. however the new path it takes goes through a pool that is
-                // being inited with state from block N + I, when we go to calculate the price
-                // the state will be off thus giving us a incorrect price
-                for pool_info in state {
-                    let need_lazy_load = if let Some(lazy_block) =
-                        self.lazy_loader.is_loading_block(&pool_info.pool_addr)
-                    {
-                        lazy_block > block
-                    } else {
-                        true
-                    };
-
-                    let need_graph_load =
-                        if let Some(g_block) = self.graph_manager.has_state(&pool_info.pool_addr) {
-                            g_block > block
-                        } else {
-                            true
-                        };
-
-                    if need_lazy_load {
-                        if self.lazy_loader.is_loading(&pool_info.pool_addr) {
-                            tracing::info!(?pair, block, "requerying");
-                            self.lazy_loader.requery(
-                                pair,
-                                Pair(pool_info.token_0, pool_info.token_1),
-                                pool_info.pool_addr,
-                                block,
-                                pool_info.dex_type,
-                            )
-                        } else {
-                            self.lazy_loader.lazy_load_exchange(
-                                pair,
-                                Pair(pool_info.token_0, pool_info.token_1),
-                                pool_info.pool_addr,
-                                block,
-                                pool_info.dex_type,
-                            );
-                        }
-                        triggered = true;
-                    } else if need_graph_load {
-                        self.lazy_loader.lazy_load_exchange(
-                            pair,
-                            Pair(pool_info.token_0, pool_info.token_1),
-                            pool_info.pool_addr,
-                            block,
-                            pool_info.dex_type,
-                        );
-                        triggered = true;
-                    }
-                }
-
-                self.graph_manager.add_subgraph(pair, edges);
-
-                // means we have loaded all the needed state
-                if !triggered {
-                    tracing::info!("not triggered");
-                    let (is_bad, block, pair, remove) = self
-                        .graph_manager
-                        .verify_subgraph(vec![(block, pair)], self.quote_asset)
-                        .remove(0);
-
-                    remove.into_iter().for_each(|(pair, address)| {
-                        for addr in address {
-                            if let Some((addr, protocol, pair)) =
-                                self.graph_manager.remove_pair_graph_address(pair, addr)
+                VerificationResults::Failed(failed) => {
+                    failed.prune_state.into_iter().for_each(|(_, bad_edges)| {
+                        for bad_edge in bad_edges {
+                            if let Some((addr, protocol, pair)) = self
+                                .graph_manager
+                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
                             {
                                 self.new_graph_pairs.insert(addr, (protocol, pair));
                             }
                         }
                     });
 
-                    if is_bad {
-                        self.re_queue_bad_pair(pair, block)
+                    Some((failed.pair, failed.block, failed.ignore_state))
+                }
+            })
+            .collect_vec();
+
+        self.requery_bad_state_par(requery);
+    }
+
+    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64, HashSet<Pair>)>) {
+        if pairs.is_empty() {
+            return
+        }
+
+        let new_state = par_state_query(&self.graph_manager, pairs);
+        if new_state.is_empty() {
+            tracing::error!("requery bad state returned nothing");
+        }
+
+        new_state.into_iter().for_each(|(pair, block, edges)| {
+            if edges.is_empty() {
+                if let Some(mut ignores) =
+                    self.graph_manager.verify_subgraph_on_new_path_failure(pair)
+                {
+                    loop {
+                        let popped = ignores.pop();
+                        let (pair, block, edges) = par_state_query(
+                            &self.graph_manager,
+                            vec![(pair, block, ignores.iter().copied().collect())],
+                        )
+                        .remove(0);
+                        if edges.is_empty() {
+                            if popped.is_none() {
+                                break
+                            }
+                            continue
+                        } else {
+                            let needed_state = self.graph_manager.add_subgraph_for_verification(
+                                pair,
+                                block,
+                                edges.clone(),
+                            );
+
+                            let mut triggered = false;
+                            // because we run these state fetches in parallel, we come across the
+                            // issue where in block N we have a path, it
+                            // however doesn't get verified so we go to
+                            // query more state. however the new path it takes goes through a pool
+                            // that is being inited with state from
+                            // block N + I, when we go to calculate the price
+                            // the state will be off thus giving us a incorrect price
+                            for pool_info in needed_state {
+                                let is_lazy_loading = if let Some(blocks) =
+                                    self.lazy_loader.is_loading_block(&pool_info.pool_addr)
+                                {
+                                    blocks.contains(&block)
+                                } else {
+                                    false
+                                };
+
+                                if !is_lazy_loading {
+                                    self.lazy_loader.lazy_load_exchange(
+                                        pair,
+                                        Pair(pool_info.token_0, pool_info.token_1),
+                                        pool_info.pool_addr,
+                                        block,
+                                        pool_info.dex_type,
+                                    );
+                                    triggered = true;
+                                } else {
+                                    self.lazy_loader.add_protocol_parent(
+                                        block,
+                                        pool_info.pool_addr,
+                                        pair,
+                                    );
+                                    triggered = true;
+                                }
+                            }
+
+                            if !triggered {
+                                tracing::info!("recusing");
+                                self.try_verify_subgraph(vec![(block, pair)])
+                            }
+
+                            return
+                        }
                     }
                 }
-            });
+                return
+            }
+            let needed_state =
+                self.graph_manager
+                    .add_subgraph_for_verification(pair, block, edges.clone());
+
+            let mut triggered = false;
+            // because we run these state fetches in parallel, we come across the issue
+            // where in block N we have a path, it however doesn't get verified so we go to
+            // query more state. however the new path it takes goes through a pool that is
+            // being inited with state from block N + I, when we go to calculate the price
+            // the state will be off thus giving us a incorrect price
+            for pool_info in needed_state {
+                let is_lazy_loading =
+                    if let Some(blocks) = self.lazy_loader.is_loading_block(&pool_info.pool_addr) {
+                        blocks.contains(&block)
+                    } else {
+                        false
+                    };
+
+                if !is_lazy_loading {
+                    self.lazy_loader.lazy_load_exchange(
+                        pair,
+                        Pair(pool_info.token_0, pool_info.token_1),
+                        pool_info.pool_addr,
+                        block,
+                        pool_info.dex_type,
+                    );
+                    triggered = true;
+                } else {
+                    self.lazy_loader
+                        .add_protocol_parent(block, pool_info.pool_addr, pair);
+                    triggered = true;
+                }
+            }
+
+            if !triggered {
+                tracing::info!("recusing");
+                self.try_verify_subgraph(vec![(block, pair)])
+            }
+        });
     }
 
     /// because we already have a state update for this pair in the buffer, we
@@ -478,10 +533,18 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return
         }
 
-        for pool_info in self.graph_manager.create_subpool(block, pair).into_iter() {
+        for pool_info in self
+            .graph_manager
+            .create_subgraph_mut(block, pair)
+            .into_iter()
+        {
             let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
             // load exchange only if its not loaded already
-            if !(self.graph_manager.has_state(&pool_info.pool_addr).is_some() || is_loading) {
+            if !(self
+                .graph_manager
+                .verifier_has_state(block, &pool_info.pool_addr)
+                || is_loading)
+            {
                 self.lazy_loader.lazy_load_exchange(
                     pair,
                     Pair(pool_info.token_0, pool_info.token_1),
@@ -611,7 +674,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             if let Some(new_prices) = self.poll_state_processing(cx) {
                 return new_prices
             }
-            self.try_verify_pool();
 
             let mut block_updates = Vec::new();
             loop {
@@ -620,7 +682,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         DexPriceMsg::Update(update) => Some(PollResult::State(update)),
                         DexPriceMsg::DiscoveredPool(
                             DiscoveredPool { protocol, tokens, pool_address },
-                            block,
+                            _block,
                         ) => {
                             if tokens.len() == 2 {
                                 self.new_graph_pairs
@@ -704,10 +766,6 @@ impl StateBuffer {
     }
 }
 
-pub struct AllPairFindRequests {
-    updates: Vec<PoolUpdate>,
-}
-
 /// Makes a swap for initializing a virtual pool with the quote token.
 /// this swap is empty such that we don't effect the state
 const fn make_fake_swap(pair: Pair) -> Actions {
@@ -728,21 +786,22 @@ fn graph_search_par(
     quote: Address,
     block: u64,
     updates: Vec<PoolUpdate>,
-) -> (
-    Vec<Option<Vec<(Address, PoolUpdate)>>>,
-    Vec<Option<Vec<(Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair)>>>,
-) {
+) -> (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair)>>) {
     let (state, pools): (Vec<_>, Vec<_>) = updates
         .into_par_iter()
         .map(|msg| {
             let pair = msg.get_pair(quote).unwrap();
-            if graph.has_subgraph(pair) {
-                let addr = msg.get_pool_address();
-                (Some(vec![(addr, msg)]), None)
-            } else {
-                let (state, path) = on_new_pool_pair(graph, quote, block, msg);
-                (Some(state), Some(path))
-            }
+            let pair0 = Pair(pair.0, quote).ordered();
+            let pair1 = Pair(pair.1, quote).ordered();
+
+            let (state, path) = on_new_pool_pair(
+                graph,
+                block,
+                msg,
+                (!graph.has_subgraph(pair0)).then_some(pair0),
+                (!graph.has_subgraph(pair1)).then_some(pair1),
+            );
+            (state, path)
         })
         .unzip();
 
@@ -751,32 +810,31 @@ fn graph_search_par(
 
 fn par_state_query(
     graph: &GraphManager,
-    pairs: Vec<(Pair, u64)>,
-) -> Vec<(Pair, u64, Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>)> {
+    pairs: Vec<(Pair, u64, HashSet<Pair>)>,
+) -> Vec<(Pair, u64, Vec<SubGraphEdge>)> {
     pairs
         .into_par_iter()
-        .map(|(pair, block)| {
-            let (_, edge) = graph.crate_subpool_multithread(block, pair);
-            (pair, block, edge.clone().into_iter().map(|e| e.info).collect_vec(), edge)
+        .map(|(pair, block, ignore)| {
+            let edge = graph.create_subgraph(block, pair, ignore);
+            (pair, block, edge)
         })
         .collect::<Vec<_>>()
 }
 
 fn on_new_pool_pair(
     graph: &GraphManager,
-    quote: Address,
     block: u64,
     msg: PoolUpdate,
-) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair)>) {
-    let pair = msg.get_pair(quote).unwrap();
-
+    pair0: Option<Pair>,
+    pair1: Option<Pair>,
+) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair)>) {
     let mut buf_pending = Vec::new();
     let mut path_pending = Vec::new();
-    // add pool pair
-    if let Some((buf, path)) = queue_loading_returns(graph, block, pair, msg.clone()) {
-        buf_pending.push(buf);
-        path_pending.push(path);
-    }
+
+    // add default pair to buffer to make sure that we price all pairs and apply the
+    // state diff. we don't wan't to actually do a graph search for this pair
+    // though.
+    buf_pending.push((msg.get_pool_address(), msg.clone()));
 
     // we add support for fetching the pair as well as each individual token with
     // the given quote asset
@@ -786,20 +844,25 @@ fn on_new_pool_pair(
     trigger_update.logs = vec![];
 
     // add first pair
-    let pair0 = Pair(pair.0, quote);
-    trigger_update.action = make_fake_swap(pair0);
-    if let Some((buf, path)) = queue_loading_returns(graph, block, pair0, trigger_update.clone()) {
-        buf_pending.push(buf);
-        path_pending.push(path);
+    if let Some(pair0) = pair0 {
+        trigger_update.action = make_fake_swap(pair0);
+        if let Some((buf, path)) =
+            queue_loading_returns(graph, block, pair0, trigger_update.clone())
+        {
+            buf_pending.push(buf);
+            path_pending.push(path);
+        }
     }
 
     // add second direction
-    let pair1 = Pair(pair.1, quote);
-    trigger_update.action = make_fake_swap(pair1);
-
-    if let Some((buf, path)) = queue_loading_returns(graph, block, pair1, trigger_update.clone()) {
-        buf_pending.push(buf);
-        path_pending.push(path);
+    if let Some(pair1) = pair1 {
+        trigger_update.action = make_fake_swap(pair1);
+        if let Some((buf, path)) =
+            queue_loading_returns(graph, block, pair1, trigger_update.clone())
+        {
+            buf_pending.push(buf);
+            path_pending.push(path);
+        }
     }
 
     (buf_pending, path_pending)
@@ -810,14 +873,14 @@ fn queue_loading_returns(
     block: u64,
     pair: Pair,
     trigger_update: PoolUpdate,
-) -> Option<((Address, PoolUpdate), (Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair))> {
+) -> Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair))> {
     if pair.0 == pair.1 {
         return None
     }
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
-        let (state, subgraph) = graph.crate_subpool_multithread(block, pair);
-        (state, subgraph, pair)
+        let subgraph = graph.create_subgraph(block, pair, HashSet::new());
+        (subgraph, pair)
     }))
 }
 

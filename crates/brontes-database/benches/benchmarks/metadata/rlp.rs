@@ -41,7 +41,7 @@ pub struct MetadataRLPInner {
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward:    Option<u128>,
     #[serde_as(as = "Vec<DisplayFromStr>")]
-    pub mempool_flow:           Vec<TxHash>,
+    pub private_flow:           Vec<TxHash>,
 }
 
 impl Encodable for MetadataRLPInner {
@@ -52,7 +52,7 @@ impl Encodable for MetadataRLPInner {
         self.p2p_timestamp.unwrap_or_default().encode(out);
         self.proposer_fee_recipient.unwrap_or_default().encode(out);
         self.proposer_mev_reward.unwrap_or_default().encode(out);
-        self.mempool_flow.encode(out);
+        self.private_flow.encode(out);
     }
 }
 
@@ -76,7 +76,7 @@ impl Decodable for MetadataRLPInner {
         if proposer_mev_reward.as_ref().unwrap() == &0 {
             proposer_mev_reward = None
         }
-        let mempool_flow = Vec::<TxHash>::decode(buf)?;
+        let private_flow = Vec::<TxHash>::decode(buf)?;
 
         Ok(Self {
             block_hash,
@@ -85,7 +85,7 @@ impl Decodable for MetadataRLPInner {
             p2p_timestamp,
             proposer_fee_recipient,
             proposer_mev_reward,
-            mempool_flow,
+            private_flow,
         })
     }
 }
@@ -129,7 +129,7 @@ impl From<MetadataBench> for MetadataRLPData {
                 p2p_timestamp:          value.p2p_timestamp,
                 proposer_fee_recipient: value.proposer_fee_recipient,
                 proposer_mev_reward:    value.proposer_mev_reward,
-                mempool_flow:           value.mempool_flow,
+                private_flow:           value.private_flow,
             },
         }
     }

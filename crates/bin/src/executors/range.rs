@@ -12,6 +12,7 @@ use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
+    constants::START_OF_CHAINBOUND_MEMPOOL_DATA,
     db::metadata::{MetadataCombined, MetadataNoDex},
     mev::PossibleMevCollection,
     normalized_actions::Actions,
@@ -173,7 +174,12 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         classifier: &'db Classifier<'db, T, DB>,
     ) -> CollectionFut<'db> {
         Box::pin(async move {
-            let tree = classifier.build_block_tree(traces, header).await;
+            let block_number = header.number;
+            let mut tree = classifier.build_block_tree(traces, header).await;
+            if block_number < START_OF_CHAINBOUND_MEMPOOL_DATA {
+                return (tree, meta);
+            }
+            tree.label_private_txes(&meta);
             (tree, meta)
         })
     }
