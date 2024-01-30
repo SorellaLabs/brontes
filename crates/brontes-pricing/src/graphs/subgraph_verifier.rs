@@ -130,6 +130,14 @@ impl SubgraphVerifier {
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair.ordered(), subgraph);
                     // anything that was fully remove gets cached
+
+                    tracing::info!(
+                        ?pair,
+                        "requerying ignoring: {} removing: {}",
+                        ignores.len(),
+                        removals.len()
+                    );
+
                     return VerificationResults::Failed(VerificationFailed {
                         pair,
                         block,
