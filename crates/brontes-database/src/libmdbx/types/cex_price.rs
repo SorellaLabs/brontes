@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
-use brontes_types::db::{
-    cex::{CexExchange, CexPriceMap, CexQuote},
-    redefined_types::{
-        malachite::Redefined_Rational,
-        primitives::{Redefined_Address, Redefined_Pair},
+use brontes_types::{
+    db::{
+        cex::{CexExchange, CexPriceMap, CexQuote},
+        redefined_types::{
+            malachite::Redefined_Rational,
+            primitives::{Redefined_Address, Redefined_Pair},
+        },
     },
+    pair::Pair,
 };
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
@@ -29,8 +32,20 @@ impl LibmdbxData<CexPrice> for CexPriceData {
     Debug, Clone, serde::Serialize, rkyv::Serialize, rkyv::Deserialize, rkyv::Archive, Redefined,
 )]
 #[redefined(CexPriceMap)]
+#[redefined_attr(
+    to_source = "CexPriceMap(self.map.to_source())",
+    from_source = "LibmdbxCexPriceMap::new(src.0)"
+)]
 #[archive(check_bytes)]
-pub struct LibmdbxCexPriceMap(pub HashMap<CexExchange, HashMap<Redefined_Pair, LibmdbxCexQuote>>);
+pub struct LibmdbxCexPriceMap {
+    pub map: HashMap<CexExchange, HashMap<Redefined_Pair, LibmdbxCexQuote>>,
+}
+
+impl LibmdbxCexPriceMap {
+    fn new(map: HashMap<CexExchange, HashMap<Pair, CexQuote>>) -> Self {
+        Self { map: HashMap::from_source(map) }
+    }
+}
 
 #[derive(
     Debug,
