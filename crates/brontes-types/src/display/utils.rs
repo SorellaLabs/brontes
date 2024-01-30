@@ -204,7 +204,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
     // Cex-dex specific details
     writeln!(f, "\n{}", "Cex-Dex Details:".bold().purple().underline())?;
-    for (_, swap) in cex_dex_data.swaps.iter().enumerate() {
+    for swap in cex_dex_data.swaps.iter() {
         writeln!(f, "   - Swap: {}", swap)?;
         /*writeln!(
             f,

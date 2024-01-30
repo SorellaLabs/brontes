@@ -4,7 +4,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use alloy_primitives::TxHash;
+use alloy_primitives::{TxHash, U256};
 use colored::Colorize;
 use itertools::Itertools;
 use malachite::Rational;
@@ -15,7 +15,7 @@ use sorella_db_databases::{
     clickhouse::{fixed_string::FixedString, Row},
 };
 
-use crate::{db::token_info::TokenInfoWithAddress, Protocol};
+use crate::{db::token_info::TokenInfoWithAddress, mev::StatArbDetails, Protocol};
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwapWithFee {
@@ -49,6 +49,15 @@ pub struct NormalizedSwap {
     pub token_out:   TokenInfoWithAddress,
     pub amount_in:   Rational,
     pub amount_out:  Rational,
+}
+
+impl NormalizedSwap {
+    /// Calculates the rate for a given DEX swap
+
+    pub fn swap_rate(&self) -> Rational {
+        // Choose the calculation method based on your standard representation
+        &self.amount_in / &self.amount_out
+    }
 }
 
 impl Display for NormalizedSwap {
@@ -178,4 +187,62 @@ impl From<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecN
 
         (tx_hashes, swaps).into()
     }
+}
+
+#[derive(Default)]
+pub struct ClickhouseStatArbDetails {
+    pub cex_exchange:     String,
+    pub cex_price:        ([u8; 32], [u8; 32]),
+    pub dex_exchange:     String,
+    pub dex_price:        ([u8; 32], [u8; 32]),
+    pub pnl_maker_profit: ([u8; 32], [u8; 32]),
+    pub pnl_taker_profit: ([u8; 32], [u8; 32]),
+}
+
+impl From<StatArbDetails> for ClickhouseStatArbDetails {
+    fn from(value: StatArbDetails) -> Self {
+        Self {
+            cex_exchange:     format!("{:?}", value.cex_exchange),
+            cex_price:        rational_to_u256_bytes(value.cex_price),
+            dex_exchange:     value.dex_exchange.to_string(),
+            dex_price:        rational_to_u256_bytes(value.dex_price),
+            pnl_maker_profit: rational_to_u256_bytes(value.pnl_pre_gas.maker_profit),
+            pnl_taker_profit: rational_to_u256_bytes(value.pnl_pre_gas.taker_profit),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct ClickhouseVecStatArbDetails {
+    pub cex_exchange:     Vec<String>,
+    pub cex_price:        Vec<([u8; 32], [u8; 32])>,
+    pub dex_exchange:     Vec<String>,
+    pub dex_price:        Vec<([u8; 32], [u8; 32])>,
+    pub pnl_maker_profit: Vec<([u8; 32], [u8; 32])>,
+    pub pnl_taker_profit: Vec<([u8; 32], [u8; 32])>,
+}
+
+impl From<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
+    fn from(value: Vec<StatArbDetails>) -> Self {
+        let mut this = Self::default();
+
+        value.into_iter().for_each(|exch| {
+            let val: ClickhouseStatArbDetails = exch.into();
+            this.cex_exchange.push(val.cex_exchange);
+            this.cex_price.push(val.cex_price);
+            this.dex_exchange.push(val.dex_exchange);
+            this.dex_price.push(val.dex_price);
+            this.pnl_maker_profit.push(val.pnl_maker_profit);
+            this.pnl_taker_profit.push(val.pnl_taker_profit);
+        });
+
+        this
+    }
+}
+
+fn rational_to_u256_bytes(value: Rational) -> ([u8; 32], [u8; 32]) {
+    let num = U256::from_limbs_slice(&value.numerator_ref().to_limbs_asc());
+    let denom = U256::from_limbs_slice(&value.denominator_ref().to_limbs_asc());
+
+    (num.to_le_bytes(), denom.to_le_bytes())
 }
