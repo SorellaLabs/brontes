@@ -195,8 +195,8 @@ pub struct ClickhouseStatArbDetails {
     pub cex_price:        ([u8; 32], [u8; 32]),
     pub dex_exchange:     String,
     pub dex_price:        ([u8; 32], [u8; 32]),
-    pub pnl_maker_profit: [u8; 32],
-    pub pnl_taker_profit: [u8; 32],
+    pub pnl_maker_profit: ([u8; 32], [u8; 32]),
+    pub pnl_taker_profit: ([u8; 32], [u8; 32]),
 }
 
 impl From<StatArbDetails> for ClickhouseStatArbDetails {
@@ -218,8 +218,8 @@ pub struct ClickhouseVecStatArbDetails {
     pub cex_price:        Vec<([u8; 32], [u8; 32])>,
     pub dex_exchange:     Vec<String>,
     pub dex_price:        Vec<([u8; 32], [u8; 32])>,
-    pub pnl_maker_profit: Vec<[u8; 32]>,
-    pub pnl_taker_profit: Vec<[u8; 32]>,
+    pub pnl_maker_profit: Vec<([u8; 32], [u8; 32])>,
+    pub pnl_taker_profit: Vec<([u8; 32], [u8; 32])>,
 }
 
 impl From<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
