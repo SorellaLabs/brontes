@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use ::serde::ser::{Serialize, SerializeStruct, Serializer};
-use itertools::Itertools;
 use malachite::Rational;
 use reth_primitives::B256;
 use serde::Deserialize;
@@ -25,11 +24,11 @@ use crate::{
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct CexDex {
-    pub tx_hash:     B256,
-    pub swaps:       Vec<NormalizedSwap>,
-    pub prices:      Vec<StatArbDetails>,
-    pub pnl:         StatArbPnl,
-    pub gas_details: GasDetails,
+    pub tx_hash:          B256,
+    pub swaps:            Vec<NormalizedSwap>,
+    pub stat_arb_details: Vec<StatArbDetails>,
+    pub pnl:              StatArbPnl,
+    pub gas_details:      GasDetails,
 }
 
 impl Mev for CexDex {
@@ -74,7 +73,7 @@ impl Serialize for CexDex {
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
 
-        let stat_arb_details: ClickhouseVecStatArbDetails = self.prices.clone().into();
+        let stat_arb_details: ClickhouseVecStatArbDetails = self.stat_arb_details.clone().into();
 
         ser_struct
             .serialize_field("stat_arb_details.cex_exchange", &stat_arb_details.cex_exchange)?;
