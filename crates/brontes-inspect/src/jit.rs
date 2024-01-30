@@ -8,11 +8,10 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     mev::{Bundle, JitLiquidity, MevType, TokenProfit, TokenProfits},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    pair::Pair,
     GasDetails, ToFloatNearest, ToScaledRational,
 };
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{Rational};
 use reth_primitives::{Address, B256, U256};
 
 use crate::{
