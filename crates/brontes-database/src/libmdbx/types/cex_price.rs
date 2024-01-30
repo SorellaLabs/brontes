@@ -11,22 +11,6 @@ use brontes_types::{
     pair::Pair,
 };
 use redefined::{Redefined, RedefinedConvert};
-use sorella_db_databases::clickhouse::{self, Row};
-
-use super::{LibmdbxData, ReturnKV};
-use crate::libmdbx::CexPrice;
-
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct CexPriceData {
-    pub block_number: u64,
-    pub data:         CexPriceMap,
-}
-
-impl LibmdbxData<CexPrice> for CexPriceData {
-    fn into_key_val(&self) -> ReturnKV<CexPrice> {
-        (self.block_number, self.data.clone()).into()
-    }
-}
 
 #[derive(
     Debug, Clone, serde::Serialize, rkyv::Serialize, rkyv::Deserialize, rkyv::Archive, Redefined,
