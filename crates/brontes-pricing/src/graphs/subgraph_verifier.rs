@@ -128,7 +128,6 @@ impl SubgraphVerifier {
                     .collect::<HashMap<_, _>>();
 
                 if result.should_requery {
-                    tracing::info!(?pair, "requerying pair");
                     self.pending_subgraphs.insert(pair.ordered(), subgraph);
                     // anything that was fully remove gets cached
                     return VerificationResults::Failed(VerificationFailed {
@@ -203,7 +202,6 @@ impl SubgraphVerifier {
         subgraph.get_all_pools().flatten().for_each(|pool| {
             state_tracker.mark_state_as_finalized(block, pool.pool_addr);
         });
-        tracing::info!(?pair, "completed pair");
 
         VerificationResults::Passed(VerificationPass { pair, subgraph, prune_state: removals })
     }
