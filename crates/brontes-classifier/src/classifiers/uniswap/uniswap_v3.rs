@@ -5,7 +5,6 @@ use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap},
     ToScaledRational,
 };
-use malachite::Rational;
 
 use crate::UniswapV3::{burnReturn, collectReturn, mintReturn, swapReturn};
 

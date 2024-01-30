@@ -57,7 +57,7 @@ pub struct ClickhouseVecNormalizedLiquidation {
 }
 
 impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
-    fn from(value: Vec<NormalizedLiquidation>) -> Self {
+    fn from(_value: Vec<NormalizedLiquidation>) -> Self {
         todo!("todo");
         // ClickhouseVecNormalizedLiquidation {
         //     trace_index: value.iter().map(|val| val.trace_index).collect(),

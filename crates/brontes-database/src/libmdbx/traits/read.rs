@@ -6,7 +6,7 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens,
         metadata::{MetadataCombined, MetadataNoDex},
-        token_info::{TokenInfo, TokenInfoWithAddress},
+        token_info::TokenInfoWithAddress,
     },
     pair::Pair,
     structured_trace::TxTrace,
