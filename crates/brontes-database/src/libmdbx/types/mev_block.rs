@@ -1,5 +1,6 @@
 use brontes_types::{
     db::{
+        cex::CexExchange,
         mev_block::MevBlockWithClassified,
         redefined_types::{
             malachite::Redefined_Rational,
@@ -10,10 +11,11 @@ use brontes_types::{
     mev::{
         AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
         JitLiquiditySandwich, Liquidation, MevBlock, MevCount, MevType, PossibleMev,
-        PossibleMevCollection, PossibleMevTriggers, Sandwich, TokenProfit, TokenProfits,
+        PossibleMevCollection, PossibleMevTriggers, Sandwich, StatArbDetails, StatArbPnl,
+        TokenProfit, TokenProfits,
     },
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    GasDetails, PriceKind, Protocol,
+    GasDetails, Protocol,
 };
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
@@ -344,12 +346,11 @@ pub struct LibmdbxJitLiquidity {
 )]
 #[redefined(CexDex)]
 pub struct LibmdbxCexDex {
-    pub tx_hash:        Redefined_FixedBytes<32>,
-    pub swaps:          Vec<LibmdbxNormalizedSwap>,
-    pub gas_details:    GasDetails,
-    pub prices_kind:    Vec<PriceKind>,
-    pub prices_address: Vec<Redefined_Address>,
-    pub prices_price:   Vec<f64>,
+    pub tx_hash:          Redefined_FixedBytes<32>,
+    pub swaps:            Vec<LibmdbxNormalizedSwap>,
+    pub stat_arb_details: Vec<LibmdbxStatArbDetails>,
+    pub pnl:              LibmdbxStatArbPnl,
+    pub gas_details:      GasDetails,
 }
 
 #[derive(
@@ -473,4 +474,39 @@ pub struct LibmdbxNormalizedMint {
     pub recipient:   Redefined_Address,
     pub token:       Vec<LibmdbxTokenInfoWithAddress>,
     pub amount:      Vec<Redefined_Rational>,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(StatArbDetails)]
+pub struct LibmdbxStatArbDetails {
+    pub cex_exchange: CexExchange,
+    pub cex_price:    Redefined_Rational,
+    pub dex_exchange: Protocol,
+    pub dex_price:    Redefined_Rational,
+    pub pnl_pre_gas:  LibmdbxStatArbPnl,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(StatArbPnl)]
+pub struct LibmdbxStatArbPnl {
+    pub taker_profit: Redefined_Rational,
+    pub maker_profit: Redefined_Rational,
 }
