@@ -370,11 +370,73 @@ impl CexExchange {
                     BNB_ADDRESS,
                     WETH_ADDRESS,
                     FDUSD_ADDRESS,
-                    PAX_DOLLAR,
+                    PAX_DOLLAR_ADDRESS,
                 ]
             }
             CexExchange::Bitmex => vec![USDT_ADDRESS, USDC_ADDRESS, WETH_ADDRESS],
-            CexExchange::Bitstamp => vec![WBTC_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, PAX_DOLLAR],
+            CexExchange::Bitstamp => {
+                vec![WBTC_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, PAX_DOLLAR_ADDRESS]
+            }
+            CexExchange::BybitSpot => {
+                vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS, DAI_ADDRESS, WETH_ADDRESS]
+            }
+            CexExchange::Coinbase => {
+                vec![
+                    USDC_ADDRESS,
+                    USDT_ADDRESS,
+                    WBTC_ADDRESS,
+                    DAI_ADDRESS,
+                    WETH_ADDRESS,
+                    DAI_ADDRESS,
+                ]
+            }
+            CexExchange::Deribit => vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS],
+            CexExchange::GateIo => vec![USDT_ADDRESS, WETH_ADDRESS, WBTC_ADDRESS, USDC_ADDRESS],
+            CexExchange::Gemini => {
+                vec![WBTC_ADDRESS, WETH_ADDRESS, GUSD_ADDRESS, DAI_ADDRESS, USDT_ADDRESS]
+            }
+            CexExchange::Huobi => {
+                vec![
+                    USDT_ADDRESS,
+                    WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    HT_ADDRESS,
+                    HUSD_ADDRESS,
+                    USDC_ADDRESS,
+                    USDD_ADDRESS,
+                    TUSD_ADDRESS,
+                    DAI_ADDRESS,
+                    PYUSD_ADDRESS,
+                ]
+            }
+            CexExchange::Kraken => {
+                vec![WBTC_ADDRESS, WETH_ADDRESS, USDT_ADDRESS, USDC_ADDRESS, DAI_ADDRESS]
+            }
+            CexExchange::Kucoin => {
+                vec![
+                    USDT_ADDRESS,
+                    WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    USDC_ADDRESS,
+                    KCS_ADDRESS,
+                    TUSD_ADDRESS,
+                    DAI_ADDRESS,
+                ]
+            }
+            CexExchange::Okex => {
+                vec![
+                    USDT_ADDRESS,
+                    USDC_ADDRESS,
+                    WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    DAI_ADDRESS,
+                    EURT_ADDRESS,
+                ]
+            }
+            CexExchange::Upbit => {
+                vec![WETH_ADDRESS, WBTC_ADDRESS, LINK_ADDRESS, EURT_ADDRESS, UNI_TOKEN]
+            }
+
             _ => vec![],
         }
     }
