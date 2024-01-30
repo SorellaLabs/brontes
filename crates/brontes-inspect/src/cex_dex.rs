@@ -3,7 +3,9 @@ use std::sync::Arc;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::cex::CexExchange,
-    mev::{Bundle, BundleData, CexDex, MevType, PriceKind, TokenProfit, TokenProfits},
+    mev::{
+        Bundle, BundleData, CexDex, MevType, PriceKind, StatArbDetails, TokenProfit, TokenProfits,
+    },
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
@@ -150,12 +152,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: &MetadataCombined,
     ) -> Option<Vec<(CexExchange, Rational)>> {
         let cex_prices = self.cex_quotes_for_swap(swap, metadata)?;
-        let dex_price = swap.swap_rate();
 
         let opportunities = cex_prices
             .into_iter()
             .map(|(exchange, price, is_direct_pair)| {
-                self.profit_classifier(swap, &dex_price, (exchange, price, is_direct_pair))
+                self.profit_classifier(swap, (exchange, price, is_direct_pair))
             })
             .collect();
 
@@ -165,12 +166,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     fn profit_classifier(
         &self,
         swap: &NormalizedSwap,
-        dex_price: &Rational,
         exchange_cex_price: (CexExchange, Rational, bool),
     ) -> (CexExchange, Rational) {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
-        let delta_price = exchange_cex_price.1 - dex_price;
+        let delta_price = exchange_cex_price.1 - swap.swap_rate();
 
         // Account for trading fees on CEX
         //TODO: Here we are assuming they are paying taker fees, have to account for
@@ -298,7 +298,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
 pub struct PossibleCexDex {
     pub swaps:           Vec<NormalizedSwap>,
-    pub exchanges:       Vec<CexExchange>,
+    pub cex_prices:      Vec<(CexExchange, Rational)>,
     pub profits_pre_gas: Vec<Rational>,
     pub gas_details:     GasDetails,
     pub pnl:             Rational,
