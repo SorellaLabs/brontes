@@ -432,7 +432,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn add_subgraph(&mut self, pair: Pair, block: u64, edges: Vec<SubGraphEdge>) -> bool {
         let needed_state =
             self.graph_manager
-                .add_subgraph_for_verification(pair, block, edges.clone());
+                .add_subgraph_for_verification(pair, block, edges);
 
         let mut triggered = false;
         // because we run these state fetches in parallel, we come across the issue
