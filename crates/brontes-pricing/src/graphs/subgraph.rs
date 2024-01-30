@@ -20,7 +20,7 @@ use petgraph::{
     algo::connected_components,
     graph::{DiGraph, EdgeReference, Edges},
     prelude::*,
-    visit::{IntoEdgeReferences, IntoEdges, VisitMap, Visitable},
+    visit::{IntoEdgeReferences, IntoEdges, IntoEdgesDirected, VisitMap, Visitable},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::error;
@@ -202,16 +202,52 @@ impl PairSubGraph {
     ) -> VerificationOutcome {
         let mut result =
             self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
-        if self.graph.edges(self.end_node.into()).collect_vec().len() == 0
-            || self.graph.edges(self.start_node.into()).collect_vec().len() == 0
+        if self
+            .graph
+            .edges_directed(self.end_node.into(), Direction::Outgoing)
+            .chain(
+                self.graph
+                    .edges_directed(self.end_node.into(), Direction::Incoming),
+            )
+            .collect_vec()
+            .len()
+            == 0
+            || self
+                .graph
+                .edges_directed(self.start_node.into(), Direction::Outgoing)
+                .chain(
+                    self.graph
+                        .edges_directed(self.start_node.into(), Direction::Incoming),
+                )
+                .collect_vec()
+                .len()
+                == 0
         {
             error!("subgraph tryied verificiation no start or end node lmao");
         }
 
         self.prune_subgraph(&result.removal_state);
 
-        if self.graph.edges(self.end_node.into()).collect_vec().len() == 0
-            || self.graph.edges(self.start_node.into()).collect_vec().len() == 0
+        if self
+            .graph
+            .edges_directed(self.end_node.into(), Direction::Outgoing)
+            .chain(
+                self.graph
+                    .edges_directed(self.end_node.into(), Direction::Incoming),
+            )
+            .collect_vec()
+            .len()
+            == 0
+            || self
+                .graph
+                .edges_directed(self.start_node.into(), Direction::Outgoing)
+                .chain(
+                    self.graph
+                        .edges_directed(self.start_node.into(), Direction::Incoming),
+                )
+                .collect_vec()
+                .len()
+                == 0
         {
             error!("subgraph removed start or end node");
         }
