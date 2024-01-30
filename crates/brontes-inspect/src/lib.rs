@@ -138,7 +138,7 @@ impl Inspectors {
         &self,
         quote_token: Address,
         db: &'static LibmdbxReadWriter,
-        cex_exchanges: Vec<CexExchange>,
+        cex_exchanges: &Vec<CexExchange>,
     ) -> &'static Box<dyn Inspector> {
         match &self {
             Self::AtomicBackrun => {
