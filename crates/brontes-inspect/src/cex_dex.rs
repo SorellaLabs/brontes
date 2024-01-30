@@ -4,7 +4,8 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::cex::CexExchange,
     mev::{
-        Bundle, BundleData, CexDex, MevType, PriceKind, StatArbDetails, TokenProfit, TokenProfits,
+        Bundle, BundleData, CexDex, MevType, PriceKind, StatArbDetails, StatArbPnl, TokenProfit,
+        TokenProfits,
     },
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
@@ -71,7 +72,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let mev_contract = root.head.data.get_to_address();
         let eoa = root.head.address;
 
-        let swaps_with_profit_by_exchange: Vec<(NormalizedSwap, Vec<(CexExchange, Rational)>)> =
+        let swaps_with_profit_by_exchange: Vec<(NormalizedSwap, Vec<(CexExchange, StatArbPnl)>)> =
             swaps
                 .into_iter()
                 .filter_map(|action| {
@@ -83,6 +84,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     Some((swap, cex_dex_opportunity))
                 })
                 .collect();
+
         let possible_cex_dex =
             self.gas_accounting(swaps_with_profit_by_exchange, &gas_details, &metadata.eth_prices);
 
@@ -150,7 +152,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         swap: &NormalizedSwap,
         metadata: &MetadataCombined,
-    ) -> Option<Vec<(CexExchange, Rational)>> {
+    ) -> Option<Vec<(CexExchange, StatArbPnl)>> {
         let cex_prices = self.cex_quotes_for_swap(swap, metadata)?;
 
         let opportunities = cex_prices
@@ -167,26 +169,33 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         swap: &NormalizedSwap,
         exchange_cex_price: (CexExchange, Rational, bool),
-    ) -> (CexExchange, Rational) {
+    ) -> (CexExchange, StatArbPnl) {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let delta_price = exchange_cex_price.1 - swap.swap_rate();
 
-        // Account for trading fees on CEX
-        //TODO: Here we are assuming they are paying taker fees, have to account for
-        // maker based strats
+        // Accounts for Cex Maker & Taker fees
         if exchange_cex_price.2 {
             // Direct pair
             (
                 exchange_cex_price.0,
-                delta_price * &swap.amount_out - &swap.amount_out * &exchange_cex_price.0.fees().1,
+                StatArbPnl {
+                    maker_profit: delta_price * &swap.amount_out
+                        - &swap.amount_out * exchange_cex_price.0.fees().0,
+                    taker_profit: delta_price * &swap.amount_out
+                        - &swap.amount_out * exchange_cex_price.0.fees().1,
+                },
             )
         } else {
             // Indirect pair pays twice the fee
             (
                 exchange_cex_price.0,
-                delta_price * &swap.amount_out
-                    - &swap.amount_out * exchange_cex_price.0.fees().1 * Rational::TWO,
+                StatArbPnl {
+                    maker_profit: delta_price * &swap.amount_out
+                        - &swap.amount_out * exchange_cex_price.0.fees().0 * Rational::TWO,
+                    taker_profit: delta_price * &swap.amount_out
+                        - &swap.amount_out * exchange_cex_price.0.fees().1 * Rational::TWO,
+                },
             )
         }
     }
@@ -238,7 +247,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
     fn gas_accounting(
         &self,
-        swaps_with_profit_by_exchange: Vec<(NormalizedSwap, Vec<(CexExchange, Rational)>)>,
+        swaps_with_profit_by_exchange: Vec<(NormalizedSwap, Vec<(CexExchange, StatArbPnl)>)>,
         gas_details: &GasDetails,
         eth_price: &Rational,
     ) -> PossibleCexDex {
@@ -297,11 +306,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 }
 
 pub struct PossibleCexDex {
-    pub swaps:           Vec<NormalizedSwap>,
-    pub cex_prices:      Vec<(CexExchange, Rational)>,
-    pub profits_pre_gas: Vec<Rational>,
-    pub gas_details:     GasDetails,
-    pub pnl:             Rational,
+    pub swaps:       Vec<NormalizedSwap>,
+    pub arb_details: Vec<StatArbDetails>,
+    pub gas_details: GasDetails,
+    pub pnl:         StataArbPnl,
 }
 
 impl PossibleCexDex {
