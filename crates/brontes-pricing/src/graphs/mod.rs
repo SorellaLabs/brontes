@@ -1,6 +1,7 @@
 mod all_pair_graph;
 mod dijkstras;
 mod registry;
+mod state_tracker;
 mod subgraph;
 mod yens;
 use std::collections::{HashMap, HashSet};
@@ -13,7 +14,10 @@ use malachite::Rational;
 pub use subgraph_verifier::VerificationResults;
 use tracing::info;
 
-use self::{registry::SubGraphRegistry, subgraph::PairSubGraph, subgraph_verifier::*};
+use self::{
+    registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
+    subgraph_verifier::*,
+};
 use super::PoolUpdate;
 use crate::{
     price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
@@ -23,8 +27,12 @@ use crate::{
 
 pub struct GraphManager {
     all_pair_graph:     AllPairGraph,
+    /// registry of all finalized subgraphs
     sub_graph_registry: SubGraphRegistry,
+    /// deals with the verification process of our subgraphs
     subgraph_verifier:  SubgraphVerifier,
+    /// tracks all state needed for our subgraphs
+    graph_state:        StateTracker,
     /// this is degen but don't want to reorganize all types so that
     /// this struct can hold the db so these closures allow for the wanted
     /// interactions.
@@ -44,6 +52,7 @@ impl GraphManager {
         let subgraph_verifier = SubgraphVerifier::new();
 
         Self {
+            graph_state: StateTracker::new(),
             all_pair_graph: graph,
             sub_graph_registry: registry,
             db_load,
@@ -92,12 +101,8 @@ impl GraphManager {
         block: u64,
         edges: Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
-        self.subgraph_verifier.create_new_subgraph(
-            pair.ordered(),
-            block,
-            edges,
-            self.sub_graph_registry.get_edge_state(),
-        )
+        self.subgraph_verifier
+            .create_new_subgraph(pair.ordered(), block, edges, &self.graph_state)
     }
 
     /// creates a subpool for the pair returning all pools that need to be
@@ -106,12 +111,9 @@ impl GraphManager {
         let pair = pair.ordered();
 
         if let Some((pair, edges)) = (&mut self.db_load)(block, pair) {
-            return self.subgraph_verifier.create_new_subgraph(
-                pair,
-                block,
-                edges,
-                self.sub_graph_registry.get_edge_state(),
-            )
+            return self
+                .subgraph_verifier
+                .create_new_subgraph(pair, block, edges, &self.graph_state)
         }
 
         let paths = self
@@ -128,12 +130,8 @@ impl GraphManager {
             return vec![]
         }
 
-        self.subgraph_verifier.create_new_subgraph(
-            pair,
-            block,
-            paths.clone(),
-            self.sub_graph_registry.get_edge_state(),
-        )
+        self.subgraph_verifier
+            .create_new_subgraph(pair, block, paths, &self.graph_state)
     }
 
     pub fn bad_pool_state(
@@ -155,14 +153,9 @@ impl GraphManager {
         )
     }
 
-    pub fn add_verified_subgraph(
-        &mut self,
-        state: HashMap<Address, PoolState>,
-        pair: Pair,
-        subgraph: PairSubGraph,
-    ) {
+    pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph) {
         self.sub_graph_registry
-            .add_verified_subgraph(state, pair.ordered(), subgraph)
+            .add_verified_subgraph(pair.ordered(), subgraph)
     }
 
     pub fn remove_pair_graph_address(
@@ -180,23 +173,20 @@ impl GraphManager {
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
-        self.sub_graph_registry.get_price(pair)
+        self.sub_graph_registry
+            .get_price(pair, self.graph_state.finalized_state())
     }
 
     pub fn new_state(&mut self, address: Address, state: PoolState) {
-        self.subgraph_verifier.add_edge_state(address, state);
+        self.graph_state.new_state_for_verification(address, state);
     }
 
     pub fn update_state(&mut self, address: Address, update: PoolUpdate) {
-        self.sub_graph_registry.update_pool_state(address, update);
+        self.graph_state.update_pool_state(address, update);
     }
 
-    pub fn registry_has_state(&self, addr: &Address) -> bool {
-        self.sub_graph_registry.has_state(addr)
-    }
-
-    pub fn verifier_has_state(&self, block: u64, addr: &Address) -> bool {
-        self.subgraph_verifier.has_state(block, addr)
+    pub fn has_state(&self, block: u64, address: &Address) -> bool {
+        self.graph_state.has_state(block, address)
     }
 
     pub fn has_subgraph(&self, pair: Pair) -> bool {
@@ -209,7 +199,15 @@ impl GraphManager {
         pairs: Vec<(u64, Pair)>,
         quote: Address,
     ) -> Vec<VerificationResults> {
-        self.subgraph_verifier
-            .verify_subgraph(pairs, quote, &self.all_pair_graph)
+        self.subgraph_verifier.verify_subgraph(
+            pairs,
+            quote,
+            &self.all_pair_graph,
+            &mut self.graph_state,
+        )
+    }
+
+    pub fn finalize_block(&mut self, block: u64) {
+        self.graph_state.finalize_block(block)
     }
 }
