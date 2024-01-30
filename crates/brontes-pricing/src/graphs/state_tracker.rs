@@ -43,20 +43,6 @@ impl StateTracker {
             .collect()
     }
 
-    pub fn has_state(&self, block: u64, address: &Address) -> bool {
-        self.verification_edge_state
-            .get(address)
-            .filter(|state| state.contains_block_state(block))
-            .map(|_| true)
-            .or_else(|| {
-                self.finalized_edge_state
-                    .get(address)
-                    .filter(|state| state.last_update == block)
-                    .map(|_| true)
-            })
-            .is_some()
-    }
-
     pub fn mark_state_as_finalized(&mut self, block: u64, pool: Address) {
         let Some(pool_state) = self.verification_edge_state.get_mut(&pool) else {
             error!(?pool, "tried to mark a pool that didn't exist as finalized");
@@ -76,14 +62,16 @@ impl StateTracker {
             .filter_map(|edge| {
                 self.verification_edge_state
                     .get(&edge.pool_addr)
+                    // if not state then make none
                     .filter(|pool_state| pool_state.contains_block_state(block))
+                    // map Some(none)
                     .map(|_| None)
-                    .or_else(|| {
-                        self.finalized_edge_state
-                            .get(&edge.pool_addr)
-                            .filter(|state| state.last_update == block)
-                            .map(|_| None)
-                    })
+                    // .or_else(|| {
+                    //     self.finalized_edge_state
+                    //         .get(&edge.pool_addr)
+                    //         .filter(|state| state.last_update == block)
+                    //         .map(|_| None)
+                    // })
                     .or_else(|| Some(Some(edge.info)))?
             })
             .collect_vec()
