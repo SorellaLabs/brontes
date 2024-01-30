@@ -6,6 +6,7 @@ pub mod normalized_actions;
 pub mod pair;
 pub mod queries;
 pub mod serde_primitives;
+pub mod unordered_buffer_map;
 pub use queries::make_call_request;
 pub mod structured_trace;
 #[cfg(feature = "tests")]
