@@ -18,7 +18,7 @@ use strum::{Display, EnumIter};
 
 #[allow(unused_imports)]
 use crate::{
-    display::utils::{display_sandwich, print_mev_type_header},
+    display::utils::{display_cex_dex, display_sandwich, print_mev_type_header},
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     serde_primitives::vec_fixed_string,
     GasDetails,
@@ -35,6 +35,7 @@ impl fmt::Display for Bundle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.header.mev_type {
             MevType::Sandwich => display_sandwich(self, f)?,
+            MevType::CexDex => display_cex_dex(self, f)?,
             _ => unimplemented!(),
         }
 
@@ -78,8 +79,15 @@ pub trait Mev:
     InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
 {
     fn mev_type(&self) -> MevType;
-    // the amount of gas they paid in wei
-    fn priority_fee_paid(&self) -> u128;
+
+    /// The total amount of gas paid by the bundle in wei
+    /// This includes the coinbase transfer, if any
+    fn total_gas_paid(&self) -> u128;
+
+    /// The priority fee paid by the bundle in wei
+    /// Effective gas - base fee * gas used
+    fn total_priority_fee_paid(&self, base_fee: u128) -> u128;
+
     fn bribe(&self) -> u128;
     fn mev_transaction_hashes(&self) -> Vec<B256>;
 }

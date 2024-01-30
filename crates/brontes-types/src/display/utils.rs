@@ -1,6 +1,6 @@
 use std::fmt;
 
-use colored::Colorize;
+use colored::{ColoredString, Colorize};
 use indoc::indoc;
 
 use crate::mev::{Bundle, BundleData, MevType};
@@ -112,7 +112,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
          `--. \/ _` | '_ \ / _` \ \ /\ / / |/ __| '_ \ 
         /\__/ / (_| | | | | (_| |\ V  V /| | (__| | | |
         \____/ \__,_|_| |_|\__,_| \_/\_/ |_|\___|_| |_|
-        ""#};
+        "#};
 
     for line in ascii_header.lines() {
         writeln!(f, "{}", line.bright_red())?;
@@ -123,7 +123,6 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
         _ => panic!("Wrong bundle type"),
     };
 
-    // Iterate over the frontrun transactions
     // Iterate over the frontrun transactions
     for (i, ((tx_hash, swaps), gas_details)) in sandwich_data
         .frontrun_tx_hash
@@ -167,4 +166,61 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
     writeln!(f, "Gas details: {}", sandwich_data.backrun_gas_details)?;
 
     Ok(())
+}
+
+pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
+    let ascii_header = indoc! {r#"
+             _____ _        _           ___       _     
+            /  ___| |      | |         / _ \     | |    
+            \ `--.| |_ __ _| |_ ______/ /_\ \_ __| |__  
+             `--. \ __/ _` | __|______|  _  | '__| '_ \ 
+            /\__/ / || (_| | |_       | | | | |  | |_) |
+            \____/ \__\__,_|\__|      \_| |_/_|  |_.__/ 
+                                                        
+        ""#};
+
+    for line in ascii_header.lines() {
+        writeln!(f, "{}", line.purple())?;
+    }
+
+    let cex_dex_data = match &bundle.data {
+        BundleData::CexDex(data) => data,
+        _ => panic!("Wrong bundle type"),
+    };
+
+    // Tx details
+    writeln!(f, "{}: ", "Transaction Details".bold().underline().red())?;
+    writeln!(f, "   - Tx Index: {}", bundle.header.tx_index.to_string().bold())?;
+    writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
+    writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
+
+    let tx_url = format!("https://etherscan.io/tx/{:?}", bundle.header.tx_hash).underline();
+    writeln!(f, "   - Etherscan: {}", tx_url)?;
+
+    // Mev section
+    writeln!(f, "\n{}", "Mev:".bold().red().underline())?;
+    writeln!(f, "   - Bundle Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
+    writeln!(f, "   - Bribe (USD): {}", (bundle.header.bribe_usd).to_string().red())?;
+
+    // Cex-dex specific details
+    writeln!(f, "\n{}", "Cex-Dex Details:".bold().purple().underline())?;
+    for (idx, swap) in cex_dex_data.swaps.iter().enumerate() {
+        writeln!(f, "   - Swap: {}", swap)?;
+        /*writeln!(
+            f,
+            "   - Cex-Dex Delta: {}",
+            swap.amount_in * (cex_dex_data.prices_price[idx + 1] - cex_dex_data.prices_price[idx])
+        )?;  */
+    }
+
+    Ok(())
+}
+
+// Helper function to format profit values
+fn format_profit(value: f64) -> ColoredString {
+    if value < 0.0 {
+        format!("-${:.2}", value.abs()).red()
+    } else {
+        format!("${:.2}", value).green()
+    }
 }

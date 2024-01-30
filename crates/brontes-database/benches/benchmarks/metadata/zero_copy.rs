@@ -112,7 +112,7 @@ pub struct MetadataRkyvInner {
     pub p2p_timestamp:          Option<u64>,
     pub proposer_fee_recipient: Option<AddressOwned>,
     pub proposer_mev_reward:    Option<u128>,
-    pub mempool_flow:           Vec<TxHashOwned>,
+    pub private_flow:           Vec<TxHashOwned>,
 }
 
 impl Encodable for MetadataRkyvInner {
@@ -169,8 +169,8 @@ impl From<MetadataBench> for MetadataRkyvData {
                     .proposer_fee_recipient
                     .map(|val| AddressOwned(val.0 .0)),
                 proposer_mev_reward:    value.proposer_mev_reward,
-                mempool_flow:           value
-                    .mempool_flow
+                private_flow:           value
+                    .private_flow
                     .into_iter()
                     .map(|val| TxHashOwned(val.0))
                     .collect(),
