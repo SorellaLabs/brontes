@@ -45,6 +45,7 @@ impl LibmdbxData<TxTraces> for TxTracesData {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 #[redefined(TxTracesInner)]
 pub struct LibmdbxTxTracesInner {
     pub traces: Option<Vec<LibmdbxTxTrace>>,
@@ -60,6 +61,7 @@ pub struct LibmdbxTxTracesInner {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 #[redefined(TxTrace)]
 pub struct LibmdbxTxTrace {
     pub trace:           Vec<LibmdbxTransactionTraceWithLogs>,
@@ -81,6 +83,7 @@ pub struct LibmdbxTxTrace {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 #[redefined(TransactionTraceWithLogs)]
 pub struct LibmdbxTransactionTraceWithLogs {
     pub trace:        LibmdbxTransactionTrace,
@@ -100,6 +103,7 @@ pub struct LibmdbxTransactionTraceWithLogs {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 #[redefined(Log)]
 pub struct LibmdbxLog {
     pub address: Redefined_Address,
@@ -116,6 +120,7 @@ pub struct LibmdbxLog {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 #[redefined(LogData)]
 #[redefined_attr(to_source = "LogData::new_unchecked(self.topics.into_iter().map(Into::into).\
                               collect(), self.data.into())")]
@@ -137,6 +142,7 @@ pub struct LibmdbxLogData {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(TransactionTrace)]
 pub struct LibmdbxTransactionTrace {
     pub action:        LibmdbxAction,
@@ -158,6 +164,7 @@ pub struct LibmdbxTransactionTrace {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(Action)]
 pub enum LibmdbxAction {
     Call(LibmdbxCallAction),
@@ -178,6 +185,7 @@ pub enum LibmdbxAction {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(CallAction)]
 pub struct LibmdbxCallAction {
     pub from:      Redefined_Address,
@@ -200,6 +208,7 @@ pub struct LibmdbxCallAction {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(CreateAction)]
 pub struct LibmdbxCreateAction {
     pub from:  Redefined_Address,
@@ -220,6 +229,7 @@ pub struct LibmdbxCreateAction {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(SelfdestructAction)]
 pub struct LibmdbxSelfdestructAction {
     pub address:        Redefined_Address,
@@ -239,6 +249,7 @@ pub struct LibmdbxSelfdestructAction {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(RewardAction)]
 pub struct LibmdbxRewardAction {
     pub author:      Redefined_Address,
@@ -258,6 +269,7 @@ pub struct LibmdbxRewardAction {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(RewardType)]
 pub enum LibmdbxRewardType {
     Block,
@@ -276,6 +288,7 @@ pub enum LibmdbxRewardType {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(CallType)]
 pub enum LibmdbxCallType {
     None,
@@ -297,6 +310,7 @@ pub enum LibmdbxCallType {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(TraceOutput)]
 pub enum LibmdbxTraceOutput {
     Call(LibmdbxCallOutput),
@@ -315,6 +329,7 @@ pub enum LibmdbxTraceOutput {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(CallOutput)]
 pub struct LibmdbxCallOutput {
     pub gas_used: Redefined_U64,
@@ -333,6 +348,7 @@ pub struct LibmdbxCallOutput {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(CreateOutput)]
 pub struct LibmdbxCreateOutput {
     pub address:  Redefined_Address,

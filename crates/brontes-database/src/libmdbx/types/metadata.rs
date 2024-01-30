@@ -32,6 +32,7 @@ impl LibmdbxData<Metadata> for MetadataData {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(MetadataInner)]
 pub struct LibmdbxMetadataInner {
     pub block_hash:             Redefined_U256,
