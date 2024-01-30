@@ -60,7 +60,7 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     /// loading. in the case that a pool fails to load, we need all subgraph
     /// pairs that are dependent on the node in order to remove it from the
     /// subgraph and possibly reconstruct it.
-    protocol_address_to_parent_pairs: HashMap<Address, Vec<Pair>>,
+    protocol_address_to_parent_pairs: HashMap<Address, Vec<(u64, Pair)>>,
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
@@ -116,7 +116,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.protocol_address_to_parent_pairs
             .entry(address)
             .or_insert(vec![])
-            .push(parent_pair.ordered());
+            .push((block, parent_pair.ordered()));
 
         match self.parent_pair_state_loading.entry(parent_pair.ordered()) {
             Entry::Vacant(v) => {
@@ -154,10 +154,27 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             *(o.get_mut()) -= 1;
         }
 
-        let removed = self
-            .protocol_address_to_parent_pairs
-            .remove(address)
-            .unwrap_or(vec![]);
+
+        // only remove for state loading for the given block
+        let removed =
+            if let Entry::Occupied(mut o) = self.protocol_address_to_parent_pairs.entry(*address) {
+                let entry = o.get_mut();
+                let mut finished_pairs = Vec::new();
+                entry.retain(|(target_block, pair)| {
+                    if *target_block == block {
+                        finished_pairs.push(*pair);
+                        return false
+                    }
+                    true
+                });
+                if entry.is_empty() {
+                    o.remove_entry();
+                }
+
+                finished_pairs
+            } else {
+                vec![]
+            };
 
         removed.iter().for_each(|pair| {
             if let Entry::Occupied(mut o) = self.parent_pair_state_loading.entry(*pair) {
