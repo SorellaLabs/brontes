@@ -133,6 +133,7 @@ impl<V: NormalizedAction> Root<V> {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 pub struct GasDetails {
     pub coinbase_transfer:   Option<u128>,
     pub priority_fee:        u128,
