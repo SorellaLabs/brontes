@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    default::{self, Default},
-    ops::MulAssign,
-    str::FromStr,
-};
+use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use malachite::{
