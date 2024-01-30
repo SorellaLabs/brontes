@@ -1,14 +1,15 @@
 use std::fmt::Debug;
 
 use ::serde::ser::{Serialize, SerializeStruct, Serializer};
-use alloy_primitives::Address;
 use itertools::Itertools;
+use malachite::Rational;
 use reth_primitives::B256;
 use serde::Deserialize;
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
+use crate::{db::cex::CexExchange, normalized_actions::ClickhouseVecNormalizedSwap, Protocol};
 #[allow(unused_imports)]
 use crate::{
     display::utils::{display_sandwich, print_mev_type_header},
@@ -16,18 +17,16 @@ use crate::{
     serde_primitives::vec_fixed_string,
     GasDetails,
 };
-use crate::{normalized_actions::ClickhouseVecNormalizedSwap, utils::PriceKind};
 
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct CexDex {
-    pub tx_hash:        B256,
-    pub swaps:          Vec<NormalizedSwap>,
-    pub gas_details:    GasDetails,
-    pub prices_kind:    Vec<PriceKind>,
-    pub prices_address: Vec<Address>,
-    pub prices_price:   Vec<f64>,
+    pub tx_hash:     B256,
+    pub swaps:       Vec<NormalizedSwap>,
+    pub prices:      Vec<StatArbDetails>,
+    pub gas_details: GasDetails,
 }
+
 impl Mev for CexDex {
     fn mev_type(&self) -> MevType {
         MevType::CexDex
@@ -79,7 +78,6 @@ impl Serialize for CexDex {
 
         ser_struct.serialize_field("gas_details", &(gas_details))?;
 
-        ser_struct.serialize_field("prices.kind", &(self.prices_kind))?;
         ser_struct.serialize_field(
             "prices.address",
             &(self
@@ -106,8 +104,16 @@ impl DbRow for CexDex {
         "swaps.amount_in",
         "swaps.amount_out",
         "gas_details",
-        "prices.kind",
-        "prices.address",
-        "prices.price",
     ];
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct StatArbDetails {
+    pub cex_exchange:   CexExchange,
+    pub cex_price:      Rational,
+    pub dex_exchange:   Protocol,
+    pub dex_price:      Rational,
+    // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
+    pub profit_pre_gas: Rational,
 }
