@@ -29,8 +29,17 @@ impl StateTracker {
     pub fn state_for_verification(&self, block: u64) -> HashMap<Address, PoolState> {
         self.verification_edge_state
             .iter()
-            // annoying have to clone, should fix
             .filter_map(|(addr, state)| Some((*addr, state.get_state(block)?.clone())))
+            .chain(
+                self.finalized_edge_state
+                    .iter()
+                    .filter_map(|(addr, state)| {
+                        if state.last_update == block {
+                            return Some((*addr, state.clone()))
+                        }
+                        None
+                    }),
+            )
             .collect()
     }
 
