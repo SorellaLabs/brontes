@@ -342,6 +342,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 VerificationResults::Passed(passed) => {
                     passed.prune_state.into_iter().for_each(|(_, bad_edges)| {
                         for bad_edge in bad_edges {
+
+                            if bad_edge.liquidity > Rational::from(25_000) {
+                             tracing::info!(?bad_edge.pool_address, "pool with liquidity was removed, pass");
+                            }
                             if let Some((addr, protocol, pair)) = self
                                 .graph_manager
                                 .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
@@ -358,6 +362,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 VerificationResults::Failed(failed) => {
                     failed.prune_state.into_iter().for_each(|(_, bad_edges)| {
                         for bad_edge in bad_edges {
+                            if bad_edge.liquidity > Rational::from(25_000) {
+                             tracing::info!(?bad_edge.pool_address, "pool with liquidity was removed failure");
+                            }
                             if let Some((addr, protocol, pair)) = self
                                 .graph_manager
                                 .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
