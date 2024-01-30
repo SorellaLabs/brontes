@@ -6,7 +6,7 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens,
         metadata::{MetadataCombined, MetadataNoDex},
-        token_info::TokenInfo,
+        token_info::{TokenInfo, TokenInfoWithAddress},
     },
     pair::Pair,
     structured_trace::TxTrace,
@@ -17,7 +17,7 @@ pub trait LibmdbxReader: Send + Sync + 'static {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<MetadataNoDex>;
     fn get_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined>;
 
-    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfo>>;
+    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>>;
 
     fn try_get_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
         Ok(self.try_get_token_info(address)?.map(|info| info.decimals))

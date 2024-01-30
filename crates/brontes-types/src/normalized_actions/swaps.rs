@@ -7,17 +7,21 @@ use std::{
 use alloy_primitives::TxHash;
 use colored::Colorize;
 use itertools::Itertools;
+use malachite::Rational;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
 };
+
+use crate::{db::token_info::TokenInfoWithAddress, Protocol};
+
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwapWithFee {
     pub swap:       NormalizedSwap,
-    pub fee_token:  Address,
-    pub fee_amount: U256,
+    pub fee_token:  TokenInfoWithAddress,
+    pub fee_amount: Rational,
 }
 
 impl Deref for NormalizedSwapWithFee {
@@ -35,15 +39,16 @@ impl DerefMut for NormalizedSwapWithFee {
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwap {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
     pub recipient:   Address,
     // If pool address is zero, then this is a p2p / CoW style swap, possibly within a batch
     pub pool:        Address,
-    pub token_in:    Address,
-    pub token_out:   Address,
-    pub amount_in:   U256,
-    pub amount_out:  U256,
+    pub token_in:    TokenInfoWithAddress,
+    pub token_out:   TokenInfoWithAddress,
+    pub amount_in:   Rational,
+    pub amount_out:  Rational,
 }
 
 impl Display for NormalizedSwap {
@@ -74,37 +79,38 @@ pub struct ClickhouseVecNormalizedSwap {
 
 impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
     fn from(value: Vec<NormalizedSwap>) -> Self {
-        ClickhouseVecNormalizedSwap {
-            trace_index: value.iter().map(|val| val.trace_index).collect(),
-            from:        value
-                .iter()
-                .map(|val| format!("{:?}", val.from).into())
-                .collect(),
-            recipient:   value
-                .iter()
-                .map(|val| format!("{:?}", val.recipient).into())
-                .collect(),
-            pool:        value
-                .iter()
-                .map(|val| format!("{:?}", val.pool).into())
-                .collect(),
-            token_in:    value
-                .iter()
-                .map(|val| format!("{:?}", val.token_in).into())
-                .collect(),
-            token_out:   value
-                .iter()
-                .map(|val| format!("{:?}", val.token_out).into())
-                .collect(),
-            amount_in:   value
-                .iter()
-                .map(|val| val.amount_in.to_le_bytes())
-                .collect(),
-            amount_out:  value
-                .iter()
-                .map(|val| val.amount_out.to_le_bytes())
-                .collect(),
-        }
+        todo!("Joe");
+        // ClickhouseVecNormalizedSwap {
+        //     trace_index: value.iter().map(|val| val.trace_index).collect(),
+        //     from:        value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.from).into())
+        //         .collect(),
+        //     recipient:   value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.recipient).into())
+        //         .collect(),
+        //     pool:        value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.pool).into())
+        //         .collect(),
+        //     token_in:    value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.token_in).into())
+        //         .collect(),
+        //     token_out:   value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.token_out).into())
+        //         .collect(),
+        //     amount_in:   value
+        //         .iter()
+        //         .map(|val| val.amount_in.to_le_bytes())
+        //         .collect(),
+        //     amount_out:  value
+        //         .iter()
+        //         .map(|val| val.amount_out.to_le_bytes())
+        //         .collect(),
+        // }
     }
 }
 

@@ -1,8 +1,9 @@
 use alloy_primitives::{Address, U256};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
-use brontes_types::normalized_actions::{
-    NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
+use brontes_types::{
+    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap},
+    ToScaledRational,
 };
 
 use crate::SushiSwapV3::{burnReturn, collectReturn, mintReturn, swapReturn};
@@ -26,23 +27,28 @@ action_impl!(
         let recipient = call_data.recipient;
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
+
+        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
             (
-                U256::from_be_bytes(token_1_delta.to_be_bytes::<32>()),
-                U256::from_be_bytes(token_0_delta.abs().to_be_bytes::<32>()),
-                token_1,
-                token_0,
+                token_1_delta.to_scaled_rational(t1_info.decimals),
+                token_0_delta.abs().to_scaled_rational(t0_info.decimals),
+                t1_info,
+                t0_info,
             )
         } else {
             (
-                U256::from_be_bytes(token_0_delta.to_be_bytes::<32>()),
-                U256::from_be_bytes(token_1_delta.abs().to_be_bytes::<32>()),
-                token_0,
-                token_1,
+                token_0_delta.to_scaled_rational(t0_info.decimals),
+                token_1_delta.abs().to_scaled_rational(t1_info.decimals),
+                t0_info,
+                t1_info,
             )
         };
 
         Some(NormalizedSwap {
+            protocol: Protocol::SushiSwapV3,
             trace_index,
             from: from_address,
             recipient,
@@ -72,13 +78,21 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
+        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+
+        let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
+        let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
+
+
         Some(NormalizedMint {
+            protocol:Protocol::SushiSwapV3,
             trace_index,
             from: from_address,
             recipient: call_data.recipient,
             to: target_address,
-            token: vec![token_0, token_1],
-            amount: vec![token_0_delta, token_1_delta],
+            token: vec![t0_info, t1_info],
+            amount: vec![am0, am1],
         })
     }
 );
@@ -99,13 +113,20 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
+        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+
+        let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
+        let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
+
         Some(NormalizedBurn {
+            protocol: Protocol::SushiSwapV3,
             to: target_address,
             recipient: target_address,
             trace_index,
             from: from_address,
-            token: vec![token_0, token_1],
-            amount: vec![token_0_delta, token_1_delta],
+            token: vec![t0_info, t1_info],
+            amount: vec![am0, am1],
         })
     }
 );
@@ -122,17 +143,25 @@ action_impl!(
     to_addr: Address,
     _msg_sender: Address,
     call_data: collectCall,
-    return_data: collectReturn,  db_tx: &DB
+    return_data: collectReturn,
+    db_tx: &DB
     | {
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
+
+        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+
+        let am0 = return_data.amount0.to_scaled_rational(t0_info.decimals);
+        let am1 = return_data.amount1.to_scaled_rational(t1_info.decimals);
         Some(NormalizedCollect {
+            protocol: Protocol::SushiSwapV3,
             trace_index,
             from: from_addr,
             recipient: call_data.recipient,
             to: to_addr,
-            token: vec![token_0, token_1],
-            amount: vec![U256::from(return_data.amount0), U256::from(return_data.amount1)],
+            token: vec![t0_info, t1_info],
+            amount: vec![am0, am1],
         })
     }
 );

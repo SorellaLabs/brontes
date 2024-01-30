@@ -1,7 +1,7 @@
 use alloy_primitives::{hex, FixedBytes};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
-use brontes_types::normalized_actions::NormalizedSwap;
+use brontes_types::{normalized_actions::NormalizedSwap, ToScaledRational};
 use reth_primitives::{Address, U256};
 
 pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
@@ -24,27 +24,36 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
+        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+
         if log.sold_id ==  U256::ZERO {
+            let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
+            let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
             return Some(NormalizedSwap {
+                protocol: Protocol::CurveCryptoSwap,
                 pool: target_address,
                 trace_index,
                 from: from_address,
                 recipient: from_address,
-                token_in: token_0,
-                token_out: token_1,
-                amount_in: log.tokens_sold,
-                amount_out: log.tokens_bought,
+                token_in: t0_info,
+                token_out: t1_info,
+                amount_in,
+                amount_out,
             })
         } else {
+            let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
+            let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
             return Some(NormalizedSwap {
+                protocol: Protocol::CurveCryptoSwap,
                 trace_index,
                 pool: target_address,
                 from: from_address,
                 recipient: from_address,
-                token_in: token_1,
-                token_out: token_0,
-                amount_in: log.tokens_sold,
-                amount_out: log.tokens_bought,
+                token_in: t1_info,
+                token_out: t0_info,
+                amount_in,
+                amount_out,
             })
         }
     }
@@ -80,27 +89,36 @@ action_impl!(
             }
         }
 
-        if log.sold_id == U256::ZERO {
+        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+
+        if log.sold_id ==  U256::ZERO {
+            let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
+            let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
             return Some(NormalizedSwap {
+                protocol: Protocol::CurveCryptoSwap,
                 pool: target_address,
                 trace_index,
                 from: from_address,
                 recipient: from_address,
-                token_in: token_0,
-                token_out: token_1,
-                amount_in: log.tokens_sold,
-                amount_out: log.tokens_bought,
+                token_in: t0_info,
+                token_out: t1_info,
+                amount_in,
+                amount_out,
             })
         } else {
+            let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
+            let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
             return Some(NormalizedSwap {
+                protocol: Protocol::CurveCryptoSwap,
                 trace_index,
                 pool: target_address,
                 from: from_address,
                 recipient: from_address,
-                token_in: token_1,
-                token_out: token_0,
-                amount_in: log.tokens_sold,
-                amount_out: log.tokens_bought,
+                token_in: t1_info,
+                token_out: t0_info,
+                amount_in,
+                amount_out,
             })
         }
     }
@@ -137,27 +155,36 @@ action_impl!(
             }
         }
 
-        if log.sold_id == U256::ZERO {
+        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+
+        if log.sold_id ==  U256::ZERO {
+            let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
+            let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
             return Some(NormalizedSwap {
+                protocol: Protocol::CurveCryptoSwap,
                 pool: target_address,
                 trace_index,
                 from: from_address,
-                recipient,
-                token_in: token_0,
-                token_out: token_1,
-                amount_in: log.tokens_sold,
-                amount_out: log.tokens_bought,
+                recipient: from_address,
+                token_in: t0_info,
+                token_out: t1_info,
+                amount_in,
+                amount_out,
             })
         } else {
+            let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
+            let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
             return Some(NormalizedSwap {
+                protocol: Protocol::CurveCryptoSwap,
                 trace_index,
                 pool: target_address,
                 from: from_address,
-                recipient,
-                token_in: token_1,
-                token_out: token_0,
-                amount_in: log.tokens_sold,
-                amount_out: log.tokens_bought,
+                recipient: from_address,
+                token_in: t1_info,
+                token_out: t0_info,
+                amount_in,
+                amount_out,
             })
         }
     }
@@ -189,27 +216,36 @@ action_impl!(
             token_1 = ETH;
         }
 
+        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+
         if log.sold_id ==  U256::ZERO {
+            let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
+            let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
             return Some(NormalizedSwap {
+                protocol: Protocol::CurveCryptoSwap,
                 pool: target_address,
                 trace_index,
                 from: from_address,
                 recipient: from_address,
-                token_in: token_0,
-                token_out: token_1,
-                amount_in: log.tokens_sold,
-                amount_out: log.tokens_bought,
+                token_in: t0_info,
+                token_out: t1_info,
+                amount_in,
+                amount_out,
             })
         } else {
+            let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
+            let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
             return Some(NormalizedSwap {
+                protocol: Protocol::CurveCryptoSwap,
                 trace_index,
                 pool: target_address,
                 from: from_address,
                 recipient: from_address,
-                token_in: token_1,
-                token_out: token_0,
-                amount_in: log.tokens_sold,
-                amount_out: log.tokens_bought,
+                token_in: t1_info,
+                token_out: t0_info,
+                amount_in,
+                amount_out,
             })
         }
     }
