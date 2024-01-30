@@ -73,7 +73,7 @@ impl NormalizedFlashLoan {
                 _ => continue,
             }
         }
-        let mut fees = Vec::new();
+        let fees = Vec::new();
 
         // //TODO: deal with diff aave modes, where part of the flashloan is taken on as
         // // debt by the OnBehalfOf address
