@@ -17,13 +17,13 @@ WITH
     all AS (
         SELECT 
             aggr.block_number AS block_number,
-            aggr.pair AS pair,
-            groupArray((aggr.exchange, aggr.cex_timestamp, (aggr.ask_price, aggr.bid_price), aggr.pair.1)) AS metadata
+            aggr.exchange AS exchange,
+            groupArray(((aggr.pair), (aggr.cex_timestamp, (aggr.ask_price, aggr.bid_price), aggr.pair.1))) AS metadata
         FROM aggr
-        GROUP BY block_number, pair
+        GROUP BY block_number, exchange
     )
 SELECT
     CAST(block_number, 'UInt64') AS block_number,
-    groupArray((pair, metadata)) AS data
+    groupArray((exchange, metadata)) AS data
 FROM all 
 GROUP BY block_number
