@@ -147,10 +147,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         pools.into_iter().flatten().for_each(|(graph_edges, pair)| {
             if graph_edges.is_empty() {
+                error!(?pair, "new pool has no graph edges");
                 return
             }
 
             if self.graph_manager.has_subgraph(pair) {
+                info!(?pair, "already have subgraph");
+
                 return
             }
 
@@ -392,6 +395,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 return
             }
 
+            error!(?pair, "requery pool has no graph edges");
+
             let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair)
             else {
                 error!(?pair, "failed to build a graph without any previous state removal");
@@ -425,6 +430,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     fn add_subgraph(&mut self, pair: Pair, block: u64, edges: Vec<SubGraphEdge>) -> bool {
         info!(?pair, "adding subgraph");
+
         let needed_state =
             self.graph_manager
                 .add_subgraph_for_verification(pair, block, edges.clone());
@@ -476,17 +482,17 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         {
             let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
             // load exchange only if its not loaded already
-            if !(self.graph_manager.has_state(block, &pool_info.pool_addr) || is_loading) {
+            if is_loading {
+                self.lazy_loader
+                    .add_protocol_parent(block, pool_info.pool_addr, pair)
+            } else {
                 self.lazy_loader.lazy_load_exchange(
                     pair,
                     Pair(pool_info.token_0, pool_info.token_1),
                     pool_info.pool_addr,
                     block,
                     pool_info.dex_type,
-                );
-            } else if is_loading {
-                self.lazy_loader
-                    .add_protocol_parent(block, pool_info.pool_addr, pair)
+                )
             }
         }
     }
