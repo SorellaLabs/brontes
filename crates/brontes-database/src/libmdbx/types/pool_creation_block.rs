@@ -32,5 +32,6 @@ impl LibmdbxData<PoolCreationBlocks> for PoolCreationBlocksData {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PoolsToAddresses)]
 pub struct LibmdbxPoolsToAddresses(pub Vec<Redefined_Address>);

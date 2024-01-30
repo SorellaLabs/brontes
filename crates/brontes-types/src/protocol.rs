@@ -54,6 +54,7 @@ to_byte!(
         strum::Display,
         strum::EnumString,
     )]
+    #[archive(check_bytes)]
     #[repr(u8)]
     pub enum Protocol {
         UniswapV2,
@@ -83,7 +84,7 @@ impl Encodable for Protocol {
 
 impl Decodable for Protocol {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let archived: &ArchivedProtocol = unsafe { rkyv::archived_root::<Self>(buf) };
+        let archived: &ArchivedProtocol = rkyv::check_archived_root::<Self>(buf).unwrap();
 
         let this = ArchivedProtocol::deserialize(&archived, &mut rkyv::Infallible).unwrap();
         Ok(this)
