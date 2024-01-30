@@ -1,15 +1,21 @@
 use brontes_types::{
     db::{
+        cex::CexExchange,
         mev_block::MevBlockWithClassified,
-        redefined_types::primitives::{Redefined_Address, Redefined_FixedBytes, Redefined_Uint},
+        redefined_types::{
+            malachite::Redefined_Rational,
+            primitives::{Redefined_Address, Redefined_FixedBytes},
+        },
+        token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{
         AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
         JitLiquiditySandwich, Liquidation, MevBlock, MevCount, MevType, PossibleMev,
-        PossibleMevCollection, PossibleMevTriggers, Sandwich, TokenProfit, TokenProfits,
+        PossibleMevCollection, PossibleMevTriggers, Sandwich, StatArbDetails, StatArbPnl,
+        TokenProfit, TokenProfits,
     },
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    GasDetails, PriceKind,
+    GasDetails, Protocol,
 };
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
@@ -39,6 +45,7 @@ impl LibmdbxData<MevBlocks> for MevBlocksData {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(MevBlockWithClassified)]
 pub struct LibmdbxMevBlockWithClassified {
     pub block: LibmdbxMevBlock,
@@ -55,6 +62,7 @@ pub struct LibmdbxMevBlockWithClassified {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(MevBlock)]
 pub struct LibmdbxMevBlock {
     pub block_hash: Redefined_FixedBytes<32>,
@@ -86,6 +94,7 @@ pub struct LibmdbxMevBlock {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(MevCount)]
 pub struct LibmdbxMevCount {
     pub mev_count:            u64,
@@ -107,6 +116,7 @@ pub struct LibmdbxMevCount {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PossibleMevCollection)]
 pub struct LibmdbxPossibleMevCollection(pub Vec<LibmdbxPossibleMev>);
 
@@ -120,6 +130,7 @@ pub struct LibmdbxPossibleMevCollection(pub Vec<LibmdbxPossibleMev>);
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PossibleMev)]
 pub struct LibmdbxPossibleMev {
     pub tx_hash:     Redefined_FixedBytes<32>,
@@ -138,6 +149,7 @@ pub struct LibmdbxPossibleMev {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PossibleMevTriggers)]
 pub struct LibmdbxPossibleMevTriggers {
     pub is_private:        bool,
@@ -155,6 +167,7 @@ pub struct LibmdbxPossibleMevTriggers {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(BundleHeader)]
 pub struct LibmdbxBundleHeader {
     pub block_number:         u64,
@@ -179,6 +192,7 @@ pub struct LibmdbxBundleHeader {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(BundleData)]
 pub enum LibmdbxBundleData {
     Sandwich(LibmdbxSandwich),
@@ -200,6 +214,7 @@ pub enum LibmdbxBundleData {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(Bundle)]
 pub struct LibmdbxBundle {
     pub header: LibmdbxBundleHeader,
@@ -216,6 +231,7 @@ pub struct LibmdbxBundle {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(TokenProfit)]
 pub struct LibmdbxTokenProfit {
     pub profit_collector: Redefined_Address,
@@ -234,6 +250,7 @@ pub struct LibmdbxTokenProfit {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(TokenProfits)]
 pub struct LibmdbxTokenProfits {
     pub profits: Vec<LibmdbxTokenProfit>,
@@ -249,6 +266,7 @@ pub struct LibmdbxTokenProfits {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(Sandwich)]
 pub struct LibmdbxSandwich {
     pub frontrun_tx_hash:         Vec<Redefined_FixedBytes<32>>,
@@ -272,6 +290,7 @@ pub struct LibmdbxSandwich {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(AtomicBackrun)]
 pub struct LibmdbxAtomicBackrun {
     pub tx_hash:     Redefined_FixedBytes<32>,
@@ -289,6 +308,7 @@ pub struct LibmdbxAtomicBackrun {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(JitLiquiditySandwich)]
 pub struct LibmdbxJitLiquiditySandwich {
     pub frontrun_tx_hash:         Vec<Redefined_FixedBytes<32>>,
@@ -314,6 +334,7 @@ pub struct LibmdbxJitLiquiditySandwich {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(JitLiquidity)]
 pub struct LibmdbxJitLiquidity {
     pub frontrun_mint_tx_hash: Redefined_FixedBytes<32>,
@@ -338,14 +359,14 @@ pub struct LibmdbxJitLiquidity {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(CexDex)]
 pub struct LibmdbxCexDex {
-    pub tx_hash:        Redefined_FixedBytes<32>,
-    pub swaps:          Vec<LibmdbxNormalizedSwap>,
-    pub gas_details:    GasDetails,
-    pub prices_kind:    Vec<PriceKind>,
-    pub prices_address: Vec<Redefined_Address>,
-    pub prices_price:   Vec<f64>,
+    pub tx_hash:          Redefined_FixedBytes<32>,
+    pub swaps:            Vec<LibmdbxNormalizedSwap>,
+    pub stat_arb_details: Vec<LibmdbxStatArbDetails>,
+    pub pnl:              LibmdbxStatArbPnl,
+    pub gas_details:      GasDetails,
 }
 
 #[derive(
@@ -358,6 +379,7 @@ pub struct LibmdbxCexDex {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(Liquidation)]
 pub struct LibmdbxLiquidation {
     pub liquidation_tx_hash: Redefined_FixedBytes<32>,
@@ -377,16 +399,35 @@ pub struct LibmdbxLiquidation {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
+#[redefined(TokenInfoWithAddress)]
+pub struct LibmdbxTokenInfoWithAddress {
+    pub inner:   TokenInfo,
+    pub address: Redefined_Address,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[archive(check_bytes)]
 #[redefined(NormalizedSwap)]
 pub struct LibmdbxNormalizedSwap {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Redefined_Address,
     pub recipient:   Redefined_Address,
     pub pool:        Redefined_Address,
-    pub token_in:    Redefined_Address,
-    pub token_out:   Redefined_Address,
-    pub amount_in:   Redefined_Uint<256, 4>,
-    pub amount_out:  Redefined_Uint<256, 4>,
+    pub token_in:    LibmdbxTokenInfoWithAddress,
+    pub token_out:   LibmdbxTokenInfoWithAddress,
+    pub amount_in:   Redefined_Rational,
+    pub amount_out:  Redefined_Rational,
 }
 
 #[derive(
@@ -399,16 +440,18 @@ pub struct LibmdbxNormalizedSwap {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(NormalizedLiquidation)]
 pub struct LibmdbxNormalizedLiquidation {
+    pub protocol:              Protocol,
     pub trace_index:           u64,
     pub pool:                  Redefined_Address,
     pub liquidator:            Redefined_Address,
     pub debtor:                Redefined_Address,
-    pub collateral_asset:      Redefined_Address,
-    pub debt_asset:            Redefined_Address,
-    pub covered_debt:          Redefined_Uint<256, 4>,
-    pub liquidated_collateral: Redefined_Uint<256, 4>,
+    pub collateral_asset:      LibmdbxTokenInfoWithAddress,
+    pub debt_asset:            LibmdbxTokenInfoWithAddress,
+    pub covered_debt:          Redefined_Rational,
+    pub liquidated_collateral: Redefined_Rational,
 }
 
 #[derive(
@@ -421,14 +464,16 @@ pub struct LibmdbxNormalizedLiquidation {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(NormalizedBurn)]
 pub struct LibmdbxNormalizedBurn {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Redefined_Address,
     pub to:          Redefined_Address,
     pub recipient:   Redefined_Address,
-    pub token:       Vec<Redefined_Address>,
-    pub amount:      Vec<Redefined_Uint<256, 4>>,
+    pub token:       Vec<LibmdbxTokenInfoWithAddress>,
+    pub amount:      Vec<Redefined_Rational>,
 }
 
 #[derive(
@@ -441,12 +486,51 @@ pub struct LibmdbxNormalizedBurn {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(NormalizedMint)]
 pub struct LibmdbxNormalizedMint {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Redefined_Address,
     pub to:          Redefined_Address,
     pub recipient:   Redefined_Address,
-    pub token:       Vec<Redefined_Address>,
-    pub amount:      Vec<Redefined_Uint<256, 4>>,
+    pub token:       Vec<LibmdbxTokenInfoWithAddress>,
+    pub amount:      Vec<Redefined_Rational>,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[archive(check_bytes)]
+#[redefined(StatArbDetails)]
+pub struct LibmdbxStatArbDetails {
+    pub cex_exchange: CexExchange,
+    pub cex_price:    Redefined_Rational,
+    pub dex_exchange: Protocol,
+    pub dex_price:    Redefined_Rational,
+    pub pnl_pre_gas:  LibmdbxStatArbPnl,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[archive(check_bytes)]
+#[redefined(StatArbPnl)]
+pub struct LibmdbxStatArbPnl {
+    pub taker_profit: Redefined_Rational,
+    pub maker_profit: Redefined_Rational,
 }

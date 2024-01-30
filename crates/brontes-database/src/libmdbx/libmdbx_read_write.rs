@@ -6,12 +6,12 @@ use brontes_types::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_to_tokens::PoolTokens,
-        cex::{CexPriceMap, CexQuote},
+        cex::CexPriceMap,
         dex::{DexQuote, DexQuotes},
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
-        token_info::TokenInfo,
+        token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
     },
     mev::{Bundle, MevBlock},
@@ -67,7 +67,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
-        let db_cex_quotes: CexPriceMap = match tx
+        let cex_quotes: CexPriceMap = match tx
             .get::<CexPrice>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))
         {
@@ -78,30 +78,15 @@ impl LibmdbxReader for LibmdbxReadWriter {
             }
         };
 
-        let eth_prices =
-            if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
-                eth_usdt
-            } else {
-                db_cex_quotes
-                    .get_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-                    .unwrap_or_default()
-            };
-
-        let mut cex_quotes = CexPriceMap::new();
-        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
-            cex_quotes.0.insert(
-                pair,
-                quote
-                    .into_iter()
-                    .map(|q| CexQuote {
-                        exchange:  q.exchange,
-                        timestamp: q.timestamp,
-                        price:     q.price,
-                        token0:    q.token0,
-                    })
-                    .collect::<Vec<_>>(),
-            );
-        });
+        let eth_prices = if let Some(eth_usdt) =
+            cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
+        {
+            eth_usdt
+        } else {
+            cex_quotes
+                .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
+                .unwrap_or_default()
+        };
 
         Ok(MetadataNoDex {
             block_num,
@@ -112,7 +97,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
             proposer_mev_reward: block_meta.proposer_mev_reward,
             cex_quotes,
             eth_prices: max(eth_prices.price.0, eth_prices.price.1),
-
             private_flow: block_meta.private_flow.into_iter().collect(),
             block_timestamp: block_meta.block_timestamp,
         })
@@ -124,36 +108,21 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .get::<Metadata>(block_num)?
             .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
 
-        let db_cex_quotes = CexPriceMap(
+        let cex_quotes = CexPriceMap(
             tx.get::<CexPrice>(block_num)?
                 .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
                 .0,
         );
 
-        let eth_prices =
-            if let Some(eth_usdt) = db_cex_quotes.get_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
-                eth_usdt
-            } else {
-                db_cex_quotes
-                    .get_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-                    .unwrap_or_default()
-            };
-
-        let mut cex_quotes = CexPriceMap::new();
-        db_cex_quotes.0.into_iter().for_each(|(pair, quote)| {
-            cex_quotes.0.insert(
-                pair,
-                quote
-                    .into_iter()
-                    .map(|q| CexQuote {
-                        exchange:  q.exchange,
-                        timestamp: q.timestamp,
-                        price:     q.price,
-                        token0:    q.token0,
-                    })
-                    .collect::<Vec<_>>(),
-            );
-        });
+        let eth_prices = if let Some(eth_usdt) =
+            cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
+        {
+            eth_usdt
+        } else {
+            cex_quotes
+                .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
+                .unwrap_or_default()
+        };
 
         let dex_quotes = Vec::new();
         let key_range = make_filter_key_range(block_num);
@@ -189,9 +158,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfo>> {
+    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>> {
         let tx = self.0.ro_tx()?;
-        Ok(tx.get::<TokenDecimals>(address)?)
+        Ok(tx
+            .get::<TokenDecimals>(address)?
+            .map(|inner| TokenInfoWithAddress { inner, address }))
     }
 
     fn protocols_created_before(

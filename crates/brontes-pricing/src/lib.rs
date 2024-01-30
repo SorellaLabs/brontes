@@ -1,5 +1,7 @@
 pub mod protocols;
 pub mod types;
+use brontes_types::db::token_info::TokenInfoWithAddress;
+use malachite::num::basic::traits::Zero;
 
 #[cfg(test)]
 pub mod test_utils;
@@ -706,15 +708,26 @@ impl StateBuffer {
 /// Makes a swap for initializing a virtual pool with the quote token.
 /// this swap is empty such that we don't effect the state
 const fn make_fake_swap(pair: Pair) -> Actions {
+    let mut t_in = TokenInfoWithAddress {
+        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
+        address: pair.0,
+    };
+
+    let mut t_out = TokenInfoWithAddress {
+        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
+        address: pair.1,
+    };
+
     Actions::Swap(NormalizedSwap {
+        protocol:    Protocol::Unknown,
         trace_index: 0,
         from:        Address::ZERO,
         recipient:   Address::ZERO,
         pool:        Address::ZERO,
-        token_in:    pair.0,
-        token_out:   pair.1,
-        amount_in:   U256::ZERO,
-        amount_out:  U256::ZERO,
+        token_in:    t_in,
+        token_out:   t_out,
+        amount_in:   Rational::ZERO,
+        amount_out:  Rational::ZERO,
     })
 }
 

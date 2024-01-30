@@ -3,16 +3,17 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::{Address, B256};
 use async_trait::async_trait;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     mev::{Bundle, JitLiquidity, MevType, TokenProfit, TokenProfits},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    GasDetails, ToFloatNearest, ToScaledRational,
+    pair::Pair,
+    GasDetails, ToFloatNearest,
 };
 use itertools::Itertools;
-use malachite::Rational;
-use reth_primitives::{Address, B256, U256};
+use malachite::{num::basic::traits::Zero, Rational};
 
 use crate::{
     shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, BundleHeader, Inspector,
@@ -181,7 +182,9 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let jit_fee = self.get_collect_amount(back_jit_idx, fee_collect, metadata.clone());
         let mint = self.get_total_pricing(
             back_jit_idx,
-            mints.iter().map(|mint| (&mint.token, &mint.amount)),
+            mints
+                .iter()
+                .map(|mint| (mint.token.iter().map(|t| t.address), mint.amount.iter())),
             metadata.clone(),
         );
 
@@ -358,51 +361,51 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         price.get_gas_price_usd(bribe)
     }
 
-    fn get_collect_amount(
+    fn get_collect_amount<'a>(
         &self,
         idx: usize,
         collect: Vec<NormalizedCollect>,
         metadata: Arc<MetadataCombined>,
     ) -> Rational {
-        let (tokens, amount): (Vec<Vec<_>>, Vec<Vec<_>>) =
-            collect.into_iter().map(|t| (t.token, t.amount)).unzip();
+        let (tokens, amount): (Vec<_>, Vec<_>) = collect
+            .into_iter()
+            .map(|t| (t.token.iter().map(|t| t.address).collect_vec(), t.amount))
+            .unzip();
 
-        let tokens = tokens.into_iter().flatten().collect::<Vec<_>>();
-        let amount = amount.into_iter().flatten().collect::<Vec<_>>();
-
-        self.get_liquidity_price(idx, metadata.clone(), &tokens, &amount)
+        self.get_liquidity_price(
+            idx,
+            metadata.clone(),
+            tokens.into_iter().flatten(),
+            amount.iter().flatten(),
+        )
     }
 
     fn get_total_pricing<'a>(
         &self,
         idx: usize,
-        iter: impl Iterator<Item = (&'a Vec<Address>, &'a Vec<U256>)>,
+        iter: impl Iterator<
+            Item = (
+                (impl Iterator<Item = Address> + 'a),
+                (impl Iterator<Item = &'a Rational> + 'a),
+            ),
+        >,
         metadata: Arc<MetadataCombined>,
     ) -> Rational {
         iter.map(|(token, amount)| self.get_liquidity_price(idx, metadata.clone(), token, amount))
             .sum()
     }
 
-    fn get_liquidity_price(
+    fn get_liquidity_price<'a>(
         &self,
         idx: usize,
         metadata: Arc<MetadataCombined>,
-        token: &Vec<Address>,
-        amount: &Vec<U256>,
+        token: impl Iterator<Item = Address>,
+        amount: impl Iterator<Item = &'a Rational>,
     ) -> Rational {
-        assert_eq!(token.len(), amount.len());
-
         token
-            .iter()
-            .zip(amount.iter())
+            .zip(amount)
             .filter_map(|(token, amount)| {
-                Some(
-                    self.inner
-                        .get_dex_usd_price(idx, true, *token, metadata.clone())?
-                        * amount.to_scaled_rational(
-                            self.inner.db.try_get_token_decimals(*token).ok()??,
-                        ),
-                )
+                Some(self.inner.get_dex_usd_price(idx, token, metadata.clone())? * amount)
             })
             .sum::<Rational>()
     }

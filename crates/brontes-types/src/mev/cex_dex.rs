@@ -1,14 +1,18 @@
 use std::fmt::Debug;
 
 use ::serde::ser::{Serialize, SerializeStruct, Serializer};
-use alloy_primitives::Address;
-use itertools::Itertools;
+use malachite::Rational;
 use reth_primitives::B256;
 use serde::Deserialize;
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
+use crate::{
+    db::cex::CexExchange,
+    normalized_actions::{ClickhouseVecNormalizedSwap, ClickhouseVecStatArbDetails},
+    Protocol,
+};
 #[allow(unused_imports)]
 use crate::{
     display::utils::{display_sandwich, print_mev_type_header},
@@ -16,18 +20,17 @@ use crate::{
     serde_primitives::vec_fixed_string,
     GasDetails,
 };
-use crate::{normalized_actions::ClickhouseVecNormalizedSwap, utils::PriceKind};
 
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct CexDex {
-    pub tx_hash:        B256,
-    pub swaps:          Vec<NormalizedSwap>,
-    pub gas_details:    GasDetails,
-    pub prices_kind:    Vec<PriceKind>,
-    pub prices_address: Vec<Address>,
-    pub prices_price:   Vec<f64>,
+    pub tx_hash:          B256,
+    pub swaps:            Vec<NormalizedSwap>,
+    pub stat_arb_details: Vec<StatArbDetails>,
+    pub pnl:              StatArbPnl,
+    pub gas_details:      GasDetails,
 }
+
 impl Mev for CexDex {
     fn mev_type(&self) -> MevType {
         MevType::CexDex
@@ -70,6 +73,24 @@ impl Serialize for CexDex {
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
 
+        let stat_arb_details: ClickhouseVecStatArbDetails = self.stat_arb_details.clone().into();
+
+        ser_struct
+            .serialize_field("stat_arb_details.cex_exchange", &stat_arb_details.cex_exchange)?;
+        ser_struct.serialize_field("stat_arb_details.cex_price", &stat_arb_details.cex_price)?;
+        ser_struct
+            .serialize_field("stat_arb_details.dex_exchange", &stat_arb_details.dex_exchange)?;
+        ser_struct.serialize_field("stat_arb_details.dex_price", &stat_arb_details.dex_price)?;
+        ser_struct.serialize_field(
+            "stat_arb_details.pre_gas_maker_profit",
+            &stat_arb_details.pnl_maker_profit,
+        )?;
+
+        ser_struct.serialize_field(
+            "stat_arb_details.pre_gas_taker_profit",
+            &stat_arb_details.pnl_taker_profit,
+        )?;
+
         let gas_details = (
             self.gas_details.coinbase_transfer,
             self.gas_details.priority_fee,
@@ -78,17 +99,6 @@ impl Serialize for CexDex {
         );
 
         ser_struct.serialize_field("gas_details", &(gas_details))?;
-
-        ser_struct.serialize_field("prices.kind", &(self.prices_kind))?;
-        ser_struct.serialize_field(
-            "prices.address",
-            &(self
-                .prices_address
-                .iter()
-                .map(|addr| FixedString::from(format!("{:?}", addr)))
-                .collect_vec()),
-        )?;
-        ser_struct.serialize_field("prices.price", &(self.prices_price))?;
 
         ser_struct.end()
     }
@@ -105,9 +115,32 @@ impl DbRow for CexDex {
         "swaps.token_out",
         "swaps.amount_in",
         "swaps.amount_out",
+        "stat_arb_details.cex_exchange",
+        "stat_arb_details.cex_price",
+        "stat_arb_details.dex_exchange",
+        "stat_arb_details.dex_price",
+        "stat_arb_details.pre_gas_maker_profit",
+        "stat_arb_details.pre_gas_taker_profit",
+        "pnl.taker_profit",
+        "pnl.maker_profit",
         "gas_details",
-        "prices.kind",
-        "prices.address",
-        "prices.price",
     ];
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct StatArbDetails {
+    pub cex_exchange: CexExchange,
+    pub cex_price:    Rational,
+    pub dex_exchange: Protocol,
+    pub dex_price:    Rational,
+    // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
+    pub pnl_pre_gas:  StatArbPnl,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct StatArbPnl {
+    pub maker_profit: Rational,
+    pub taker_profit: Rational,
 }
