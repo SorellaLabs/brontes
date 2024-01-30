@@ -191,32 +191,35 @@ impl From<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecN
 
 #[derive(Default)]
 pub struct ClickhouseStatArbDetails {
-    pub cex_exchange:   String,
-    pub cex_price:      ([u8; 32], [u8; 32]),
-    pub dex_exchange:   String,
-    pub dex_price:      ([u8; 32], [u8; 32]),
-    pub profit_pre_gas: ([u8; 32], [u8; 32]),
+    pub cex_exchange:     String,
+    pub cex_price:        ([u8; 32], [u8; 32]),
+    pub dex_exchange:     String,
+    pub dex_price:        ([u8; 32], [u8; 32]),
+    pub pnl_maker_profit: [u8; 32],
+    pub pnl_taker_profit: [u8; 32],
 }
 
 impl From<StatArbDetails> for ClickhouseStatArbDetails {
     fn from(value: StatArbDetails) -> Self {
         Self {
-            cex_exchange:   format!("{:?}", value.cex_exchange),
-            cex_price:      rational_to_u256_bytes(value.cex_price),
-            dex_exchange:   value.dex_exchange.to_string(),
-            dex_price:      rational_to_u256_bytes(value.dex_price),
-            profit_pre_gas: rational_to_u256_bytes(value.profit_pre_gas),
+            cex_exchange:     format!("{:?}", value.cex_exchange),
+            cex_price:        rational_to_u256_bytes(value.cex_price),
+            dex_exchange:     value.dex_exchange.to_string(),
+            dex_price:        rational_to_u256_bytes(value.dex_price),
+            pnl_maker_profit: rational_to_u256_bytes(value.pnl_pre_gas.maker_profit),
+            pnl_taker_profit: rational_to_u256_bytes(value.pnl_pre_gas.taker_profit),
         }
     }
 }
 
 #[derive(Default)]
 pub struct ClickhouseVecStatArbDetails {
-    pub cex_exchange:   Vec<String>,
-    pub cex_price:      Vec<([u8; 32], [u8; 32])>,
-    pub dex_exchange:   Vec<String>,
-    pub dex_price:      Vec<([u8; 32], [u8; 32])>,
-    pub profit_pre_gas: Vec<([u8; 32], [u8; 32])>,
+    pub cex_exchange:     Vec<String>,
+    pub cex_price:        Vec<([u8; 32], [u8; 32])>,
+    pub dex_exchange:     Vec<String>,
+    pub dex_price:        Vec<([u8; 32], [u8; 32])>,
+    pub pnl_maker_profit: Vec<[u8; 32]>,
+    pub pnl_taker_profit: Vec<[u8; 32]>,
 }
 
 impl From<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
@@ -229,7 +232,8 @@ impl From<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
             this.cex_price.push(val.cex_price);
             this.dex_exchange.push(val.dex_exchange);
             this.dex_price.push(val.dex_price);
-            this.profit_pre_gas.push(val.profit_pre_gas);
+            this.pnl_maker_profit.push(val.pnl_maker_profit);
+            this.pnl_taker_profit.push(val.pnl_taker_profit);
         });
 
         this
