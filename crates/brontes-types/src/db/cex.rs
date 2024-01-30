@@ -360,8 +360,20 @@ impl CexExchange {
     //TQDO: Add for all supported exchanges
     pub fn most_common_quote_assets(&self) -> Vec<Address> {
         match self {
-            CexExchange::Binance => vec![USDT_ADDRESS, BUSD_ADDRESS, USDC_ADDRESS],
-            CexExchange::Bitmex => vec![USDT_ADDRESS],
+            CexExchange::Binance => {
+                vec![
+                    USDT_ADDRESS,
+                    WBTC_ADDRESS,
+                    BUSD_ADDRESS,
+                    USDC_ADDRESS,
+                    BNB_ADDRESS,
+                    WETH_ADDRESS,
+                    FDUSD_ADDRESS,
+                    PAX_DOLLAR,
+                ]
+            }
+            CexExchange::Bitmex => vec![USDT_ADDRESS, USDC_ADDRESS, WETH_ADDRESS],
+            CexExchange::Bitstamp => vec![WBTC_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, PAX_DOLLAR],
             _ => vec![],
         }
     }
