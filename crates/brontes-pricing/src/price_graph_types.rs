@@ -88,4 +88,12 @@ impl PoolPairInfoDirection {
             self.info.token_1
         }
     }
+
+    pub fn get_quote_token(&self) -> Address {
+        if self.token_0_in {
+            self.info.token_1
+        } else {
+            self.info.token_0
+        }
+    }
 }

@@ -61,13 +61,18 @@ pub(crate) fn pre_process(
 //TODO: Clean up & fix
 pub(crate) fn build_mev_header(
     metadata: Arc<MetadataCombined>,
+    tree: Arc<BlockTree<Actions>>,
     pre_processing: &BlockPreprocessing,
     possible_mev: PossibleMevCollection,
     orchestra_data: &Vec<Bundle>,
 ) -> MevBlock {
     let cum_mev_priority_fee_paid = orchestra_data
         .iter()
-        .map(|bundle| bundle.data.priority_fee_paid())
+        .map(|bundle| {
+            bundle
+                .data
+                .total_priority_fee_paid(tree.header.base_fee_per_gas.unwrap_or_default() as u128)
+        })
         .sum();
 
     let builder_eth_profit = Rational::from_signeds(
@@ -162,7 +167,10 @@ pub fn filter_and_count_bundles(
         let filtered_bundles: Vec<Bundle> = bundles
             .into_iter()
             .filter(|bundle| {
-                if matches!(mev_type, MevType::Sandwich | MevType::Jit | MevType::Backrun) {
+                if matches!(
+                    mev_type,
+                    MevType::Sandwich | MevType::Jit | MevType::Backrun | MevType::CexDex
+                ) {
                     bundle.header.profit_usd > 0.0
                 } else {
                     true

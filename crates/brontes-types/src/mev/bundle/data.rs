@@ -45,15 +45,29 @@ impl Mev for BundleData {
         }
     }
 
-    fn priority_fee_paid(&self) -> u128 {
+    fn total_gas_paid(&self) -> u128 {
         match self {
-            BundleData::Sandwich(m) => m.priority_fee_paid(),
-            BundleData::AtomicBackrun(m) => m.priority_fee_paid(),
-            BundleData::JitSandwich(m) => m.priority_fee_paid(),
-            BundleData::Jit(m) => m.priority_fee_paid(),
-            BundleData::CexDex(m) => m.priority_fee_paid(),
-            BundleData::Liquidation(m) => m.priority_fee_paid(),
-            BundleData::Unknown => unimplemented!("calling priority_fee_paid() on unknown mev"),
+            BundleData::Sandwich(m) => m.total_gas_paid(),
+            BundleData::AtomicBackrun(m) => m.total_gas_paid(),
+            BundleData::JitSandwich(m) => m.total_gas_paid(),
+            BundleData::Jit(m) => m.total_gas_paid(),
+            BundleData::CexDex(m) => m.total_gas_paid(),
+            BundleData::Liquidation(m) => m.total_gas_paid(),
+            BundleData::Unknown => unimplemented!("calling total_gas_paid() on unknown mev"),
+        }
+    }
+
+    fn total_priority_fee_paid(&self, base_fee: u128) -> u128 {
+        match self {
+            BundleData::Sandwich(m) => m.total_priority_fee_paid(base_fee),
+            BundleData::AtomicBackrun(m) => m.total_priority_fee_paid(base_fee),
+            BundleData::JitSandwich(m) => m.total_priority_fee_paid(base_fee),
+            BundleData::Jit(m) => m.total_priority_fee_paid(base_fee),
+            BundleData::CexDex(m) => m.total_priority_fee_paid(base_fee),
+            BundleData::Liquidation(m) => m.total_priority_fee_paid(base_fee),
+            BundleData::Unknown => {
+                unimplemented!("calling total_priority_fee_paid() on unknown mev")
+            }
         }
     }
 

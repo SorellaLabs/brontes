@@ -1,21 +1,15 @@
-use std::{collections::HashMap, fmt::Debug, str::FromStr, sync::Arc};
+use std::fmt::Debug;
 
-use alloy_primitives::{Address, Log, U256};
-use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
-use brontes_types::{normalized_actions::Actions, pair::Pair, serde_primitives::address_string};
-use bytes::BufMut;
-use malachite::{num::basic::traits::Zero, Rational};
-use reth_codecs::derive_arbitrary;
-use serde::{Deserialize, Serialize};
-use serde_with::DisplayFromStr;
-use tracing::{error, warn};
+use alloy_primitives::{Address, Log};
+use brontes_types::{normalized_actions::Actions, pair::Pair};
+use malachite::Rational;
 
 use crate::{
     errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
     AutomatedMarketMaker, Protocol,
 };
 
-pub(crate) trait ProtocolState: Debug {
+pub trait ProtocolState: Debug {
     fn price(&self, base: Address) -> Result<Rational, ArithmeticError>;
     fn tvl(&self, base: Address) -> (Rational, Rational);
 }
@@ -42,6 +36,7 @@ impl Debug for PoolState {
             .field("pair", &self.pair())
             .field("tvl 0", &self.get_tvl(self.pair().0).0)
             .field("tvl 1", &self.get_tvl(self.pair().0).1)
+            .field("block", &self.last_update)
             .finish()
     }
 }

@@ -2,11 +2,7 @@ use std::time::SystemTimeError;
 
 use alloy_primitives::{Address, U256};
 use alloy_sol_types::Error as AlloyError;
-use brontes_types::traits::TracingProvider;
-use ethers::{
-    prelude::{AbiError, ContractError},
-    providers::{Middleware, ProviderError},
-};
+use ethers::{prelude::AbiError, providers::ProviderError};
 use thiserror::Error;
 use tokio::task::JoinError;
 

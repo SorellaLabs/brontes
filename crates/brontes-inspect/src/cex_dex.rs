@@ -209,8 +209,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         cex_price: &Rational,
     ) -> Option<Rational> {
         // Calculate the price differences between DEX and CEX
-        let delta_price = dex_price - cex_price;
-
+        let delta_price = cex_price - dex_price;
         // Calculate the potential profit
         let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
@@ -338,7 +337,7 @@ mod tests {
                 proposer_mev_reward: None,
                 cex_quotes,
                 eth_prices: eth_price.reciprocal(),
-                mempool_flow: HashSet::new(),
+                private_flow: HashSet::new(),
             },
         };
 

@@ -25,7 +25,7 @@ pub struct MetadataInner {
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward:    Option<u128>,
     #[serde_as(as = "Vec<DisplayFromStr>")]
-    pub mempool_flow:           Vec<TxHash>,
+    pub private_flow:           Vec<TxHash>,
 }
 
 /// aggregated metadata from clickhouse WITH dex pricing
@@ -66,7 +66,8 @@ pub struct MetadataNoDex {
     pub cex_quotes:             CexPriceMap,
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
-    pub mempool_flow:           HashSet<TxHash>,
+    /// Tx
+    pub private_flow:           HashSet<TxHash>,
 }
 
 impl MetadataNoDex {
@@ -80,7 +81,7 @@ impl MetadataNoDex {
         proposer_mev_reward: Option<u128>,
         cex_quotes: CexPriceMap,
         eth_prices: Rational,
-        mempool_flow: HashSet<TxHash>,
+        private_flow: HashSet<TxHash>,
     ) -> Self {
         Self {
             block_num,
@@ -91,7 +92,7 @@ impl MetadataNoDex {
             eth_prices,
             proposer_fee_recipient,
             proposer_mev_reward,
-            mempool_flow,
+            private_flow,
             block_timestamp,
         }
     }

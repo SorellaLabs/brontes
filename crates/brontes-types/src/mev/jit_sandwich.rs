@@ -46,12 +46,20 @@ impl Mev for JitLiquiditySandwich {
         MevType::JitSandwich
     }
 
-    fn priority_fee_paid(&self) -> u128 {
+    fn total_gas_paid(&self) -> u128 {
         self.frontrun_gas_details
             .iter()
             .map(|gd| gd.gas_paid())
             .sum::<u128>()
             + self.backrun_gas_details.gas_paid()
+    }
+
+    fn total_priority_fee_paid(&self, base_fee: u128) -> u128 {
+        self.frontrun_gas_details
+            .iter()
+            .map(|gd| gd.priority_fee_paid(base_fee))
+            .sum::<u128>()
+            + self.backrun_gas_details.priority_fee_paid(base_fee)
     }
 
     // Should always be on the backrun, but you never know
