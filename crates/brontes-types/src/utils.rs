@@ -18,30 +18,6 @@ use crate::{
     GasDetails,
 };
 
-#[derive(
-    Debug,
-    Serialize_repr,
-    Deserialize_repr,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
-    PartialEq,
-    Eq,
-    Hash,
-    EnumIter,
-    Clone,
-    Copy,
-)]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-#[serde(rename_all = "lowercase")]
-pub enum PriceKind {
-    Cex = 0,
-    Dex = 1,
-}
-
-self_convert_redefined!(PriceKind);
-
 pub trait ToScaledRational {
     fn to_scaled_rational(self, decimals: u8) -> Rational;
 }

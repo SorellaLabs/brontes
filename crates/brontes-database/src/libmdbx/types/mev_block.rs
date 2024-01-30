@@ -10,10 +10,10 @@ use brontes_types::{
     mev::{
         AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
         JitLiquiditySandwich, Liquidation, MevBlock, MevCount, MevType, PossibleMev,
-        PossibleMevCollection, PossibleMevTriggers, Sandwich, TokenProfit, TokenProfits,
+        PossibleMevCollection, PossibleMevTriggers, PriceKind, Sandwich, TokenProfit, TokenProfits,
     },
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    GasDetails, PriceKind, Protocol,
+    GasDetails, Protocol,
 };
 use redefined::{Redefined, RedefinedConvert};
 use sorella_db_databases::clickhouse::{self, Row};
