@@ -6,7 +6,6 @@ use std::{
     },
     hash::Hash,
 };
-use tracing::error;
 
 use alloy_primitives::Address;
 use itertools::Itertools;
@@ -24,6 +23,7 @@ use petgraph::{
     visit::{IntoEdgeReferences, IntoEdges, VisitMap, Visitable},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use tracing::error;
 
 use crate::{price_graph_types::*, types::ProtocolState, AllPairGraph, Pair};
 
@@ -200,14 +200,16 @@ impl PairSubGraph {
         allowed_low_liq_nodes: &HashMap<Pair, Address>,
         ignore_list: &HashSet<Pair>,
     ) -> VerificationOutcome {
-        let mut result = self.run_bfs_with_liquidity_params(
-            start,
-            &state,
-            all_pair_graph,
-            ignore_list,
-        );
+        let mut result =
+            self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
 
         self.prune_subgraph(&result.removal_state);
+
+        if self.graph.edges(self.end_node.into()).collect_vec().len() == 0
+            || self.graph.edges(self.start_node.into()).collect_vec().len() == 0
+        {
+            error!("subgraph removed start or end node");
+        }
 
         let mut disjoint =
             dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
@@ -496,7 +498,7 @@ impl PairSubGraph {
 
         let Some(start) = self.token_to_index.get(&start) else {
             error!(?start, "no start node for bfs with price");
-            return R::default() 
+            return R::default()
         };
 
         let direction = *start == self.start_node;
