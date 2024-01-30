@@ -107,7 +107,6 @@ impl StateTracker {
 
     pub fn update_pool_state(&mut self, address: Address, update: PoolUpdate) {
         let Some(state) = self.finalized_edge_state.get_mut(&address) else {
-            error!(?address, "got a pool update for state we don't store");
             return
         };
 
