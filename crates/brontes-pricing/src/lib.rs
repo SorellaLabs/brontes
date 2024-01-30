@@ -424,6 +424,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 
     fn add_subgraph(&mut self, pair: Pair, block: u64, edges: Vec<SubGraphEdge>) -> bool {
+        info!(?pair, "adding subgraph");
         let needed_state =
             self.graph_manager
                 .add_subgraph_for_verification(pair, block, edges.clone());
