@@ -43,7 +43,8 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
                         Pair(
                             Address::from_str(&base_token_addr).unwrap(),
                             Address::from_str(&quote_token_addr).unwrap(),
-                        ),
+                        )
+                        .ordered(),
                         CexQuote {
                             exchange: CexExchange::from(exchange.clone()),
                             timestamp,
