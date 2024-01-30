@@ -92,6 +92,8 @@ impl Libmdbx {
         Ok(())
     }
 
+    #[allow(dead_code)]
+    //TODO: Joe clean up pls
     /// Clears a table in the database
     /// Only called on initialization
     fn clear_table<T>(&self) -> eyre::Result<()>

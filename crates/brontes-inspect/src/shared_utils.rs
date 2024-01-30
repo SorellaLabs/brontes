@@ -20,6 +20,7 @@ use crate::MetadataCombined;
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
+    #[allow(dead_code)]
     pub(crate) db:    &'db DB,
 }
 
