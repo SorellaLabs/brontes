@@ -1,5 +1,6 @@
 use brontes_types::{
     db::{
+        cex::CexExchange,
         mev_block::MevBlockWithClassified,
         redefined_types::{
             malachite::Redefined_Rational,
@@ -10,7 +11,8 @@ use brontes_types::{
     mev::{
         AtomicBackrun, Bundle, BundleData, BundleHeader, CexDex, JitLiquidity,
         JitLiquiditySandwich, Liquidation, MevBlock, MevCount, MevType, PossibleMev,
-        PossibleMevCollection, PossibleMevTriggers, PriceKind, Sandwich, TokenProfit, TokenProfits,
+        PossibleMevCollection, PossibleMevTriggers, Sandwich, StatArbDetails, TokenProfit,
+        TokenProfits,
     },
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails, Protocol,
@@ -344,12 +346,10 @@ pub struct LibmdbxJitLiquidity {
 )]
 #[redefined(CexDex)]
 pub struct LibmdbxCexDex {
-    pub tx_hash:        Redefined_FixedBytes<32>,
-    pub swaps:          Vec<LibmdbxNormalizedSwap>,
-    pub gas_details:    GasDetails,
-    pub prices_kind:    Vec<PriceKind>,
-    pub prices_address: Vec<Redefined_Address>,
-    pub prices_price:   Vec<f64>,
+    pub tx_hash:     Redefined_FixedBytes<32>,
+    pub swaps:       Vec<LibmdbxNormalizedSwap>,
+    pub prices:      Vec<LibmdbxStatArbDetails>,
+    pub gas_details: GasDetails,
 }
 
 #[derive(
@@ -473,4 +473,23 @@ pub struct LibmdbxNormalizedMint {
     pub recipient:   Redefined_Address,
     pub token:       Vec<LibmdbxTokenInfoWithAddress>,
     pub amount:      Vec<Redefined_Rational>,
+}
+
+#[derive(
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Clone,
+    Redefined,
+)]
+#[redefined(StatArbDetails)]
+pub struct LibmdbxStatArbDetails {
+    pub cex_exchange:   CexExchange,
+    pub cex_price:      Redefined_Rational,
+    pub dex_exchange:   Protocol,
+    pub dex_price:      Redefined_Rational,
+    pub profit_pre_gas: Redefined_Rational,
 }
