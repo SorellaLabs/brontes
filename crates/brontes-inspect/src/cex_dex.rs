@@ -72,7 +72,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let mev_contract = root.head.data.get_to_address();
         let eoa = root.head.address;
 
-        let swaps_with_profit_by_exchange: Vec<(NormalizedSwap, Vec<(CexExchange, StatArbPnl)>)> =
+        let swaps_with_profit_by_exchange: Vec<(NormalizedSwap, Vec<(CexExchange, Rational, StatArbPnl)>)> =
             swaps
                 .into_iter()
                 .filter_map(|action| {
@@ -152,7 +152,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         swap: &NormalizedSwap,
         metadata: &MetadataCombined,
-    ) -> Option<Vec<(CexExchange, StatArbPnl)>> {
+    ) -> Option<Vec<(CexExchange, Rational, StatArbPnl)>> {
         let cex_prices = self.cex_quotes_for_swap(swap, metadata)?;
 
         let opportunities = cex_prices
@@ -169,7 +169,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         swap: &NormalizedSwap,
         exchange_cex_price: (CexExchange, Rational, bool),
-    ) -> (CexExchange, StatArbPnl) {
+    ) -> (CexExchange, Rational, StatArbPnl) {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let delta_price = exchange_cex_price.1 - swap.swap_rate();
@@ -179,6 +179,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             // Direct pair
             (
                 exchange_cex_price.0,
+                exchange_cex_price.1,
                 StatArbPnl {
                     maker_profit: delta_price * &swap.amount_out
                         - &swap.amount_out * exchange_cex_price.0.fees().0,
@@ -190,6 +191,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             // Indirect pair pays twice the fee
             (
                 exchange_cex_price.0,
+                exchange_cex_price.1,
                 StatArbPnl {
                     maker_profit: delta_price * &swap.amount_out
                         - &swap.amount_out * exchange_cex_price.0.fees().0 * Rational::TWO,
@@ -247,26 +249,32 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
     fn gas_accounting(
         &self,
-        swaps_with_profit_by_exchange: Vec<(NormalizedSwap, Vec<(CexExchange, StatArbPnl)>)>,
+        swaps_with_profit_by_exchange: Vec<(NormalizedSwap, Vec<(CexExchange, Rational, StatArbPnl)>)>,
         gas_details: &GasDetails,
         eth_price: &Rational,
     ) -> PossibleCexDex {
         // Get the maximally profitable sequence of Cex arbs by picking the most
         // profitable exchange to execute the arb for each swap
-        let (swaps, exchanges, profits_pre_gas, total_arb_pre_gas) = swaps_with_profit_by_exchange
+        let (swaps , arb_details: Vec<<StatArbDetails>,  total_arb_pre_gas) = swaps_with_profit_by_exchange
             .into_iter()
             .filter_map(|(swap, net_profits_by_exchange)| {
                 net_profits_by_exchange
                     .into_iter()
                     .max_by(|(_, profit1), (_, profit2)| profit1.cmp(profit2))
-                    .map(|(exchange, profit)| (swap, exchange, profit))
+                    .map(|(exchange, cex_price,  profit)| (swap, exchange, cex_price, profit))
             })
             .fold(
-                (Vec::new(), Vec::new(), Vec::new(), Rational::ZERO),
-                |(mut swaps, mut exchanges, mut profits_pre_gas, total_profit),
+                (Vec::new(), Vec::new(), StatArbPnl::default()),
+                |(mut swaps, mut arb_details, total_profit),
                  (swap, exchange, profit)| {
                     swaps.push(swap);
-                    exchanges.push(exchange);
+                    arb_details.push(StatArbDetails {
+                        cex_exchange: exchange,
+                        cex_price:    cex_price,
+                        dex_exchange: swap.protocol,
+                        dex_price:    swap.swap_rate(),
+                        pnl_pre_gas:  profit.clone(),
+                    });
                     profits_pre_gas.push(profit.clone());
                     let new_total = &total_profit + &profit;
                     (swaps, exchanges, profits_pre_gas, new_total)
@@ -276,7 +284,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u128.pow(18)) * eth_price;
         let pnl = total_arb_pre_gas - gas_cost;
 
-        PossibleCexDex { swaps, exchanges, profits_pre_gas, gas_details: gas_details.clone(), pnl }
+        PossibleCexDex { swaps,  arb_details, gas_details: gas_details.clone(), pnl }
     }
 
     fn filter_possible_cex_dex(

@@ -140,6 +140,6 @@ pub struct StatArbDetails {
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct StatArbPnl {
-    pub taker_profit: Rational,
     pub maker_profit: Rational,
+    pub taker_profit: Rational,
 }
