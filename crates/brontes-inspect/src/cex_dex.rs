@@ -91,60 +91,18 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         let cex_dex = self.filter_possible_cex_dex(&possible_cex_dex, root)?;
 
-        let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
-
-        //TODO: this is an ugly hack, will have to refactor so we don't reclone the
-        // swaps
-        let deltas = self.inner.calculate_token_deltas(&vec![possible_cex_dex
-            .swaps
-            .iter()
-            .map(|s| Actions::Swap(s.clone()))
-            .collect()]);
-
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(tx_index, &deltas, metadata.clone(), true)?;
-
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
-
-        let token_profits = TokenProfits {
-            profits: mev_profit_collector
+        let header = self.inner.build_bundle_header(
+            root,
+            metadata,
+            &vec![root.gas_details],
+            (&vec![possible_cex_dex
+                .swaps
                 .iter()
-                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
-                .flat_map(|(address, delta)| {
-                    delta.iter().map(|(token, amount)| {
-                        let usd_value = metadata
-                            .cex_quotes
-                            .get_quote(&Pair(*token, self.inner.quote), &CexExchange::Binance)
-                            .unwrap_or_default()
-                            .price
-                            .1
-                            .to_float()
-                            * amount.clone().to_float();
-                        TokenProfit {
-                            profit_collector: *address,
-                            token: *token,
-                            amount: amount.clone().to_float(),
-                            usd_value,
-                        }
-                    })
-                })
-                .collect(),
-        };
-
-        //TODO: Add clean bundle header contructor in shared utils
-        let header = BundleHeader {
-            tx_index: tx_index as u64,
-            mev_profit_collector,
-            tx_hash: root.tx_hash,
-            mev_contract,
-            eoa,
-            block_number: metadata.block_num,
-            mev_type: MevType::CexDex,
-            profit_usd: 0.0,
-            token_profits,
-            bribe_usd: gas_finalized.to_float(),
-        };
+                .map(|s| Actions::Swap(s.clone()))
+                .collect()]),
+            MevType::CexDex,
+            possible_cex_dex.pnl.taker_profit,
+        );
 
         Some(Bundle { header, data: cex_dex })
     }
