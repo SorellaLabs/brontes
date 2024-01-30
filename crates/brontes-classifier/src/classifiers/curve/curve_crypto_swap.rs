@@ -145,7 +145,7 @@ action_impl!(
 
         let is_eth = call_data.use_eth;
 
-        let recipient = call_data.receiver;
+        let _recipient = call_data.receiver;
         // Check if ETH is used and adjust token_in or token_out accordingly
         if is_eth {
             if log.sold_id == U256::ZERO && token_0 == WETH {

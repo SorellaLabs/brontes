@@ -5,7 +5,6 @@ use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap},
     ToScaledRational,
 };
-use malachite::Rational;
 
 action_impl!(
     Protocol::UniswapV2,

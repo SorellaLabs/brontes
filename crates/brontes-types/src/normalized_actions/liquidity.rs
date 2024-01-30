@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use alloy_primitives::TxHash;
-use itertools::Itertools;
 use malachite::Rational;
 use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
@@ -55,7 +54,7 @@ pub struct ClickhouseVecNormalizedMintOrBurn {
 }
 
 impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
-    fn from(value: Vec<NormalizedMint>) -> Self {
+    fn from(_value: Vec<NormalizedMint>) -> Self {
         todo!("joe");
         // ClickhouseVecNormalizedMintOrBurn {
         //     trace_index: value.iter().map(|val| val.trace_index).collect(),
@@ -90,7 +89,7 @@ impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
 }
 
 impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
-    fn from(value: Vec<NormalizedBurn>) -> Self {
+    fn from(_value: Vec<NormalizedBurn>) -> Self {
         todo!("joe");
         // ClickhouseVecNormalizedMintOrBurn {
         //     trace_index: value.iter().map(|val| val.trace_index).collect(),

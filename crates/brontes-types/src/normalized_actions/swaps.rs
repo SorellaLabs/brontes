@@ -8,7 +8,7 @@ use alloy_primitives::TxHash;
 use colored::Colorize;
 use itertools::Itertools;
 use malachite::Rational;
-use reth_primitives::{Address, U256};
+use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
@@ -78,7 +78,7 @@ pub struct ClickhouseVecNormalizedSwap {
 }
 
 impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
-    fn from(value: Vec<NormalizedSwap>) -> Self {
+    fn from(_value: Vec<NormalizedSwap>) -> Self {
         todo!("Joe");
         // ClickhouseVecNormalizedSwap {
         //     trace_index: value.iter().map(|val| val.trace_index).collect(),
