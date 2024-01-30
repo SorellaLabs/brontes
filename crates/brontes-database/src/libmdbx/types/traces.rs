@@ -21,24 +21,12 @@ use super::{LibmdbxData, ReturnKV};
 use crate::libmdbx::TxTraces;
 
 #[serde_as]
-#[derive(Debug, Clone, Row, serde::Serialize, serde::Deserialize)]
-pub struct TxTracesData {
-    pub block_number: u64,
-    pub inner:        TxTracesInner,
-}
-
-impl LibmdbxData<TxTraces> for TxTracesData {
-    fn into_key_val(&self) -> ReturnKV<TxTraces> {
-        (self.block_number, self.inner.clone()).into()
-    }
-}
-
-#[serde_as]
 #[derive(
     Debug,
     Default,
     Clone,
     Redefined,
+    PartialEq,
     serde::Serialize,
     serde::Deserialize,
     rkyv::Serialize,
@@ -55,6 +43,7 @@ pub struct LibmdbxTxTracesInner {
     Debug,
     Clone,
     Redefined,
+    PartialEq,
     serde::Serialize,
     serde::Deserialize,
     rkyv::Serialize,
@@ -77,6 +66,7 @@ pub struct LibmdbxTxTrace {
     Debug,
     Clone,
     Redefined,
+    PartialEq,
     serde::Serialize,
     serde::Deserialize,
     rkyv::Serialize,
@@ -97,6 +87,7 @@ pub struct LibmdbxTransactionTraceWithLogs {
     Debug,
     Clone,
     Redefined,
+    PartialEq,
     serde::Serialize,
     serde::Deserialize,
     rkyv::Serialize,
@@ -114,6 +105,7 @@ pub struct LibmdbxLog {
     Debug,
     Clone,
     Redefined,
+    PartialEq,
     serde::Serialize,
     serde::Deserialize,
     rkyv::Serialize,
