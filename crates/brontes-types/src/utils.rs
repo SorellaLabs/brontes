@@ -1,14 +1,9 @@
-use std::fmt::Debug;
-
 use alloy_primitives::{I256, U256};
 use malachite::{
     num::{arithmetic::traits::Pow, conversion::traits::RoundingFrom},
     rounding_modes::RoundingMode,
     Integer, Natural, Rational,
 };
-use redefined::{self_convert_redefined, RedefinedConvert};
-use serde_repr::{Deserialize_repr, Serialize_repr};
-use strum::EnumIter;
 
 #[allow(unused_imports)]
 use crate::{
@@ -17,30 +12,6 @@ use crate::{
     serde_primitives::vec_fixed_string,
     GasDetails,
 };
-
-#[derive(
-    Debug,
-    Serialize_repr,
-    Deserialize_repr,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
-    PartialEq,
-    Eq,
-    Hash,
-    EnumIter,
-    Clone,
-    Copy,
-)]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-#[serde(rename_all = "lowercase")]
-pub enum PriceKind {
-    Cex = 0,
-    Dex = 1,
-}
-
-self_convert_redefined!(PriceKind);
 
 pub trait ToScaledRational {
     fn to_scaled_rational(self, decimals: u8) -> Rational;
