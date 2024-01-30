@@ -1,4 +1,3 @@
-
 use alloy_primitives::{Address, Log};
 use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::{Bytes, B256};
@@ -106,6 +105,7 @@ impl TraceActions for TransactionTraceWithLogs {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 pub struct DecodedCallData {
     pub function_name: String,
     pub call_data:     Vec<DecodedParams>,
@@ -125,6 +125,7 @@ self_convert_redefined!(DecodedCallData);
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 pub struct DecodedParams {
     pub field_name: String,
     pub field_type: String,

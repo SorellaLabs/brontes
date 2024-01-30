@@ -59,6 +59,7 @@ impl fmt::Display for Bundle {
     Default,
     Display,
 )]
+#[archive(check_bytes)]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
 #[serde(rename_all = "lowercase")]

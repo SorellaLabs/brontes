@@ -294,6 +294,7 @@ impl MulAssign for CexQuote {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
+#[archive(check_bytes)]
 #[archive_attr(derive(Eq, PartialEq, Hash))]
 pub enum CexExchange {
     Binance,

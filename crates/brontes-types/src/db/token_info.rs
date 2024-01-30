@@ -53,7 +53,7 @@ impl DerefMut for TokenInfoWithAddress {
     Eq,
     Hash,
 )]
-
+#[archive(check_bytes)]
 pub struct TokenInfo {
     pub decimals: u8,
     pub symbol:   String,
