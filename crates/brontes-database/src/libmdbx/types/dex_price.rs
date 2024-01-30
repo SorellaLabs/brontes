@@ -98,6 +98,7 @@ pub struct LibmdbxDexQuoteWithIndex {
     rkyv::Serialize,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(DexPrices)]
 pub struct LibmdbxDexPrices {
     pub pre_state:  Redefined_Rational,

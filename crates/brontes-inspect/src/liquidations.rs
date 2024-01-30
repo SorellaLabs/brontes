@@ -136,12 +136,14 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             .filter_map(|liq| {
                 let repaid_debt_usd = self.inner.calculate_dex_usd_amount(
                     idx,
+                    true,
                     liq.debt_asset.address,
                     &liq.covered_debt,
                     &metadata,
                 )?;
                 let collected_collateral = self.inner.calculate_dex_usd_amount(
                     idx,
+                    true,
                     liq.collateral_asset.address,
                     &liq.liquidated_collateral,
                     &metadata,

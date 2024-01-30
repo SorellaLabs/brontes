@@ -12,6 +12,16 @@ pub struct DexPrices {
     pub post_state: Rational,
 }
 
+impl DexPrices {
+    pub fn get_price(&self, post: bool) -> &Rational {
+        if post {
+            &self.post_state
+        } else {
+            &self.pre_state
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, DexPrices>>>);
 
