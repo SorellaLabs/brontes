@@ -9,10 +9,7 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     PriceKind, ToFloatNearest, ToScaledRational,
 };
-use malachite::{
-    num::{arithmetic::traits::Abs, basic::traits::Zero},
-    Rational,
-};
+use malachite::{num::basic::traits::Zero, Rational};
 use rayon::{
     iter::{IntoParallelIterator, ParallelIterator},
     prelude::IntoParallelRefIterator,
@@ -53,9 +50,9 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
             .into_par_iter()
             .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
-                let gas_details = tree.get_gas_details(tx)?;
-
                 let root = tree.get_root(tx)?;
+                let gas_details = root.gas_details;
+
                 let eoa = root.head.address;
                 let mev_contract = root.head.data.get_to_address();
                 let idx = root.get_block_position();
@@ -65,7 +62,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     mev_contract,
                     eoa,
                     meta_data.clone(),
-                    gas_details,
+                    &gas_details,
                     swaps,
                 )
             })
@@ -113,7 +110,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     delta.iter().map(|(token, amount)| {
                         let usd_value = metadata
                             .cex_quotes
-                            .get_quote(&Pair(*token, self.inner.quote))
+                            .get_quote(&Pair(*token, self.inner.quote), &CexExchange::Binance)
                             .unwrap_or_default()
                             .price
                             .1
@@ -143,11 +140,13 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             bribe_usd: gas_finalized.to_float(),
         };
 
+        /*
         let prices = swaps
             .par_iter()
-            .filter_map(|swap| self.rational_prices(swap, &metadata))
+            .filter_map(|swap| self.rational_prices(swap.force_swap_ref(), &metadata))
             .map(|(dex_price, cex1)| (dex_price.to_float(), cex1.to_float()))
             .collect::<Vec<_>>();
+         */
 
         let flat_swaps = swaps
             .into_iter()
@@ -156,21 +155,18 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .collect::<Vec<_>>();
 
         let cex_dex = CexDex {
-            tx_hash:        hash,
-            gas_details:    gas_details.clone(),
-            swaps:          flat_swaps.clone(),
-            prices_kind:    prices
-                .iter()
-                .flat_map(|_| vec![PriceKind::Dex, PriceKind::Cex])
-                .collect(),
+            tx_hash:     hash,
+            gas_details: gas_details.clone(),
+            swaps:       flat_swaps.clone(),
+            //TODO
+            prices_kind: vec![PriceKind::Dex, PriceKind::Cex],
+
             prices_address: flat_swaps
                 .iter()
                 .flat_map(|s| vec![s.token_in].repeat(2))
                 .collect(),
-            prices_price:   prices
-                .iter()
-                .flat_map(|(dex, cex)| vec![*dex, *cex])
-                .collect(),
+            //TODO
+            prices_price:   vec![0.0],
         };
 
         Some(Bundle { header, data: BundleData::CexDex(cex_dex) })
@@ -202,8 +198,13 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         swap: &NormalizedSwap,
         metadata: &MetadataCombined,
     ) -> Option<Rational> {
-        self.rational_prices(tx_idx, &Actions::Swap(swap.clone()))
-            .and_then(|(dex_price, best_ask)| self.profit_classifier(swap, &dex_price, &best_ask))
+        let prices = self.cex_quotes_by_exchange(swap, metadata);
+
+        if prices.is_some() {
+            self.profit_classifier(swap, &dex_price, &best_ask)
+        } else {
+            None
+        }
     }
 
     //TODO: Restructure this to do it in on a per exchange basis
@@ -211,7 +212,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         swap: &NormalizedSwap,
         dex_price: &Rational,
-        cex_price: &Rational,
+        cex_price_by_exchange: (CexExchange, Rational),
     ) -> Option<Rational> {
         // Calculate the price differences between DEX and CEX
         let delta_price = cex_price - dex_price;
@@ -224,27 +225,12 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
     }
 
-    pub fn rational_prices(
+    /// Gets the Cex quote for a Dex swap by exchange
+    fn cex_quotes_by_exchange(
         &self,
-        swap: &Actions,
+        swap: &NormalizedSwap,
         metadata: &MetadataCombined,
     ) -> Option<Vec<(CexExchange, Rational)>> {
-        let Actions::Swap(swap) = swap else { return None };
-
-        let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
-            error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-            return None
-        };
-        let Ok(Some(decimals_out)) = self.inner.db.try_get_token_decimals(swap.token_out) else {
-            debug!(missing_token=?swap.token_out, "missing token out token to decimal map");
-            return None
-        };
-
-        let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
-        let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
-
-        let dex_price = token_in / token_out;
-
         let mut cex_prices = Vec::new();
 
         for exchange in &self.cex_exchanges {
@@ -267,6 +253,27 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         } else {
             Some(cex_prices)
         }
+    }
+
+    fn dex_price_post_fee(
+        &self,
+        swap: &NormalizedSwap,
+        metadata: &MetadataCombined,
+    ) -> Option<Rational> {
+        //TODO: Prune this once will has added classifier based conversions
+        let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
+            error!(missing_token=?swap.token_in, "missing token in token to decimal map");
+            return None
+        };
+        let Ok(Some(decimals_out)) = self.inner.db.try_get_token_decimals(swap.token_out) else {
+            debug!(missing_token=?swap.token_out, "missing token out token to decimal map");
+            return None
+        };
+
+        let adjusted_in = swap.amount_in.to_scaled_rational(decimals_in);
+        let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
+
+        Some(adjusted_in / adjusted_out)
     }
 }
 
