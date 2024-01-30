@@ -59,7 +59,7 @@ pub struct MetadataBincodeInner {
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward:    Option<u128>,
     #[serde_as(as = "Vec<DisplayFromStr>")]
-    pub mempool_flow:           Vec<TxHash>,
+    pub private_flow:           Vec<TxHash>,
 }
 
 impl EncodeMe for &MetadataBincodeInner {
@@ -99,10 +99,10 @@ impl EncodeMe for &MetadataBincodeInner {
             buf.put_slice(&[0]);
         }
 
-        let mempool_flow_len = self.mempool_flow.len() as u16;
-        let mempool_flow_len_bytes = mempool_flow_len.to_le_bytes();
-        buf.put_slice(&mempool_flow_len_bytes);
-        self.mempool_flow
+        let private_flow_len = self.private_flow.len() as u16;
+        let private_flow_len_bytes = private_flow_len.to_le_bytes();
+        buf.put_slice(&private_flow_len_bytes);
+        self.private_flow
             .iter()
             .for_each(|tx| buf.put_slice(tx.0.as_slice()));
 
@@ -156,17 +156,17 @@ impl DecodeMe for MetadataBincodeInner {
             proposer_mev_reward = Some(u128::from_le_bytes(proposer_mev_reward_bytes))
         }
 
-        let mut mempool_flow = Vec::new();
-        let mut mempool_flow_len_bytes: [u8; 2] = [0; 2];
-        buf.copy_to_slice(&mut mempool_flow_len_bytes);
-        let mut mempool_flow_len: u16 = u16::from_le_bytes(mempool_flow_len_bytes);
-        while mempool_flow_len > 0 {
+        let mut private_flow = Vec::new();
+        let mut private_flow_len_bytes: [u8; 2] = [0; 2];
+        buf.copy_to_slice(&mut private_flow_len_bytes);
+        let mut private_flow_len: u16 = u16::from_le_bytes(private_flow_len_bytes);
+        while private_flow_len > 0 {
             let mut tx_hashes_bytes: [u8; 32] = [0; 32];
             buf.copy_to_slice(&mut tx_hashes_bytes);
             let tx_hash = tx_hashes_bytes.into();
-            mempool_flow.push(tx_hash);
+            private_flow.push(tx_hash);
 
-            mempool_flow_len -= 1;
+            private_flow_len -= 1;
         }
 
         Self {
@@ -176,7 +176,7 @@ impl DecodeMe for MetadataBincodeInner {
             p2p_timestamp,
             proposer_fee_recipient,
             proposer_mev_reward,
-            mempool_flow,
+            private_flow,
         }
     }
 }
@@ -198,12 +198,12 @@ impl BincodeEncode for MetadataBincodeInner {
 
         bincode::Encode::encode(&self.proposer_mev_reward, encoder)?;
 
-        let mempool_flow_bytes = self
-            .mempool_flow
+        let private_flow_bytes = self
+            .private_flow
             .iter()
             .map(|flow| flow.0)
             .collect::<Vec<_>>();
-        bincode::Encode::encode(&mempool_flow_bytes, encoder)?;
+        bincode::Encode::encode(&private_flow_bytes, encoder)?;
 
         Ok(())
     }
@@ -219,7 +219,7 @@ impl BincodeDecode for MetadataBincodeInner {
         let p2p_timestamp = bincode::Decode::decode(decoder)?;
         let proposer_fee_recipient_bytes: Option<[u8; 20]> = bincode::Decode::decode(decoder)?;
         let proposer_mev_reward = bincode::Decode::decode(decoder)?;
-        let mempool_flow_bytes: Vec<[u8; 32]> = bincode::Decode::decode(decoder)?;
+        let private_flow_bytes: Vec<[u8; 32]> = bincode::Decode::decode(decoder)?;
 
         Ok(Self {
             block_hash: U256::from_le_bytes(block_hash_bytes),
@@ -228,7 +228,7 @@ impl BincodeDecode for MetadataBincodeInner {
             p2p_timestamp,
             proposer_fee_recipient: proposer_fee_recipient_bytes.map(Into::into),
             proposer_mev_reward,
-            mempool_flow: mempool_flow_bytes.into_iter().map(Into::into).collect(),
+            private_flow: private_flow_bytes.into_iter().map(Into::into).collect(),
         })
     }
 }
@@ -251,7 +251,7 @@ impl Encodable for MetadataBincodeInner {
                 self.proposer_mev_reward
                     .unwrap_or_default()
                     .encode(&mut pre_compressed);
-                self.mempool_flow.encode(&mut pre_compressed);
+                self.private_flow.encode(&mut pre_compressed);
 
 
                 //let serialized = serde_json::to_vec(&self).unwrap();
@@ -292,7 +292,7 @@ impl Decodable for MetadataBincodeInner {
                if proposer_mev_reward.as_ref().unwrap() == &0 {
                    proposer_mev_reward = None
                }
-               let mempool_flow = Vec::<TxHash>::decode(decompressed)?;
+               let private_flow = Vec::<TxHash>::decode(decompressed)?;
 
                Ok(Self {
                    block_hash,
@@ -301,7 +301,7 @@ impl Decodable for MetadataBincodeInner {
                    p2p_timestamp,
                    proposer_fee_recipient,
                    proposer_mev_reward,
-                   mempool_flow,
+                   private_flow,
                })
 
 
@@ -358,7 +358,7 @@ impl From<MetadataBench> for MetadataBincodeData {
                 p2p_timestamp:          value.p2p_timestamp,
                 proposer_fee_recipient: value.proposer_fee_recipient,
                 proposer_mev_reward:    value.proposer_mev_reward,
-                mempool_flow:           value.mempool_flow,
+                private_flow:           value.private_flow,
             },
         }
     }

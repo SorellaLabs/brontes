@@ -8,13 +8,12 @@ pub mod uniswap_v3_math;
 use std::sync::Arc;
 
 use alloy_primitives::{Address, Log, U256};
-use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
+use alloy_rlp::{Decodable, Encodable};
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, pair::Pair, traits::TracingProvider};
 use malachite::Rational;
 use redefined::{self_convert_redefined, RedefinedConvert};
-use reth_codecs::{impl_compact_for_bytes, Compact};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
@@ -23,7 +22,6 @@ use reth_primitives::BufMut;
 use reth_rpc_types::{CallInput, CallRequest};
 use rkyv::Deserialize as rkyv_Deserialize;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::clickhouse::{self, DbRow};
 use tracing::error;
 
 use crate::{

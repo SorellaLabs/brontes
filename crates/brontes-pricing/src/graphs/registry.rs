@@ -1,16 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 use alloy_primitives::Address;
 use brontes_types::pair::Pair;
 use itertools::Itertools;
 use malachite::{num::arithmetic::traits::Reciprocal, Rational};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use super::{subgraph::PairSubGraph, PoolState};
-use crate::{price_graph_types::*, types::PoolUpdate, AllPairGraph, Protocol};
+use crate::{price_graph_types::*, types::PoolUpdate, Protocol};
 
 /// stores all sub-graphs and supports the update mechanisms
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SubGraphRegistry {
     /// tracks which tokens have a edge in the subgraph,
     /// this allows us to possibly insert a new node to a subgraph
@@ -24,8 +23,6 @@ pub struct SubGraphRegistry {
     /// when the tvl of a pool changes.
     /// pool address -> pool tvl
     edge_state:         HashMap<Address, PoolState>,
-    /// subgraphs that needed to be requeried. we keep track of these
-    requeried_graphs:   HashSet<Pair>,
 }
 
 impl SubGraphRegistry {
@@ -34,8 +31,6 @@ impl SubGraphRegistry {
         let sub_graphs = subgraphs
             .into_iter()
             .map(|(pair, edges)| {
-                // add to lookup
-                println!("subgraph");
                 edges
                     .iter()
                     .flat_map(|e| vec![e.token_0, e.token_1])
@@ -46,16 +41,56 @@ impl SubGraphRegistry {
                 (pair, PairSubGraph::init(pair, edges))
             })
             .collect();
-        Self {
-            token_to_sub_graph,
-            sub_graphs,
-            edge_state: HashMap::default(),
-            requeried_graphs: HashSet::new(),
+        Self { token_to_sub_graph, sub_graphs, edge_state: HashMap::default() }
+    }
+
+    pub fn add_verified_subgraph(
+        &mut self,
+        state: HashMap<Address, PoolState>,
+        pair: Pair,
+        subgraph: PairSubGraph,
+    ) {
+        // add all tokens
+        subgraph
+            .get_all_pools()
+            .flat_map(|e| {
+                e.into_iter()
+                    .flat_map(|e| vec![e.token_0, e.token_1])
+                    .collect_vec()
+            })
+            .unique()
+            .for_each(|token| {
+                self.token_to_sub_graph
+                    .entry(token)
+                    .or_default()
+                    .insert(pair);
+            });
+
+        state.into_iter().for_each(|(pool_addr, pool_state)| {
+            // if new new subgraph edge state is from a older block, we replace it.
+            match self.edge_state.entry(pool_addr) {
+                Entry::Occupied(mut o) => {
+                    if o.get().last_update > pool_state.last_update {
+                        *o.get_mut() = pool_state;
+                    }
+                }
+                Entry::Vacant(v) => {
+                    v.insert(pool_state);
+                }
+            }
+        });
+
+        if self.sub_graphs.insert(pair.ordered(), subgraph).is_some() {
+            tracing::error!(?pair, "already had a verified sub-graph for pair");
         }
     }
 
     pub fn has_subpool(&self, pair: &Pair) -> bool {
-        self.sub_graphs.contains_key(&pair) || self.requeried_graphs.contains(&pair)
+        self.sub_graphs.contains_key(&pair)
+    }
+
+    pub fn get_edge_state(&self) -> &HashMap<Address, PoolState> {
+        &self.edge_state
     }
 
     pub fn bad_pool_state(
@@ -78,18 +113,6 @@ impl SubGraphRegistry {
         }
 
         is_disjoint_graph
-    }
-
-    pub fn fetch_unloaded_state(&self, pair: &Pair) -> Vec<PoolPairInfoDirection> {
-        let Some(graph) = self.sub_graphs
-            .get(&pair.ordered()) else { return vec![] };
-
-        graph
-            .get_all_pools()
-            .flatten()
-            .filter(|pool| !self.edge_state.contains_key(&pool.pool_addr))
-            .map(|pool| pool.info)
-            .collect_vec()
     }
 
     pub fn try_extend_subgraphs(
@@ -139,38 +162,6 @@ impl SubGraphRegistry {
             .collect_vec()
     }
 
-    pub fn create_new_subgraph(
-        &mut self,
-        pair: Pair,
-        path: Vec<SubGraphEdge>,
-    ) -> Vec<PoolPairInfoDirection> {
-        self.requeried_graphs.remove(&pair.ordered());
-        // all edges
-        let unloaded_state = path
-            .iter()
-            .filter(|e| !self.edge_state.contains_key(&e.pool_addr))
-            .map(|f| f.info)
-            .collect_vec();
-
-        // add to sub_graph lookup
-        let tokens = path
-            .iter()
-            .flat_map(|i| [i.token_0, i.token_1])
-            .collect::<HashSet<_>>();
-
-        tokens.into_iter().for_each(|token| {
-            self.token_to_sub_graph
-                .entry(token)
-                .or_default()
-                .insert(pair);
-        });
-        // init subgraph
-        let subgraph = PairSubGraph::init(pair, path);
-        self.sub_graphs.insert(pair, subgraph);
-
-        unloaded_state
-    }
-
     pub fn update_pool_state(&mut self, pool_address: Address, update: PoolUpdate) {
         self.edge_state
             .get_mut(&pool_address)
@@ -197,60 +188,7 @@ impl SubGraphRegistry {
             .map(|res| if swapped { res.reciprocal() } else { res })
     }
 
-    pub fn has_state(&self, addr: &Address) -> Option<u64> {
-        self.edge_state.get(addr).map(|state| state.last_update)
-    }
-
-    // goes through the subgraph verifying that we have more than
-    // the base amount of liquidity that we defined.
-    // If we don't have enough defined, the pool is removed.
-    // we return all bad nodes to be pruned from our all_pairs graph.
-    // along with a bool if this pair needs to be recalculated.
-    pub fn verify_subgraph(
-        &mut self,
-        pair: Vec<(u64, Pair)>,
-        quote: Address,
-        all_graph: &AllPairGraph,
-    ) -> Vec<(bool, u64, Pair, HashMap<Pair, Vec<Address>>)> {
-        let pairs = pair
-            .into_iter()
-            .map(|(block, pair)| (pair, block, self.sub_graphs.remove(&pair.ordered())))
-            .filter_map(|(pair, block, subgraph)| {
-                let Some(subgraph) = subgraph else { 
-                    self.token_to_sub_graph.retain(|_, v| {
-                        v.remove(&pair.ordered());
-                        !v.is_empty()
-                });
-                return None 
-                };
-
-                Some((pair, block, subgraph))
-            })
-            .collect_vec();
-
-        let res = pairs
-            .into_par_iter()
-            .map(|(pair, block, mut subgraph)| {
-                let (bad, state) = subgraph.verify_subgraph(quote, &self.edge_state, all_graph);
-                (pair, bad, block, state, subgraph)
-            })
-            .collect::<Vec<_>>();
-
-        res.into_iter()
-            .map(|(pair, kill, block, state, subgraph)| {
-                if !kill {
-                    self.sub_graphs.insert(pair.ordered(), subgraph);
-                } else {
-                    self.requeried_graphs.insert(pair.ordered());
-                }
-
-                self.token_to_sub_graph.retain(|_, v| {
-                    v.remove(&pair.ordered());
-                    !v.is_empty()
-                });
-
-                (kill, block, pair, state)
-            })
-            .collect_vec()
+    pub fn has_state(&self, addr: &Address) -> bool {
+        self.edge_state.contains_key(addr)
     }
 }

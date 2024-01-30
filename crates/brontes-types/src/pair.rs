@@ -5,7 +5,9 @@ use alloy_rlp::{BufMut, Decodable, Encodable};
 use reth_db::table::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Default, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord,
+)]
 pub struct Pair(pub Address, pub Address);
 
 impl Pair {

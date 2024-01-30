@@ -34,7 +34,7 @@ SELECT
     p2p_timestamp,
     proposer_fee_recipient,
     proposer_mev_reward,
-    mempool_flow
+    private_flow
 FROM brontes.metadata
 WHERE block_number >= 17000000 AND block_number < 18000000";
 // WHERE block_number >= 17500000 AND block_number < 18000000 ";
@@ -49,7 +49,7 @@ pub fn metadata_schema() -> Schema {
         Field::new("p2p_timestamp", DataType::UInt64, true),
         Field::new("proposer_fee_recipient", DataType::Binary, true),
         Field::new("proposer_mev_reward", DataType::Binary, true),
-        Field::new("mempool_flow", DataType::Binary, false),
+        Field::new("private_flow", DataType::Binary, false),
     ])
 }
 
@@ -66,7 +66,7 @@ pub struct MetadataBench {
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward:    Option<u128>,
     #[serde_as(as = "Vec<DisplayFromStr>")]
-    pub mempool_flow:           Vec<TxHash>,
+    pub private_flow:           Vec<TxHash>,
 }
 
 impl From<RecordBatch> for MetadataBench {
@@ -106,7 +106,7 @@ impl From<RecordBatch> for MetadataBench {
             .as_any()
             .downcast_ref::<BinaryArray>()
             .unwrap();
-        let mempool_flow_column = batch
+        let private_flow_column = batch
             .column(7)
             .as_any()
             .downcast_ref::<BinaryArray>()
@@ -134,7 +134,7 @@ impl From<RecordBatch> for MetadataBench {
                 buf.copy_from_slice(proposer_mev_reward_column.value(0));
                 Some(u128::from_be_bytes(buf))
             },
-            mempool_flow:           mempool_flow_column
+            private_flow:           private_flow_column
                 .values()
                 .chunks(32)
                 .map(|chunk| TxHash::from_slice(chunk))
@@ -200,18 +200,18 @@ impl ToRecordBatch for MetadataBench {
                 .collect::<Vec<_>>(),
         );
 
-        let mempool_flow: Vec<Vec<u8>> = rows
+        let private_flow: Vec<Vec<u8>> = rows
             .into_iter()
             .map(|row| {
                 let mut tx_hashes = Vec::new();
-                row.mempool_flow
+                row.private_flow
                     .into_iter()
                     .for_each(|tx| tx_hashes.extend(tx.to_vec()));
                 tx_hashes
             })
             .collect::<Vec<_>>();
 
-        let mempool_flow_array = BinaryArray::from_iter_values(mempool_flow.into_iter());
+        let private_flow_array = BinaryArray::from_iter_values(private_flow.into_iter());
 
         RecordBatch::try_new(
             Arc::new(metadata_schema()),
@@ -223,7 +223,7 @@ impl ToRecordBatch for MetadataBench {
                 Arc::new(p2p_timestamp_array),
                 Arc::new(proposer_fee_recipient_array),
                 Arc::new(proposer_mev_reward_array),
-                Arc::new(mempool_flow_array),
+                Arc::new(private_flow_array),
             ],
         )
         .unwrap()

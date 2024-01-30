@@ -109,6 +109,7 @@ pub fn yen<N, C, E, FN, IN, FS, PV>(
     mut success: FS,
     mut path_value: PV,
     k: usize,
+    max_iters: usize,
 ) -> Vec<(Vec<E>, C)>
 where
     N: Eq + Hash + Clone,
@@ -119,7 +120,8 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FS: FnMut(&N) -> bool,
 {
-    let Some((e, n, c)) = dijkstra_internal(start, &mut successors, &mut path_value, &mut success)
+    let Some((e, n, c)) =
+        dijkstra_internal(start, &mut successors, &mut path_value, &mut success, max_iters)
     else {
         return vec![];
     };
@@ -165,9 +167,13 @@ where
             };
 
             // Let us find the spur path from the spur node to the sink using.
-            if let Some((values, spur_path, _)) =
-                dijkstra_internal(spur_node, &mut filtered_successor, &mut path_value, &mut success)
-            {
+            if let Some((values, spur_path, _)) = dijkstra_internal(
+                spur_node,
+                &mut filtered_successor,
+                &mut path_value,
+                &mut success,
+                max_iters,
+            ) {
                 let nodes: Vec<N> = root_path.iter().cloned().chain(spur_path).collect();
                 let weights: Vec<E> = weight_root_path.iter().cloned().chain(values).collect();
                 // If we have found the same path before, we will not add it.
