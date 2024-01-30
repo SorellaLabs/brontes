@@ -1,8 +1,7 @@
 mod action_classifier;
 mod discovery_classifier;
-mod protocol;
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput};
+use syn::parse_macro_input;
 
 use crate::action_classifier::{ActionDispatch, ActionMacro};
 
@@ -152,13 +151,6 @@ pub fn discovery_impl(input: TokenStream) -> TokenStream {
 /// ```
 pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
     discovery_classifier::discovery_dispatch(input.into())
-        .unwrap_or_else(syn::Error::into_compile_error)
-        .into()
-}
-
-#[proc_macro_derive(ToConstByte)]
-pub fn to_byte(input: TokenStream) -> TokenStream {
-    protocol::to_const_byte(parse_macro_input!(input as DeriveInput))
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

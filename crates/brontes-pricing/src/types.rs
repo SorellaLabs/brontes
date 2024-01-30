@@ -144,13 +144,13 @@ impl PoolUpdate {
     // fetch all pairs of it. this
     pub fn get_pair(&self, quote: Address) -> Option<Pair> {
         match &self.action {
-            Actions::Swap(s) => Some(Pair(s.token_in, s.token_out)),
-            Actions::Mint(m) => Some(Pair(m.token[0], m.token[1])),
-            Actions::Burn(b) => Some(Pair(b.token[0], b.token[1])),
-            Actions::Collect(b) => Some(Pair(b.token[0], b.token[1])),
-            Actions::Transfer(t) => Some(Pair(t.token, quote)),
-            Actions::Liquidation(l) => Some(Pair(l.collateral_asset, l.debt_asset)),
-            Actions::SwapWithFee(s) => Some(Pair(s.token_in, s.token_out)),
+            Actions::Swap(s) => Some(Pair(s.token_in.address, s.token_out.address)),
+            Actions::Mint(m) => Some(Pair(m.token[0].address, m.token[1].address)),
+            Actions::Burn(b) => Some(Pair(b.token[0].address, b.token[1].address)),
+            Actions::Collect(b) => Some(Pair(b.token[0].address, b.token[1].address)),
+            Actions::Transfer(t) => Some(Pair(t.token.address, quote)),
+            Actions::Liquidation(l) => Some(Pair(l.collateral_asset.address, l.debt_asset.address)),
+            Actions::SwapWithFee(s) => Some(Pair(s.token_in.address, s.token_out.address)),
             _ => None,
         }
     }

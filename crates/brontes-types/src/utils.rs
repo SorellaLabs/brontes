@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
-use alloy_primitives::U256;
+use alloy_primitives::{I256, U256};
 use malachite::{
     num::{arithmetic::traits::Pow, conversion::traits::RoundingFrom},
     rounding_modes::RoundingMode,
-    Natural, Rational,
+    Integer, Natural, Rational,
 };
 use redefined::{self_convert_redefined, RedefinedConvert};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -46,11 +46,25 @@ pub trait ToScaledRational {
     fn to_scaled_rational(self, decimals: u8) -> Rational;
 }
 
+impl ToScaledRational for Rational {
+    fn to_scaled_rational(self, decimals: u8) -> Rational {
+        self / Rational::from(10usize).pow(decimals as u64)
+    }
+}
+
 impl ToScaledRational for U256 {
     fn to_scaled_rational(self, decimals: u8) -> Rational {
         let top = Natural::from_limbs_asc(&self.into_limbs());
 
         Rational::from_naturals(top, Natural::from(10u8).pow(decimals as u64))
+    }
+}
+
+impl ToScaledRational for I256 {
+    fn to_scaled_rational(self, decimals: u8) -> Rational {
+        let top = Integer::from_twos_complement_limbs_asc(&self.into_limbs());
+
+        Rational::from_integers(top, Integer::from(10u8).pow(decimals as u64))
     }
 }
 
