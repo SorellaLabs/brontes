@@ -194,24 +194,24 @@ impl PairSubGraph {
     pub fn verify_subgraph<T: ProtocolState>(
         &mut self,
         start: Address,
-        state: &HashMap<Address, T>,
+        state: HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
         allowed_low_liq_nodes: &HashMap<Pair, Address>,
         ignore_list: &HashSet<Pair>,
     ) -> VerificationOutcome {
         let mut result =
-            self.run_bfs_with_liquidity_params(start, state, all_pair_graph, ignore_list);
+            self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
 
         self.prune_subgraph(&result.removal_state);
 
         let mut disjoint =
-            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), state)
+            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
                 .is_none();
 
         // if we not disjoint, do a bad pool check.
         if !disjoint {
             if let Some(removal) =
-                self.should_prune_anyways(start, state, all_pair_graph, allowed_low_liq_nodes)
+                self.should_prune_anyways(start, &state, all_pair_graph, allowed_low_liq_nodes)
             {
                 disjoint = true;
                 for (k, v) in removal {

@@ -376,11 +376,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                             }
                         }
                     });
-                    self.graph_manager.add_verified_subgraph(
-                        passed.state,
-                        passed.pair,
-                        passed.subgraph,
-                    );
+                    self.graph_manager
+                        .add_verified_subgraph(passed.pair, passed.subgraph);
 
                     None
                 }
@@ -540,11 +537,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         {
             let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
             // load exchange only if its not loaded already
-            if !(self
-                .graph_manager
-                .verifier_has_state(block, &pool_info.pool_addr)
-                || is_loading)
-            {
+            if !(self.graph_manager.has_state(block, &pool_info.pool_addr) || is_loading) {
                 self.lazy_loader.lazy_load_exchange(
                     pair,
                     Pair(pool_info.token_0, pool_info.token_1),
