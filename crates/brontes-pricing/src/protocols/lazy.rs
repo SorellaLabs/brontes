@@ -10,7 +10,7 @@ use brontes_types::{pair::Pair, traits::TracingProvider};
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use tracing::error;
 
-use crate::{errors::AmmError, types::PoolState, Protocol};
+use crate::{errors::AmmError, protocols::LoadState, types::PoolState, Protocol};
 
 pub(crate) type PoolFetchError = (Address, Protocol, u64, Pair, AmmError);
 pub(crate) type PoolFetchSuccess = (u64, Address, PoolState, LoadResult);

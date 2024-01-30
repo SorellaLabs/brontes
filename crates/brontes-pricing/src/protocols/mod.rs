@@ -5,23 +5,13 @@ pub mod uniswap_v2;
 pub mod uniswap_v3;
 pub mod uniswap_v3_math;
 
-use std::sync::Arc;
+use std::{future::Future, sync::Arc};
 
 use alloy_primitives::{Address, Log, U256};
-use alloy_rlp::{Decodable, Encodable};
-use alloy_sol_types::SolCall;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, pair::Pair, traits::TracingProvider};
+pub use brontes_types::{queries::make_call_request, Protocol};
 use malachite::Rational;
-use redefined::{self_convert_redefined, RedefinedConvert};
-use reth_db::{
-    table::{Compress, Decompress},
-    DatabaseError,
-};
-use reth_primitives::BufMut;
-use reth_rpc_types::{CallInput, CallRequest};
-use rkyv::Deserialize as rkyv_Deserialize;
-use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::{
@@ -32,76 +22,18 @@ use crate::{
     LoadResult, PoolState,
 };
 
-#[allow(non_camel_case_types)]
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Copy,
-    Eq,
-    Hash,
-    Serialize,
-    Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
-    strum::Display,
-    strum::EnumString,
-    brontes_macros::ToConstByte,
-)]
-#[repr(u8)]
-pub enum Protocol {
-    UniswapV2,
-    SushiSwapV2,
-    UniswapV3,
-    SushiSwapV3,
-    CurveCryptoSwap,
-    AaveV2,
-    AaveV3,
-    UniswapX,
-    CurveV1BasePool,
-    CurveV1MetaPool,
-    CurveV2BasePool,
-    CurveV2MetaPool,
-    CurveV2PlainPool,
+pub trait LoadState {
+    fn try_load_state<T: TracingProvider>(
+        self,
+        address: Address,
+        provider: Arc<T>,
+        block_number: u64,
+        pool_pair: Pair,
+    ) -> impl Future<Output = Result<PoolFetchSuccess, PoolFetchError>> + Send;
 }
 
-impl Encodable for Protocol {
-    fn encode(&self, out: &mut dyn BufMut) {
-        let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
-        out.put_slice(&encoded)
-    }
-}
-
-impl Decodable for Protocol {
-    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let archived: &ArchivedProtocol = unsafe { rkyv::archived_root::<Self>(buf) };
-
-        let this = ArchivedProtocol::deserialize(&archived, &mut rkyv::Infallible).unwrap();
-        Ok(this)
-    }
-}
-
-impl Compress for Protocol {
-    type Compressed = Vec<u8>;
-
-    fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-        let mut encoded = Vec::new();
-        self.encode(&mut encoded);
-        buf.put_slice(&encoded);
-    }
-}
-
-impl Decompress for Protocol {
-    fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-        let binding = value.as_ref().to_vec();
-        let buf = &mut binding.as_slice();
-        Protocol::decode(buf).map_err(|_| DatabaseError::Decode)
-    }
-}
-
-impl Protocol {
-    pub(crate) async fn try_load_state<T: TracingProvider>(
+impl LoadState for Protocol {
+    async fn try_load_state<T: TracingProvider>(
         self,
         address: Address,
         provider: Arc<T>,
@@ -163,25 +95,6 @@ impl Protocol {
             }
         }
     }
-}
-
-self_convert_redefined!(Protocol);
-
-pub async fn make_call_request<C: SolCall, T: TracingProvider>(
-    call: C,
-    provider: Arc<T>,
-    to: Address,
-    block: Option<u64>,
-) -> eyre::Result<C::Return> {
-    let encoded = call.abi_encode();
-    let req =
-        CallRequest { to: Some(to), input: CallInput::new(encoded.into()), ..Default::default() };
-
-    let res = provider
-        .eth_call(req, block.map(Into::into), None, None)
-        .await?;
-
-    Ok(C::abi_decode_returns(&res, false)?)
 }
 
 #[async_trait]

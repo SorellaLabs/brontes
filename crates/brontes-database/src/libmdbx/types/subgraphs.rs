@@ -32,6 +32,7 @@ impl LibmdbxData<SubGraphs> for SubGraphsData {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(SubGraphsEntry)]
 pub struct LibmdbxSubGraphsEntry(pub HashMap<u64, Vec<LibmdbxSubGraphEdge>>);
 
@@ -49,6 +50,7 @@ pub struct LibmdbxSubGraphsEntry(pub HashMap<u64, Vec<LibmdbxSubGraphEdge>>);
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PoolPairInformation)]
 pub struct LibmdbxPoolPairInformation {
     pub pool_addr: Redefined_Address,
@@ -71,6 +73,7 @@ pub struct LibmdbxPoolPairInformation {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PoolPairInfoDirection)]
 pub struct LibmdbxPoolPairInfoDirection {
     pub info:       LibmdbxPoolPairInformation,
@@ -87,6 +90,7 @@ pub struct LibmdbxPoolPairInfoDirection {
     rkyv::Archive,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(SubGraphEdge)]
 pub struct LibmdbxSubGraphEdge {
     pub info:                   LibmdbxPoolPairInfoDirection,

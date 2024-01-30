@@ -1,41 +1,46 @@
 use std::fmt::Debug;
 
 use alloy_primitives::TxHash;
-use itertools::Itertools;
-use reth_primitives::{Address, U256};
+use malachite::Rational;
+use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
 };
+
+use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedMint {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
     pub to:          Address,
     pub recipient:   Address,
-    pub token:       Vec<Address>,
-    pub amount:      Vec<U256>,
+    pub token:       Vec<TokenInfoWithAddress>,
+    pub amount:      Vec<Rational>,
 }
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBurn {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
     pub to:          Address,
     pub recipient:   Address,
-    pub token:       Vec<Address>,
-    pub amount:      Vec<U256>,
+    pub token:       Vec<TokenInfoWithAddress>,
+    pub amount:      Vec<Rational>,
 }
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedCollect {
+    pub protocol:    Protocol,
     pub trace_index: u64,
     pub to:          Address,
     pub from:        Address,
     pub recipient:   Address,
-    pub token:       Vec<Address>,
-    pub amount:      Vec<U256>,
+    pub token:       Vec<TokenInfoWithAddress>,
+    pub amount:      Vec<Rational>,
 }
 
 #[derive(Default)]
@@ -49,70 +54,72 @@ pub struct ClickhouseVecNormalizedMintOrBurn {
 }
 
 impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
-    fn from(value: Vec<NormalizedMint>) -> Self {
-        ClickhouseVecNormalizedMintOrBurn {
-            trace_index: value.iter().map(|val| val.trace_index).collect(),
-            from:        value
-                .iter()
-                .map(|val| format!("{:?}", val.from).into())
-                .collect(),
-            to:          value
-                .iter()
-                .map(|val| format!("{:?}", val.to).into())
-                .collect(),
-            recipient:   value
-                .iter()
-                .map(|val| format!("{:?}", val.recipient).into())
-                .collect(),
-
-            tokens:  value
-                .iter()
-                .map(|val| {
-                    val.token
-                        .iter()
-                        .map(|t| format!("{:?}", t).into())
-                        .collect_vec()
-                })
-                .collect(),
-            amounts: value
-                .iter()
-                .map(|val| val.amount.iter().map(|amt| amt.to_le_bytes()).collect_vec())
-                .collect(),
-        }
+    fn from(_value: Vec<NormalizedMint>) -> Self {
+        todo!("joe");
+        // ClickhouseVecNormalizedMintOrBurn {
+        //     trace_index: value.iter().map(|val| val.trace_index).collect(),
+        //     from:        value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.from).into())
+        //         .collect(),
+        //     to:          value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.to).into())
+        //         .collect(),
+        //     recipient:   value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.recipient).into())
+        //         .collect(),
+        //
+        //     tokens:  value
+        //         .iter()
+        //         .map(|val| {
+        //             val.token
+        //                 .iter()
+        //                 .map(|t| format!("{:?}", t).into())
+        //                 .collect_vec()
+        //         })
+        //         .collect(),
+        //     amounts: value
+        //         .iter()
+        //         .map(|val| val.amount.iter().map(|amt|
+        // amt.to_le_bytes()).collect_vec())         .collect(),
+        // }
     }
 }
 
 impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
-    fn from(value: Vec<NormalizedBurn>) -> Self {
-        ClickhouseVecNormalizedMintOrBurn {
-            trace_index: value.iter().map(|val| val.trace_index).collect(),
-            from:        value
-                .iter()
-                .map(|val| format!("{:?}", val.from).into())
-                .collect(),
-            to:          value
-                .iter()
-                .map(|val| format!("{:?}", val.to).into())
-                .collect(),
-            recipient:   value
-                .iter()
-                .map(|val| format!("{:?}", val.recipient).into())
-                .collect(),
-
-            tokens:  value
-                .iter()
-                .map(|val| {
-                    val.token
-                        .iter()
-                        .map(|t| format!("{:?}", t).into())
-                        .collect_vec()
-                })
-                .collect(),
-            amounts: value
-                .iter()
-                .map(|val| val.amount.iter().map(|amt| amt.to_le_bytes()).collect_vec())
-                .collect(),
-        }
+    fn from(_value: Vec<NormalizedBurn>) -> Self {
+        todo!("joe");
+        // ClickhouseVecNormalizedMintOrBurn {
+        //     trace_index: value.iter().map(|val| val.trace_index).collect(),
+        //     from:        value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.from).into())
+        //         .collect(),
+        //     to:          value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.to).into())
+        //         .collect(),
+        //     recipient:   value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.recipient).into())
+        //         .collect(),
+        //
+        //     tokens:  value
+        //         .iter()
+        //         .map(|val| {
+        //             val.token
+        //                 .iter()
+        //                 .map(|t| format!("{:?}", t).into())
+        //                 .collect_vec()
+        //         })
+        //         .collect(),
+        //     amounts: value
+        //         .iter()
+        //         .map(|val| val.amount.iter().map(|amt|
+        // amt.to_le_bytes()).collect_vec())         .collect(),
+        // }
     }
 }
 
