@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use brontes_types::ToScaledRational;
 mod tree_pruning;
 mod utils;
 use brontes_core::missing_token_info::load_missing_token_info;
@@ -219,12 +220,17 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         if let Actions::Transfer(transfer) = &classification {
             if self
                 .libmdbx
-                .try_get_token_info(transfer.token)
+                .try_get_token_info(transfer.token.address)
                 .unwrap()
                 .is_none()
             {
-                load_missing_token_info(&self.provider, self.libmdbx, block_number, transfer.token)
-                    .await;
+                load_missing_token_info(
+                    &self.provider,
+                    self.libmdbx,
+                    block_number,
+                    transfer.token.address,
+                )
+                .await;
             }
         }
 
@@ -276,7 +282,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             return (vec![], Actions::Revert)
         }
         match trace.action_type() {
-            Action::Call(_) => return self.classify_call(block, tx_idx, trace, trace_index),
+            Action::Call(_) => return self.classify_call(block, tx_idx, trace, trace_index).await,
             Action::Create(_) => {
                 return self
                     .classify_create(block, root_head, tx_idx, trace, trace_index)
@@ -289,7 +295,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         };
     }
 
-    fn classify_call(
+    async fn classify_call(
         &self,
         block: u64,
         tx_idx: u64,
@@ -333,14 +339,19 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         addr
                     };
 
+                    if self.libmdbx.try_get_token_info(addr).unwrap().is_none() {
+                        load_missing_token_info(&self.provider, self.libmdbx, block, addr).await;
+                    }
+                    let token_info = self.libmdbx.try_get_token_info(addr).unwrap().unwrap();
+
                     return (
                         vec![],
                         Actions::Transfer(NormalizedTransfer {
                             trace_index,
                             to,
                             from,
-                            token: addr,
-                            amount: value,
+                            amount: value.to_scaled_rational(token_info.decimals),
+                            token: token_info,
                         }),
                     )
                 }
@@ -415,7 +426,10 @@ pub mod test {
     use std::collections::{HashMap, HashSet};
 
     use alloy_primitives::{hex, Address, B256, U256};
-    use brontes_types::normalized_actions::{Actions, NormalizedLiquidation};
+    use brontes_types::{
+        normalized_actions::{Actions, NormalizedLiquidation},
+        Protocol,
+    };
     use serial_test::serial;
 
     use crate::test_utils::ClassifierTestUtils;
@@ -463,6 +477,7 @@ pub mod test {
             B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
 
         let eq_action = Actions::Liquidation(NormalizedLiquidation {
+            protocol:              Protocol::AaveV3,
             liquidated_collateral: U256::from(165516722u64),
             covered_debt:          U256::from(63857746423u64),
             debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),

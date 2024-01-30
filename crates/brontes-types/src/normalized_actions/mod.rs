@@ -21,7 +21,10 @@ use sorella_db_databases::clickhouse::{DbRow, InsertRow};
 pub use swaps::*;
 pub use transfer::*;
 
-use crate::structured_trace::{TraceActions, TransactionTraceWithLogs};
+use crate::{
+    structured_trace::{TraceActions, TransactionTraceWithLogs},
+    Protocol,
+};
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn get_action(&self) -> &Actions;
