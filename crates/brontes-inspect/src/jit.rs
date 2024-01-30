@@ -11,7 +11,7 @@ use brontes_types::{
     GasDetails, ToFloatNearest, ToScaledRational,
 };
 use itertools::Itertools;
-use malachite::{Rational};
+use malachite::Rational;
 use reth_primitives::{Address, B256, U256};
 
 use crate::{
