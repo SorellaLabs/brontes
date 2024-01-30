@@ -165,10 +165,10 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         if swaps.len() <= 1 {
             return None
         } else if swaps.len() == 2 {
-            let start = swaps[0].token_in;
-            let mid = swaps[0].token_out;
-            let mid1 = swaps[1].token_in;
-            let end = swaps[1].token_out;
+            let start = swaps[0].token_in.address;
+            let mid = swaps[0].token_out.address;
+            let mid1 = swaps[1].token_in.address;
+            let end = swaps[1].token_out.address;
             // if not triangular or more than 2 unique tokens, then return.
             // mid != mid1 looks weird. However it is needed as some transactions such as
             // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a
@@ -180,8 +180,8 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             let mut address_to_tokens: HashMap<Address, Vec<Address>> = HashMap::new();
             swaps.iter().for_each(|swap| {
                 let e = address_to_tokens.entry(swap.pool).or_default();
-                e.push(swap.token_in);
-                e.push(swap.token_out);
+                e.push(swap.token_in.address);
+                e.push(swap.token_out.address);
             });
 
             let pools = address_to_tokens.len();

@@ -85,13 +85,13 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     let (r0, r1) = join!(
         make_call_request(
             IErc20::balanceOfCall::new((pool.address,)),
-            middleware.clone(),
+            &middleware,
             pool.token_a,
             block_number,
         ),
         make_call_request(
             IErc20::balanceOfCall::new((pool.address,)),
-            middleware,
+            &middleware,
             pool.token_b,
             block_number,
         )

@@ -1,5 +1,12 @@
+use std::{
+    fmt::Display,
+    ops::{Deref, DerefMut},
+};
+
+use alloy_primitives::Address;
 use alloy_rlp::{Decodable, Encodable};
 use bytes::BufMut;
+use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_db::{
     table::{Compress, Decompress},
     DatabaseError,
@@ -7,9 +14,46 @@ use reth_db::{
 use rkyv::Deserialize;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct TokenInfoWithAddress {
+    pub inner:   TokenInfo,
+    pub address: Address,
+}
+
+impl Display for TokenInfoWithAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "symbol: {}\naddress: {:?}", self.inner.symbol, self.address)
+    }
+}
+
+impl Deref for TokenInfoWithAddress {
+    type Target = TokenInfo;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for TokenInfoWithAddress {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
 #[derive(
-    Debug, Clone, Row, serde::Serialize, rkyv::Serialize, rkyv::Deserialize, rkyv::Archive,
+    Debug,
+    Clone,
+    Default,
+    Row,
+    serde::Serialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    PartialEq,
+    Eq,
+    Hash,
 )]
+#[archive(check_bytes)]
 pub struct TokenInfo {
     pub decimals: u8,
     pub symbol:   String,
@@ -19,6 +63,8 @@ impl TokenInfo {
         Self { symbol, decimals }
     }
 }
+
+self_convert_redefined!(TokenInfo);
 
 impl<'de> serde::Deserialize<'de> for TokenInfo {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
