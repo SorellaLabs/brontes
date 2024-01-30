@@ -185,10 +185,6 @@ impl GraphManager {
         self.graph_state.update_pool_state(address, update);
     }
 
-    pub fn has_state(&self, block: u64, address: &Address) -> bool {
-        self.graph_state.has_state(block, address)
-    }
-
     pub fn has_subgraph(&self, pair: Pair) -> bool {
         self.sub_graph_registry.has_subpool(&pair.ordered())
             || self.subgraph_verifier.is_verifying(&pair.ordered())
