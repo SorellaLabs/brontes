@@ -82,11 +82,15 @@ impl Serialize for CexDex {
         ser_struct
             .serialize_field("stat_arb_details.dex_exchange", &stat_arb_details.dex_exchange)?;
         ser_struct.serialize_field("stat_arb_details.dex_price", &stat_arb_details.dex_price)?;
-        ser_struct
-            .serialize_field("stat_arb_details.pre_gas_taker_profit", &stat_arb_details.taker)?;
+        ser_struct.serialize_field(
+            "stat_arb_details.pre_gas_maker_profit",
+            &stat_arb_details.pnl_maker_profit,
+        )?;
 
-        ser_struct
-            .serialize_field("stat_arb_details.pre_gas_taker_profit", &self.pnl.taker_profit)?;
+        ser_struct.serialize_field(
+            "stat_arb_details.pre_gas_taker_profit",
+            &stat_arb_details.pnl_taker_profit,
+        )?;
 
         let gas_details = (
             self.gas_details.coinbase_transfer,
@@ -116,8 +120,8 @@ impl DbRow for CexDex {
         "stat_arb_details.cex_price",
         "stat_arb_details.dex_exchange",
         "stat_arb_details.dex_price",
-        "stat_arb_details.pnl_pre_gas.taker_profit",
-        "stat_arb_details.pnl_pre_gas.maker_profit",
+        "stat_arb_details.pre_gas_maker_profit",
+        "stat_arb_details.pre_gas_taker_profit",
         "pnl.taker_profit",
         "pnl.maker_profit",
         "gas_details",
