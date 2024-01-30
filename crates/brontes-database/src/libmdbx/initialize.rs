@@ -3,10 +3,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use brontes_types::traits::TracingProvider;
+use brontes_types::{traits::TracingProvider, unordered_buffer_map::BrontesStreamExt};
 use futures::{future::join_all, stream::iter, StreamExt};
 use itertools::Itertools;
-use reth_db::DatabaseError;
 use serde::Deserialize;
 use sorella_db_databases::{clickhouse::DbRow, Database};
 use tracing::{error, info};
@@ -77,8 +76,6 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
-        self.libmdbx.clear_table::<T>()?;
-
         let block_range_chunks = if let Some((s, e)) = block_range {
             (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
@@ -104,44 +101,38 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
-       //  we spawn as the 
             async move {
                 iter(&(start..end).into_iter().chunks(INNER_CHUNK_SIZE)).map(|range| {
-
-                    //println!("PRE VALS {} - {}", start, end);
-
                     let mut range = range.collect_vec();
                     let start = range.remove(0);
                     let end = range.pop().unwrap();
                     let clickhouse = self.clickhouse.clone();
                     let libmdbx = self.libmdbx.clone();
+                    async move {
+                        let data =
+                            clickhouse
+                            .inner()
+                            .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
+                            .await;
 
+                        match data {
+                            Ok(d) => libmdbx.write_table(&d)?,
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
+                            }
+                        }
+                        Ok::<(), eyre::Report>(())
+                    }
 
-                    //println!("VALS POST {} - {}", start, end);
-
-              //   compression and decompression is expensive on a ton of data thus we give
-              //   them there own threads 
-              //println!("INIT QUERY: {:?}", T::INIT_QUERY.expect("Should only be called on clickhouse tables"));
-                tokio::spawn(async move {
-            let data =
-                clickhouse
-                .inner()
-                .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
-                .await;
-
-               // println!("DATA {:?}", data);
-
-
-            match data {
-                Ok(d) => libmdbx.write_table(&d)?,
-                Err(e) => {
-                    info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
-                }
-            }
-            Ok::<(), DatabaseError>(())
-
-            })}).buffer_unordered(5).collect::<Vec<_>>().await;
-
+                }).unordered_buffer_map(5, |item| {
+                    tokio::spawn(item)
+                })
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()?;
 
             let num = {
                 let mut n = num_chunks.lock().unwrap();
@@ -151,8 +142,8 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
 
             info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
 
-            Ok::<(), DatabaseError>(())
-        }})).buffer_unordered(15).collect::<Vec<_>>().await.into_iter()
+            Ok::<(), eyre::Report>(())
+        }})).buffer_unordered(5).collect::<Vec<_>>().await.into_iter()
         .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())

@@ -7,7 +7,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    PriceKind, Root, ToFloatNearest, ToScaledRational,
+    PriceKind, Root, ToFloatNearest,
 };
 use malachite::{
     num::basic::traits::{Two, Zero},

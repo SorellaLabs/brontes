@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
-use reth_primitives::{Address, U256};
+use malachite::Rational;
+use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
@@ -8,16 +9,18 @@ use sorella_db_databases::{
 };
 
 pub use super::{Actions, NormalizedSwap};
+use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLiquidation {
+    pub protocol:              Protocol,
     pub trace_index:           u64,
     pub pool:                  Address,
     pub liquidator:            Address,
     pub debtor:                Address,
-    pub collateral_asset:      Address,
-    pub debt_asset:            Address,
-    pub covered_debt:          U256,
-    pub liquidated_collateral: U256,
+    pub collateral_asset:      TokenInfoWithAddress,
+    pub debt_asset:            TokenInfoWithAddress,
+    pub covered_debt:          Rational,
+    pub liquidated_collateral: Rational,
 }
 
 impl NormalizedLiquidation {
@@ -54,38 +57,39 @@ pub struct ClickhouseVecNormalizedLiquidation {
 }
 
 impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
-    fn from(value: Vec<NormalizedLiquidation>) -> Self {
-        ClickhouseVecNormalizedLiquidation {
-            trace_index: value.iter().map(|val| val.trace_index).collect(),
-            pool:        value
-                .iter()
-                .map(|val| format!("{:?}", val.pool).into())
-                .collect(),
-            liquidator:  value
-                .iter()
-                .map(|val| format!("{:?}", val.liquidator).into())
-                .collect(),
-            debtor:      value
-                .iter()
-                .map(|val| format!("{:?}", val.debtor).into())
-                .collect(),
-
-            collateral_asset:      value
-                .iter()
-                .map(|val| format!("{:?}", val.collateral_asset).into())
-                .collect(),
-            debt_asset:            value
-                .iter()
-                .map(|val| format!("{:?}", val.debt_asset).into())
-                .collect(),
-            covered_debt:          value
-                .iter()
-                .map(|val| val.covered_debt.to_le_bytes())
-                .collect(),
-            liquidated_collateral: value
-                .iter()
-                .map(|val| val.liquidated_collateral.to_le_bytes())
-                .collect(),
-        }
+    fn from(_value: Vec<NormalizedLiquidation>) -> Self {
+        todo!("todo");
+        // ClickhouseVecNormalizedLiquidation {
+        //     trace_index: value.iter().map(|val| val.trace_index).collect(),
+        //     pool:        value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.pool).into())
+        //         .collect(),
+        //     liquidator:  value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.liquidator).into())
+        //         .collect(),
+        //     debtor:      value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.debtor).into())
+        //         .collect(),
+        //
+        //     collateral_asset:      value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.collateral_asset).into())
+        //         .collect(),
+        //     debt_asset:            value
+        //         .iter()
+        //         .map(|val| format!("{:?}", val.debt_asset).into())
+        //         .collect(),
+        //     covered_debt:          value
+        //         .iter()
+        //         .map(|val| val.covered_debt.to_le_bytes())
+        //         .collect(),
+        //     liquidated_collateral: value
+        //         .iter()
+        //         .map(|val| val.liquidated_collateral.to_le_bytes())
+        //         .collect(),
+        // }
     }
 }
