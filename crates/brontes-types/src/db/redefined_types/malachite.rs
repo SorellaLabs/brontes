@@ -20,6 +20,7 @@ Rational
     serde::Serialize,
     serde::Deserialize,
 )]
+#[archive(check_bytes)]
 #[redefined(Rational)]
 #[redefined_attr(
     to_source = "redefined_to_rational(self)",
@@ -72,6 +73,7 @@ Natural
     serde::Serialize,
     serde::Deserialize,
 )]
+#[archive(check_bytes)]
 #[redefined(Natural)]
 #[redefined_attr(
     to_source = "redefined_to_natural(self)",
@@ -120,6 +122,7 @@ InnerNatural
     serde::Serialize,
     serde::Deserialize,
 )]
+#[archive(check_bytes)]
 pub enum Redefined_InnerNatural {
     Small(Limb),
     Large(Vec<Limb>),
