@@ -7,7 +7,7 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens,
         cex::CexPriceMap,
-        dex::{DexQuote, DexQuotes},
+        dex::{DexQuoteWithIndex, DexQuotes},
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
@@ -18,6 +18,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
 };
+use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use tracing::{info, warn};
@@ -25,16 +26,9 @@ use tracing::{info, warn};
 use super::{Libmdbx, LibmdbxReader, LibmdbxWriter};
 use crate::{
     libmdbx::{
-        tables::{CexPrice, DexPrice, Metadata, MevBlocks},
+        tables::{CexPrice, DexPrice, Metadata, MevBlocks, *},
         types::{
-            address_to_protocol::AddressToProtocolData,
-            address_to_tokens::AddressToTokensData,
-            dex_price::{make_filter_key_range, DexPriceData},
-            mev_block::MevBlocksData,
-            pool_creation_block::PoolCreationBlocksData,
-            subgraphs::SubGraphsData,
-            token_decimals::TokenDecimalsData,
-            traces::TxTracesData,
+            dex_price::{make_filter_key_range, make_key},
             LibmdbxData,
         },
     },
@@ -266,8 +260,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        let data =
-            MevBlocksData { block_number, mev_blocks: MevBlockWithClassified { block, mev } };
+        let data = MevBlocksData::new(block_number, MevBlockWithClassified { block, mev });
 
         self.0
             .write_table::<MevBlocks, MevBlocksData>(&vec![data])?;
@@ -280,7 +273,14 @@ impl LibmdbxWriter for LibmdbxReadWriter {
             .into_iter()
             .enumerate()
             .filter(|(_, v)| v.is_some())
-            .map(|(idx, value)| DexPriceData::new(block_num, idx as u16, DexQuote(value.unwrap())))
+            .map(|(idx, value)| {
+                let index = DexQuoteWithIndex {
+                    tx_idx: idx as u16,
+                    quote:  value.unwrap().into_iter().collect_vec(),
+                };
+
+                DexPriceData::new(make_key(block_num, idx as u16), index)
+            })
             .collect::<Vec<_>>();
 
         self.0.update_db(|tx| {
@@ -301,10 +301,10 @@ impl LibmdbxWriter for LibmdbxReadWriter {
     fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()> {
         Ok(self
             .0
-            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
+            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData::new(
                 address,
-                info: TokenInfo::new(decimals, symbol),
-            }])?)
+                TokenInfo::new(decimals, symbol),
+            )])?)
     }
 
     fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
@@ -312,7 +312,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
             entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
 
-            let data = SubGraphsData { pair, data: entry };
+            let data = SubGraphsData::new(pair, entry);
             self.0
                 .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
         }
@@ -329,7 +329,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         self.0
             .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
-                AddressToProtocolData { address, classifier_name },
+                AddressToProtocolData::new(address, classifier_name),
             ])?;
 
         let tx = self.0.ro_tx()?;
@@ -341,31 +341,27 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         addrs.push(address);
         self.0
             .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
-                PoolCreationBlocksData {
-                    block_number: block,
-                    pools:        PoolsToAddresses(addrs),
-                },
+                PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
             ])?;
 
         self.0
-            .write_table::<AddressToTokens, AddressToTokensData>(&vec![AddressToTokensData {
-                address,
-                tokens: PoolTokens {
-                    token0: tokens[0],
-                    token1: tokens[1],
-                    init_block: block,
-                    ..Default::default()
-                },
-            }])?;
+            .write_table::<AddressToTokens, AddressToTokensData>(&vec![
+                AddressToTokensData::new(
+                    address,
+                    PoolTokens {
+                        token0: tokens[0],
+                        token1: tokens[1],
+                        init_block: block,
+                        ..Default::default()
+                    },
+                ),
+            ])?;
 
         Ok(())
     }
 
     fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        let table = TxTracesData {
-            block_number: block,
-            inner:        TxTracesInner { traces: Some(traces) },
-        };
+        let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
 
         Ok(self.0.write_table(&vec![table])?)
     }
