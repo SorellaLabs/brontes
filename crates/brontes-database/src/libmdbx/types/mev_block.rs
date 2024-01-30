@@ -45,6 +45,7 @@ impl LibmdbxData<MevBlocks> for MevBlocksData {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(MevBlockWithClassified)]
 pub struct LibmdbxMevBlockWithClassified {
     pub block: LibmdbxMevBlock,
@@ -61,6 +62,7 @@ pub struct LibmdbxMevBlockWithClassified {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(MevBlock)]
 pub struct LibmdbxMevBlock {
     pub block_hash: Redefined_FixedBytes<32>,
@@ -92,6 +94,7 @@ pub struct LibmdbxMevBlock {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(MevCount)]
 pub struct LibmdbxMevCount {
     pub mev_count:            u64,
@@ -113,6 +116,7 @@ pub struct LibmdbxMevCount {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PossibleMevCollection)]
 pub struct LibmdbxPossibleMevCollection(pub Vec<LibmdbxPossibleMev>);
 
@@ -126,6 +130,7 @@ pub struct LibmdbxPossibleMevCollection(pub Vec<LibmdbxPossibleMev>);
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PossibleMev)]
 pub struct LibmdbxPossibleMev {
     pub tx_hash:     Redefined_FixedBytes<32>,
@@ -144,6 +149,7 @@ pub struct LibmdbxPossibleMev {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(PossibleMevTriggers)]
 pub struct LibmdbxPossibleMevTriggers {
     pub is_private:        bool,
@@ -161,6 +167,7 @@ pub struct LibmdbxPossibleMevTriggers {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(BundleHeader)]
 pub struct LibmdbxBundleHeader {
     pub block_number:         u64,
@@ -185,6 +192,7 @@ pub struct LibmdbxBundleHeader {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(BundleData)]
 pub enum LibmdbxBundleData {
     Sandwich(LibmdbxSandwich),
@@ -206,6 +214,7 @@ pub enum LibmdbxBundleData {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(Bundle)]
 pub struct LibmdbxBundle {
     pub header: LibmdbxBundleHeader,
@@ -222,6 +231,7 @@ pub struct LibmdbxBundle {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(TokenProfit)]
 pub struct LibmdbxTokenProfit {
     pub profit_collector: Redefined_Address,
@@ -240,6 +250,7 @@ pub struct LibmdbxTokenProfit {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(TokenProfits)]
 pub struct LibmdbxTokenProfits {
     pub profits: Vec<LibmdbxTokenProfit>,
@@ -255,6 +266,7 @@ pub struct LibmdbxTokenProfits {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(Sandwich)]
 pub struct LibmdbxSandwich {
     pub frontrun_tx_hash:         Vec<Redefined_FixedBytes<32>>,
@@ -278,6 +290,7 @@ pub struct LibmdbxSandwich {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(AtomicBackrun)]
 pub struct LibmdbxAtomicBackrun {
     pub tx_hash:     Redefined_FixedBytes<32>,
@@ -295,6 +308,7 @@ pub struct LibmdbxAtomicBackrun {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(JitLiquiditySandwich)]
 pub struct LibmdbxJitLiquiditySandwich {
     pub frontrun_tx_hash:         Vec<Redefined_FixedBytes<32>>,
@@ -320,6 +334,7 @@ pub struct LibmdbxJitLiquiditySandwich {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(JitLiquidity)]
 pub struct LibmdbxJitLiquidity {
     pub frontrun_mint_tx_hash: Redefined_FixedBytes<32>,
@@ -344,6 +359,7 @@ pub struct LibmdbxJitLiquidity {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(CexDex)]
 pub struct LibmdbxCexDex {
     pub tx_hash:          Redefined_FixedBytes<32>,
@@ -363,6 +379,7 @@ pub struct LibmdbxCexDex {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(Liquidation)]
 pub struct LibmdbxLiquidation {
     pub liquidation_tx_hash: Redefined_FixedBytes<32>,
@@ -382,6 +399,7 @@ pub struct LibmdbxLiquidation {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(TokenInfoWithAddress)]
 pub struct LibmdbxTokenInfoWithAddress {
     pub inner:   TokenInfo,
@@ -398,6 +416,7 @@ pub struct LibmdbxTokenInfoWithAddress {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(NormalizedSwap)]
 pub struct LibmdbxNormalizedSwap {
     pub protocol:    Protocol,
@@ -421,6 +440,7 @@ pub struct LibmdbxNormalizedSwap {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(NormalizedLiquidation)]
 pub struct LibmdbxNormalizedLiquidation {
     pub protocol:              Protocol,
@@ -444,6 +464,7 @@ pub struct LibmdbxNormalizedLiquidation {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(NormalizedBurn)]
 pub struct LibmdbxNormalizedBurn {
     pub protocol:    Protocol,
@@ -465,6 +486,7 @@ pub struct LibmdbxNormalizedBurn {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(NormalizedMint)]
 pub struct LibmdbxNormalizedMint {
     pub protocol:    Protocol,
@@ -486,6 +508,7 @@ pub struct LibmdbxNormalizedMint {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(StatArbDetails)]
 pub struct LibmdbxStatArbDetails {
     pub cex_exchange: CexExchange,
@@ -505,6 +528,7 @@ pub struct LibmdbxStatArbDetails {
     Clone,
     Redefined,
 )]
+#[archive(check_bytes)]
 #[redefined(StatArbPnl)]
 pub struct LibmdbxStatArbPnl {
     pub taker_profit: Redefined_Rational,
