@@ -7,15 +7,15 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    PriceKind, ToFloatNearest, ToScaledRational,
+    PriceKind, Root, ToFloatNearest, ToScaledRational,
 };
-use malachite::{num::basic::traits::Zero, Rational};
-use rayon::{
-    iter::{IntoParallelIterator, ParallelIterator},
-    prelude::IntoParallelRefIterator,
+use malachite::{
+    num::basic::traits::{Two, Zero},
+    Rational,
 };
-use reth_primitives::{Address, B256};
-use tracing::{debug, error, trace};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reth_primitives::Address;
+use tracing::{debug, error};
 
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
@@ -25,8 +25,11 @@ pub struct CexDexInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB, cex_exchanges: Vec<CexExchange>) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote, db), cex_exchanges }
+    pub fn new(quote: Address, db: &'db DB, cex_exchanges: &Vec<CexExchange>) -> Self {
+        Self {
+            inner:         SharedInspectorUtils::new(quote, db),
+            cex_exchanges: cex_exchanges.clone(),
+        }
     }
 }
 //TODO: Support for multiple CEXs
@@ -51,20 +54,8 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
             .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
                 let root = tree.get_root(tx)?;
-                let gas_details = root.gas_details;
 
-                let eoa = root.head.address;
-                let mev_contract = root.head.data.get_to_address();
-                let idx = root.get_block_position();
-                self.process_swaps(
-                    tx,
-                    idx,
-                    mev_contract,
-                    eoa,
-                    meta_data.clone(),
-                    &gas_details,
-                    swaps,
-                )
+                self.process_swaps(root, meta_data.clone(), swaps)
             })
             .collect::<Vec<_>>()
     }
@@ -73,32 +64,38 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
 impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     fn process_swaps(
         &self,
-        hash: B256,
-        idx: usize,
-        mev_contract: Address,
-        eoa: Address,
+        root: &Root<Actions>,
         metadata: Arc<MetadataCombined>,
-        gas_details: &GasDetails,
         swaps: Vec<Actions>,
     ) -> Option<Bundle> {
-        let swap_sequences: Vec<(&Actions, _)> = swaps
-            .iter()
-            .filter_map(|action| {
-                if let Actions::Swap(ref normalized_swap) = action {
-                    Some((action, self.get_cex_dex(idx, normalized_swap, metadata.as_ref())))
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let tx_index = root.get_block_position();
+        let gas_details = root.gas_details;
+        let mev_contract = root.head.data.get_to_address();
+        let eoa = root.head.address;
 
-        let profit = self.arb_gas_accounting(swap_sequences, gas_details, &metadata.eth_prices);
+        let swaps_with_profit_by_exchange: Vec<(&NormalizedSwap, Vec<(CexExchange, Rational)>)> =
+            swaps
+                .iter()
+                .filter_map(|action| {
+                    let swap = action.force_swap_ref();
+
+                    let cex_dex_opportunity =
+                        self.detect_cex_dex_opportunity(swap, metadata.as_ref())?;
+
+                    Some((swap, cex_dex_opportunity))
+                })
+                .collect();
+        let possible_cex_dex =
+            self.gas_accounting(swaps_with_profit_by_exchange, &gas_details, &metadata.eth_prices);
+
+        let cex_dex = self.filter_possible_cex_dex(possible_cex_dex, root)?;
+
         let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
         let deltas = self.inner.calculate_token_deltas(&vec![swaps.clone()]);
 
         let addr_usd_deltas =
             self.inner
-                .usd_delta_by_address(idx, &deltas, metadata.clone(), true)?;
+                .usd_delta_by_address(tx_index, &deltas, metadata.clone(), true)?;
 
         let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
 
@@ -127,139 +124,127 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 .collect(),
         };
 
+        //TODO: Add clean bundle header contructor in shared utils
         let header = BundleHeader {
-            tx_index: idx as u64,
+            tx_index: tx_index as u64,
             mev_profit_collector,
-            tx_hash: hash,
+            tx_hash: root.tx_hash,
             mev_contract,
             eoa,
             block_number: metadata.block_num,
             mev_type: MevType::CexDex,
-            profit_usd: profit?.to_float(),
+            profit_usd: 0.0,
             token_profits,
             bribe_usd: gas_finalized.to_float(),
         };
 
-        /*
-        let prices = swaps
-            .par_iter()
-            .filter_map(|swap| self.rational_prices(swap.force_swap_ref(), &metadata))
-            .map(|(dex_price, cex1)| (dex_price.to_float(), cex1.to_float()))
-            .collect::<Vec<_>>();
-         */
-
-        let flat_swaps = swaps
-            .into_iter()
-            .filter(|act| act.is_swap())
-            .map(|swap| swap.force_swap())
-            .collect::<Vec<_>>();
-
-        let cex_dex = CexDex {
-            tx_hash:     hash,
-            gas_details: gas_details.clone(),
-            swaps:       flat_swaps.clone(),
-            //TODO
-            prices_kind: vec![PriceKind::Dex, PriceKind::Cex],
-
-            prices_address: flat_swaps
-                .iter()
-                .flat_map(|s| vec![s.token_in].repeat(2))
-                .collect(),
-            //TODO
-            prices_price:   vec![0.0],
-        };
-
-        Some(Bundle { header, data: BundleData::CexDex(cex_dex) })
+        Some(Bundle { header, data: cex_dex })
     }
 
-    fn arb_gas_accounting(
-        &self,
-        swap_sequences: Vec<(&Actions, Option<Rational>)>,
-        gas_details: &GasDetails,
-        eth_price: &Rational,
-    ) -> Option<Rational> {
-        let zero = Rational::ZERO;
-        let total_arb = swap_sequences
-            .iter()
-            .fold(Rational::ZERO, |acc, (_, v)| acc + v.as_ref().unwrap_or(&zero));
-
-        let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u128.pow(18)) * eth_price;
-
-        if total_arb > gas_cost || gas_details.coinbase_transfer.is_some() {
-            Some(total_arb - gas_cost)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_cex_dex(
-        &self,
-        tx_idx: usize,
-        swap: &NormalizedSwap,
-        metadata: &MetadataCombined,
-    ) -> Option<Rational> {
-        let prices = self.cex_quotes_by_exchange(swap, metadata);
-
-        if prices.is_some() {
-            self.profit_classifier(swap, &dex_price, &best_ask)
-        } else {
-            None
-        }
-    }
-
-    //TODO: Restructure this to do it in on a per exchange basis
-    fn profit_classifier(
-        &self,
-        swap: &NormalizedSwap,
-        dex_price: &Rational,
-        cex_price_by_exchange: (CexExchange, Rational),
-    ) -> Option<Rational> {
-        // Calculate the price differences between DEX and CEX
-        let delta_price = cex_price - dex_price;
-        // Calculate the potential profit
-        let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
-            error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-            return None
-        };
-
-        Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
-    }
-
-    /// Gets the Cex quote for a Dex swap by exchange
-    fn cex_quotes_by_exchange(
+    pub fn detect_cex_dex_opportunity(
         &self,
         swap: &NormalizedSwap,
         metadata: &MetadataCombined,
     ) -> Option<Vec<(CexExchange, Rational)>> {
-        let mut cex_prices = Vec::new();
+        let cex_prices = self.cex_quotes_for_swap(swap, metadata)?;
+        let dex_price = self.dex_price_post_fee(swap)?;
 
-        for exchange in &self.cex_exchanges {
-            if let Some(cex_quote) = metadata
-                .db
-                .cex_quotes
-                .get_quote_or_via_intermediaries(&Pair(swap.token_in, swap.token_out), exchange)
-            {
-                cex_prices.push((*exchange, cex_quote.price.0));
-            } else {
-                debug!(
-                    "No CEX quote found for pair: {}, {} at exchange: {:?}",
-                    swap.token_in, swap.token_out, exchange
-                );
-            }
-        }
+        let opportunities = cex_prices
+            .into_iter()
+            .map(|(exchange, price, is_direct_pair)| {
+                self.profit_classifier(swap, &dex_price, (exchange, price, is_direct_pair))
+            })
+            .collect();
 
-        if cex_prices.is_empty() {
-            None
+        Some(opportunities)
+    }
+
+    fn profit_classifier(
+        &self,
+        swap: &NormalizedSwap,
+        dex_price: &Rational,
+        exchange_cex_price: (CexExchange, Rational, bool),
+    ) -> (CexExchange, Rational) {
+        // It is the cex price - dex price because we are selling the token purchased on
+        // the Dex on the Cex
+        let delta_price = exchange_cex_price.1 - dex_price;
+
+        //TODO: Remove once we have the new normalized swap
+        // Calculate the potential profit
+        let decimals_in = self
+            .inner
+            .db
+            .try_get_token_decimals(swap.token_out)
+            .unwrap()
+            .unwrap();
+
+        let sell_amount = swap.amount_out.to_scaled_rational(decimals_in);
+
+        // Here we are calculating the profit of selling the token (purchased on the
+        // Dex) on the Cex & accounting for trading fees TODO: Here we assume
+        // taker fee, have to also account for maker fee
+        if exchange_cex_price.2 {
+            // Direct pair
+            (
+                exchange_cex_price.0,
+                delta_price * &sell_amount - sell_amount * &exchange_cex_price.0.fees().1,
+            )
         } else {
-            Some(cex_prices)
+            // Indirect pair pays twice the fee
+            (
+                exchange_cex_price.0,
+                delta_price * &sell_amount
+                    - sell_amount * exchange_cex_price.0.fees().1 * Rational::TWO,
+            )
         }
     }
 
-    fn dex_price_post_fee(
+    /// Gets the Cex quote for a Dex swap by exchange
+    /// Retrieves CEX quotes for a DEX swap, grouped by exchange.
+    /// If the quote is not found for a given exchange, it will try to find a
+    /// quote via an intermediary token. Direct quotes are marked as
+    /// `true`, intermediary quotes are marked as `false`. Which allows us to
+    /// account for the additional fees.
+    fn cex_quotes_for_swap(
         &self,
         swap: &NormalizedSwap,
         metadata: &MetadataCombined,
-    ) -> Option<Rational> {
+    ) -> Option<Vec<(CexExchange, Rational, bool)>> {
+        let pair = Pair(swap.token_in, swap.token_out).ordered();
+        let quotes = self
+            .cex_exchanges
+            .iter()
+            .filter_map(|&exchange| {
+                metadata
+                    .db
+                    .cex_quotes
+                    .get_quote(&pair, &exchange)
+                    .map(|cex_quote| (exchange, cex_quote.price.0, true))
+                    .or_else(|| {
+                        metadata
+                            .db
+                            .cex_quotes
+                            .get_quote_via_intermediary(&pair, &exchange)
+                            .map(|cex_quote| (exchange, cex_quote.price.0, false))
+                    })
+                    .or_else(|| {
+                        debug!(
+                            "No CEX quote found for pair: {}, {} at exchange: {:?}",
+                            swap.token_in, swap.token_out, exchange
+                        );
+                        None
+                    })
+            })
+            .collect::<Vec<_>>();
+
+        if quotes.is_empty() {
+            None
+        } else {
+            Some(quotes)
+        }
+    }
+
+    fn dex_price_post_fee(&self, swap: &NormalizedSwap) -> Option<Rational> {
         //TODO: Prune this once will has added classifier based conversions
         let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
             error!(missing_token=?swap.token_in, "missing token in token to decimal map");
@@ -274,6 +259,117 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let adjusted_out = swap.amount_out.to_scaled_rational(decimals_out);
 
         Some(adjusted_in / adjusted_out)
+    }
+
+    fn gas_accounting(
+        &self,
+        swaps_with_profit_by_exchange: Vec<(&NormalizedSwap, Vec<(CexExchange, Rational)>)>,
+        gas_details: &GasDetails,
+        eth_price: &Rational,
+    ) -> PossibleCexDex {
+        // Calculate the maximally profitable sequence of Cex arbs by picking the most
+        // profitable exchange to execute the arb for each swap
+        let max_profit_sequence: Vec<(NormalizedSwap, CexExchange, Rational)> =
+            swaps_with_profit_by_exchange
+                .into_iter()
+                .filter_map(|(swap, net_profits_by_exchange)| {
+                    net_profits_by_exchange
+                        .into_iter()
+                        .max_by(|(_, profit1), (_, profit2)| profit1.cmp(profit2))
+                        .map(|(exchange, profit)| (swap.clone(), exchange, profit))
+                })
+                .collect();
+
+        // Calculate total arbitrage profit before gas
+        let total_arb_pre_gas: Rational = max_profit_sequence
+            .iter()
+            .map(|(_, _, profit)| profit)
+            .sum();
+
+        let gas_cost = Rational::from_unsigneds(gas_details.gas_paid(), 10u128.pow(18)) * eth_price;
+        let pnl = total_arb_pre_gas - gas_cost;
+
+        let swaps = max_profit_sequence
+            .iter()
+            .map(|(swap, ..)| swap.clone())
+            .collect();
+        let exchanges = max_profit_sequence
+            .iter()
+            .map(|(_, exchange, _)| *exchange)
+            .collect();
+        let profits_pre_gas = max_profit_sequence
+            .iter()
+            .map(|(_, _, profit)| profit.clone())
+            .collect();
+
+        PossibleCexDex { swaps, exchanges, profits_pre_gas, gas_details: gas_details.clone(), pnl }
+    }
+
+    fn filter_possible_cex_dex(
+        &self,
+        possible_cex_dex: PossibleCexDex,
+        root: &Root<Actions>,
+    ) -> Option<BundleData> {
+        // Check if pnl is positive or a coinbase transfer is present
+        let basic_condition = possible_cex_dex.pnl > Rational::ZERO
+            && root.head.data.is_unclassified()
+            || possible_cex_dex.gas_details.coinbase_transfer.is_some()
+                && root.head.data.is_unclassified();
+
+        let is_know_cex_dex_contract = if let Actions::Unclassified(data) = &root.head.data {
+            data.is_cex_dex_call()
+        } else {
+            false
+        };
+
+        // Return Some(BundleData) if any of the conditions are met
+        if basic_condition || is_know_cex_dex_contract {
+            Some(possible_cex_dex.build_bundle_type(root))
+        } else {
+            None
+        }
+    }
+
+    /// Calculates the rate for a given DEX swap
+    #[allow(dead_code)]
+    //TODO: implement as a method once we have the new normalized swap
+    fn calculate_dex_rate(amount_in: Rational, amount_out: Rational) -> Rational {
+        // Choose the calculation method based on your standard representation
+        amount_in / amount_out
+    }
+}
+
+pub struct PossibleCexDex {
+    pub swaps:           Vec<NormalizedSwap>,
+    pub exchanges:       Vec<CexExchange>,
+    pub profits_pre_gas: Vec<Rational>,
+    pub gas_details:     GasDetails,
+    pub pnl:             Rational,
+}
+
+impl PossibleCexDex {
+    //TODO: Build the bundle type & change cex dex type to contain cex-dex prices
+    pub fn build_bundle_type(&self, root: &Root<Actions>) -> BundleData {
+        BundleData::CexDex(CexDex {
+            tx_hash:        root.tx_hash,
+            gas_details:    self.gas_details.clone(),
+            swaps:          self.swaps.clone(),
+            prices_kind:    self
+                .swaps
+                .iter()
+                .flat_map(|_s| vec![PriceKind::Dex, PriceKind::Cex])
+                .collect(),
+            prices_address: self
+                .swaps
+                .iter()
+                .flat_map(|s| vec![s.token_in, s.token_out])
+                .collect(),
+            prices_price:   self
+                .profits_pre_gas
+                .iter()
+                .flat_map(|profit| vec![profit.clone().to_float(), profit.clone().to_float()])
+                .collect(),
+        })
     }
 }
 
