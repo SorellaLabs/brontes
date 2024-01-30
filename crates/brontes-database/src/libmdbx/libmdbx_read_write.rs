@@ -6,7 +6,7 @@ use brontes_types::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_to_tokens::PoolTokens,
-        cex::{CexPriceMap, CexQuote},
+        cex::CexPriceMap,
         dex::{DexQuote, DexQuotes},
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,

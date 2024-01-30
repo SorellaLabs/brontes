@@ -1,13 +1,14 @@
-use alloy_primitives::Log;
+use std::str::FromStr;
+
+use alloy_primitives::{Address, Log};
 use redefined::{self_convert_redefined, RedefinedConvert};
-use reth_primitives::{Address, Bytes, B256};
+use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::{
     Action, CallType,
     TraceOutput::{self},
     TransactionTrace,
 };
 use serde::{Deserialize, Serialize};
-
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
     fn get_to_address(&self) -> Address;
@@ -145,6 +146,18 @@ pub struct TransactionTraceWithLogs {
 impl TransactionTraceWithLogs {
     pub fn get_trace_address(&self) -> Vec<usize> {
         self.trace.trace_address.clone()
+    }
+
+    //TODO: Add actual address book & call signature
+    pub fn is_cex_dex_call(&self) -> bool {
+        match &self.trace.action {
+            Action::Call(call) => {
+                call.to == Address::from_str("0x7a250d5630b4cf539739df2c5dacb4c659f2488d").unwrap()
+                    || call.to
+                        == Address::from_str("0x1ce0c2827e2ef14d5c4f29a091d735a204794041").unwrap()
+            }
+            _ => false,
+        }
     }
 }
 

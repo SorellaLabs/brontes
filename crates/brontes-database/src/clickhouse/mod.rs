@@ -144,7 +144,7 @@ impl Clickhouse {
             .into()
     }
 
-    async fn get_cex_token_prices(&self, p2p_time: u64) -> CexPriceMap {
+    async fn get_cex_token_prices(&self, _p2p_time: u64) -> CexPriceMap {
         CexPriceMap::default()
 
         /*self.client
