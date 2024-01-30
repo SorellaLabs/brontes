@@ -148,6 +148,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         pools
             .into_iter()
             .flatten()
+            .unique_by(|(_, p, _)| *p)
             .for_each(|(graph_edges, pair, block)| {
                 if graph_edges.is_empty() {
                     error!(?pair, "new pool has no graph edges");
@@ -155,6 +156,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
 
                 if self.graph_manager.has_subgraph(pair) {
+                    error!(?pair, "already have pairs");
                     return
                 }
 
@@ -603,12 +605,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
 
         // check if we can progress to the next block.
-        let block_prices = self.try_resolve_block();
-        if block_prices.is_some() {
-            return Some(Poll::Ready(block_prices))
-        }
-
-        None
+        self.try_resolve_block()
+            .map(|prices| Poll::Ready(Some(prices)))
     }
 }
 
