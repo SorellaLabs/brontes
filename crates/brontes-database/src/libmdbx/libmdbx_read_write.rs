@@ -11,7 +11,7 @@ use brontes_types::{
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
-        token_info::TokenInfo,
+        token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
     },
     mev::{Bundle, MevBlock},
@@ -189,9 +189,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfo>> {
+    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>> {
         let tx = self.0.ro_tx()?;
-        Ok(tx.get::<TokenDecimals>(address)?)
+        Ok(tx
+            .get::<TokenDecimals>(address)?
+            .map(|inner| TokenInfoWithAddress { inner, address }))
     }
 
     fn protocols_created_before(
