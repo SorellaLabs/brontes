@@ -55,7 +55,7 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     req_per_block: HashMap<u64, u64>,
     /// all current parent pairs with all the state that is required for there
     /// subgraph to be loaded
-    pub parent_pair_state_loading: HashMap<Pair, (u64, HashSet<Address>)>,
+    parent_pair_state_loading: HashMap<Pair, (u64, HashSet<Address>)>,
     /// All current request addresses to subgraph pair that requested the
     /// loading. in the case that a pool fails to load, we need all subgraph
     /// pairs that are dependent on the node in order to remove it from the
@@ -153,7 +153,6 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
             *(o.get_mut()) -= 1;
         }
-
 
         // only remove for state loading for the given block
         let removed =
