@@ -77,13 +77,14 @@ impl StateTracker {
                 self.verification_edge_state
                     .get(&edge.pool_addr)
                     .filter(|pool_state| pool_state.contains_block_state(block))
-                    .map(|_| edge.info)
+                    .map(|_| None)
                     .or_else(|| {
                         self.finalized_edge_state
                             .get(&edge.pool_addr)
                             .filter(|state| state.last_update == block)
-                            .map(|_| edge.info)
+                            .map(|_| None)
                     })
+                    .or_else(|| Some(Some(edge.info)))?
             })
             .collect_vec()
     }
