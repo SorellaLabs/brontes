@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 use alloy_primitives::{hex, Address, Bytes};
 
 pub const WETH_ADDRESS: Address = Address::new(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"));

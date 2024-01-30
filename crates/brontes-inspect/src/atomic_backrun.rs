@@ -143,7 +143,6 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             tx_hash,
             eoa,
             mev_contract,
-            mev_profit_collector,
             profit_usd: (rev_usd - gas_used_usd.clone()).to_float(),
             token_profits,
             bribe_usd: gas_used_usd.to_float(),
