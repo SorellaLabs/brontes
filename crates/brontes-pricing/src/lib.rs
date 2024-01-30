@@ -459,10 +459,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
 
         triggered
-        // if !triggered {
-        //     tracing::info!("recusing");
-        //     self.try_verify_subgraph(vec![(block, pair)])
-        // }
     }
 
     /// because we already have a state update for this pair in the buffer, we
