@@ -440,7 +440,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         // query more state. however the new path it takes goes through a pool that is
         // being inited with state from block N + I, when we go to calculate the price
         // the state will be off thus giving us a incorrect price
-        let mut queued_addrs = Vec::new();
         for pool_info in needed_state {
             let is_lazy_loading =
                 if let Some(blocks) = self.lazy_loader.is_loading_block(&pool_info.pool_addr) {
@@ -463,18 +462,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     .add_protocol_parent(block, pool_info.pool_addr, pair);
                 triggered = true;
             }
-
-            queued_addrs.push(pool_info.pool_addr);
         }
-
-        let (b, addrs) = self
-            .lazy_loader
-            .parent_pair_state_loading
-            .get(&pair.ordered())
-            .unwrap();
-        assert!(*b == block, "different block for subgraph");
-        let all_queued = queued_addrs.into_iter().all(|a| addrs.contains(&a));
-        assert!(all_queued, "missing queued_addrs in lazy");
 
         triggered
     }
