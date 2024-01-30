@@ -1,4 +1,4 @@
-use alloy_primitives::{hex, Address};
+use alloy_primitives::{hex, Address, Bytes};
 
 pub const WETH_ADDRESS: Address = Address::new(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"));
 pub const USDT_ADDRESS: Address = Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"));
@@ -9,3 +9,9 @@ pub const DAI_ADDRESS: Address = Address::new(hex!("6b175474e89094c44da98b954eed
 
 /// The first block where the chainbound mempool data is available.
 pub const START_OF_CHAINBOUND_MEMPOOL_DATA: u64 = 17193367;
+
+/// SCP's main cex-dex contract
+pub const SCP_MAIN_CEX_DEX_BOT: Address =
+    Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C"));
+
+pub const EXECUTE_FFS_YO: Bytes = Bytes::from_static(&[0x78, 0xe1, 0x11, 0xf6]);
