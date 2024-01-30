@@ -1,4 +1,3 @@
-use std::str::FromStr;
 
 use alloy_primitives::{Address, Log};
 use redefined::{self_convert_redefined, RedefinedConvert};
@@ -9,6 +8,8 @@ use reth_rpc_types::trace::parity::{
     TransactionTrace,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT};
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
     fn get_to_address(&self) -> Address;
@@ -148,13 +149,16 @@ impl TransactionTraceWithLogs {
         self.trace.trace_address.clone()
     }
 
-    //TODO: Add actual address book & call signature
+    /// Returns true if the call is a call to SCP's mev bot or their notorious
+    /// `executeFFsYo` function
+    // TODO: Find a better way to track certain contracts / calls that we 100% know
+    // are cex-dex
     pub fn is_cex_dex_call(&self) -> bool {
         match &self.trace.action {
             Action::Call(call) => {
-                call.to == Address::from_str("0x7a250d5630b4cf539739df2c5dacb4c659f2488d").unwrap()
-                    || call.to
-                        == Address::from_str("0x1ce0c2827e2ef14d5c4f29a091d735a204794041").unwrap()
+                // Assuming SCP_MAIN_CEX_DEX_BOT is of type Address and is correctly imported
+                call.to == SCP_MAIN_CEX_DEX_BOT
+                    || (call.input.len() >= 4 && &call.input[0..4] == EXECUTE_FFS_YO.as_ref())
             }
             _ => false,
         }

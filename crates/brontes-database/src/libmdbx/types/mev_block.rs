@@ -346,11 +346,11 @@ pub struct LibmdbxJitLiquidity {
 )]
 #[redefined(CexDex)]
 pub struct LibmdbxCexDex {
-    pub tx_hash:     Redefined_FixedBytes<32>,
-    pub swaps:       Vec<LibmdbxNormalizedSwap>,
-    pub prices:      Vec<LibmdbxStatArbDetails>,
-    pub pnl:         LibmdbxStatArbPnl,
-    pub gas_details: GasDetails,
+    pub tx_hash:          Redefined_FixedBytes<32>,
+    pub swaps:            Vec<LibmdbxNormalizedSwap>,
+    pub stat_arb_details: Vec<LibmdbxStatArbDetails>,
+    pub pnl:              LibmdbxStatArbPnl,
+    pub gas_details:      GasDetails,
 }
 
 #[derive(
