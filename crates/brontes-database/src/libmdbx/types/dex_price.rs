@@ -29,31 +29,6 @@ impl reth_db::table::Decode for DexKey {
     }
 }
 
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct DexPriceData {
-    key:   DexKey,
-    quote: DexQuote,
-}
-
-impl DexPriceData {
-    pub fn new(block: u64, tx_idx: u16, quote: DexQuote) -> Self {
-        Self { key: make_key(block, tx_idx), quote }
-    }
-}
-
-impl LibmdbxData<DexPrice> for DexPriceData {
-    fn into_key_val(&self) -> ReturnKV<DexPrice> {
-        (
-            self.key,
-            DexQuoteWithIndex {
-                tx_idx: u16::from_be_bytes(FixedBytes::<2>::from_slice(&self.key[8..]).0),
-                quote:  self.quote.clone().into(),
-            },
-        )
-            .into()
-    }
-}
-
 pub fn make_key(block_number: u64, tx_idx: u16) -> DexKey {
     let block_bytes = FixedBytes::new(block_number.to_be_bytes());
     block_bytes.concat_const(tx_idx.to_be_bytes().into()).into()
