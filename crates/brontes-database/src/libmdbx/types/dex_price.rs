@@ -1,14 +1,12 @@
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use brontes_types::db::{
-    dex::{DexQuote, DexQuoteWithIndex},
+    dex::DexQuoteWithIndex,
     redefined_types::{malachite::Redefined_Rational, primitives::Redefined_Pair},
 };
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::DatabaseError;
-use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{LibmdbxData, ReturnKV};
-use crate::libmdbx::DexPrice;
+use super::LibmdbxData;
 
 wrap_fixed_bytes!(
     extra_derives: [],
