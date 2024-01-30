@@ -6,7 +6,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    PriceKind, ToFloatNearest, ToScaledRational,
+    PriceKind, ToFloatNearest,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::{
@@ -14,7 +14,7 @@ use rayon::{
     prelude::IntoParallelRefIterator,
 };
 use reth_primitives::{Address, B256};
-use tracing::{debug, error, trace};
+use tracing::{debug, trace};
 
 use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
 
@@ -161,7 +161,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 .collect(),
             prices_address: flat_swaps
                 .iter()
-                .flat_map(|s| vec![s.token_in].repeat(2))
+                .flat_map(|s| vec![s.token_in.address].repeat(2))
                 .collect(),
             prices_price:   prices
                 .iter()
@@ -211,12 +211,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         // Calculate the price differences between DEX and CEX
         let delta_price = cex_price - dex_price;
         // Calculate the potential profit
-        let Ok(Some(decimals_in)) = self.inner.db.try_get_token_decimals(swap.token_in) else {
-            error!(missing_token=?swap.token_in, "missing token in token to decimal map");
-            return None
-        };
-
-        Some(delta_price * swap.amount_in.to_scaled_rational(decimals_in))
+        Some(delta_price * &swap.amount_in)
     }
 
     pub fn rational_prices(
@@ -227,8 +222,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     ) -> Option<(Rational, Rational)> {
         let Actions::Swap(swap) = swap else { return None };
 
-        let pair_in = Pair(swap.token_in, self.inner.quote);
-        let pair_out = Pair(swap.token_out, self.inner.quote);
+        let pair_in = Pair(swap.token_in.address, self.inner.quote);
+        let pair_out = Pair(swap.token_out.address, self.inner.quote);
 
         let in_usd = metadata.dex_quotes.price_at_or_before(pair_in, tx_idx)?;
         let out_usd = metadata.dex_quotes.price_at_or_before(pair_out, tx_idx)?;
