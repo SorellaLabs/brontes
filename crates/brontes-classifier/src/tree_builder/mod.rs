@@ -344,7 +344,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                     }
 
                     let Some(token_info) = self.libmdbx.try_get_token_info(addr).unwrap() else {
-                      return (vec![DexPriceMsg::Update(results.0)], results.1)
+                        return (vec![], Actions::Unclassified(trace))
                     };
 
                     return (
