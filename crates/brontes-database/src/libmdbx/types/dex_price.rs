@@ -6,7 +6,7 @@ use brontes_types::db::{
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::DatabaseError;
 
-use super::LibmdbxData;
+use brontes_types::db::dex::DexPrices;
 
 wrap_fixed_bytes!(
     extra_derives: [],
