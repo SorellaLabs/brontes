@@ -200,6 +200,11 @@ impl PairSubGraph {
         allowed_low_liq_nodes: &HashMap<Pair, Address>,
         ignore_list: &HashSet<Pair>,
     ) -> VerificationOutcome {
+        if     dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
+                .is_none() {
+                    tracing::error!("invalid subgraph was given");
+                }
+
         let mut result =
             self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
 
