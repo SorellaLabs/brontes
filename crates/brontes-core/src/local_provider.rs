@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use alloy_providers::provider::{Provider, TempProvider};
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
@@ -6,14 +8,15 @@ use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, TxH
 use reth_rpc::eth::error::EthResult;
 use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
 
+#[derive(Debug, Clone)]
 pub struct LocalProvider {
-    provider: Provider<Http<reqwest::Client>>,
+    provider: Arc<Provider<Http<reqwest::Client>>>,
 }
 
 impl LocalProvider {
     pub fn new(url: String) -> Self {
         let http = Http::new(url.parse().unwrap());
-        Self { provider: Provider::new(http) }
+        Self { provider: Arc::new(Provider::new(http)) }
     }
 }
 
@@ -50,7 +53,7 @@ impl TracingProvider for LocalProvider {
 
     #[cfg(feature = "local")]
     async fn best_block_number(&self) -> ProviderResult<u64> {
-        Ok(self.provider.get_block_number().await.unwarp())
+        Ok(self.provider.get_block_number().await.unwrap())
     }
 
     async fn replay_block_transactions(&self, _: BlockId) -> EthResult<Option<Vec<TxTrace>>> {
