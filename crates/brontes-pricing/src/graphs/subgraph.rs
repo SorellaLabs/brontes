@@ -20,7 +20,7 @@ use petgraph::{
     algo::connected_components,
     graph::{DiGraph, EdgeReference, Edges},
     prelude::*,
-    visit::{IntoEdgeReferences, IntoEdges, IntoEdgesDirected, VisitMap, Visitable},
+    visit::{IntoEdgeReferences, IntoEdges, VisitMap, Visitable},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::error;
@@ -202,62 +202,15 @@ impl PairSubGraph {
     ) -> VerificationOutcome {
         let mut result =
             self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
-        if self
-            .graph
-            .edges_directed(self.end_node.into(), Direction::Outgoing)
-            .chain(
-                self.graph
-                    .edges_directed(self.end_node.into(), Direction::Incoming),
-            )
-            .collect_vec()
-            .len()
-            == 0
-            || self
-                .graph
-                .edges_directed(self.start_node.into(), Direction::Outgoing)
-                .chain(
-                    self.graph
-                        .edges_directed(self.start_node.into(), Direction::Incoming),
-                )
-                .collect_vec()
-                .len()
-                == 0
-        {
-            error!("subgraph tryied verificiation no start or end node lmao");
-        }
 
         self.prune_subgraph(&result.removal_state);
-
-        if self
-            .graph
-            .edges_directed(self.end_node.into(), Direction::Outgoing)
-            .chain(
-                self.graph
-                    .edges_directed(self.end_node.into(), Direction::Incoming),
-            )
-            .collect_vec()
-            .len()
-            == 0
-            || self
-                .graph
-                .edges_directed(self.start_node.into(), Direction::Outgoing)
-                .chain(
-                    self.graph
-                        .edges_directed(self.start_node.into(), Direction::Incoming),
-                )
-                .collect_vec()
-                .len()
-                == 0
-        {
-            error!("subgraph removed start or end node");
-        }
 
         let mut disjoint =
             dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
                 .is_none();
 
         // if we not disjoint, do a bad pool check.
-        if !disjoint {
+        if !disjoint && !result.removal_state.is_empty() {
             if let Some(removal) =
                 self.should_prune_anyways(start, &state, all_pair_graph, allowed_low_liq_nodes)
             {
