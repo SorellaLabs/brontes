@@ -18,22 +18,8 @@ use brontes_types::{
     GasDetails, Protocol,
 };
 use redefined::{Redefined, RedefinedConvert};
-use sorella_db_databases::clickhouse::{self, Row};
 
-use super::{LibmdbxData, ReturnKV};
-use crate::libmdbx::MevBlocks;
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Row)]
-pub struct MevBlocksData {
-    pub block_number: u64,
-    pub mev_blocks:   MevBlockWithClassified,
-}
-
-impl LibmdbxData<MevBlocks> for MevBlocksData {
-    fn into_key_val(&self) -> ReturnKV<MevBlocks> {
-        (self.block_number, self.mev_blocks.clone()).into()
-    }
-}
+use super::LibmdbxData;
 
 #[derive(
     Debug,

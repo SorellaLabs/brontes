@@ -1,3 +1,4 @@
+#![feature(trivial_bounds)]
 #![feature(associated_type_defaults)]
 pub mod clickhouse;
 pub mod libmdbx;
