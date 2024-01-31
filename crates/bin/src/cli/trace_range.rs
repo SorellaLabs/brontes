@@ -58,7 +58,6 @@ impl TraceArgs {
             tracer.clone(),
             Box::new(|address, db_tx| db_tx.get_protocol(*address).unwrap().is_none()),
         ));
-
         let chunk_size = (self.end_block - self.start_block) / max_tasks + 1;
 
         let mut handles = FuturesUnordered::new();
