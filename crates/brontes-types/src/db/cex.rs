@@ -204,7 +204,6 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
             );
         });
 
-
         Ok(CexPriceMap(cex_price_map))
     }
 }
