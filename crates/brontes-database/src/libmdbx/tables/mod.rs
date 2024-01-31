@@ -398,7 +398,7 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Other
+            init_method: Clickhouse 
         },
         CLI {
             can_insert: False
