@@ -36,7 +36,7 @@ impl fmt::Display for Bundle {
         match self.header.mev_type {
             MevType::Sandwich => display_sandwich(self, f)?,
             MevType::CexDex => display_cex_dex(self, f)?,
-            _ => writeln!(f, "{:#?}" self)?,
+            _ => writeln!(f, "{:#?}", self)?,
         }
 
         Ok(())
