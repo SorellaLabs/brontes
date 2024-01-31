@@ -10,7 +10,7 @@ use brontes_types::{
     mev::{Bundle, JitLiquidity, MevType, TokenProfit, TokenProfits},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     pair::Pair,
-    GasDetails, ToFloatNearest,
+    GasDetails, ToFloatNearest, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -71,10 +71,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     if searcher_actions.is_empty() {
                         return None
                     }
-                    let gas = [
-                        tree.get_gas_details(frontrun_tx).cloned().unwrap(),
-                        tree.get_gas_details(backrun_tx).cloned().unwrap(),
-                    ];
+
+                    let info = [tree.get_tx_info(frontrun_tx)?, tree.get_tx_info(backrun_tx)?];
 
                     if victims
                         .iter()
@@ -110,15 +108,9 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
                         .collect::<Vec<_>>();
 
-                    let idxs = tree.get_root(backrun_tx).unwrap().get_block_position();
-
                     self.calculate_jit(
-                        eoa,
-                        mev_executor_contract,
+                        info,
                         metadata.clone(),
-                        idxs,
-                        [frontrun_tx, backrun_tx],
-                        gas,
                         searcher_actions,
                         victims,
                         victim_actions,
@@ -134,12 +126,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
-        eoa: Address,
-        mev_addr: Address,
+        info: [TxInfo; 2],
         metadata: Arc<MetadataCombined>,
-        back_jit_idx: usize,
-        txes: [B256; 2],
-        searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,
         // victim
         victim_txs: Vec<B256>,
@@ -188,50 +176,16 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         );
 
         let bribe = self.get_bribes(metadata.clone(), searcher_gas_details);
-
         let profit = jit_fee - mint - &bribe;
 
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(back_jit_idx, &deltas, metadata.clone(), false)?;
-
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
-
-        let token_profits = TokenProfits {
-            profits: mev_profit_collector
-                .iter()
-                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
-                .flat_map(|(address, delta)| {
-                    delta.iter().map(|(token, amount)| {
-                        let usd_value = metadata
-                            .dex_quotes
-                            .price_at_or_before(Pair(*token, self.inner.quote), back_jit_idx)
-                            .unwrap_or(Rational::ZERO)
-                            .to_float()
-                            * amount.clone().to_float();
-                        TokenProfit {
-                            profit_collector: *address,
-                            token: *token,
-                            amount: amount.clone().to_float(),
-                            usd_value,
-                        }
-                    })
-                })
-                .collect(),
-        };
-
-        let header = BundleHeader {
-            tx_index: back_jit_idx as u64,
-            block_number: metadata.block_num,
-            tx_hash: txes[0],
-            eoa,
-            mev_contract: mev_addr,
-            mev_profit_collector: vec![mev_addr],
-            mev_type: MevType::Jit,
-            profit_usd: profit.to_float(),
-            token_profits,
-            bribe_usd: bribe.to_float(),
-        };
+        let header = self.inner.build_bundle_header(
+            info[1],
+            profit.to_float(),
+            &searcher_actions,
+            &vec![info[0].gas_details, info[1].gas_details],
+            metadata,
+            MevType::Jit,
+        );
 
         let victim_swaps = victim_actions
             .iter()

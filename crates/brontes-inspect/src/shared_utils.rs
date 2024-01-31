@@ -5,15 +5,14 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use alloy_sol_types::abi::Token;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    db::{cex::CexExchange, metadata, metadata::MetadataCombined},
+    db::{cex::CexExchange, metadata::MetadataCombined},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
     normalized_actions::{Actions, NormalizedTransfer},
     pair::Pair,
     utils::ToFloatNearest,
-    GasDetails, Root,
+    GasDetails, TxInfo,
 };
 use malachite::{
     num::basic::traits::{One, Zero},
@@ -188,34 +187,33 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
     pub fn build_bundle_header(
         &self,
-        root: &Root<Actions>,
+        info: TxInfo,
+        profit: f64,
+        actions: &Vec<Vec<Actions>>,
+        gas_details: &Vec<GasDetails>,
         metadata: Arc<MetadataCombined>,
-        bundle_gas_details: &Vec<GasDetails>,
-        bundle_actions: &Vec<Vec<Actions>>,
         mev_type: MevType,
-        profit_usd: f64,
     ) -> BundleHeader {
-        let tx_index = root.get_block_position() as u64;
-
         let token_profits = self.get_profit_collectors(
-            tx_index,
-            bundle_actions,
+            info.tx_index,
+            actions,
             metadata.clone(),
             mev_type.use_cex_pricing_for_deltas(),
         );
+        let bribe_usd = gas_details
+            .iter()
+            .map(|details| metadata.get_gas_price_usd(details.gas_paid()).to_float())
+            .sum::<f64>();
 
         BundleHeader {
             block_number: metadata.block_num,
-            tx_index,
-            tx_hash: root.tx_hash,
-            eoa: root.head.address,
-            mev_contract: root.head.data.get_to_address(),
+            tx_index: info.tx_index,
+            tx_hash: info.tx_hash,
+            eoa: info.eoa,
+            mev_contract: info.mev_contract,
             profit_usd,
             token_profits,
-            bribe_usd: bundle_gas_details
-                .iter()
-                .map(|details| metadata.get_gas_price_usd(details.gas_paid()).to_float())
-                .sum(),
+            bribe_usd,
             mev_type,
         }
     }
@@ -247,9 +245,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     ) -> TokenProfits {
         let token_profits = profit_collectors
             .into_iter()
-            .filter_map(|collector| deltas.get(&collector))
-            .flat_map(|token_amounts| token_amounts.iter())
-            .map(|(&token, &amount)| {
+            .filter_map(|collector| deltas.get(&collector).map(|d| (collector, d)))
+            .flat_map(|(collector, token_amounts)| {
+                token_amounts.iter().zip(collector.iter().cycle())
+            })
+            .map(|((&token, &amount), collector)| {
                 let usd_value = if use_cex_pricing {
                     self.get_cex_usd_value(token, amount, &metadata)
                 } else {
