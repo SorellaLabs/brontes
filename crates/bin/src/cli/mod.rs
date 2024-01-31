@@ -1,11 +1,11 @@
 use clap::{Parser, Subcommand};
 
-mod trace_range;
 mod db_insert;
 mod db_query;
 mod init;
 mod range_with_dex_price;
 mod run;
+mod trace_range;
 mod utils;
 
 pub use utils::*;
@@ -33,5 +33,5 @@ pub enum Commands {
     #[command(name = "db_add")]
     AddToDb(db_insert::AddToDb),
     #[command(name = "trace-range")]
-    AddToDb(db_insert::AddToDb),
+    TraceRange(trace_range::TraceArgs),
 }
