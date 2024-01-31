@@ -293,7 +293,7 @@ impl SubgraphVerificationState {
         state.into_iter().for_each(|addr| {
             if let Some(best_edge) = self.edges.max_liq_for_edge(&addr) {
                 self.best_edge_nodes
-                    .insert(best_edge.pair, best_edge.pool_address);
+                    .insert(best_edge.pair.ordered(), best_edge.pool_address);
             }
         });
     }
