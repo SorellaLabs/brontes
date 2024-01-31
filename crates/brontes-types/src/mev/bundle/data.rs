@@ -20,6 +20,11 @@ use crate::{
 
 self_convert_redefined!(MevType);
 
+pub struct BundleDataWithRevenue {
+    pub revenue: f64,
+    pub data:    BundleData,
+}
+
 #[derive(Debug, Deserialize, EnumIter, Clone, Default, Display)]
 pub enum BundleData {
     Sandwich(Sandwich),
