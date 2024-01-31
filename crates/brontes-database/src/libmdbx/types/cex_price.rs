@@ -23,6 +23,7 @@ use redefined::{Redefined, RedefinedConvert};
 )]
 #[archive(check_bytes)]
 pub struct LibmdbxCexPriceMap {
+    /// RKYV cant seem to hadle a map where the value is a collection
     pub map: Vec<(CexExchange, HashMap<Redefined_Pair, LibmdbxCexQuote>)>,
 }
 
