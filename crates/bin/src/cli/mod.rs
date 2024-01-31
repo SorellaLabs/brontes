@@ -5,6 +5,7 @@ mod db_query;
 mod init;
 mod range_with_dex_price;
 mod run;
+mod trace_range;
 mod utils;
 
 pub use utils::*;
@@ -31,4 +32,6 @@ pub enum Commands {
     QueryDb(db_query::DatabaseQuery),
     #[command(name = "db_add")]
     AddToDb(db_insert::AddToDb),
+    #[command(name = "trace-range")]
+    TraceRange(trace_range::TraceArgs),
 }
