@@ -360,6 +360,9 @@ impl PairSubGraph {
             let mut i = 0;
 
             let node_weights = edge.weight();
+            if node_weights.len() == 0 {
+                tracing::error!("found a node with no weight");
+            }
 
             for info in node_weights {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
