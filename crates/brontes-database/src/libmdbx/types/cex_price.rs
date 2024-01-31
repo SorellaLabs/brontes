@@ -20,6 +20,7 @@ use redefined::{Redefined, RedefinedConvert};
     to_source = "CexPriceMap(self.map.to_source())",
     from_source = "LibmdbxCexPriceMap::new(src.0)"
 )]
+#[archive(check_bytes)]
 pub struct LibmdbxCexPriceMap {
     pub map: HashMap<CexExchange, HashMap<Redefined_Pair, LibmdbxCexQuote>>,
 }
