@@ -6,10 +6,8 @@ use brontes_core::{
     TxTracesWithHeaderAnd,
 };
 use brontes_database::{
-    libmdbx::{
-        types::address_to_protocol::AddressToProtocolData, LibmdbxReadWriter, LibmdbxReader,
-    },
-    AddressToProtocol,
+    libmdbx::{LibmdbxReadWriter, LibmdbxReader},
+    AddressToProtocol, AddressToProtocolData,
 };
 use brontes_pricing::{
     types::{DexPriceMsg, DiscoveredPool, PoolUpdate},
