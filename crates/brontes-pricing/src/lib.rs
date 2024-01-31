@@ -12,7 +12,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_primitives::{Address, U256};
+use alloy_primitives::{Address};
 use brontes_types::{
     db::dex::DexPrices,
     normalized_actions::{Actions, NormalizedSwap},
