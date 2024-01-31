@@ -209,7 +209,7 @@ impl PairSubGraph {
             dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
                 .is_none();
 
-        tracing::info!("disjoint: {disjoint}");
+        tracing::info!("disjoint: {disjoint}: bad: {}", result.removal_state.len());
 
         // if we not disjoint, do a bad pool check.
         if !disjoint {
