@@ -279,10 +279,9 @@ impl SubgraphVerificationState {
         self.edges
             .0
             .values()
+            .flatten()
             .filter_map(|node| {
-                let n = node.first()?;
-
-                (!self.best_edge_nodes.contains_key(&n.pair)).then(|| n.pair)
+                (!self.best_edge_nodes.contains_key(&node.pair.ordered())).then(|| node.pair)
             })
             .collect()
     }
