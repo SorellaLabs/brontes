@@ -235,7 +235,7 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
 /// consistent price interpretation. When queried, if `token0` in `CexQuote`
 /// differs from the base asset of the requested pair, the price is reciprocated
 /// to align with the actual pair order.
-#[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize, Redefiend)]
+#[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CexQuote {
     pub exchange:  CexExchange,
     pub timestamp: u64,
