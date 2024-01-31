@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 
+mod trace_range;
 mod db_insert;
 mod db_query;
 mod init;
@@ -30,5 +31,7 @@ pub enum Commands {
     #[command(name = "db")]
     QueryDb(db_query::DatabaseQuery),
     #[command(name = "db_add")]
+    AddToDb(db_insert::AddToDb),
+    #[command(name = "trace-range")]
     AddToDb(db_insert::AddToDb),
 }
