@@ -209,8 +209,10 @@ impl PairSubGraph {
             dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
                 .is_none();
 
+        tracing::info!("disjoint: {disjoint}");
+
         // if we not disjoint, do a bad pool check.
-        if !disjoint && !result.removal_state.is_empty() {
+        if !disjoint {
             if let Some(removal) =
                 self.should_prune_anyways(start, &state, all_pair_graph, allowed_low_liq_nodes)
             {
@@ -297,6 +299,7 @@ impl PairSubGraph {
                 } else {
                     first.token_0
                 };
+
                 prev_paths
                     .entry(token_in)
                     .or_default()
