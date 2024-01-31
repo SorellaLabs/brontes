@@ -9,7 +9,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich, TokenProfit, TokenProfits},
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
-    tree::{BlockTree, GasDetails, Node},
+    tree::{BlockTree, GasDetails, Node, TxInfo},
     ToFloatNearest,
 };
 use itertools::Itertools;
@@ -65,15 +65,15 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
-                    let victim_gas = victims
+                    let vicitim_info = victims
                         .iter()
                         .map(|victims| {
                             victims
                                 .into_iter()
-                                .flat_map(|v| tree.get_gas_details(*v).cloned())
+                                .flat_map(|v| tree.get_tx_info(*v))
                                 .collect::<Vec<_>>()
                         })
-                        .collect::<Vec<_>>();
+                        .collect_vec();
 
                     let victim_actions = victims
                         .iter()
@@ -101,11 +101,11 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         return None
                     }
 
-                    let front_run_gas = possible_frontruns
+                    let frontrun_info = possible_frontruns
                         .iter()
-                        .flat_map(|pf| tree.get_gas_details(*pf).cloned())
+                        .flat_map(|pf| tree.get_tx_info(*pf))
                         .collect::<Vec<_>>();
-                    let back_run_gas = tree.get_gas_details(possible_backrun)?;
+                    let back_run_info = tree.get_tx_info(possible_backrun)?;
 
                     let searcher_actions = possible_frontruns
                         .iter()
@@ -116,14 +116,11 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
                     self.calculate_sandwich(
                         meta_data.clone(),
-                        possible_frontruns,
-                        possible_backrun,
-                        front_run_gas,
-                        back_run_gas,
+                        frontrun_info,
+                        back_run_info,
                         searcher_actions,
-                        victims,
                         victim_actions,
-                        victim_gas,
+                        vicitim_info,
                     )
                 },
             )
@@ -134,23 +131,14 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn calculate_sandwich(
         &self,
-        tree: Arc<BlockTree<Actions>>,
         metadata: Arc<MetadataCombined>,
-        mut possible_front_runs: Vec<B256>,
-        possible_back_run: B256,
-        mut front_run_gas: Vec<GasDetails>,
-        back_run_gas: &GasDetails,
+        possible_front_runs_info: Vec<TxInfo>,
+        backrun_info: TxInfo,
         mut searcher_actions: Vec<Vec<Actions>>,
         // victims
-        mut victim_txes: Vec<Vec<B256>>,
+        mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
-        mut victim_gas: Vec<Vec<GasDetails>>,
     ) -> Option<Bundle> {
-        let root = tree.get_root(possible_front_runs[0])?;
-        let tx_index = root.get_block_position();
-        let mev_contract = root.head.data.get_to_address();
-        let eoa = root.head.address;
-
         let all_actions = searcher_actions.clone();
         let back_run_swaps = searcher_actions
             .pop()?
@@ -174,26 +162,19 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions) {
             // if we don't satisfy a sandwich but we have more than 1 possible front run
             // tx remaining, lets remove the false positive backrun tx and try again
-            if possible_front_runs.len() > 1 {
+            if possible_front_runs_info.len() > 1 {
                 // remove dropped sandwiches
-                victim_gas.pop()?;
+                victim_info.pop()?;
                 victim_actions.pop()?;
-                victim_txes.pop()?;
-
-                let back_run_tx = possible_front_runs.pop()?;
-                let back_run_gas = front_run_gas.pop()?;
+                let back_run_info = possible_front_runs_info.pop()?;
 
                 return self.calculate_sandwich(
-                    tree,
-                    metadata,
-                    possible_front_runs,
-                    back_run_tx,
-                    front_run_gas,
-                    &back_run_gas,
+                    metadata.clone(),
+                    possible_front_runs_info,
+                    back_run_info,
                     searcher_actions,
-                    victim_txes,
                     victim_actions,
-                    victim_gas,
+                    victim_info,
                 )
             }
 
@@ -223,17 +204,18 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
-        let profit_usd: let profit = (rev_usd - &gas_used).to_float(),
-
+        let profit_usd = (rev_usd - &gas_used).to_float();
         let header = self.inner.build_bundle_header(
-            tree.get_root(possible_front_runs[0]).metadata,
+            possible_front_runs_info[0],
+            profit_usd,
+            &searcher_actions,
+            possible_front_runs_info
+                .into_iter()
+                .chain(vec![backrun_info])
+                .collect(),
             metadata,
-            &vec![root.gas_details],
-            &all_actions,
-            MevType::CexDex,
-            profit_usd
+            MevType::Sandwich,
         );
-
 
         let sandwich = Sandwich {
             frontrun_tx_hash: possible_front_runs,
@@ -244,7 +226,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             victim_swaps_gas_details: victim_gas.into_iter().flatten().collect_vec(),
             backrun_tx_hash: possible_back_run,
             backrun_swaps: back_run_swaps,
-            backrun_gas_details: back_run_gas.clone(),
+            backrun_gas_details: .clone(),
         };
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
