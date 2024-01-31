@@ -56,3 +56,43 @@ impl PartialEq for LibmdbxCexQuote {
         self.clone().to_source().eq(&other.clone().to_source())
     }
 }
+
+#[cfg(test)]
+pub mod test {
+    use std::collections::HashMap;
+
+    use brontes_types::{
+        constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+        db::cex::{CexExchange, CexQuote},
+        pair::Pair,
+    };
+    use itertools::Itertools;
+    use redefined::RedefinedConvert;
+    use rkyv::Deserialize;
+    use zstd::zstd_safe::WriteBuf;
+
+    use super::LibmdbxCexPriceMap;
+    use crate::libmdbx::types::cex_price::ArchivedLibmdbxCexPriceMap;
+
+    #[test]
+    fn test_encode_decode() {
+        let mut map = HashMap::new();
+        let mut inner = HashMap::new();
+        let quote = CexQuote { ..Default::default() };
+        inner.insert(Pair(WETH_ADDRESS, USDC_ADDRESS), quote.clone());
+
+        inner.insert(Pair(USDC_ADDRESS, USDT_ADDRESS), quote);
+        map.insert(CexExchange::Kucoin, inner);
+
+        let copied = LibmdbxCexPriceMap::from_source(brontes_types::db::cex::CexPriceMap(map));
+        let ser = rkyv::to_bytes::<_, 255>(&copied).unwrap();
+        println!("serialized this");
+        let bytes = ser.into_vec();
+
+        let res: &ArchivedLibmdbxCexPriceMap =
+            rkyv::check_archived_root::<LibmdbxCexPriceMap>(bytes.as_slice()).unwrap();
+        let this: LibmdbxCexPriceMap = res.deserialize(&mut rkyv::Infallible).unwrap();
+
+        println!("deser this {:#?}", this);
+    }
+}
