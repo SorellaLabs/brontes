@@ -170,7 +170,6 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
     where
         D: serde::Deserializer<'de>,
     {
-        println!("deser cex price map");
         let map: Vec<(String, Vec<((String, String), (u64, (f64, f64), String))>)> =
             serde::Deserialize::deserialize(deserializer)?;
 
@@ -205,7 +204,6 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
             );
         });
 
-        println!("{:#?}", cex_price_map);
 
         Ok(CexPriceMap(cex_price_map))
     }
