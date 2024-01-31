@@ -15,7 +15,7 @@ use sorella_db_databases::{
     clickhouse::{fixed_string::FixedString, Row},
 };
 
-use crate::{db::token_info::TokenInfoWithAddress, mev::StatArbDetails, Protocol};
+use crate::{db::token_info::TokenInfoWithAddress, mev::StatArbDetails, Protocol, ToFloatNearest};
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwapWithFee {
@@ -66,9 +66,9 @@ impl Display for NormalizedSwap {
             f,
             "   -{}: {} of {} for {} of {} on {}",
             "Swapped".bold(),
-            self.amount_in.to_string(),
+            self.amount_in.clone().to_float().to_string(),
             self.token_in.to_string(),
-            self.amount_out.to_string(),
+            self.amount_out.clone().to_float().to_string(),
             self.token_out.to_string(),
             self.pool.to_string()
         )

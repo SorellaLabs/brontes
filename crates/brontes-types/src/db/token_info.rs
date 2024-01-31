@@ -22,7 +22,7 @@ pub struct TokenInfoWithAddress {
 
 impl Display for TokenInfoWithAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "symbol: {}", self.inner.symbol)
+        write!(f, "symbol: {}", self.inner.symbol)
     }
 }
 
