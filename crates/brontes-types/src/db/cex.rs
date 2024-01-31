@@ -17,7 +17,9 @@ use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use malachite::{
-    num::{arithmetic::traits::ReciprocalAssign, basic::traits::One, conversion::traits::FromSciString},
+    num::{
+        arithmetic::traits::ReciprocalAssign, basic::traits::One, conversion::traits::FromSciString,
+    },
     Rational,
 };
 use redefined::{self_convert_redefined, RedefinedConvert};
@@ -384,45 +386,57 @@ impl CexExchange {
     /// Does not account for special market maker rebate programs
     pub fn fees(&self) -> (Rational, Rational) {
         match self {
-            CexExchange::Binance => {
-                (Rational::from_sci_string("0.00012").unwrap(), Rational::from_sci_string("0.00024").unwrap())
-            }
-            CexExchange::Bitmex => {
-                (Rational::from_sci_string("-0.00025").unwrap(), Rational::from_sci_string("0.00075").unwrap())
-            }
+            CexExchange::Binance => (
+                Rational::from_sci_string("0.00012").unwrap(),
+                Rational::from_sci_string("0.00024").unwrap(),
+            ),
+            CexExchange::Bitmex => (
+                Rational::from_sci_string("-0.00025").unwrap(),
+                Rational::from_sci_string("0.00075").unwrap(),
+            ),
             CexExchange::Deribit => {
                 (Rational::from_sci_string("0").unwrap(), Rational::from_sci_string("0").unwrap())
             }
-            CexExchange::Okex => {
-                (Rational::from_sci_string("-0.00005").unwrap(), Rational::from_sci_string("0.00015").unwrap())
-            }
-            CexExchange::Coinbase => {
-                (Rational::from_sci_string("0").unwrap(), Rational::from_sci_string("0.0005").unwrap())
-            }
-            CexExchange::Kraken => {
-                (Rational::from_sci_string("0").unwrap(), Rational::from_sci_string("0.001").unwrap())
-            }
-            CexExchange::BybitSpot => {
-                (Rational::from_sci_string("0.00005").unwrap(), Rational::from_sci_string("0.00015").unwrap())
-            }
-            CexExchange::Kucoin => {
-                (Rational::from_sci_string("-0.00005").unwrap(), Rational::from_sci_string("0.00025").unwrap())
-            }
-            CexExchange::Upbit => {
-                (Rational::from_sci_string("0.0002").unwrap(), Rational::from_sci_string("0.0002").unwrap())
-            }
-            CexExchange::Huobi => {
-                (Rational::from_sci_string("0.000097").unwrap(), Rational::from_sci_string("0.000193").unwrap())
-            }
-            CexExchange::GateIo => {
-                (Rational::from_sci_string("0").unwrap(), Rational::from_sci_string("0.0002").unwrap())
-            }
-            CexExchange::Bitstamp => {
-                (Rational::from_sci_string("0").unwrap(), Rational::from_sci_string("0.0003").unwrap())
-            }
-            CexExchange::Gemini => {
-                (Rational::from_sci_string("0").unwrap(), Rational::from_sci_string("0.0003").unwrap())
-            }
+            CexExchange::Okex => (
+                Rational::from_sci_string("-0.00005").unwrap(),
+                Rational::from_sci_string("0.00015").unwrap(),
+            ),
+            CexExchange::Coinbase => (
+                Rational::from_sci_string("0").unwrap(),
+                Rational::from_sci_string("0.0005").unwrap(),
+            ),
+            CexExchange::Kraken => (
+                Rational::from_sci_string("0").unwrap(),
+                Rational::from_sci_string("0.001").unwrap(),
+            ),
+            CexExchange::BybitSpot => (
+                Rational::from_sci_string("0.00005").unwrap(),
+                Rational::from_sci_string("0.00015").unwrap(),
+            ),
+            CexExchange::Kucoin => (
+                Rational::from_sci_string("-0.00005").unwrap(),
+                Rational::from_sci_string("0.00025").unwrap(),
+            ),
+            CexExchange::Upbit => (
+                Rational::from_sci_string("0.0002").unwrap(),
+                Rational::from_sci_string("0.0002").unwrap(),
+            ),
+            CexExchange::Huobi => (
+                Rational::from_sci_string("0.000097").unwrap(),
+                Rational::from_sci_string("0.000193").unwrap(),
+            ),
+            CexExchange::GateIo => (
+                Rational::from_sci_string("0").unwrap(),
+                Rational::from_sci_string("0.0002").unwrap(),
+            ),
+            CexExchange::Bitstamp => (
+                Rational::from_sci_string("0").unwrap(),
+                Rational::from_sci_string("0.0003").unwrap(),
+            ),
+            CexExchange::Gemini => (
+                Rational::from_sci_string("0").unwrap(),
+                Rational::from_sci_string("0.0003").unwrap(),
+            ),
             CexExchange::Average => {
                 unreachable!("Cannot get fees for cross exchange average quote")
             }
