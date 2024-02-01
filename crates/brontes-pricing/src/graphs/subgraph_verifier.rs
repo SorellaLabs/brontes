@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
-use brontes_types::pair::Pair;
+use brontes_types::{pair::Pair, utils::ToFloatNearest};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -216,7 +216,9 @@ impl SubgraphVerifier {
             "removing: {:#?}",
             removals
                 .iter()
-                .flat_map(|(_, p)| p.into_iter().map(|i| i.pool_address))
+                .flat_map(|(_, p)| p
+                    .into_iter()
+                    .map(|i| (i.pool_address, i.liquidity.clone().to_float())))
                 .collect_vec()
         );
 
