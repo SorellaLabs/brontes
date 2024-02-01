@@ -6,17 +6,16 @@ use std::{
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    mev::{Bundle, BundleData, MevType, Sandwich, TokenProfit, TokenProfits},
+    mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
-    pair::Pair,
     tree::{BlockTree, GasDetails, Node, TxInfo},
     ToFloatNearest,
 };
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+
 use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -59,7 +58,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             .into_iter()
             .filter_map(
                 |PossibleSandwich {
-                     eoa,
+                     eoa: _,
                      possible_frontruns,
                      possible_backrun,
                      mev_executor_contract,
@@ -139,7 +138,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
-        let all_actions = searcher_actions.clone();
+        let _all_actions = searcher_actions.clone();
         let back_run_swaps = searcher_actions
             .pop()?
             .iter()
