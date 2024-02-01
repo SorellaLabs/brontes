@@ -49,7 +49,7 @@ struct BfsArgs {
     pub remove_all:    HashSet<Pair>,
 }
 
-const MIN_LIQUIDITY_USDC: u128 = 50_000;
+const MIN_LIQUIDITY_USDC: u128 = 15_000;
 
 /// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
 /// and optimize the pricing of a particular token pair in a decentralized
