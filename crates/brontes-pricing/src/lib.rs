@@ -415,6 +415,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                                 .graph_manager
                                 .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
                             {
+                                self.graph_manager.remove_state(&addr);
                                 self.new_graph_pairs.insert(addr, (protocol, pair));
                             }
                         }
@@ -431,6 +432,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                                 .graph_manager
                                 .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
                             {
+                                self.graph_manager.remove_state(&addr);
                                 self.new_graph_pairs.insert(addr, (protocol, pair));
                             }
                         }
