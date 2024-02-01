@@ -1,5 +1,4 @@
 mod graphs;
-mod price_graph_types;
 pub mod protocols;
 pub mod types;
 
@@ -13,6 +12,9 @@ use std::{
 };
 
 use alloy_primitives::Address;
+pub use brontes_types::price_graph_types::{
+    PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
+};
 use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
@@ -28,9 +30,6 @@ use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
-};
-pub use price_graph_types::{
-    PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
 };
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
