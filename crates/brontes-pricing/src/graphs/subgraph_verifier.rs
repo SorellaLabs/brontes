@@ -211,16 +211,6 @@ impl SubgraphVerifier {
             state_tracker.mark_state_as_finalized(block, pool.pool_addr);
         });
 
-        tracing::info!(
-            ?pair,
-            "removing: {:#?}",
-            removals
-                .iter()
-                .flat_map(|(_, p)| p.into_iter().map(|i| i.pool_address))
-                .unique()
-                .collect_vec()
-        );
-
         VerificationResults::Passed(VerificationPass { pair, subgraph, prune_state: removals })
     }
 }
