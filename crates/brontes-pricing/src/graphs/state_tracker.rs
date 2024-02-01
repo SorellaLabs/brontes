@@ -121,6 +121,10 @@ impl StateTracker {
             .or_default()
             .add_state(state);
     }
+
+    pub fn remove_state(&mut self, address: &Address) {
+        self.verification_edge_state.remove(address);
+    }
 }
 
 #[derive(Debug, Default, Clone)]
