@@ -214,6 +214,11 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         self.sub_graph_registry.has_subpool(&pair) || self.subgraph_verifier.is_verifying(&pair)
     }
 
+    pub fn remove_state(&mut self, address: &Address) {
+        self.graph_state.remove_state(address)
+    }
+
+
     pub fn verify_subgraph(
         &mut self,
         pairs: Vec<(u64, Pair)>,
