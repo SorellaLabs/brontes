@@ -4,7 +4,6 @@ use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
-use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{Address, BlockNumberOrTag, Header, B256};
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
@@ -49,7 +48,7 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Parser<'a, T, DB
     }
 
     #[cfg(feature = "local")]
-    pub async fn get_latest_block_number(&self) -> ProviderResult<u64> {
+    pub async fn get_latest_block_number(&self) -> eyre::Result<u64> {
         self.parser.tracer.best_block_number().await
     }
 
@@ -58,11 +57,11 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Parser<'a, T, DB
     }
 
     #[cfg(not(feature = "local"))]
-    pub fn get_latest_block_number(&self) -> ProviderResult<u64> {
+    pub fn get_latest_block_number(&self) -> eyre::Result<u64> {
         self.parser.tracer.best_block_number()
     }
 
-    pub async fn get_block_hash_for_number(&self, block_num: u64) -> ProviderResult<Option<B256>> {
+    pub async fn get_block_hash_for_number(&self, block_num: u64) -> eyre::Result<Option<B256>> {
         self.parser.tracer.block_hash_for_id(block_num.into()).await
     }
 
