@@ -2,6 +2,8 @@
 #![feature(noop_waker)]
 pub mod protocols;
 pub mod types;
+use std::sync::atomic::Ordering::SeqCst;
+
 use brontes_types::db::token_info::TokenInfoWithAddress;
 use malachite::num::basic::traits::Zero;
 
@@ -10,7 +12,7 @@ pub mod test_utils;
 
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
     task::{Context, Poll},
 };
 
@@ -67,6 +69,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     quote_asset:     Address,
     current_block:   u64,
     completed_block: u64,
+    finished:        Arc<AtomicBool>,
 
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
@@ -93,6 +96,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
     pub fn new(
+        finished: Arc<AtomicBool>,
         quote_asset: Address,
         graph_manager: GraphManager,
         update_rx: UnboundedReceiver<DexPriceMsg>,
@@ -101,6 +105,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
     ) -> Self {
         Self {
+            finished,
             new_graph_pairs,
             quote_asset,
             buffer: StateBuffer::new(),
@@ -492,7 +497,10 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         }
                     }
                     Poll::Ready(None) => {
-                        if self.lazy_loader.is_empty() && block_updates.is_empty() {
+                        if self.lazy_loader.is_empty()
+                            && block_updates.is_empty()
+                            && self.finished.load(SeqCst)
+                        {
                             return Poll::Ready(self.on_close())
                         } else {
                             break
