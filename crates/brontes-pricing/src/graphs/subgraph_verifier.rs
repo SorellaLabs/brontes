@@ -170,13 +170,13 @@ impl SubgraphVerifier {
                     return VerificationResults::Failed(VerificationFailed {
                         pair,
                         block,
-                        prune_state: HashMap::new(),
+                        prune_state: removals,
                         ignore_state: ignores,
                         frayed_ends: result.frayed_ends,
                     })
                 }
 
-                self.passed_verification(pair, block, subgraph, HashMap::new(), state_tracker)
+                self.passed_verification(pair, block, subgraph, removals, state_tracker)
             })
             .collect_vec()
     }
