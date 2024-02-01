@@ -7,6 +7,7 @@ use alloy_primitives::{Address, B256};
 use async_trait::async_trait;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
+    db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     GasDetails, ToFloatNearest, TxInfo,
@@ -191,7 +192,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let header = self.inner.build_bundle_header(
             &info[1],
             profit.to_float(),
-            true,
+            PriceAt::After,
             &searcher_actions,
             &gas_details,
             metadata,
@@ -368,7 +369,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter_map(|(token, amount)| {
                 Some(
                     self.inner
-                        .get_dex_usd_price(idx, true, token, metadata.clone())?
+                        .get_dex_usd_price(idx, PriceAt::After, token, metadata.clone())?
                         * amount,
                 )
             })
