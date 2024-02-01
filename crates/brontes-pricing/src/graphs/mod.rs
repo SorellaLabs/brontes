@@ -220,12 +220,14 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         &mut self,
         pairs: Vec<(u64, Pair)>,
         quote: Address,
+        recursing: bool
     ) -> Vec<VerificationResults> {
         self.subgraph_verifier.verify_subgraph(
             pairs,
             quote,
             &self.all_pair_graph,
             &mut self.graph_state,
+            recursing
         )
     }
 
