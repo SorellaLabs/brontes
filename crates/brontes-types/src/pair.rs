@@ -1,14 +1,22 @@
-use std::str::FromStr;
+use std::{hash::Hash, str::FromStr};
 
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
 use reth_db::table::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Debug, Default, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord,
-)]
+/// Pair has a custom hash impl that will always make sure the pair is ordered
+/// before hashing
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Pair(pub Address, pub Address);
+
+impl Hash for Pair {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let this = self.ordered();
+        this.0.hash(state);
+        this.1.hash(state);
+    }
+}
 
 impl Pair {
     pub fn flip(self) -> Self {
