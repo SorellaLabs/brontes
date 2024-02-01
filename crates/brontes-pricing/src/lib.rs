@@ -1,3 +1,28 @@
+//! [`BrontesBatchPricer`] calculates and track the prices of tokens
+//! on decentralized exchanges on a per-transaction basis. It builds and
+//! maintains a main token graph which is used to derive smaller subgraphs used
+//! to price tokens relative to a defined quote token.
+//!
+//! ## Core Functionality
+//!
+//! ### Subgraph Utilization
+//! The system leverages subgraphs, which are smaller, focused graph structures
+//! extracted from the larger token graph. Subgraphs are built when a classified
+//! event occurs on a token. When this occurs a subgraph is made for the pair if
+//! one doesn't already exist. This allows for fast computation of a tokens
+//! price. These subgraphs constantly update with new blocks, updating their
+//! nodes and edges to reflect new liquidity pools,  By focusing on relevant
+//! portions of the graph, the system enhances performance and accuracy in price
+//! calculations.
+//!
+//! ### Graph Management
+//! The system adds new pools to the token graph as they appear in new blocks,
+//! ensuring that all valid trading paths are represented.
+//!
+//! ### Lazy Loading
+//! New pools and their states are fetched as required, optimizing resource
+//! usage and performance.
+
 mod graphs;
 pub mod protocols;
 pub mod types;
@@ -42,28 +67,26 @@ use types::{DexPriceMsg, DiscoveredPool, PoolUpdate};
 use crate::types::PoolState;
 
 /// # Brontes Batch Pricer
-/// ## Reasoning
-/// We create a token graph in order to provide the price of any
-/// token in a wanted quote token. This allows us to see delta between
-/// centralized and decentralized prices which allows us to classify
 ///
-/// ## Implementation
-/// The Brontes Batch pricer runs on a block by block basis, This process is as
-/// followed:
+/// [`BrontesBatchPricer`] establishes a token graph for pricing tokens against
+/// a chosen quote token, highlighting differences between centralized and
+/// decentralized exchange prices.
 ///
-/// 1) On a new highest block received from the update channel. All new pools
-/// are added to the token graph as there are now valid paths.
+/// ## Workflow
+/// The system operates on a block-by-block basis as follows:
 ///
-/// 2) All new pools touched are loaded by the lazy loader.
+/// 1) Incorporates new pools into the token graph with each new highest block
+/// from the update channel.
 ///
-/// 3) State transitions on all pools are put into the state buffer.
+/// 2) Uses a lazy loader to fetch data for all newly involved pools.
 ///
-/// 4) Once lazy loading for the block is complete, all state transitions are
-/// applied in order, when a transition is applied, the price is added into the
-/// state map.
+/// 3) Collects and buffers state transitions of all pools.
 ///
-/// 5) Once state transitions are all applied and we have our formatted data.
-/// The data is returned and the pricer continues onto the next block.
+/// 4) After completing lazy loading, applies state transitions sequentially,
+/// updating the price in the state map.
+///
+/// 5) Processes and returns formatted data from the applied state transitions
+/// before proceeding to the next block.
 pub struct BrontesBatchPricer<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
     quote_asset:     Address,
     current_block:   u64,

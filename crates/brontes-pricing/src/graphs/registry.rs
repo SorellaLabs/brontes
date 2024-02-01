@@ -7,7 +7,21 @@ use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 
 use super::{subgraph::PairSubGraph, PoolState};
 
-/// stores all sub-graphs and supports the update mechanisms
+/// Manages subgraphs in the BrontesBatchPricer module, crucial for DEX pricing.
+///
+/// [`SubGraphRegistry`] handles dynamic management and maintenance of verified
+/// subgraphs, representing various token pairs. It responds to changes in the
+/// DEX, like new liquidity pools or updates in existing ones, by extending or
+/// updating subgraphs accordingly.
+///
+/// The registry facilitates accurate price retrieval for specific token pairs
+/// based on their subgraphs. It also addresses situations where a pool in a
+/// subgraph is compromised, ensuring the integrity and accuracy of pricing
+/// information.
+///
+/// Mainly functioning within the BrontesBatchPricer system, it plays a key role
+/// in providing up-to-date and reliable pricing data in the decentralized
+/// exchange context.
 #[derive(Debug)]
 pub struct SubGraphRegistry {
     /// tracks which tokens have a edge in the subgraph,
@@ -85,6 +99,7 @@ impl SubGraphRegistry {
         is_disjoint_graph
     }
 
+    #[allow(unused)]
     pub fn try_extend_subgraphs(
         &mut self,
         pool_address: Address,
