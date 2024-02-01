@@ -94,15 +94,7 @@ impl SubgraphVerifier {
     ) {
         removals
             .into_iter()
-            .filter_map(|(k, v)| {
-                // look for edges that have been complety removed
-                if all_graph.edge_count(k.0, k.1) == v.len() {
-                    Some(v.clone().into_iter())
-                } else {
-                    None
-                }
-            })
-            .flatten()
+            .flat_map(|(k, v)| v.into_iter())
             .for_each(|edge| {
                 // cache all edges that have been completey removed
                 self.subgraph_verification_state
@@ -144,13 +136,6 @@ impl SubgraphVerifier {
 
         res.into_iter()
             .map(|(pair, block, result, subgraph)| {
-                let recusing_ignore = self
-                    .subgraph_verification_state
-                    .entry(pair)
-                    .or_default()
-                    .get_recusing_nodes()
-                    .clone();
-
                 self.store_edges_with_liq(pair, &result.removals, all_graph);
 
                 // state that we want to be ignored on the next graph search.
@@ -159,40 +144,31 @@ impl SubgraphVerifier {
                     .entry(pair)
                     .or_default()
                     .get_nodes_to_ignore();
-
-                // all results that should be pruned from our main graph.
-                let removals = result
-                    .removals
-                    .clone()
-                    .into_iter()
-                    .filter(|(k, _)| !(ignores.contains(k) || recusing_ignore.contains_key(k)))
-                    .collect::<HashMap<_, _>>();
-
-                if removals.is_empty() && result.should_requery {
-                    tracing::info!("removals {:#?} ignores: {:#?}", result.removals, ignores);
-                }
+                //
+                // // all results that should be pruned from our main graph.
+                // let removals = result
+                //     .removals
+                //     .clone()
+                //     .into_iter()
+                //     .filter(|(k, _)| !(ignores.contains(k)))
+                //     .collect::<HashMap<_, _>>();
+                //
+                //
 
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
                     // anything that was fully remove gets cached
 
-                    tracing::info!(
-                        ?pair,
-                        "requerying ignoring: {} removing: {}",
-                        ignores.len(),
-                        removals.len()
-                    );
-
                     return VerificationResults::Failed(VerificationFailed {
                         pair,
                         block,
-                        prune_state: removals,
+                        prune_state: HashMap::new(),
                         ignore_state: ignores,
                         frayed_ends: result.frayed_ends,
                     })
                 }
 
-                self.passed_verification(pair, block, subgraph, removals, state_tracker)
+                self.passed_verification(pair, block, subgraph, HashMap::new(), state_tracker)
             })
             .collect_vec()
     }
@@ -206,7 +182,6 @@ impl SubgraphVerifier {
                 let Some(mut subgraph) = subgraph else { return None };
                 if let Some(frayed) = frayed {
                     let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
-                    tracing::info!("adding extensions {:#?}", extensions);
                     subgraph.subgraph.extend_subgraph(extensions);
                 }
 
@@ -226,22 +201,9 @@ impl SubgraphVerifier {
             .into_par_iter()
             .map(|(pair, block, mut subgraph)| {
                 let edge_state = state_tracker.state_for_verification(block);
-                let default = SubgraphVerificationState::default();
-
-                let result = subgraph.subgraph.verify_subgraph(
-                    quote,
-                    edge_state,
-                    all_graph,
-                    self.subgraph_verification_state
-                        .get(&pair)
-                        .unwrap_or(&default)
-                        .get_recusing_nodes(),
-                    &self
-                        .subgraph_verification_state
-                        .get(&pair)
-                        .unwrap_or(&default)
-                        .get_nodes_to_ignore(),
-                );
+                let result = subgraph
+                    .subgraph
+                    .verify_subgraph(quote, edge_state, all_graph);
 
                 (pair, block, result, subgraph)
             })

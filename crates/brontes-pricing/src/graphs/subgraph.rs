@@ -250,8 +250,6 @@ impl PairSubGraph {
         start: Address,
         state: HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
-        allowed_low_liq_nodes: &HashMap<Pair, Address>,
-        ignore_list: &HashSet<Pair>,
     ) -> VerificationOutcome {
         if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
             .is_none()
@@ -259,13 +257,8 @@ impl PairSubGraph {
             tracing::error!("invalid subgraph was given");
         }
 
-        let mut result = self.run_bfs_with_liquidity_params(
-            start,
-            &state,
-            all_pair_graph,
-            ignore_list,
-            allowed_low_liq_nodes,
-        );
+        let mut result =
+            self.run_bfs_with_liquidity_params(start, &state);
 
         self.prune_subgraph(&result.removal_state);
 
@@ -280,17 +273,6 @@ impl PairSubGraph {
             .unwrap_or_default();
 
         // if we not disjoint, do a bad pool check.
-        if !disjoint {
-            if let Some(removal) =
-                self.should_prune_anyways(start, &state, all_pair_graph, allowed_low_liq_nodes)
-            {
-                self.prune_subgraph(&removal);
-                disjoint = true;
-                for (k, v) in removal {
-                    result.removal_state.entry(k).or_default().extend(v);
-                }
-            }
-        }
         VerificationOutcome {
             should_requery: disjoint,
             removals: result.removal_state,
@@ -302,16 +284,10 @@ impl PairSubGraph {
         &self,
         start: Address,
         state: &HashMap<Address, T>,
-        all_pair_graph: &AllPairGraph,
-        ignore_list: &HashSet<Pair>,
-        allowed_low_liq_nodes: &HashMap<Pair, Address>,
     ) -> BfsArgs {
         self.bfs_with_price(start, |is_outgoing, edge, prev_price, removal_map: &mut BfsArgs| {
             let mut pxw = Rational::ZERO;
             let mut weight = Rational::ZERO;
-
-            let mut possible_remove_pool_addr = Vec::new();
-            let mut i = 0;
 
             let node_weights = edge.weight();
             if node_weights.len() == 0 {
@@ -329,23 +305,13 @@ impl PairSubGraph {
                     continue;
                 };
 
-                i += 1;
-
                 let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
                 let liq0 = prev_price.clone().reciprocal() * &t0;
 
                 let pair = Pair(info.token_0, info.token_1);
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
-                if liq0 < Rational::from(MIN_LIQUIDITY_USDC)
-                    && !(all_pair_graph.is_only_edge_ignoring(&info.token_0, ignore_list)
-                        || all_pair_graph.is_only_edge_ignoring(&info.token_1, ignore_list))
-                    && allowed_low_liq_nodes
-                        .get(&pair)
-                        .map(|v| *v == info.pool_addr)
-                        .filter(|is_allowed| *is_allowed)
-                        .is_none()
-                {
+                if liq0 < Rational::from(MIN_LIQUIDITY_USDC) {
                     let bad_edge = BadEdge {
                         pair,
                         pool_address: info.pool_addr,
@@ -363,34 +329,6 @@ impl PairSubGraph {
                     pxw += pool_price * &t0xt1;
                     weight += t0xt1;
                 }
-
-                if liq0 < Rational::from(MIN_LIQUIDITY_USDC)
-                    && allowed_low_liq_nodes
-                        .get(&pair)
-                        .map(|v| *v == info.pool_addr)
-                        .filter(|is_allowed| *is_allowed)
-                        .is_none()
-                {
-                    let bad_edge = BadEdge {
-                        pair,
-                        pool_address: info.pool_addr,
-                        edge_liq: info.get_token_with_direction(!is_outgoing),
-                        liquidity: liq0,
-                    };
-                    possible_remove_pool_addr.push(bad_edge);
-                }
-            }
-
-            // check if we can remove some bad addresses in a edge. if we can,
-            // then we do. and recalculate the price
-            if possible_remove_pool_addr.len() < i {
-                possible_remove_pool_addr.into_iter().for_each(|bad_edge| {
-                    removal_map
-                        .removal_state
-                        .entry(bad_edge.pair)
-                        .or_default()
-                        .insert(bad_edge);
-                });
             }
 
             if weight == Rational::ZERO {
@@ -436,126 +374,6 @@ impl PairSubGraph {
                 }
             }
         });
-    }
-
-    fn should_prune_anyways<T: ProtocolState>(
-        &self,
-        start: Address,
-        state: &HashMap<Address, T>,
-        all_pair_graph: &AllPairGraph,
-        allowed_low_liq_nodes: &HashMap<Pair, Address>,
-    ) -> Option<HashMap<Pair, HashSet<BadEdge>>> {
-        let (mut path_no_low_liq, bad_pairs) = self.bfs_with_price(
-            start,
-            |is_outgoing,
-             edge,
-             prev_price,
-             prev_paths: &mut (
-                HashMap<Address, Vec<(usize, Address)>>,
-                HashMap<Pair, HashSet<BadEdge>>,
-            )| {
-                let (prev_paths, bad_pairs) = prev_paths;
-                let mut pxw = Rational::ZERO;
-                let mut weight = Rational::ZERO;
-
-                let edge_weight = edge.weight();
-
-                for info in edge_weight {
-                    let Some(pool_state) = state.get(&info.pool_addr) else {
-                        continue;
-                    };
-                    // returns is t1  / t0
-                    let Ok(pool_price) =
-                        pool_state.price(info.get_token_with_direction(is_outgoing))
-                    else {
-                        continue;
-                    };
-
-                    let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
-                    let liq = prev_price.clone().reciprocal() * &t0;
-
-                    // check if below liquidity and that if we remove we don't make the graph
-                    // disjoint.
-                    let pair = Pair(info.token_0, info.token_1);
-                    if liq < Rational::from(MIN_LIQUIDITY_USDC)
-                        && allowed_low_liq_nodes
-                            .get(&pair)
-                            .map(|v| *v == info.pool_addr)
-                            .filter(|is_allowed| *is_allowed)
-                            .is_none()
-                    {
-                        let bad_edge = BadEdge {
-                            pair,
-                            pool_address: info.pool_addr,
-                            edge_liq: info.get_token_with_direction(!is_outgoing),
-                            liquidity: liq,
-                        };
-                        bad_pairs.entry(pair).or_default().insert(bad_edge);
-                        continue
-                    } else {
-                        let t0xt1 = &t0 * &t1;
-                        pxw += pool_price * &t0xt1;
-                        weight += t0xt1;
-                    }
-                }
-
-                if weight == Rational::ZERO {
-                    return None
-                }
-
-                // add to path
-                let Some(first) = edge_weight.get(0) else { return None };
-
-                let token_in = first.get_base_token();
-                let token_out = if first.get_base_token() == first.token_0 {
-                    first.token_1
-                } else {
-                    first.token_0
-                };
-
-                prev_paths
-                    .entry(token_in)
-                    .or_default()
-                    .push((edge.id().index(), token_out));
-
-                let local_weighted_price = pxw / weight;
-
-                Some(local_weighted_price)
-            },
-        );
-
-        let Some(start_n) = self.token_to_index.get(&start) else { return None };
-
-        let end_node = if *start_n == self.start_node {
-            // we outgoing
-            self.end_node
-        } else {
-            // we incoming
-            self.start_node
-        };
-
-        let (token_out, _) = self
-            .token_to_index
-            .iter()
-            .find(|(_, v)| **v == end_node)
-            .unwrap();
-
-        let mut visited = HashSet::new();
-        let (found_end, has_other_path) = recursive_tree_parse(
-            *token_out,
-            start,
-            &mut visited,
-            &mut path_no_low_liq,
-            all_pair_graph,
-        );
-
-        if found_end {
-            None
-        } else if has_other_path {
-            Some(bad_pairs)
-        } else {
-            None
-        }
     }
 
     fn next_edges_directed<'a>(
