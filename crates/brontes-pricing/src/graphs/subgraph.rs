@@ -31,10 +31,6 @@ use crate::{types::ProtocolState, AllPairGraph, Pair};
 pub struct VerificationOutcome {
     pub should_requery:      bool,
     pub removals:            HashMap<Pair, HashSet<BadEdge>>,
-    /// forced to take edge as it was the only liquidity.
-    /// lets us look up all other edges. that we have ignored
-    /// prev such that we can take the one with the max liquidity
-    pub was_only_edge_state: HashSet<Address>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -49,7 +45,6 @@ pub struct BadEdge {
 #[derive(Debug, Default)]
 struct BfsArgs {
     pub removal_state:       HashMap<Pair, HashSet<BadEdge>>,
-    pub was_only_edge_state: HashSet<Address>,
 }
 
 const MIN_LIQUIDITY_USDC: u128 = 50_000;
@@ -220,7 +215,7 @@ impl PairSubGraph {
         start: Address,
         state: HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
-        allowed_low_liq_nodes: &HashMap<Pair, Address>,
+        allowed_low_liq_nodes: &HashSet<Pair>,
         ignore_list: &HashSet<Pair>,
     ) -> VerificationOutcome {
         if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
@@ -254,7 +249,6 @@ impl PairSubGraph {
         VerificationOutcome {
             should_requery:      disjoint,
             removals:            result.removal_state,
-            was_only_edge_state: result.was_only_edge_state,
         }
     }
 
@@ -263,6 +257,7 @@ impl PairSubGraph {
         start: Address,
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
+        allowed_low_liq: &HashSet<Pair>,
         ignore_list: &HashSet<Pair>,
     ) -> BfsArgs {
         self.bfs_with_price(start, |is_outgoing, edge, prev_price, removal_map: &mut BfsArgs| {
@@ -296,13 +291,14 @@ impl PairSubGraph {
                 let liq1 = &t1 * &new_unweighted_price;
 
 
+                let pair = Pair(info.token_0, info.token_1);
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
                 if liq0 < Rational::from(MIN_LIQUIDITY_USDC)
                     && !(all_pair_graph.is_only_edge_ignoring(&info.token_0, ignore_list)
                         || all_pair_graph.is_only_edge_ignoring(&info.token_1, ignore_list))
+                    && !allowed_low_liq.contains(&pair)
                 {
-                    let pair = Pair(info.token_0, info.token_1);
                     let bad_edge = BadEdge {
                         pair,
                         pool_address: info.pool_addr,
@@ -321,14 +317,10 @@ impl PairSubGraph {
                     weight += t0xt1;
                 }
 
-                // add this to only graph
-                if all_pair_graph.is_only_edge_ignoring(&info.token_0, ignore_list) {
-                    removal_map.was_only_edge_state.insert(info.token_0);
-                } else if all_pair_graph.is_only_edge_ignoring(&info.token_1, ignore_list) {
-                    removal_map.was_only_edge_state.insert(info.token_1);
-                }
 
-                if liq0 < Rational::from(MIN_LIQUIDITY_USDC) {
+                if liq0 < Rational::from(MIN_LIQUIDITY_USDC)
+                    && !allowed_low_liq.contains(&pair)
+                {
                     let pair = Pair(info.token_0, info.token_1);
                     let bad_edge = BadEdge {
                         pair,
@@ -403,7 +395,7 @@ impl PairSubGraph {
         start: Address,
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
-        allowed_low_liq_nodes: &HashMap<Pair, Address>,
+        allowed_low_liq_nodes: &HashSet<Pair>,
     ) -> Option<HashMap<Pair, Vec<BadEdge>>> {
         let (mut path_no_low_liq, bad_pairs) = self.bfs_with_price(
             start,
@@ -435,12 +427,10 @@ impl PairSubGraph {
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
                     let pair = Pair(info.token_0, info.token_1);
+
                     if liq < Rational::from(MIN_LIQUIDITY_USDC)
-                        && allowed_low_liq_nodes
-                            .get(&pair)
-                            .map(|v| *v == info.pool_addr)
-                            .filter(|is_allowed| *is_allowed)
-                            .is_none()
+                        && !allowed_low_liq_nodes
+                            .contains(&pair)
                     {
                         let bad_edge = BadEdge {
                             pair,
