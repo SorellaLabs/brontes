@@ -156,12 +156,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<MetadataCombined>,
         mev_type: MevType,
     ) -> BundleHeader {
-        let token_profits = self.get_profit_collectors(
-            info.tx_index,
-            actions,
-            metadata.clone(),
-            mev_type.use_cex_pricing_for_deltas(),
-        );
+        let token_profits = self
+            .get_profit_collectors(
+                info.tx_index,
+                actions,
+                metadata.clone(),
+                mev_type.use_cex_pricing_for_deltas(),
+            )
+            .unwrap_or_default();
         let bribe_usd = gas_details
             .iter()
             .map(|details| metadata.get_gas_price_usd(details.gas_paid()).to_float())
@@ -185,15 +187,16 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         tx_index: u64,
         bundle_actions: &Vec<Vec<Actions>>,
         metadata: Arc<MetadataCombined>,
-    ) -> Rational {
+    ) -> Option<Rational> {
         let deltas = self.calculate_token_deltas(bundle_actions);
 
-        let addr_usd_deltas = self
-            .usd_delta_by_address(tx_index as usize, &deltas, metadata.clone(), false)
-            .unwrap();
-        addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta)
+        let addr_usd_deltas =
+            self.usd_delta_by_address(tx_index as usize, &deltas, metadata.clone(), false)?;
+        Some(
+            addr_usd_deltas
+                .values()
+                .fold(Rational::ZERO, |acc, delta| acc + delta),
+        )
     }
 
     pub fn get_profit_collectors(
@@ -202,16 +205,15 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         bundle_actions: &Vec<Vec<Actions>>,
         metadata: Arc<MetadataCombined>,
         pricing: bool,
-    ) -> TokenProfits {
+    ) -> Option<TokenProfits> {
         let deltas = self.calculate_token_deltas(bundle_actions);
 
-        let addr_usd_deltas = self
-            .usd_delta_by_address(tx_index as usize, &deltas, metadata.clone(), pricing)
-            .unwrap();
+        let addr_usd_deltas =
+            self.usd_delta_by_address(tx_index as usize, &deltas, metadata.clone(), pricing)?;
 
         let profit_collectors = self.profit_collectors(&addr_usd_deltas);
 
-        self.get_token_profits(tx_index, metadata, profit_collectors, deltas, pricing)
+        Some(self.get_token_profits(tx_index, metadata, profit_collectors, deltas, pricing))
     }
 
     pub fn get_token_profits(
