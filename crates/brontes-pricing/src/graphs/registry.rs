@@ -149,7 +149,17 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair)
             .map(|graph| (graph.get_unordered_pair(), graph))
-            .and_then(|(default_pair, graph)| Some((default_pair, graph.fetch_price(edge_state)?)))
+            .and_then(|(default_pair, graph)| {
+                tracing::info!(
+                    ?unordered_pair,
+                    "{:#?}",
+                    graph
+                        .get_all_pools()
+                        .flat_map(|i| i.into_iter().map(|i| i.pool_addr))
+                        .collect_vec()
+                );
+                Some((default_pair, graph.fetch_price(edge_state)?))
+            })
             .map(
                 |(default_pair, res)| {
                     if unordered_pair != default_pair {
