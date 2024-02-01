@@ -171,8 +171,7 @@ impl SubgraphVerifier {
                     self.pending_subgraphs.insert(pair.ordered(), subgraph);
                     // anything that was fully remove gets cached
 
-                    tracing::info!(?pair, "requerying ignoring: {} ", ignores.len(),);
-
+                    tracing::info!(?pair, "requerying ignoring: {} ", ignores.len());
                     return VerificationResults::Failed(VerificationFailed {
                         pair,
                         block,
@@ -239,11 +238,21 @@ impl SubgraphVerifier {
         &mut self,
         pair: Pair,
         block: u64,
-        subgraph: PairSubGraph,
+        mut subgraph: PairSubGraph,
         state_tracker: &mut StateTracker,
     ) -> VerificationResults {
         // remove state for pair
         if let Some(state) = self.subgraph_verification_state.remove(&pair) {
+            // remove all state from subgraph that we have flagged
+            state
+                .possible_removal_state
+                .iter()
+                .for_each(|(_, edges)| {
+                    for edge in edges {
+                        assert!(!subgraph.remove_bad_node(edge.pair, edge.pool_address));
+                    }
+                });
+
             self.pools_to_remove
                 .entry(block)
                 .or_default()
