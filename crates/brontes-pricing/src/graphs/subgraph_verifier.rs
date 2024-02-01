@@ -121,14 +121,22 @@ impl SubgraphVerifier {
         quote: Address,
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
-        recursing: bool,
+        _recursing: bool,
     ) -> Vec<VerificationResults> {
         let pairs = self.get_subgraphs(pair);
         let res = self.verify_par(pairs, quote, all_graph, state_tracker);
 
         res.into_iter()
             .map(|(pair, block, result, subgraph)| {
+                let recusing_ignore = self
+                    .subgraph_verification_state
+                    .entry(pair)
+                    .or_default()
+                    .get_recusing_nodes();
+
+                if  recusing_ignore.is_empty() {
                 self.store_edges_with_liq(pair, &result.removals, all_graph);
+                }
 
                 // state that we want to be ignored on the next graph search.
                 let mut ignores = self
@@ -137,17 +145,12 @@ impl SubgraphVerifier {
                     .or_default()
                     .get_nodes_to_ignore();
 
-                let recusing_ignore = self
-                    .subgraph_verification_state
-                    .entry(pair)
-                    .or_default()
-                    .get_recusing_nodes();
 
                 // all results that should be pruned from our main graph.
                 let removals = result
                     .removals
                     .into_iter()
-                    .filter(|(k, _)| !ignores.contains(k) && !recusing_ignore.contains_key(k))
+                    .filter(|(k, _)| !(ignores.contains(k) || recusing_ignore.contains_key(k)))
                     .collect::<HashMap<_, _>>();
 
                 // recusing but there are no changes. this will cause a infinite loop.
