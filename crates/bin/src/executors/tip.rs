@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     pin::Pin,
+    sync::{atomic::AtomicBool, Arc},
     task::{Context, Poll},
 };
 
@@ -25,8 +26,7 @@ type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (MetadataNoDex, BlockTree<Actions>)> + Send + 'a>>;
 
 pub struct TipInspector<'inspector, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
-    current_block: u64,
-
+    current_block:     u64,
     parser:            &'inspector Parser<'inspector, T, DB>,
     classifier:        &'inspector Classifier<'inspector, T, DB>,
     clickhouse:        &'inspector Clickhouse,
@@ -66,6 +66,7 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
         );
 
         let pricer = BrontesBatchPricer::new(
+            Arc::new(AtomicBool::new(false)),
             quote_asset,
             pair_graph,
             rx,
