@@ -2,16 +2,15 @@ use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    mev::{AtomicBackrun, Bundle, MevType, MevTypeResolver, TokenProfit, TokenProfits},
+    mev::{AtomicBackrun, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap},
-    pair::Pair,
-    tree::{BlockTree, GasDetails},
+    tree::{BlockTree},
     ToFloatNearest, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, B256};
+use reth_primitives::{Address};
 
 use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, MetadataCombined};
 
