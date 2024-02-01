@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use alloy_primitives::Address;
 use itertools::Itertools;
-use tracing::error;
+use tracing::debug;
 
 use crate::{
     types::{PoolState, PoolUpdate},
@@ -63,7 +63,7 @@ impl StateTracker {
 
     pub fn mark_state_as_finalized(&mut self, block: u64, pool: Address) {
         let Some(pool_state) = self.verification_edge_state.get_mut(&pool) else {
-            error!(?pool, "tried to mark a pool that didn't exist as finalized");
+            debug!(?pool, "tried to mark a pool that didn't exist as finalized");
             return
         };
 
