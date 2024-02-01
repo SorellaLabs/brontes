@@ -3,7 +3,6 @@ use std::{env, path::Path};
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
-
 use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader};
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
