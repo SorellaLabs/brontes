@@ -41,7 +41,6 @@ use alloy_primitives::Address;
 pub use brontes_types::price_graph_types::{
     PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
 };
-use brontes_types::test_utils::force_call_action;
 use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
@@ -63,7 +62,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{error, info};
+use tracing::{error};
 use types::{DexPriceMsg, DiscoveredPool, PoolUpdate};
 
 use crate::types::PoolState;
@@ -365,7 +364,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-
         } else if let LoadResult::Err { pool_address, pool_pair, block, dependent_pairs } =
             load_result
         {
@@ -473,7 +471,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         new_state.into_iter().for_each(|(pair, block, edges)| {
             // add regularly
             if !edges.is_empty() {
-                let Some((id, need_state, force_rundown)) = self.add_subgraph(pair, block, edges, true) else {
+                let Some((id, need_state, force_rundown)) =
+                    self.add_subgraph(pair, block, edges, true)
+                else {
                     return;
                 };
                 if force_rundown {
@@ -487,7 +487,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 return
             }
 
-
             self.rundown(pair, block);
         });
 
@@ -495,11 +494,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
     }
 
     fn rundown(&mut self, pair: Pair, block: u64) {
-
-        let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair)
-            else {
-                return
-            };
+        let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair) else {
+            return
+        };
 
         loop {
             let popped = ignores.pop();
@@ -515,9 +512,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 }
                 continue
             } else {
-                let Some((id, need_state,_)) = self.add_subgraph(pair, block, edges, true) else {
-                        return;
-                    };
+                let Some((id, need_state, _)) = self.add_subgraph(pair, block, edges, true) else {
+                    return;
+                };
 
                 if !need_state {
                     self.try_verify_subgraph(vec![(block, id, pair)]);
@@ -548,7 +545,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         edges: Vec<SubGraphEdge>,
         frayed_ext: bool,
     ) -> Option<(Option<u64>, bool, bool)> {
-        let (needed_state, id ,force_rundown) = if frayed_ext {
+        let (needed_state, id, force_rundown) = if frayed_ext {
             let (need, id, force_rundown) = self
                 .graph_manager
                 .add_frayed_end_extension(pair, block, edges)?;
