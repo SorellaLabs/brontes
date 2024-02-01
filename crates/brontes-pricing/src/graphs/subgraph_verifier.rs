@@ -150,8 +150,7 @@ impl SubgraphVerifier {
                 let removals = result
                     .removals
                     .into_iter()
-                    .filter(|(k, _)| !ignores.contains(k))
-                    .filter(|(k, _)| if recursing { !recusing_ignore.contains(k) } else { true })
+                    .filter(|(k, _)| !ignores.contains(k) && !recusing_ignore.contains(k))
                     .collect::<HashMap<_, _>>();
 
                 // recusing but there are no changes. this will cause a infinite loop.
@@ -358,15 +357,6 @@ impl SubgraphVerificationState {
 pub struct EdgesWithLiq(HashMap<Address, Vec<BadEdge>>);
 
 impl EdgesWithLiq {
-    fn max_liq_for_edge(&self, addr: &Address) -> Option<BadEdge> {
-        self.0.get(addr).and_then(|values| {
-            values
-                .into_iter()
-                .max_by(|a, b| a.liquidity.cmp(&b.liquidity))
-                .cloned()
-        })
-    }
-
     fn add_edge_with_liq(&mut self, addr: Address, bad_edge: BadEdge) {
         self.0.entry(addr).or_default().push(bad_edge);
     }
