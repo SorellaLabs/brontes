@@ -169,4 +169,5 @@ pub enum TraceParseErrorKind {
     EthApiExecutionTimedOut,
     EthApiCallInputError,
     AlloyError,
+    Eyre,
 }

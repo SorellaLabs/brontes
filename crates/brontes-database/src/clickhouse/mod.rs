@@ -10,7 +10,6 @@ use brontes_types::{
     mev::{Bundle, BundleData, Mev, MevBlock},
     pair::Pair,
 };
-use futures::future::join_all;
 use sorella_db_databases::{
     clickhouse::{
         config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
@@ -18,7 +17,6 @@ use sorella_db_databases::{
     tables::DatabaseTables,
     Database,
 };
-use tracing::{error, info};
 
 use self::const_sql::*;
 
@@ -70,44 +68,61 @@ impl Clickhouse {
         Default::default()
     }
 
-    async fn insert_singe_classified_data(
-        db_client: &ClickhouseClient,
-        mev_detail: BundleData,
-        table: DatabaseTables,
+    // async fn insert_singe_classified_data(
+    //     db_client: &ClickhouseClient,
+    //     mev_detail: BundleData,
+    //     table: DatabaseTables,
+    // ) {
+    //     match mev_detail {
+    //         BundleData::Sandwich(sandwich) => sandwich.serialize(serializer),
+    //         BundleData::AtomicBackrun(backrun) => backrun.serialize(serializer),
+    //         BundleData::JitSandwich(jit_sandwich) =>
+    // jit_sandwich.serialize(serializer),         BundleData::Jit(jit) =>
+    // jit.serialize(serializer),         BundleData::CexDex(cex_dex) =>
+    // cex_dex.serialize(serializer),
+    //         BundleData::Liquidation(liquidation) =>
+    // liquidation.serialize(serializer),         BundleData::Unknown => {
+    //             unimplemented!("attempted to serialize unknown mev:
+    // UNIMPLEMENTED")         }
+    //     }
+    //     if let Err(e) = db_client.insert_one::<MevBlocks>(&mev_detail).await {
+    //         error!(?e, "failed to insert specific mev");
+    //     }
+    // }
+
+    pub async fn insert_classified_data(
+        &self,
+        _block_details: MevBlock,
+        _mev_details: Vec<Bundle>,
     ) {
-        if let Err(e) = db_client.insert_one(&mev_detail, table).await {
-            error!(?e, "failed to insert specific mev");
-        }
-    }
-
-    pub async fn insert_classified_data(&self, block_details: MevBlock, mev_details: Vec<Bundle>) {
-        if let Err(e) = self
-            .client
-            .insert_one(&block_details, DatabaseTables::MevBlocks)
-            .await
-        {
-            error!(?e, "failed to insert block details");
-        }
-
-        info!("inserted block details");
-
-        let db_client = &self.client;
-        join_all(mev_details.into_iter().map(|bundle| async move {
-            if let Err(e) = self
-                .client
-                .insert_one(&bundle.header, DatabaseTables::BundleHeader)
-                .await
-            {
-                error!(?e, "failed to insert classified mev");
-            }
-            info!("inserted classified_mev");
-
-            let table = mev_table_type(&bundle.data);
-            Self::insert_singe_classified_data(db_client, bundle.data, table).await;
-
-            info!("{:?}: inserted specific mev type", table);
-        }))
-        .await;
+        // if let Err(e) = self
+        //     .client
+        //     .insert_one(&block_details, DatabaseTables::MevBlocks)
+        //     .await
+        // {
+        //     error!(?e, "failed to insert block details");
+        // }
+        //
+        // info!("inserted block details");
+        //
+        // let db_client = &self.client;
+        // join_all(mev_details.into_iter().map(|bundle| async move {
+        //     if let Err(e) = self
+        //         .client
+        //         .insert_one(&bundle.header, DatabaseTables::BundleHeader)
+        //         .await
+        //     {
+        //         error!(?e, "failed to insert classified mev");
+        //     }
+        //     info!("inserted classified_mev");
+        //
+        //     let table = mev_table_type(&bundle.data);
+        //     Self::insert_singe_classified_data(db_client, bundle.data,
+        // table).await;
+        //
+        //     info!("{:?}: inserted specific mev type", table);
+        // }))
+        // .await;
     }
 
     pub async fn get_abis(&self, addresses: Vec<Address>) -> HashMap<Address, JsonAbi> {
