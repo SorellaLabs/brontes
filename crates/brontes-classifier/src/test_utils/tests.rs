@@ -90,6 +90,7 @@ impl ClassifierTestUtils {
         } else {
             HashMap::new()
         };
+
         Ok(BrontesBatchPricer::new(
             quote_asset,
             pair_graph,

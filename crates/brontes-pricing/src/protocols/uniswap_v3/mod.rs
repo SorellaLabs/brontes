@@ -1,33 +1,26 @@
 pub mod batch_request;
 pub mod factory;
 
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
-};
+use std::{cmp::Ordering, collections::HashMap, sync::Arc};
 
-use alloy_primitives::{Address, BlockNumber, FixedBytes, Log, B256, I256, U256, U64};
-use alloy_rlp::{Decodable, Encodable, RlpEncodable};
+use alloy_primitives::{Address, FixedBytes, Log, B256, I256, U256};
+use alloy_rlp::{Decodable, Encodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
 use bytes::BufMut;
 use ethers::{
-    abi::{ethabi::Bytes, RawLog, Token},
-    prelude::{abigen, AbiError, EthEvent},
-    types::{Action, Filter},
+    abi::ethabi::Bytes,
+    prelude::{AbiError, EthEvent},
 };
-use malachite::{Natural, Rational};
+use malachite::Rational;
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
-use tokio::task::JoinHandle;
 
 use super::make_call_request;
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
-    protocols::uniswap_v3::batch_request::get_uniswap_v3_tick_data_batch_request,
     uniswap_v2::IErc20,
     uniswap_v3_math, AutomatedMarketMaker,
 };
@@ -303,7 +296,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         self.address
     }
 
-    fn sync_from_action(&mut self, action: Actions) -> Result<(), EventLogError> {
+    fn sync_from_action(&mut self, _action: Actions) -> Result<(), EventLogError> {
         todo!()
     }
 
@@ -340,7 +333,7 @@ impl AutomatedMarketMaker for UniswapV3Pool {
         if base_token == self.token_a {
             Ok(Rational::try_from(price).unwrap())
         } else {
-            Ok(Rational::try_from((1.0 / price)).unwrap())
+            Ok(Rational::try_from(1.0 / price).unwrap())
         }
     }
 
