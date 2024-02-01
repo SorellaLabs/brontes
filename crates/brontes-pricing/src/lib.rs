@@ -26,13 +26,14 @@
 mod graphs;
 pub mod protocols;
 pub mod types;
+use std::sync::atomic::Ordering::SeqCst;
 
 #[cfg(test)]
 pub mod test_utils;
 
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
     task::{Context, Poll},
 };
 
@@ -91,6 +92,7 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: LibmdbxWriter + LibmdbxRea
     quote_asset:     Address,
     current_block:   u64,
     completed_block: u64,
+    finished:        Arc<AtomicBool>,
 
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
@@ -118,6 +120,7 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: LibmdbxWriter + LibmdbxRea
 
 impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn new(
+        finished: Arc<AtomicBool>,
         quote_asset: Address,
         graph_manager: GraphManager<DB>,
         update_rx: UnboundedReceiver<DexPriceMsg>,
@@ -126,6 +129,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
     ) -> Self {
         Self {
+            finished,
             new_graph_pairs,
             quote_asset,
             buffer: StateBuffer::new(),
@@ -763,6 +767,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
                         if self.lazy_loader.is_empty()
                             && self.lazy_loader.can_progress(&self.completed_block)
                             && block_updates.is_empty()
+                            && self.finished.load(SeqCst)
                         {
                             return Poll::Ready(self.on_close())
                         } else {
