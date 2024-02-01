@@ -11,6 +11,29 @@ use super::{
 };
 use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 
+/// [`SubgraphVerifier`] Manages the verification of subgraphs for token pairs
+/// in the BrontesBatchPricer system. It ensures the accuracy and relevance of
+/// subgraphs, which are essential for pricing tokens on DEXs.
+///
+/// The struct performs several critical functions:
+///
+/// - `pending_subgraphs`: Maintains a collection of subgraphs currently
+///   undergoing verification. These represent token pairs and are crucial for
+///   calculating accurate prices.
+///
+/// - `subgraph_verification_state`: Tracks the state of subgraphs during the
+///   verification process. It includes information on pruned edges that did not
+///   meet liquidity parameters, helping to select edges with the highest
+///   liquidity in case of critical edges falling below the threshold.
+///
+/// - `create_new_subgraph`: Generates new subgraphs for specific token pairs,
+///   adding them to the pending list for verification. This method is key in
+///   determining the relevant parts of the token graph for a pair.
+///
+/// - `verify_subgraph`: Verifies subgraphs to ensure they accurately reflect
+///   the current state of the DEX, checking liquidity parameters and pool
+///   states. This method is vital in maintaining the integrity of the pricing
+///   system.
 #[derive(Debug)]
 pub struct SubgraphVerifier {
     pending_subgraphs:           HashMap<Pair, PairSubGraph>,

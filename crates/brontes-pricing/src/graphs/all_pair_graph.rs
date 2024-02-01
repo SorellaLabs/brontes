@@ -49,8 +49,27 @@ impl DerefMut for EdgeWithInsertBlock {
         &mut self.inner
     }
 }
-/// All known pairs represented in the graph. All sub-graphs are generated off
-/// of a k-shortest-path algorithm that is ran on this graph
+/// [`AllPairGraph`] Represents the interconnected network of token pairs in
+/// decentralized exchanges (DEXs), crucial for the BrontesBatchPricer system's
+/// ability to analyze and calculate token prices.
+///
+/// [`AllPairGraph`] forms a graph structure where each node represents a token
+/// and each edge a connection between tokens, typically through a liquidity
+/// pool. This structure allows for efficient navigation and identification of
+/// trading routes, and for determining the relative prices of tokens.
+///
+/// The graph is dynamic, adapting to the ever-changing landscape of the DEX
+/// environment. It incorporates new tokens and pools as they emerge, and
+/// adjusts or removes connections when changes in liquidity or pool validity
+/// occur. This ensures that the representation of the token network remains
+/// accurate and current.
+///
+/// The ability to assess the number of connections a token has, as well as to
+/// identify paths for trading between any two tokens, is fundamental to the
+/// system. It enables the evaluation of liquidity and trading opportunities.
+/// The graph also provides the capability to exclude certain paths or
+/// connections, catering to scenarios where specific routes might
+/// be temporarily infeasible or less desirable.
 #[derive(Debug, Clone)]
 pub struct AllPairGraph {
     graph:          UnGraph<(), Vec<EdgeWithInsertBlock>, usize>,
