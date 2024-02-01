@@ -19,6 +19,10 @@ pub struct SubgraphVerifier {
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
     subgraph_verification_state: HashMap<Pair, SubgraphVerificationState>,
+    /// holds all the edges that we want to remove after a block has been
+    /// completed. we wait till the block has been completed as sometimes we
+    /// can remove a node that is actually critical to another pair.
+    pools_to_remove:             HashMap<u64, HashMap<Pair, HashSet<BadEdge>>>,
 }
 
 impl SubgraphVerifier {
@@ -26,7 +30,38 @@ impl SubgraphVerifier {
         return Self {
             pending_subgraphs:           HashMap::new(),
             subgraph_verification_state: HashMap::new(),
+            pools_to_remove:             HashMap::new(),
         }
+    }
+
+    pub fn finalize_block(
+        &mut self,
+        block: u64,
+        state_tracker: &StateTracker,
+    ) -> HashMap<Pair, HashSet<BadEdge>> {
+        let Some(data) = self.pools_to_remove.remove(&block) else {
+            return HashMap::new();
+        };
+
+        // current state being verified
+        let do_not_remove = self
+            .subgraph_verification_state
+            .iter()
+            .flat_map(|(_, state)| state.get_complete_edges_to_ignore())
+            .collect::<HashSet<_>>();
+
+        data.into_iter()
+            .filter(|(pair, _)| !do_not_remove.contains(&pair))
+            .map(|(pair, pools)| {
+                (
+                    pair,
+                    pools
+                        .into_iter()
+                        .filter(|pool| !state_tracker.has_finalized_state(&pool.pool_address))
+                        .collect(),
+                )
+            })
+            .collect()
     }
 
     pub fn all_pairs(&self) -> Vec<Pair> {
@@ -118,7 +153,7 @@ impl SubgraphVerifier {
                     .subgraph_verification_state
                     .entry(pair)
                     .or_default()
-                    .get_nodes_to_ignore();
+                    .get_complete_edges_to_ignore();
 
                 // all results that should be pruned from our main graph.
                 let removals = result
@@ -127,26 +162,25 @@ impl SubgraphVerifier {
                     .filter(|(k, _)| !ignores.contains(k))
                     .collect::<HashMap<_, _>>();
 
+                self.subgraph_verification_state
+                    .entry(pair)
+                    .or_default()
+                    .state_to_remove(removals);
+
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair.ordered(), subgraph);
                     // anything that was fully remove gets cached
 
-                    tracing::info!(
-                        ?pair,
-                        "requerying ignoring: {} removing: {}",
-                        ignores.len(),
-                        removals.len()
-                    );
+                    tracing::info!(?pair, "requerying ignoring: {} ", ignores.len(),);
 
                     return VerificationResults::Failed(VerificationFailed {
                         pair,
                         block,
-                        prune_state: removals,
                         ignore_state: ignores,
                     })
                 }
 
-                self.passed_verification(pair, block, subgraph, removals, state_tracker)
+                self.passed_verification(pair, block, subgraph, state_tracker)
             })
             .collect_vec()
     }
@@ -188,7 +222,12 @@ impl SubgraphVerifier {
                         .subgraph_verification_state
                         .get(&pair)
                         .unwrap_or(&default)
-                        .get_nodes_to_ignore(),
+                        .get_complete_edges_to_ignore(),
+                    &self
+                        .subgraph_verification_state
+                        .get(&pair)
+                        .unwrap_or(&default)
+                        .get_pools_to_ignore(),
                 );
 
                 (pair, block, result, subgraph)
@@ -201,32 +240,33 @@ impl SubgraphVerifier {
         pair: Pair,
         block: u64,
         subgraph: PairSubGraph,
-        removals: HashMap<Pair, HashSet<BadEdge>>,
         state_tracker: &mut StateTracker,
     ) -> VerificationResults {
         // remove state for pair
-        let _ = self.subgraph_verification_state.remove(&pair);
+        if let Some(state) = self.subgraph_verification_state.remove(&pair) {
+            self.pools_to_remove
+                .entry(block)
+                .or_default()
+                .extend(state.possible_removal_state)
+        }
         // mark used state finalized
         subgraph.get_all_pools().flatten().for_each(|pool| {
             state_tracker.mark_state_as_finalized(block, pool.pool_addr);
         });
 
-        VerificationResults::Passed(VerificationPass { pair, subgraph, prune_state: removals })
+        VerificationResults::Passed(VerificationPass { pair, subgraph })
     }
 }
 
 #[derive(Debug)]
 pub struct VerificationPass {
-    pub pair:        Pair,
-    pub subgraph:    PairSubGraph,
-    pub prune_state: HashMap<Pair, HashSet<BadEdge>>,
+    pub pair:     Pair,
+    pub subgraph: PairSubGraph,
 }
 #[derive(Debug)]
 pub struct VerificationFailed {
     pub pair:         Pair,
     pub block:        u64,
-    // prunes the partial edges of this state.
-    pub prune_state:  HashMap<Pair, HashSet<BadEdge>>,
     // the state that should be ignored when we re-query.
     pub ignore_state: HashSet<Pair>,
 }
@@ -251,11 +291,12 @@ pub struct SubgraphVerificationState {
     /// contains all fully removed edges. this is so that
     /// if we don't find a edge with the wanted amount of liquidity,
     /// we can lookup the edge with the best liquidity.
-    edges:           EdgesWithLiq,
+    edges:                  EdgesWithLiq,
+    possible_removal_state: HashMap<Pair, HashSet<BadEdge>>,
     /// graph edge to the pair that we allow for low liquidity price calcs.
     /// this is stored seperate as it is possible to have multiple iterations
     /// where we have more than one path hop that is low liquidity.
-    best_edge_nodes: HashMap<Pair, Address>,
+    best_edge_nodes:        HashMap<Pair, Address>,
 }
 
 impl SubgraphVerificationState {
@@ -275,7 +316,7 @@ impl SubgraphVerificationState {
     }
 
     /// Grabs all the nodes that we want the graph search to ignore
-    fn get_nodes_to_ignore(&self) -> HashSet<Pair> {
+    fn get_complete_edges_to_ignore(&self) -> HashSet<Pair> {
         self.edges
             .0
             .values()
@@ -283,6 +324,24 @@ impl SubgraphVerificationState {
             .filter_map(|node| {
                 (!self.best_edge_nodes.contains_key(&node.pair.ordered())).then(|| node.pair)
             })
+            .collect()
+    }
+
+    fn state_to_remove(&mut self, state: HashMap<Pair, HashSet<BadEdge>>) {
+        state.into_iter().for_each(|(pair, edges)| {
+            self.possible_removal_state
+                .entry(pair)
+                .or_default()
+                .extend(edges);
+        });
+    }
+
+    // pools that we have pruned
+    fn get_pools_to_ignore(&self) -> HashSet<Address> {
+        self.possible_removal_state
+            .values()
+            .flatten()
+            .map(|e| e.pool_address)
             .collect()
     }
 
