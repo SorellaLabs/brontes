@@ -117,9 +117,9 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.protocol_address_to_parent_pairs
             .entry(address)
             .or_insert(vec![])
-            .push((block, parent_pair.ordered()));
+            .push((block, parent_pair));
 
-        match self.parent_pair_state_loading.entry(parent_pair.ordered()) {
+        match self.parent_pair_state_loading.entry(parent_pair) {
             Entry::Vacant(v) => {
                 let mut set = HashSet::new();
                 set.insert(address);
