@@ -9,11 +9,10 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     mev::{Bundle, JitLiquidity, MevType, TokenProfit, TokenProfits},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    pair::Pair,
     GasDetails, ToFloatNearest,
 };
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::Rational;
 
 use crate::{
     shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, BundleHeader, Inspector,

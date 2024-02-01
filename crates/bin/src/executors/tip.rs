@@ -17,7 +17,7 @@ use brontes_types::{db::metadata::MetadataNoDex, normalized_actions::Actions, tr
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 use super::{dex_pricing::WaitingForPricerFuture, utils::process_results};
 
