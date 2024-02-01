@@ -218,7 +218,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_info.tx_index,
             &searcher_actions,
             metadata.clone(),
-        );
+        )?;
+
         let profit_usd = (rev_usd - &gas_used).to_float();
 
         let header = self.inner.build_bundle_header(
