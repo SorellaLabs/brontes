@@ -352,10 +352,9 @@ impl PairSubGraph {
             // then we do. and recalculate the price
             if possible_remove_pool_addr.len() < i {
                 possible_remove_pool_addr.into_iter().for_each(|bad_edge| {
-
                     removal_map
                         .removal_state
-                        .entry(bad_edge.pair.ordered())
+                        .entry(bad_edge.pair)
                         .or_default()
                         .insert(bad_edge);
                 });
@@ -391,6 +390,8 @@ impl PairSubGraph {
             };
 
             let bad_edge_to_pool = v.into_iter().map(|edge| edge.pool_address).collect_vec();
+                tracing::error!("pruning {:#?}", bad_edge_to_pool);
+
 
             let mut weights = self.graph.remove_edge(e).unwrap();
             weights.retain(|node| !bad_edge_to_pool.contains(&node.pool_addr));
