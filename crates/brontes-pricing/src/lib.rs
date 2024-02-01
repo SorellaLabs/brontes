@@ -347,33 +347,11 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             .into_iter()
             .filter_map(|result| match result {
                 VerificationResults::Passed(passed) => {
-                    passed.prune_state.into_iter().for_each(|(_, bad_edges)| {
-                        for bad_edge in bad_edges {
-                            if let Some((addr, protocol, pair)) = self
-                                .graph_manager
-                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
-                            {
-                                self.new_graph_pairs.insert(addr, (protocol, pair));
-                            }
-                        }
-                    });
                     self.graph_manager
                         .add_verified_subgraph(passed.pair, passed.subgraph);
-
                     None
                 }
                 VerificationResults::Failed(failed) => {
-                    failed.prune_state.into_iter().for_each(|(_, bad_edges)| {
-                        for bad_edge in bad_edges {
-                            if let Some((addr, protocol, pair)) = self
-                                .graph_manager
-                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
-                            {
-                                self.new_graph_pairs.insert(addr, (protocol, pair));
-                            }
-                        }
-                    });
-
                     Some((failed.pair, failed.block, failed.ignore_state))
                 }
             })
@@ -508,7 +486,17 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             return None
         }
 
-        self.graph_manager.finalize_block(self.completed_block);
+        let removed_edges = self.graph_manager.finalize_block(self.completed_block);
+        removed_edges.into_iter().for_each(|(_, bad_edges)| {
+            for bad_edge in bad_edges {
+                if let Some((addr, protocol, pair)) = self
+                    .graph_manager
+                    .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
+                {
+                    self.new_graph_pairs.insert(addr, (protocol, pair));
+                }
+            }
+        });
 
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing

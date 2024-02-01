@@ -12,8 +12,8 @@ use brontes_types::price_graph_types::*;
 use itertools::Itertools;
 use malachite::{
     num::{
-        arithmetic::traits::{Abs, Reciprocal},
-        basic::traits::{One, OneHalf, Zero},
+        arithmetic::traits::Reciprocal,
+        basic::traits::{One, Zero},
     },
     Rational,
 };
@@ -140,7 +140,8 @@ impl PairSubGraph {
         &self,
         edge_state: &HashMap<Address, T>,
     ) -> Option<Rational> {
-        dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
+        let e = HashSet::new();
+        dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state, &e)
     }
 
     pub fn get_all_pools(&self) -> impl Iterator<Item = &Vec<SubGraphEdge>> + '_ {
@@ -205,29 +206,50 @@ impl PairSubGraph {
         all_pair_graph: &AllPairGraph,
         allowed_low_liq_nodes: &HashMap<Pair, Address>,
         ignore_list: &HashSet<Pair>,
+        ignore_edges: &HashSet<Address>,
     ) -> VerificationOutcome {
-        if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
-            .is_none()
+        if dijkstra_path(
+            &self.graph,
+            self.start_node.into(),
+            self.end_node.into(),
+            &state,
+            ignore_edges,
+        )
+        .is_none()
         {
             tracing::error!("invalid subgraph was given");
         }
 
-        let mut result =
-            self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
+        let mut result = self.run_bfs_with_liquidity_params(
+            start,
+            &state,
+            all_pair_graph,
+            ignore_list,
+            ignore_edges,
+        );
 
         self.prune_subgraph(&result.removal_state);
 
-        let mut disjoint =
-            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
-                .is_none();
+        let mut disjoint = dijkstra_path(
+            &self.graph,
+            self.start_node.into(),
+            self.end_node.into(),
+            &state,
+            ignore_edges,
+        )
+        .is_none();
 
         tracing::info!("disjoint: {disjoint}: bad: {}", result.removal_state.len());
 
         // if we not disjoint, do a bad pool check.
         if !disjoint {
-            if let Some(removal) =
-                self.should_prune_anyways(start, &state, all_pair_graph, allowed_low_liq_nodes)
-            {
+            if let Some(removal) = self.should_prune_anyways(
+                start,
+                &state,
+                all_pair_graph,
+                allowed_low_liq_nodes,
+                ignore_edges,
+            ) {
                 disjoint = true;
                 for (k, v) in removal {
                     result.removal_state.entry(k).or_default().extend(v);
@@ -247,6 +269,7 @@ impl PairSubGraph {
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
         allowed_low_liq_nodes: &HashMap<Pair, Address>,
+        ignore_edges: &HashSet<Address>,
     ) -> Option<HashMap<Pair, Vec<BadEdge>>> {
         let (mut path_no_low_liq, bad_pairs) = self.bfs_with_price(
             start,
@@ -262,6 +285,10 @@ impl PairSubGraph {
                 let edge_weight = edge.weight();
 
                 for info in edge_weight {
+                    if ignore_edges.contains(&info.pool_addr) {
+                        continue
+                    }
+
                     let Some(pool_state) = state.get(&info.pool_addr) else {
                         continue;
                     };
@@ -363,6 +390,7 @@ impl PairSubGraph {
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
         ignore_list: &HashSet<Pair>,
+        ignore_edges: &HashSet<Address>,
     ) -> BfsArgs {
         self.bfs_with_price(start, |edge, prev_price, removal_map: &mut BfsArgs| {
             let mut pxw = Rational::ZERO;
@@ -377,6 +405,9 @@ impl PairSubGraph {
             }
 
             for info in node_weights {
+                if ignore_edges.contains(&info.pool_addr) {
+                    continue
+                }
                 let Some(pool_state) = state.get(&info.pool_addr) else {
                     tracing::error!(?info.pool_addr,"no state when running bfs with liq");
                     continue;
@@ -621,6 +652,7 @@ pub fn dijkstra_path<G, T>(
     start: G::NodeId,
     goal: G::NodeId,
     state: &HashMap<Address, T>,
+    ignore_edges: &HashSet<Address>,
 ) -> Option<Rational>
 where
     T: ProtocolState,
@@ -642,6 +674,7 @@ where
         }
 
         if goal == node {
+            tracing::info!("found goal");
             break
         }
 
@@ -651,77 +684,31 @@ where
                 continue
             }
 
-            // calculate tvl of pool using the start token as the quote
-            let edge_weight = edge.weight();
-            let edge_len = edge_weight.len();
-
-            let mut outliers = Vec::with_capacity(edge_len);
-            let mut outlier_p = Rational::ZERO;
-            let mut not_outliers = Vec::with_capacity(edge_len);
-            let mut not_outlier_p = Rational::ZERO;
-
-            for info in edge_weight {
-                let Some(pool_state) = state.get(&info.pool_addr) else {
-                    tracing::error!(?info.pool_addr, "missing pool state");
-                    continue;
-                };
-
-                // returns is t1  / t0
-                let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
-                    tracing::error!(?info.pool_addr, "missing pool price");
-                    continue;
-                };
-
-                //  hacky method of splitting outliers from each_other. this assumes
-                //  that the outliers fit into two distinct sets.
-                //  for each entry, check the average price of the first set and if it is to far
-                //  away put into other set. then after all state has been gone through. take
-                // the longer set
-                if not_outlier_p == Rational::ZERO {
-                    not_outlier_p = pool_price.clone();
-                    not_outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                } else if ((&not_outlier_p / Rational::from(not_outliers.len())) - &pool_price)
-                    .abs()
-                    > (&not_outlier_p / Rational::from(not_outliers.len())) / Rational::from(4)
-                {
-                    if outlier_p == Rational::ZERO {
-                        outlier_p = pool_price.clone();
-                        outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                    } else {
-                        outlier_p += pool_price.clone();
-                        outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                    }
-                } else {
-                    not_outlier_p += pool_price.clone();
-                    not_outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                }
-            }
-
-            if not_outliers.len() == 0 && outliers.len() == 0 {
-                continue
-            }
-
-            let set = if not_outliers.len() >= outliers.len() {
-                not_outliers
-            } else {
-                let out_price = outliers.iter().map(|(i, _)| i).collect::<Vec<_>>();
-                let min = out_price.iter().min().unwrap();
-                let max = out_price.iter().max().unwrap();
-                // more than 50% diff we take not outliers
-                if *max / *min > Rational::ONE_HALF {
-                    not_outliers
-                } else {
-                    outliers
-                }
-            };
-
             let mut pxw = Rational::ZERO;
             let mut weight = Rational::ZERO;
             let mut token_0_am = Rational::ZERO;
             let mut token_1_am = Rational::ZERO;
 
-            for (pool_price, (t0, t1)) in set {
-                // we only weight by the first token
+            // calculate tvl of pool using the start token as the quote
+            let edge_weight = edge.weight();
+
+            for info in edge_weight {
+                if ignore_edges.contains(&info.pool_addr) {
+                    continue
+                }
+
+                let Some(pool_state) = state.get(&info.pool_addr) else {
+                    tracing::error!(?info.pool_addr, "missing pool state");
+                    continue;
+                };
+
+                let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
+                    tracing::error!(?info.pool_addr, "missing pool price");
+                    continue;
+                };
+
+                let (t0, t1) = pool_state.tvl(info.get_base_token());
+
                 let t0xt1 = &t0 * &t1;
                 pxw += pool_price * &t0xt1;
                 weight += t0xt1;
@@ -731,6 +718,7 @@ where
             }
 
             if weight == Rational::ZERO {
+                tracing::info!("no weight for dijkstra");
                 continue
             }
 
