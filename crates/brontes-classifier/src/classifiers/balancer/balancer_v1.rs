@@ -57,7 +57,6 @@ action_impl!(
         let amount_in = return_data.tokenAmountIn.to_scaled_rational(token_in.decimals);
         let amount_out = call_data.tokenAmountOut.to_scaled_rational(token_out.decimals);
 
-
         Some(NormalizedSwap {
             protocol: Protocol::BalancerV1,
             trace_index,
