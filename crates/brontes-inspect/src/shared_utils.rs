@@ -7,7 +7,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    db::{cex::CexExchange, metadata::MetadataCombined},
+    db::{cex::CexExchange, dex::PriceAt, metadata::MetadataCombined},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
     normalized_actions::Actions,
     pair::Pair,
@@ -81,7 +81,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn usd_delta_by_address(
         &self,
         tx_position: usize,
-        post_state: bool,
+        at: PriceAt,
         deltas: &SwapTokenDeltas,
         metadata: Arc<MetadataCombined>,
         cex: bool,
@@ -98,7 +98,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     metadata
                         .dex_quotes
                         .price_at_or_before(pair, tx_position)
-                        .map(|price| if post_state { price.post_state } else { price.pre_state })?
+                        .map(|price| price.get_price(at))?
+                        .clone()
                 };
 
                 let usd_amount = amount.clone() * price.clone();
@@ -113,7 +114,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn calculate_dex_usd_amount(
         &self,
         block_position: usize,
-        post_state: bool,
+        at: PriceAt,
         token_address: Address,
         amount: &Rational,
         metadata: &Arc<MetadataCombined>,
@@ -127,7 +128,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             metadata
                 .dex_quotes
                 .price_at_or_before(pair, block_position)?
-                .get_price(post_state)
+                .get_price(at)
                 * amount,
         )
     }
@@ -135,7 +136,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn get_dex_usd_price(
         &self,
         block_position: usize,
-        post_state: bool,
+        at: PriceAt,
         token_address: Address,
         metadata: Arc<MetadataCombined>,
     ) -> Option<Rational> {
@@ -147,7 +148,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata
             .dex_quotes
             .price_at_or_before(pair, block_position)
-            .map(|price| if post_state { price.post_state } else { price.pre_state })
+            .map(|price| price.get_price(at))
     }
 
     pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
@@ -161,7 +162,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         info: &TxInfo,
         profit_usd: f64,
-        post_state: bool,
+        at: PriceAt,
         actions: &Vec<Vec<Actions>>,
         gas_details: &Vec<GasDetails>,
         metadata: Arc<MetadataCombined>,
@@ -170,7 +171,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         let token_profits = self
             .get_profit_collectors(
                 info.tx_index,
-                post_state,
+                at,
                 actions,
                 metadata.clone(),
                 mev_type.use_cex_pricing_for_deltas(),
@@ -197,19 +198,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn get_dex_revenue_usd(
         &self,
         tx_index: u64,
-        post_state: bool,
+        at: PriceAt,
         bundle_actions: &Vec<Vec<Actions>>,
         metadata: Arc<MetadataCombined>,
     ) -> Option<Rational> {
         let deltas = self.calculate_token_deltas(bundle_actions);
 
-        let addr_usd_deltas = self.usd_delta_by_address(
-            tx_index as usize,
-            post_state,
-            &deltas,
-            metadata.clone(),
-            false,
-        )?;
+        let addr_usd_deltas =
+            self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), false)?;
         Some(
             addr_usd_deltas
                 .values()
@@ -220,37 +216,25 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn get_profit_collectors(
         &self,
         tx_index: u64,
-        post_state: bool,
+        at: PriceAt,
         bundle_actions: &Vec<Vec<Actions>>,
         metadata: Arc<MetadataCombined>,
         pricing: bool,
     ) -> Option<TokenProfits> {
         let deltas = self.calculate_token_deltas(bundle_actions);
 
-        let addr_usd_deltas = self.usd_delta_by_address(
-            tx_index as usize,
-            post_state,
-            &deltas,
-            metadata.clone(),
-            pricing,
-        )?;
+        let addr_usd_deltas =
+            self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), pricing)?;
 
         let profit_collectors = self.profit_collectors(&addr_usd_deltas);
 
-        Some(self.get_token_profits(
-            tx_index,
-            post_state,
-            metadata,
-            profit_collectors,
-            deltas,
-            pricing,
-        ))
+        Some(self.get_token_profits(tx_index, at, metadata, profit_collectors, deltas, pricing))
     }
 
     pub fn get_token_profits(
         &self,
         tx_index: u64,
-        post_state: bool,
+        at: PriceAt,
         metadata: Arc<MetadataCombined>,
         profit_collectors: Vec<Address>,
         deltas: SwapTokenDeltas,
@@ -268,7 +252,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 let usd_value = if use_cex_pricing {
                     self.get_cex_usd_value(*token, amount.clone(), &metadata)
                 } else {
-                    self.get_dex_usd_value(*token, post_state, amount.clone(), tx_index, &metadata)
+                    self.get_dex_usd_value(*token, at, amount.clone(), tx_index, &metadata)
                 };
 
                 TokenProfit {
@@ -301,7 +285,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     fn get_dex_usd_value(
         &self,
         token: Address,
-        post_state: bool,
+        at: PriceAt,
         amount: Rational,
         tx_index: u64,
         metadata: &MetadataCombined,
@@ -309,7 +293,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata
             .dex_quotes
             .price_at_or_before(Pair(token, self.quote), tx_index as usize)
-            .map(|price| if post_state { price.post_state } else { price.pre_state })
+            .map(|price| price.get_price(at).clone())
             .unwrap_or_default()
             * amount
     }
