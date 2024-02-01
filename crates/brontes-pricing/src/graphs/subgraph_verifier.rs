@@ -76,7 +76,6 @@ impl SubgraphVerifier {
         query_state
     }
 
-    /// this isn't the most optimal. However will do for now
     pub fn verify_subgraph_on_new_path_failure(&mut self, pair: Pair) -> Option<Vec<Pair>> {
         let state = self.subgraph_verification_state.get_mut(&pair)?;
         Some(state.sorted_ignore_nodes_by_liquidity())
@@ -313,6 +312,7 @@ impl SubgraphVerificationState {
 
     fn add_edge_with_liq(&mut self, addr: Address, bad_edge: BadEdge) {
         if !self.removed_recusing.contains_key(&bad_edge.pair) {
+            tracing::info!(?bad_edge, "adding liq node");
             self.edges.0.entry(addr).or_default().insert(bad_edge);
         }
     }
@@ -333,6 +333,8 @@ impl SubgraphVerificationState {
             .pop()
             .unwrap()
             .clone();
+
+        tracing::info!(?most_liquid, "adding liqudity to search path");
 
         self.edges.0.retain(|_, node| {
             node.retain(|edge| edge.pool_address != most_liquid.pool_address);
