@@ -497,7 +497,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
     }
 
     fn rundown(&mut self, pair: Pair, block: u64) {
-        tracing::info!(?pair, "rundown started");
 
         let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair)
             else {
@@ -523,7 +522,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                     };
 
                 if !need_state {
-                    info!(?pair, "recusing has edges");
                     self.try_verify_subgraph(vec![(block, id, pair)]);
                 }
                 break;
