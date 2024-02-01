@@ -12,11 +12,10 @@ use brontes_types::{
     GasDetails, ToFloatNearest, TxInfo,
 };
 use itertools::Itertools;
-use malachite::{Rational};
+use malachite::Rational;
 
 use crate::{
-    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector,
-    MetadataCombined,
+    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector, MetadataCombined,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -48,7 +47,13 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
-                |PossibleJit { eoa: _, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
+                |PossibleJit {
+                     eoa: _,
+                     frontrun_tx,
+                     backrun_tx,
+                     mev_executor_contract,
+                     victims,
+                 }| {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
