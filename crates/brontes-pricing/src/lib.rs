@@ -483,7 +483,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 return
             }
 
-            tracing::info!(?pair, "rundown started")
+            tracing::info!(?pair, "rundown started");
 
             let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair)
             else {
