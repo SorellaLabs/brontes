@@ -3,6 +3,10 @@ use std::{
     fs::File,
     io::Write,
     pin::Pin,
+    sync::{
+        atomic::{AtomicBool, Ordering::SeqCst},
+        Arc,
+    },
     task::{Context, Poll},
 };
 
@@ -39,6 +43,7 @@ pub struct RangeExecutorWithPricing<
 > {
     parser:     &'db Parser<'db, T, DB>,
     classifier: &'db Classifier<'db, T, DB>,
+    finished:   Arc<AtomicBool>,
 
     collection_future: Option<CollectionFut<'db>>,
     pricer:            WaitingForPricerFuture<T>,
@@ -71,6 +76,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         classifier: &'db Classifier<'db, T, DB>,
         rx: UnboundedReceiver<DexPriceMsg>,
     ) -> Self {
+        let finished = Arc::new(AtomicBool::new(false));
         let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
         let rest_pairs = libmdbx
@@ -97,6 +103,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         );
 
         let pricer = BrontesBatchPricer::new(
+            finished.clone(),
             quote_asset,
             pair_graph,
             rx,
@@ -108,6 +115,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         let pricer = WaitingForPricerFuture::new(pricer, task_executor);
 
         Self {
+            finished,
             collection_future: None,
             processing_futures: FuturesUnordered::default(),
             parser,
@@ -251,7 +259,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
             // could take multiple polls until the pricing is done for the final
             // block.
             if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
-                self.classifier.close();
+                self.finished.store(true, SeqCst);
             }
             // poll insertion
             while let Poll::Ready(Some(missed_arbs)) = self.processing_futures.poll_next_unpin(cx) {
