@@ -111,7 +111,7 @@ impl fmt::Display for MevBlock {
             )?;
         }
 
-        writeln!(f, "\n{}: {}", "Missed Mev".bold().red().underline(), self.possible_mev)?;
+        // writeln!(f, "\n{}: {}", "Missed Mev".bold().red().underline(), self.possible_mev)?;
         // Footer
         writeln!(f, "{:-<72}", "")
     }
