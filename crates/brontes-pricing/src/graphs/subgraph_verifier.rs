@@ -133,12 +133,6 @@ impl SubgraphVerifier {
                     self.store_edges_with_liq(pair, &result.removals, all_graph);
                 }
 
-                // mark edges that are the only edge in the graph
-                self.subgraph_verification_state
-                    .entry(pair)
-                    .or_default()
-                    .process_only_edge_state(result.was_only_edge_state);
-
                 // state that we want to be ignored on the next graph search.
                 let mut ignores = self
                     .subgraph_verification_state
@@ -227,11 +221,10 @@ impl SubgraphVerifier {
                     quote,
                     edge_state,
                     all_graph,
-                    &self
-                        .subgraph_verification_state
+                    self.subgraph_verification_state
                         .get(&pair)
                         .unwrap_or(&default)
-                        .best_edge_nodes,
+                        .get_recusing_nodes(),
                     &self
                         .subgraph_verification_state
                         .get(&pair)
@@ -300,10 +293,6 @@ pub struct SubgraphVerificationState {
     /// if we don't find a edge with the wanted amount of liquidity,
     /// we can lookup the edge with the best liquidity.
     edges:            EdgesWithLiq,
-    /// graph edge to the pair that we allow for low liquidity price calcs.
-    /// this is stored seperate as it is possible to have multiple iterations
-    /// where we have more than one path hop that is low liquidity.
-    best_edge_nodes:  HashMap<Pair, Address>,
     /// when we are recusing we remove most liquidity edges until we find a
     /// proper path. However we want to make sure on recusion that these
     /// don't get removed
@@ -339,7 +328,8 @@ impl SubgraphVerificationState {
             .sorted_by(|a, b| a.1.cmp(&b.1))
             .map(|n| n.0)
             .collect::<Vec<_>>()
-            .remove(0).clone();
+            .remove(0)
+            .clone();
 
         self.edges.0.retain(|_, node| {
             node.retain(|edge| edge.pool_address != most_liquid.pool_address);
@@ -359,19 +349,8 @@ impl SubgraphVerificationState {
             .0
             .values()
             .flatten()
-            .filter_map(|node| (!self.best_edge_nodes.contains_key(&node.pair)).then(|| node.pair))
+            .map(|node| node.pair)
             .collect::<HashSet<_>>()
-    }
-
-    /// takes the edge state that is isolated, check for other paths from
-    /// the given edge and then set the pair that has the max liquidity
-    fn process_only_edge_state(&mut self, state: HashSet<Address>) {
-        state.into_iter().for_each(|addr| {
-            if let Some(best_edge) = self.edges.max_liq_for_edge(&addr) {
-                self.best_edge_nodes
-                    .insert(best_edge.pair, best_edge.pool_address);
-            }
-        });
     }
 }
 
