@@ -1,4 +1,4 @@
-use alloy_primitives::{Uint, U256};
+use alloy_primitives::Uint;
 
 pub const RUINT_ZERO: Uint<256, 4> = Uint::ZERO;
 pub const RUINT_ONE: Uint<256, 4> = Uint::<256, 4>::from_limbs([1, 0, 0, 0]);

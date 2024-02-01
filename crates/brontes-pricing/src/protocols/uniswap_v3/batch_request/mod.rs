@@ -1,8 +1,7 @@
 use std::{sync::Arc, vec};
 
-use alloy_primitives::FixedBytes;
 use alloy_sol_macro::sol;
-use alloy_sol_types::{SolCall, SolValue};
+use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
 use futures::join;
 use reth_rpc_types::{CallInput, CallRequest};

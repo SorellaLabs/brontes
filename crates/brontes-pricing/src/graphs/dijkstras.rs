@@ -13,7 +13,7 @@ use indexmap::{
     IndexMap,
 };
 use pathfinding::num_traits::Zero;
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+use rustc_hash::FxHasher;
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
@@ -102,6 +102,7 @@ pub(crate) fn dijkstra_internal<N, C, E, FN, IN, FS, PV>(
     successors: &mut FN,
     path_value: &mut PV,
     success: &mut FS,
+    max_iter: usize,
 ) -> Option<(Vec<E>, Vec<N>, C)>
 where
     N: Eq + Hash + Clone,
@@ -112,7 +113,7 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FS: FnMut(&N) -> bool,
 {
-    let (parents, reached) = run_dijkstra(start, successors, path_value, success);
+    let (parents, reached) = run_dijkstra(start, successors, path_value, success, max_iter);
     reached.map(|target| {
         (
             reverse_path(&parents, |&(p, ..)| p, |_, (_, _, e)| e, target),
@@ -127,6 +128,7 @@ fn run_dijkstra<N, C, E, FN, IN, FS, PV>(
     successors: &mut FN,
     path_value: &mut PV,
     stop: &mut FS,
+    max_iter: usize,
 ) -> (FxIndexMap<N, (usize, C, E)>, Option<usize>)
 where
     N: Eq + Hash + Clone,
@@ -137,6 +139,7 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FS: FnMut(&N) -> bool,
 {
+    let mut i = 0usize;
     let mut visited = HashSet::new();
     let mut to_see = BinaryHeap::new();
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0 });
@@ -144,6 +147,11 @@ where
     parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
     let mut target_reached = None;
     while let Some(SmallestHolder { cost, index }) = to_see.pop() {
+        if i == max_iter {
+            tracing::debug!("max iter on dijkstra hit");
+            break
+        }
+
         let (node, _) = parents.get_index(index).unwrap();
         if visited.contains(node) {
             continue
@@ -157,6 +165,8 @@ where
         let base_node = node.clone();
 
         for (successor, move_cost) in successors {
+            i += 1;
+
             if visited.contains(&successor) {
                 continue
             }
