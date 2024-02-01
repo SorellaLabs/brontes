@@ -95,11 +95,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     // Fetch CEX price
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
                 } else {
-                    if at == PriceAt::Lowest {
-                        if amount.lt(&Rational::ZERO) {
-                            at = PriceAt::Highest;
-                        }
-                    }
                     metadata
                         .dex_quotes
                         .price_at_or_before(pair, tx_position)
