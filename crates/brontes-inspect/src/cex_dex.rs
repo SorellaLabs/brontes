@@ -3,13 +3,11 @@ use std::sync::Arc;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::cex::CexExchange,
-    mev::{
-        Bundle, BundleData, CexDex, MevType, StatArbDetails, StatArbPnl, TokenProfit, TokenProfits,
-    },
+    mev::{Bundle, BundleData, CexDex, MevType, StatArbDetails, StatArbPnl},
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    Root, ToFloatNearest,
+    ToFloatNearest, TxInfo,
 };
 use malachite::{
     num::basic::traits::{Two, Zero},
@@ -19,7 +17,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 use tracing::debug;
 
-use crate::{shared_utils::SharedInspectorUtils, BundleHeader, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
     inner:         SharedInspectorUtils<'db, DB>,
@@ -51,104 +49,48 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
             .into_par_iter()
             .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
-                let root = tree.get_root(tx)?;
+                let tx_info = tree.get_tx_info(tx)?;
 
-                self.process_swaps(root, meta_data.clone(), swaps)
+                let swaps_with_profit_by_exchange: Vec<(
+                    NormalizedSwap,
+                    Vec<(CexExchange, Rational, StatArbPnl)>,
+                )> = swaps
+                    .into_iter()
+                    .filter_map(|action| {
+                        let swap = action.force_swap();
+
+                        let cex_dex_opportunity =
+                            self.detect_cex_dex_opportunity(&swap, meta_data.as_ref())?;
+
+                        Some((swap, cex_dex_opportunity))
+                    })
+                    .collect();
+
+                let possible_cex_dex = self.gas_accounting(
+                    swaps_with_profit_by_exchange,
+                    &tx_info.gas_details,
+                    &meta_data.eth_prices,
+                );
+
+                let cex_dex = self.filter_possible_cex_dex(&possible_cex_dex, &tx_info)?;
+
+                let header = self.inner.build_bundle_header(
+                    &tx_info,
+                    possible_cex_dex.pnl.taker_profit.clone().to_float(),
+                    true,
+                    &vec![possible_cex_dex.get_swaps()],
+                    &vec![tx_info.gas_details],
+                    meta_data.clone(),
+                    MevType::CexDex,
+                );
+
+                Some(Bundle { header, data: cex_dex })
             })
             .collect::<Vec<_>>()
     }
 }
 
 impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
-    fn process_swaps(
-        &self,
-        root: &Root<Actions>,
-        metadata: Arc<MetadataCombined>,
-        swaps: Vec<Actions>,
-    ) -> Option<Bundle> {
-        let tx_index = root.get_block_position();
-        let gas_details = root.gas_details;
-        let mev_contract = root.head.data.get_to_address();
-        let eoa = root.head.address;
-
-        let swaps_with_profit_by_exchange: Vec<(
-            NormalizedSwap,
-            Vec<(CexExchange, Rational, StatArbPnl)>,
-        )> = swaps
-            .into_iter()
-            .filter_map(|action| {
-                let swap = action.force_swap();
-
-                let cex_dex_opportunity =
-                    self.detect_cex_dex_opportunity(&swap, metadata.as_ref())?;
-
-                Some((swap, cex_dex_opportunity))
-            })
-            .collect();
-
-        let possible_cex_dex =
-            self.gas_accounting(swaps_with_profit_by_exchange, &gas_details, &metadata.eth_prices);
-
-        let cex_dex = self.filter_possible_cex_dex(&possible_cex_dex, root)?;
-
-        let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
-
-        //TODO: this is an ugly hack, will have to refactor so we don't reclone the
-        // swaps
-        let deltas = self.inner.calculate_token_deltas(&vec![possible_cex_dex
-            .swaps
-            .iter()
-            .map(|s| Actions::Swap(s.clone()))
-            .collect()]);
-
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(tx_index, true, &deltas, metadata.clone(), true)?;
-
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
-
-        let token_profits = TokenProfits {
-            profits: mev_profit_collector
-                .iter()
-                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
-                .flat_map(|(address, delta)| {
-                    delta.iter().map(|(token, amount)| {
-                        let usd_value = metadata
-                            .cex_quotes
-                            .get_quote(&Pair(*token, self.inner.quote), &CexExchange::Binance)
-                            .unwrap_or_default()
-                            .price
-                            .1
-                            .to_float()
-                            * amount.clone().to_float();
-                        TokenProfit {
-                            profit_collector: *address,
-                            token: *token,
-                            amount: amount.clone().to_float(),
-                            usd_value,
-                        }
-                    })
-                })
-                .collect(),
-        };
-
-        //TODO: Add clean bundle header contructor in shared utils
-        let header = BundleHeader {
-            tx_index: tx_index as u64,
-            mev_profit_collector,
-            tx_hash: root.tx_hash,
-            mev_contract,
-            eoa,
-            block_number: metadata.block_num,
-            mev_type: MevType::CexDex,
-            profit_usd: 0.0,
-            token_profits,
-            bribe_usd: gas_finalized.to_float(),
-        };
-
-        Some(Bundle { header, data: cex_dex })
-    }
-
     pub fn detect_cex_dex_opportunity(
         &self,
         swap: &NormalizedSwap,
@@ -299,7 +241,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     fn filter_possible_cex_dex(
         &self,
         possible_cex_dex: &PossibleCexDex,
-        root: &Root<Actions>,
+        info: &TxInfo,
     ) -> Option<BundleData> {
         // Check for positive pnl (either maker or taker profit)
         let has_positive_pnl = possible_cex_dex.pnl.maker_profit > Rational::ZERO
@@ -307,17 +249,13 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         // A cex-dex bot will never be verified, so if the top level call is classified
         // this is false positive
-        let is_unclassified_action = root.head.data.is_unclassified();
-
-        // Check if it is a known cex_dex contract / contract call
-        let is_known_cex_dex_contract =
-            matches!(&root.head.data, Actions::Unclassified(data) if data.is_cex_dex_call());
+        let is_unclassified_action = info.is_classifed;
 
         if (has_positive_pnl || possible_cex_dex.gas_details.coinbase_transfer.is_some())
             && is_unclassified_action
-            || is_known_cex_dex_contract
+            || info.is_cex_dex_call
         {
-            Some(possible_cex_dex.build_cex_dex_type(root))
+            Some(possible_cex_dex.build_cex_dex_type(info))
         } else {
             None
         }
@@ -332,9 +270,16 @@ pub struct PossibleCexDex {
 }
 
 impl PossibleCexDex {
-    pub fn build_cex_dex_type(&self, root: &Root<Actions>) -> BundleData {
+    pub fn get_swaps(&self) -> Vec<Actions> {
+        self.swaps
+            .iter()
+            .map(|s| Actions::Swap(s.clone()))
+            .collect()
+    }
+
+    pub fn build_cex_dex_type(&self, info: &TxInfo) -> BundleData {
         BundleData::CexDex(CexDex {
-            tx_hash:          root.tx_hash,
+            tx_hash:          info.tx_hash,
             gas_details:      self.gas_details.clone(),
             swaps:            self.swaps.clone(),
             stat_arb_details: self.arb_details.clone(),

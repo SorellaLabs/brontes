@@ -9,7 +9,11 @@ use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, fixed_string::FixedString, Row};
 
 use super::Node;
-use crate::{normalized_actions::NormalizedAction, tree::MetadataNoDex};
+use crate::{
+    normalized_actions::{Actions, NormalizedAction},
+    tree::MetadataNoDex,
+    TxInfo,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
@@ -21,6 +25,22 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
+    pub fn get_tx_info(&self, block_number: u64) -> TxInfo {
+        TxInfo::new(
+            block_number,
+            self.position as u64,
+            self.head.address,
+            self.head.data.get_action().get_to_address(),
+            self.tx_hash,
+            self.gas_details,
+            self.private,
+            matches!(
+                self.head.data.get_action(),
+                Actions::Unclassified(data) if data.is_cex_dex_call()
+            ),
+        )
+    }
+
     pub fn get_block_position(&self) -> usize {
         self.position
     }
