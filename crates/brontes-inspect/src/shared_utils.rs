@@ -97,7 +97,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 } else {
                     if at == PriceAt::Lowest {
                         if amount.lt(&Rational::ZERO) {
-                            at = PriceAt::Max;
+                            at = PriceAt::Highest;
                         }
                     }
                     metadata
