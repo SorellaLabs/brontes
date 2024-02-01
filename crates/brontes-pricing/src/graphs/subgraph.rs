@@ -46,6 +46,7 @@ pub struct BadEdge {
 #[derive(Debug, Default)]
 struct BfsArgs {
     pub removal_state: HashMap<Pair, HashSet<BadEdge>>,
+    pub remove_all:    HashSet<Pair>,
 }
 
 const MIN_LIQUIDITY_USDC: u128 = 50_000;
@@ -257,8 +258,7 @@ impl PairSubGraph {
             tracing::error!("invalid subgraph was given");
         }
 
-        let mut result =
-            self.run_bfs_with_liquidity_params(start, &state);
+        let mut result = self.run_bfs_with_liquidity_params(start, &state);
 
         self.prune_subgraph(&result.removal_state);
 
