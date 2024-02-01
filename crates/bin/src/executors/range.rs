@@ -259,7 +259,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
             // could take multiple polls until the pricing is done for the final
             // block.
             if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
-                finished.store(true, SeqCst);
+                self.finished.store(true, SeqCst);
             }
             // poll insertion
             while let Poll::Ready(Some(missed_arbs)) = self.processing_futures.poll_next_unpin(cx) {
