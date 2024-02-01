@@ -7,7 +7,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    Root, TxInfo,
+    ToFloatNearest, TxInfo,
 };
 use malachite::{
     num::basic::traits::{Two, Zero},
@@ -75,11 +75,11 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                 let cex_dex = self.filter_possible_cex_dex(&possible_cex_dex, &tx_info)?;
 
                 let header = self.inner.build_bundle_header(
-                    tx_info,
-                    possible_cex_dex.pnl.taker_profit,
+                    &tx_info,
+                    possible_cex_dex.pnl.taker_profit.clone().to_float(),
                     &vec![possible_cex_dex.get_swaps()],
-                    &vec![gas_details],
-                    meta_data,
+                    &vec![tx_info.gas_details],
+                    meta_data.clone(),
                     MevType::CexDex,
                 );
 
@@ -250,13 +250,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         // this is false positive
         let is_unclassified_action = info.is_classifed;
 
-        // Check if it is a known cex_dex contract / contract call
-        let is_known_cex_dex_contract =
-            matches!(&root.head.data, Actions::Unclassified(data) if data.is_cex_dex_call());
-
         if (has_positive_pnl || possible_cex_dex.gas_details.coinbase_transfer.is_some())
             && is_unclassified_action
-            || is_known_cex_dex_contract
+            || info.is_cex_dex_call
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
         } else {
@@ -280,7 +276,7 @@ impl PossibleCexDex {
             .collect()
     }
 
-    pub fn build_cex_dex_type(&self, info: TxInfo) -> BundleData {
+    pub fn build_cex_dex_type(&self, info: &TxInfo) -> BundleData {
         BundleData::CexDex(CexDex {
             tx_hash:          info.tx_hash,
             gas_details:      self.gas_details.clone(),

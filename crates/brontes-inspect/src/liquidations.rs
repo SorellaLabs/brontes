@@ -83,22 +83,17 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             return None
         }
 
-        let deltas = self.inner.calculate_token_deltas(&vec![actions]);
-        let swap_profit = self
-            .inner
-            .usd_delta_by_address(idx, &deltas, metadata.clone(), false)?;
-
         let liq_profit = liqs
             .par_iter()
             .filter_map(|liq| {
                 let repaid_debt_usd = self.inner.calculate_dex_usd_amount(
-                    idx,
+                    info.tx_index as usize,
                     liq.debt_asset.address,
                     &liq.covered_debt,
                     &metadata,
                 )?;
                 let collected_collateral = self.inner.calculate_dex_usd_amount(
-                    idx,
+                    info.tx_index as usize,
                     liq.collateral_asset.address,
                     &liq.liquidated_collateral,
                     &metadata,
@@ -107,30 +102,30 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             })
             .sum::<Rational>();
 
-        let rev_usd = swap_profit
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta)
-            + liq_profit;
+        let rev_usd =
+            self.inner
+                .get_dex_revenue_usd(info.tx_index, &vec![actions.clone()], metadata.clone())
+                + liq_profit;
 
-        let gas_finalized = metadata.get_gas_price_usd(gas_details.gas_paid());
+        let gas_finalized = metadata.get_gas_price_usd(info.gas_details.gas_paid());
 
-        let profit_usd = rev_usd - &gas_finalized;
+        let profit_usd = (rev_usd - &gas_finalized).to_float();
 
         let header = self.inner.build_bundle_header(
-            info,
+            &info,
             profit_usd,
-            actions,
+            &vec![actions],
             &vec![info.gas_details],
             metadata,
             MevType::Liquidation,
         );
 
         let new_liquidation = Liquidation {
-            liquidation_tx_hash: tx_hash,
+            liquidation_tx_hash: info.tx_hash,
             trigger:             b256!(),
             liquidation_swaps:   swaps,
             liquidations:        liqs,
-            gas_details:         gas_details.clone(),
+            gas_details:         info.gas_details.clone(),
         };
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })

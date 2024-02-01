@@ -9,7 +9,11 @@ use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, fixed_string::FixedString, Row};
 
 use super::Node;
-use crate::{normalized_actions::NormalizedAction, tree::MetadataNoDex, TxInfo};
+use crate::{
+    normalized_actions::{Actions, NormalizedAction},
+    tree::MetadataNoDex,
+    TxInfo,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
@@ -30,6 +34,10 @@ impl<V: NormalizedAction> Root<V> {
             self.tx_hash,
             self.gas_details,
             self.private,
+            matches!(
+                self.head.data.get_action(),
+                Actions::Unclassified(data) if data.is_cex_dex_call()
+            ),
         )
     }
 

@@ -77,18 +77,12 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         self.is_possible_arb(swaps)?;
 
-        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
-
-        let addr_usd_deltas =
+        let rev_usd =
             self.inner
-                .usd_delta_by_address(info.tx_index, &deltas, metadata.clone(), false)?;
+                .get_dex_revenue_usd(info.tx_index, &searcher_actions, metadata.clone());
 
-        let rev_usd = addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        let gas_used = gas_details.gas_paid();
-        let gas_used_usd = info.metadata.get_gas_price_usd(gas_used);
+        let gas_used = info.gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
         // Can change this later to check if people are subsidising arbs to kill ops for
         // competitors
@@ -97,7 +91,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         }
 
         let header = self.inner.build_bundle_header(
-            info,
+            &info,
             (rev_usd - &gas_used_usd).to_float(),
             &searcher_actions,
             &vec![info.gas_details],
@@ -112,7 +106,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             .map(|s| s.force_swap())
             .collect::<Vec<_>>();
 
-        let backrun = AtomicBackrun { tx_hash, gas_details, swaps };
+        let backrun = AtomicBackrun { tx_hash: info.tx_hash, gas_details: info.gas_details, swaps };
 
         Some(Bundle { header, data: BundleData::AtomicBackrun(backrun) })
     }
