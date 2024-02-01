@@ -366,8 +366,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
 
-            let pairs = self.lazy_loader.pairs_to_verify();
-            self.try_verify_subgraph(pairs);
         } else if let LoadResult::Err { pool_address, pool_pair, block, dependent_pairs } =
             load_result
         {
@@ -723,6 +721,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
             self.on_pool_resolve(state)
         }
+
+        let pairs = self.lazy_loader.pairs_to_verify();
+        self.try_verify_subgraph(pairs);
 
         // check if we can progress to the next block.
         self.try_resolve_block()
