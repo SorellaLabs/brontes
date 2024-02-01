@@ -34,7 +34,7 @@ pub struct VerificationOutcome {
     pub frayed_ends:    Vec<Address>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq,  Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct BadEdge {
     pub pair:         Pair,
     pub pool_address: Address,
@@ -284,6 +284,7 @@ impl PairSubGraph {
             if let Some(removal) =
                 self.should_prune_anyways(start, &state, all_pair_graph, allowed_low_liq_nodes)
             {
+                self.prune_subgraph(&removal);
                 disjoint = true;
                 for (k, v) in removal {
                     result.removal_state.entry(k).or_default().extend(v);
@@ -443,7 +444,7 @@ impl PairSubGraph {
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
         allowed_low_liq_nodes: &HashMap<Pair, Address>,
-    ) -> Option<HashMap<Pair, Vec<BadEdge>>> {
+    ) -> Option<HashMap<Pair, HashSet<BadEdge>>> {
         let (mut path_no_low_liq, bad_pairs) = self.bfs_with_price(
             start,
             |is_outgoing,
@@ -451,7 +452,7 @@ impl PairSubGraph {
              prev_price,
              prev_paths: &mut (
                 HashMap<Address, Vec<(usize, Address)>>,
-                HashMap<Pair, Vec<BadEdge>>,
+                HashMap<Pair, HashSet<BadEdge>>,
             )| {
                 let (prev_paths, bad_pairs) = prev_paths;
                 let mut pxw = Rational::ZERO;
@@ -489,7 +490,7 @@ impl PairSubGraph {
                             edge_liq: info.get_token_with_direction(!is_outgoing),
                             liquidity: liq,
                         };
-                        bad_pairs.entry(pair).or_default().push(bad_edge);
+                        bad_pairs.entry(pair).or_default().insert(bad_edge);
                         continue
                     } else {
                         let t0xt1 = &t0 * &t1;
