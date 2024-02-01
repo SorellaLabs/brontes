@@ -1,7 +1,7 @@
+mod graphs;
+mod price_graph_types;
 pub mod protocols;
 pub mod types;
-use brontes_types::db::token_info::TokenInfoWithAddress;
-use malachite::num::basic::traits::Zero;
 
 #[cfg(test)]
 pub mod test_utils;
@@ -12,28 +12,29 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_primitives::{Address};
+use alloy_primitives::Address;
 use brontes_types::{
-    db::dex::DexPrices,
+    db::{
+        dex::{DexPrices, DexQuotes},
+        token_info::TokenInfoWithAddress,
+    },
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     traits::TracingProvider,
 };
+use futures::{Stream, StreamExt};
 pub use graphs::{AllPairGraph, GraphManager, VerificationResults};
 use itertools::Itertools;
-use malachite::{num::basic::traits::One, Rational};
+use malachite::{
+    num::basic::traits::{One, Zero},
+    Rational,
+};
 pub use price_graph_types::{
     PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
 };
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-
-mod graphs;
-mod price_graph_types;
-
-use brontes_types::db::dex::DexQuotes;
-use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{error, info};
 use types::{DexPriceMsg, DiscoveredPool, PoolUpdate};
