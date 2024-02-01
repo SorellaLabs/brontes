@@ -2,19 +2,17 @@ use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    mev::{AtomicBackrun, Bundle, MevType, TokenProfit, TokenProfits},
+    mev::{AtomicBackrun, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap},
-    tree::{BlockTree, GasDetails},
-    ToFloatNearest,
+    tree::BlockTree,
+    ToFloatNearest, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address, B256};
+use reth_primitives::Address;
 
-use crate::{
-    shared_utils::SharedInspectorUtils, BundleData, BundleHeader, Inspector, MetadataCombined,
-};
+use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, MetadataCombined};
 
 pub struct AtomicBackrunInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -45,19 +43,9 @@ impl<DB: LibmdbxReader> Inspector for AtomicBackrunInspector<'_, DB> {
         intersting_state
             .into_par_iter()
             .filter_map(|(tx, swaps)| {
-                let gas_details = tree.get_gas_details(tx)?.clone();
-                let root = tree.get_root(tx)?;
-                let idx = root.get_block_position();
+                let info = tree.get_tx_info(tx)?;
 
-                self.process_swaps(
-                    tx,
-                    idx,
-                    root.head.address,
-                    root.head.data.get_to_address(),
-                    meta_data.clone(),
-                    gas_details,
-                    vec![swaps],
-                )
+                self.process_swaps(info, meta_data.clone(), vec![swaps])
             })
             .collect::<Vec<_>>()
     }
@@ -66,12 +54,8 @@ impl<DB: LibmdbxReader> Inspector for AtomicBackrunInspector<'_, DB> {
 impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
     fn process_swaps(
         &self,
-        tx_hash: B256,
-        idx: usize,
-        eoa: Address,
-        mev_contract: Address,
+        info: TxInfo,
         metadata: Arc<MetadataCombined>,
-        gas_details: GasDetails,
         searcher_actions: Vec<Vec<Actions>>,
     ) -> Option<Bundle> {
         let swaps = searcher_actions
@@ -92,41 +76,14 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         self.is_possible_arb(swaps)?;
 
-        let deltas = self.inner.calculate_token_deltas(&searcher_actions);
+        let rev_usd = self.inner.get_dex_revenue_usd(
+            info.tx_index,
+            false,
+            &searcher_actions,
+            metadata.clone(),
+        )?;
 
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(idx, false, &deltas, metadata.clone(), false)?;
-
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
-
-        let token_profits = TokenProfits {
-            profits: deltas
-                .iter()
-                .flat_map(|(address, delta)| {
-                    delta.iter().map(|(token, amount)| {
-                        let usd_value = self
-                            .inner
-                            .get_dex_usd_price(idx, false, *token, metadata.clone())
-                            .unwrap_or_default()
-                            .to_float()
-                            * amount.clone().to_float();
-                        TokenProfit {
-                            profit_collector: *address,
-                            token: *token,
-                            amount: amount.clone().to_float(),
-                            usd_value,
-                        }
-                    })
-                })
-                .collect(),
-        };
-
-        let rev_usd = addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        let gas_used = gas_details.gas_paid();
+        let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
         // Can change this later to check if people are subsidising arbs to kill ops for
@@ -135,18 +92,15 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             return None
         }
 
-        let header = BundleHeader {
-            block_number: metadata.block_num,
-            tx_index: idx as u64,
-            tx_hash,
-            eoa,
-            mev_contract,
-            mev_profit_collector,
-            profit_usd: (rev_usd - gas_used_usd.clone()).to_float(),
-            token_profits,
-            bribe_usd: gas_used_usd.to_float(),
-            mev_type: MevType::Backrun,
-        };
+        let header = self.inner.build_bundle_header(
+            &info,
+            (rev_usd - &gas_used_usd).to_float(),
+            false,
+            &searcher_actions,
+            &vec![info.gas_details],
+            metadata,
+            MevType::Backrun,
+        );
 
         let swaps = searcher_actions
             .into_iter()
@@ -155,7 +109,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             .map(|s| s.force_swap())
             .collect::<Vec<_>>();
 
-        let backrun = AtomicBackrun { tx_hash, gas_details, swaps };
+        let backrun = AtomicBackrun { tx_hash: info.tx_hash, gas_details: info.gas_details, swaps };
 
         Some(Bundle { header, data: BundleData::AtomicBackrun(backrun) })
     }
