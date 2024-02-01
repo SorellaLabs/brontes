@@ -498,7 +498,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 } else {
                     if !self.add_subgraph(pair, block, edges) {
                         info!(?pair, "recusing on new path failures");
-                        self.try_verify_subgraph(vec![(block, pair)],true);
+                        self.try_verify_subgraph(vec![(block, pair)], true);
                     }
 
                     return
