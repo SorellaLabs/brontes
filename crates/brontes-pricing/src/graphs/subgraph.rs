@@ -309,6 +309,7 @@ impl PairSubGraph {
                     && !(all_pair_graph.is_only_edge_ignoring(&info.token_0, ignore_list)
                         || all_pair_graph.is_only_edge_ignoring(&info.token_1, ignore_list))
                 {
+                    tracing::info!("removing: {:?}", info.pool_addr);
                     let pair = Pair(info.token_0, info.token_1);
                     let bad_edge = BadEdge {
                         pair,
@@ -351,6 +352,8 @@ impl PairSubGraph {
             // then we do. and recalculate the price
             if possible_remove_pool_addr.len() < i {
                 possible_remove_pool_addr.into_iter().for_each(|bad_edge| {
+
+                    tracing::info!("removing: {:?}", bad_edge.pool_address);
                     removal_map
                         .removal_state
                         .entry(bad_edge.pair.ordered())
