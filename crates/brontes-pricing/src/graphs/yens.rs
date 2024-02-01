@@ -121,7 +121,7 @@ where
     FS: FnMut(&N) -> bool,
 {
     let Some((e, n, c)) =
-        dijkstra_internal(start, &mut successors, &mut path_value, &mut success, max_iters)
+        dijkstra_internal(start, &mut successors, &mut path_value, &mut success, 50_000)
     else {
         return vec![];
     };
