@@ -11,6 +11,8 @@ use super::{
 };
 use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 
+const MAX_ITER_BEFORE_RUNDOWN: usize = 5;
+
 /// [`SubgraphVerifier`] Manages the verification of subgraphs for token pairs
 /// in the BrontesBatchPricer system. It ensures the accuracy and relevance of
 /// subgraphs, which are essential for pricing tokens on DEXs.
@@ -77,7 +79,13 @@ impl SubgraphVerifier {
 
         self.pending_subgraphs.insert(
             pair,
-            Subgraph { subgraph, frayed_end_extensions: HashMap::new(), id: 0, in_rundown: false },
+            Subgraph {
+                subgraph,
+                frayed_end_extensions: HashMap::new(),
+                id: 0,
+                in_rundown: false,
+                iters: 0,
+            },
         );
 
         query_state
@@ -127,12 +135,13 @@ impl SubgraphVerifier {
         block: u64,
         state_tracker: &StateTracker,
         frayed_end_extensions: Vec<SubGraphEdge>,
-    ) -> Option<(Vec<PoolPairInfoDirection>, u64)> {
+    ) -> Option<(Vec<PoolPairInfoDirection>, u64, bool)> {
         Some((
             state_tracker.missing_state(block, &frayed_end_extensions),
             self.pending_subgraphs
                 .get_mut(&pair)?
                 .add_extension(frayed_end_extensions),
+            self.pending_subgraphs.get_mut(&pair)?.iters == MAX_ITER_BEFORE_RUNDOWN,
         ))
     }
 
@@ -199,6 +208,7 @@ impl SubgraphVerifier {
                     let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
                     subgraph.subgraph.extend_subgraph(extensions);
                 }
+                subgraph.iters += 1;
 
                 Some((pair, block, subgraph.in_rundown, subgraph))
             })
@@ -259,6 +269,7 @@ pub struct Subgraph {
     pub frayed_end_extensions: HashMap<u64, Vec<SubGraphEdge>>,
     pub id:                    u64,
     pub in_rundown:            bool,
+    pub iters:                 usize,
 }
 impl Subgraph {
     pub fn add_extension(&mut self, edges: Vec<SubGraphEdge>) -> u64 {
