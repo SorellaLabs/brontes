@@ -128,10 +128,7 @@ impl SubgraphVerifier {
 
         res.into_iter()
             .map(|(pair, block, result, subgraph)| {
-                // store all edges with there liquidity if there the only pool for the pair.
-                if !recursing {
-                    self.store_edges_with_liq(pair, &result.removals, all_graph);
-                }
+                self.store_edges_with_liq(pair, &result.removals, all_graph);
 
                 // state that we want to be ignored on the next graph search.
                 let mut ignores = self
@@ -154,7 +151,7 @@ impl SubgraphVerifier {
                     .collect::<HashMap<_, _>>();
 
                 // recusing but there are no changes. this will cause a infinite loop.
-                if removals.is_empty() && result.should_requery && recursing {
+                if removals.is_empty() && result.should_requery {
                     // we will remove the most liquid single edges until we pass
                     self.subgraph_verification_state
                         .entry(pair)
