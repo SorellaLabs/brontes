@@ -96,7 +96,7 @@ impl SubgraphVerifier {
             .into_iter()
             .filter_map(|(k, v)| {
                 // look for edges that have been complety removed
-                if all_graph.edge_count(k.0, k.1) <= v.len() {
+                if all_graph.edge_count(k.0, k.1) == v.len() {
                     Some(v.clone().into_iter())
                 } else {
                     None
@@ -163,10 +163,13 @@ impl SubgraphVerifier {
                 // all results that should be pruned from our main graph.
                 let removals = result
                     .removals
+                    .clone()
                     .into_iter()
                     .filter(|(k, _)| !(ignores.contains(k) || recusing_ignore.contains_key(k)))
                     .collect::<HashMap<_, _>>();
-
+                if removals.is_empty() && result.should_requery {
+                    tracing::info!("removals {:#?} ignores: {:#?}", result.removals, ignores);
+                }
 
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
