@@ -1,12 +1,10 @@
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use brontes_types::db::{
-    dex::DexQuoteWithIndex,
+    dex::{DexPrices, DexQuoteWithIndex},
     redefined_types::{malachite::Redefined_Rational, primitives::Redefined_Pair},
 };
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::DatabaseError;
-
-use brontes_types::db::dex::DexPrices;
 
 wrap_fixed_bytes!(
     extra_derives: [],

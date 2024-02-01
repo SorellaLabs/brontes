@@ -8,7 +8,6 @@ use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::db::cex::CexExchange;
 use itertools::Itertools;
 use reth_tasks::TaskExecutor;
-
 use strum::IntoEnumIterator;
 use tracing::info;
 
