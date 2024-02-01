@@ -113,7 +113,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
             let usd_amount = amount.clone() * price.clone();
 
-            *usd_deltas.entry(*address).or_insert(Rational::ZERO) += usd_amount;
+            *usd_deltas.entry(address).or_insert(Rational::ZERO) += usd_amount;
         }
 
         Some(usd_deltas)
