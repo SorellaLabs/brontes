@@ -121,6 +121,7 @@ impl SubgraphVerifier {
         quote: Address,
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
+        recursing: bool,
     ) -> Vec<VerificationResults> {
         let pairs = self.get_subgraphs(pair);
         let res = self.verify_par(pairs, quote, all_graph, state_tracker);
@@ -128,7 +129,9 @@ impl SubgraphVerifier {
         res.into_iter()
             .map(|(pair, block, result, subgraph)| {
                 // store all edges with there liquidity if there the only pool for the pair.
-                self.store_edges_with_liq(pair, &result.removals, all_graph);
+                if !recursing {
+                    self.store_edges_with_liq(pair, &result.removals, all_graph);
+                }
 
                 // mark edges that are the only edge in the graph
                 self.subgraph_verification_state
@@ -137,27 +140,39 @@ impl SubgraphVerifier {
                     .process_only_edge_state(result.was_only_edge_state);
 
                 // state that we want to be ignored on the next graph search.
-                let ignores = self
+                let mut ignores = self
                     .subgraph_verification_state
                     .entry(pair)
                     .or_default()
                     .get_nodes_to_ignore();
+
+                let recusing_ignore = self
+                    .subgraph_verification_state
+                    .entry(pair)
+                    .or_default()
+                    .get_recusing_nodes();
 
                 // all results that should be pruned from our main graph.
                 let removals = result
                     .removals
                     .into_iter()
                     .filter(|(k, _)| !ignores.contains(k))
+                    .filter(|(k, _)| if recursing { !recusing_ignore.contains(k) } else { true })
                     .collect::<HashMap<_, _>>();
 
-                if removals.is_empty() && result.should_requery {
-                    tracing::info!(
-                        "{:#?}",
-                        self.subgraph_verification_state
-                            .entry(pair)
-                            .or_default()
-                            .edges
-                    );
+                // recusing but there are no changes. this will cause a infinite loop.
+                if removals.is_empty() && result.should_requery && recursing {
+                    // we will remove the most liquid single edges until we pass
+                    self.subgraph_verification_state
+                        .entry(pair)
+                        .or_default()
+                        .remove_most_liquid_recursing();
+
+                    ignores = self
+                        .subgraph_verification_state
+                        .entry(pair)
+                        .or_default()
+                        .get_nodes_to_ignore();
                 }
 
                 if result.should_requery {
@@ -284,11 +299,15 @@ pub struct SubgraphVerificationState {
     /// contains all fully removed edges. this is so that
     /// if we don't find a edge with the wanted amount of liquidity,
     /// we can lookup the edge with the best liquidity.
-    edges:           EdgesWithLiq,
+    edges:            EdgesWithLiq,
     /// graph edge to the pair that we allow for low liquidity price calcs.
     /// this is stored seperate as it is possible to have multiple iterations
     /// where we have more than one path hop that is low liquidity.
-    best_edge_nodes: HashMap<Pair, Address>,
+    best_edge_nodes:  HashMap<Pair, Address>,
+    /// when we are recusing we remove most liquidity edges until we find a
+    /// proper path. However we want to make sure on recusion that these
+    /// don't get removed
+    removed_recusing: HashSet<Pair>,
 }
 
 impl SubgraphVerificationState {
@@ -307,6 +326,34 @@ impl SubgraphVerificationState {
             .collect_vec()
     }
 
+    fn remove_most_liquid_recursing(&mut self) {
+        let most_liquid = self
+            .edges
+            .0
+            .values()
+            .flat_map(|node| {
+                node.into_iter()
+                    .map(|n| (n, n.liquidity.clone()))
+                    .collect_vec()
+            })
+            .sorted_by(|a, b| a.1.cmp(&b.1))
+            .map(|n| n.0)
+            .collect::<Vec<_>>()
+            .first()
+            .unwrap();
+
+        self.edges.0.retain(|_, node| {
+            node.retain(|edge| edge.pool_address != most_liquid.pool_address);
+            !node.is_empty()
+        });
+
+        self.removed_recusing.insert(most_liquid.pair);
+    }
+
+    fn get_recusing_nodes(&self) -> &HashSet<Pair> {
+        &self.removed_recusing
+    }
+
     /// Grabs all the nodes that we want the graph search to ignore
     fn get_nodes_to_ignore(&self) -> HashSet<Pair> {
         self.edges
@@ -314,7 +361,7 @@ impl SubgraphVerificationState {
             .values()
             .flatten()
             .filter_map(|node| (!self.best_edge_nodes.contains_key(&node.pair)).then(|| node.pair))
-            .collect()
+            .collect::<HashSet<_>>()
     }
 
     /// takes the edge state that is isolated, check for other paths from
