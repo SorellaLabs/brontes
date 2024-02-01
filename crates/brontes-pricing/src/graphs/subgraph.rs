@@ -48,7 +48,7 @@ struct BfsArgs {
     pub removal_state: HashMap<Pair, HashSet<BadEdge>>,
 }
 
-const MIN_LIQUIDITY_USDC: u128 = 25_000;
+const MIN_LIQUIDITY_USDC: u128 = 50_000;
 
 /// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
 /// and optimize the pricing of a particular token pair in a decentralized
