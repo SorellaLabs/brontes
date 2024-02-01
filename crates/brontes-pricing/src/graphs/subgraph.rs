@@ -31,6 +31,7 @@ use crate::{types::ProtocolState, AllPairGraph, Pair};
 pub struct VerificationOutcome {
     pub should_requery: bool,
     pub removals:       HashMap<Pair, HashSet<BadEdge>>,
+    pub frayed_ends:    Vec<Address>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -122,6 +123,40 @@ impl PairSubGraph {
         assert!(comp == 1, "have a disjoint graph {comp} {pair:?}");
 
         Self { pair, graph, start_node, end_node, token_to_index }
+    }
+
+    pub fn extend_subgraph(&mut self, edges: Vec<SubGraphEdge>) {
+        let mut connections: HashMap<(u16, u16), Vec<SubGraphEdge>> = HashMap::new();
+
+        for edge in edges {
+            let token_0 = edge.token_0;
+            let token_1 = edge.token_1;
+
+            // fetch the node or create node it if it doesn't exist
+            let addr0 = *self
+                .token_to_index
+                .entry(token_0)
+                .or_insert_with(|| self.graph.add_node(()).index().try_into().unwrap());
+
+            // fetch the node or create node it if it doesn't exist
+            let addr1 = *self
+                .token_to_index
+                .entry(token_1)
+                .or_insert_with(|| self.graph.add_node(()).index().try_into().unwrap());
+
+            // based on the direction. insert properly
+            if edge.token_0_in {
+                connections.entry((addr0, addr1)).or_default().push(edge);
+            } else {
+                connections.entry((addr1, addr0)).or_default().push(edge);
+            }
+        }
+        self.graph.extend_with_edges(
+            connections
+                .into_par_iter()
+                .map(|((n0, n1), v)| (n0, n1, v))
+                .collect::<Vec<_>>(),
+        );
     }
 
     pub fn get_unordered_pair(&self) -> Pair {
@@ -240,6 +275,10 @@ impl PairSubGraph {
 
         tracing::info!("disjoint: {disjoint}: bad: {}", result.removal_state.len());
 
+        let frayed_ends = disjoint
+            .then(|| self.disjoint_furthest_nodes())
+            .unwrap_or_default();
+
         // if we not disjoint, do a bad pool check.
         if !disjoint {
             if let Some(removal) =
@@ -251,7 +290,11 @@ impl PairSubGraph {
                 }
             }
         }
-        VerificationOutcome { should_requery: disjoint, removals: result.removal_state }
+        VerificationOutcome {
+            should_requery: disjoint,
+            removals: result.removal_state,
+            frayed_ends,
+        }
     }
 
     fn run_bfs_with_liquidity_params<T: ProtocolState>(
@@ -289,9 +332,6 @@ impl PairSubGraph {
 
                 let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
                 let liq0 = prev_price.clone().reciprocal() * &t0;
-
-                let new_unweighted_price = (&pool_price * prev_price).reciprocal();
-                let liq1 = &t1 * &new_unweighted_price;
 
                 let pair = Pair(info.token_0, info.token_1);
                 // check if below liquidity and that if we remove we don't make the graph
@@ -575,6 +615,41 @@ impl PairSubGraph {
         }
 
         result
+    }
+
+    /// given a dijsoint graph. finds the point at which the disjointness
+    /// occurred.
+    fn disjoint_furthest_nodes(&self) -> Vec<Address> {
+        let mut frayed_ends = Vec::new();
+        let mut visited = HashSet::new();
+        let mut visit_next = VecDeque::new();
+
+        visit_next.extend(self.graph.edges(self.start_node.into()));
+
+        while let Some(next_edge) = visit_next.pop_front() {
+            let id = next_edge.id();
+            if visited.contains(&id) {
+                continue
+            }
+            visited.insert(id);
+
+            let next_edges = self.graph.edges(next_edge.target()).collect_vec();
+            if next_edges.is_empty() {
+                let node = next_edge.source().index() as u16;
+                frayed_ends.push(
+                    *self
+                        .token_to_index
+                        .iter()
+                        .find(|(_, idx)| **idx == node)
+                        .unwrap()
+                        .0,
+                );
+                continue
+            }
+            visit_next.extend(next_edges);
+        }
+
+        frayed_ends
     }
 }
 
