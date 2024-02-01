@@ -139,6 +139,19 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         }
     }
 
+    /// Handles pool updates for the BrontesBatchPricer system.
+    ///
+    /// This function processes a vector of `PoolUpdate` messages, updating the
+    /// current block tracking and incorporating new pools into the graph
+    /// manager. It filters updates to identify and add new pools, using
+    /// details such as address, protocol, and pair. The function also
+    /// manages state transitions and pools, buffering state changes by
+    /// block number and adding subgraphs for new pools if they don't
+    /// already exist in the graph manager.
+    ///
+    /// Essentially, it ensures the graph manager remains synchronized with the
+    /// latest block data, maintaining the integrity and accuracy of
+    /// the decentralized exchange pricing mechanism.
     fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
             return
@@ -320,6 +333,21 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             && self.completed_block < self.current_block
     }
 
+    /// Processes the result of lazy pool state loading. It updates the graph
+    /// state or handles errors.
+    ///
+    /// # Behavior
+    /// If the pool state is successfully loaded, the function updates the graph
+    /// manager with the new state. If the pool was initialized in the
+    /// current block and the load result indicates an error, an override is set
+    /// to prevent invalid state application. It then triggers subgraph
+    /// verification for relevant pairs. In case of a load error, it handles
+    /// the error by calling `on_state_load_error`.
+    ///
+    /// # Usage
+    /// This function is used within the system to handle the outcomes of
+    /// asynchronous pool state loading operations, ensuring the graph remains
+    /// accurate and up-to-date.
     fn on_pool_resolve(&mut self, state: LazyResult) {
         let LazyResult { block, state, load_result } = state;
 
@@ -363,6 +391,17 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         });
     }
 
+    /// Attempts to verify subgraphs for a given set of pairs and handles the
+    /// verification results.
+    ///
+    /// # Behavior
+    /// The function triggers subgraph verification for each provided pair and
+    /// block number combination. On successful verification, it prunes bad
+    /// edges from the subgraph and updates the graph manager with the verified
+    /// subgraph. If verification fails, it prunes bad edges and prepares
+    /// the failed pair for requery. After processing the verification
+    /// results, it requeues any pairs that need to be reverified due to failed
+    /// verification.
     fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Pair)>) {
         let requery = self
             .graph_manager
