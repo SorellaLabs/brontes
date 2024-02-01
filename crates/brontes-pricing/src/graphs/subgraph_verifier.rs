@@ -362,23 +362,22 @@ impl SubgraphVerificationState {
             .collect_vec()
     }
 
-    fn highest_liq_for_pair(&self, pair: Pair) -> f64 {
+    fn highest_liq_for_pair(&self, pair: Pair) -> (Address, f64) {
         self.edges
             .0
             .values()
             .flat_map(|node| {
                 node.into_iter()
-                    .map(|n| (n.pair, n.liquidity.clone()))
+                    .map(|n| (n.pair, n.pool_address, n.liquidity.clone()))
                     .collect_vec()
             })
             .unique()
             .filter(|f| f.0 == pair)
-            .sorted_by(|a, b| a.1.cmp(&b.1))
+            .sorted_by(|a, b| a.2.cmp(&b.2))
             .collect_vec()
             .pop()
+            .map(|(_, addr, liq)| (addr, liq.to_float()))
             .unwrap()
-            .1
-            .to_float()
     }
 
     fn add_edge_with_liq(&mut self, addr: Address, bad_edge: BadEdge) {
