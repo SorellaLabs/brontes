@@ -206,6 +206,22 @@ impl SubgraphVerifier {
                 let Some(mut subgraph) = subgraph else { return None };
                 if let Some(frayed) = frayed {
                     let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
+                    if subgraph.in_rundown {
+                        let ignored = self
+                            .subgraph_verification_state
+                            .get(&pair)
+                            .unwrap()
+                            .get_nodes_to_ignore();
+
+                        tracing::info!(
+                            ?pair,
+                            "connected with {:#?}",
+                            ignored
+                                .into_iter()
+                                .filter(|i| extensions.contains(i))
+                                .collect_vec()
+                        );
+                    }
                     subgraph.subgraph.extend_subgraph(extensions);
                 }
                 subgraph.iters += 1;
