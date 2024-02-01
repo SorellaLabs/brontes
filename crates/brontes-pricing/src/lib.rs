@@ -485,7 +485,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
 
             let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair)
             else {
-                error!(?pair, "failed to build a graph without any previous state removal");
                 return
             };
 
