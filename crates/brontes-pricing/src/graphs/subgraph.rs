@@ -283,6 +283,7 @@ impl PairSubGraph {
                     continue;
                 };
                 let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing)) else {
+                    tracing::error!(?info.pool_addr,"no price");
                     continue;
                 };
 
