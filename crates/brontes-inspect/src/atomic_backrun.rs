@@ -4,13 +4,13 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     mev::{AtomicBackrun, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap},
-    tree::{BlockTree},
+    tree::BlockTree,
     ToFloatNearest, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address};
+use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, MetadataCombined};
 

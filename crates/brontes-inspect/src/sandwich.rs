@@ -12,7 +12,6 @@ use brontes_types::{
     ToFloatNearest,
 };
 use itertools::Itertools;
-
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
