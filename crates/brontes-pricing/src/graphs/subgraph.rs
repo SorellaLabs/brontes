@@ -384,6 +384,7 @@ impl PairSubGraph {
                 let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
                     continue;
                 };
+
                 i += 1;
 
                 let (t0, t1) = pool_state.tvl(info.get_base_token());
