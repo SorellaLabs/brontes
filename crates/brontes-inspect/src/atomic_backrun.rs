@@ -78,7 +78,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let rev_usd =
             self.inner
-                .get_dex_revenue_usd(info.tx_index, &searcher_actions, metadata.clone());
+                .get_dex_revenue_usd(info.tx_index, &searcher_actions, metadata.clone())?;
 
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
