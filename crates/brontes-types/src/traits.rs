@@ -1,7 +1,5 @@
 use alloy_primitives::TxHash;
-use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
-use reth_rpc::eth::error::EthResult;
 use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
 
 use crate::structured_trace::TxTrace;
@@ -15,25 +13,27 @@ pub trait TracingProvider: Send + Sync + 'static {
         block_number: Option<BlockId>,
         state_overrides: Option<StateOverride>,
         block_overrides: Option<Box<BlockOverrides>>,
-    ) -> ProviderResult<Bytes>;
+    ) -> eyre::Result<Bytes>;
 
-    async fn block_hash_for_id(&self, block_num: u64) -> ProviderResult<Option<B256>>;
+    async fn block_hash_for_id(&self, block_num: u64) -> eyre::Result<Option<B256>>;
 
     #[cfg(not(feature = "local"))]
-    fn best_block_number(&self) -> ProviderResult<u64>;
+    fn best_block_number(&self) -> eyre::Result<u64>;
 
     #[cfg(feature = "local")]
-    async fn best_block_number(&self) -> ProviderResult<u64>;
+    async fn best_block_number(&self) -> eyre::Result<u64>;
 
-    async fn replay_block_transactions(&self, block_id: BlockId)
-        -> EthResult<Option<Vec<TxTrace>>>;
+    async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+    ) -> eyre::Result<Option<Vec<TxTrace>>>;
 
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> ProviderResult<Option<Vec<TransactionReceipt>>>;
+    ) -> eyre::Result<Option<Vec<TransactionReceipt>>>;
 
-    async fn header_by_number(&self, number: BlockNumber) -> ProviderResult<Option<Header>>;
+    async fn header_by_number(&self, number: BlockNumber) -> eyre::Result<Option<Header>>;
 
-    async fn block_and_tx_index(&self, hash: TxHash) -> ProviderResult<(u64, usize)>;
+    async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)>;
 }
