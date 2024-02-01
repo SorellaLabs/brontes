@@ -14,7 +14,7 @@ use crate::{
 };
 
 #[auto_impl::auto_impl(&)]
-pub trait LibmdbxReader: Send + Sync + 'static {
+pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<MetadataNoDex>;
     fn get_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined>;
 
