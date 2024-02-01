@@ -1,10 +1,11 @@
 use alloy_primitives::Address;
-use brontes_pricing::{Protocol, SubGraphEdge};
-use brontes_types::{
+
+use crate::{
     db::dex::DexQuotes,
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
+    Protocol, SubGraphEdge,
 };
 
 #[auto_impl::auto_impl(&)]

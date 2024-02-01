@@ -8,6 +8,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use brontes_types::price_graph_types::*;
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -25,7 +26,7 @@ use petgraph::{
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::error;
 
-use crate::{price_graph_types::*, types::ProtocolState, AllPairGraph, Pair};
+use crate::{types::ProtocolState, AllPairGraph, Pair};
 
 pub struct VerificationOutcome {
     pub should_requery:      bool,
