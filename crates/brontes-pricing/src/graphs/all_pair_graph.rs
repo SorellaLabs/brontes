@@ -136,7 +136,7 @@ impl AllPairGraph {
         let n1 = *n1;
 
         let Some(edge) = self.graph.find_edge(n0.into(), n1.into()) else { return 0 };
-        self.graph.edge_weight(edge).unwrap().len() / 2
+        self.graph.edge_weight(edge).unwrap().len()
     }
 
     pub fn remove_empty_address(
@@ -244,7 +244,7 @@ impl AllPairGraph {
                         }
 
                         let e = f.weight().first().unwrap();
-                        let pair = Pair(e.token_0, e.token_1).ordered();
+                        let pair = Pair(e.token_0, e.token_1);
                         !ignore.contains(&pair)
                     })
                     .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
