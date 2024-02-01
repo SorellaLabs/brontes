@@ -73,9 +73,9 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         pair: Pair,
         ignore: HashSet<Pair>,
     ) -> Vec<SubGraphEdge> {
-        let pair = pair.ordered();
+        let ordered_pair = pair.ordered();
 
-        if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair.ordered()) {
+        if let Ok((_, edges)) = self.db.try_load_pair_before(block, ordered_pair.ordered()) {
             info!("db load");
             return edges
         }
@@ -98,15 +98,15 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         edges: Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
         self.subgraph_verifier
-            .create_new_subgraph(pair.ordered(), block, edges, &self.graph_state)
+            .create_new_subgraph(pair, block, edges, &self.graph_state)
     }
 
     /// creates a subpool for the pair returning all pools that need to be
     /// loaded
     pub fn create_subgraph_mut(&mut self, block: u64, pair: Pair) -> Vec<PoolPairInfoDirection> {
-        let pair = pair.ordered();
+        let ordered_pair = pair.ordered();
 
-        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
+        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, ordered_pair) {
             return self
                 .subgraph_verifier
                 .create_new_subgraph(pair, block, edges, &self.graph_state)
@@ -114,6 +114,11 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
 
         let paths = self
             .all_pair_graph
+            // We want to use the unordered pair as we always
+            // want to run the search from the unkown token to the quote.
+            // We want this beacuse our algorithm favors heavily connected
+            // nodes which most times our base token is not. This small
+            // change speeds up yens algo by a good amount.
             .get_paths(pair, block)
             .into_iter()
             .flatten()
