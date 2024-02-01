@@ -258,11 +258,11 @@ impl PairSubGraph {
             tracing::error!("invalid subgraph was given");
         }
 
-        let mut result = self.run_bfs_with_liquidity_params(start, &state);
+        let result = self.run_bfs_with_liquidity_params(start, &state);
 
         self.prune_subgraph(&result.removal_state);
 
-        let mut disjoint =
+        let disjoint =
             dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
                 .is_none();
 
