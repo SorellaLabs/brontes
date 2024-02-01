@@ -150,6 +150,16 @@ impl SubgraphVerifier {
                     .filter(|(k, _)| !ignores.contains(k))
                     .collect::<HashMap<_, _>>();
 
+                if removals.is_empty() && result.should_requery {
+                    tracing::info!(
+                        "{:#?}",
+                        self.subgraph_verification_state
+                            .entry(pair)
+                            .or_default()
+                            .edges
+                    );
+                }
+
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
                     // anything that was fully remove gets cached
