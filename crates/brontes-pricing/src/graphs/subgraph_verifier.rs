@@ -213,12 +213,13 @@ impl SubgraphVerifier {
                             .unwrap()
                             .get_nodes_to_ignore();
 
+                        let ex = extensions.iter().map(|e| Pair(e.token_0, e.token_1)).collect::<HashSet<_>>();
                         tracing::info!(
                             ?pair,
                             "connected with {:#?}",
                             ignored
                                 .into_iter()
-                                .filter(|i| extensions.contains(i))
+                                .filter(|i| ex.contains(i))
                                 .collect_vec()
                         );
                     }
