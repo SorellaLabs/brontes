@@ -19,9 +19,7 @@ pub use subgraph_verifier::VerificationResults;
 use tracing::info;
 
 use self::{
-    registry::SubGraphRegistry,
-    state_tracker::StateTracker,
-    subgraph::{BadEdge, PairSubGraph},
+    registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
     subgraph_verifier::*,
 };
 use super::PoolUpdate;
@@ -206,9 +204,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         )
     }
 
-    pub fn finalize_block(&mut self, block: u64) -> HashMap<Pair, HashSet<BadEdge>> {
+    pub fn finalize_block(&mut self, block: u64) {
         self.graph_state.finalize_block(block);
-         self.subgraph_verifier
-            .finalize_block(block, &self.graph_state)
     }
 }
