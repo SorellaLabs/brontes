@@ -1,25 +1,18 @@
 use std::{env, path::Path};
 
-use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::{
     clickhouse::Clickhouse,
     libmdbx::{LibmdbxReadWriter, LibmdbxReader},
 };
-use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
 use futures::{stream::FuturesUnordered, StreamExt};
 use itertools::Itertools;
 use tokio::sync::mpsc::unbounded_channel;
-use tracing::info;
 
 use super::{determine_max_tasks, get_env_vars, static_object};
-use crate::{
-    cli::{get_tracing_provider, init_inspectors},
-    runner::CliContext,
-    Brontes,
-};
+use crate::{cli::get_tracing_provider, runner::CliContext};
 #[derive(Debug, Parser)]
 pub struct TraceArgs {
     /// Start Block
@@ -47,7 +40,7 @@ impl TraceArgs {
         );
 
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
-        let clickhouse = static_object(Clickhouse::default());
+        let _clickhouse = static_object(Clickhouse::default());
 
         let tracer =
             get_tracing_provider(&Path::new(&db_path), max_tasks, ctx.task_executor.clone());

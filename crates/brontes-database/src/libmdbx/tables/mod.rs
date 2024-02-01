@@ -256,7 +256,8 @@ macro_rules! compressed_table {
             $(#[$kattrs:meta])* key: $key:ident,
             $(#[$vattrs:meta])* value: $val:ident,
             $(#[$vcattrs:meta])* compressed_value: $c_val:ident
-        },  $($tail:tt)*) => {
+        },  $($tail:tt)*
+    ) => {
         implement_table_value_codecs_with_zc!($c_val);
         compressed_table!($(#[$attrs])* $table_name { $($acc)* }
                           Data  {
