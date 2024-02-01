@@ -47,7 +47,7 @@ impl SubgraphVerifier {
     ) -> Vec<PoolPairInfoDirection> {
         let query_state = state_tracker.missing_state(block, &path);
 
-        let subgraph = PairSubGraph::init(pair.ordered(), path);
+        let subgraph = PairSubGraph::init(pair, path);
         self.pending_subgraphs.insert(pair.ordered(), subgraph);
 
         query_state
@@ -157,7 +157,7 @@ impl SubgraphVerifier {
             .filter_map(|(pair, block, subgraph)| {
                 let Some(subgraph) = subgraph else { return None };
 
-                Some((pair.ordered(), block, subgraph))
+                Some((pair, block, subgraph))
             })
             .collect_vec()
     }

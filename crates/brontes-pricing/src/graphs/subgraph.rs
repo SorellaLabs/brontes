@@ -60,6 +60,7 @@ const MIN_LIQUIDITY_USDC: u128 = 25_000;
 /// most correct.
 #[derive(Debug, Clone)]
 pub struct PairSubGraph {
+    pair:           Pair,
     graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
     token_to_index: HashMap<Address, u16>,
 
@@ -108,7 +109,11 @@ impl PairSubGraph {
         let comp = connected_components(&graph);
         assert!(comp == 1, "have a disjoint graph {comp} {pair:?}");
 
-        Self { graph, start_node, end_node, token_to_index }
+        Self { pair, graph, start_node, end_node, token_to_index }
+    }
+
+    pub fn get_unordered_pair(&self) -> Pair {
+        self.pair
     }
 
     pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {
