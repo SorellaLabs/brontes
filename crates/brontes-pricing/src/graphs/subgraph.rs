@@ -8,7 +8,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{price_graph_types::*};
+use brontes_types::price_graph_types::*;
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -29,8 +29,8 @@ use tracing::error;
 use crate::{types::ProtocolState, AllPairGraph, Pair};
 
 pub struct VerificationOutcome {
-    pub should_requery:      bool,
-    pub removals:            HashMap<Pair, HashSet<BadEdge>>,
+    pub should_requery: bool,
+    pub removals:       HashMap<Pair, HashSet<BadEdge>>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -44,7 +44,7 @@ pub struct BadEdge {
 
 #[derive(Debug, Default)]
 struct BfsArgs {
-    pub removal_state:       HashMap<Pair, HashSet<BadEdge>>,
+    pub removal_state: HashMap<Pair, HashSet<BadEdge>>,
 }
 
 const MIN_LIQUIDITY_USDC: u128 = 50_000;
@@ -215,7 +215,7 @@ impl PairSubGraph {
         start: Address,
         state: HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
-        allowed_low_liq_nodes: &HashSet<Pair>,
+        allowed_low_liq_nodes: &HashMap<Pair, Address>,
         ignore_list: &HashSet<Pair>,
     ) -> VerificationOutcome {
         if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
@@ -224,8 +224,13 @@ impl PairSubGraph {
             tracing::error!("invalid subgraph was given");
         }
 
-        let mut result =
-            self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, allowed_low_liq_nodes, ignore_list);
+        let mut result = self.run_bfs_with_liquidity_params(
+            start,
+            &state,
+            all_pair_graph,
+            ignore_list,
+            allowed_low_liq_nodes,
+        );
 
         self.prune_subgraph(&result.removal_state);
 
@@ -246,10 +251,7 @@ impl PairSubGraph {
                 }
             }
         }
-        VerificationOutcome {
-            should_requery:      disjoint,
-            removals:            result.removal_state,
-        }
+        VerificationOutcome { should_requery: disjoint, removals: result.removal_state }
     }
 
     fn run_bfs_with_liquidity_params<T: ProtocolState>(
@@ -257,8 +259,8 @@ impl PairSubGraph {
         start: Address,
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
-        allowed_low_liq: &HashSet<Pair>,
         ignore_list: &HashSet<Pair>,
+        allowed_low_liq_nodes: &HashMap<Pair, Address>,
     ) -> BfsArgs {
         self.bfs_with_price(start, |is_outgoing, edge, prev_price, removal_map: &mut BfsArgs| {
             let mut pxw = Rational::ZERO;
@@ -277,7 +279,8 @@ impl PairSubGraph {
                     tracing::error!(?info.pool_addr,"no state when running bfs with liq");
                     continue;
                 };
-                let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing)) else {
+                let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing))
+                else {
                     tracing::error!(?info.pool_addr,"no price");
                     continue;
                 };
@@ -287,6 +290,8 @@ impl PairSubGraph {
                 let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
                 let liq0 = prev_price.clone().reciprocal() * &t0;
 
+                let new_unweighted_price = (&pool_price * prev_price).reciprocal();
+                let liq1 = &t1 * &new_unweighted_price;
 
                 let pair = Pair(info.token_0, info.token_1);
                 // check if below liquidity and that if we remove we don't make the graph
@@ -294,7 +299,11 @@ impl PairSubGraph {
                 if liq0 < Rational::from(MIN_LIQUIDITY_USDC)
                     && !(all_pair_graph.is_only_edge_ignoring(&info.token_0, ignore_list)
                         || all_pair_graph.is_only_edge_ignoring(&info.token_1, ignore_list))
-                    && !allowed_low_liq.contains(&pair)
+                    && allowed_low_liq_nodes
+                        .get(&pair)
+                        .map(|v| *v == info.pool_addr)
+                        .filter(|is_allowed| *is_allowed)
+                        .is_none()
                 {
                     let bad_edge = BadEdge {
                         pair,
@@ -314,11 +323,13 @@ impl PairSubGraph {
                     weight += t0xt1;
                 }
 
-
                 if liq0 < Rational::from(MIN_LIQUIDITY_USDC)
-                    && !allowed_low_liq.contains(&pair)
+                    && allowed_low_liq_nodes
+                        .get(&pair)
+                        .map(|v| *v == info.pool_addr)
+                        .filter(|is_allowed| *is_allowed)
+                        .is_none()
                 {
-                    let pair = Pair(info.token_0, info.token_1);
                     let bad_edge = BadEdge {
                         pair,
                         pool_address: info.pool_addr,
@@ -355,11 +366,11 @@ impl PairSubGraph {
         removal_state.into_iter().for_each(|(k, v)| {
             let Some(n0) = self.token_to_index.get(&k.0) else {
                 tracing::error!("no token 0 in token to index");
-                return 
+                return
             };
             let Some(n1) = self.token_to_index.get(&k.1) else {
                 tracing::error!("no token 1 in token to index");
-                return 
+                return
             };
             let n0 = *n0;
             let n1 = *n1;
@@ -370,7 +381,6 @@ impl PairSubGraph {
             };
 
             let bad_edge_to_pool = v.into_iter().map(|edge| edge.pool_address).collect_vec();
-
 
             let mut weights = self.graph.remove_edge(e).unwrap();
             weights.retain(|node| !bad_edge_to_pool.contains(&node.pool_addr));
@@ -392,7 +402,7 @@ impl PairSubGraph {
         start: Address,
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
-        allowed_low_liq_nodes: &HashSet<Pair>,
+        allowed_low_liq_nodes: &HashMap<Pair, Address>,
     ) -> Option<HashMap<Pair, Vec<BadEdge>>> {
         let (mut path_no_low_liq, bad_pairs) = self.bfs_with_price(
             start,
@@ -414,7 +424,9 @@ impl PairSubGraph {
                         continue;
                     };
                     // returns is t1  / t0
-                    let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing)) else {
+                    let Ok(pool_price) =
+                        pool_state.price(info.get_token_with_direction(is_outgoing))
+                    else {
                         continue;
                     };
 
@@ -424,10 +436,12 @@ impl PairSubGraph {
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
                     let pair = Pair(info.token_0, info.token_1);
-
                     if liq < Rational::from(MIN_LIQUIDITY_USDC)
-                        && !allowed_low_liq_nodes
-                            .contains(&pair)
+                        && allowed_low_liq_nodes
+                            .get(&pair)
+                            .map(|v| *v == info.pool_addr)
+                            .filter(|is_allowed| *is_allowed)
+                            .is_none()
                     {
                         let bad_edge = BadEdge {
                             pair,
@@ -551,11 +565,7 @@ impl PairSubGraph {
             if let Some(price) = collect_data_fn(direction, next_edge, &prev_price, &mut result) {
                 let new_price = &prev_price * price;
 
-                let next_node = if direction {
-                     next_edge.target()
-                } else {
-                    next_edge.source()
-                };
+                let next_node = if direction { next_edge.target() } else { next_edge.source() };
 
                 visit_next.extend(
                     self.next_edges_directed(next_node.index() as u16, direction)
