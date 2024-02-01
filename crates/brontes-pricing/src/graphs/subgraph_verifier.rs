@@ -206,6 +206,7 @@ impl SubgraphVerifier {
                 let Some(mut subgraph) = subgraph else { return None };
                 if let Some(frayed) = frayed {
                     let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
+                    tracing::info!("adding extensions {:#?}", extensions);
                     subgraph.subgraph.extend_subgraph(extensions);
                 }
 
