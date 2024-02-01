@@ -156,7 +156,7 @@ impl SubgraphVerifier {
                 self.store_edges_with_liq(pair, &result.removals, all_graph);
 
                 // state that we want to be ignored on the next graph search.
-                let mut ignores = self
+                let ignores = self
                     .subgraph_verification_state
                     .entry(pair)
                     .or_default()
@@ -359,7 +359,6 @@ impl SubgraphVerificationState {
 
     fn add_edge_with_liq(&mut self, addr: Address, bad_edge: BadEdge) {
         if !self.removed_recusing.contains_key(&bad_edge.pair) {
-            tracing::info!(?bad_edge, "adding liq node");
             self.edges.0.entry(addr).or_default().insert(bad_edge);
         }
     }
@@ -381,7 +380,6 @@ impl SubgraphVerificationState {
             .unwrap()
             .clone();
 
-        tracing::info!(?most_liquid, "adding liqudity to search path");
 
         self.edges.0.retain(|_, node| {
             node.retain(|edge| edge.pool_address != most_liquid.pool_address);
