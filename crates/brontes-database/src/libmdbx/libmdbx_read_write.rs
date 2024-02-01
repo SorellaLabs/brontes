@@ -19,7 +19,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
 };
-use eyre::anyhow;
+
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;

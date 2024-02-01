@@ -138,7 +138,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 v.insert((block, id, set));
             }
             Entry::Occupied(mut o) => {
-                let (cur_block, id, entry) = o.get_mut();
+                let (cur_block, _id, entry) = o.get_mut();
                 if *cur_block != block {
                     tracing::error!(
                         ?address,
