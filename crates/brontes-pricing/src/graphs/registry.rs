@@ -31,7 +31,7 @@ impl SubGraphRegistry {
                         token_to_sub_graph.entry(token).or_default().insert(pair);
                     });
 
-                (pair, PairSubGraph::init(pair, edges))
+                (pair.ordered(), PairSubGraph::init(pair, edges))
             })
             .collect();
         Self { token_to_sub_graph, sub_graphs }
@@ -51,7 +51,7 @@ impl SubGraphRegistry {
                 self.token_to_sub_graph
                     .entry(token)
                     .or_default()
-                    .insert(pair);
+                    .insert(pair.ordered());
             });
 
         if self.sub_graphs.insert(pair.ordered(), subgraph).is_some() {
@@ -60,7 +60,7 @@ impl SubGraphRegistry {
     }
 
     pub fn has_subpool(&self, pair: &Pair) -> bool {
-        self.sub_graphs.contains_key(&pair)
+        self.sub_graphs.contains_key(&pair.ordered())
     }
 
     pub fn bad_pool_state(
@@ -69,15 +69,15 @@ impl SubGraphRegistry {
         pool_pair: Pair,
         pool_address: Address,
     ) -> bool {
-        let Some(mut graph) = self.sub_graphs.remove(&subgraph) else { return true };
+        let Some(mut graph) = self.sub_graphs.remove(&subgraph.ordered()) else { return true };
 
         let is_disjoint_graph = graph.remove_bad_node(pool_pair, pool_address);
         if !is_disjoint_graph {
-            self.sub_graphs.insert(subgraph, graph);
+            self.sub_graphs.insert(subgraph.ordered(), graph);
         } else {
             // remove pair from token lookup
             self.token_to_sub_graph.retain(|_, v| {
-                v.remove(&subgraph);
+                v.remove(&subgraph.ordered());
                 !v.is_empty()
             });
         }
@@ -129,11 +129,20 @@ impl SubGraphRegistry {
         unordered_pair: Pair,
         edge_state: &HashMap<Address, PoolState>,
     ) -> Option<Rational> {
-        let (swapped, pair) = unordered_pair.ordered_changed();
+        let pair = unordered_pair.ordered();
 
         self.sub_graphs
             .get(&pair)
-            .and_then(|graph| graph.fetch_price(edge_state))
-            .map(|res| if swapped { res.reciprocal() } else { res })
+            .map(|graph| (graph.get_unordered_pair(), graph))
+            .and_then(|(default_pair, graph)| Some((default_pair, graph.fetch_price(edge_state)?)))
+            .map(
+                |(default_pair, res)| {
+                    if unordered_pair != default_pair {
+                        res.reciprocal()
+                    } else {
+                        res
+                    }
+                },
+            )
     }
 }
