@@ -83,38 +83,33 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         return None
                     }
 
-                    // grab all victim swaps dropping swaps that don't touch addresses with
-                    let (victims, victim_actions): (Vec<B256>, Vec<Vec<Actions>>) = victims
+                    let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            (
-                                victim,
-                                tree.collect(*victim, |node| {
-                                    (
-                                        node.data.is_swap(),
-                                        node.subactions.iter().any(|action| action.is_swap()),
-                                    )
-                                }),
-                            )
+                            tree.collect(*victim, |node| {
+                                (
+                                    node.data.is_swap(),
+                                    node.subactions.iter().any(|action| action.is_swap()),
+                                )
+                            })
                         })
-                        .unzip();
+                        .collect_vec();
 
                     if victim_actions.iter().any(|inner| inner.is_empty()) {
                         return None
                     }
 
-                    let victim_gas = victims
-                        .iter()
-                        .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
-                        .collect::<Vec<_>>();
+                    let victim_info = victims
+                        .into_iter()
+                        .map(|v| tree.get_tx_info(v).unwrap())
+                        .collect_vec();
 
                     self.calculate_jit(
                         info,
                         metadata.clone(),
                         searcher_actions,
-                        victims,
                         victim_actions,
-                        victim_gas,
+                        victim_info,
                     )
                 },
             )
@@ -130,9 +125,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         metadata: Arc<MetadataCombined>,
         searcher_actions: Vec<Vec<Actions>>,
         // victim
-        victim_txs: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
-        victim_gas: Vec<GasDetails>,
+        victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         let deltas = self.inner.calculate_token_deltas(
             &[searcher_actions.clone(), victim_actions.clone()]
@@ -165,24 +159,35 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
-        let jit_fee = self.get_collect_amount(back_jit_idx, fee_collect, metadata.clone());
+        let jit_fee =
+            self.get_collect_amount(info[1].tx_index as usize, fee_collect, metadata.clone());
 
         let mint = self.get_total_pricing(
-            back_jit_idx,
+            info[1].tx_index as usize,
             mints
                 .iter()
                 .map(|mint| (mint.token.iter().map(|t| t.address), mint.amount.iter())),
             metadata.clone(),
         );
 
-        let bribe = self.get_bribes(metadata.clone(), searcher_gas_details);
+        let (hashes, gas_details): (Vec<_>, Vec<_>) = info
+            .into_iter()
+            .map(|info| info.split_to_storage_info())
+            .unzip();
+
+        let (victim_hashes, victim_gas_details): (Vec<_>, Vec<_>) = victim_info
+            .into_iter()
+            .map(|info| info.split_to_storage_info())
+            .unzip();
+
+        let bribe = self.get_bribes(metadata.clone(), &gas_details);
         let profit = jit_fee - mint - &bribe;
 
         let header = self.inner.build_bundle_header(
-            info[1],
+            &info[1],
             profit.to_float(),
             &searcher_actions,
-            &vec![info[0].gas_details, info[1].gas_details],
+            &gas_details,
             metadata,
             MevType::Jit,
         );
@@ -199,15 +204,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .collect();
 
         let jit_details = JitLiquidity {
-            frontrun_mint_tx_hash: txes[0],
-            frontrun_mint_gas_details: searcher_gas_details[0],
+            frontrun_mint_tx_hash: hashes[0],
+            frontrun_mint_gas_details: gas_details[0],
             frontrun_mints: mints,
-            victim_swaps_tx_hashes: victim_txs.clone(),
+            victim_swaps_tx_hashes: victim_hashes.clone(),
             victim_swaps,
-            victim_swaps_gas_details_tx_hashes: victim_txs.clone(),
-            victim_swaps_gas_details: victim_gas,
-            backrun_burn_tx_hash: txes[1],
-            backrun_burn_gas_details: searcher_gas_details[1],
+            victim_swaps_gas_details_tx_hashes: victim_hashes,
+            victim_swaps_gas_details: victim_gas_details,
+            backrun_burn_tx_hash: hashes[1],
+            backrun_burn_gas_details: gas_details[1],
             backrun_burns: burns,
         };
 
@@ -305,8 +310,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         set.into_iter().collect()
     }
 
-    fn get_bribes(&self, price: Arc<MetadataCombined>, gas: [GasDetails; 2]) -> Rational {
-        let bribe = gas.into_iter().map(|gas| gas.gas_paid()).sum::<u128>();
+    fn get_bribes(&self, price: Arc<MetadataCombined>, gas: &Vec<GasDetails>) -> Rational {
+        let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe)
     }
