@@ -71,13 +71,11 @@ impl SubgraphVerifier {
         let query_state = state_tracker.missing_state(block, &path);
 
         let subgraph = PairSubGraph::init(pair, path);
-        if self
-            .pending_subgraphs
-            .insert(pair, Subgraph { subgraph, frayed_end_extensions: HashMap::new(), id: 0 })
-            .is_some()
-        {
-            tracing::error!("tried verifying duplicate subgraph");
-        }
+        if self.pending_subgraphs.contains_key(&pair) {
+            return
+        };
+        self.pending_subgraphs
+            .insert(pair, Subgraph { subgraph, frayed_end_extensions: HashMap::new(), id: 0 });
 
         query_state
     }
