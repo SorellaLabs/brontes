@@ -549,7 +549,6 @@ impl PairSubGraph {
         ) -> Option<Rational>,
     ) -> R {
         let mut result = R::default();
-        let mut visited = HashSet::new();
         let mut visit_next = VecDeque::new();
 
         let Some(start) = self.token_to_index.get(&start) else {
@@ -565,12 +564,6 @@ impl PairSubGraph {
         );
 
         while let Some((next_edge, prev_price)) = visit_next.pop_front() {
-            let id = next_edge.id();
-            if visited.contains(&id) {
-                continue
-            }
-            visited.insert(id);
-
             if let Some(price) = collect_data_fn(direction, next_edge, &prev_price, &mut result) {
                 let new_price = &prev_price * price;
 
