@@ -287,9 +287,6 @@ impl PairSubGraph {
                 let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
                 let liq0 = prev_price.clone().reciprocal() * &t0;
 
-                let new_unweighted_price = (&pool_price * prev_price).reciprocal();
-                let liq1 = &t1 * &new_unweighted_price;
-
 
                 let pair = Pair(info.token_0, info.token_1);
                 // check if below liquidity and that if we remove we don't make the graph
