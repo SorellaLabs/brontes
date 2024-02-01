@@ -444,6 +444,18 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         self.requery_bad_state_par(requery);
     }
 
+    /// Requeries the state of subgraphs for given pairs that encountered issues
+    /// during verification.
+    ///
+    /// # Behavior
+    /// This function is invoked when subgraph verification fails for certain
+    /// pairs. It reattempts to construct valid subgraphs by: 1. Requerying
+    /// the state for each pair and block number, considering any ignored pairs
+    /// during the graph construction. 2. Adding newly constructed subgraphs
+    /// if they are non-empty, or recursively removing problematic pairs and
+    /// requerying if necessary. 3. In cases where no valid paths are found
+    /// after requery, it escalates the verification by analyzing alternative
+    /// paths or pairs.
     fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64, HashSet<Pair>)>) {
         if pairs.is_empty() {
             return
