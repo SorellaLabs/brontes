@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 
-const MAX_ITER_BEFORE_RUNDOWN: usize = 5;
+const MAX_ITER_BEFORE_RUNDOWN: usize = 10;
 
 /// [`SubgraphVerifier`] Manages the verification of subgraphs for token pairs
 /// in the BrontesBatchPricer system. It ensures the accuracy and relevance of
@@ -178,7 +178,7 @@ impl SubgraphVerifier {
                     self.pending_subgraphs.insert(pair, subgraph);
                     // anything that was fully remove gets cached
 
-                    tracing::info!(?pair, "requerying",);
+                    tracing::debug!(?pair, "requerying",);
 
                     return VerificationResults::Failed(VerificationFailed {
                         pair,
