@@ -211,6 +211,7 @@ impl AllPairGraph {
         pair: Pair,
         ignore: &HashSet<Pair>,
         block: u64,
+        connectivity_wight: usize,
     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
@@ -233,7 +234,7 @@ impl AllPairGraph {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
                 let edges = self.graph.edges(cur_node).collect_vec();
                 let edge_len = edges.len() as isize;
-                let weight = max(1, 100_isize - edge_len);
+                let weight = max(1, connectivity_wight as isize - edge_len);
 
                 edges
                     .into_iter()
@@ -293,9 +294,11 @@ impl AllPairGraph {
         .collect_vec()
     }
 
-    pub fn get_paths(&self, pair: Pair, block: u64) -> Vec<Vec<Vec<SubGraphEdge>>> {
+    pub fn get_paths(&self, pair: Pair, block: u64,
+        connectivity_wight: usize,
+                     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         let ignore = HashSet::new();
-        self.get_paths_ignoring(pair, &ignore, block)
+        self.get_paths_ignoring(pair, &ignore, block, connectivity_wight)
     }
 
     pub fn get_all_known_addresses(&self) -> Vec<Address> {
