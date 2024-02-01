@@ -7,16 +7,15 @@ use alloy_primitives::{Address, B256};
 use async_trait::async_trait;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    mev::{Bundle, JitLiquidity, MevType, TokenProfit, TokenProfits},
+    mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    pair::Pair,
     GasDetails, ToFloatNearest, TxInfo,
 };
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{Rational};
 
 use crate::{
-    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, BundleHeader, Inspector,
+    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector,
     MetadataCombined,
 };
 
@@ -49,7 +48,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
-                |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
+                |PossibleJit { eoa: _, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
@@ -128,7 +127,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_actions: Vec<Vec<Actions>>,
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
-        let deltas = self.inner.calculate_token_deltas(
+        let _deltas = self.inner.calculate_token_deltas(
             &[searcher_actions.clone(), victim_actions.clone()]
                 .into_iter()
                 .flatten()
