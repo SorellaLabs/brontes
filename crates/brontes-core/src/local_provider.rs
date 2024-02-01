@@ -3,9 +3,7 @@ use std::sync::Arc;
 use alloy_providers::provider::{Provider, TempProvider};
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
-
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, TxHash, B256};
-
 use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
 
 #[derive(Debug, Clone)]
