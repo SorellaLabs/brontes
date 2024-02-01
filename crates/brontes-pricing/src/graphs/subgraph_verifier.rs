@@ -216,7 +216,7 @@ impl SubgraphVerifier {
             "removing: {:#?}",
             removals
                 .iter()
-                .flat_map(|(_, p)| p.into_iter())
+                .flat_map(|(_, p)| p.into_iter().map(|i| i.pool_address))
                 .collect_vec()
         );
 
