@@ -8,6 +8,8 @@ use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::db::cex::CexExchange;
 use itertools::Itertools;
 use reth_tasks::TaskExecutor;
+#[cfg(not(feature = "local"))]
+use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
 use tracing::info;
 
