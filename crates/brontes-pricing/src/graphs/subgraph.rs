@@ -624,7 +624,10 @@ impl PairSubGraph {
         let mut visited = HashSet::new();
         let mut visit_next = VecDeque::new();
 
-        visit_next.extend(self.graph.edges(self.start_node.into()));
+        visit_next.extend(
+            self.graph
+                .edges_directed(self.end_node.into(), Direction::Incoming),
+        );
 
         while let Some(next_edge) = visit_next.pop_front() {
             let id = next_edge.id();
@@ -633,9 +636,13 @@ impl PairSubGraph {
             }
             visited.insert(id);
 
-            let next_edges = self.graph.edges(next_edge.target()).collect_vec();
+            let next_edges = self
+                .graph
+                .edges_directed(next_edge.source(), Direction::Incoming)
+                .collect_vec();
+
             if next_edges.is_empty() {
-                let node = next_edge.source().index() as u16;
+                let node = next_edge.target().index() as u16;
                 frayed_ends.push(
                     *self
                         .token_to_index

@@ -380,7 +380,6 @@ impl SubgraphVerificationState {
             .unwrap()
             .clone();
 
-
         self.edges.0.retain(|_, node| {
             node.retain(|edge| edge.pool_address != most_liquid.pool_address);
             !node.is_empty()
