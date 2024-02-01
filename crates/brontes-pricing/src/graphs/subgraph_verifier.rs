@@ -74,6 +74,7 @@ impl SubgraphVerifier {
         if self.pending_subgraphs.contains_key(&pair) {
             return vec![]
         };
+
         self.pending_subgraphs
             .insert(pair, Subgraph { subgraph, frayed_end_extensions: HashMap::new(), id: 0 });
 
@@ -153,7 +154,7 @@ impl SubgraphVerifier {
                 self.store_edges_with_liq(pair, &result.removals, all_graph);
 
                 // state that we want to be ignored on the next graph search.
-                let ignores = self
+                let mut ignores = self
                     .subgraph_verification_state
                     .entry(pair)
                     .or_default()
@@ -167,19 +168,19 @@ impl SubgraphVerifier {
                     .collect::<HashMap<_, _>>();
 
                 // // recusing but there are no changes. this will cause a infinite loop.
-                // if removals.is_empty() && result.should_requery {
-                //     // we will remove the most liquid single edges until we pass
-                //     self.subgraph_verification_state
-                //         .entry(pair)
-                //         .or_default()
-                //         .remove_most_liquid_recursing();
-                //
-                //     ignores = self
-                //         .subgraph_verification_state
-                //         .entry(pair)
-                //         .or_default()
-                //         .get_nodes_to_ignore();
-                // }
+                if removals.is_empty() && result.should_requery {
+                    // we will remove the most liquid single edges until we pass
+                    self.subgraph_verification_state
+                        .entry(pair)
+                        .or_default()
+                        .remove_most_liquid_recursing();
+
+                    ignores = self
+                        .subgraph_verification_state
+                        .entry(pair)
+                        .or_default()
+                        .get_nodes_to_ignore();
+                }
 
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
