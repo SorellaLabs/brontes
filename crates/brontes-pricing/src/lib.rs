@@ -471,6 +471,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             tracing::error!("requery bad state returned nothing");
         }
 
+        let mut recusing = Vec::new();
         new_state.into_iter().for_each(|(pair, block, edges)| {
             // add regularly
             if !edges.is_empty() {
@@ -483,8 +484,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 }
 
                 if !need_state {
-                    info!(?pair, "recusing has edges");
-                    self.try_verify_subgraph(vec![(block, id, pair)]);
+                    recusing.push((block, id, pair))
                 }
                 return
             }
@@ -492,6 +492,8 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
 
             self.rundown(pair, block);
         });
+
+        self.try_verify_subgraph(recusing);
     }
 
     fn rundown(&mut self, pair: Pair, block: u64) {
@@ -524,6 +526,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                     info!(?pair, "recusing has edges");
                     self.try_verify_subgraph(vec![(block, id, pair)]);
                 }
+                break;
             }
         }
     }
