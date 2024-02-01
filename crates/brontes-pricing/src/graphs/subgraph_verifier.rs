@@ -167,20 +167,20 @@ impl SubgraphVerifier {
                     .filter(|(k, _)| !(ignores.contains(k) || recusing_ignore.contains_key(k)))
                     .collect::<HashMap<_, _>>();
 
-                // // recusing but there are no changes. this will cause a infinite loop.
-                if removals.is_empty() && result.should_requery {
-                    // we will remove the most liquid single edges until we pass
-                    self.subgraph_verification_state
-                        .entry(pair)
-                        .or_default()
-                        .remove_most_liquid_recursing();
-
-                    ignores = self
-                        .subgraph_verification_state
-                        .entry(pair)
-                        .or_default()
-                        .get_nodes_to_ignore();
-                }
+                // // // recusing but there are no changes. this will cause a infinite loop.
+                // if removals.is_empty() && result.should_requery {
+                //     // we will remove the most liquid single edges until we pass
+                //     self.subgraph_verification_state
+                //         .entry(pair)
+                //         .or_default()
+                //         .remove_most_liquid_recursing();
+                //
+                //     ignores = self
+                //         .subgraph_verification_state
+                //         .entry(pair)
+                //         .or_default()
+                //         .get_nodes_to_ignore();
+                // }
 
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
