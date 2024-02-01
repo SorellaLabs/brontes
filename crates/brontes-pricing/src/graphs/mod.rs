@@ -8,7 +8,10 @@ use std::collections::{HashMap, HashSet};
 mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
-use brontes_types::pair::Pair;
+use brontes_types::{
+    pair::Pair,
+    price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
+};
 use itertools::Itertools;
 use malachite::Rational;
 pub use subgraph_verifier::VerificationResults;
@@ -19,11 +22,7 @@ use self::{
     subgraph_verifier::*,
 };
 use super::PoolUpdate;
-use crate::{
-    price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
-    types::PoolState,
-    Protocol,
-};
+use crate::{types::PoolState, Protocol};
 
 pub struct GraphManager {
     all_pair_graph:     AllPairGraph,
@@ -79,6 +78,7 @@ impl GraphManager {
         ignore: HashSet<Pair>,
     ) -> Vec<SubGraphEdge> {
         let pair = pair.ordered();
+
         if let Some((_, edges)) = (&self.db_load)(block, pair) {
             info!("db load");
             return edges

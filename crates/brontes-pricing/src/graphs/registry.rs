@@ -1,12 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
-use brontes_types::pair::Pair;
+use brontes_types::{pair::Pair, price_graph_types::*, Protocol};
 use itertools::Itertools;
 use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 
 use super::{subgraph::PairSubGraph, PoolState};
-use crate::{price_graph_types::*, Protocol};
 
 /// stores all sub-graphs and supports the update mechanisms
 #[derive(Debug)]
