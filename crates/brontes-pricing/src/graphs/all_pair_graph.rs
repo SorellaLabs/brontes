@@ -228,6 +228,7 @@ impl AllPairGraph {
             error!(?addr, "no node for address");
             return vec![]
         };
+
         yen(
             start_idx,
             |cur_node| {
@@ -245,9 +246,9 @@ impl AllPairGraph {
 
                         f.weight()
                             .into_iter()
-                            .map(|e| {
-                                let pair = Pair(e.token_0, e.token_1).ordered();
-                                !ignore.contains(&pair)
+                            .map(|edge| {
+                                let created_pair = Pair(edge.token_0, edge.token_1).ordered();
+                                !ignore.contains(&created_pair)
                             })
                             .all(|a| a)
                     })
