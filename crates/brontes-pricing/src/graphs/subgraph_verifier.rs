@@ -72,7 +72,7 @@ impl SubgraphVerifier {
 
         let subgraph = PairSubGraph::init(pair, path);
         if self.pending_subgraphs.contains_key(&pair) {
-            return
+            return vec![]
         };
         self.pending_subgraphs
             .insert(pair, Subgraph { subgraph, frayed_end_extensions: HashMap::new(), id: 0 });
