@@ -21,21 +21,19 @@ use crate::{
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
 pub struct BundleHeader {
-    pub block_number:         u64,
-    pub tx_index:             u64,
+    pub block_number:  u64,
+    pub tx_index:      u64,
     #[serde_as(as = "FixedString")]
     // For a sandwich this is always the first frontrun tx hash
     pub tx_hash: B256,
     #[serde_as(as = "FixedString")]
-    pub eoa:                  Address,
+    pub eoa:           Address,
     #[serde_as(as = "FixedString")]
-    pub mev_contract:         Address,
-    #[serde(with = "vec_fixed_string")]
-    pub mev_profit_collector: Vec<Address>,
-    pub profit_usd:           f64,
-    pub token_profits:        TokenProfits,
-    pub bribe_usd:            f64,
-    pub mev_type:             MevType,
+    pub mev_contract:  Address,
+    pub profit_usd:    f64,
+    pub token_profits: TokenProfits,
+    pub bribe_usd:     f64,
+    pub mev_type:      MevType,
 }
 
 #[serde_as]
