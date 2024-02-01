@@ -8,7 +8,7 @@ use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::db::cex::CexExchange;
 use itertools::Itertools;
 use reth_tasks::TaskExecutor;
-use reth_tracing_ext::TracingClient;
+
 use strum::IntoEnumIterator;
 use tracing::info;
 
@@ -57,7 +57,7 @@ pub fn get_env_vars() -> eyre::Result<String> {
 }
 
 #[cfg(feature = "local")]
-pub fn get_tracing_provider(_: Path, _: u64, _: TaskExecutor) -> LocalProvider {
+pub fn get_tracing_provider(_: &Path, _: u64, _: TaskExecutor) -> LocalProvider {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");
