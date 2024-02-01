@@ -41,6 +41,7 @@ use alloy_primitives::Address;
 pub use brontes_types::price_graph_types::{
     PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
 };
+use brontes_types::test_utils::force_call_action;
 use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
@@ -473,9 +474,14 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         new_state.into_iter().for_each(|(pair, block, edges)| {
             // add regularly
             if !edges.is_empty() {
-                let Some((id, need_state)) = self.add_subgraph(pair, block, edges, true) else {
+                let Some((id, need_state, force_rundown)) = self.add_subgraph(pair, block, edges, true) else {
                     return;
                 };
+                if force_rundown {
+                    self.rundown(pair, block);
+                    return
+                }
+
                 if !need_state {
                     info!(?pair, "recusing has edges");
                     self.try_verify_subgraph(vec![(block, id, pair)]);
@@ -483,38 +489,43 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 return
             }
 
-            tracing::info!(?pair, "rundown started");
 
-            let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair)
+            self.rundown(pair, block);
+        });
+    }
+
+    fn rundown(&mut self, pair: Pair, block: u64) {
+        tracing::info!(?pair, "rundown started");
+
+        let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair)
             else {
                 return
             };
 
-            loop {
-                let popped = ignores.pop();
-                let (pair, block, edges) = par_state_query(
-                    &self.graph_manager,
-                    vec![(pair, block, ignores.iter().copied().collect(), vec![])],
-                )
-                .remove(0);
+        loop {
+            let popped = ignores.pop();
+            let (pair, block, edges) = par_state_query(
+                &self.graph_manager,
+                vec![(pair, block, ignores.iter().copied().collect(), vec![])],
+            )
+            .remove(0);
 
-                if edges.is_empty() {
-                    if popped.is_none() {
-                        break
-                    }
-                    continue
-                } else {
-                    let Some((id, need_state)) = self.add_subgraph(pair, block, edges, true) else {
+            if edges.is_empty() {
+                if popped.is_none() {
+                    break
+                }
+                continue
+            } else {
+                let Some((id, need_state,_)) = self.add_subgraph(pair, block, edges, true) else {
                         return;
                     };
 
-                    if !need_state {
-                        info!(?pair, "recusing has edges");
-                        self.try_verify_subgraph(vec![(block, id, pair)]);
-                    }
+                if !need_state {
+                    info!(?pair, "recusing has edges");
+                    self.try_verify_subgraph(vec![(block, id, pair)]);
                 }
             }
-        });
+        }
     }
 
     /// Adds a subgraph for verification based on the given pair, block, and
@@ -537,17 +548,18 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         block: u64,
         edges: Vec<SubGraphEdge>,
         frayed_ext: bool,
-    ) -> Option<(Option<u64>, bool)> {
-        let (needed_state, id) = if frayed_ext {
-            let (need, id) = self
+    ) -> Option<(Option<u64>, bool, bool)> {
+        let (needed_state, id ,force_rundown) = if frayed_ext {
+            let (need, id, force_rundown) = self
                 .graph_manager
                 .add_frayed_end_extension(pair, block, edges)?;
-            (need, Some(id))
+            (need, Some(id), force_rundown)
         } else {
             (
                 self.graph_manager
                     .add_subgraph_for_verification(pair, block, edges),
                 None,
+                false,
             )
         };
 
@@ -582,7 +594,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             }
         }
 
-        Some((id, triggered))
+        Some((id, triggered, force_rundown))
     }
 
     /// because we already have a state update for this pair in the buffer, we
