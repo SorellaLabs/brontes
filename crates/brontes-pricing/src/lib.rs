@@ -469,7 +469,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         new_state.into_iter().for_each(|(pair, block, edges)| {
             // add regularly
             if !edges.is_empty() {
-                let (id, need_state) = self.add_subgraph(pair, block, edges, true);
+                let Some((id, need_state)) = self.add_subgraph(pair, block, edges, true) else {
+                    return;
+                };
                 if !need_state {
                     info!(?pair, "recusing has edges");
                     self.try_verify_subgraph(vec![(block, id, pair)]);
@@ -497,7 +499,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                     }
                     continue
                 } else {
-                    let (id, need_state) = self.add_subgraph(pair, block, edges, true);
+                    let Some((id, need_state)) = self.add_subgraph(pair, block, edges, true) else {
+                        return;
+                    };
+
                     if !need_state {
                         info!(?pair, "recusing has edges");
                         self.try_verify_subgraph(vec![(block, id, pair)]);
@@ -527,11 +532,11 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         block: u64,
         edges: Vec<SubGraphEdge>,
         frayed_ext: bool,
-    ) -> (Option<u64>, bool) {
+    ) -> Option<(Option<u64>, bool)> {
         let (needed_state, id) = if frayed_ext {
             let (need, id) = self
                 .graph_manager
-                .add_frayed_end_extension(pair, block, edges);
+                .add_frayed_end_extension(pair, block, edges)?;
             (need, Some(id))
         } else {
             (
@@ -572,7 +577,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             }
         }
 
-        (id, triggered)
+        Some((id, triggered))
     }
 
     /// because we already have a state update for this pair in the buffer, we
