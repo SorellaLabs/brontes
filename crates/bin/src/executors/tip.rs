@@ -18,7 +18,7 @@ use brontes_types::{db::metadata::MetadataNoDex, normalized_actions::Actions, tr
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 use super::{dex_pricing::WaitingForPricerFuture, utils::process_results};
 
@@ -32,7 +32,7 @@ pub struct TipInspector<'inspector, T: TracingProvider, DB: LibmdbxReader + Libm
     clickhouse:        &'inspector Clickhouse,
     database:          &'static DB,
     inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
-    pricer:            WaitingForPricerFuture<T>,
+    pricer:            WaitingForPricerFuture<T, DB>,
     // pending future data
     classifier_future: Option<CollectionFut<'inspector>>,
     composer_future:   FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'inspector>>>,
@@ -54,16 +54,7 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
     ) -> Self {
         let pairs = database.protocols_created_before(current_block).unwrap();
 
-        let pair_graph = GraphManager::init_from_db_state(
-            pairs,
-            HashMap::default(),
-            Box::new(|block, pair| database.try_load_pair_before(block, pair).ok()),
-            Box::new(|block, pair, edges| {
-                if database.save_pair_at(block, pair, edges).is_err() {
-                    error!("failed to save subgraph to db");
-                }
-            }),
-        );
+        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), database);
 
         let pricer = BrontesBatchPricer::new(
             Arc::new(AtomicBool::new(false)),

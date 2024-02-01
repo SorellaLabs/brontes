@@ -46,7 +46,7 @@ pub struct RangeExecutorWithPricing<
     finished:   Arc<AtomicBool>,
 
     collection_future: Option<CollectionFut<'db>>,
-    pricer:            WaitingForPricerFuture<T>,
+    pricer:            WaitingForPricerFuture<T, DB>,
 
     processing_futures:
         FuturesUnordered<Pin<Box<dyn Future<Output = PossibleMevCollection> + Send + 'db>>>,
@@ -91,16 +91,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
             })
             .collect::<HashMap<_, _>>();
 
-        let pair_graph = GraphManager::init_from_db_state(
-            pairs,
-            HashMap::default(),
-            Box::new(|block, pair| libmdbx.try_load_pair_before(block, pair).ok()),
-            Box::new(|block, pair, edges| {
-                if libmdbx.save_pair_at(block, pair, edges).is_err() {
-                    error!("failed to save subgraph to db");
-                }
-            }),
-        );
+        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), libmdbx);
 
         let pricer = BrontesBatchPricer::new(
             finished.clone(),

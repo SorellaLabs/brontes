@@ -10,6 +10,7 @@ use brontes_types::{
     db::{
         dex::DexQuotes,
         metadata::{MetadataCombined, MetadataNoDex},
+        traits::{LibmdbxReader, LibmdbxWriter},
     },
     normalized_actions::Actions,
     tree::BlockTree,
@@ -19,16 +20,16 @@ use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::info;
 
-pub struct WaitingForPricerFuture<T: TracingProvider> {
-    receiver: Receiver<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
-    tx:       Sender<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>,
+pub struct WaitingForPricerFuture<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
+    receiver: Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>,
+    tx:       Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>,
 
     pub(crate) pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataNoDex)>,
     task_executor:            TaskExecutor,
 }
 
-impl<T: TracingProvider> WaitingForPricerFuture<T> {
-    pub fn new(mut pricer: BrontesBatchPricer<T>, task_executor: TaskExecutor) -> Self {
+impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> WaitingForPricerFuture<T, DB> {
+    pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: TaskExecutor) -> Self {
         let (tx, rx) = channel(2);
         let tx_clone = tx.clone();
         let fut = Box::pin(async move {
@@ -44,7 +45,7 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         self.pending_trees.is_empty()
     }
 
-    fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T>) {
+    fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T, DB>) {
         let tx = self.tx.clone();
         let fut = Box::pin(async move {
             let res = pricer.next().await;
@@ -67,7 +68,9 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
     }
 }
 
-impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader + Unpin> Stream
+    for WaitingForPricerFuture<T, DB>
+{
     type Item = (BlockTree<Actions>, MetadataCombined);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

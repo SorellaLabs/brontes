@@ -43,9 +43,7 @@ fn run() -> eyre::Result<()> {
 }
 
 fn init_tracing() {
-    // all lower level logging directives include higher level ones (Trace includes
-    // all, Debug includes all but Trace, ...)
-    let verbosity_level = Level::INFO; // Error >= Warn >= Info >= Debug >= Trace
+    let verbosity_level = Level::INFO;
     let directive: Directive = format!("{verbosity_level}").parse().unwrap();
     let layers = vec![brontes_tracing::stdout(directive)];
 
