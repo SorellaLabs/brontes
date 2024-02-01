@@ -361,7 +361,7 @@ impl SubgraphVerificationState {
             .0
             .values()
             .flatten()
-            .map(|node| node.pair)
+            .map(|node| node.pair.ordered())
             .collect::<HashSet<_>>()
     }
 }

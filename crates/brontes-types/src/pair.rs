@@ -6,7 +6,7 @@ use reth_db::table::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// Pair has a custom hash impl that will always make sure the pair is ordered
-/// before hashing
+/// before hashing aswell as on equals
 #[derive(Debug, Default, Clone, Copy, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Pair(pub Address, pub Address);
 
