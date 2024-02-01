@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, metadata::MetadataCombined},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
-    normalized_actions::{Actions, NormalizedTransfer},
+    normalized_actions::Actions,
     pair::Pair,
     utils::ToFloatNearest,
     GasDetails, TxInfo,
@@ -67,8 +67,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 transfers.push(transfer);
             }
         }
-
-        self.transfer_deltas(transfers, &mut deltas);
 
         // Prunes proxy contracts that receive and immediately send, like router
         // contracts
@@ -149,46 +147,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .collect()
     }
 
-    /// Account for all transfers that are in relation with the addresses that
-    /// swap, so we can track the end address that collects the funds if it is
-    /// different to the execution address
-    fn transfer_deltas(&self, _transfers: Vec<&NormalizedTransfer>, _deltas: &mut SwapTokenDeltas) {
-        // currently messing with price
-        // for transfer in transfers.into_iter() {
-        //     // normalize token decimals
-        //     let Ok(Some(decimals)) =
-        // self.db.try_get_token_decimals(transfer.token) else {
-        //         error!("token decimals not found");
-        //         continue;
-        //     };
-        //     let adjusted_amount =
-        // transfer.amount.to_scaled_rational(decimals);
-        //
-        //     // fill forward
-        //     if deltas.contains_key(&transfer.from) {
-        //         // subtract balance from sender
-        //         let mut inner = deltas.entry(transfer.from).or_default();
-        //
-        //         match inner.entry(transfer.token) {
-        //             Entry::Occupied(mut o) => {
-        //                 if *o.get_mut() == adjusted_amount {
-        //                     *o.get_mut() += adjusted_amount.clone();
-        //                 }
-        //             }
-        //             Entry::Vacant(v) => continue,
-        //         }
-        //
-        //         // add to transfer recipient
-        //         let mut inner = deltas.entry(transfer.to).or_default();
-        //         apply_entry(transfer.token, adjusted_amount.clone(), &mut
-        // inner);     }
-        // }
-    }
-
     pub fn build_bundle_header(
         &self,
-        info: TxInfo,
-        profit: f64,
+        info: &TxInfo,
+        profit_usd: f64,
         actions: &Vec<Vec<Actions>>,
         gas_details: &Vec<GasDetails>,
         metadata: Arc<MetadataCombined>,
@@ -218,6 +180,22 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         }
     }
 
+    pub fn get_dex_revenue_usd(
+        &self,
+        tx_index: u64,
+        bundle_actions: &Vec<Vec<Actions>>,
+        metadata: Arc<MetadataCombined>,
+    ) -> Rational {
+        let deltas = self.calculate_token_deltas(bundle_actions);
+
+        let addr_usd_deltas = self
+            .usd_delta_by_address(tx_index as usize, &deltas, metadata.clone(), false)
+            .unwrap();
+        addr_usd_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta)
+    }
+
     pub fn get_profit_collectors(
         &self,
         tx_index: u64,
@@ -227,8 +205,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     ) -> TokenProfits {
         let deltas = self.calculate_token_deltas(bundle_actions);
 
-        let addr_usd_deltas =
-            self.usd_delta_by_address(tx_index, &deltas, metadata.clone(), pricing)?;
+        let addr_usd_deltas = self
+            .usd_delta_by_address(tx_index as usize, &deltas, metadata.clone(), pricing)
+            .unwrap();
 
         let profit_collectors = self.profit_collectors(&addr_usd_deltas);
 
@@ -247,20 +226,22 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .into_iter()
             .filter_map(|collector| deltas.get(&collector).map(|d| (collector, d)))
             .flat_map(|(collector, token_amounts)| {
-                token_amounts.iter().zip(collector.iter().cycle())
+                token_amounts
+                    .into_iter()
+                    .zip(vec![collector].into_iter().cycle())
             })
-            .map(|((&token, &amount), collector)| {
+            .map(|((token, amount), collector)| {
                 let usd_value = if use_cex_pricing {
-                    self.get_cex_usd_value(token, amount, &metadata)
+                    self.get_cex_usd_value(*token, amount.clone(), &metadata)
                 } else {
-                    self.get_dex_usd_value(token, amount, tx_index, &metadata)
+                    self.get_dex_usd_value(*token, amount.clone(), tx_index, &metadata)
                 };
 
                 TokenProfit {
                     profit_collector: collector,
-                    token,
-                    amount: amount.to_float(),
-                    usd_value: usd_value.to_float(),
+                    token:            *token,
+                    amount:           amount.clone().to_float(),
+                    usd_value:        usd_value.to_float(),
                 }
             })
             .collect();
@@ -292,7 +273,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     ) -> Rational {
         metadata
             .dex_quotes
-            .price_at_or_before(Pair(token, self.quote), tx_index)
+            .price_at_or_before(Pair(token, self.quote), tx_index as usize)
             .unwrap_or(Rational::ZERO)
             * amount
     }
