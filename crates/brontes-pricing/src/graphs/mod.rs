@@ -9,6 +9,7 @@ mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
 use brontes_types::{
+    db::traits::{LibmdbxReader, LibmdbxWriter},
     pair::Pair,
     price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
 };
@@ -24,7 +25,7 @@ use self::{
 use super::PoolUpdate;
 use crate::{types::PoolState, Protocol};
 
-pub struct GraphManager {
+pub struct GraphManager<DB: LibmdbxReader + LibmdbxWriter> {
     all_pair_graph:     AllPairGraph,
     /// registry of all finalized subgraphs
     sub_graph_registry: SubGraphRegistry,
@@ -32,19 +33,15 @@ pub struct GraphManager {
     subgraph_verifier:  SubgraphVerifier,
     /// tracks all state needed for our subgraphs
     graph_state:        StateTracker,
-    /// this is degen but don't want to reorganize all types so that
-    /// this struct can hold the db so these closures allow for the wanted
-    /// interactions.
-    db_load:            Box<dyn Fn(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
-    db_save:            Box<dyn Fn(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
+    /// allows us to save a load subgraphs.
+    db:                 &'static DB,
 }
 
-impl GraphManager {
+impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
         all_pool_data: HashMap<(Address, Protocol), Pair>,
         sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>,
-        db_load: Box<dyn Fn(u64, Pair) -> Option<(Pair, Vec<SubGraphEdge>)> + Send + Sync>,
-        db_save: Box<dyn Fn(u64, Pair, Vec<SubGraphEdge>) + Send + Sync>,
+        db: &'static DB,
     ) -> Self {
         let graph = AllPairGraph::init_from_hashmap(all_pool_data);
         let registry = SubGraphRegistry::new(sub_graph_registry);
@@ -54,8 +51,7 @@ impl GraphManager {
             graph_state: StateTracker::new(),
             all_pair_graph: graph,
             sub_graph_registry: registry,
-            db_load,
-            db_save,
+            db,
             subgraph_verifier,
         }
     }
@@ -79,7 +75,7 @@ impl GraphManager {
     ) -> Vec<SubGraphEdge> {
         let pair = pair.ordered();
 
-        if let Some((_, edges)) = (&self.db_load)(block, pair) {
+        if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair.ordered()) {
             info!("db load");
             return edges
         }
@@ -110,7 +106,7 @@ impl GraphManager {
     pub fn create_subgraph_mut(&mut self, block: u64, pair: Pair) -> Vec<PoolPairInfoDirection> {
         let pair = pair.ordered();
 
-        if let Some((pair, edges)) = (&mut self.db_load)(block, pair) {
+        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
             return self
                 .subgraph_verifier
                 .create_new_subgraph(pair, block, edges, &self.graph_state)

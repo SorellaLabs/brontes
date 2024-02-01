@@ -19,6 +19,7 @@ use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
         token_info::TokenInfoWithAddress,
+        traits::{LibmdbxReader, LibmdbxWriter},
     },
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
@@ -63,7 +64,7 @@ use crate::types::PoolState;
 ///
 /// 5) Once state transitions are all applied and we have our formatted data.
 /// The data is returned and the pricer continues onto the next block.
-pub struct BrontesBatchPricer<T: TracingProvider> {
+pub struct BrontesBatchPricer<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
     quote_asset:     Address,
     current_block:   u64,
     completed_block: u64,
@@ -82,7 +83,8 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
     new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
-    graph_manager:   GraphManager,
+    /// manages all graph related items
+    graph_manager:   GraphManager<DB>,
     /// lazy loads dex pairs so we only fetch init state that is needed
     lazy_loader:     LazyExchangeLoader<T>,
     dex_quotes:      HashMap<u64, DexQuotes>,
@@ -91,10 +93,10 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     overlap_update:  Option<PoolUpdate>,
 }
 
-impl<T: TracingProvider> BrontesBatchPricer<T> {
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn new(
         quote_asset: Address,
-        graph_manager: GraphManager,
+        graph_manager: GraphManager<DB>,
         update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
@@ -600,7 +602,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     }
 }
 
-impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
+impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
+    for BrontesBatchPricer<T, DB>
+{
     type Item = (u64, DexQuotes);
 
     fn poll_next(
@@ -731,8 +735,8 @@ const fn make_fake_swap(pair: Pair) -> Actions {
     })
 }
 
-fn graph_search_par(
-    graph: &GraphManager,
+fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
+    graph: &GraphManager<DB>,
     quote: Address,
     updates: Vec<PoolUpdate>,
 ) -> (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64)>>) {
@@ -756,8 +760,8 @@ fn graph_search_par(
     (state, pools)
 }
 
-fn par_state_query(
-    graph: &GraphManager,
+fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
+    graph: &GraphManager<DB>,
     pairs: Vec<(Pair, u64, HashSet<Pair>)>,
 ) -> Vec<(Pair, u64, Vec<SubGraphEdge>)> {
     pairs
@@ -769,8 +773,8 @@ fn par_state_query(
         .collect::<Vec<_>>()
 }
 
-fn on_new_pool_pair(
-    graph: &GraphManager,
+fn on_new_pool_pair<DB: LibmdbxWriter + LibmdbxReader>(
+    graph: &GraphManager<DB>,
     msg: PoolUpdate,
     pair0: Option<Pair>,
     pair1: Option<Pair>,
@@ -817,8 +821,8 @@ fn on_new_pool_pair(
     (buf_pending, path_pending)
 }
 
-fn queue_loading_returns(
-    graph: &GraphManager,
+fn queue_loading_returns<DB: LibmdbxWriter + LibmdbxReader>(
+    graph: &GraphManager<DB>,
     block: u64,
     pair: Pair,
     trigger_update: PoolUpdate,
@@ -834,7 +838,7 @@ fn queue_loading_returns(
 }
 
 #[cfg(feature = "testing")]
-impl<T: TracingProvider> BrontesBatchPricer<T> {
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn get_lazy_loader(&mut self) -> &mut LazyExchangeLoader<T> {
         &mut self.lazy_loader
     }
