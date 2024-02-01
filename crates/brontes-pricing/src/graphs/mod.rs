@@ -208,7 +208,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn finalize_block(&mut self, block: u64) -> HashMap<Pair, HashSet<BadEdge>> {
         self.graph_state.finalize_block(block);
-        self.subgraph_verifier
+         self.subgraph_verifier
             .finalize_block(block, &self.graph_state)
     }
 }
