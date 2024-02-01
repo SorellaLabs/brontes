@@ -54,10 +54,27 @@ struct BfsArgs {
 
 const MIN_LIQUIDITY_USDC: u128 = 50_000;
 
-/// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
-/// given Pair. This allows for running more complex search algorithms on the
-/// graph and using weighted TVL to make sure that the calculated price is the
-/// most correct.
+/// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
+/// and optimize the pricing of a particular token pair in a decentralized
+/// exchange environment. It extracts relevant paths from a larger token graph,
+/// focusing on the most efficient paths between the pair of interest.
+///
+/// This struct is initialized with a specific token pair and their associated
+/// edges, creating a directed graph where edges represent liquidity pools and
+/// paths between tokens. The graph is tailored to efficiently compute the
+/// best price for the given pair, leveraging algorithms that factor in the
+/// total value locked and other relevant metrics.
+///
+/// The subgraph dynamically adapts to changes in the DEX, such as the
+/// addition or removal of liquidity pools, to maintain accuracy in pricing.
+/// It can identify and prune any unreliable or outdated information, such as
+/// pools no longer active or offering sufficient liquidity.
+///
+/// The subgraph also plays a key role in verification processes, analyzing
+/// and validating the state of the pools it comprises. This includes
+/// ensuring the integrity and reliability of each pool's data within the
+/// subgraph and recalculating prices based on up-to-date and verified
+/// information.
 #[derive(Debug, Clone)]
 pub struct PairSubGraph {
     pair:           Pair,
