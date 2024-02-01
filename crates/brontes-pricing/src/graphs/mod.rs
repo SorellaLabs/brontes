@@ -83,7 +83,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn add_pool(&mut self, pair: Pair, pool_addr: Address, dex: Protocol, block: u64) {
         self.all_pair_graph
-            .add_node(pair.ordered(), pool_addr, dex, block);
+            .add_node(pair, pool_addr, dex, block);
     }
 
     pub fn all_verifying_pairs(&self) -> Vec<Pair> {
@@ -181,7 +181,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph) {
         self.sub_graph_registry
-            .add_verified_subgraph(pair.ordered(), subgraph)
+            .add_verified_subgraph(pair, subgraph)
     }
 
     pub fn remove_pair_graph_address(
@@ -195,7 +195,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn verify_subgraph_on_new_path_failure(&mut self, pair: Pair) -> Option<Vec<Pair>> {
         self.subgraph_verifier
-            .verify_subgraph_on_new_path_failure(pair.ordered())
+            .verify_subgraph_on_new_path_failure(pair)
     }
 
     pub fn get_price(&self, pair: Pair) -> Option<Rational> {
@@ -212,8 +212,8 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
     }
 
     pub fn has_subgraph(&self, pair: Pair) -> bool {
-        self.sub_graph_registry.has_subpool(&pair.ordered())
-            || self.subgraph_verifier.is_verifying(&pair.ordered())
+        self.sub_graph_registry.has_subpool(&pair)
+            || self.subgraph_verifier.is_verifying(&pair)
     }
 
     pub fn verify_subgraph(

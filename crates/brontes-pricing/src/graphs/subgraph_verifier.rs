@@ -71,7 +71,7 @@ impl SubgraphVerifier {
         let query_state = state_tracker.missing_state(block, &path);
 
         let subgraph = PairSubGraph::init(pair, path);
-        self.pending_subgraphs.insert(pair.ordered(), subgraph);
+        self.pending_subgraphs.insert(pair, subgraph);
 
         query_state
     }
@@ -102,13 +102,13 @@ impl SubgraphVerifier {
             .for_each(|edge| {
                 // cache all edges that have been completey removed
                 self.subgraph_verification_state
-                    .entry(pair.ordered())
+                    .entry(pair)
                     .or_default()
                     .edges
                     .add_edge_with_liq(edge.pair.0, edge.clone());
 
                 self.subgraph_verification_state
-                    .entry(pair.ordered())
+                    .entry(pair)
                     .or_default()
                     .edges
                     .add_edge_with_liq(edge.pair.1, edge.clone());
@@ -151,7 +151,7 @@ impl SubgraphVerifier {
                     .collect::<HashMap<_, _>>();
 
                 if result.should_requery {
-                    self.pending_subgraphs.insert(pair.ordered(), subgraph);
+                    self.pending_subgraphs.insert(pair, subgraph);
                     // anything that was fully remove gets cached
 
                     tracing::info!(
@@ -176,7 +176,7 @@ impl SubgraphVerifier {
 
     fn get_subgraphs(&mut self, pair: Vec<(u64, Pair)>) -> Vec<(Pair, u64, PairSubGraph)> {
         pair.into_iter()
-            .map(|(block, pair)| (pair, block, self.pending_subgraphs.remove(&pair.ordered())))
+            .map(|(block, pair)| (pair, block, self.pending_subgraphs.remove(&pair)))
             .filter_map(|(pair, block, subgraph)| {
                 let Some(subgraph) = subgraph else { return None };
 
@@ -293,7 +293,7 @@ impl SubgraphVerificationState {
                     .collect_vec()
             })
             .sorted_by(|a, b| a.1.cmp(&b.1))
-            .map(|n| n.0.ordered())
+            .map(|n| n.0)
             .collect_vec()
     }
 
@@ -303,9 +303,7 @@ impl SubgraphVerificationState {
             .0
             .values()
             .flatten()
-            .filter_map(|node| {
-                (!self.best_edge_nodes.contains_key(&node.pair.ordered())).then(|| node.pair)
-            })
+            .filter_map(|node| (!self.best_edge_nodes.contains_key(&node.pair)).then(|| node.pair))
             .collect()
     }
 
@@ -315,7 +313,7 @@ impl SubgraphVerificationState {
         state.into_iter().for_each(|addr| {
             if let Some(best_edge) = self.edges.max_liq_for_edge(&addr) {
                 self.best_edge_nodes
-                    .insert(best_edge.pair.ordered(), best_edge.pool_address);
+                    .insert(best_edge.pair, best_edge.pool_address);
             }
         });
     }
