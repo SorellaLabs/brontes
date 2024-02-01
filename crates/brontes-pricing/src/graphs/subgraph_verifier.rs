@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 
-const MAX_ITER_BEFORE_RUNDOWN: usize = 10;
+const MAX_ITER_BEFORE_RUNDOWN: usize = 15;
 
 /// [`SubgraphVerifier`] Manages the verification of subgraphs for token pairs
 /// in the BrontesBatchPricer system. It ensures the accuracy and relevance of
