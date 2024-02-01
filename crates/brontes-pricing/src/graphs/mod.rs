@@ -25,6 +25,31 @@ use self::{
 use super::PoolUpdate;
 use crate::{types::PoolState, Protocol};
 
+/// [`GraphManager`] Is the manager for everything graph related. It is
+/// responsible for creating, updating, and maintaining the main token graph as
+/// well as its derived subgraphs.
+///
+/// ## Subgraph Management
+/// - **Subgraph Registry**: Maintains a collection of subgraphs
+///   (`SubGraphRegistry`) for efficient price calculation.
+/// - **Subgraph Creation and Verification**: Generates and verifies new
+///   subgraphs that allow for pricing of any token pair.
+/// - **Handling Bad Pool States**: Addresses problematic pools within subgraphs
+///   to ensure accurate pricing data.
+///
+/// ## Price Calculation and State Tracking
+/// - **Price Retrieval**: Retrieves prices for specific token pairs based on
+///   their subgraphs.
+/// - **State Management**: Tracks and monitors the changes in pools over time
+///   through `graph_state` (`StateTracker`).
+///
+/// ## Operational Flow
+/// - **Initialization**: Initializes the `GraphManager` with existing pool data
+///   and subgraphs from the database.
+/// - **Adding Pools and Verifying Subgraphs**: Adds new pools and verifies the
+///   integrity of associated subgraphs.
+/// - **Finalizing Blocks**: Concludes the processing of a block, finalizing the
+///   state for the generated subgraphs.
 pub struct GraphManager<DB: LibmdbxReader + LibmdbxWriter> {
     all_pair_graph:     AllPairGraph,
     /// registry of all finalized subgraphs

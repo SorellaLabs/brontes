@@ -9,6 +9,24 @@ use crate::{
     PoolPairInfoDirection, SubGraphEdge,
 };
 
+/// Manages the state of pools in the BrontesBatchPricer system, maintaining two
+/// types of state data: finalized and verification states.
+///
+/// `StateTracker` is vital for managing the current state of pools.
+/// The tracker holds  finalized states that have been confirmed and are stable,
+/// alongside states that are currently under verification.
+///
+/// The finalized states are used as a reliable foundation for the system's
+/// operations, whereas the verification states are used to process new data and
+/// updates. The tracker seamlessly handles the transition of states from
+/// verification to finalized, ensuring consistency and accuracy in the system's
+/// overall functionality.
+///
+/// Key operations include updating pool states based on new data, managing
+/// states under verification, and transitioning states to finalized status upon
+/// verification completion. This careful management of pool states is essential
+/// for the BrontesBatchPricer system to provide accurate and current pricing
+/// information for tokens on decentralized exchanges.
 #[derive(Debug)]
 pub struct StateTracker {
     /// state that finalized subgraphs are dependent on.
@@ -25,7 +43,6 @@ impl StateTracker {
     pub fn finalized_state(&self) -> &HashMap<Address, PoolState> {
         &self.finalized_edge_state
     }
-
 
     pub fn state_for_verification(&self, block: u64) -> HashMap<Address, PoolState> {
         self.verification_edge_state
