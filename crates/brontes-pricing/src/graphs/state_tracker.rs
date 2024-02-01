@@ -26,9 +26,6 @@ impl StateTracker {
         &self.finalized_edge_state
     }
 
-    pub fn has_finalized_state(&self, pool: &Address) -> bool {
-        self.finalized_edge_state.contains_key(pool)
-    }
 
     pub fn state_for_verification(&self, block: u64) -> HashMap<Address, PoolState> {
         self.verification_edge_state

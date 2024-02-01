@@ -642,7 +642,6 @@ where
         }
 
         if goal == node {
-            tracing::info!("found goal");
             break
         }
 
