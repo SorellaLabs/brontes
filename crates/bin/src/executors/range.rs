@@ -177,7 +177,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
             let block_number = header.number;
             let mut tree = classifier.build_block_tree(traces, header).await;
             if block_number < START_OF_CHAINBOUND_MEMPOOL_DATA {
-                return (tree, meta);
+                return (tree, meta)
             }
             tree.label_private_txes(&meta);
             (tree, meta)
@@ -186,10 +186,10 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
 
     fn start_next_block(&mut self) {
         let parser = self.parser.execute(self.current_block);
-        let meta = self
-            .libmdbx
-            .get_metadata_no_dex_price(self.current_block)
-            .unwrap();
+        let Ok(meta) = self.libmdbx.get_metadata_no_dex_price(self.current_block) else {
+            error!(?self.current_block, "failed to load metadata for block");
+            return
+        };
 
         let fut = Box::pin(parser.then(|x| {
             let (traces, header) = x.unwrap().unwrap();
