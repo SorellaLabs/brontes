@@ -250,7 +250,7 @@ impl PairSubGraph {
         &mut self,
         start: Address,
         state: HashMap<Address, T>,
-        all_pair_graph: &AllPairGraph,
+        _all_pair_graph: &AllPairGraph,
     ) -> VerificationOutcome {
         if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
             .is_none()
