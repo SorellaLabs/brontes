@@ -244,7 +244,7 @@ impl AllPairGraph {
                         }
 
                         let e = f.weight().first().unwrap();
-                        let pair = Pair(e.token_0, e.token_1);
+                        let pair = Pair(e.token_0, e.token_1).ordered();
                         !ignore.contains(&pair)
                     })
                     .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
