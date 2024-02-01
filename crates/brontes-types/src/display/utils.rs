@@ -164,6 +164,8 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
         writeln!(f, "  Swap {}: {}", j + 1, swap)?;
     }
     writeln!(f, "Gas details: {}", sandwich_data.backrun_gas_details)?;
+    writeln!(f, "   - Bundle Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
+    writeln!(f, "   - Bribe (USD): {}", (bundle.header.bribe_usd).to_string().red())?;
 
     Ok(())
 }

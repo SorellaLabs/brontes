@@ -3,24 +3,8 @@ use brontes_types::db::{
     redefined_types::primitives::{Redefined_Address, Redefined_TxHash, Redefined_U256},
 };
 use redefined::{Redefined, RedefinedConvert};
-use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use super::{LibmdbxData, ReturnKV};
-use crate::libmdbx::Metadata;
-
-#[serde_as]
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct MetadataData {
-    pub block_number: u64,
-    pub inner:        MetadataInner,
-}
-
-impl LibmdbxData<Metadata> for MetadataData {
-    fn into_key_val(&self) -> ReturnKV<Metadata> {
-        (self.block_number, self.inner.clone()).into()
-    }
-}
+use super::LibmdbxData;
 
 #[derive(
     Debug,
