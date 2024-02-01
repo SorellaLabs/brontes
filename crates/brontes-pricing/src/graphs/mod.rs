@@ -223,7 +223,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         pair: Pair,
         block: u64,
         frayed_end_extensions: Vec<SubGraphEdge>,
-    ) -> (Vec<PoolPairInfoDirection>, u64) {
+    ) -> Option<(Vec<PoolPairInfoDirection>, u64)> {
         self.subgraph_verifier.add_frayed_end_extension(
             pair,
             block,

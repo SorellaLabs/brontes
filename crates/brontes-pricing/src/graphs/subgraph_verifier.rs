@@ -124,14 +124,13 @@ impl SubgraphVerifier {
         block: u64,
         state_tracker: &StateTracker,
         frayed_end_extensions: Vec<SubGraphEdge>,
-    ) -> (Vec<PoolPairInfoDirection>, u64) {
-        (
+    ) -> Option<(Vec<PoolPairInfoDirection>, u64)> {
+        Some((
             state_tracker.missing_state(block, &frayed_end_extensions),
             self.pending_subgraphs
-                .get_mut(&pair)
-                .unwrap()
+                .get_mut(&pair)?
                 .add_extension(frayed_end_extensions),
-        )
+        ))
     }
 
     pub fn verify_subgraph(
