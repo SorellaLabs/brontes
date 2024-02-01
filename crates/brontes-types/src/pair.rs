@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// Pair has a custom hash impl that will always make sure the pair is ordered
 /// before hashing
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Copy, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Pair(pub Address, pub Address);
 
 impl Hash for Pair {
@@ -18,9 +18,19 @@ impl Hash for Pair {
     }
 }
 
+impl PartialEq for Pair {
+    fn eq(&self, other: &Self) -> bool {
+        self.ordered().0 == other.ordered().0 && self.ordered().1 == other.ordered().1
+    }
+}
+
 impl Pair {
     pub fn flip(self) -> Self {
         Pair(self.1, self.0)
+    }
+
+    pub fn eq_unordered(&self, other: &Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
     }
 
     pub fn has_base_edge(&self, addr: Address) -> bool {

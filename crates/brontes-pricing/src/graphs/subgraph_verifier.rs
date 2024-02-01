@@ -167,6 +167,7 @@ impl SubgraphVerifier {
                     .into_iter()
                     .filter(|(k, _)| !(ignores.contains(k) || recusing_ignore.contains_key(k)))
                     .collect::<HashMap<_, _>>();
+
                 if removals.is_empty() && result.should_requery {
                     tracing::info!("removals {:#?} ignores: {:#?}", result.removals, ignores);
                 }
