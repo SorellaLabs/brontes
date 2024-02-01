@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
-use itertools::Itertools;
 use brontes_types::{pair::Pair, utils::ToFloatNearest};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
