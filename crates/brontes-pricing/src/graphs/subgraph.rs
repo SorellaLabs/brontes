@@ -225,7 +225,7 @@ impl PairSubGraph {
         }
 
         let mut result =
-            self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
+            self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, allowed_low_liq_nodes, ignore_list);
 
         self.prune_subgraph(&result.removal_state);
 
