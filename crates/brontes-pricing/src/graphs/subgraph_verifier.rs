@@ -94,7 +94,15 @@ impl SubgraphVerifier {
     ) {
         removals
             .into_iter()
-            .flat_map(|(k, v)| v.into_iter())
+            .filter_map(|(k, v)| {
+                // look for edges that have been complety removed
+                if all_graph.edge_count(k.0, k.1) == v.len() {
+                    Some(v.clone().into_iter())
+                } else {
+                    None
+                }
+            })
+            .flatten()
             .for_each(|edge| {
                 // cache all edges that have been completey removed
                 self.subgraph_verification_state
@@ -146,14 +154,12 @@ impl SubgraphVerifier {
                     .get_nodes_to_ignore();
                 //
                 // // all results that should be pruned from our main graph.
-                // let removals = result
-                //     .removals
-                //     .clone()
-                //     .into_iter()
-                //     .filter(|(k, _)| !(ignores.contains(k)))
-                //     .collect::<HashMap<_, _>>();
-                //
-                //
+                let removals = result
+                    .removals
+                    .clone()
+                    .into_iter()
+                    .filter(|(k, _)| !(ignores.contains(k)))
+                    .collect::<HashMap<_, _>>();
 
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
