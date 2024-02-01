@@ -295,14 +295,6 @@ impl PairSubGraph {
                 let new_unweighted_price = (&pool_price * prev_price).reciprocal();
                 let liq1 = &t1 * &new_unweighted_price;
 
-                tracing::info!(
-                    "pool: {:?}, prev_price: {} new_price: {} t0 liq {} t1 liq {}",
-                    info.pool_addr,
-                    prev_price.clone().to_float(),
-                    new_unweighted_price.to_float(),
-                    liq0.clone().to_float(),
-                    liq1.clone().to_float()
-                );
 
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
@@ -372,7 +364,6 @@ impl PairSubGraph {
 
     fn prune_subgraph(&mut self, removal_state: &HashMap<Pair, HashSet<BadEdge>>) {
         removal_state.into_iter().for_each(|(k, v)| {
-            tracing::info!(?k, "removing state");
             let Some(n0) = self.token_to_index.get(&k.0) else {
                 tracing::error!("no token 0 in token to index");
                 return 
@@ -390,7 +381,6 @@ impl PairSubGraph {
             };
 
             let bad_edge_to_pool = v.into_iter().map(|edge| edge.pool_address).collect_vec();
-                tracing::error!("pruning {:#?}", bad_edge_to_pool);
 
 
             let mut weights = self.graph.remove_edge(e).unwrap();
