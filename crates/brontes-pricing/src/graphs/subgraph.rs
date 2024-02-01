@@ -8,7 +8,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::price_graph_types::*;
+use brontes_types::{price_graph_types::*, ToFloatNearest};
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -52,7 +52,7 @@ struct BfsArgs {
     pub was_only_edge_state: HashSet<Address>,
 }
 
-const MIN_LIQUIDITY_USDC: u128 = 150_000;
+const MIN_LIQUIDITY_USDC: u128 = 50_000;
 
 /// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
 /// and optimize the pricing of a particular token pair in a decentralized
@@ -292,7 +292,16 @@ impl PairSubGraph {
                 let liq0 = prev_price.clone().reciprocal() * &t0;
 
                 let new_unweighted_price = (&pool_price * prev_price).reciprocal();
-                let liq1 = &t1 * new_unweighted_price;
+                let liq1 = &t1 * &new_unweighted_price;
+
+                tracing::info!(
+                    "pool: {:?}, prev_price: {} new_price: {} t0 liq {} t1 liq {}",
+                    info.pool_addr,
+                    prev_price.clone().to_float(),
+                    new_unweighted_price.to_float(),
+                    liq0.clone().to_float(),
+                    liq1.clone().to_float()
+                );
 
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
