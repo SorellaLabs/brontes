@@ -305,7 +305,7 @@ impl PairSubGraph {
 
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
-                if (&liq0 + &liq1) < Rational::from(MIN_LIQUIDITY_USDC)
+                if liq0 < Rational::from(MIN_LIQUIDITY_USDC)
                     && !(all_pair_graph.is_only_edge_ignoring(&info.token_0, ignore_list)
                         || all_pair_graph.is_only_edge_ignoring(&info.token_1, ignore_list))
                 {
@@ -314,7 +314,7 @@ impl PairSubGraph {
                         pair,
                         pool_address: info.pool_addr,
                         edge_liq: info.get_quote_token(),
-                        liquidity: &liq0 + &liq1,
+                        liquidity: liq0.clone(),
                     };
 
                     removal_map
@@ -335,13 +335,13 @@ impl PairSubGraph {
                     removal_map.was_only_edge_state.insert(info.token_1);
                 }
 
-                if (&liq0 + &liq1) < Rational::from(MIN_LIQUIDITY_USDC) {
+                if liq0 < Rational::from(MIN_LIQUIDITY_USDC) {
                     let pair = Pair(info.token_0, info.token_1);
                     let bad_edge = BadEdge {
                         pair,
                         pool_address: info.pool_addr,
                         edge_liq: info.get_base_token(),
-                        liquidity: liq0 + liq1,
+                        liquidity: liq0,
                     };
                     possible_remove_pool_addr.push(bad_edge);
                 }
@@ -428,15 +428,12 @@ impl PairSubGraph {
                     };
 
                     let (t0, t1) = pool_state.tvl(info.get_base_token());
-                    let liq0 = prev_price.clone().reciprocal() * &t0;
-
-                    let new_unweighted_price = (&pool_price * prev_price).reciprocal();
-                    let liq1 = &t1 * new_unweighted_price;
+                    let liq = prev_price.clone().reciprocal() * &t0;
 
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
                     let pair = Pair(info.token_0, info.token_1);
-                    if (&liq0 + &liq1) < Rational::from(MIN_LIQUIDITY_USDC)
+                    if liq < Rational::from(MIN_LIQUIDITY_USDC)
                         && allowed_low_liq_nodes
                             .get(&pair)
                             .map(|v| *v == info.pool_addr)
@@ -447,7 +444,7 @@ impl PairSubGraph {
                             pair,
                             pool_address: info.pool_addr,
                             edge_liq: info.get_quote_token(),
-                            liquidity: (liq0 + liq1),
+                            liquidity: liq,
                         };
                         bad_pairs.entry(pair).or_default().push(bad_edge);
                         continue
