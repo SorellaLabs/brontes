@@ -4,13 +4,13 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     mev::{AtomicBackrun, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap},
-    tree::{BlockTree},
+    tree::BlockTree,
     ToFloatNearest, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{Address};
+use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, MetadataCombined};
 
@@ -78,7 +78,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let rev_usd =
             self.inner
-                .get_dex_revenue_usd(info.tx_index, &searcher_actions, metadata.clone());
+                .get_dex_revenue_usd(info.tx_index, &searcher_actions, metadata.clone())?;
 
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);

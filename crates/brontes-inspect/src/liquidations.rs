@@ -102,10 +102,11 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             })
             .sum::<Rational>();
 
-        let rev_usd =
-            self.inner
-                .get_dex_revenue_usd(info.tx_index, &vec![actions.clone()], metadata.clone())
-                + liq_profit;
+        let rev_usd = self.inner.get_dex_revenue_usd(
+            info.tx_index,
+            &vec![actions.clone()],
+            metadata.clone(),
+        )? + liq_profit;
 
         let gas_finalized = metadata.get_gas_price_usd(info.gas_details.gas_paid());
 
