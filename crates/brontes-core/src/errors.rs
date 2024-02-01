@@ -24,6 +24,8 @@ pub enum TraceParseError {
     EthApiError(EthApiError),
     #[error("alloy error {0}")]
     AlloyError(alloy_dyn_abi::Error),
+    #[error(transparent)]
+    Eyre(#[from] eyre::Report),
 }
 
 impl From<EthApiError> for TraceParseError {
@@ -100,6 +102,7 @@ impl From<&TraceParseError> for TraceParseErrorKind {
             TraceParseError::AbiDecodingFailed(_) => TraceParseErrorKind::AbiDecodingFailed,
             TraceParseError::ChannelSendError(_) => TraceParseErrorKind::ChannelSendError,
             TraceParseError::AlloyError(_) => TraceParseErrorKind::AlloyError,
+            TraceParseError::Eyre(_) => TraceParseErrorKind::Eyre,
         }
     }
 }
