@@ -81,7 +81,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn usd_delta_by_address(
         &self,
         tx_position: usize,
-        at: PriceAt,
+        mut at: PriceAt,
         deltas: &SwapTokenDeltas,
         metadata: Arc<MetadataCombined>,
         cex: bool,
@@ -95,10 +95,16 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     // Fetch CEX price
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
                 } else {
+                    if at == PriceAt::Lowest {
+                        if amount.lt(&Rational::ZERO) {
+                            at = PriceAt::Max;
+                        }
+                    }
                     metadata
                         .dex_quotes
                         .price_at_or_before(pair, tx_position)
-                        .map(|price| price.get_price(at))?.clone()
+                        .map(|price| price.get_price(at))?
+                        .clone()
                 };
 
                 let usd_amount = amount.clone() * price.clone();

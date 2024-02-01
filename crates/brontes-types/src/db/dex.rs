@@ -1,4 +1,7 @@
-use std::{cmp::min, collections::HashMap};
+use std::{
+    cmp::{max, min},
+    collections::HashMap,
+};
 
 use malachite::{num::basic::traits::One, Rational};
 use serde::{Deserialize, Serialize};
@@ -17,6 +20,7 @@ pub enum PriceAt {
     Before,
     After,
     Lowest,
+    Highest,
 }
 
 impl DexPrices {
@@ -25,6 +29,7 @@ impl DexPrices {
             PriceAt::After => self.post_state,
             PriceAt::Before => self.pre_state,
             PriceAt::Lowest => min(self.pre_state, self.post_state),
+            PriceAt::Highest => max(self.pre_state, self.post_state),
         }
     }
 }
