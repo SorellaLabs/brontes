@@ -81,6 +81,14 @@ impl DerefMut for PoolPairInfoDirection {
 }
 
 impl PoolPairInfoDirection {
+    pub fn get_token_with_direction(&self, outgoing: bool) -> Address {
+        if outgoing {
+            self.get_base_token()
+        } else {
+            self.get_quote_token()
+        }
+    }
+
     pub fn get_base_token(&self) -> Address {
         if self.token_0_in {
             self.info.token_0
