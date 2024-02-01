@@ -265,7 +265,7 @@ impl PairSubGraph {
         all_pair_graph: &AllPairGraph,
         ignore_list: &HashSet<Pair>,
     ) -> BfsArgs {
-        self.bfs_with_price(start, |edge, prev_price, removal_map: &mut BfsArgs| {
+        self.bfs_with_price(start, |is_outgoing, edge, prev_price, removal_map: &mut BfsArgs| {
             let mut pxw = Rational::ZERO;
             let mut weight = Rational::ZERO;
 
@@ -282,13 +282,13 @@ impl PairSubGraph {
                     tracing::error!(?info.pool_addr,"no state when running bfs with liq");
                     continue;
                 };
-                let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
+                let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing)) else {
                     continue;
                 };
 
                 i += 1;
 
-                let (t0, t1) = pool_state.tvl(info.get_base_token());
+                let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
                 let liq0 = prev_price.clone().reciprocal() * &t0;
 
                 let new_unweighted_price = (&pool_price * prev_price).reciprocal();
@@ -340,7 +340,7 @@ impl PairSubGraph {
                     let bad_edge = BadEdge {
                         pair,
                         pool_address: info.pool_addr,
-                        edge_liq: info.get_base_token(),
+                        edge_liq: info.get_token_with_direction(!is_outgoing),
                         liquidity: liq0,
                     };
                     possible_remove_pool_addr.push(bad_edge);
@@ -406,7 +406,8 @@ impl PairSubGraph {
     ) -> Option<HashMap<Pair, Vec<BadEdge>>> {
         let (mut path_no_low_liq, bad_pairs) = self.bfs_with_price(
             start,
-            |edge,
+            |is_outgoing,
+             edge,
              prev_price,
              prev_paths: &mut (
                 HashMap<Address, Vec<(usize, Address)>>,
@@ -423,11 +424,11 @@ impl PairSubGraph {
                         continue;
                     };
                     // returns is t1  / t0
-                    let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
+                    let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing)) else {
                         continue;
                     };
 
-                    let (t0, t1) = pool_state.tvl(info.get_base_token());
+                    let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
                     let liq = prev_price.clone().reciprocal() * &t0;
 
                     // check if below liquidity and that if we remove we don't make the graph
@@ -443,7 +444,7 @@ impl PairSubGraph {
                         let bad_edge = BadEdge {
                             pair,
                             pool_address: info.pool_addr,
-                            edge_liq: info.get_quote_token(),
+                            edge_liq: info.get_token_with_direction(!is_outgoing),
                             liquidity: liq,
                         };
                         bad_pairs.entry(pair).or_default().push(bad_edge);
@@ -530,6 +531,7 @@ impl PairSubGraph {
         &self,
         start: Address,
         mut collect_data_fn: impl for<'a> FnMut(
+            bool,
             EdgeReference<'a, Vec<SubGraphEdge>, u16>,
             &'a Rational,
             &'a mut R,
@@ -558,7 +560,7 @@ impl PairSubGraph {
             }
             visited.insert(id);
 
-            if let Some(price) = collect_data_fn(next_edge, &prev_price, &mut result) {
+            if let Some(price) = collect_data_fn(direction, next_edge, &prev_price, &mut result) {
                 let new_price = &prev_price * price;
 
                 let next_node = next_edge.target();
