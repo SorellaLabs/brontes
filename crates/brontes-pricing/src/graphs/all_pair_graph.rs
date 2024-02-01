@@ -229,7 +229,6 @@ impl AllPairGraph {
             return vec![]
         };
 
-        tracing::info!("yens with ignore list: {:#?}", ignore);
         yen(
             start_idx,
             |cur_node| {

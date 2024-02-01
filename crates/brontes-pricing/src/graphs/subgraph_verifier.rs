@@ -169,12 +169,7 @@ impl SubgraphVerifier {
                     self.pending_subgraphs.insert(pair, subgraph);
                     // anything that was fully remove gets cached
 
-                    tracing::info!(
-                        ?pair,
-                        "requerying: ignore {:#?}\n bad {:#?}",
-                        ignores,
-                        result.removals
-                    );
+                    tracing::info!(?pair, "requerying",);
 
                     return VerificationResults::Failed(VerificationFailed {
                         pair,
