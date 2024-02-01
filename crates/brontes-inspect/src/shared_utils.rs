@@ -87,25 +87,33 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         cex: bool,
     ) -> Option<HashMap<Address, Rational>> {
         let mut usd_deltas = HashMap::new();
+        let deltas = deltas
+            .into_iter()
+            .map(|(_, v)| v)
+            .fold(HashMap::new(), |acc, x| {
+                for (token, am) in x {
+                    acc.entry(*token).or_default() += am
+                }
 
-        for (address, inner_map) in deltas {
-            for (token_addr, amount) in inner_map {
-                let pair = Pair(*token_addr, self.quote);
-                let price = if cex {
-                    // Fetch CEX price
-                    metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
-                } else {
-                    metadata
-                        .dex_quotes
-                        .price_at_or_before(pair, tx_position)
-                        .map(|price| price.get_price(at))?
-                        .clone()
-                };
+                acc
+            });
 
-                let usd_amount = amount.clone() * price.clone();
+        for (token_addr, amount) in deltas {
+            let pair = Pair(*token_addr, self.quote);
+            let price = if cex {
+                // Fetch CEX price
+                metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
+            } else {
+                metadata
+                    .dex_quotes
+                    .price_at_or_before(pair, tx_position)
+                    .map(|price| price.get_price(at))?
+                    .clone()
+            };
 
-                *usd_deltas.entry(*address).or_insert(Rational::ZERO) += usd_amount;
-            }
+            let usd_amount = amount.clone() * price.clone();
+
+            *usd_deltas.entry(*address).or_insert(Rational::ZERO) += usd_amount;
         }
 
         Some(usd_deltas)
