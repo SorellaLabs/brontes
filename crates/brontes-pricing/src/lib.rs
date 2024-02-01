@@ -744,8 +744,8 @@ fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
         .into_par_iter()
         .map(|msg| {
             let pair = msg.get_pair(quote).unwrap();
-            let pair0 = Pair(pair.0, quote).ordered();
-            let pair1 = Pair(pair.1, quote).ordered();
+            let pair0 = Pair(pair.0, quote);
+            let pair1 = Pair(pair.1, quote);
 
             let (state, path) = on_new_pool_pair(
                 graph,

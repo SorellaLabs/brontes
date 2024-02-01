@@ -6,8 +6,9 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, traits::TracingProvider};
+use brontes_types::{pair::Pair, traits::TracingProvider, unzip_either::IterExt};
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
+use itertools::Itertools;
 use tracing::error;
 
 use crate::{errors::AmmError, protocols::LoadState, types::PoolState, Protocol};
@@ -47,7 +48,7 @@ type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
     provider: Arc<T>,
-    pool_load_futures: FuturesOrdered<BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>>,
+    pool_load_futures: MultiBlockPoolFutures,
     /// addresses currently being processed. to the blocks of the address we are
     /// fetching state for
     pool_buf: HashMap<Address, Vec<u64>>,
@@ -67,7 +68,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
             pool_buf: HashMap::default(),
-            pool_load_futures: FuturesOrdered::default(),
+            pool_load_futures: MultiBlockPoolFutures::new(),
             provider,
             req_per_block: HashMap::default(),
             protocol_address_to_parent_pairs: HashMap::default(),
@@ -197,7 +198,8 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.add_state_trackers(block_number, address, parent_pair);
 
         let fut = ex_type.try_load_state(address, provider, block_number, pool_pair);
-        self.pool_load_futures.push_back(Box::pin(fut));
+        self.pool_load_futures
+            .add_future(block_number, Box::pin(fut));
     }
 }
 
@@ -237,5 +239,75 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
         } else {
             Poll::Pending
         }
+    }
+}
+
+/// The MultiBlockPoolFutures struct is a collection of FuturesOrdered in which,
+/// pool futures which are from earlier blocks are loaded first. This allows us
+/// to load state and verify pairs for blocks ahead while we wait for the
+/// current block pairs to all be verified making the pricing module very
+/// efficient.
+pub struct MultiBlockPoolFutures(
+    HashMap<u64, FuturesOrdered<BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>>>,
+);
+
+impl MultiBlockPoolFutures {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn add_future(
+        &mut self,
+        block: u64,
+        fut: BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>,
+    ) {
+        self.0.entry(block).or_default().push_back(fut);
+    }
+}
+
+impl Stream for MultiBlockPoolFutures {
+    type Item = Result<PoolFetchSuccess, PoolFetchError>;
+
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
+        if self.0.is_empty() {
+            return Poll::Ready(None)
+        }
+
+        let (mut result, empty): (Vec<_>, Vec<_>) = self
+            .0
+            .iter_mut()
+            .sorted_by(|(b0, _), (b1, _)| b0.cmp(b1))
+            .map(|(block, futures)| {
+                let res = if let Poll::Ready(result) = futures.poll_next_unpin(cx) {
+                    result
+                } else {
+                    None
+                };
+
+                if futures.is_empty() {
+                    return (res, Some(*block))
+                }
+
+                (res, None)
+            })
+            .take_while_inclusive(|(res, _)| res.is_none())
+            .unzip_either();
+
+        empty.into_iter().for_each(|cleared| {
+            let _ = self.0.remove(&cleared);
+        });
+
+        if let Some(result) = result.pop() {
+            return Poll::Ready(Some(result))
+        }
+
+        Poll::Pending
     }
 }
