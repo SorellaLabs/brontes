@@ -305,6 +305,7 @@ impl SubgraphVerificationState {
                     .map(|n| (n.pair, n.liquidity.clone()))
                     .collect_vec()
             })
+            .unique()
             .sorted_by(|a, b| a.1.cmp(&b.1))
             .map(|n| n.0)
             .collect_vec()
@@ -312,7 +313,7 @@ impl SubgraphVerificationState {
 
     fn add_edge_with_liq(&mut self, addr: Address, bad_edge: BadEdge) {
         if !self.removed_recusing.contains_key(&bad_edge.pair) {
-            self.edges.0.entry(addr).or_default().push(bad_edge);
+            self.edges.0.entry(addr).or_default().insert(bad_edge);
         }
     }
 
@@ -358,4 +359,4 @@ impl SubgraphVerificationState {
 }
 
 #[derive(Debug, Default)]
-pub struct EdgesWithLiq(HashMap<Address, Vec<BadEdge>>);
+pub struct EdgesWithLiq(HashMap<Address, HashSet<BadEdge>>);
