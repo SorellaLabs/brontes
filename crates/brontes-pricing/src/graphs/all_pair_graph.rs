@@ -136,7 +136,7 @@ impl AllPairGraph {
         let n1 = *n1;
 
         let Some(edge) = self.graph.find_edge(n0.into(), n1.into()) else { return 0 };
-        self.graph.edge_weight(edge).unwrap().len()
+        self.graph.edge_weight(edge).unwrap().len() / 2
     }
 
     pub fn remove_empty_address(
