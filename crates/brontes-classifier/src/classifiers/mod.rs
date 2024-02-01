@@ -7,6 +7,9 @@ pub use sushiswap::*;
 pub mod curve;
 pub use curve::*;
 
+pub mod balancer;
+pub use balancer::*;
+
 pub mod aave;
 pub use aave::*;
 use brontes_macros::{action_dispatch, discovery_dispatch};
@@ -52,5 +55,6 @@ action_dispatch!(
     AaveV3liquidationCallCall,
     AaveV2flashLoanCall,
     AaveV3flashLoanCall,
-    AaveV3flashLoanSimpleCall
+    AaveV3flashLoanSimpleCall,
+    BalancerV1swapCall
 );

@@ -23,6 +23,7 @@ sol!(SushiSwapV2, "./classifier-abis/SushiSwapV2.json");
 sol!(UniswapV3, "./classifier-abis/UniswapV3.json");
 sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
+sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
 sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
