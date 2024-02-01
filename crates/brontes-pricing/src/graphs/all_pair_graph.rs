@@ -282,6 +282,10 @@ impl AllPairGraph {
                         .into_iter()
                         .filter(|info| info.insert_block <= block)
                         .map(|info| {
+                            let created_pair = Pair(info.token_0, info.token_1).ordered();
+                            if ignore.contains(&created_pair) {
+                                tracing::error!("ignore pair found in result");
+                            }
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
                             SubGraphEdge::new(
                                 PoolPairInfoDirection {
