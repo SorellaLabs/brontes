@@ -243,9 +243,13 @@ impl AllPairGraph {
                             return false
                         }
 
-                        let e = f.weight().first().unwrap();
-                        let pair = Pair(e.token_0, e.token_1).ordered();
-                        !ignore.contains(&pair)
+                        f.weight()
+                            .into_iter()
+                            .map(|e| {
+                                let pair = Pair(e.token_0, e.token_1).ordered();
+                                !ignore.contains(&pair)
+                            })
+                            .all(|a| a)
                     })
                     .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
                     .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
