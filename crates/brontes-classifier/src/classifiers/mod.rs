@@ -56,5 +56,6 @@ action_dispatch!(
     AaveV2flashLoanCall,
     AaveV3flashLoanCall,
     AaveV3flashLoanSimpleCall,
-    BalancerV1swapCall
+    BalancerV1swapExactAmountInCall,
+    BalancerV1swapExactAmountOutCall
 );
