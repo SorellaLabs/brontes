@@ -104,13 +104,11 @@ impl SubgraphVerifier {
                 self.subgraph_verification_state
                     .entry(pair)
                     .or_default()
-                    .edges
                     .add_edge_with_liq(edge.pair.0, edge.clone());
 
                 self.subgraph_verification_state
                     .entry(pair)
                     .or_default()
-                    .edges
                     .add_edge_with_liq(edge.pair.1, edge.clone());
             });
     }
@@ -135,9 +133,7 @@ impl SubgraphVerifier {
                     .get_recusing_nodes()
                     .clone();
 
-                if recusing_ignore.is_empty() {
-                    self.store_edges_with_liq(pair, &result.removals, all_graph);
-                }
+                self.store_edges_with_liq(pair, &result.removals, all_graph);
 
                 // state that we want to be ignored on the next graph search.
                 let mut ignores = self
@@ -314,6 +310,12 @@ impl SubgraphVerificationState {
             .collect_vec()
     }
 
+    fn add_edge_with_liq(&mut self, addr: Address, bad_edge: BadEdge) {
+        if !self.removed_recusing.contains_key(&bad_edge.pair) {
+            self.edges.0.entry(addr).or_default().push(bad_edge);
+        }
+    }
+
     fn remove_most_liquid_recursing(&mut self) {
         let most_liquid = self
             .edges
@@ -357,9 +359,3 @@ impl SubgraphVerificationState {
 
 #[derive(Debug, Default)]
 pub struct EdgesWithLiq(HashMap<Address, Vec<BadEdge>>);
-
-impl EdgesWithLiq {
-    fn add_edge_with_liq(&mut self, addr: Address, bad_edge: BadEdge) {
-        self.0.entry(addr).or_default().push(bad_edge);
-    }
-}
