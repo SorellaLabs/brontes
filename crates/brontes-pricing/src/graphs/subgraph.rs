@@ -296,12 +296,10 @@ impl PairSubGraph {
 
             for info in node_weights {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
-                    tracing::error!(?info.pool_addr,"no state when running bfs with liq");
                     continue;
                 };
                 let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing))
                 else {
-                    tracing::error!(?info.pool_addr,"no price");
                     continue;
                 };
 
@@ -479,46 +477,6 @@ impl PairSubGraph {
     }
 }
 
-/// returns, (found parent, has other_paths). this breaks if there is anything
-/// circular
-fn recursive_tree_parse(
-    parent_node: Address,
-    end_node: Address,
-    visited: &mut HashSet<usize>,
-    tree: &HashMap<Address, Vec<(usize, Address)>>,
-    all_pair_graph: &AllPairGraph,
-) -> (bool, bool) {
-    let Some(kids) = tree.get(&parent_node) else { return (false, false) };
-    // no kids
-    if kids.is_empty() {
-        return (false, !all_pair_graph.is_only_edge(&parent_node))
-    }
-
-    let mut parent_paths = !all_pair_graph.is_only_edge(&parent_node);
-    for (edge_id, kid) in kids {
-        if visited.contains(edge_id) {
-            continue
-        }
-        // check if end
-        if *kid == end_node {
-            return (true, true)
-        }
-
-        let (found_parent, has_other_paths) =
-            recursive_tree_parse(*kid, end_node, visited, tree, all_pair_graph);
-
-        if found_parent {
-            return (true, true)
-        }
-
-        visited.insert(*edge_id);
-
-        parent_paths |= has_other_paths;
-    }
-
-    (false, parent_paths)
-}
-
 fn add_edge(
     graph: &mut DiGraph<(), Vec<SubGraphEdge>, u16>,
     edge_idx: EdgeIndex<u16>,
@@ -598,12 +556,10 @@ where
 
             for info in edge_weight {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
-                    tracing::error!(?info.pool_addr, "missing pool state");
                     continue;
                 };
 
                 let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
-                    tracing::error!(?info.pool_addr, "missing pool price");
                     continue;
                 };
 
@@ -618,7 +574,6 @@ where
             }
 
             if weight == Rational::ZERO {
-                tracing::info!("no weight for dijkstra");
                 continue
             }
 
