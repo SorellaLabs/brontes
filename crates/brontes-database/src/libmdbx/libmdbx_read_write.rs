@@ -13,6 +13,7 @@ use brontes_types::{
         pool_creation_block::PoolsToAddresses,
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
+        traits::{LibmdbxReader, LibmdbxWriter},
     },
     mev::{Bundle, MevBlock},
     pair::Pair,
@@ -23,7 +24,6 @@ use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use tracing::{info, warn};
 
-use super::{Libmdbx, LibmdbxReader, LibmdbxWriter};
 use crate::{
     libmdbx::{
         tables::{CexPrice, DexPrice, Metadata, MevBlocks, *},
@@ -31,6 +31,7 @@ use crate::{
             dex_price::{make_filter_key_range, make_key},
             LibmdbxData,
         },
+        Libmdbx,
     },
     AddressToProtocol, AddressToTokens, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
