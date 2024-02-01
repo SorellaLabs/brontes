@@ -507,6 +507,20 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         });
     }
 
+    /// Adds a subgraph for verification based on the given pair, block, and
+    /// edges.
+    ///
+    /// # Behavior
+    /// This function is responsible for initializing the process of verifying a
+    /// new subgraph. It involves: 1. Adding the subgraph to the
+    /// verification queue with the necessary edges and state. 2. Initiating
+    /// lazy loading for the exchange pools involved in the subgraph if they are
+    /// not already being loaded. 3. Adding the pool as a dependent to an
+    /// ongoing load operation if it's already in progress.
+    ///
+    /// The function returns a boolean indicating whether any lazy loading was
+    /// triggered during its execution. This function ensures that all necessary
+    /// pool states are loaded and ready for accurate subgraph verification.
     fn add_subgraph(&mut self, pair: Pair, block: u64, edges: Vec<SubGraphEdge>) -> bool {
         let needed_state = self
             .graph_manager
