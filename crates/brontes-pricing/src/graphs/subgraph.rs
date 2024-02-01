@@ -353,7 +353,7 @@ impl PairSubGraph {
             if possible_remove_pool_addr.len() < i {
                 possible_remove_pool_addr.into_iter().for_each(|bad_edge| {
 
-                    tracing::info!("removing: {:?}", bad_edge.pool_address);
+                    tracing::info!("removing: {:?}", bad_edge);
                     removal_map
                         .removal_state
                         .entry(bad_edge.pair.ordered())
@@ -374,12 +374,20 @@ impl PairSubGraph {
 
     fn prune_subgraph(&mut self, removal_state: &HashMap<Pair, HashSet<BadEdge>>) {
         removal_state.into_iter().for_each(|(k, v)| {
-            let Some(n0) = self.token_to_index.get(&k.0) else { return };
-            let Some(n1) = self.token_to_index.get(&k.1) else { return };
+            tracing::info!("removing state");
+            let Some(n0) = self.token_to_index.get(&k.0) else {
+                tracing::error!("no token 0 in token to index");
+                return 
+            };
+            let Some(n1) = self.token_to_index.get(&k.1) else {
+                tracing::error!("no token 1 in token to index");
+                return 
+            };
             let n0 = *n0;
             let n1 = *n1;
 
             let Some((e, dir)) = self.graph.find_edge_undirected(n0.into(), n1.into()) else {
+                tracing::error!("no edge found");
                 return
             };
 
