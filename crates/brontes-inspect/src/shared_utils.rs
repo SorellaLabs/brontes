@@ -147,7 +147,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata
             .dex_quotes
             .price_at_or_before(pair, block_position)
-            .map(|price| price.get_price(at)).cloned()
+            .map(|price| price.get_price(at))
     }
 
     pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
