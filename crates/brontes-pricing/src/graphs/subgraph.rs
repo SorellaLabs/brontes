@@ -140,8 +140,7 @@ impl PairSubGraph {
         &self,
         edge_state: &HashMap<Address, T>,
     ) -> Option<Rational> {
-        let e = HashSet::new();
-        dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state, &e)
+        dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
     }
 
     pub fn get_all_pools(&self) -> impl Iterator<Item = &Vec<SubGraphEdge>> + '_ {
@@ -206,50 +205,29 @@ impl PairSubGraph {
         all_pair_graph: &AllPairGraph,
         allowed_low_liq_nodes: &HashMap<Pair, Address>,
         ignore_list: &HashSet<Pair>,
-        ignore_edges: &HashSet<Address>,
     ) -> VerificationOutcome {
-        if dijkstra_path(
-            &self.graph,
-            self.start_node.into(),
-            self.end_node.into(),
-            &state,
-            ignore_edges,
-        )
-        .is_none()
+        if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
+            .is_none()
         {
             tracing::error!("invalid subgraph was given");
         }
 
-        let mut result = self.run_bfs_with_liquidity_params(
-            start,
-            &state,
-            all_pair_graph,
-            ignore_list,
-            ignore_edges,
-        );
+        let mut result =
+            self.run_bfs_with_liquidity_params(start, &state, all_pair_graph, ignore_list);
 
         self.prune_subgraph(&result.removal_state);
 
-        let mut disjoint = dijkstra_path(
-            &self.graph,
-            self.start_node.into(),
-            self.end_node.into(),
-            &state,
-            ignore_edges,
-        )
-        .is_none();
+        let mut disjoint =
+            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
+                .is_none();
 
         tracing::info!("disjoint: {disjoint}: bad: {}", result.removal_state.len());
 
         // if we not disjoint, do a bad pool check.
         if !disjoint {
-            if let Some(removal) = self.should_prune_anyways(
-                start,
-                &state,
-                all_pair_graph,
-                allowed_low_liq_nodes,
-                ignore_edges,
-            ) {
+            if let Some(removal) =
+                self.should_prune_anyways(start, &state, all_pair_graph, allowed_low_liq_nodes)
+            {
                 disjoint = true;
                 for (k, v) in removal {
                     result.removal_state.entry(k).or_default().extend(v);
@@ -269,7 +247,6 @@ impl PairSubGraph {
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
         allowed_low_liq_nodes: &HashMap<Pair, Address>,
-        ignore_edges: &HashSet<Address>,
     ) -> Option<HashMap<Pair, Vec<BadEdge>>> {
         let (mut path_no_low_liq, bad_pairs) = self.bfs_with_price(
             start,
@@ -285,10 +262,6 @@ impl PairSubGraph {
                 let edge_weight = edge.weight();
 
                 for info in edge_weight {
-                    if ignore_edges.contains(&info.pool_addr) {
-                        continue
-                    }
-
                     let Some(pool_state) = state.get(&info.pool_addr) else {
                         continue;
                     };
@@ -390,7 +363,6 @@ impl PairSubGraph {
         state: &HashMap<Address, T>,
         all_pair_graph: &AllPairGraph,
         ignore_list: &HashSet<Pair>,
-        ignore_edges: &HashSet<Address>,
     ) -> BfsArgs {
         self.bfs_with_price(start, |edge, prev_price, removal_map: &mut BfsArgs| {
             let mut pxw = Rational::ZERO;
@@ -405,9 +377,6 @@ impl PairSubGraph {
             }
 
             for info in node_weights {
-                if ignore_edges.contains(&info.pool_addr) {
-                    continue
-                }
                 let Some(pool_state) = state.get(&info.pool_addr) else {
                     tracing::error!(?info.pool_addr,"no state when running bfs with liq");
                     continue;
@@ -652,7 +621,6 @@ pub fn dijkstra_path<G, T>(
     start: G::NodeId,
     goal: G::NodeId,
     state: &HashMap<Address, T>,
-    ignore_edges: &HashSet<Address>,
 ) -> Option<Rational>
 where
     T: ProtocolState,
@@ -693,10 +661,6 @@ where
             let edge_weight = edge.weight();
 
             for info in edge_weight {
-                if ignore_edges.contains(&info.pool_addr) {
-                    continue
-                }
-
                 let Some(pool_state) = state.get(&info.pool_addr) else {
                     tracing::error!(?info.pool_addr, "missing pool state");
                     continue;
