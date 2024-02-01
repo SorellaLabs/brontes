@@ -96,7 +96,7 @@ impl SubgraphVerifier {
             .into_iter()
             .filter_map(|(k, v)| {
                 // look for edges that have been complety removed
-                if all_graph.edge_count(k.0, k.1) == v.len() {
+                if all_graph.edge_count(k.0, k.1) <= v.len() {
                     Some(v.clone().into_iter())
                 } else {
                     None
@@ -154,7 +154,7 @@ impl SubgraphVerifier {
                 self.store_edges_with_liq(pair, &result.removals, all_graph);
 
                 // state that we want to be ignored on the next graph search.
-                let mut ignores = self
+                let ignores = self
                     .subgraph_verification_state
                     .entry(pair)
                     .or_default()
@@ -167,20 +167,6 @@ impl SubgraphVerifier {
                     .filter(|(k, _)| !(ignores.contains(k) || recusing_ignore.contains_key(k)))
                     .collect::<HashMap<_, _>>();
 
-                // // // recusing but there are no changes. this will cause a infinite loop.
-                // if removals.is_empty() && result.should_requery {
-                //     // we will remove the most liquid single edges until we pass
-                //     self.subgraph_verification_state
-                //         .entry(pair)
-                //         .or_default()
-                //         .remove_most_liquid_recursing();
-                //
-                //     ignores = self
-                //         .subgraph_verification_state
-                //         .entry(pair)
-                //         .or_default()
-                //         .get_nodes_to_ignore();
-                // }
 
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
@@ -359,32 +345,6 @@ impl SubgraphVerificationState {
         if !self.removed_recusing.contains_key(&bad_edge.pair) {
             self.edges.0.entry(addr).or_default().insert(bad_edge);
         }
-    }
-
-    fn remove_most_liquid_recursing(&mut self) {
-        let most_liquid = self
-            .edges
-            .0
-            .values()
-            .flat_map(|node| {
-                node.into_iter()
-                    .map(|n| (n, n.liquidity.clone()))
-                    .collect_vec()
-            })
-            .sorted_by(|a, b| a.1.cmp(&b.1))
-            .map(|n| n.0)
-            .collect::<Vec<_>>()
-            .pop()
-            .unwrap()
-            .clone();
-
-        self.edges.0.retain(|_, node| {
-            node.retain(|edge| edge.pool_address != most_liquid.pool_address);
-            !node.is_empty()
-        });
-
-        self.removed_recusing
-            .insert(most_liquid.pair, most_liquid.pool_address);
     }
 
     fn get_recusing_nodes(&self) -> &HashMap<Pair, Address> {
