@@ -152,7 +152,7 @@ impl SubGraphRegistry {
             .and_then(|(default_pair, graph)| Some((default_pair, graph.fetch_price(edge_state)?)))
             .map(
                 |(default_pair, res)| {
-                    if unordered_pair != default_pair {
+                    if !unordered_pair.eq_unordered(&default_pair) {
                         res.reciprocal()
                     } else {
                         res
