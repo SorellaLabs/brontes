@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
-use brontes_types::pair::Pair;
+use brontes_types::{pair::Pair, ToFloatNearest};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -207,19 +207,21 @@ impl SubgraphVerifier {
                 if let Some(frayed) = frayed {
                     let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
                     if subgraph.in_rundown {
-                        let ignored = self
-                            .subgraph_verification_state
-                            .get(&pair)
-                            .unwrap()
-                            .get_nodes_to_ignore();
+                        let state = self.subgraph_verification_state.get(&pair).unwrap();
 
-                        let ex = extensions.iter().map(|e| Pair(e.token_0, e.token_1)).collect::<HashSet<_>>();
+                        let ignored = state.get_nodes_to_ignore();
+
+                        let ex = extensions
+                            .iter()
+                            .map(|e| Pair(e.token_0, e.token_1))
+                            .collect::<HashSet<_>>();
                         tracing::info!(
                             ?pair,
                             "connected with {:#?}",
                             ignored
                                 .into_iter()
                                 .filter(|i| ex.contains(i))
+                                .map(|i| state.highest_liq_for_pair(i))
                                 .collect_vec()
                         );
                     }
@@ -358,6 +360,25 @@ impl SubgraphVerificationState {
             .sorted_by(|a, b| a.1.cmp(&b.1))
             .map(|n| n.0)
             .collect_vec()
+    }
+
+    fn highest_liq_for_pair(&self, pair: Pair) -> f64 {
+        self.edges
+            .0
+            .values()
+            .flat_map(|node| {
+                node.into_iter()
+                    .map(|n| (n.pair, n.liquidity.clone()))
+                    .collect_vec()
+            })
+            .unique()
+            .filter(|f| f.0 == pair)
+            .sorted_by(|a, b| a.1.cmp(&b.1))
+            .collect_vec()
+            .pop()
+            .unwrap()
+            .1
+            .to_float()
     }
 
     fn add_edge_with_liq(&mut self, addr: Address, bad_edge: BadEdge) {
