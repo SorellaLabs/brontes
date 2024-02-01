@@ -255,7 +255,7 @@ impl AllPairGraph {
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
             5,
-            5_000,
+            15_000,
         )
         .into_iter()
         .map(|(nodes, _)| {
@@ -294,9 +294,12 @@ impl AllPairGraph {
         .collect_vec()
     }
 
-    pub fn get_paths(&self, pair: Pair, block: u64,
+    pub fn get_paths(
+        &self,
+        pair: Pair,
+        block: u64,
         connectivity_wight: usize,
-                     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
+    ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         let ignore = HashSet::new();
         self.get_paths_ignoring(pair, &ignore, block, connectivity_wight)
     }
