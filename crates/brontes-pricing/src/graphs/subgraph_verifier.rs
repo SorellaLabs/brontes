@@ -339,8 +339,7 @@ impl SubgraphVerificationState {
             .sorted_by(|a, b| a.1.cmp(&b.1))
             .map(|n| n.0)
             .collect::<Vec<_>>()
-            .first()
-            .unwrap();
+            .remove(0).clone();
 
         self.edges.0.retain(|_, node| {
             node.retain(|edge| edge.pool_address != most_liquid.pool_address);
