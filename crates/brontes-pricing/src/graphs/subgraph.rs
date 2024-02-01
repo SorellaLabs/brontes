@@ -34,7 +34,7 @@ pub struct VerificationOutcome {
     pub frayed_ends:    Vec<Address>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq,  Hash)]
 pub struct BadEdge {
     pub pair:         Pair,
     pub pool_address: Address,

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// Pair has a custom hash impl that will always make sure the pair is ordered
 /// before hashing aswell as on equals
-#[derive(Debug, Default, Clone, Copy, Eq, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Pair(pub Address, pub Address);
 
 impl Hash for Pair {
@@ -17,6 +17,8 @@ impl Hash for Pair {
         this.1.hash(state);
     }
 }
+
+impl Eq for Pair {}
 
 impl PartialEq for Pair {
     fn eq(&self, other: &Self) -> bool {
