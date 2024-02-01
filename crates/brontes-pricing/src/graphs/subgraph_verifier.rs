@@ -147,7 +147,7 @@ impl SubgraphVerifier {
                 let removals = result
                     .removals
                     .into_iter()
-                    .filter(|(k, _)| !ignores.contains(k) && !recusing_ignore.contains(k))
+                    .filter(|(k, _)| !ignores.contains(k) && !recusing_ignore.contains_key(k))
                     .collect::<HashMap<_, _>>();
 
                 // recusing but there are no changes. this will cause a infinite loop.
@@ -292,7 +292,7 @@ pub struct SubgraphVerificationState {
     /// when we are recusing we remove most liquidity edges until we find a
     /// proper path. However we want to make sure on recusion that these
     /// don't get removed
-    removed_recusing: HashSet<Pair>,
+    removed_recusing: HashMap<Pair, Address>,
 }
 
 impl SubgraphVerificationState {
@@ -333,10 +333,11 @@ impl SubgraphVerificationState {
             !node.is_empty()
         });
 
-        self.removed_recusing.insert(most_liquid.pair);
+        self.removed_recusing
+            .insert(most_liquid.pair, most_liquid.pool_address);
     }
 
-    fn get_recusing_nodes(&self) -> &HashSet<Pair> {
+    fn get_recusing_nodes(&self) -> &HashMap<Pair, Address> {
         &self.removed_recusing
     }
 
