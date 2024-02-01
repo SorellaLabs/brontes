@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cmp::min, collections::HashMap};
 
 use malachite::{num::basic::traits::One, Rational};
 use serde::{Deserialize, Serialize};
@@ -12,12 +12,19 @@ pub struct DexPrices {
     pub post_state: Rational,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PriceAt {
+    Before,
+    After,
+    Lowest,
+}
+
 impl DexPrices {
-    pub fn get_price(&self, post: bool) -> &Rational {
-        if post {
-            &self.post_state
-        } else {
-            &self.pre_state
+    pub fn get_price(self, post: PriceAt) -> Rational {
+        match post {
+            PriceAt::After => self.post_state,
+            PriceAt::Before => self.pre_state,
+            PriceAt::Lowest => min(self.pre_state, self.post_state),
         }
     }
 }
