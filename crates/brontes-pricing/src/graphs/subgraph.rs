@@ -273,7 +273,7 @@ impl PairSubGraph {
             dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
                 .is_none();
 
-        tracing::info!("disjoint: {disjoint}: bad: {}", result.removal_state.len());
+        tracing::debug!("disjoint: {disjoint}: bad: {}", result.removal_state.len());
 
         let frayed_ends = disjoint
             .then(|| self.disjoint_furthest_nodes())
