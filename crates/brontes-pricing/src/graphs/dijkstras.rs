@@ -148,6 +148,7 @@ where
     let mut target_reached = None;
     while let Some(SmallestHolder { cost, index }) = to_see.pop() {
         if i == max_iter {
+            tracing::info!("max iter on dijkstra hit");
             break
         }
 
