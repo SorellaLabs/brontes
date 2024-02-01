@@ -92,8 +92,6 @@ impl Libmdbx {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    //TODO: Joe clean up pls
     /// Clears a table in the database
     /// Only called on initialization
     fn clear_table<T>(&self) -> eyre::Result<()>
@@ -120,8 +118,8 @@ impl Libmdbx {
             entries
                 .par_iter()
                 .map(|entry| {
-                    let entry = entry.into_key_val();
-                    tx.put::<T>(entry.key, entry.value)
+                    let e = entry.into_key_val();
+                    tx.put::<T>(e.key, e.value)
                 })
                 .collect::<Result<Vec<_>, DatabaseError>>()?;
             Ok::<(), DatabaseError>(())

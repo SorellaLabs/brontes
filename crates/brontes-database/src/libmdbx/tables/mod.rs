@@ -11,7 +11,15 @@ use brontes_types::{
         pool_creation_block::PoolsToAddresses, token_info::TokenInfo, traces::TxTracesInner,
     },
     pair::Pair,
+    serde_primitives::*,
     traits::TracingProvider,
+};
+use serde_with::serde_as;
+use sorella_db_databases::{clickhouse, clickhouse::Row};
+
+use crate::libmdbx::{
+    types::{utils::static_bindings, ReturnKV},
+    LibmdbxData,
 };
 
 mod const_sql;
@@ -23,22 +31,14 @@ use reth_db::{table::Table, TableType};
 use super::{
     initialize::LibmdbxInitializer,
     types::{
-        address_to_protocol::AddressToProtocolData,
-        address_to_tokens::{AddressToTokensData, ArchivedLibmdbxPoolTokens, LibmdbxPoolTokens},
-        cex_price::{ArchivedLibmdbxCexPriceMap, CexPriceData, LibmdbxCexPriceMap},
-        dex_price::{
-            ArchivedLibmdbxDexQuoteWithIndex, DexKey, DexPriceData, LibmdbxDexQuoteWithIndex,
-        },
-        metadata::{ArchivedLibmdbxMetadataInner, LibmdbxMetadataInner, MetadataData},
-        mev_block::{
-            ArchivedLibmdbxMevBlockWithClassified, LibmdbxMevBlockWithClassified, MevBlocksData,
-        },
-        pool_creation_block::{
-            ArchivedLibmdbxPoolsToAddresses, LibmdbxPoolsToAddresses, PoolCreationBlocksData,
-        },
-        subgraphs::{ArchivedLibmdbxSubGraphsEntry, LibmdbxSubGraphsEntry, SubGraphsData},
-        token_decimals::TokenDecimalsData,
-        traces::{ArchivedLibmdbxTxTracesInner, LibmdbxTxTracesInner, TxTracesData},
+        address_to_tokens::{ArchivedLibmdbxPoolTokens, LibmdbxPoolTokens},
+        cex_price::{ArchivedLibmdbxCexPriceMap, LibmdbxCexPriceMap},
+        dex_price::{ArchivedLibmdbxDexQuoteWithIndex, DexKey, LibmdbxDexQuoteWithIndex},
+        metadata::{ArchivedLibmdbxMetadataInner, LibmdbxMetadataInner},
+        mev_block::{ArchivedLibmdbxMevBlockWithClassified, LibmdbxMevBlockWithClassified},
+        pool_creation_block::{ArchivedLibmdbxPoolsToAddresses, LibmdbxPoolsToAddresses},
+        subgraphs::{ArchivedLibmdbxSubGraphsEntry, LibmdbxSubGraphsEntry},
+        traces::{ArchivedLibmdbxTxTracesInner, LibmdbxTxTracesInner},
         IntoTableKey,
     },
     CompressedTable,
@@ -212,65 +212,33 @@ macro_rules! implement_table_value_codecs_with_zc {
     };
 }
 
-#[macro_export]
+/// Must be in this order when defining
+/// Table {
+///     Data {
+///     },
+///     Init {
+///     }
+///     CLI
+///     }
+/// }
 macro_rules! compressed_table {
-    // WITH $compressed_value
-    // WITH $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident | $init_method:tt
-    | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value | $init_method
-        | Some($init_chunk_size), $decompressed_value = $($table)*);
-        implement_table_value_codecs_with_zc!($compressed_value);
+    (Table $(#[$attrs:meta])* $table_name:ident { $($head:tt)* }) => {
+        compressed_table!($(#[$attrs:meta])* $table_name {} $($head)*);
     };
-
-    // WITH $compressed_value
-    // WITHOUT $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident
-    | $init_method:tt | $decompressed_value:ident = $($table:tt)*) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $compressed_value
-        | $init_method | None, $decompressed_value = $($table)*);
-        implement_table_value_codecs_with_zc!($compressed_value);
-    };
-
-    // WITHOUT $compressed_value
-    // WITH $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_method:tt
-    | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value
-        | $init_method | Some($init_chunk_size), $decompressed_value = $($table)*);
-    };
-
-    // WITHOUT $compressed_value
-    // WITHOUT $init_chunk_size
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $init_method:tt
-    | $decompressed_value:ident = $($table:tt)*) => {
-        table!($(#[$docs])+ ( $table_name ) $key | $decompressed_value
-        | $init_method | None, $decompressed_value = $($table)*);
-    };
-}
-
-macro_rules! table {
-    ($(#[$docs:meta])+ ( $table_name:ident ) $key:ty | $compressed_value:ident
-    | $init_method:tt | $init_chunk_size:expr, $decompressed_value:ident = $($table:tt)*) => {
-        $(#[$docs])+
+    (
+        $(#[$attrs:meta])* $table_name:ident,
+        $c_val:ident, $decompressed_value:ident, $key:ident
+        { $($acc:tt)* } $(,)*
+    ) => {
+        $(#[$attrs])*
         #[doc = concat!("Takes [`", stringify!($key), "`] as a key and returns [`", stringify!($value), "`].")]
         #[derive(Clone, Copy, Debug, Default)]
         pub struct $table_name;
 
-        impl IntoTableKey<&str, $key, paste!([<$table_name Data>])> for $table_name {
-            fn into_key(value: &str) -> $key {
-                let key: $key = value.parse().unwrap();
-                println!("decoded key: {key:?}");
-                key
-            }
-
-            table!($table_name, $key, $compressed_value, $($table)*);
-        }
-
         impl reth_db::table::Table for $table_name {
             const NAME: &'static str = stringify!($table_name);
             type Key = $key;
-            type Value = $compressed_value;
+            type Value = $c_val;
         }
 
         impl std::fmt::Display for $table_name {
@@ -279,83 +247,325 @@ macro_rules! table {
             }
         }
 
-        table!($table_name, $decompressed_value, $init_chunk_size, $init_method);
+        $($acc)*
     };
-    ($table_name:ident, $decompressed_value:ident, $init_chunk_size:expr, Clickhouse) => {
+    (
+        $(#[$attrs:meta])* $table_name:ident
+        { $($acc:tt)* } $(#[$dattrs:meta])*
+        Data {
+            $(#[$kattrs:meta])* key: $key:ident,
+            $(#[$vattrs:meta])* value: $val:ident,
+            $(#[$vcattrs:meta])* compressed_value: $c_val:ident
+        },  $($tail:tt)*
+    ) => {
+        implement_table_value_codecs_with_zc!($c_val);
+        compressed_table!($(#[$attrs])* $table_name { $($acc)* }
+                          Data  {
+                              $(#[$kattrs])* key: $key,
+                              $(#[$vattrs])* value: $val,
+                              $(#[$vcattrs])* compressed_value: $c_val false
+                          }, $($tail)*);
+
+    };
+    // parse key value compressed
+    ($(#[$attrs:meta])* $table_name:ident
+     { $($acc:tt)* } $(#[$dattrs:meta])*
+        Data {
+            $(#[$kattrs:meta])* key: $key:ident,
+            $(#[$vattrs:meta])* value: $val:ident,
+            $(#[$vcattrs:meta])* compressed_value: $c_val:ident false
+        },  $($tail:tt)*) => {
+        compressed_table!($(#[$attrs])* $table_name, $c_val, $val, $key {
+        $($acc)*
+        paste!(
+        #[derive(Debug, Clone, Row, serde::Serialize, serde::Deserialize)]
+        $(#[$dattrs])*
+        pub struct [<$table_name Data>] {
+            $(#[$kattrs])*
+            pub key: $key,
+            $(#[$vattrs])*
+            pub value: $val
+        }
+
+        impl [<$table_name Data>] {
+            pub fn new(key: $key, value: $val) -> Self {
+                [<$table_name Data>] {
+                    key,
+                    value
+                }
+            }
+        }
+
+        impl From<($key, $val)> for [<$table_name Data>] {
+            fn from(value: ($key, $val)) -> Self {
+                [<$table_name Data>] {
+                    key: value.0,
+                    value: value.1
+                }
+            }
+        }
+
+        impl LibmdbxData<$table_name> for [<$table_name Data>] {
+            fn into_key_val(&self) -> ReturnKV<$table_name> {
+                (self.key.clone(), self.value.clone()).into()
+            }
+        }
+
+        );
+    } $($tail)*);
+    };
+    ($(#[$attrs:meta])* $table_name:ident { $($acc:tt)* } $(#[$dattrs:meta])*
+     Data {
+         $(#[$kattrs:meta])* key: $key:ident,
+         $(#[$vattrs:meta])* value: $val:ident
+     },  $($tail:tt)*) => {
+        compressed_table!($(#[$attrs])* $table_name { $($acc)* } $(#[$dattrs])*
+                          Data  {
+                              $(#[$kattrs])* key: $key,
+                              $(#[$vattrs])* value: $val,
+                              $(#[$vattrs])* compressed_value: $val false
+                          }, $($tail)*);
+
+    };
+    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
+     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Clickhouse },
+     $($tail:tt)*) => {
+        compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
+            $($acc)*
         impl CompressedTable for $table_name {
             type DecompressedValue = $decompressed_value;
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = Some(paste! {[<$table_name InitQuery>]});
         }
+        } $($tail)*);
     };
-    ($table_name:ident, $decompressed_value:ident, $init_chunk_size:expr, Other) => {
+    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
+     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Other },
+     $($tail:tt)*) => {
+        compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
+            $($acc)*
         impl CompressedTable for $table_name {
             type DecompressedValue = $decompressed_value;
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = None;
         }
+        } $($tail)*);
     };
-    ($table_name:ident, $key:ty, $value:ident, True) => {
-        fn into_table_data(key: &str, value: &str) -> paste!([<$table_name Data>]) {
-            let key: $key = key.parse().unwrap();
-            let value: $value = value.parse().unwrap();
-            <paste!([<$table_name Data>])>::new(key, value)
+    ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
+     { $($acc:tt)* } CLI { can_insert: False }  $($tail:tt)*) => {
+        compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
+            $($acc)*
+        impl IntoTableKey<&str, $key, paste!([<$table_name Data>])> for $table_name {
+            fn into_key(value: &str) -> $key {
+                let key: $key = value.parse().unwrap();
+                println!("decoded key: {key:?}");
+                key
+            }
+            fn into_table_data(_: &str, _: &str) -> paste!([<$table_name Data>]) {
+                panic!("inserts not supported for $table_name");
+            }
         }
+        } $($tail)*);
+    };
+    ($(#[$attrs:meta])* $table_name:ident,$c_val:ident, $decompressed_value:ident, $key:ident
+     { $($acc:tt)* } CLI { can_insert: True }  $($tail:tt)*) => {
 
-    };
-    ($table_name:ident, $key:ty, $value:ident, False) => {
-        fn into_table_data(_: &str, _: &str) -> paste!([<$table_name Data>]) {
-            panic!("inserts not supported for $table_name");
+        compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
+            $($acc)*
+        impl IntoTableKey<&str, $key, paste!([<$table_name Data>])> for $table_name {
+            fn into_key(value: &str) -> $key {
+                let key: $key = value.parse().unwrap();
+                println!("decoded key: {key:?}");
+                key
+            }
+            fn into_table_data(key: &str, value: &str) -> paste!([<$table_name Data>]) {
+                let key: $key = key.parse().unwrap();
+                let value: $decompressed_value = value.parse().unwrap();
+                <paste!([<$table_name Data>])>::new(key, value)
+            }
         }
-    }
+        } $($tail)*);
+    };
+
 }
 
 compressed_table!(
-    /// token address -> decimals
-    ( TokenDecimals ) Address | Clickhouse | TokenInfo = False
+    Table TokenDecimals {
+        #[serde_as]
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: TokenInfo
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
 );
 
 compressed_table!(
-    /// Address -> tokens in pool
-    ( AddressToTokens ) Address | LibmdbxPoolTokens | Clickhouse | PoolTokens = False
+    Table AddressToTokens {
+        #[serde_as]
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            #[serde(with = "pool_tokens")]
+            value: PoolTokens,
+            compressed_value: LibmdbxPoolTokens
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
 );
 
 compressed_table!(
-    /// Address -> Static protocol enum
-    ( AddressToProtocol ) Address | Clickhouse | Protocol = True
+    Table AddressToProtocol {
+        #[serde_as]
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            #[serde(with = "static_bindings")]
+            value: Protocol
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: True
+        }
+    }
 );
 
 compressed_table!(
-    /// block num -> cex prices
-    ( CexPrice ) u64 | LibmdbxCexPriceMap | Clickhouse | 200000,  CexPriceMap = False
+    Table CexPrice {
+        Data {
+        key: u64,
+        value: CexPriceMap,
+        compressed_value: LibmdbxCexPriceMap
+        },
+        Init {
+            init_size: Some(200000),
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+
 );
 
 compressed_table!(
-    /// block num -> metadata
-    ( Metadata ) u64 | LibmdbxMetadataInner | Clickhouse | 200000,  MetadataInner = False
+    Table Metadata {
+        #[serde_as]
+        Data {
+            key: u64,
+            value: MetadataInner,
+            compressed_value: LibmdbxMetadataInner
+        },
+        Init {
+            init_size: Some(200000),
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
 );
 
 compressed_table!(
-    /// block number concat tx idx -> cex quotes
-    ( DexPrice ) DexKey | LibmdbxDexQuoteWithIndex | Other | DexQuoteWithIndex = False
+    Table DexPrice {
+        Data {
+            key: DexKey,
+            value: DexQuoteWithIndex,
+            compressed_value: LibmdbxDexQuoteWithIndex
+        },
+        Init {
+            init_size: None,
+            init_method: Other
+        },
+        CLI {
+            can_insert: False
+        }
+    }
 );
 
 compressed_table!(
-    /// block number -> pools created in block
-    ( PoolCreationBlocks ) u64 | LibmdbxPoolsToAddresses | Clickhouse | PoolsToAddresses = False
+    Table PoolCreationBlocks {
+        #[serde_as]
+        Data {
+            key: u64,
+            #[serde(with = "pools_libmdbx")]
+            value: PoolsToAddresses,
+            compressed_value: LibmdbxPoolsToAddresses
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
 );
 
 compressed_table!(
-    /// block number -> mev block with classified mev
-    ( MevBlocks ) u64 | LibmdbxMevBlockWithClassified | Other | MevBlockWithClassified = False
+    Table MevBlocks {
+        Data {
+            key: u64,
+            value: MevBlockWithClassified,
+            compressed_value: LibmdbxMevBlockWithClassified
+        },
+        Init {
+            init_size: None,
+            init_method: Other
+        },
+        CLI {
+            can_insert: False
+        }
+    }
 );
 
 compressed_table!(
-    /// pair -> Vec<(block_number, entry)>
-    ( SubGraphs ) Pair | LibmdbxSubGraphsEntry | Other | SubGraphsEntry = False
+    Table SubGraphs {
+        Data {
+            key: Pair,
+            value: SubGraphsEntry,
+            compressed_value: LibmdbxSubGraphsEntry
+        },
+        Init {
+            init_size: None,
+            init_method: Other
+        },
+        CLI {
+            can_insert: False
+        }
+    }
 );
 
 compressed_table!(
-    /// block number -> tx traces
-    ( TxTraces ) u64 | LibmdbxTxTracesInner | Other | TxTracesInner = False
+    Table TxTraces {
+        #[serde_as]
+        Data {
+            key: u64,
+            value: TxTracesInner,
+            compressed_value: LibmdbxTxTracesInner
+        },
+        Init {
+            init_size: None,
+            init_method: Other
+        },
+        CLI {
+            can_insert: False
+        }
+    }
 );
