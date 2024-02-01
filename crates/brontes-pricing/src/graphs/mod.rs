@@ -96,6 +96,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         block: u64,
         pair: Pair,
         ignore: HashSet<Pair>,
+        connectivity_wight: usize,
     ) -> Vec<SubGraphEdge> {
         let ordered_pair = pair.ordered();
 
@@ -106,7 +107,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
 
         let paths = self
             .all_pair_graph
-            .get_paths_ignoring(pair, &ignore, block)
+            .get_paths_ignoring(pair, &ignore, block, connectivity_wight)
             .into_iter()
             .flatten()
             .flatten()
@@ -127,7 +128,12 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
 
     /// creates a subpool for the pair returning all pools that need to be
     /// loaded
-    pub fn create_subgraph_mut(&mut self, block: u64, pair: Pair) -> Vec<PoolPairInfoDirection> {
+    pub fn create_subgraph_mut(
+        &mut self,
+        block: u64,
+        pair: Pair,
+        connectivity_wight: usize,
+    ) -> Vec<PoolPairInfoDirection> {
         let ordered_pair = pair.ordered();
 
         if let Ok((pair, edges)) = self.db.try_load_pair_before(block, ordered_pair) {
@@ -143,7 +149,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
             // We want this beacuse our algorithm favors heavily connected
             // nodes which most times our base token is not. This small
             // change speeds up yens algo by a good amount.
-            .get_paths(pair, block)
+            .get_paths(pair, block, connectivity_wight)
             .into_iter()
             .flatten()
             .flatten()
