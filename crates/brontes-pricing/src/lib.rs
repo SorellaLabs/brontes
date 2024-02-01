@@ -362,7 +362,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             }
 
             let pairs = self.lazy_loader.pairs_to_verify();
-            self.try_verify_subgraph(pairs);
+            self.try_verify_subgraph(pairs, false);
         } else if let LoadResult::Err { pool_address, pool_pair, block, dependent_pairs } =
             load_result
         {
@@ -402,10 +402,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
     /// the failed pair for requery. After processing the verification
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
-    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Pair)>) {
+    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Pair)>, recusing: bool) {
         let requery = self
             .graph_manager
-            .verify_subgraph(pairs, self.quote_asset)
+            .verify_subgraph(pairs, self.quote_asset, recusing)
             .into_iter()
             .filter_map(|result| match result {
                 VerificationResults::Passed(passed) => {
@@ -471,7 +471,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             if !edges.is_empty() {
                 if !self.add_subgraph(pair, block, edges) {
                     info!(?pair, "recusing has edges");
-                    self.try_verify_subgraph(vec![(block, pair)]);
+                    self.try_verify_subgraph(vec![(block, pair)], true);
                 }
                 return
             }
@@ -498,7 +498,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 } else {
                     if !self.add_subgraph(pair, block, edges) {
                         info!(?pair, "recusing on new path failures");
-                        self.try_verify_subgraph(vec![(block, pair)]);
+                        self.try_verify_subgraph(vec![(block, pair)],true);
                     }
 
                     return
