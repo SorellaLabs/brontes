@@ -92,7 +92,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .map(|(_, v)| v)
             .fold(HashMap::new(), |acc, x| {
                 for (token, am) in x {
-                    acc.entry(*token).or_default() += am
+                    *acc.entry(*token).or_default() += am
                 }
 
                 acc
