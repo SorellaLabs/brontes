@@ -783,6 +783,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
                 }
             }
 
+            if self.lazy_loader.is_empty()
+                && self.lazy_loader.can_progress(&self.completed_block)
+                && self.finished.load(SeqCst)
+            {
+                return Poll::Ready(self.on_close())
+            }
+
             self.on_pool_updates(block_updates);
 
             work -= 1;
