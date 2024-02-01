@@ -327,7 +327,8 @@ impl SubgraphVerificationState {
             .sorted_by(|a, b| a.1.cmp(&b.1))
             .map(|n| n.0)
             .collect::<Vec<_>>()
-            .remove(0)
+            .pop()
+            .unwrap()
             .clone();
 
         self.edges.0.retain(|_, node| {
