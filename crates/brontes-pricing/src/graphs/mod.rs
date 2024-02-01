@@ -218,19 +218,30 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         self.graph_state.remove_state(address)
     }
 
+    pub fn add_frayed_end_extension(
+        &mut self,
+        pair: Pair,
+        block: u64,
+        frayed_end_extensions: Vec<SubGraphEdge>,
+    ) -> (Vec<PoolPairInfoDirection>, u64) {
+        self.subgraph_verifier.add_frayed_end_extension(
+            pair,
+            block,
+            &self.graph_state,
+            frayed_end_extensions,
+        )
+    }
 
     pub fn verify_subgraph(
         &mut self,
-        pairs: Vec<(u64, Pair)>,
+        pairs: Vec<(u64, Option<u64>, Pair)>,
         quote: Address,
-        recursing: bool,
     ) -> Vec<VerificationResults> {
         self.subgraph_verifier.verify_subgraph(
             pairs,
             quote,
             &self.all_pair_graph,
             &mut self.graph_state,
-            recursing,
         )
     }
 

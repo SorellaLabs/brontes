@@ -200,7 +200,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                     return
                 }
 
-                self.add_subgraph(pair, block, graph_edges);
+                self.add_subgraph(pair, block, graph_edges, false);
             });
     }
 
@@ -362,7 +362,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             }
 
             let pairs = self.lazy_loader.pairs_to_verify();
-            self.try_verify_subgraph(pairs, false);
+            self.try_verify_subgraph(pairs);
         } else if let LoadResult::Err { pool_address, pool_pair, block, dependent_pairs } =
             load_result
         {
@@ -402,10 +402,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
     /// the failed pair for requery. After processing the verification
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
-    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Pair)>, recusing: bool) {
+    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair)>) {
         let requery = self
             .graph_manager
-            .verify_subgraph(pairs, self.quote_asset, recusing)
+            .verify_subgraph(pairs, self.quote_asset)
             .into_iter()
             .filter_map(|result| match result {
                 VerificationResults::Passed(passed) => {
@@ -436,7 +436,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                         }
                     });
 
-                    Some((failed.pair, failed.block, failed.ignore_state))
+                    Some((failed.pair, failed.block, failed.ignore_state, failed.frayed_ends))
                 }
             })
             .collect_vec();
@@ -456,7 +456,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
     /// requerying if necessary. 3. In cases where no valid paths are found
     /// after requery, it escalates the verification by analyzing alternative
     /// paths or pairs.
-    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64, HashSet<Pair>)>) {
+    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>) {
         if pairs.is_empty() {
             return
         }
@@ -469,9 +469,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         new_state.into_iter().for_each(|(pair, block, edges)| {
             // add regularly
             if !edges.is_empty() {
-                if !self.add_subgraph(pair, block, edges) {
+                let (id, need_state) = self.add_subgraph(pair, block, edges, true);
+                if !need_state {
                     info!(?pair, "recusing has edges");
-                    self.try_verify_subgraph(vec![(block, pair)], true);
+                    self.try_verify_subgraph(vec![(block, id, pair)]);
                 }
                 return
             }
@@ -486,7 +487,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 let popped = ignores.pop();
                 let (pair, block, edges) = par_state_query(
                     &self.graph_manager,
-                    vec![(pair, block, ignores.iter().copied().collect())],
+                    vec![(pair, block, ignores.iter().copied().collect(), vec![])],
                 )
                 .remove(0);
 
@@ -496,12 +497,11 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                     }
                     continue
                 } else {
-                    if !self.add_subgraph(pair, block, edges) {
-                        info!(?pair, "recusing on new path failures");
-                        self.try_verify_subgraph(vec![(block, pair)], true);
+                    let (id, need_state) = self.add_subgraph(pair, block, edges, true);
+                    if !need_state {
+                        info!(?pair, "recusing has edges");
+                        self.try_verify_subgraph(vec![(block, id, pair)]);
                     }
-
-                    return
                 }
             }
         });
@@ -521,10 +521,25 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
     /// The function returns a boolean indicating whether any lazy loading was
     /// triggered during its execution. This function ensures that all necessary
     /// pool states are loaded and ready for accurate subgraph verification.
-    fn add_subgraph(&mut self, pair: Pair, block: u64, edges: Vec<SubGraphEdge>) -> bool {
-        let needed_state = self
-            .graph_manager
-            .add_subgraph_for_verification(pair, block, edges);
+    fn add_subgraph(
+        &mut self,
+        pair: Pair,
+        block: u64,
+        edges: Vec<SubGraphEdge>,
+        frayed_ext: bool,
+    ) -> (Option<u64>, bool) {
+        let (needed_state, id) = if frayed_ext {
+            let (need, id) = self
+                .graph_manager
+                .add_frayed_end_extension(pair, block, edges);
+            (need, Some(id))
+        } else {
+            (
+                self.graph_manager
+                    .add_subgraph_for_verification(pair, block, edges),
+                None,
+            )
+        };
 
         let mut triggered = false;
         // because we run these state fetches in parallel, we come across the issue
@@ -544,6 +559,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 self.lazy_loader.lazy_load_exchange(
                     pair,
                     Pair(pool_info.token_0, pool_info.token_1),
+                    id,
                     pool_info.pool_addr,
                     block,
                     pool_info.dex_type,
@@ -551,12 +567,12 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 triggered = true;
             } else {
                 self.lazy_loader
-                    .add_protocol_parent(block, pool_info.pool_addr, pair);
+                    .add_protocol_parent(block, id, pool_info.pool_addr, pair);
                 triggered = true;
             }
         }
 
-        triggered
+        (id, triggered)
     }
 
     /// because we already have a state update for this pair in the buffer, we
@@ -575,11 +591,12 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             // load exchange only if its not loaded already
             if is_loading {
                 self.lazy_loader
-                    .add_protocol_parent(block, pool_info.pool_addr, pair)
+                    .add_protocol_parent(block, None, pool_info.pool_addr, pair)
             } else {
                 self.lazy_loader.lazy_load_exchange(
                     pair,
                     Pair(pool_info.token_0, pool_info.token_1),
+                    None,
                     pool_info.pool_addr,
                     block,
                     pool_info.dex_type,
@@ -850,13 +867,22 @@ fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
 
 fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
-    pairs: Vec<(Pair, u64, HashSet<Pair>)>,
+    pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>,
 ) -> Vec<(Pair, u64, Vec<SubGraphEdge>)> {
     pairs
         .into_par_iter()
-        .map(|(pair, block, ignore)| {
-            let edge = graph.create_subgraph(block, pair, ignore);
-            (pair, block, edge)
+        .flat_map(|(pair, block, ignore, frayed_ends)| {
+            if frayed_ends.is_empty() {
+                return vec![(pair, block, graph.create_subgraph(block, pair, ignore))]
+            }
+
+            frayed_ends
+                .into_iter()
+                .zip(vec![pair.0].into_iter().cycle())
+                .map(|(end, start)| {
+                    (pair, block, graph.create_subgraph(block, Pair(start, end), ignore.clone()))
+                })
+                .collect_vec()
         })
         .collect::<Vec<_>>()
 }
