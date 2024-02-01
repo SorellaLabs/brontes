@@ -132,10 +132,11 @@ impl SubgraphVerifier {
                     .subgraph_verification_state
                     .entry(pair)
                     .or_default()
-                    .get_recusing_nodes();
+                    .get_recusing_nodes()
+                    .clone();
 
-                if  recusing_ignore.is_empty() {
-                self.store_edges_with_liq(pair, &result.removals, all_graph);
+                if recusing_ignore.is_empty() {
+                    self.store_edges_with_liq(pair, &result.removals, all_graph);
                 }
 
                 // state that we want to be ignored on the next graph search.
@@ -144,7 +145,6 @@ impl SubgraphVerifier {
                     .entry(pair)
                     .or_default()
                     .get_nodes_to_ignore();
-
 
                 // all results that should be pruned from our main graph.
                 let removals = result
