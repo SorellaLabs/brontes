@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt, fmt::Debug};
 
 use ::serde::ser::{Serialize, SerializeStruct, Serializer};
 use malachite::Rational;
@@ -11,7 +11,7 @@ use super::{Mev, MevType};
 use crate::{
     db::cex::CexExchange,
     normalized_actions::{ClickhouseVecNormalizedSwap, ClickhouseVecStatArbDetails},
-    Protocol,
+    Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -138,9 +138,27 @@ pub struct StatArbDetails {
     pub pnl_pre_gas:  StatArbPnl,
 }
 
+impl fmt::Display for StatArbDetails {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Arb Leg Details:")?;
+        writeln!(f, "    - Price on {}: {}", self.cex_exchange, self.cex_price.clone().to_float())?;
+        writeln!(f, "    - Price on {}: {}", self.dex_exchange, self.dex_price.clone().to_float())?;
+        write!(f, "    - Pnl pre-gas: {}", self.pnl_pre_gas)
+    }
+}
+
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct StatArbPnl {
     pub maker_profit: Rational,
     pub taker_profit: Rational,
+}
+
+impl fmt::Display for StatArbPnl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "    - Maker: {}", self.maker_profit.clone().to_float())?;
+        write!(f, "    - Taker: {}", self.taker_profit.clone().to_float())?;
+
+        Ok(())
+    }
 }
