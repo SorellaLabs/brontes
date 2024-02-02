@@ -18,7 +18,7 @@ pub async fn process_results<DB: LibmdbxWriter>(
     inspectors: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<MetadataCombined>,
-) -> PossibleMevCollection {
+) {
     let ComposerResults { block_details, mev_details, possible_mev_txes } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
 
