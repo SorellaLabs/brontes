@@ -12,7 +12,7 @@ use crate::mev::{
 };
 #[allow(unused_imports)]
 use crate::{
-    display::utils::{display_sandwich, print_mev_type_header},
+    display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     serde_primitives::vec_fixed_string,
     GasDetails,
