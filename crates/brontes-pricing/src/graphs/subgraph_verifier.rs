@@ -139,7 +139,7 @@ impl SubgraphVerifier {
             self.pending_subgraphs
                 .get_mut(&pair)?
                 .add_extension(frayed_end_extensions),
-                true
+            true,
         ))
     }
 
