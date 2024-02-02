@@ -3,7 +3,10 @@ use std::fmt;
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
 
-use crate::mev::{Bundle, BundleData, MevType};
+use crate::{
+    db::cex,
+    mev::{Bundle, BundleData, MevType},
+};
 
 pub fn print_mev_type_header(mev_type: MevType, f: &mut fmt::Formatter) -> fmt::Result {
     match mev_type {
@@ -179,7 +182,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             /\__/ / || (_| | |_       | | | | |  | |_) |
             \____/ \__\__,_|\__|      \_| |_/_|  |_.__/ 
                                                         
-        ""#};
+        "#};
 
     for line in ascii_header.lines() {
         writeln!(f, "{}", line.purple())?;
@@ -206,13 +209,16 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
     // Cex-dex specific details
     writeln!(f, "\n{}", "Cex-Dex Details:".bold().purple().underline())?;
-    for swap in cex_dex_data.swaps.iter() {
-        writeln!(f, "   - Swap: {}", swap)?;
-        /*writeln!(
-            f,
-            "   - Cex-Dex Delta: {}",
-            swap.amount_in * (cex_dex_data.prices_price[idx + 1] - cex_dex_data.prices_price[idx])
-        )?;  */
+    writeln!(f, "PnL: {}", cex_dex_data.pnl)?;
+
+    for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
+        writeln!(f, "\nSwap {}: ", i + 1,)?;
+        writeln!(f, "{}", swap)?;
+        if let Some(stat_arb_detail) = cex_dex_data.stat_arb_details.get(i) {
+            writeln!(f, "{}", stat_arb_detail)?;
+        } else {
+            writeln!(f, "   No arbitrage details found for this swap.")?;
+        }
     }
 
     Ok(())
