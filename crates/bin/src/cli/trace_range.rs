@@ -68,7 +68,7 @@ impl TraceArgs {
                 }
                 parser.execute(i)
             })
-            .collect()
+            .collect::<Vec<_>>()
             .await;
 
         Ok(())
