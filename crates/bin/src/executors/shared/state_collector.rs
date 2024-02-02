@@ -52,31 +52,16 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
         Self { mark_as_finished, metadata_fetcher, classifier, parser, db, collection_future: None }
     }
 
-    pub fn is_running_pricing(&self) -> bool {
-        self.metadata_fetcher.running_pricing()
-    }
 
     pub fn get_shutdown(&self) -> Arc<AtomicBool> {
         self.mark_as_finished.clone()
     }
 
-    pub fn get_price_channel(&mut self) -> Option<UnboundedReceiver<DexPriceMsg>> {
-        self.metadata_fetcher.get_price_channel()
-    }
 
     pub fn is_collecting_state(&self) -> bool {
         self.collection_future.is_some()
     }
 
-    pub fn into_tip_mode(
-        &mut self,
-        pricer: BrontesBatchPricer<T, DB>,
-        clickhouse: &'static Clickhouse,
-        executor: TaskExecutor,
-    ) {
-        self.metadata_fetcher
-            .into_tip_mode(pricer, clickhouse, executor)
-    }
 
     pub fn fetch_state_for(&mut self, block: u64) {
         let execute_fut = self.parser.execute(block);
