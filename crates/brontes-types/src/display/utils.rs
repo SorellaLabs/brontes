@@ -189,7 +189,7 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
         f,
         " - {}: {}",
         "Bribe (USD)".bright_white(),
-        bundle.header.bribe_usd.to_string().bright_white()
+        format_bribe(bundle.header.bribe_usd).to_string().bright_red()
     )?;
 
     Ok(())
@@ -238,7 +238,7 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
         f,
         " - {}: {}",
         "Bribe (USD)".bright_white(),
-        bundle.header.bribe_usd.to_string().bright_white()
+        format_bribe(bundle.header.bribe_usd).to_string().bright_red()
     )?;
 
     Ok(())
@@ -302,9 +302,8 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
         f,
         " - {}: {}",
         "Bribe (USD)".bright_white(),
-        bundle.header.bribe_usd.to_string().bright_white()
+        format_bribe(bundle.header.bribe_usd).to_string().bright_red()
     )?;
-
     Ok(())
 }
 
@@ -378,7 +377,7 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
         f,
         " - {}: {}",
         "Bribe (USD)".bright_white(),
-        bundle.header.bribe_usd.to_string().bright_white()
+        format_bribe(bundle.header.bribe_usd).to_string().bright_red()
     )?;
 
     Ok(())
@@ -447,7 +446,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
     }
     writeln!(f, "Gas details: {}", sandwich_data.backrun_gas_details)?;
     writeln!(f, "   - Bundle Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
-    writeln!(f, "   - Bribe (USD): {}", (bundle.header.bribe_usd).to_string().red())?;
+    writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
 
     Ok(())
 }
@@ -486,7 +485,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     // Mev section
     writeln!(f, "\n{}", "Mev:".bold().red().underline())?;
     writeln!(f, "   - Bundle Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
-    writeln!(f, "   - Bribe (USD): {}", (bundle.header.bribe_usd).to_string().red())?;
+    writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
 
     // Cex-dex specific details
     writeln!(f, "\n{}", "Cex-Dex Details:".bold().purple().underline())?;
@@ -511,4 +510,8 @@ fn format_profit(value: f64) -> ColoredString {
     } else {
         format!("${:.2}", value).white()
     }
+}
+
+fn format_bribe(value: f64) -> ColoredString {
+    format!("${:.2}", value).red()
 }
