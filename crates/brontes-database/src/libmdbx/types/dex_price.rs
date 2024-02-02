@@ -3,6 +3,7 @@ use brontes_types::db::{
     dex::{DexPrices, DexQuoteWithIndex},
     redefined_types::{malachite::Redefined_Rational, primitives::Redefined_Pair},
 };
+use proptest::bits::u64;
 use redefined::{Redefined, RedefinedConvert};
 use reth_db::DatabaseError;
 
@@ -23,6 +24,16 @@ impl reth_db::table::Decode for DexKey {
     fn decode<B: AsRef<[u8]>>(value: B) -> Result<Self, DatabaseError> {
         Ok(DexKey::from_slice(value.as_ref()))
     }
+}
+
+pub fn decompose_key(key: DexKey) -> (u64, u16) {
+    let block = FixedBytes::<8>::from_slice(&key[0..8]);
+    let block_number = u64::from_be_bytes(*block);
+
+    let tx_idx = FixedBytes::<2>::from_slice(&key[8..]);
+    let tx_idx = u16::from_be_bytes(*tx_idx);
+
+    (block_number, tx_idx)
 }
 
 pub fn make_key(block_number: u64, tx_idx: u16) -> DexKey {
