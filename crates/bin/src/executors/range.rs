@@ -74,7 +74,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
     }
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: MetadataCombined) {
-        info!(target:"brontes","dex pricing finished");
+        info!(target:"brontes","Completed DEX pricing");
         self.insert_futures.push(Box::pin(process_results(
             self.libmdbx,
             self.inspectors,

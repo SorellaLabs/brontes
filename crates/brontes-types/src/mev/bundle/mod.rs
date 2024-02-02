@@ -16,6 +16,10 @@ use sorella_db_databases::{
 };
 use strum::{Display, EnumIter};
 
+use crate::display::utils::{
+    display_atomic_backrun, display_jit_liquidity, display_jit_liquidity_sandwich,
+    display_liquidation,
+};
 #[allow(unused_imports)]
 use crate::{
     display::utils::{display_cex_dex, display_sandwich, print_mev_type_header},
@@ -36,6 +40,10 @@ impl fmt::Display for Bundle {
         match self.header.mev_type {
             MevType::Sandwich => display_sandwich(self, f)?,
             MevType::CexDex => display_cex_dex(self, f)?,
+            MevType::Jit => display_jit_liquidity(self, f)?,
+            MevType::Backrun => display_atomic_backrun(self, f)?,
+            MevType::Liquidation => display_liquidation(self, f)?,
+            MevType::JitSandwich => display_jit_liquidity_sandwich(self, f)?,
             _ => writeln!(f, "{:#?}", self)?,
         }
 
