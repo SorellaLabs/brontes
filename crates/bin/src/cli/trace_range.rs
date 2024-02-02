@@ -27,7 +27,7 @@ impl TraceArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
-        let max_tasks = determine_max_tasks(None) * 3;
+        let max_tasks = determine_max_tasks(None) * 2;
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
